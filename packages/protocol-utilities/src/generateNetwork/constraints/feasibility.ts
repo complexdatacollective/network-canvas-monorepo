@@ -249,6 +249,33 @@ function analyseEntity(
       );
     }
 
+    // A ceiling below zero needs no `required` to contradict: no string's
+    // length can be at or under it, so the runtime's maxLength validator
+    // rejects every string it is handed — `""` included, with "Too long. Enter
+    // fewer than -1 characters." That is what separates it from `maxLength: 0`,
+    // where the empty string is a value the rule genuinely permits. A negative
+    // `minLength` is the mirror image and deliberately left alone: no string is
+    // shorter than a negative floor, so that rule is vacuous, not broken.
+    if (constraints.maxLength !== undefined && constraints.maxLength < 0) {
+      report(
+        [id],
+        ['maxLength'],
+        `maxLength ${constraints.maxLength} permits no string at all`,
+      );
+    }
+
+    // The selection sibling, on the same reasoning: a negative `maxSelected`
+    // rejects every array including the empty one, while a negative
+    // `minSelected` is vacuous. Value bounds are not checked this way —
+    // `minValue` and `maxValue` bound a number, which has no floor at zero.
+    if (constraints.maxSelected !== undefined && constraints.maxSelected < 0) {
+      report(
+        [id],
+        ['maxSelected'],
+        `maxSelected ${constraints.maxSelected} permits no selection at all`,
+      );
+    }
+
     const optionCount = entry.options?.length ?? 0;
     if (
       constraints.minSelected !== undefined &&

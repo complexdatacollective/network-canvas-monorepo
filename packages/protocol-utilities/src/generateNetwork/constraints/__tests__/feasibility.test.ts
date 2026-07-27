@@ -130,6 +130,79 @@ describe('analyseFeasibility', () => {
     expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
   });
 
+  it('reports a length ceiling below zero without required', () => {
+    const codebook = codebookWith({
+      name: { name: 'Name', type: 'text', validation: { maxLength: -1 } },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['maxLength']);
+    expect(conflicts[0]?.reason).toBe('maxLength -1 permits no string at all');
+  });
+
+  it('reports a selection ceiling below zero without required', () => {
+    const codebook = codebookWith({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'B', value: 'b' },
+        ],
+        validation: { maxSelected: -1 },
+      },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['maxSelected']);
+    expect(conflicts[0]?.reason).toBe(
+      'maxSelected -1 permits no selection at all',
+    );
+  });
+
+  // A floor below zero is vacuous rather than contradictory: no string is
+  // shorter and no selection smaller, so both validators pass every value.
+  it('leaves a length floor below zero alone', () => {
+    const codebook = codebookWith({
+      name: { name: 'Name', type: 'text', validation: { minLength: -1 } },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('leaves a selection floor below zero alone', () => {
+    const codebook = codebookWith({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'B', value: 'b' },
+        ],
+        validation: { minSelected: -1 },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  // Numbers have no floor at zero, so a range entirely below it is ordinary.
+  it('leaves value bounds below zero alone', () => {
+    const codebook = codebookWith({
+      balance: {
+        name: 'Balance',
+        type: 'number',
+        validation: { minValue: -10, maxValue: -1 },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
   it('reports minSelected above the option count', () => {
     const codebook = codebookWith({
       tags: {
