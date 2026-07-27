@@ -5,12 +5,18 @@ import { defineConfig } from '@vite-pwa/assets-generator/config';
 // the apple icon onto a white 30%-padded tile, which is the white-bordered dock
 // icon this replaces.
 //
-// No maskable variant is generated here. Safari renders the apple-touch-icon at
-// ~0.90 of the tile while Chrome renders a maskable icon at ~1.06, so identical
-// pixels come out ~1.18x larger in Chrome. The maskable icon therefore needs
-// its own artwork, pre-scaled to 0.85, and is committed at
-// public/maskable-icon-512x512.png; apps/architect/vite.config.ts lists it in
-// the manifest. Matches apps/interviewer/pwa-assets.config.ts.
+// No maskable variant is generated here, because it needs different artwork
+// from the rest. Measured from the generated .icns of both installed apps on
+// macOS: Safari's "Add to Dock" picks the maskable manifest entry and renders
+// it 1:1 into the icon shape, while Chrome uses the `any` entry and magnifies
+// it ~1.057x. Identical pixels therefore come out ~1.057x larger in Chrome.
+//
+// So the maskable artwork is pre-scaled to 1.057x this source and committed at
+// public/maskable-icon-512x512.png, which cancels the difference;
+// apps/architect/vite.config.ts lists it in the manifest. It stays within the
+// maskable safe zone (the compass reaches 34% of the tile, against the 40%
+// limit), so a platform that does crop to the safe zone still won't clip it.
+// Matches apps/interviewer/pwa-assets.config.ts.
 export default defineConfig({
   preset: {
     transparent: {

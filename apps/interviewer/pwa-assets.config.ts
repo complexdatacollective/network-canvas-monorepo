@@ -5,12 +5,16 @@ import { defineConfig } from '@vite-pwa/assets-generator/config';
 // generator's defaults would instead letterbox the apple icon onto a white
 // 30%-padded tile, which is the washed-out dock icon this replaces.
 //
-// No maskable variant is generated here. Safari renders the apple-touch-icon at
-// ~0.90 of the tile while Chrome renders a maskable icon at ~1.06, so identical
-// pixels come out ~1.18x larger in Chrome. The maskable icon therefore needs its
-// own artwork, pre-scaled to 0.85 (see src/assets/interviewer-icon-maskable.svg)
-// and committed at public/maskable-icon-512x512.png; vite.config.ts lists it in
-// the manifest.
+// No maskable variant is generated here, because it needs different artwork
+// from the rest. Measured from the generated .icns of both installed apps on
+// macOS: Safari's "Add to Dock" picks the maskable manifest entry and renders
+// it 1:1 into the icon shape, while Chrome uses the `any` entry and magnifies
+// it ~1.057x. Identical pixels therefore come out ~1.057x larger in Chrome.
+//
+// So the maskable artwork carries the mark at 1.057x this source's scale (see
+// src/assets/interviewer-icon-maskable.svg) and is committed at
+// public/maskable-icon-512x512.png, which cancels the difference;
+// vite.config.ts lists it in the manifest.
 export default defineConfig({
   preset: {
     transparent: {
