@@ -9,6 +9,18 @@ import { ValueGenerator } from '../ValueGenerator';
 
 const TODAY = '2026-07-27';
 
+/**
+ * Today written at each resolution a picker emits, so a drawn value is held
+ * against a ceiling of its own precision. A year compared against the full date
+ * lands the right way round by lexical accident, which says nothing about the
+ * invariant: no draw is later than today, read at whatever precision it carries.
+ */
+const TODAY_AT = {
+  year: TODAY.slice(0, 4),
+  month: TODAY.slice(0, 7),
+  full: TODAY,
+};
+
 function make(entry: VariableEntry): ConstrainedVariable {
   return { entry, constraints: buildVariableConstraints(entry, TODAY) };
 }
@@ -385,7 +397,7 @@ describe('generateConstrained', () => {
           gen.generateConstrained(variable, 0, { distinctSeq: seq }),
         );
         expect(value >= '1000').toBe(true);
-        expect(value <= TODAY).toBe(true);
+        expect(value <= TODAY_AT[type]).toBe(true);
       }
     }
   });
@@ -411,7 +423,7 @@ describe('generateConstrained', () => {
           gen.generateConstrained(variable, 0, { distinctSeq: seq }),
         );
         expect(value >= '1920').toBe(true);
-        expect(value <= TODAY).toBe(true);
+        expect(value <= TODAY_AT[type]).toBe(true);
       }
     }
   });

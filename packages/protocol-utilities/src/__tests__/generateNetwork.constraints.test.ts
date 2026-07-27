@@ -65,6 +65,22 @@ function egoProtocol(variables: Record<string, unknown>): {
   };
 }
 
+/** Two ordinals held equal, each offering only the values it is given. */
+function heldEqualOrdinals(a: number[], b: number[]): Record<string, unknown> {
+  const options = (values: number[]) =>
+    values.map((value) => ({ label: `Option ${value}`, value }));
+
+  return {
+    a: { name: 'Rating A', type: 'ordinal', options: options(a) },
+    b: {
+      name: 'Rating B',
+      type: 'ordinal',
+      options: options(b),
+      validation: { sameAs: 'a' },
+    },
+  };
+}
+
 describe('generateNetwork constraint conformance', () => {
   it('holds two ego variables equal when one declares sameAs the other', () => {
     const { network } = generateNetwork({
@@ -133,6 +149,19 @@ describe('generateNetwork constraint conformance', () => {
         stages: [nameGeneratorStage],
       }),
     ).toThrow(SyntheticDataConstraintError);
+  });
+
+  it('throws when a sameAs pair shares no option value, naming what each offers', () => {
+    const build = () =>
+      generateNetwork({
+        seed: 3,
+        ...egoProtocol(heldEqualOrdinals([1, 2], [3, 4])),
+      });
+
+    expect(build).toThrow(SyntheticDataConstraintError);
+    expect(build).toThrow(
+      'the options offered by "Rating A" (1, 2) and by "Rating B" (3, 4) have no value in common',
+    );
   });
 
   it('throws identically regardless of seed', () => {
@@ -632,6 +661,33 @@ describe('cross-variable rules across a seed sweep', () => {
         ego.b === ego.a,
         () => `seed ${seed}: b "${String(ego.b)}" is not a "${a}"`,
       );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`draws a sameAs pair from the options both of them offer, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    const offered = { a: [1, 2, 3], b: [2, 3, 4] };
+    const variables = heldEqualOrdinals(offered.a, offered.b);
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({ seed, ...egoProtocol(variables) });
+      const ego = network.ego?.[entityAttributesProperty] ?? {};
+
+      complain(
+        failures,
+        ego.b === ego.a,
+        () => `seed ${seed}: b ${String(ego.b)} is not a ${String(ego.a)}`,
+      );
+      for (const [id, values] of Object.entries(offered)) {
+        complain(
+          failures,
+          values.includes(Number(ego[id])),
+          () =>
+            `seed ${seed}: ${id} holds ${String(ego[id])}, which it does not offer`,
+        );
+      }
     }
 
     expect(failures).toEqual([]);
