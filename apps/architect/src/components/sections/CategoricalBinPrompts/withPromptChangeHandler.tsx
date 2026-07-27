@@ -74,7 +74,16 @@ const handlers = withHandlers({
           options: variableOptions,
         })[0];
         if (contradiction) {
-          throw new SubmissionError({ variableOptions: contradiction.message });
+          // redux-form's ConnectedFieldArray reads a FieldArray's submit
+          // error only from submitErrors.<name>._error, never a bare string
+          // under submitErrors.<name> — so the message must be keyed here to
+          // reach the field.
+          throw new SubmissionError<
+            { variableOptions: unknown },
+            { _error: string }
+          >({
+            variableOptions: { _error: contradiction.message },
+          });
         }
       }
 
