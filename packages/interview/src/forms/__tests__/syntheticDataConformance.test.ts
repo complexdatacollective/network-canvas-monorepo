@@ -394,51 +394,38 @@ const egoVariables: Variables = {
     },
   },
 
+  // Scalar takes `required` and the four comparison rules, and nothing else: a
+  // response is recorded on a normalised 0-1 scale, so the type declares no
+  // value bounds of its own. Every rule it does accept is below.
   egoCloseness: {
     name: 'Closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
-    validation: { required: true, minValue: 0, maxValue: 1 },
+    validation: { required: true },
   },
   egoTrust: {
     name: 'Trust',
     type: 'scalar',
     component: 'VisualAnalogScale',
-    validation: {
-      minValue: 0,
-      maxValue: 1,
-      greaterThanVariable: ref('egoCloseness'),
-    },
+    validation: { greaterThanVariable: ref('egoCloseness') },
   },
   egoDoubt: {
     name: 'Doubt',
     type: 'scalar',
     component: 'VisualAnalogScale',
-    validation: {
-      minValue: 0,
-      maxValue: 1,
-      lessThanVariable: ref('egoCloseness'),
-    },
+    validation: { lessThanVariable: ref('egoCloseness') },
   },
   egoHopeAtLeast: {
     name: 'Hope at least',
     type: 'scalar',
     component: 'VisualAnalogScale',
-    validation: {
-      minValue: 0,
-      maxValue: 1,
-      greaterThanOrEqualToVariable: ref('egoCloseness'),
-    },
+    validation: { greaterThanOrEqualToVariable: ref('egoCloseness') },
   },
   egoHopeAtMost: {
     name: 'Hope at most',
     type: 'scalar',
     component: 'VisualAnalogScale',
-    validation: {
-      minValue: 0,
-      maxValue: 1,
-      lessThanOrEqualToVariable: ref('egoCloseness'),
-    },
+    validation: { lessThanOrEqualToVariable: ref('egoCloseness') },
   },
 
   egoBirthMonth: {
@@ -691,7 +678,13 @@ const personVariables: Variables = {
     name: 'Person closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
-    validation: { required: true, minValue: 0, maxValue: 1 },
+    validation: { required: true },
+  },
+  personRegard: {
+    name: 'Person regard',
+    type: 'scalar',
+    component: 'VisualAnalogScale',
+    validation: { greaterThanVariable: ref('personCloseness') },
   },
   personMet: {
     name: 'Met on',
@@ -794,7 +787,13 @@ const friendVariables: Variables = {
     name: 'Edge weight',
     type: 'scalar',
     component: 'VisualAnalogScale',
-    validation: { required: true, minValue: 0, maxValue: 1 },
+    validation: { required: true },
+  },
+  edgeWeightFloor: {
+    name: 'Edge weight floor',
+    type: 'scalar',
+    component: 'VisualAnalogScale',
+    validation: { lessThanOrEqualToVariable: ref('edgeWeight') },
   },
   edgeSince: {
     name: 'Edge since',

@@ -41,6 +41,26 @@ function personCodebook(variables: Record<string, unknown>): Codebook {
   } as unknown as Codebook;
 }
 
+/** An ego codebook, with a form listing every one of its variables. */
+function egoProtocol(variables: Record<string, unknown>): {
+  codebook: Codebook;
+  stages: Stage[];
+} {
+  return {
+    codebook: { ego: { variables } } as unknown as Codebook,
+    stages: [
+      {
+        id: 'stage-ego',
+        type: 'EgoForm',
+        label: 'About you',
+        form: {
+          fields: Object.keys(variables).map((variable) => ({ variable })),
+        },
+      } as unknown as Stage,
+    ],
+  };
+}
+
 describe('generateNetwork constraint conformance', () => {
   it('holds two ego variables equal when one declares sameAs the other', () => {
     const { network } = generateNetwork({
@@ -320,5 +340,318 @@ describe('generateNetwork constraint conformance', () => {
       const attrs = edge[entityAttributesProperty];
       expect(Number(attrs.until)).toBeGreaterThan(Number(attrs.since));
     }
+  });
+});
+
+/** How many seeds each sweep below draws. */
+const SEEDS = 500;
+
+/**
+ * Records a complaint when something a draw should satisfy does not hold.
+ * Collecting them rather than asserting per draw makes one run report every
+ * seed that breaks, instead of only the first.
+ */
+function complain(
+  failures: string[],
+  holds: boolean,
+  complaint: () => string,
+): void {
+  if (!holds) failures.push(complaint());
+}
+
+/**
+ * A scalar response is recorded on a normalised 0-1 scale the type never
+ * declares: the schema accepts no `minValue`/`maxValue` on it. Every scalar
+ * carrying a comparison rule therefore reaches generation with no rule-declared
+ * bound, and the scale itself is the only thing keeping a chain of comparisons
+ * inside a range the VisualAnalogScale slider can render.
+ */
+describe('scalar comparisons inside the normalised scale', () => {
+  /** `s0 < s1 < ... < s(length - 1)`, as scalars declaring nothing else. */
+  function ascendingScalars(length: number): Record<string, unknown> {
+    const variables: Record<string, unknown> = {};
+
+    for (let index = 0; index < length; index++) {
+      variables[`s${index}`] = {
+        name: `S${index}`,
+        type: 'scalar',
+        component: 'VisualAnalogScale',
+        ...(index < length - 1
+          ? { validation: { lessThanVariable: `s${index + 1}` } }
+          : {}),
+      };
+    }
+
+    return variables;
+  }
+
+  /** One seed's draw of the chain, in declaration order. */
+  function drawChain(length: number, seed: number): number[] {
+    const variables = ascendingScalars(length);
+    const { network } = generateNetwork({ seed, ...egoProtocol(variables) });
+    const ego = network.ego?.[entityAttributesProperty] ?? {};
+    return Object.keys(variables).map((id) => Number(ego[id]));
+  }
+
+  /** Everything wrong with one draw: a value off the scale, or out of order. */
+  function complaints(values: number[], seed: number): string[] {
+    const failures: string[] = [];
+
+    for (const [index, value] of values.entries()) {
+      complain(
+        failures,
+        value >= 0 && value <= 1,
+        () => `seed ${seed}: s${index} is ${value}, outside the 0-1 scale`,
+      );
+      complain(
+        failures,
+        index === 0 || value > Number(values[index - 1]),
+        () =>
+          `seed ${seed}: s${index} (${value}) is not above s${index - 1} (${values[index - 1]})`,
+      );
+    }
+
+    return failures;
+  }
+
+  it.each([
+    { length: 2, label: 'a pair' },
+    { length: 3, label: 'a chain of three' },
+  ])(`orders $label across ${SEEDS} seeds`, ({ length }) => {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      failures.push(...complaints(drawChain(length, seed), seed));
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  // Every strict step is one place of the two-decimal grid a scalar draw is
+  // rounded to, so the scale holds 101 values and a chain of 101 fills it end
+  // to end. There is nowhere for a longer chain to put its ends.
+  it('fills the scale exactly with a chain of 101', () => {
+    const values = drawChain(101, 7);
+
+    expect(values).toHaveLength(101);
+    expect(values[0]).toBe(0);
+    expect(values[100]).toBe(1);
+    expect(complaints(values, 7)).toEqual([]);
+  });
+
+  it('refuses a chain of 102 rather than stepping outside the scale', () => {
+    expect(() =>
+      generateNetwork({ seed: 7, ...egoProtocol(ascendingScalars(102)) }),
+    ).toThrow(SyntheticDataConstraintError);
+  });
+});
+
+/**
+ * The rules whose satisfaction can only be read off two values at once, swept
+ * wide because a comparison that holds for one draw fails for the next: a rule
+ * leaves a range, and only part of it breaks.
+ */
+describe('cross-variable rules across a seed sweep', () => {
+  it(`holds a sameAs pair equal at the length both declare, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    const variables = {
+      a: {
+        name: 'A',
+        type: 'text',
+        validation: { required: true, minLength: 24, maxLength: 24 },
+      },
+      b: {
+        name: 'B',
+        type: 'text',
+        validation: {
+          required: true,
+          minLength: 24,
+          maxLength: 24,
+          sameAs: 'a',
+        },
+      },
+    };
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({ seed, ...egoProtocol(variables) });
+      const ego = network.ego?.[entityAttributesProperty] ?? {};
+      const a = String(ego.a);
+
+      complain(
+        failures,
+        a.length === 24,
+        () => `seed ${seed}: a is ${a.length} characters, not 24`,
+      );
+      complain(
+        failures,
+        ego.b === ego.a,
+        () => `seed ${seed}: b "${String(ego.b)}" is not a "${a}"`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`holds unique, differentFrom and greaterThanVariable on every node, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    const codebook = personCodebook({
+      code: {
+        name: 'Code',
+        type: 'text',
+        validation: {
+          required: true,
+          unique: true,
+          minLength: 6,
+          maxLength: 6,
+        },
+      },
+      alias: {
+        name: 'Alias',
+        type: 'text',
+        validation: { required: true, minLength: 2, maxLength: 12 },
+      },
+      nickname: {
+        name: 'Nickname',
+        type: 'text',
+        validation: {
+          required: true,
+          minLength: 2,
+          maxLength: 12,
+          differentFrom: 'alias',
+        },
+      },
+      low: {
+        name: 'Low',
+        type: 'number',
+        validation: { required: true, minValue: 0, maxValue: 50 },
+      },
+      high: {
+        name: 'High',
+        type: 'number',
+        validation: {
+          required: true,
+          minValue: 0,
+          maxValue: 100,
+          greaterThanVariable: 'low',
+        },
+      },
+    });
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [nameGeneratorStage],
+      });
+      const issued = new Set<string>();
+
+      for (const node of network.nodes) {
+        const attrs = node[entityAttributesProperty];
+        const code = String(attrs.code);
+        const alias = String(attrs.alias);
+        const nickname = String(attrs.nickname);
+        const low = Number(attrs.low);
+        const high = Number(attrs.high);
+
+        complain(
+          failures,
+          !issued.has(code),
+          () => `seed ${seed}: code "${code}" was issued twice`,
+        );
+        issued.add(code);
+
+        complain(
+          failures,
+          code.length === 6,
+          () => `seed ${seed}: code "${code}" is not 6 characters`,
+        );
+        for (const [label, value] of [
+          ['alias', alias],
+          ['nickname', nickname],
+        ]) {
+          complain(
+            failures,
+            String(value).length >= 2 && String(value).length <= 12,
+            () =>
+              `seed ${seed}: ${String(label)} "${String(value)}" is outside 2-12 characters`,
+          );
+        }
+        complain(
+          failures,
+          nickname !== alias,
+          () => `seed ${seed}: nickname "${nickname}" equals alias`,
+        );
+        complain(
+          failures,
+          low >= 0 && low <= 50,
+          () => `seed ${seed}: low ${low} is outside 0-50`,
+        );
+        complain(
+          failures,
+          high >= 0 && high <= 100,
+          () => `seed ${seed}: high ${high} is outside 0-100`,
+        );
+        complain(
+          failures,
+          high > low,
+          () => `seed ${seed}: high ${high} is not above low ${low}`,
+        );
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`orders a datetime chain inside its declared window, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    // The month picker writes `YYYY-MM`, which compares correctly as a string
+    // against the window truncated to the same resolution.
+    const picker = {
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'month', min: '2000-01-01', max: '2005-12-31' },
+    };
+    const codebook = personCodebook({
+      start: { ...picker, name: 'Start', validation: { required: true } },
+      middle: {
+        ...picker,
+        name: 'Middle',
+        validation: { required: true, greaterThanVariable: 'start' },
+      },
+      end: {
+        ...picker,
+        name: 'End',
+        validation: { required: true, greaterThanVariable: 'middle' },
+      },
+    });
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [nameGeneratorStage],
+      });
+
+      for (const node of network.nodes) {
+        const attrs = node[entityAttributesProperty];
+        const dates = ['start', 'middle', 'end'].map((id) => String(attrs[id]));
+
+        for (const [index, date] of dates.entries()) {
+          complain(
+            failures,
+            date >= '2000-01' && date <= '2005-12',
+            () => `seed ${seed}: ${date} is outside 2000-01 to 2005-12`,
+          );
+          complain(
+            failures,
+            index === 0 || date > String(dates[index - 1]),
+            () =>
+              `seed ${seed}: ${date} is not after ${String(dates[index - 1])}`,
+          );
+        }
+      }
+    }
+
+    expect(failures).toEqual([]);
   });
 });

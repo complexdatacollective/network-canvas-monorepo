@@ -10,6 +10,14 @@ export const TEXT_ALPHABET_SIZE = 36;
 /** Decimal places every scalar draw is rounded to. */
 export const SCALAR_DECIMAL_PLACES = 2;
 
+/**
+ * The normalised scale a scalar response is recorded on, written as the bounds
+ * a scalar is drawn between. The type declares none of its own — the schema
+ * accepts no `minValue`/`maxValue` on it — but it is bounded all the same, and
+ * every consumer that reasons about a scalar's range reads it from here.
+ */
+export const SCALAR_DOMAIN = { minValue: 0, maxValue: 1 };
+
 /** Length a text draw falls back to when the rules impose no maximum. */
 const DEFAULT_TEXT_LENGTH = 12;
 
@@ -88,12 +96,20 @@ export function valueSpaceSize(
     }
 
     case 'scalar': {
-      const min = constraints.minValue ?? 0;
-      const max = constraints.maxValue ?? 1;
       // Draws are rounded to a fixed number of decimal places and clamped into
       // the range, so what the generator can reach is that grid rather than the
-      // whole interval. The schema does not permit `unique` on scalar, but
-      // in-progress protocol state can still declare it.
+      // whole interval. The range is the normalised scale unless a group holds
+      // this scalar equal to something narrower, and never wider than it. The
+      // schema does not permit `unique` on scalar, but in-progress protocol
+      // state can still declare it.
+      const min = Math.max(
+        constraints.minValue ?? SCALAR_DOMAIN.minValue,
+        SCALAR_DOMAIN.minValue,
+      );
+      const max = Math.min(
+        constraints.maxValue ?? SCALAR_DOMAIN.maxValue,
+        SCALAR_DOMAIN.maxValue,
+      );
       if (max <= min) return 1;
       return cap(Math.round((max - min) * 10 ** SCALAR_DECIMAL_PLACES) + 1);
     }

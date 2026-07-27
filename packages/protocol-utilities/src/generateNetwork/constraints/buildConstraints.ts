@@ -9,6 +9,7 @@ import {
   truncateToResolution,
 } from './dateWindow';
 import type { EntityConstraints, VariableConstraints } from './types';
+import { SCALAR_DOMAIN } from './valueSpace';
 
 // Mirrors RelativeDatePicker's own defaults, which useProtocolForm turns into
 // hard min/max validators; a generated value outside this window fails
@@ -78,6 +79,31 @@ function resolveDateWindow(
   };
 }
 
+/**
+ * The bounds a value is drawn between.
+ *
+ * A scalar takes the normalised scale it is recorded on rather than anything
+ * the protocol declares. The schema accepts no `minValue`/`maxValue` on the
+ * type, and `VisualAnalogScale` renders its slider over 0-1 whatever a protocol
+ * says, so a draft carrying a leftover pair describes a range the interview
+ * would not collect and the preview could not show. Giving the domain to the
+ * constraint descriptor rather than defaulting to it at each draw is what lets
+ * the comparator machinery see a scalar as bounded: without it every scalar
+ * carrying a comparison rule reaches propagation with nothing to narrow, and a
+ * chain of them steps straight out of the scale.
+ */
+function resolveValueBounds(
+  entry: VariableEntry,
+  validation: Record<string, unknown> | undefined,
+): Pick<VariableConstraints, 'minValue' | 'maxValue'> {
+  if (entry.type === 'scalar') return { ...SCALAR_DOMAIN };
+
+  return {
+    minValue: readNumber(validation, 'minValue'),
+    maxValue: readNumber(validation, 'maxValue'),
+  };
+}
+
 export function buildVariableConstraints(
   entry: VariableEntry,
   today: string,
@@ -89,8 +115,7 @@ export function buildVariableConstraints(
     unique: readBoolean(validation, 'unique'),
     minLength: readNumber(validation, 'minLength'),
     maxLength: readNumber(validation, 'maxLength'),
-    minValue: readNumber(validation, 'minValue'),
-    maxValue: readNumber(validation, 'maxValue'),
+    ...resolveValueBounds(entry, validation),
     minSelected: readNumber(validation, 'minSelected'),
     maxSelected: readNumber(validation, 'maxSelected'),
     sameAs: readString(validation, 'sameAs'),

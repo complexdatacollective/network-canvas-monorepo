@@ -127,14 +127,34 @@ describe('valueSpaceSize', () => {
     ).toBe(101);
   });
 
-  it('counts the rounding grid over an explicit scalar range', () => {
+  // The schema accepts no value bounds on a scalar, so a pair in a draft
+  // protocol describes a range neither the interview collects nor its slider
+  // renders. The normalised scale is counted instead.
+  it('counts the normalised scale however a draft bounds a scalar', () => {
     const variable = make({
       id: 'v',
       name: 'V',
       type: 'scalar',
-      validation: { minValue: 0.25, maxValue: 0.5 },
+      validation: { minValue: 0, maxValue: 100 },
     });
-    expect(valueSpaceSize(variable, 1_000)).toBe(26);
+    expect(valueSpaceSize(variable, 1_000)).toBe(101);
+  });
+
+  it('counts the rounding grid over a scalar range a group narrowed', () => {
+    const variable = make({ id: 'v', name: 'V', type: 'scalar' });
+    expect(
+      valueSpaceSize(
+        {
+          entry: variable.entry,
+          constraints: {
+            ...variable.constraints,
+            minValue: 0.25,
+            maxValue: 0.5,
+          },
+        },
+        1_000,
+      ),
+    ).toBe(26);
   });
 
   it('stops counting once the space reaches the ceiling', () => {

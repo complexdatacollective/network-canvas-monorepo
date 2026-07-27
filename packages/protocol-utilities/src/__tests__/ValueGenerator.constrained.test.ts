@@ -11,6 +11,23 @@ function make(entry: VariableEntry): ConstrainedVariable {
   return { entry, constraints: buildVariableConstraints(entry, TODAY) };
 }
 
+/**
+ * A variable whose value bounds were narrowed after its rules were read, as the
+ * comparator machinery narrows them. Scalar has no declared bounds to narrow —
+ * the schema accepts none, and `buildVariableConstraints` gives every scalar the
+ * normalised scale — so a scalar sub-range can only arrive this way.
+ */
+function narrowed(
+  entry: VariableEntry,
+  bounds: { minValue?: number; maxValue?: number },
+): ConstrainedVariable {
+  const variable = make(entry);
+  return {
+    entry: variable.entry,
+    constraints: { ...variable.constraints, ...bounds },
+  };
+}
+
 describe('generateConstrained', () => {
   it('respects an exact text length', () => {
     const gen = new ValueGenerator(1);
@@ -101,18 +118,53 @@ describe('generateConstrained', () => {
 
   it('respects scalar bounds', () => {
     const gen = new ValueGenerator(1);
-    const variable = make({
-      id: 'v',
-      name: 'V',
-      type: 'scalar',
-      validation: { minValue: 0.25, maxValue: 0.5 },
-    });
+    const variable = narrowed(
+      { id: 'v', name: 'V', type: 'scalar' },
+      { minValue: 0.25, maxValue: 0.5 },
+    );
 
     for (let index = 0; index < 25; index++) {
       const value = Number(gen.generateConstrained(variable, index));
       expect(value).toBeGreaterThanOrEqual(0.25);
       expect(value).toBeLessThanOrEqual(0.5);
     }
+  });
+
+  // A scalar is recorded on a normalised 0-1 scale, and the slider that collects
+  // one renders that range whatever else it is told. A bound outside it is
+  // therefore not a range to draw from but a bound to fold back in.
+  it('keeps a scalar inside the normalised scale whatever it is bounded by', () => {
+    const gen = new ValueGenerator(1);
+    const ranges = [
+      { minValue: -5, maxValue: 5 },
+      { minValue: -1, maxValue: -0.02 },
+      { minValue: 1.01, maxValue: 2 },
+      { minValue: 0.5, maxValue: 100 },
+    ];
+
+    for (const bounds of ranges) {
+      const variable = narrowed({ id: 'v', name: 'V', type: 'scalar' }, bounds);
+      for (let index = 0; index < 100; index++) {
+        const value = Number(gen.generateConstrained(variable, index));
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('draws a scalar over the whole scale when nothing narrows it', () => {
+    const gen = new ValueGenerator(1);
+    const variable = make({ id: 'v', name: 'V', type: 'scalar' });
+    const drawn = new Set<number>();
+
+    for (let index = 0; index < 200; index++) {
+      const value = Number(gen.generateConstrained(variable, index));
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(1);
+      drawn.add(value);
+    }
+
+    expect(drawn.size).toBeGreaterThan(1);
   });
 
   it('stays inside a number range that holds no integer', () => {
@@ -141,12 +193,12 @@ describe('generateConstrained', () => {
       { minValue: 0.004, maxValue: 0.5 },
     ];
 
-    for (const validation of ranges) {
-      const variable = make({ id: 'v', name: 'V', type: 'scalar', validation });
+    for (const bounds of ranges) {
+      const variable = narrowed({ id: 'v', name: 'V', type: 'scalar' }, bounds);
       for (let index = 0; index < 200; index++) {
         const value = Number(gen.generateConstrained(variable, index));
-        expect(value).toBeGreaterThanOrEqual(validation.minValue);
-        expect(value).toBeLessThanOrEqual(validation.maxValue);
+        expect(value).toBeGreaterThanOrEqual(bounds.minValue);
+        expect(value).toBeLessThanOrEqual(bounds.maxValue);
       }
     }
   });

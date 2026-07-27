@@ -15,6 +15,7 @@ import type {
 } from './generateNetwork/constraints/types';
 import {
   SCALAR_DECIMAL_PLACES,
+  SCALAR_DOMAIN,
   TEXT_ALPHABET_SIZE,
   textDrawLength,
 } from './generateNetwork/constraints/valueSpace';
@@ -219,8 +220,19 @@ export class ValueGenerator {
       }
 
       case 'scalar': {
-        const min = constraints.minValue ?? 0;
-        const max = constraints.maxValue ?? 1;
+        // These bounds are the normalised scale narrowed by whatever comparison
+        // rules reached this draw, so they are folded back into it: no scalar
+        // value the interview can collect, or its slider render, lies outside.
+        const min = clamp(
+          constraints.minValue ?? SCALAR_DOMAIN.minValue,
+          SCALAR_DOMAIN.minValue,
+          SCALAR_DOMAIN.maxValue,
+        );
+        const max = clamp(
+          constraints.maxValue ?? SCALAR_DOMAIN.maxValue,
+          min,
+          SCALAR_DOMAIN.maxValue,
+        );
         if (max <= min) return min;
         // Round first: rounding a clamped value can push it back outside the
         // bound it was just brought inside.

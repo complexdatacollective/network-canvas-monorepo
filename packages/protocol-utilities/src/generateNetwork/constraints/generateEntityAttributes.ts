@@ -426,38 +426,35 @@ function applyComparatorBounds(
 }
 
 /**
- * The range `ValueGenerator` falls back to when a numeric variable leaves a
- * side open, mirrored here. A realistic default is only usable while it fits
- * under what is known: a variable that declares no bounds of its own but is
- * required to stay below a value of 10 has a ceiling of 9 and no floor at all,
- * and the generator's own floor of 18 would put every draw above that ceiling.
+ * The range `ValueGenerator` falls back to when a number variable leaves a side
+ * open, mirrored here. A realistic default is only usable while it fits under
+ * what is known: a variable that declares no bounds of its own but is required
+ * to stay below a value of 10 has a ceiling of 9 and no floor at all, and the
+ * generator's own floor of 18 would put every draw above that ceiling.
+ *
+ * Only `number` needs this. A scalar carries the normalised scale as its bounds
+ * from the moment its constraints are built, so it never reaches a draw with a
+ * side left open.
  */
-const OPEN_RANGE_FALLBACK: Record<
-  'number' | 'scalar',
-  { floor: number; span: number }
-> = {
-  number: { floor: 18, span: 62 },
-  scalar: { floor: 0, span: 1 },
-};
+const NUMBER_OPEN_RANGE = { floor: 18, span: 62 };
 
 /** A floor for a group given a ceiling but left without one. */
 function withFallbackFloor(
   entry: VariableEntry,
   constraints: VariableConstraints,
 ): VariableConstraints {
-  if (entry.type !== 'number' && entry.type !== 'scalar') return constraints;
+  if (entry.type !== 'number') return constraints;
 
   const { minValue, maxValue } = constraints;
-  const fallback = OPEN_RANGE_FALLBACK[entry.type];
   if (
     minValue !== undefined ||
     maxValue === undefined ||
-    maxValue >= fallback.floor
+    maxValue >= NUMBER_OPEN_RANGE.floor
   ) {
     return constraints;
   }
 
-  return { ...constraints, minValue: maxValue - fallback.span };
+  return { ...constraints, minValue: maxValue - NUMBER_OPEN_RANGE.span };
 }
 
 /**
