@@ -250,10 +250,7 @@ function sameAsShape(index: number, rand: Rand): CorpusShape {
       type === 'boolean' || type === 'ordinal' ? type : 'number',
       rand,
     );
-    const comparable =
-      third.type === 'number' &&
-      (type === 'number' || type === 'datetime') &&
-      type === 'number';
+    const comparable = third.type === 'number' && type === 'number';
     third.rules.push(
       comparable && rand.next() < 0.5
         ? { kind: rand.pick(COMPARATORS), target: rand.pick(['v0', 'v1']) }
@@ -435,6 +432,17 @@ function satisfiesRules(
 function oracleSatisfiable(shape: CorpusShape): boolean {
   const domains = shape.variables.map(oracleDomain);
   if (domains.some((domain) => domain.length === 0)) return false;
+
+  // The shape families are written to keep this space small (the widest is
+  // two scalar grids beside one number, ~62k combinations). A future family
+  // that widens past this cap should fail loudly here, not stretch the run
+  // towards its timeout.
+  const product = domains.reduce((total, domain) => total * domain.length, 1);
+  if (product > 1_000_000) {
+    throw new Error(
+      `Shape ${shape.index} (${shape.family}) spans ${product} combinations; keep corpus families below the solver's tractability limits`,
+    );
+  }
 
   const indices = domains.map(() => 0);
   const assignment = new Map<string, VariableValue>();
