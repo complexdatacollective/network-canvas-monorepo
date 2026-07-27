@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { resolveGenerationConfig } from '../../config';
 import { SyntheticDataConstraintError } from '../error';
@@ -649,6 +654,151 @@ describe('analyseFeasibility', () => {
 
     expect(message).toContain('node "Person"');
     expect(message).not.toContain(key);
+  });
+});
+
+/**
+ * A prompt's `additionalAttributes` are written onto every node the prompt
+ * creates, so the count of nodes holding one of those values is a property of
+ * the protocol rather than of the seed — which makes it decidable here.
+ */
+describe('values a prompt fixes', () => {
+  const uniqueFlag = codebookWith({
+    flagged: { name: 'Flagged', type: 'boolean', validation: { unique: true } },
+  });
+
+  function fixingGenerator(nodes: number, id = 'stage-fix'): Stage {
+    return {
+      id,
+      type: 'NameGenerator',
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: `${id}-p1`,
+          text: 'Name people',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+      ],
+      behaviours: { minNodes: nodes, maxNodes: nodes },
+    } as unknown as Stage;
+  }
+
+  function rosterRow(id: string, attributes: Record<string, unknown>): NcNode {
+    return {
+      [entityPrimaryKeyProperty]: id,
+      type: 'person',
+      [entityAttributesProperty]: attributes,
+    } as unknown as NcNode;
+  }
+
+  it('reports a unique value fixed on a stage that can create two nodes', () => {
+    const conflicts = analyseFeasibility(
+      uniqueFlag,
+      [fixingGenerator(2)],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['unique', 'additionalAttributes']);
+    expect(conflicts[0]?.variableNames).toEqual(['Flagged']);
+    expect(conflicts[0]?.reason).toBe(
+      'a prompt fixes this to true on up to 2 nodes, but unique allows one node to hold a value',
+    );
+  });
+
+  it('sums the nodes every stage fixing one value can create', () => {
+    const conflicts = analyseFeasibility(
+      uniqueFlag,
+      [fixingGenerator(1, 'stage-a'), fixingGenerator(1, 'stage-b')],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.reason).toContain('on up to 2 nodes');
+  });
+
+  it('folds a fixed value onto the unique group its variable belongs to', () => {
+    const conflicts = analyseFeasibility(
+      codebookWith({
+        token: { name: 'Token', type: 'boolean', validation: { unique: true } },
+        flagged: {
+          name: 'Flagged',
+          type: 'boolean',
+          validation: { sameAs: 'token' },
+        },
+      }),
+      [fixingGenerator(2)],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['unique', 'additionalAttributes']);
+    expect(conflicts[0]?.variableNames.toSorted()).toEqual([
+      'Flagged',
+      'Token',
+    ]);
+  });
+
+  it('accepts a unique value only one node can be given', () => {
+    expect(
+      analyseFeasibility(uniqueFlag, [fixingGenerator(1)], config),
+    ).toEqual([]);
+  });
+
+  it('accepts a fixed value no rule holds unique', () => {
+    const codebook = codebookWith({
+      flagged: { name: 'Flagged', type: 'boolean' },
+    });
+
+    expect(analyseFeasibility(codebook, [fixingGenerator(8)], config)).toEqual(
+      [],
+    );
+  });
+
+  it('accepts a roster stage whose rows all supply the fixed variable', () => {
+    // A roster row's own value wins over the prompt's, so the fixed value
+    // reaches no node and spends nothing.
+    const stage = {
+      ...fixingGenerator(2, 'stage-roster'),
+      type: 'NameGeneratorRoster',
+    } as unknown as Stage;
+
+    expect(
+      analyseFeasibility(uniqueFlag, [stage], config, {
+        'stage-roster': [
+          rosterRow('r1', { flagged: true }),
+          rosterRow('r2', { flagged: false }),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it('reports a roster stage whose rows leave the fixed variable unset', () => {
+    const stage = {
+      ...fixingGenerator(2, 'stage-roster'),
+      type: 'NameGeneratorRoster',
+    } as unknown as Stage;
+
+    const conflicts = analyseFeasibility(uniqueFlag, [stage], config, {
+      'stage-roster': [rosterRow('r1', {}), rosterRow('r2', {})],
+    });
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.reason).toContain('on up to 2 nodes');
+  });
+
+  it('accepts a roster stage offering one row for a value it fixes', () => {
+    const stage = {
+      ...fixingGenerator(8, 'stage-roster'),
+      type: 'NameGeneratorRoster',
+    } as unknown as Stage;
+
+    expect(
+      analyseFeasibility(uniqueFlag, [stage], config, {
+        'stage-roster': [rosterRow('r1', {})],
+      }),
+    ).toEqual([]);
   });
 });
 

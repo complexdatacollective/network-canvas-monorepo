@@ -1004,3 +1004,280 @@ describe('rules spanning a fixed and a drawn attribute', () => {
     expect(drewARow).toBe(SEEDS * 3);
   });
 });
+
+/**
+ * A prompt's `additionalAttributes` are written onto every node the prompt
+ * creates, not drawn once per node, so a value a prompt fixes cannot vary with
+ * the seed. Fixing a `unique` value on a stage that can create more than one
+ * person therefore asks for a value two people hold, which no assignment
+ * satisfies — and asks for it on every seed, so it is refused before the draw
+ * rather than discovered partway through one.
+ */
+describe('a unique value a prompt fixes', () => {
+  /** A name generator pinning `flagged` on every person it creates. */
+  function fixingStage(nodes: number, id = 'stage-fix'): Stage {
+    return {
+      id,
+      type: 'NameGenerator',
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: `${id}-p1`,
+          text: 'Name people',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+      ],
+      behaviours: { minNodes: nodes, maxNodes: nodes },
+    } as unknown as Stage;
+  }
+
+  const uniqueFlag = personCodebook({
+    flagged: { name: 'Flagged', type: 'boolean', validation: { unique: true } },
+  });
+
+  it('refuses a stage that can create two people holding it', () => {
+    const build = () =>
+      generateNetwork({
+        seed: 3,
+        codebook: uniqueFlag,
+        stages: [fixingStage(2)],
+      });
+
+    expect(build).toThrow(SyntheticDataConstraintError);
+    expect(build).toThrow(
+      'a prompt fixes this to true on up to 2 nodes, but unique allows one node to hold a value',
+    );
+  });
+
+  it('refuses two stages that fix it once each', () => {
+    // Neither stage spends the value twice on its own; between them they spend
+    // it twice, which is what `unique` counts.
+    expect(() =>
+      generateNetwork({
+        seed: 3,
+        codebook: uniqueFlag,
+        stages: [fixingStage(1, 'stage-a'), fixingStage(1, 'stage-b')],
+      }),
+    ).toThrow(SyntheticDataConstraintError);
+  });
+
+  it('refuses it on a variable held equal to a unique one', () => {
+    // `flagged` is not itself unique; it shares a value with one that is, so
+    // fixing it spends the group's value just as fixing `token` would.
+    const build = () =>
+      generateNetwork({
+        seed: 3,
+        codebook: personCodebook({
+          token: {
+            name: 'Token',
+            type: 'boolean',
+            validation: { unique: true },
+          },
+          flagged: {
+            name: 'Flagged',
+            type: 'boolean',
+            validation: { sameAs: 'token' },
+          },
+        }),
+        stages: [fixingStage(2)],
+      });
+
+    expect(build).toThrow(SyntheticDataConstraintError);
+    expect(build).toThrow('(unique, additionalAttributes)');
+    expect(build).toThrow('these variables, which are held equal, to true');
+  });
+
+  it('refuses identically regardless of seed', () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      expect(() =>
+        generateNetwork({
+          seed,
+          codebook: uniqueFlag,
+          stages: [fixingStage(2)],
+        }),
+      ).toThrow(SyntheticDataConstraintError);
+    }
+  });
+
+  it(`generates a stage that creates one person holding it, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: uniqueFlag,
+        stages: [fixingStage(1)],
+      });
+      const flags = network.nodes.map(
+        (node) => node[entityAttributesProperty].flagged,
+      );
+
+      complain(
+        failures,
+        flags.length === 1 && flags[0] === true,
+        () => `seed ${seed}: flags ${JSON.stringify(flags)}, not [true]`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`generates two people holding a fixed value no rule holds unique, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    const codebook = personCodebook({
+      flagged: { name: 'Flagged', type: 'boolean' },
+    });
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [fixingStage(2)],
+      });
+      const flags = network.nodes.map(
+        (node) => node[entityAttributesProperty].flagged,
+      );
+
+      complain(
+        failures,
+        flags.length === 2 && flags.every((flag) => flag === true),
+        () => `seed ${seed}: flags ${JSON.stringify(flags)}, not [true, true]`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it('generates a roster stage whose rows all supply the fixed variable', () => {
+    // The row's own value wins over the prompt's on a roster stage, so the
+    // fixed value never reaches a node and there is nothing to refuse.
+    const rows = [true, false].map(
+      (flagged, index) =>
+        ({
+          [entityPrimaryKeyProperty]: `roster-${index}`,
+          type: 'person',
+          [entityAttributesProperty]: { flagged },
+        }) as unknown as NcNode,
+    );
+    const stage = {
+      id: 'stage-roster',
+      type: 'NameGeneratorRoster',
+      label: 'Roster',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Pick people',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+      ],
+      behaviours: { minNodes: 2, maxNodes: 2 },
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 3,
+      codebook: uniqueFlag,
+      stages: [stage],
+      externalData: { 'stage-roster': rows.map((row) => ({ ...row })) },
+    });
+
+    expect(
+      network.nodes
+        .map((node) => node[entityAttributesProperty].flagged)
+        .toSorted((a, b) => Number(a) - Number(b)),
+    ).toEqual([false, true]);
+  });
+});
+
+/**
+ * A roster row's values are the researcher's, so two rows can offer one value
+ * for a variable the codebook marks `unique`. A roster is a pool of candidates
+ * the run draws a subset of, so the answer is to leave the second row undrawn
+ * rather than refuse the protocol — refusing would fail a roster of hundreds of
+ * rows over a pair the draw might never have reached.
+ */
+describe('a unique value two roster rows share', () => {
+  const banded = personCodebook({
+    band: {
+      name: 'Band',
+      type: 'ordinal',
+      options: [1, 2, 3, 4, 5].map((value) => ({
+        label: `Band ${value}`,
+        value,
+      })),
+      validation: { unique: true },
+    },
+  });
+
+  function rosterOf(bands: number[]): NcNode[] {
+    return bands.map(
+      (band, index) =>
+        ({
+          [entityPrimaryKeyProperty]: `roster-${index}`,
+          type: 'person',
+          [entityAttributesProperty]: { band },
+        }) as unknown as NcNode,
+    );
+  }
+
+  const rosterStage = {
+    id: 'stage-roster',
+    type: 'NameGeneratorRoster',
+    label: 'Roster',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [{ id: 'p1', text: 'Pick people' }],
+    behaviours: { minNodes: 3, maxNodes: 3 },
+  } as unknown as Stage;
+
+  function bandsFor(seed: number, bands: number[]): number[] {
+    const { network } = generateNetwork({
+      seed,
+      codebook: banded,
+      stages: [rosterStage],
+      externalData: { 'stage-roster': rosterOf(bands) },
+    });
+    return network.nodes.map((node) =>
+      Number(node[entityAttributesProperty].band),
+    );
+  }
+
+  it(`passes over the row that repeats it, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const drawn = bandsFor(seed, [1, 1, 3]);
+
+      complain(
+        failures,
+        new Set(drawn).size === drawn.length,
+        () => `seed ${seed}: bands ${drawn.join(', ')} repeat a unique value`,
+      );
+      // One of the two band 1 rows is usable, and so is band 3; the row
+      // repeating band 1 is not, so the stage stops one person short of three.
+      complain(
+        failures,
+        drawn.toSorted((a, b) => a - b).join(',') === '1,3',
+        () => `seed ${seed}: bands ${drawn.join(', ')}, not 1 and 3`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`draws every row when their values differ, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const drawn = bandsFor(seed, [1, 2, 3]);
+
+      complain(
+        failures,
+        drawn.toSorted((a, b) => a - b).join(',') === '1,2,3',
+        () => `seed ${seed}: bands ${drawn.join(', ')}, not all three rows`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+});

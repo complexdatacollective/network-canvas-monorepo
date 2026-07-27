@@ -6,6 +6,7 @@ import type {
 import type { NcNode } from '@codaco/shared-consts';
 
 import type { GenerationConfig } from '../config';
+import { countPromptFixedValues, type PromptFixedValues } from '../nodes';
 import { collectBinOnlyVariables } from './binOnlyVariables';
 import { buildEntityConstraints } from './buildConstraints';
 import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
@@ -32,9 +33,12 @@ type EntityScope = {
   /** Variables of this type whose rules nothing in the interview applies. */
   unvalidated: ReadonlySet<string>;
   worstCaseCount: number;
+  /** Values prompts write onto this type, and how many entities can hold each. */
+  fixedValues: PromptFixedValues;
 };
 
 const NO_UNVALIDATED_VARIABLES: ReadonlySet<string> = new Set();
+const NO_FIXED_VALUES: PromptFixedValues = new Map();
 
 // The reference-bearing constraints that can merge two variables into one
 // group: `sameAs` directly, and a comparator as one link of a non-strict cycle.
@@ -107,6 +111,23 @@ function analyseEntity(
   const { order, membersOf, groupOf, cycles } = resolveGenerationOrder(entity);
   const groups = intersectGroupConstraints(entity, membersOf);
   const uniqueReported = new Set<string>();
+  const fixedReported = new Set<string>();
+
+  // Folded onto groups because a `unique` value is claimed once for the whole
+  // group its members share: two prompts fixing one value on two variables held
+  // equal spend the same value twice, exactly as one prompt fixing it twice.
+  const fixedByGroup = new Map<string, Map<string, number>>();
+  const fixedDisplay = new Map<string, string>();
+  for (const [id, values] of scope.fixedValues) {
+    if (!entity.has(id)) continue;
+    const group = groupOf.get(id) ?? id;
+    const carriers = fixedByGroup.get(group) ?? new Map<string, number>();
+    for (const [key, { value, count }] of values) {
+      carriers.set(key, (carriers.get(key) ?? 0) + count);
+      fixedDisplay.set(key, String(value));
+    }
+    fixedByGroup.set(group, carriers);
+  }
 
   const report = (
     variableIds: string[],
@@ -224,6 +245,31 @@ function analyseEntity(
             `only ${size} distinct values are possible${members.length > 1 ? ' once these variables are held equal' : ''}, but up to ${scope.worstCaseCount} ${scope.entity}s of this type can be generated`,
           );
         }
+
+        // A value a prompt fixes is written onto every node the prompt creates
+        // rather than drawn, so no seed can spread it over more than one
+        // holder: a prompt that fixes a `unique` value and can create two
+        // people is asking for a value two of them hold, which no assignment
+        // satisfies. Refused here rather than at the draw, so the protocol
+        // fails the same way on every seed instead of on the ones whose node
+        // count happened to reach two.
+        const spent = [...(fixedByGroup.get(group) ?? [])].filter(
+          ([, count]) => count > 1,
+        );
+        if (spent.length > 0 && !fixedReported.has(group)) {
+          fixedReported.add(group);
+          const detail = spent
+            .map(
+              ([key, count]) =>
+                `${fixedDisplay.get(key) ?? key} on up to ${count} ${scope.entity}s`,
+            )
+            .join(' and to ');
+          report(
+            members,
+            ['unique', 'additionalAttributes'],
+            `a prompt fixes ${members.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${detail}, but unique allows one ${scope.entity} to hold a value`,
+          );
+        }
       }
     }
   }
@@ -335,12 +381,16 @@ export function analyseFeasibility(
 ): ConstraintConflict[] {
   const counts = worstCaseEntityCounts(stages, config, externalData);
   const binOnly = collectBinOnlyVariables(stages);
+  const promptFixed = countPromptFixedValues(stages, config, externalData);
   const scopes: EntityScope[] = [
     {
       entity: 'ego',
       variables: codebook.ego?.variables,
       unvalidated: NO_UNVALIDATED_VARIABLES,
       worstCaseCount: 1,
+      // No stage fixes a value on ego: `additionalAttributes` belongs to a
+      // name-generator prompt, whose subject is always a node.
+      fixedValues: NO_FIXED_VALUES,
     },
   ];
 
@@ -354,6 +404,7 @@ export function analyseFeasibility(
       variables: definition.variables,
       unvalidated: binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES,
       worstCaseCount: counts.node.get(type) ?? 0,
+      fixedValues: promptFixed.get(type) ?? NO_FIXED_VALUES,
     });
   }
 
@@ -369,6 +420,9 @@ export function analyseFeasibility(
       // bin-assigned.
       unvalidated: NO_UNVALIDATED_VARIABLES,
       worstCaseCount: counts.edge.get(type) ?? 0,
+      // `additionalAttributes` writes onto the nodes a prompt creates, never
+      // onto an edge.
+      fixedValues: NO_FIXED_VALUES,
     });
   }
 

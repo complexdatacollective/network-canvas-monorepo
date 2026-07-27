@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
-import type { AdditionalAttributes } from '@codaco/protocol-validation';
+import type { AdditionalAttributes, Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -13,8 +13,11 @@ import {
   generateAttributesForEntity,
   releaseRosterValues,
   reserveRosterValues,
+  rosterRowIsDrawable,
 } from './attributes';
 import type { GenerationConfig } from './config';
+import type { EntityScopeRef } from './constraints/generateEntityAttributes';
+import { valueKey } from './constraints/uniqueRegistry';
 import type { GenerationContext, StageOfType } from './context';
 import { getSubjectType } from './subject';
 
@@ -67,6 +70,128 @@ function getPromptAdditionalAttributes(
     (acc, { variable, value }) => ({ ...acc, [variable]: value }),
     {},
   );
+}
+
+/**
+ * The nodes a prompt's `additionalAttributes` can write one value onto, keyed
+ * by variable id and then by the value's registry key. See
+ * {@link countPromptFixedValues}.
+ */
+type FixedValueTally = { value: boolean; count: number };
+
+export type PromptFixedValues = Map<string, Map<string, FixedValueTally>>;
+
+/** The name-generator variants, the only stages whose prompts fix a value. */
+type PromptedNodeStage = StageOfType<
+  'NameGenerator' | 'NameGeneratorQuickAdd' | 'NameGeneratorRoster'
+>;
+
+function isPromptedNodeStage(stage: Stage): stage is PromptedNodeStage {
+  return (
+    stage.type === 'NameGenerator' ||
+    stage.type === 'NameGeneratorQuickAdd' ||
+    stage.type === 'NameGeneratorRoster'
+  );
+}
+
+/**
+ * How many nodes of each type a prompt's `additionalAttributes` can write each
+ * of its values onto, keyed by node type.
+ *
+ * A prompt writes its additional attributes onto every node it creates, so
+ * unlike a drawn value this one cannot vary with the seed — which makes it
+ * decidable before any drawing whether more nodes than a `unique` variable
+ * allows are going to end up holding it. Counted at each stage's node ceiling,
+ * for the same reason the rest of feasibility counts worst cases, and summed
+ * across every prompt fixing the same pair, because a `unique` value is claimed
+ * once for the whole run.
+ *
+ * A roster stage is the one place a prompt's value can fail to land: the row's
+ * own value for the variable wins there (see `createNodesForStage`), so only
+ * the rows leaving it unset are counted.
+ */
+export function countPromptFixedValues(
+  stages: Stage[],
+  config: GenerationConfig,
+  externalData: Record<string, NcNode[]> | undefined,
+): Map<string, PromptFixedValues> {
+  const byType = new Map<string, PromptFixedValues>();
+
+  for (const stage of stages) {
+    if (!isPromptedNodeStage(stage)) continue;
+
+    const nodeType = getSubjectType(stage.subject, 'node');
+    if (nodeType === undefined) continue;
+
+    const { maxNodes } = getNodeCountBounds(stage, config);
+    const pool =
+      stage.type === 'NameGeneratorRoster'
+        ? externalData?.[stage.id]
+        : undefined;
+
+    for (const prompt of stage.prompts) {
+      for (const { variable, value } of prompt.additionalAttributes ?? []) {
+        const carriers = pool
+          ? Math.min(
+              maxNodes,
+              pool.filter(
+                (row) => row[entityAttributesProperty][variable] === undefined,
+              ).length,
+            )
+          : maxNodes;
+        if (carriers === 0) continue;
+
+        const forType: PromptFixedValues = byType.get(nodeType) ?? new Map();
+        const forVariable =
+          forType.get(variable) ?? new Map<string, FixedValueTally>();
+        // Keyed as the registry keys it, so this counts the same values the
+        // registry would judge equal.
+        const key = valueKey(value);
+        forVariable.set(key, {
+          value,
+          count: (forVariable.get(key)?.count ?? 0) + carriers,
+        });
+        forType.set(variable, forVariable);
+        byType.set(nodeType, forType);
+      }
+    }
+  }
+
+  return byType;
+}
+
+/**
+ * Takes a roster row the run can use from the drawable window `pool[from..]`,
+ * swapping it into `pool[from]` so drawn rows stay behind the window.
+ *
+ * The starting point is random, as an undrawn pool is drawn in random order,
+ * and the search walks on from there — so a pool with nothing to pass over
+ * consumes exactly the one random number it always did, and picks exactly the
+ * row it always did. `undefined` means the window holds no row the network can
+ * still take, which is a roster whose remaining values are all spoken for.
+ */
+function takeDrawableRosterRow(
+  ctx: GenerationContext,
+  scope: EntityScopeRef,
+  pool: NcNode[],
+  from: number,
+): NcNode | undefined {
+  const window = pool.length - from;
+  if (window <= 0) return undefined;
+
+  const start = ctx.valueGen.randomInt(from, pool.length - 1);
+
+  for (let step = 0; step < window; step++) {
+    const index = from + ((start - from + step) % window);
+    const candidate = pool[index]!;
+    if (!rosterRowIsDrawable(ctx, scope, candidate)) continue;
+
+    pool[index] = pool[from]!;
+    pool[from] = candidate;
+    return candidate;
+  }
+
+  return undefined;
 }
 
 export function getNodeCountBounds(
@@ -141,19 +266,25 @@ export function createNodesForStage(
   for (let i = 0; i < count; i++) {
     const nodeIndex = existingNodeCount + i;
 
-    const takeFromRoster =
+    const wantsRosterRow =
       drawn < pool.length &&
       (!roster.allowFabrication ||
         ctx.valueGen.randomFloat(0, 1) < ctx.config.rosterDrawRatio);
+    const picked = wantsRosterRow
+      ? takeDrawableRosterRow(ctx, scope, pool, drawn)
+      : undefined;
+
+    // A roster stage builds nodes only from rows, so a pool holding none the
+    // network can still take ends the stage — the alternative would be
+    // fabricating a person for a stage whose people all come from the roster.
+    if (wantsRosterRow && picked === undefined && !roster.allowFabrication) {
+      break;
+    }
 
     let primaryKey = uuid();
     const fixed: Record<string, VariableValue> = {};
 
-    if (takeFromRoster) {
-      const swapIndex = ctx.valueGen.randomInt(drawn, pool.length - 1);
-      const picked = pool[swapIndex]!;
-      pool[swapIndex] = pool[drawn]!;
-      pool[drawn] = picked;
+    if (picked) {
       drawn += 1;
 
       primaryKey = picked[entityPrimaryKeyProperty];
