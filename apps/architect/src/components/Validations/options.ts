@@ -33,10 +33,10 @@ const VALIDATIONS = {
     'lessThanOrEqualToVariable',
     'greaterThanOrEqualToVariable',
   ],
+  // A scalar records a normalised 0-1 value, so it offers no value bounds —
+  // only requiredness and comparisons against another scalar on the same scale.
   scalar: [
     'required',
-    'minValue',
-    'maxValue',
     'lessThanVariable',
     'greaterThanVariable',
     'lessThanOrEqualToVariable',

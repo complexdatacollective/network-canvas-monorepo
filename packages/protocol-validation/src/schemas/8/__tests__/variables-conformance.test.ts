@@ -306,7 +306,7 @@ describe('variable schema conformance', () => {
     });
   });
 
-  describe('scalar bound pairs', () => {
+  describe('scalar value bounds', () => {
     const scalarVariables = (validation: Record<string, unknown>) => ({
       closeness: {
         name: 'closeness',
@@ -316,59 +316,44 @@ describe('variable schema conformance', () => {
       },
     });
 
-    it('accepts a complete, ordered pair', () => {
-      const result = VariablesSchema.safeParse(
-        scalarVariables({ minValue: 2, maxValue: 10 }),
-      );
+    it('rejects a minValue', () => {
+      expect(
+        VariablesSchema.safeParse(scalarVariables({ minValue: 10 })).success,
+      ).toBe(false);
+    });
+
+    it('rejects a maxValue', () => {
+      expect(
+        VariablesSchema.safeParse(scalarVariables({ maxValue: 10 })).success,
+      ).toBe(false);
+    });
+
+    it('rejects a complete pair', () => {
+      expect(
+        VariablesSchema.safeParse(
+          scalarVariables({ minValue: 2, maxValue: 10 }),
+        ).success,
+      ).toBe(false);
+    });
+
+    it('accepts requiredness and comparisons against another scalar', () => {
+      const result = VariablesSchema.safeParse({
+        closeness: {
+          name: 'closeness',
+          type: 'scalar',
+          component: 'VisualAnalogScale',
+          validation: { required: true, greaterThanVariable: 'trust' },
+        },
+        trust: {
+          name: 'trust',
+          type: 'scalar',
+          component: 'VisualAnalogScale',
+        },
+      });
       expect(result.success).toBe(true);
     });
 
-    it('accepts a scalar with no bounds at all', () => {
-      const result = VariablesSchema.safeParse(
-        scalarVariables({ required: true }),
-      );
-      expect(result.success).toBe(true);
-    });
-
-    it('rejects a minValue with no maxValue', () => {
-      const result = VariablesSchema.safeParse(
-        scalarVariables({ minValue: 10 }),
-      );
-      expect(result.success).toBe(false);
-      expect(result.error?.issues[0]?.path).toEqual([
-        'closeness',
-        'validation',
-        'minValue',
-      ]);
-    });
-
-    it('rejects a maxValue with no minValue', () => {
-      const result = VariablesSchema.safeParse(
-        scalarVariables({ maxValue: 10 }),
-      );
-      expect(result.success).toBe(false);
-      expect(result.error?.issues[0]?.path).toEqual([
-        'closeness',
-        'validation',
-        'maxValue',
-      ]);
-    });
-
-    it('rejects an inverted pair', () => {
-      const result = VariablesSchema.safeParse(
-        scalarVariables({ minValue: 10, maxValue: 2 }),
-      );
-      expect(result.success).toBe(false);
-    });
-
-    it('rejects an equal pair, which has no usable range', () => {
-      const result = VariablesSchema.safeParse(
-        scalarVariables({ minValue: 5, maxValue: 5 }),
-      );
-      expect(result.success).toBe(false);
-    });
-
-    it('leaves number variable bounds unconstrained', () => {
+    it('leaves number variable bounds untouched', () => {
       const result = VariablesSchema.safeParse({
         age: {
           name: 'age',

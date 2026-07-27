@@ -1491,7 +1491,7 @@ describe('Migration V7 to V8', () => {
     });
   });
 
-  describe('scalar bound pairs', () => {
+  describe('scalar value bounds', () => {
     const scalarProtocol = (validation: Record<string, unknown>) =>
       ({
         schemaVersion: 7 as const,
@@ -1529,29 +1529,37 @@ describe('Migration V7 to V8', () => {
         }),
       ).codebook.node?.person?.variables;
 
-    it('keeps a complete, ordered pair', () => {
+    it('drops a complete pair', () => {
       const closeness = migrateScalar({ minValue: 2, maxValue: 10 })?.closeness;
-
-      expect(closeness).toHaveProperty('validation.minValue', 2);
-      expect(closeness).toHaveProperty('validation.maxValue', 10);
-    });
-
-    it('drops a minValue with no matching maxValue', () => {
-      const closeness = migrateScalar({ minValue: 7 })?.closeness;
 
       expect(closeness).not.toHaveProperty('validation.minValue');
       expect(closeness).not.toHaveProperty('validation.maxValue');
     });
 
-    it('drops an inverted pair', () => {
-      const closeness = migrateScalar({ minValue: 10, maxValue: 2 })?.closeness;
+    it('drops a lone minValue', () => {
+      const closeness = migrateScalar({ minValue: 7 })?.closeness;
 
       expect(closeness).not.toHaveProperty('validation.minValue');
+    });
+
+    it('drops a lone maxValue', () => {
+      const closeness = migrateScalar({ maxValue: 7 })?.closeness;
+
       expect(closeness).not.toHaveProperty('validation.maxValue');
     });
 
     it('keeps the requiredness a dropped minValue conferred', () => {
       const closeness = migrateScalar({ minValue: 7 })?.closeness;
+
+      expect(closeness).toHaveProperty('validation.required', true);
+    });
+
+    it('leaves other validation rules on the scalar intact', () => {
+      const closeness = migrateScalar({
+        required: true,
+        minValue: 2,
+        maxValue: 10,
+      })?.closeness;
 
       expect(closeness).toHaveProperty('validation.required', true);
     });

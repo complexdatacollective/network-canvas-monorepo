@@ -109,7 +109,7 @@ const migrationV7toV8 = createMigration({
 - Added optional 'hint' property to form fields, allowing a markdown string to be displayed as additional guidance for participants.
 - Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.
 - Removed 'loop' property from Information stage items and video/audio assets. This property was never honoured by Interviewer.
-- A scalar (visual analog scale) variable's \`minValue\` and \`maxValue\` validators now have to be authored as a pair, with the minimum below the maximum. They double as the rendered slider's track bounds, so a bound on its own paired with the opposite end of the default 0-1 scale and produced a track no participant could answer. Any orphaned or inverted pair is removed, leaving the default scale.
+- Removed the \`minValue\` and \`maxValue\` validators from scalar (visual analog scale) variables. A scalar response is recorded on a normalised 0-1 scale, so a value bound on it was never meaningful. Any such validator is removed.
 - A \`minValue\`, \`minLength\`, or \`minSelected\` validator no longer implies a field is required. To preserve the effective behaviour of existing protocols that relied on this coupling, any codebook variable (node, edge, or ego) with one of these validators and no explicit \`required: true\` now has \`required: true\` set.
 - Categorical attribute values are now stored as arrays of selected option values. Existing single-value categorical filter and skip-logic rule operands (\`is exactly\`, \`is not\`, \`includes\`, \`excludes\`) are wrapped in a single-element array to match.
 - Stage labels are now required to be non-empty. Any stage with a missing or empty label is given a default name based on its position (e.g. "Stage 3").
@@ -1002,11 +1002,10 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // A scalar's bounds double as the visual analog scale's rendered track,
-        // so an orphaned or inverted pair renders an unanswerable scale. V8
-        // requires both, in order; drop any pair that does not qualify. This
-        // runs after the min-implies-required backfill above, so a scalar that
-        // relied on that coupling keeps its requiredness.
+        // A scalar records a normalised 0-1 value, so V8 drops `minValue` and
+        // `maxValue` from it entirely. This runs after the min-implies-required
+        // backfill above, so a scalar that relied on that coupling keeps its
+        // requiredness.
         paths: [
           'codebook.node.*.variables',
           'codebook.edge.*.variables',
@@ -1023,11 +1022,6 @@ const migrationV7toV8 = createMigration({
 
             const validation = asRecord(typedVariable.validation);
             if (!validation) continue;
-
-            const { minValue, maxValue } = validation;
-            const hasMin = typeof minValue === 'number';
-            const hasMax = typeof maxValue === 'number';
-            if (hasMin && hasMax && minValue < maxValue) continue;
 
             delete validation.minValue;
             delete validation.maxValue;
