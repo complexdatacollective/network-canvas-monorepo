@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import ProtocolSchemaV8 from '../schema.ts';
 import { findValidationContradictions } from '../variables/validation-contradictions.ts';
 import {
   EgoVariablesSchema,
@@ -477,5 +479,65 @@ describe('R1 — absolute floors on count-valued rules', () => {
         validation: { minValue: -40, maxValue: -1 },
       }).success,
     ).toBe(true);
+  });
+});
+
+describe('R2 — reference target type must equal the source type', () => {
+  const protocolWith = (
+    variables: Record<string, Record<string, unknown>>,
+  ): Record<string, unknown> => {
+    const protocol = structuredClone(createBaseProtocol()) as Record<
+      string,
+      unknown
+    > & {
+      codebook: {
+        node: { person: { variables: Record<string, unknown> } };
+      };
+    };
+    // Merge rather than replace: the base protocol's stages reference
+    // existing person variables (e.g. the Sociogram's layout variable), and
+    // severing those references would fail the parse for unrelated reasons.
+    protocol.codebook.node.person.variables = {
+      ...protocol.codebook.node.person.variables,
+      ...variables,
+    };
+    return protocol;
+  };
+
+  it('rejects sameAs referencing a differently-typed variable', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      protocolWith({
+        a: {
+          name: 'first_name',
+          type: 'text',
+          component: 'Text',
+          validation: { sameAs: 'b' },
+        },
+        b: { name: 'age', type: 'number', component: 'Number' },
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((issue) =>
+          issue.message.includes('must reference another text variable'),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('accepts a comparator referencing a same-typed variable', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      protocolWith({
+        a: {
+          name: 'start_age',
+          type: 'number',
+          component: 'Number',
+          validation: { lessThanVariable: 'b' },
+        },
+        b: { name: 'end_age', type: 'number', component: 'Number' },
+      }),
+    );
+    expect(result.success).toBe(true);
   });
 });
