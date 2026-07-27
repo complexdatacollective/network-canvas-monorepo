@@ -91,7 +91,17 @@ const normalizeDatePickerParameters = (
       delete parameters[bound];
       continue;
     }
-    parameters[bound] = value.slice(0, DATE_RESOLUTION[resolution].length);
+    const truncated = value.slice(0, DATE_RESOLUTION[resolution].length);
+    // Eighth-wave Finding 2: at year/month resolution the interview runtime
+    // builds selectable year options via unpadded `y.toString()`, so a
+    // zero-padded small-year bound ('0099') can never match a stored value
+    // ('99') — such a bound is deleted rather than truncated-and-kept. Full
+    // resolution is unaffected: its YYYY-MM-DD strings are always padded.
+    if (resolution !== 'full' && Number(truncated.slice(0, 4)) < 1000) {
+      delete parameters[bound];
+      continue;
+    }
+    parameters[bound] = truncated;
   }
   if (
     typeof parameters.min === 'string' &&
@@ -245,7 +255,7 @@ const migrationV7toV8 = createMigration({
 - A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean variable to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
-- DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed.
+- DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed.
 - A NetworkComposer stage field can no longer render one of a \`sameAs\`-joined pair of datetime variables at a different date resolution than the other — the interview compares their stored values as exact strings, so a mismatched resolution can never actually satisfy \`sameAs\` even when the underlying codebook variables agree. The offending field's DatePicker resolution override is removed, reverting it to full resolution.
 `,
   migrate: (doc, deps) => {

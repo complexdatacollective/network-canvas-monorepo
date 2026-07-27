@@ -453,6 +453,79 @@ describe('findValidationContradictions — Finding D: sameAs option-set disjoint
   });
 });
 
+describe('findValidationContradictions — eighth-wave Finding 1: boolean domain intersection in equality groups', () => {
+  const boolean = (
+    name: string,
+    validation: Record<string, unknown> = {},
+    options?: { label: string; value: boolean }[],
+  ) => ({
+    name,
+    type: 'boolean',
+    validation,
+    ...(options !== undefined ? { options } : {}),
+  });
+
+  const trueOnly = [{ label: 'Yes', value: true }];
+  const falseOnly = [{ label: 'No', value: false }];
+
+  it('rejects a true-only boolean sameAs a false-only boolean', () => {
+    const result = findValidationContradictions({
+      a: boolean('a', { sameAs: 'b' }, trueOnly),
+      b: boolean('b', {}, falseOnly),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" are joined by sameAs but their available values never overlap',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  // Non-empty intersection ({true}) is accepted here. The separate wave-6
+  // pinned-equal differentFrom check (both ends pinned to the same value) is
+  // unrelated — it only fires when the joining rule is differentFrom, not
+  // sameAs, and would reject this same pair of variables if reauthored with
+  // differentFrom instead.
+  it('accepts two true-only booleans joined by sameAs', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', { sameAs: 'b' }, trueOnly),
+        b: boolean('b', {}, trueOnly),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts a full-domain boolean pair joined by sameAs', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', { sameAs: 'b' }),
+        b: boolean('b', {}),
+      }),
+    ).toEqual([]);
+  });
+
+  // Wave-7 provenance: unlike the datetime mixed-resolution check, this is
+  // NOT scoped to groups with an actual sameAs edge — a comparator-only
+  // equality group means the same thing for booleans (see the comment above
+  // the check in validation-contradictions.ts). `greaterThanOrEqualToVariable`
+  // is not offered to boolean variables by the schema (booleanValidations has
+  // no comparator rules), but the analyser also runs on raw, unvalidated
+  // migration input, so this exercises that defensive path directly.
+  it('rejects a comparator-only true-only vs false-only boolean pair', () => {
+    const result = findValidationContradictions({
+      a: boolean('a', { greaterThanOrEqualToVariable: 'b' }, trueOnly),
+      b: boolean('b', { greaterThanOrEqualToVariable: 'a' }, falseOnly),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" are forced equal by the comparison rules but their available values never overlap',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+  });
+});
+
 describe('findValidationContradictions — second-wave Finding 1: shared-option cardinality vs minSelected', () => {
   const categorical = (
     name: string,
@@ -1294,5 +1367,38 @@ describe('DatePicker parameters refinement', () => {
     expect(
       VariableSchema.safeParse(datePicker({ min: '0099-02-30' })).success,
     ).toBe(false);
+  });
+
+  // Eighth-wave Finding 2: the interview builds a year/month-resolution
+  // DatePicker's selectable year options via `y.toString()` (unpadded), so a
+  // stored value ('99') could never match this zero-padded bound ('0099') —
+  // unlike full resolution, whose always-padded YYYY-MM-DD strings round-trip
+  // correctly at any year (the wave-3 fix above still applies there).
+  it('rejects a year-resolution bound whose year is below 1000', () => {
+    const result = VariableSchema.safeParse(
+      datePicker({ type: 'year', min: '0099' }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((issue) =>
+          issue.message.includes('must use a four-digit year of 1000 or later'),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('rejects a month-resolution bound whose year is below 1000', () => {
+    expect(
+      VariableSchema.safeParse(datePicker({ type: 'month', max: '0099-12' }))
+        .success,
+    ).toBe(false);
+  });
+
+  it('accepts a year-resolution bound at the four-digit-year floor', () => {
+    expect(
+      VariableSchema.safeParse(datePicker({ type: 'year', min: '1000' }))
+        .success,
+    ).toBe(true);
   });
 });

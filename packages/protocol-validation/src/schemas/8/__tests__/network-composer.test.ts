@@ -240,6 +240,26 @@ describe('ComposerFormFieldSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  // Eighth-wave Finding 2: the composer field schema reuses
+  // `datePickerParametersSchema` (variable.ts) directly, so the year-below-
+  // 1000 floor at year/month resolution applies here without any
+  // composer-specific code.
+  it('rejects a nodeForm DatePicker field with a year-resolution bound below 1000', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_year',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year', min: '0099' },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('rejects a nodeForm DatePicker field with min after max', () => {
     const result = networkComposerStage.safeParse({
       ...baseStageWithComponent,

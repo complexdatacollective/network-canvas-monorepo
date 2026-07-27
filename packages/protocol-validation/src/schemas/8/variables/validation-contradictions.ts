@@ -1043,6 +1043,58 @@ function disjointBoundsContradictions(
       }
     }
 
+    // Eighth-wave Finding 1: an equality group of boolean variables whose
+    // members' available (option-restricted) domains share no value is
+    // equally unsatisfiable — a variable offering only `true` joined to one
+    // offering only `false` can never actually hold equal values. UNLIKE the
+    // datetime resolution check below, this is deliberately NOT scoped to
+    // groups with an actual `sameAs` edge: for booleans there is no
+    // stored-string-vs-Date wrinkle the way there is for datetimes — a
+    // `sameAs` edge and a non-strict comparator SCC both mean "these hold the
+    // same boolean value", and fresco-ui's compareVariables compares booleans
+    // by ordinary `===`, so a comparator-only-forced boolean equality group is
+    // exactly as unsatisfiable as a sameAs-joined one. That is the wave-7
+    // provenance this reuses: equal-comparison semantics for booleans are the
+    // same as stored equality, so this check applies to BOTH sameAs and
+    // comparator-only boolean groups.
+    if (members.length > 1) {
+      const booleanTypes = new Set(
+        members.map((member) => typeOf(variables[member])),
+      );
+      const [onlyBooleanType] = booleanTypes;
+      if (booleanTypes.size === 1 && onlyBooleanType === 'boolean') {
+        let domainIntersection: Set<boolean> | undefined;
+        for (const member of members) {
+          const domain = booleanDomain(variables[member]);
+          domainIntersection =
+            domainIntersection === undefined
+              ? domain
+              : new Set(
+                  [...domainIntersection].filter((value) => domain.has(value)),
+                );
+        }
+        if (domainIntersection !== undefined && domainIntersection.size === 0) {
+          const strips = groupEqualityStrips(
+            variables,
+            members,
+            internalNonStrictEdges,
+          );
+          const [first, ...rest] = strips;
+          if (first) {
+            const names = members.map(
+              (member) => `"${nameOf(member, variables[member])}"`,
+            );
+            found.push({
+              class: 'disjointBounds',
+              message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but their available values never overlap`,
+              variableIds: members,
+              strips: [first, ...rest],
+            });
+          }
+        }
+      }
+    }
+
     // Third-wave Finding 3: an equality group of datetime variables whose
     // members store dates at different resolutions can never hold equal
     // stored strings even when their windows overlap ('2020' at year

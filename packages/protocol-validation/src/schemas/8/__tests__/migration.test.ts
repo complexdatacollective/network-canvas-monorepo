@@ -4427,6 +4427,43 @@ describe('Migration V7 to V8', () => {
       expect(variables?.a).not.toHaveProperty('parameters.min');
     });
 
+    // Eighth-wave Finding 2: a coarse-resolution (year/month) bound whose
+    // year is below 1000 must be deleted, not truncated-and-kept — the
+    // interview builds that resolution's year options unpadded via
+    // `y.toString()`, so a zero-padded small-year bound could never match a
+    // stored value. Full resolution is unaffected (see the small-year test
+    // above, which keeps '0099-12-31' unchanged).
+    it('strips a year-resolution bound whose year is below 1000, keeping a valid sibling bound', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'year_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'year', min: '0099', max: '2020' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
+      expect(variables?.a).toHaveProperty('parameters.max', '2020');
+    });
+
+    it('strips a month-resolution bound truncated down from a small-year full date', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'month_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'month', min: '0099-05-03' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
+    });
+
     it('strips count-valued rules below their floors and keeps legal ones', () => {
       const migratedRaw = migrateVariables({
         a: {
@@ -4532,6 +4569,35 @@ describe('Migration V7 to V8', () => {
       const field = stage.nodeForm?.fields?.[0];
       expect(field).toHaveProperty('parameters.min', '2020');
       expect(field).toHaveProperty('parameters.max', '2021');
+    });
+
+    // Eighth-wave Finding 2: `normalizeDatePickerParameters` is shared between
+    // the codebook-variable step above and this composer-field step, so the
+    // year-below-1000 floor applies here too without any composer-specific
+    // code.
+    it('strips a nodeForm DatePicker field bound whose year is below 1000 at year resolution', () => {
+      const migratedRaw = migrateStages([
+        composerStage({
+          nodeForm: {
+            fields: [
+              {
+                variable: 'birth_year',
+                component: 'DatePicker',
+                parameters: { type: 'year', min: '0099', max: '2020' },
+              },
+            ],
+          },
+        }),
+      ]);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const field = stage.nodeForm?.fields?.[0];
+      expect(field).not.toHaveProperty('parameters.min');
+      expect(field).toHaveProperty('parameters.max', '2020');
     });
 
     it('strips both bounds of an edge form DatePicker field when min is after max', () => {

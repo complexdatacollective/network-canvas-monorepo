@@ -196,10 +196,26 @@ export const datePickerParametersSchema = z
     const { label } = DATE_RESOLUTION[resolution];
     for (const bound of ['min', 'max'] as const) {
       const value = parameters[bound];
-      if (value !== undefined && !isValidDateAtResolution(value, resolution)) {
+      if (value === undefined) continue;
+      if (!isValidDateAtResolution(value, resolution)) {
         ctx.addIssue({
           code: 'custom' as const,
           message: `DatePicker "${bound}" must be a valid ${label} date matching the picker's resolution`,
+          path: [bound],
+        });
+        continue;
+      }
+      // Eighth-wave Finding 2: the interview runtime builds a year/month
+      // resolution DatePicker's selectable year options via `y.toString()`
+      // (unpadded, e.g. `99`, not `'0099'`), so a stored value ('99') and a
+      // zero-padded coarse-resolution bound ('0099') would never compare
+      // equal even though a full-resolution YYYY-MM-DD string is always
+      // zero-padded and round-trips correctly at any year (the wave-3
+      // small-year fix). Reject small years at year/month resolution only.
+      if (resolution !== 'full' && Number(value.slice(0, 4)) < 1000) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `DatePicker "${bound}" must use a four-digit year of 1000 or later at year/month resolution`,
           path: [bound],
         });
       }
