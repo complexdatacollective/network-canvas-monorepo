@@ -1,3 +1,8 @@
+<!-- Maskable variant. Safari's "Add to Dock" picks the maskable manifest
+     entry and renders it 1:1 into the icon shape, while Chrome uses the
+     `any` entry and magnifies it ~1.057x. So this file carries the mark at
+     1.057x the full-bleed icon's 0.96 to make both come out the same size.
+     Measured from the generated .icns of both installed apps on macOS. -->
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
@@ -13,7 +18,7 @@
        outweighs the other two, so centring the bounding box (anchor x 490)
        leaves the mark looking right-heavy. 513 is half way to the ink
        centroid at 536. -->
-  <g filter="url(#shadow)" transform="translate(512,512) scale(0.96) translate(-513,-495)">
+  <g filter="url(#shadow)" transform="translate(512,512) scale(1.0146) translate(-513,-495)">
     <g stroke="#dd1f5a" stroke-width="58" stroke-linecap="round">
       <line x1="310" y1="355" x2="680" y2="265"/>
       <line x1="310" y1="355" x2="635" y2="725"/>

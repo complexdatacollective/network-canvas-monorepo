@@ -38,6 +38,22 @@ export default defineConfig(() =>
           display: 'standalone',
           start_url: '/',
           scope: '/',
+          // Listed explicitly so the maskable entry can point at its own
+          // artwork: pwa-assets generates the full-bleed `any` icons from
+          // public/interviewer-icon.png, while the maskable icon is committed
+          // separately at 0.85 scale (see pwa-assets.config.ts). Declaring
+          // `icons` also stops the generator overwriting this list.
+          icons: [
+            { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
+            { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+            { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+            {
+              src: 'maskable-icon-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+          ],
           // Register the installed app as a .netcanvas opener (Chromium
           // desktop File Handling API; Safari has no equivalent). Launched
           // files arrive via window.launchQueue — see
