@@ -139,7 +139,7 @@ const scalarVariableSchema = baseVariableSchema.extend({
   validation: z.strictObject(validations).pick(scalarValidations).optional(),
 });
 
-const isIsoDate = (value: string) => {
+export const isIsoDate = (value: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return false;
   const year = Number(match[1]);
@@ -161,13 +161,13 @@ const isIsoDate = (value: string) => {
   );
 };
 
-const DATE_RESOLUTION = {
-  full: { label: 'YYYY-MM-DD', pattern: /^\d{4}-\d{2}-\d{2}$/ },
-  month: { label: 'YYYY-MM', pattern: /^\d{4}-\d{2}$/ },
-  year: { label: 'YYYY', pattern: /^\d{4}$/ },
+export const DATE_RESOLUTION = {
+  full: { label: 'YYYY-MM-DD', pattern: /^\d{4}-\d{2}-\d{2}$/, length: 10 },
+  month: { label: 'YYYY-MM', pattern: /^\d{4}-\d{2}$/, length: 7 },
+  year: { label: 'YYYY', pattern: /^\d{4}$/, length: 4 },
 } as const;
 
-const isValidDateAtResolution = (
+export const isValidDateAtResolution = (
   value: string,
   resolution: keyof typeof DATE_RESOLUTION,
 ): boolean => {

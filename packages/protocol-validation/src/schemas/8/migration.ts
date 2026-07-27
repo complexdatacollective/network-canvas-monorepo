@@ -7,6 +7,10 @@ import { ordinalColorSequence } from './common/prompts.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
 import { findValidationContradictions } from './variables/validation-contradictions.ts';
 import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation.ts';
+import {
+  DATE_RESOLUTION,
+  isValidDateAtResolution,
+} from './variables/variable.ts';
 
 // Operators whose operand is a categorical option value (as opposed to a count,
 // like OPTIONS_*, or a regex). Their legacy scalar operands are wrapped in a
@@ -27,35 +31,6 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
-const isValidCalendarDate = (
-  value: string,
-  resolution: 'full' | 'month' | 'year',
-): boolean => {
-  if (resolution === 'year') return true;
-  const month = Number(value.slice(5, 7));
-  if (month < 1 || month > 12) return false;
-  if (resolution === 'month') return true;
-  const year = Number(value.slice(0, 4));
-  const day = Number(value.slice(8, 10));
-  // Built via setUTCFullYear rather than Date.UTC(year, ...): Date.UTC (like
-  // the multi-arg Date constructor) maps a 0-99 year into 1900-1999, which
-  // would falsely reject a real four-digit year like '0099'; setUTCFullYear
-  // has no such two-digit-year special case.
-  const date = new Date(0);
-  date.setUTCFullYear(year, month - 1, day);
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-  );
-};
-
-const DATE_RESOLUTION_LENGTH = { full: 10, month: 7, year: 4 } as const;
-const DATE_RESOLUTION_PATTERNS = {
-  full: /^\d{4}-\d{2}-\d{2}$/,
-  month: /^\d{4}-\d{2}$/,
-  year: /^\d{4}$/,
-} as const;
 // full is finest, year is coarsest. Truncation is only intent-preserving when
 // the ORIGINAL string is itself a fully-valid date at the picker's own
 // resolution or at a strictly finer one — e.g. '2020-05-03' truncates to a
@@ -87,10 +62,8 @@ const normalizeDatePickerParameters = (
       delete parameters[bound];
       continue;
     }
-    const matchedResolution = DATE_RESOLUTIONS_FINEST_FIRST.find(
-      (candidate) =>
-        DATE_RESOLUTION_PATTERNS[candidate].test(value) &&
-        isValidCalendarDate(value, candidate),
+    const matchedResolution = DATE_RESOLUTIONS_FINEST_FIRST.find((candidate) =>
+      isValidDateAtResolution(value, candidate),
     );
     if (
       matchedResolution === undefined ||
@@ -99,7 +72,7 @@ const normalizeDatePickerParameters = (
       delete parameters[bound];
       continue;
     }
-    parameters[bound] = value.slice(0, DATE_RESOLUTION_LENGTH[resolution]);
+    parameters[bound] = value.slice(0, DATE_RESOLUTION[resolution].length);
   }
   if (
     typeof parameters.min === 'string' &&
