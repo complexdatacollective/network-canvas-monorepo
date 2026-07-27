@@ -178,6 +178,57 @@ describe('buildVariableConstraints', () => {
     ).toThrow('declares anchor "not-a-date"');
   });
 
+  // A bound coarser than its picker is a real date, so it survives the calendar
+  // check, and `truncateToResolution` only ever slices — it has nothing to add.
+  // Left in a full-resolution window it reaches the draw as an incomplete
+  // string, where `addDays` finds no day to advance and hands it straight back:
+  // every offset in the window draws the literal `"2020"`, which the native
+  // full-date input cannot display.
+  it.each([
+    { parameter: 'min', value: '2020', type: 'full', written: 'YYYY-MM-DD' },
+    { parameter: 'max', value: '2020', type: 'full', written: 'YYYY-MM-DD' },
+    { parameter: 'min', value: '2020-06', type: 'full', written: 'YYYY-MM-DD' },
+    { parameter: 'max', value: '2020', type: 'month', written: 'YYYY-MM' },
+  ])(
+    'refuses a $parameter of "$value" on a $type picker',
+    ({ parameter, value, type, written }) => {
+      expect(() =>
+        buildVariableConstraints(
+          {
+            id: 'v1',
+            name: 'Born',
+            type: 'datetime',
+            component: 'DatePicker',
+            parameters: { type, [parameter]: value },
+          },
+          TODAY,
+        ),
+      ).toThrow(
+        `Date variable "Born" (v1) declares ${parameter} "${value}", which is coarser than the date its picker collects. ` +
+          `Synthetic data generation needs a bound written as ${written}.`,
+      );
+    },
+  );
+
+  // Its offsets are counted in days from the anchor, so a coarser one leaves
+  // `addDays` nothing to advance and collapses the window onto the anchor.
+  it('refuses a RelativeDatePicker anchor coarser than a full date', () => {
+    expect(() =>
+      buildVariableConstraints(
+        {
+          id: 'v1',
+          name: 'Last seen',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '2020-06', before: 30, after: 5 },
+        },
+        TODAY,
+      ),
+    ).toThrow(
+      'declares anchor "2020-06", which is coarser than the date its picker collects.',
+    );
+  });
+
   // Bounds are written at the resolution the picker collects, and protocols in
   // the wild carry all three. Each is a real date, and each is kept.
   it.each([
