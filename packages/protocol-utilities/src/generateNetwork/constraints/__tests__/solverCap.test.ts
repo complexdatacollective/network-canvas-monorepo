@@ -91,6 +91,7 @@ describe('solver search budget exhaustion', () => {
       entityConstraints: { ego: new Map(), node: new Map(), edge: new Map() },
     };
 
+    const spy = vi.spyOn(ctx.valueGen, 'randomInt');
     const attrs = generateEntityAttributes(
       entity,
       ctx,
@@ -104,5 +105,11 @@ describe('solver search budget exhaustion', () => {
       expect(value).toBeGreaterThanOrEqual(0);
       expect(value).toBeLessThanOrEqual(4);
     }
+
+    // One draw seeded the abandoned solve and one first-attempt draw fell to
+    // each of the six greedy values: the stream moves the same distance
+    // whether the search succeeded, failed, or ran out of budget.
+    expect(spy).toHaveBeenCalledTimes(7);
+    spy.mockRestore();
   });
 });

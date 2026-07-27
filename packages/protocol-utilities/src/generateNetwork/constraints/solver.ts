@@ -10,7 +10,11 @@ import {
 } from './solverLimits';
 import type { ConstrainedVariable } from './types';
 import { valueKey } from './uniqueRegistry';
-import { SCALAR_DECIMAL_PLACES, SCALAR_DOMAIN } from './valueSpace';
+import {
+  SCALAR_DECIMAL_PLACES,
+  SCALAR_DOMAIN,
+  selectionSizeRange,
+} from './valueSpace';
 
 /**
  * One connected web of cross-variable rules, ready for complete search: every
@@ -73,6 +77,31 @@ function integerRange(lo: number, hi: number): number[] {
   return values;
 }
 
+// Kept in sync with valueSpace's own binomial; both cap their sums long
+// before float imprecision could matter.
+function binomial(n: number, k: number): number {
+  if (k < 0 || k > n) return 0;
+  let result = 1;
+  for (let i = 0; i < k; i++) {
+    result = (result * (n - i)) / (i + 1);
+  }
+  return Math.round(result);
+}
+
+/**
+ * The selection sizes a solved categorical value may take: the draw's own
+ * size range, with the ceiling clamped up to the floor the way the draw
+ * clamps its count — a `minSelected` above the default cap of two still
+ * produces selections of exactly that size, never nothing.
+ */
+function subsetSizes(variable: ConstrainedVariable): {
+  min: number;
+  max: number;
+} {
+  const { min, max } = selectionSizeRange(variable);
+  return { min, max: Math.max(min, max) };
+}
+
 /**
  * Option subsets whose sizes fall inside the selection bounds, smallest sizes
  * first and lexicographic by option position within a size. Undefined once the
@@ -107,6 +136,85 @@ function enumerateSubsets(
     if (!walk(0, size)) return undefined;
   }
   return subsets;
+}
+
+/**
+ * How many values {@link enumerateDomain} would return, without building any
+ * of them. Kept branch-for-branch with the enumeration — the pair is guarded
+ * by a test asserting the sizes agree with `valueSpaceSize` — so tractability
+ * can be judged before a single value is materialised: a wide categorical
+ * used to allocate its whole subset budget per entity merely to learn the
+ * component was oversized.
+ */
+function domainSize(
+  variable: ConstrainedVariable,
+  cap: number,
+): number | undefined {
+  const { entry, constraints } = variable;
+
+  const within = (size: number): number | undefined =>
+    size > cap ? undefined : size;
+
+  switch (entry.type) {
+    case 'boolean':
+      return 2;
+
+    case 'ordinal': {
+      const count = entry.options?.length ?? 0;
+      return count === 0 ? undefined : within(count);
+    }
+
+    case 'number': {
+      const { minValue, maxValue } = constraints;
+      if (minValue === undefined || maxValue === undefined) return undefined;
+      if (maxValue < minValue) return 0;
+      const lo = Math.ceil(minValue);
+      const hi = Math.floor(maxValue);
+      if (hi < lo) return undefined;
+      return within(hi - lo + 1);
+    }
+
+    case 'scalar': {
+      const unit = 10 ** SCALAR_DECIMAL_PLACES;
+      const min = Math.max(
+        constraints.minValue ?? SCALAR_DOMAIN.minValue,
+        SCALAR_DOMAIN.minValue,
+      );
+      const max = Math.min(
+        constraints.maxValue ?? SCALAR_DOMAIN.maxValue,
+        SCALAR_DOMAIN.maxValue,
+      );
+      if (max <= min) return 1;
+      const lo = Math.ceil(min * unit - 1e-6);
+      const hi = Math.floor(max * unit + 1e-6);
+      return within(hi - lo + 1);
+    }
+
+    case 'datetime': {
+      const window = constraints.dateWindow;
+      if (window?.min === undefined || window.max === undefined) {
+        return undefined;
+      }
+      const steps = stepsBetween(window.min, window.max, window.resolution);
+      if (steps < 0) return 0;
+      return within(steps + 1);
+    }
+
+    case 'categorical': {
+      const count = entry.options?.length ?? 0;
+      if (count === 0) return undefined;
+      const { min, max } = subsetSizes(variable);
+      let total = 0;
+      for (let size = min; size <= max; size++) {
+        total += binomial(count, size);
+        if (total > cap) return undefined;
+      }
+      return total;
+    }
+
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -181,12 +289,7 @@ function enumerateDomain(
     case 'categorical': {
       const options = (entry.options ?? []).map((option) => option.value);
       if (options.length === 0) return undefined;
-      const min = Math.max(1, constraints.minSelected ?? 1);
-      const max = Math.min(
-        constraints.maxSelected ?? options.length,
-        options.length,
-      );
-      if (max < min) return [];
+      const { min, max } = subsetSizes(variable);
       return enumerateSubsets(options, min, max, cap);
     }
 
@@ -308,15 +411,25 @@ function tractableOf(
     comparators.push({ ...edge, span });
   }
 
-  const domains = new Map<string, VariableValue[]>();
+  // Sizes are judged before anything is materialised: an oversized component
+  // must cost a closed-form count per entity, not a mountain of discarded
+  // arrays.
   let product = 1;
+  for (const group of piece.groups) {
+    const variable = groups.get(group);
+    if (variable === undefined) return undefined;
+    const size = domainSize(variable, MAX_DOMAIN_PRODUCT);
+    if (size === undefined) return undefined;
+    product *= Math.max(1, size);
+    if (product > MAX_DOMAIN_PRODUCT) return undefined;
+  }
+
+  const domains = new Map<string, VariableValue[]>();
   for (const group of piece.groups) {
     const variable = groups.get(group);
     if (variable === undefined) return undefined;
     const domain = enumerateDomain(variable, MAX_DOMAIN_PRODUCT);
     if (domain === undefined) return undefined;
-    product *= Math.max(1, domain.length);
-    if (product > MAX_DOMAIN_PRODUCT) return undefined;
     domains.set(group, domain);
   }
 

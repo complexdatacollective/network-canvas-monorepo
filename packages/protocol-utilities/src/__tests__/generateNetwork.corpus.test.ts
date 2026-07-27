@@ -31,12 +31,35 @@ import { analyseFeasibility } from '../generateNetwork/constraints/feasibility';
  * processes), CORPUS_REPORT=1 to print the distribution summary.
  */
 const TODAY = '2026-07-27';
-const SHAPES = Number(env.CORPUS_SHAPES ?? 600);
-const SEEDS = Number(env.CORPUS_SEEDS ?? 8);
+
+/**
+ * A malformed scale variable must fail loudly: `Number('abc')` is NaN, and a
+ * NaN bound would run zero shapes and report the empty corpus as a pass.
+ */
+function positiveInt(raw: string | undefined, fallback: number): number {
+  if (raw === undefined || raw === '') return fallback;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Expected a positive integer, received "${raw}"`);
+  }
+  return parsed;
+}
+
+const SHAPES = positiveInt(env.CORPUS_SHAPES, 600);
+const SEEDS = positiveInt(env.CORPUS_SEEDS, 8);
 const SHARD = env.CORPUS_SHARD ?? '0/1';
 const REPORT = env.CORPUS_REPORT === '1';
 
 const [shardIndex = 0, shardCount = 1] = SHARD.split('/').map(Number);
+if (
+  !Number.isInteger(shardIndex) ||
+  !Number.isInteger(shardCount) ||
+  shardCount <= 0 ||
+  shardIndex < 0 ||
+  shardIndex >= shardCount
+) {
+  throw new Error(`Invalid CORPUS_SHARD "${SHARD}", expected "i/n"`);
+}
 
 const config = resolveGenerationConfig({ today: TODAY });
 
@@ -616,8 +639,26 @@ describe(`solver acceptance corpus (${SHAPES} shapes, shard ${SHARD})`, () => {
               slowestMs = elapsed;
               slowestShape = entry.shape.index;
             }
+            if (network.nodes.length === 0) {
+              failures.push({
+                index: entry.shape.index,
+                seed,
+                problem: 'generated no nodes',
+              });
+            }
             for (const node of network.nodes) {
               const attributes = node[entityAttributesProperty];
+              const missing = entry.shape.variables
+                .filter((variable) => attributes[variable.id] === undefined)
+                .map((variable) => variable.id);
+              if (missing.length > 0) {
+                failures.push({
+                  index: entry.shape.index,
+                  seed,
+                  problem: `missing attributes: ${missing.join(', ')}`,
+                });
+                continue;
+              }
               const valueOf = (id: string): VariableValue => attributes[id]!;
               if (!satisfiesRules(entry.shape, valueOf)) {
                 failures.push({

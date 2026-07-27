@@ -736,22 +736,45 @@ function solveTractableComponent(
     }
   }
 
-  const verdict = solveComponent(tractable, {
-    pins,
-    exclude,
-    ...(uniqueSlots.size > 0
-      ? {
-          restrict: (group: string, value: VariableValue): boolean => {
-            const slot = uniqueSlots.get(group);
-            return (
-              slot === undefined ||
-              !ctx.uniqueRegistry.isTaken(registry, slot, value)
-            );
-          },
-        }
-      : {}),
-    orderDomain: (_group, values) => seededShuffle(ctx, values),
-  });
+  // One draw from the run's stream seeds a local shuffle, so the stream
+  // advances by exactly one step per solve whatever the search does — a
+  // capped or unsatisfiable solve cannot shift the draws that follow it, and
+  // a domain's size never shows through as extra consumption.
+  const shuffleSeed = ctx.valueGen.randomInt(0, 2 ** 31 - 1);
+
+  const solveWith = (
+    allowReserved: boolean,
+  ): ReturnType<typeof solveComponent> => {
+    const rand = mulberry32(shuffleSeed);
+    return solveComponent(tractable, {
+      pins,
+      exclude,
+      ...(uniqueSlots.size > 0
+        ? {
+            restrict: (group: string, value: VariableValue): boolean => {
+              const slot = uniqueSlots.get(group);
+              if (slot === undefined) return true;
+              if (ctx.uniqueRegistry.isTaken(registry, slot, value)) {
+                return false;
+              }
+              return (
+                allowReserved ||
+                !ctx.uniqueRegistry.isReserved(registry, slot, value)
+              );
+            },
+          }
+        : {}),
+      orderDomain: (_group, values) => shuffledBy(rand, values),
+    });
+  };
+
+  // Values reserved for roster rows still to be drawn give way exactly as
+  // they do on the greedy path: preferred against while anything else
+  // satisfies the component, taken once nothing else does.
+  let verdict = solveWith(false);
+  if (verdict.kind !== 'sat' && uniqueSlots.size > 0) {
+    verdict = solveWith(true);
+  }
 
   if (verdict.kind !== 'sat') return undefined;
 
@@ -763,14 +786,27 @@ function solveTractableComponent(
   return assignment;
 }
 
-/** Fisher-Yates over the run's seeded generator, so output is reproducible. */
-function seededShuffle(
-  ctx: GenerationContext,
+// The same generator the corpus harness uses; any small seeded PRNG works, as
+// long as it is not the run's own faker stream.
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Fisher-Yates over a local seeded stream, so output is reproducible. */
+function shuffledBy(
+  rand: () => number,
   values: readonly VariableValue[],
 ): VariableValue[] {
   const copy = [...values];
   for (let i = copy.length - 1; i > 0; i--) {
-    const j = ctx.valueGen.randomInt(0, i);
+    const j = Math.floor(rand() * (i + 1));
     const swap = copy[i]!;
     copy[i] = copy[j]!;
     copy[j] = swap;

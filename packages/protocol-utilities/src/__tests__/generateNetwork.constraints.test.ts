@@ -856,6 +856,49 @@ describe('cross-variable rules across a seed sweep', () => {
     expect(failures).toEqual([]);
   });
 
+  it('solves the rest of a component around a prompt-fixed attribute', () => {
+    // additionalAttributes fixes `flag` before anything is drawn, so the
+    // solve must treat it as assigned — `twin differentFrom flag` leaves
+    // exactly one boolean for every node.
+    const codebook = personCodebook({
+      flag: { name: 'Flag', type: 'boolean' },
+      twin: {
+        name: 'Twin',
+        type: 'boolean',
+        validation: { differentFrom: 'flag' },
+      },
+    });
+    const stage = {
+      id: 'stage-1',
+      type: 'NameGenerator',
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Name people',
+          additionalAttributes: [{ variable: 'flag', value: true }],
+        },
+      ],
+      behaviours: { minNodes: 4, maxNodes: 4 },
+    } as unknown as Stage;
+
+    const failures: string[] = [];
+    for (let seed = 1; seed <= 40; seed++) {
+      const { network } = generateNetwork({ seed, codebook, stages: [stage] });
+      for (const node of network.nodes) {
+        const attrs = node[entityAttributesProperty];
+        complain(
+          failures,
+          attrs.flag === true && attrs.twin === false,
+          () => `seed ${seed}: ${JSON.stringify(attrs)}`,
+        );
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
   it('generates a chain that forces a number into a fractional range', () => {
     // `v1 < v0` against a scalar leaves `v1` the propagated range
     // [0.01, 0.99], which holds no integer; the number draw falls back to

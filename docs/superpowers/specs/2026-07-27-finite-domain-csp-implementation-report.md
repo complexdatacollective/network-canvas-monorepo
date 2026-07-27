@@ -159,3 +159,142 @@ remains a registry concern — inside a solve it is only a unary domain
 restriction, re-solved per entity, and registry exhaustion still surfaces
 through the existing `SyntheticDataConstraintError` draw path. Categorical
 subset explosions fall back as expected.
+
+## Addendum — reconciliation with the sixteen post-fork commits on #1108
+
+The parent branch gained sixteen commits (twelve review fixes) after this
+branch forked; `origin/claude/synthetic-data-validation-2b18a2` was merged
+back in and every claim below was re-verified at the merged head. Where the
+merge or the review changed a behaviour, the corpus evidence and benchmarks
+in this addendum supersede the sections above.
+
+### Consistency with the review fixes, item by item
+
+- **Finite counts for open-sided spaces** (`3d21a2738`, `00424bbe9`): the
+  solver does not consult `valueSpaceSize` for tractability; it enumerates
+  from propagated **declared** bounds and deliberately declines open-sided
+  numbers and half-open date windows, leaving their fallback windows to the
+  greedy draw. Where the solver does engage, its domain size now equals
+  `valueSpaceSize` exactly — asserted by a committed battery test across all
+  six solvable types ("agrees with valueSpaceSize about the size of every
+  enumerated domain").
+- **Categorical unranking + `selectionSizeRange`** (`3d21a2738`): the solver
+  now derives its subset sizes from `selectionSizeRange` — non-unique
+  defaults cap at two selections, `unique` reaches every size, and a
+  `minSelected` above the default cap becomes the single drawn size, exactly
+  the draw's own count clamp. This also resolved a Codex review finding
+  (P2): before, a `differentFrom` rule silently widened a variable's
+  selections beyond anything the plain draw produces.
+- **`numberDrawBounds`** (`3d21a2738`): not re-derived. The solver only
+  engages when both propagated bounds exist, where `numberDrawBounds`
+  returns the declared pair; open sides fall back to the greedy draw, which
+  owns the slide-down and unique-headroom behaviour.
+- **Date window shape changes** (`00424bbe9`): `resolveDateWindow` now fills
+  an absent `max`, so more datetime components arrive fully bounded and
+  solvable; a missing `min` still declines. `valueSpaceSize` purity is
+  untouched by the solver (no wall-clock reads anywhere in it).
+- **Bin-only variables** (`d40e479fe`): rules are stripped where the
+  descriptors are built, and both feasibility and generation build through
+  the same call, so a bin-only variable simply never forms a component.
+- **Fixed attributes as inputs** (`0e401ebea`): roster rows and prompt
+  `additionalAttributes` arrive as `existing` with `only` narrowing the
+  draw, which the solve classifies as **pins** — pre-assigned variables the
+  rest of the component is solved around. Covered end-to-end by a new
+  `generateNetwork`-level test fixing a boolean by `additionalAttributes`
+  inside a `differentFrom` pair ("solves the rest of a component around a
+  prompt-fixed attribute").
+- **Option-domain intersection for equality groups** (`d31b010bb`): the
+  solver enumerates from the intersected group entry, so a narrowed option
+  list narrows the domain automatically (pinned by "narrows a held-equal
+  group domain to the options every member offers"); an empty intersection
+  is refused by the group check before the solver ever runs.
+- **Resolution-mismatched date comparators** (`b9b43a917`): `comparatorSpan`
+  is undefined for them, so the component is declined and the greedy fold —
+  which now skips the edge — keeps its behaviour (pinned by "declines a
+  comparator between dates at different resolutions").
+- **Reserved roster values** (`c6bb79ac7`, `8d849c4c0`): the solve now
+  mirrors the draw's two-tier preference — a first pass excludes values the
+  registry reserved for undrawn roster rows, and only if no solution exists
+  without them does a second pass allow them (pinned by "prefers unreserved
+  values in a solved component, taking reserved ones only at need").
+
+### The count/reach relationship, per type
+
+Where the solver engages, reach equals count exactly: number = integers in
+the propagated declared bounds; scalar = the 0.01 grid between propagated
+bounds; datetime = window steps at the shared resolution; ordinal = the
+intersected option list; boolean = 2; categorical = all subsets of the
+`selectionSizeRange` sizes, which is what both `valueSpaceSize` and the
+unranked unique draw cover. The one deliberate divergence: a non-unique
+`minSelected` above the default cap, where `valueSpaceSize` sums an empty
+size range (0) while the draw and the solver emit size-`minSelected`
+selections — mirroring the count there would have refused satisfiable
+protocols, and the count is not consumed for non-unique variables. Where
+the solver declines (open-sided numbers and dates, text, oversized
+categoricals), the count may exceed what the solver would enumerate, and
+the greedy draw — whose reach the parent branch aligned the count to — is
+the path that runs.
+
+### The headline, re-measured at the merged head
+
+Measured with the corpus harness (4,000 shapes × 100 seeds) on the parent
+head **without** the solver: **62 of 2,728 accepted shapes (2.3%) are
+unsatisfiable yet accepted**, and **91 (3.3%) fail at draw time** — 8,558
+throwing runs out of 264,242 (3.2%), all throws, zero silent violations
+(the parent's fixes eliminated the silent-violation class; the
+seed-dependent throw class remains). With the solver, both counts are zero
+across the full 20,000-shape × 500-seed evidence run. The spec's original
+"0.6% of accepted" figure came from the earlier review fuzzer and is
+superseded by these corpus-measured rates.
+
+### Codex review findings (PR #1109)
+
+- **P1, categorical materialisation**: tractability is now judged by a
+  closed-form `domainSize` pass before anything is materialised; an
+  oversized component costs a binomial sum per entity instead of up to
+  200,000 discarded subset arrays. Guarded by "declines a categorical whose
+  combination space overflows the budget".
+- **P2, categorical default cap**: adopted via `selectionSizeRange`, above.
+- **P2, solver shuffling on the shared stream**: the solve now draws **one**
+  value from the run's stream to seed a local PRNG and shuffles with that,
+  so the stream advances by exactly one step per solved component whatever
+  the search outcome — a capped or unsatisfiable solve cannot shift
+  subsequent draws, and domain sizes never show through as extra
+  consumption. Guarded by "consumes exactly one seeded draw for a solved
+  component" and the cap-file's exact-count assertion.
+
+### The number-domain decision
+
+The solver's number domain is **integers**, deliberately: it matches the
+draw (which walks integers whenever the range holds one), keeps
+`comparatorGap`'s whole-unit semantics, and keeps synthetic ages whole. The
+consequence is accepted knowingly — `a < b < c` over `[0, 1]` stays
+refused, matching the review decision that declined that claim — and the
+propagated ranges that hold no integer (reachable only through
+scalar-to-number chains) stay on the greedy path, which draws the
+two-decimal fallback; that family is pinned by "generates a chain that
+forces a number into a fractional range".
+
+### Guards re-verified red at the merged head
+
+All six mechanism mutations were re-run after the merge and the review
+fixes:
+
+| Mechanism disabled                | Failing guard and message                                              |
+| --------------------------------- | ---------------------------------------------------------------------- |
+| feasibility's solver-unsat report | corpus parity `feasible: true, satisfiable: false` (+3 targeted tests) |
+| generation's component solve      | corner shape: `Synthetic data cannot be generated…`                    |
+| seeded value ordering             | `expected 1 to be greater than or equal to 20`                         |
+| domain-size/product gate          | `expected { groups: [ 'b', 'a' ], … } to be undefined`                 |
+| `selectionSizeRange` mirroring    | `expected […] to have a length of 10 but got 15`                       |
+| reserved-value preference         | `expected +0 to be 2`                                                  |
+
+### Verification at the merged head
+
+protocol-utilities 419 tests, interview 1,228, interviewer `src/lib/synthetic`
+14 (the 200-row roster path), root `pnpm typecheck` 15/15 and `pnpm knip`
+clean; the full 20,000-shape × 500-seed corpus evidence re-run green after
+every change above (6,562,500 generation runs, zero mismatches, zero
+failures). Development-protocol wall-clock, re-measured contention-free at
+the merged head: parent without the solver **14.80 ms/session**, this branch
+**15.30 ms/session** (+3.4%; budget 20%).

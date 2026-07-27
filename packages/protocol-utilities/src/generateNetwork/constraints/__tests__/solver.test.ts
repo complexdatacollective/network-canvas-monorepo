@@ -17,24 +17,32 @@ import {
 import { solvableComponents, solveComponent } from '../solver';
 import type { EntityConstraints } from '../types';
 import { valueKey } from '../uniqueRegistry';
+import { valueSpaceSize } from '../valueSpace';
 
 const TODAY = '2026-07-27';
 const ref = asEntityAttributeReference;
 
 /** The same pipeline feasibility and generation run before consulting the solver. */
-function componentsOf(entity: EntityConstraints) {
+function analysed(entity: EntityConstraints) {
   const { order, membersOf, groupOf } = resolveGenerationOrder(entity);
   const { groups: propagated } = propagateComparatorBounds(
     intersectGroupConstraints(entity, membersOf),
     order,
     groupComparatorEdges(entity, groupOf),
   );
-  return solvableComponents(
+  return {
     propagated,
-    order,
-    groupComparatorEdges(entity, groupOf),
-    differentFromGroups(entity, groupOf),
-  );
+    components: solvableComponents(
+      propagated,
+      order,
+      groupComparatorEdges(entity, groupOf),
+      differentFromGroups(entity, groupOf),
+    ),
+  };
+}
+
+function componentsOf(entity: EntityConstraints) {
+  return analysed(entity).components;
 }
 
 function build(variables: Variables): EntityConstraints {
@@ -251,6 +259,257 @@ describe('solvableComponents', () => {
 
     expect(component?.groups).toHaveLength(9);
     expect(component?.tractable).toBeUndefined();
+  });
+
+  it('mirrors the draw default of at most two selections in a categorical domain', () => {
+    // A non-unique categorical without maxSelected draws one or two options;
+    // a solved value must come from the same sizes, or adding a rule would
+    // change what the data looks like.
+    const options = Array.from({ length: 4 }, (_v, i) => ({
+      label: `O${i}`,
+      value: i,
+    }));
+    const entity = build({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options,
+        validation: { differentFrom: ref('twin') },
+      },
+      twin: { name: 'Twin', type: 'categorical', options },
+    });
+
+    const [component] = componentsOf(entity);
+    const domain = component?.tractable?.domains.get('tags');
+
+    expect(domain).toHaveLength(10);
+    for (const value of domain ?? []) {
+      expect(Array.isArray(value) && value.length).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('widens a unique categorical domain to every selection size', () => {
+    const options = Array.from({ length: 4 }, (_v, i) => ({
+      label: `O${i}`,
+      value: i,
+    }));
+    const entity = build({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options,
+        validation: { unique: true, differentFrom: ref('twin') },
+      },
+      twin: { name: 'Twin', type: 'categorical', options },
+    });
+
+    const [component] = componentsOf(entity);
+
+    expect(component?.tractable?.domains.get('tags')).toHaveLength(15);
+  });
+
+  it('keeps a minSelected above the default cap as the one selection size', () => {
+    // The draw clamps its selection count up to minSelected even when that
+    // sits above the default ceiling of two, so the domain holds exactly the
+    // size-three subsets.
+    const options = Array.from({ length: 4 }, (_v, i) => ({
+      label: `O${i}`,
+      value: i,
+    }));
+    const entity = build({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options,
+        validation: { minSelected: 3, differentFrom: ref('twin') },
+      },
+      twin: { name: 'Twin', type: 'categorical', options },
+    });
+
+    const [component] = componentsOf(entity);
+    const domain = component?.tractable?.domains.get('tags');
+
+    expect(domain).toHaveLength(4);
+    for (const value of domain ?? []) {
+      expect(Array.isArray(value) && value.length).toBe(3);
+    }
+  });
+
+  it('declines a categorical whose combination space overflows the budget', () => {
+    const options = Array.from({ length: 24 }, (_v, i) => ({
+      label: `O${i}`,
+      value: i,
+    }));
+    const entity = build({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options,
+        validation: { maxSelected: 12, differentFrom: ref('twin') },
+      },
+      twin: {
+        name: 'Twin',
+        type: 'categorical',
+        options,
+        validation: { maxSelected: 2 },
+      },
+    });
+
+    const [component] = componentsOf(entity);
+
+    expect(component?.groups.toSorted()).toEqual(['tags', 'twin']);
+    expect(component?.tractable).toBeUndefined();
+  });
+
+  it('agrees with valueSpaceSize about the size of every enumerated domain', () => {
+    // The unique-feasibility check counts a variable's space with
+    // valueSpaceSize; the solver enumerates it. If the two drift apart, a
+    // unique variable could pass the count and then run out of solved values,
+    // or be refused values the solver could in fact reach.
+    const options = Array.from({ length: 4 }, (_v, i) => ({
+      label: `O${i}`,
+      value: i,
+    }));
+    const window = {
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', min: '2024-03-01', max: '2024-03-05' },
+    } as const;
+    const entity = build({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 2, maxValue: 9 },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: {
+          minValue: 0,
+          maxValue: 12,
+          greaterThanVariable: ref('a'),
+        },
+      },
+      s1: {
+        name: 'S1',
+        type: 'scalar',
+        component: 'VisualAnalogScale',
+        validation: { lessThanVariable: ref('s2') },
+      },
+      s2: { name: 'S2', type: 'scalar', component: 'VisualAnalogScale' },
+      w: { name: 'W', ...window },
+      x: {
+        name: 'X',
+        ...window,
+        validation: { greaterThanVariable: ref('w') },
+      },
+      band: {
+        name: 'Band',
+        type: 'ordinal',
+        options,
+        validation: { differentFrom: ref('flag') },
+      },
+      flag: { name: 'Flag', type: 'boolean' },
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options,
+        validation: { unique: true, differentFrom: ref('twin') },
+      },
+      twin: { name: 'Twin', type: 'categorical', options },
+    });
+
+    const { propagated, components } = analysed(entity);
+    const checked: string[] = [];
+    for (const component of components) {
+      const tractable = component.tractable;
+      expect(tractable).toBeDefined();
+      for (const group of component.groups) {
+        const variable = propagated.get(group);
+        expect(variable).toBeDefined();
+        if (variable === undefined) continue;
+        expect(tractable?.domains.get(group)?.length).toBe(
+          valueSpaceSize(variable, Number.MAX_SAFE_INTEGER),
+        );
+        checked.push(group);
+      }
+    }
+
+    expect(checked.toSorted()).toEqual([
+      'a',
+      'b',
+      'band',
+      'flag',
+      's1',
+      's2',
+      'tags',
+      'twin',
+      'w',
+      'x',
+    ]);
+  });
+
+  it('declines a comparator between dates at different resolutions', () => {
+    // The greedy fold skips such an edge; a complete search cannot claim to
+    // decide a rule the draw does not enforce.
+    const entity = build({
+      start: {
+        name: 'Start',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'full', min: '2026-01-01', max: '2026-01-20' },
+      },
+      end: {
+        name: 'End',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'month', min: '2026-01', max: '2026-06' },
+        validation: { greaterThanVariable: ref('start') },
+      },
+    });
+
+    const [component] = componentsOf(entity);
+
+    expect(component?.groups.toSorted()).toEqual(['end', 'start']);
+    expect(component?.tractable).toBeUndefined();
+  });
+
+  it('narrows a held-equal group domain to the options every member offers', () => {
+    const entity = build({
+      a: {
+        name: 'A',
+        type: 'ordinal',
+        options: [
+          { label: 'One', value: 1 },
+          { label: 'Two', value: 2 },
+          { label: 'Three', value: 3 },
+        ],
+      },
+      b: {
+        name: 'B',
+        type: 'ordinal',
+        options: [
+          { label: 'Two', value: 2 },
+          { label: 'Three', value: 3 },
+          { label: 'Four', value: 4 },
+        ],
+        validation: { sameAs: ref('a') },
+      },
+      c: {
+        name: 'C',
+        type: 'ordinal',
+        options: [
+          { label: 'Two', value: 2 },
+          { label: 'Three', value: 3 },
+        ],
+        validation: { differentFrom: ref('a') },
+      },
+    });
+
+    const [component] = componentsOf(entity);
+    const groupId = component?.groups.find((group) => group !== 'c');
+
+    expect(component?.tractable?.domains.get(groupId ?? '')).toEqual([2, 3]);
   });
 
   it('leaves a component intractable across an incomparable comparator', () => {

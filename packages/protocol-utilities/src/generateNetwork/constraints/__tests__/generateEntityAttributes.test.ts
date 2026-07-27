@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
@@ -1668,6 +1668,95 @@ describe('generateEntityAttributes', () => {
     }
 
     expect(drawn.size).toBe(8);
+  });
+
+  it('prefers unreserved values in a solved component, taking reserved ones only at need', () => {
+    // Values a roster row reserved are held back the way the greedy draw
+    // holds them back: taken last, never refused outright.
+    const entity = buildEntityConstraints(
+      {
+        u: {
+          name: 'U',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 2,
+            unique: true,
+            differentFrom: asEntityAttributeReference('v'),
+          },
+        },
+        v: {
+          name: 'V',
+          type: 'number',
+          validation: { minValue: 5, maxValue: 9 },
+        },
+      },
+      TODAY,
+    );
+
+    for (let seed = 0; seed < 10; seed++) {
+      const preferring = makeContext(seed);
+      preferring.uniqueRegistry.reserve('node:person', 'u', 0);
+      preferring.uniqueRegistry.reserve('node:person', 'u', 1);
+
+      const attrs = generateEntityAttributes(
+        entity,
+        preferring,
+        { entity: 'node', type: 'person' },
+        0,
+      );
+      expect(attrs.u).toBe(2);
+    }
+
+    const cornered = makeContext(7);
+    cornered.uniqueRegistry.reserve('node:person', 'u', 0);
+    cornered.uniqueRegistry.reserve('node:person', 'u', 1);
+    cornered.uniqueRegistry.reserve('node:person', 'u', 2);
+
+    const forced = generateEntityAttributes(
+      entity,
+      cornered,
+      { entity: 'node', type: 'person' },
+      0,
+    );
+    expect([0, 1, 2]).toContain(Number(forced.u));
+  });
+
+  it('consumes exactly one seeded draw for a solved component', () => {
+    // The solve seeds a local shuffle from a single draw, so the shared
+    // stream advances by the same amount whatever the search does — a capped
+    // or failed solve cannot shift every draw that follows it.
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 9 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 9,
+            greaterThanVariable: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const ctx = makeContext(5);
+    const spy = vi.spyOn(ctx.valueGen, 'randomInt');
+    generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'person' },
+      0,
+    );
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
   });
 
   it('remains deterministic for a seed when a component is solved', () => {
