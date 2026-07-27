@@ -921,8 +921,16 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           page.getByRole('heading', { name: 'Complete' }),
         ).not.toBeVisible();
 
-        await stage.form.fillNumber('contact-count', '42');
+        await stage.form.fillNumber('contact-count', '5');
         await relDateInput.fill('2026-06-15'); // within 2026-06-01..2026-07-01
+        await interview.nextButton.click();
+        await expect(stage.form.getFieldError('contact-count')).toBeVisible();
+        await expect(stage.form.getFieldError('last-contact')).toBeHidden();
+        await expect(
+          page.getByRole('heading', { name: 'Complete' }),
+        ).not.toBeVisible();
+
+        await stage.form.fillNumber('contact-count', '42');
         await advanceEdgeSlide(page, slides);
 
         await expect(
