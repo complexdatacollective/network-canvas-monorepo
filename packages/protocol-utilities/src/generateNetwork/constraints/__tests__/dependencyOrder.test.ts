@@ -147,4 +147,254 @@ describe('resolveGenerationOrder', () => {
 
     expect(resolveGenerationOrder(entity).order).toEqual(['z', 'a']);
   });
+
+  it('accepts one comparison stated from both sides', () => {
+    const entity = buildEntityConstraints(
+      {
+        end: {
+          name: 'End',
+          type: 'number',
+          validation: {
+            greaterThanVariable: asEntityAttributeReference('start'),
+          },
+        },
+        start: {
+          name: 'Start',
+          type: 'number',
+          validation: { lessThanVariable: asEntityAttributeReference('end') },
+        },
+      },
+      TODAY,
+    );
+
+    const result = resolveGenerationOrder(entity);
+
+    expect(result.cycles).toEqual([]);
+    expect(result.order.indexOf('start')).toBeLessThan(
+      result.order.indexOf('end'),
+    );
+  });
+
+  it('accepts a mutually declared differentFrom pair', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'text',
+          validation: { differentFrom: asEntityAttributeReference('b') },
+        },
+        b: {
+          name: 'B',
+          type: 'text',
+          validation: { differentFrom: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    expect(resolveGenerationOrder(entity).cycles).toEqual([]);
+  });
+
+  it('accepts a mutual non-strict comparison, which equality satisfies', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
+          },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(resolveGenerationOrder(entity).cycles).toEqual([]);
+  });
+
+  it('accepts one non-strict comparison stated from both sides', () => {
+    const entity = buildEntityConstraints(
+      {
+        end: {
+          name: 'End',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('start'),
+          },
+        },
+        start: {
+          name: 'Start',
+          type: 'number',
+          validation: {
+            lessThanOrEqualToVariable: asEntityAttributeReference('end'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const result = resolveGenerationOrder(entity);
+
+    expect(result.cycles).toEqual([]);
+    expect(result.order.indexOf('start')).toBeLessThan(
+      result.order.indexOf('end'),
+    );
+  });
+
+  it('accepts a non-strict comparison inside a sameAs group', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { sameAs: asEntityAttributeReference('b') },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(resolveGenerationOrder(entity).cycles).toEqual([]);
+  });
+
+  it('reports a three-variable strict comparator cycle', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { greaterThanVariable: asEntityAttributeReference('b') },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: { greaterThanVariable: asEntityAttributeReference('c') },
+        },
+        c: {
+          name: 'C',
+          type: 'number',
+          validation: { greaterThanVariable: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    const result = resolveGenerationOrder(entity);
+
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]?.toSorted()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('reports a differentFrom inside a sameAs group', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'text',
+          validation: { sameAs: asEntityAttributeReference('b') },
+        },
+        b: {
+          name: 'B',
+          type: 'text',
+          validation: { differentFrom: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    const result = resolveGenerationOrder(entity);
+
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]?.toSorted()).toEqual(['a', 'b']);
+  });
+
+  it('reports a cycle mixing strict and non-strict comparisons', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
+          },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: { greaterThanVariable: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    const result = resolveGenerationOrder(entity);
+
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]?.toSorted()).toEqual(['a', 'b']);
+  });
+
+  it('reports one group at most once, however many rules contradict it', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { sameAs: asEntityAttributeReference('b') },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            greaterThanVariable: asEntityAttributeReference('a'),
+            lessThanVariable: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const result = resolveGenerationOrder(entity);
+
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]?.toSorted()).toEqual(['a', 'b']);
+  });
+
+  it('does not alias membersOf into a reported cycle', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { sameAs: asEntityAttributeReference('b') },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: { greaterThanVariable: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    const result = resolveGenerationOrder(entity);
+    const representative = result.groupOf.get('a')!;
+    const membersBefore = [...result.membersOf.get(representative)!];
+
+    result.cycles[0]?.reverse();
+
+    expect(result.membersOf.get(representative)).toEqual(membersBefore);
+  });
 });
