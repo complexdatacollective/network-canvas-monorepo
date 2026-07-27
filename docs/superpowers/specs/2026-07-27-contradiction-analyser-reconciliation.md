@@ -5,15 +5,18 @@ Status: Planned — blocked on PR #1107
 
 ## Trigger and ordering
 
-Run this in `claude/synthetic-data-validation-2b18a2` (PR #1108) **after both**:
+**Precondition 2 is already met.** PR #1109 (finite-domain constraint solving) was merged into
+`claude/synthetic-data-validation-2b18a2` at `254123bfc`, and its conflicts were resolved there — see
+that commit for what the merge collided on, including a real solver defect it surfaced.
 
-1. **PR #1107** (`feat: make contradictory validation rules unexpressible`) has merged to `main`, and
-   `main` has been merged into this branch.
-2. **PR #1109** (finite-domain constraint solving) has merged **into** this branch.
+**The one remaining trigger is PR #1107** (`feat: make contradictory validation rules unexpressible`)
+merging to `main`. When it does, merge `main` into the working branch and start.
 
-Order matters. #1109 rewrites `constraints/feasibility.ts` and
-`constraints/generateEntityAttributes.ts`, which is most of the surface this task edits. Reconciling
-first guarantees a conflict against work that is already in flight.
+_Where_ to run it depends on the state of PR #1108 at that moment:
+
+- **#1108 still open** — run it there, as originally planned.
+- **#1108 already merged** — branch fresh from `main`. Everything this task depends on is then in
+  `main` anyway, and the work is unchanged.
 
 If #1107 is abandoned or substantially rescoped, this whole task is void — re-read its final shape
 before starting.
