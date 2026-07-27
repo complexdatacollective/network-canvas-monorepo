@@ -112,10 +112,11 @@ describe('buildVariableConstraints', () => {
     },
   );
 
-  // A ceiling of today under a floor the protocol declares later than it would
-  // read as an empty range the protocol never wrote, and refuse a date the
-  // draw reaches perfectly well.
-  it('never closes a window below a floor the protocol declares', () => {
+  // The field lists what it offers from its ceiling down to its floor, so a
+  // floor declared above today leaves it offering nothing. Reported as the
+  // empty window it is, rather than raised to meet the floor and generate the
+  // one date the control can neither select nor display.
+  it('holds the implicit ceiling under a floor declared later than today', () => {
     const result = buildVariableConstraints(
       {
         id: 'v1',
@@ -130,7 +131,75 @@ describe('buildVariableConstraints', () => {
     expect(result.dateWindow).toEqual({
       resolution: 'year',
       min: '2030',
-      max: '2030',
+      max: '2026',
+    });
+  });
+
+  // The variable schema accepts an arbitrary string for these parameters, so an
+  // imported protocol can carry a bound that names no date. Left in the window
+  // it reaches `stepsBetween` as `NaN`, which counts as `NaN` values — read as
+  // satisfied by every feasibility comparison — and draws as `0NaN-NaN-NaN`.
+  it.each([
+    { parameter: 'min', value: 'not-a-date' },
+    { parameter: 'max', value: 'not-a-date' },
+    // Date-shaped, but no such day: `Date.UTC` rolls it forward into February
+    // rather than refusing it.
+    { parameter: 'max', value: '2020-01-32' },
+    { parameter: 'min', value: '2020-13-01' },
+  ])('refuses a $parameter of "$value" by name', ({ parameter, value }) => {
+    expect(() =>
+      buildVariableConstraints(
+        {
+          id: 'v1',
+          name: 'Born',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'full', [parameter]: value },
+        },
+        TODAY,
+      ),
+    ).toThrow(
+      `Date variable "Born" (v1) declares ${parameter} "${value}", which is not a calendar date.`,
+    );
+  });
+
+  it('refuses a RelativeDatePicker anchor that names no date', () => {
+    expect(() =>
+      buildVariableConstraints(
+        {
+          id: 'v1',
+          name: 'Last seen',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: 'not-a-date', before: 30, after: 5 },
+        },
+        TODAY,
+      ),
+    ).toThrow('declares anchor "not-a-date"');
+  });
+
+  // Bounds are written at the resolution the picker collects, and protocols in
+  // the wild carry all three. Each is a real date, and each is kept.
+  it.each([
+    { min: '1940', max: '1950' },
+    { min: '1940-06', max: '1950-06' },
+    { min: '1940-02-29', max: '1950-12-31' },
+  ])('accepts a $min bound written at its own resolution', ({ min, max }) => {
+    const result = buildVariableConstraints(
+      {
+        id: 'v1',
+        name: 'Born',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', min, max },
+      },
+      TODAY,
+    );
+
+    expect(result.dateWindow).toEqual({
+      resolution: 'year',
+      min: '1940',
+      max: '1950',
     });
   });
 

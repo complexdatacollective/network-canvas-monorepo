@@ -41,6 +41,47 @@ function readBoolean(
   return source?.[key] === true;
 }
 
+/** `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, before the calendar is consulted. */
+const CALENDAR_BOUND = /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/;
+
+function isCalendarBound(value: string): boolean {
+  if (!CALENDAR_BOUND.test(value)) return false;
+
+  const [year, month = '01', day = '01'] = value.split('-');
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  // A day the calendar does not hold rolls forward rather than failing, so the
+  // parsed date is compared back against what was written.
+  return (
+    date.getUTCMonth() === Number(month) - 1 &&
+    date.getUTCDate() === Number(day)
+  );
+}
+
+/**
+ * A picker parameter that names a real date, at any of the three resolutions a
+ * protocol writes one at.
+ *
+ * The variable schema accepts an arbitrary string here, so an imported protocol
+ * can carry `max: "not-a-date"` or a day no month holds. Such a bound reaches
+ * `stepsBetween` as `NaN`, and neither half of the machinery notices: the count
+ * reports `NaN` values, which every feasibility comparison reads as satisfied,
+ * and the draw then writes `0NaN-NaN-NaN` into the network. Refused here by
+ * name, because a bound the generator cannot read is one it cannot guess the
+ * intent of either.
+ */
+function requireCalendarBound(
+  entry: VariableEntry,
+  parameter: string,
+  value: string,
+): string {
+  if (isCalendarBound(value)) return value;
+
+  throw new Error(
+    `Date variable "${entry.name}" (${entry.id}) declares ${parameter} "${value}", which is not a calendar date. ` +
+      'Synthetic data generation needs a date written as YYYY, YYYY-MM or YYYY-MM-DD.',
+  );
+}
+
 function resolveDateWindow(
   entry: VariableEntry,
   today: string,
@@ -53,7 +94,11 @@ function resolveDateWindow(
     // The field's own defaults, which useProtocolForm turns into hard min/max
     // validators: a generated value outside this window fails validation even
     // though the protocol declares no explicit bound.
-    const anchor = readString(parameters, 'anchor') ?? today;
+    const declaredAnchor = readString(parameters, 'anchor');
+    const anchor =
+      declaredAnchor !== undefined
+        ? requireCalendarBound(entry, 'anchor', declaredAnchor)
+        : today;
     const before =
       readNumber(parameters, 'before') ?? RELATIVE_DATE_PICKER_DEFAULT_BEFORE;
     const after =
@@ -77,7 +122,10 @@ function resolveDateWindow(
   };
   const min =
     declared.min !== undefined
-      ? truncateToResolution(declared.min, resolution)
+      ? truncateToResolution(
+          requireCalendarBound(entry, 'min', declared.min),
+          resolution,
+        )
       : undefined;
   const latestOffered = truncateToResolution(today, resolution);
 
@@ -85,17 +133,21 @@ function resolveDateWindow(
   // (its own `maxYmd` fallback), and the draw already ceilings an open window
   // there. Closing the window here rather than at the draw is what lets
   // `valueSpaceSize` count it: the count has to stay a pure function of the
-  // descriptor, or a seeded run would stop reproducing across midnight. A floor
-  // the protocol declares later than today is kept as the ceiling too — the
-  // draw reaches exactly that one date, and an empty range fabricated from a
-  // bound the protocol never wrote would refuse a date it generates perfectly
-  // well.
+  // descriptor, or a seeded run would stop reproducing across midnight.
+  //
+  // The ceiling holds under a floor the protocol declares later than today,
+  // leaving the window inverted rather than raising it to meet that floor. The
+  // field lists the dates it offers from this ceiling down to its floor, so a
+  // floor above it leaves the control with nothing to offer at all: raising the
+  // ceiling would generate the one date nobody can select or display. Left
+  // inverted, feasibility reports the empty range under the variable's own name.
   const max =
     declared.max !== undefined
-      ? truncateToResolution(declared.max, resolution)
-      : min !== undefined && min > latestOffered
-        ? min
-        : latestOffered;
+      ? truncateToResolution(
+          requireCalendarBound(entry, 'max', declared.max),
+          resolution,
+        )
+      : latestOffered;
 
   return {
     resolution,
