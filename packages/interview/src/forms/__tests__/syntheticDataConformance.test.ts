@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
-import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
+import { todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import { makeValidationFunction } from '@codaco/fresco-ui/form/validation/helpers';
 import { generateNetwork } from '@codaco/protocol-utilities';
 import {
@@ -21,6 +21,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { buildDatePickerBoundProps } from '../buildDatePickerBoundProps';
 import { buildFieldValidationProps } from '../buildFieldValidationProps';
 
 /**
@@ -35,10 +36,6 @@ const today = todayYmd();
  * carries. Aliased because the fixtures below use it on every such rule.
  */
 const ref = asEntityAttributeReference;
-
-// RelativeDatePicker's own defaults, as useProtocolForm applies them.
-const RELATIVE_DEFAULT_BEFORE = 180;
-const RELATIVE_DEFAULT_AFTER = 0;
 
 /**
  * The interview seeds its form store from entity attributes with
@@ -55,37 +52,6 @@ function toFormValues(
       value ?? undefined,
     ]),
   );
-}
-
-/**
- * useProtocolForm turns a datetime variable's picker parameters into `min`/`max`
- * validators — absolute for DatePicker, anchor-relative for RelativeDatePicker.
- * Those are the only validators that bound a date, so a conformance check that
- * omitted them would leave every generated date unchecked.
- */
-function datetimeBoundProps(variable: Variable): {
-  min?: string;
-  max?: string;
-} {
-  if (variable.type !== 'datetime') return {};
-
-  if (variable.component === 'DatePicker' && variable.parameters) {
-    const { min, max } = variable.parameters;
-    return {
-      ...(min !== undefined ? { min } : {}),
-      ...(max !== undefined ? { max } : {}),
-    };
-  }
-
-  if (variable.component === 'RelativeDatePicker' && variable.parameters) {
-    const { anchor = today, before, after } = variable.parameters;
-    return {
-      min: addDays(anchor, -(before ?? RELATIVE_DEFAULT_BEFORE)),
-      max: addDays(anchor, after ?? RELATIVE_DEFAULT_AFTER),
-    };
-  }
-
-  return {};
 }
 
 /**
@@ -120,7 +86,16 @@ async function validateAttribute(options: {
       variable: variableId,
       ...(validation !== undefined ? { validation } : {}),
     }),
-    ...datetimeBoundProps(variable),
+    // useProtocolForm turns a datetime variable's picker parameters into
+    // min/max validators — absolute for DatePicker, anchor-relative for
+    // RelativeDatePicker. Those are the only validators that bound a date, so
+    // a conformance check that omitted them would leave every generated date
+    // unchecked. `variable` is a union where non-datetime members don't
+    // declare `component`/`parameters` at all, hence the `in` guards.
+    ...buildDatePickerBoundProps({
+      component: 'component' in variable ? variable.component : undefined,
+      parameters: 'parameters' in variable ? variable.parameters : undefined,
+    }),
     validationContext,
   };
 

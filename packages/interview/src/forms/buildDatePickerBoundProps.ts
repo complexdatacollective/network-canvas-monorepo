@@ -1,0 +1,63 @@
+import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
+import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
+import type { ComponentType } from '@codaco/protocol-validation';
+
+type BoundedField = {
+  component?: ComponentType;
+  parameters?: Record<string, unknown>;
+};
+
+// RelativeDatePickerField's own defaults
+// (packages/fresco-ui/src/form/fields/RelativeDatePicker.tsx), mirrored here
+// so a field that omits `before`/`after` still gets the bounds the rendered
+// component computes for its own min/max attributes.
+const RELATIVE_DEFAULT_BEFORE = 180;
+const RELATIVE_DEFAULT_AFTER = 0;
+
+/**
+ * Derive a datetime field's hard `min`/`max` validation bounds from its
+ * DatePicker/RelativeDatePicker PARAMETERS, not from the variable's
+ * `validation` object. Extracted from useProtocolForm so the synthetic-data
+ * conformance test can assert against exactly the bounds the interview
+ * validates submissions with.
+ *
+ * - DatePicker forwards `parameters.min`/`parameters.max` verbatim.
+ * - RelativeDatePicker pre-computes absolute bounds from
+ *   `parameters.anchor`/`before`/`after`, defaulting to today, 180 days
+ *   before and 0 days after — the same defaults RelativeDatePickerField
+ *   applies to its own native min/max attributes.
+ *
+ * Returns `{}` for any other component, or when the field has no
+ * `parameters` object at all (matching DatePickerField/RelativeDatePickerField,
+ * which only receive computed `min`/`max` props when this function is called
+ * with one).
+ */
+export function buildDatePickerBoundProps(
+  field: BoundedField,
+): Partial<ValidationPropsCatalogue> {
+  const { component, parameters } = field;
+  if (!parameters) return {};
+
+  if (component === 'DatePicker') {
+    const { min, max } = parameters;
+    return {
+      ...(typeof min === 'string' ? { min } : {}),
+      ...(typeof max === 'string' ? { max } : {}),
+    };
+  }
+
+  if (component === 'RelativeDatePicker') {
+    const { anchor, before, after } = parameters;
+    const anchorYmd = typeof anchor === 'string' ? anchor : todayYmd();
+    const beforeDays =
+      typeof before === 'number' ? before : RELATIVE_DEFAULT_BEFORE;
+    const afterDays =
+      typeof after === 'number' ? after : RELATIVE_DEFAULT_AFTER;
+    return {
+      min: addDays(anchorYmd, -beforeDays),
+      max: addDays(anchorYmd, afterDays),
+    };
+  }
+
+  return {};
+}

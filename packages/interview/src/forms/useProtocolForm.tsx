@@ -20,7 +20,6 @@ import ToggleButtonGroupField from '@codaco/fresco-ui/form/fields/ToggleButtonGr
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import VisualAnalogScaleField from '@codaco/fresco-ui/form/fields/VisualAnalogScale';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
-import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import type {
   ComposerFormField,
   ComponentType,
@@ -36,6 +35,7 @@ import {
   selectFieldMetadataWithSubject,
 } from '../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
+import { buildDatePickerBoundProps } from './buildDatePickerBoundProps';
 import { buildFieldValidationProps } from './buildFieldValidationProps';
 import { coerceFormValues } from './coerceFormValues';
 
@@ -272,17 +272,12 @@ export default function useProtocolForm({
     // Handle DatePicker parameters
     if (field.component === 'DatePicker' && field.parameters) {
       const params = field.parameters;
-      if (typeof params.min === 'string') props.min = params.min;
-      if (typeof params.max === 'string') props.max = params.max;
       if (typeof params.type === 'string') props.type = params.type;
     }
 
-    // Handle RelativeDatePicker parameters. We forward anchor/before/after
-    // to the component for its UI-side range calculation AND pre-compute
-    // absolute min/max here so the Field-level min/max validators fire on
-    // submission. Without this, RelativeDatePicker's internally-computed
-    // min/max would only constrain the native picker UI — keyboard-typed
-    // out-of-range values would pass through validation.
+    // Forward RelativeDatePicker's anchor/before/after to the component for
+    // its own UI-side range calculation, separately from the absolute
+    // min/max computed below.
     if (field.component === 'RelativeDatePicker' && field.parameters) {
       const params = field.parameters;
       const paramAnchor =
@@ -295,13 +290,20 @@ export default function useProtocolForm({
       if (paramAnchor !== undefined) props.anchor = paramAnchor;
       if (paramBefore !== undefined) props.before = paramBefore;
       if (paramAfter !== undefined) props.after = paramAfter;
-
-      const anchor = paramAnchor ?? todayYmd();
-      const before = paramBefore ?? 180;
-      const after = paramAfter ?? 0;
-      props.min = addDays(anchor, -before);
-      props.max = addDays(anchor, after);
     }
+
+    // Pre-compute absolute min/max validation bounds for DatePicker and
+    // RelativeDatePicker fields so the Field-level min/max validators fire on
+    // submission. Without this, RelativeDatePicker's internally-computed
+    // min/max would only constrain the native picker UI — keyboard-typed
+    // out-of-range values would pass through validation.
+    Object.assign(
+      props,
+      buildDatePickerBoundProps({
+        component: field.component,
+        parameters: field.parameters,
+      }),
+    );
 
     return props;
   });
