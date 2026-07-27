@@ -149,7 +149,9 @@ function intersectConstraints(
     maxSelected = tighten(maxSelected, constraints.maxSelected, false);
 
     // Bounds written at different resolutions do not compare as strings, so
-    // only a window matching the representative's resolution contributes.
+    // only a window matching the representative's resolution contributes. A
+    // group whose members disagree on one is refused before anything is drawn,
+    // so passing the others over decides nothing a generated value depends on.
     const window = constraints.dateWindow;
     if (window !== undefined && window.resolution === resolution) {
       windowMin = tighten(windowMin, window.min, true);
@@ -286,6 +288,47 @@ function incompatibleGroupTypes(
   ];
 }
 
+/**
+ * The picker resolutions a group's members cannot all write one string in.
+ *
+ * Every date resolution writes its own shape — `YYYY`, `YYYY-MM`, `YYYY-MM-DD`
+ * — and `sameAs` asks for the identical string at both ends, so a month field
+ * and a full-resolution field held equal have no value between them: the one
+ * string drawn leaves either the month field holding `2026-07-20` or the full
+ * field holding `2026-07`, neither of which its own control can display.
+ *
+ * This is the equality case, and it is not the comparator one. A comparison
+ * across resolutions is enforceable and enforced — the runtime parses both ends
+ * as instants, and `comparatorBound` writes each bound in the units of the end
+ * it lands on. Equality alone demands the strings themselves match.
+ *
+ * A group that is not all datetime is a type conflict, reported as that by
+ * `incompatibleGroupTypes`; resolutions are only what is wrong with a group
+ * whose members agree on being dates.
+ */
+function incompatibleGroupResolutions(
+  members: readonly ConstrainedVariable[],
+): EmptyGroupBound[] {
+  const dated = members.filter(({ entry }) => entry.type === 'datetime');
+  if (dated.length !== members.length) return [];
+
+  const resolutions = dated.map(
+    ({ constraints }) => constraints.dateWindow?.resolution,
+  );
+  if (new Set(resolutions).size < 2) return [];
+
+  const declared = dated
+    .map(({ entry }, index) => `"${entry.name}" (${resolutions[index]})`)
+    .join(' and ');
+
+  return [
+    {
+      rules: ['parameters'],
+      detail: `the date resolutions of ${declared} have no value in common`,
+    },
+  ];
+}
+
 /** What a member offers, as the researcher reads it: `"Rating A" (1, 2)`. */
 function offeredBy(member: ConstrainedVariable): string {
   const values = (optionDomain(member) ?? [])
@@ -360,7 +403,8 @@ function emptyGroupOptions(
  * group whose intersection is empty — `[1, 5]` held equal to `[?, 0]` describes
  * a value that is both at least 1 and at most 0. An option list is a bound of
  * the same kind, and crosses the same way; so is the members' type, which
- * settles which values exist to be bounded at all.
+ * settles which values exist to be bounded at all, and — among dates — the
+ * resolution their pickers write those values in.
  *
  * A bound pair one member's own declaration already crosses is reported too,
  * worded so it reads as the separate thing it is. The per-variable check names
@@ -373,7 +417,10 @@ export function emptyGroupBounds(
   members: readonly ConstrainedVariable[],
   intersected: VariableConstraints,
 ): EmptyGroupBound[] {
-  const empty: EmptyGroupBound[] = incompatibleGroupTypes(members);
+  const empty: EmptyGroupBound[] = [
+    ...incompatibleGroupTypes(members),
+    ...incompatibleGroupResolutions(members),
+  ];
 
   for (const { min, max } of INTERSECTED_BOUNDS) {
     const floor = intersected[min];
@@ -575,8 +622,46 @@ function isNumeric(variable: ConstrainedVariable): boolean {
 }
 
 /**
+ * A comparison holding a number against a date, which no assignment of the two
+ * can be judged to satisfy.
+ *
+ * The runtime's `compareVariables` is handed the declaring variable's own type.
+ * From the numeric end that is `number` or `scalar`, so it coerces both sides
+ * with `Number(...)` and a `'2006-01-14'` becomes `NaN`; nothing further in
+ * that function compares a number against a string, and it returns 0. Every
+ * strict comparison then fails whatever the two values are — `72` is reported
+ * as neither greater than nor less than `2006-01-14` — and every non-strict one
+ * passes whatever they are. From the date end `new Date(...)` reads the number
+ * as milliseconds since the epoch, so a modern date outranks any plausible
+ * count and the comparison is decided by that accident rather than by the rule.
+ *
+ * There is no value for generation to aim at in any of those readings, so the
+ * pair is refused rather than dropped: dropping it leaves the numeric end drawn
+ * from its own range alone, and the interview then rejects every strict rule it
+ * is handed. Refused in both directions and at both strictnesses, because a
+ * pairing that only reports under `>` would be "fixed" by writing `>=`, which
+ * silences the message without making the rule mean anything.
+ *
+ * `ordinal` is deliberately not swept in alongside `number` and `scalar`:
+ * propagation carries no comparator of any kind for an ordinal, so refusing
+ * that pairing here would be a rule about a machinery that is not yet there.
+ */
+function incomparableEnds(
+  lower: ConstrainedVariable,
+  upper: ConstrainedVariable,
+): boolean {
+  return (
+    (isNumeric(lower) && upper.entry.type === 'datetime') ||
+    (isNumeric(upper) && lower.entry.type === 'datetime')
+  );
+}
+
+/**
  * Comparisons the generator cannot step across — a number against a date, or
  * either end carrying no window to step within — leave nothing to propagate.
+ * A number against a date leaves nothing to satisfy either, and is refused by
+ * `incomparableEnds` rather than merely passed over.
+ *
  * Two dates written at different resolutions are not among them: the runtime
  * compares those as instants, so the comparison is real and propagating it is
  * a matter of writing each bound in the units of the end it constrains.
@@ -668,11 +753,14 @@ type PropagatedBounds = {
   /** Each group's rules, narrowed by every comparator that bounds it. */
   groups: Map<string, ConstrainedVariable>;
   /**
-   * Groups propagation itself emptied: the comparators around them are what
-   * their range could not hold. A group whose range was already empty when
-   * propagation started is left out, because that is either one variable's own
-   * bounds crossing or a group's members' bounds failing to overlap — both of
-   * which the feasibility pass reports without propagating anything.
+   * Groups whose comparators no assignment satisfies: the ones propagation
+   * itself emptied, because the comparators around them are what their range
+   * could not hold, and the ends of a comparison between a number and a date,
+   * which has no satisfying assignment at any range. A group whose range was
+   * already empty when propagation started is left out, because that is either
+   * one variable's own bounds crossing or a group's members' bounds failing to
+   * overlap — both of which the feasibility pass reports without propagating
+   * anything.
    */
   inverted: Set<string>;
 };
@@ -713,6 +801,7 @@ export function propagateComparatorBounds(
 
   const ranges = new Map<string, Range>();
   const declaredInverted = new Set<string>();
+  const inverted = new Set<string>();
 
   for (const [group, { constraints }] of groups) {
     const range: Range = {
@@ -731,6 +820,17 @@ export function propagateComparatorBounds(
       position.has(edge.upper) &&
       at(edge.lower) < at(edge.upper),
   );
+
+  // Refused before either walk, so the walks are only ever asked to narrow
+  // bounds a value could sit inside. Both ends are named: the rule is written
+  // on one of them and is about the pair.
+  for (const edge of ordered) {
+    const lower = groups.get(edge.lower);
+    const upper = groups.get(edge.upper);
+    if (!lower || !upper || !incomparableEnds(lower, upper)) continue;
+    inverted.add(edge.lower);
+    inverted.add(edge.upper);
+  }
 
   for (const edge of ordered.toSorted((a, b) => at(a.lower) - at(b.lower))) {
     const lower = groups.get(edge.lower);
@@ -789,7 +889,6 @@ export function propagateComparatorBounds(
   }
 
   const propagated = new Map<string, ConstrainedVariable>();
-  const inverted = new Set<string>();
 
   for (const [group, variable] of groups) {
     const range = ranges.get(group);

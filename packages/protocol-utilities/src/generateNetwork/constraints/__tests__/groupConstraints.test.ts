@@ -387,6 +387,142 @@ describe('emptyGroupBounds', () => {
       },
     ]);
   });
+
+  it('reports the picker resolutions of two dates held equal', () => {
+    // Both members are datetime, so the type check has nothing to say about
+    // this pairing. What separates them is the string each control writes: a
+    // month field holds `YYYY-MM` and a full one `YYYY-MM-DD`, and raw equality
+    // asks for the same string at both ends. Drawn, the group emits the
+    // representative's — leaving the full field holding '2026-07', which its
+    // own picker cannot display.
+    const entity = buildEntityConstraints(
+      {
+        start: {
+          name: 'Start month',
+          type: 'datetime',
+          parameters: { type: 'month', min: '2026-01', max: '2026-12' },
+        },
+        finish: {
+          name: 'Finish day',
+          type: 'datetime',
+          parameters: { type: 'full', min: '2026-01-01', max: '2026-12-31' },
+          validation: { sameAs: asEntityAttributeReference('start') },
+        },
+      },
+      TODAY,
+    );
+
+    expect(crossings(entity)).toEqual([
+      {
+        rules: ['parameters'],
+        detail:
+          'the date resolutions of "Start month" (month) and "Finish day" (full) have no value in common',
+      },
+    ]);
+  });
+
+  it('reports them the same way when the finer picker is the representative', () => {
+    // Which member the group draws against decides which of the two fields is
+    // left holding a string it cannot show, and nothing else: the pairing is
+    // refused from either side.
+    const entity = buildEntityConstraints(
+      {
+        start: {
+          name: 'Start day',
+          type: 'datetime',
+          parameters: { type: 'full', min: '2026-01-01', max: '2026-12-31' },
+        },
+        finish: {
+          name: 'Finish year',
+          type: 'datetime',
+          parameters: { type: 'year', min: '2026', max: '2026' },
+          validation: { sameAs: asEntityAttributeReference('start') },
+        },
+      },
+      TODAY,
+    );
+
+    expect(crossings(entity)).toEqual([
+      {
+        rules: ['parameters'],
+        detail:
+          'the date resolutions of "Start day" (full) and "Finish year" (year) have no value in common',
+      },
+    ]);
+  });
+
+  it('reports nothing about two dates held equal at one resolution', () => {
+    const entity = buildEntityConstraints(
+      {
+        start: {
+          name: 'Start',
+          type: 'datetime',
+          parameters: { type: 'month', min: '2026-01', max: '2026-12' },
+        },
+        finish: {
+          name: 'Finish',
+          type: 'datetime',
+          parameters: { type: 'month', min: '2026-03', max: '2026-09' },
+          validation: { sameAs: asEntityAttributeReference('start') },
+        },
+      },
+      TODAY,
+    );
+
+    expect(crossings(entity)).toEqual([]);
+  });
+
+  it('still reports a same-resolution pair whose windows do not overlap', () => {
+    // `parameters` is the rule either way, so the resolution check must not
+    // stand in for the range one: these two agree on the units and still leave
+    // no date between them.
+    const entity = buildEntityConstraints(
+      {
+        start: {
+          name: 'Start',
+          type: 'datetime',
+          parameters: { type: 'month', min: '2026-07', max: '2026-12' },
+        },
+        finish: {
+          name: 'Finish',
+          type: 'datetime',
+          parameters: { type: 'month', min: '2026-01', max: '2026-03' },
+          validation: { sameAs: asEntityAttributeReference('start') },
+        },
+      },
+      TODAY,
+    );
+
+    expect(crossings(entity)).toEqual([
+      {
+        rules: ['parameters'],
+        detail: 'the date range 2026-07 to 2026-03 is empty',
+      },
+    ]);
+  });
+
+  it('reports only the types of a date held equal to something that is not one', () => {
+    // A group that is not all dates is a type conflict, and naming its
+    // resolutions alongside would point a researcher at a picker setting that
+    // could never have made the pairing work.
+    const entity = buildEntityConstraints(
+      {
+        start: {
+          name: 'Start',
+          type: 'datetime',
+          parameters: { type: 'month', min: '2026-01', max: '2026-12' },
+        },
+        note: {
+          name: 'Note',
+          type: 'text',
+          validation: { sameAs: asEntityAttributeReference('start') },
+        },
+      },
+      TODAY,
+    );
+
+    expect(crossings(entity).map(({ rules }) => rules)).toEqual([['type']]);
+  });
 });
 
 describe('propagateComparatorBounds', () => {
@@ -602,6 +738,137 @@ describe('propagateComparatorBounds', () => {
     // The scalar's own domain caps it at 1 before the comparator's 2.99 could.
     expect(groups.get('s')?.constraints.maxValue).toBe(1);
     expect(groups.get('n')?.constraints.minValue).toBe(0.01);
+  });
+
+  it('refuses a number compared against a date', () => {
+    // `compareVariables` is handed the declaring variable's type, so this one
+    // coerces both ends with `Number(...)`: '2006-01-14' becomes NaN, nothing
+    // further in that function compares a number against a string, and it
+    // returns 0. Age 72 is therefore reported as neither greater nor less than
+    // the date, and no draw the generator could make would change that.
+    const entity = buildEntityConstraints(
+      {
+        born: {
+          name: 'Born',
+          type: 'datetime',
+          parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
+        },
+        age: {
+          name: 'Age',
+          type: 'number',
+          validation: {
+            minValue: 1,
+            maxValue: 100,
+            greaterThanVariable: asEntityAttributeReference('born'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const { groups, inverted } = propagate(entity);
+
+    expect([...inverted].toSorted()).toEqual(['age', 'born']);
+    // The declared bounds are kept, the way an over-long chain keeps its own:
+    // a draw made before the feasibility pass refuses the protocol still lands
+    // inside the range a participant's form would enforce.
+    expect(groups.get('age')?.constraints).toMatchObject({
+      minValue: 1,
+      maxValue: 100,
+    });
+  });
+
+  it('refuses the pairing from the date side and when it is not strict', () => {
+    // From this end `new Date(...)` reads the number as milliseconds since the
+    // epoch, so the comparison is decided by that accident rather than by the
+    // rule. Non-strict is refused alongside strict because a pairing reported
+    // only under `>` would be "fixed" by writing `>=`, which silences the
+    // message without making the rule mean anything.
+    const entity = buildEntityConstraints(
+      {
+        count: {
+          name: 'Count',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 10 },
+        },
+        seen: {
+          name: 'Seen',
+          type: 'datetime',
+          parameters: { type: 'month', min: '2026-01', max: '2026-12' },
+          validation: {
+            greaterThanOrEqualToVariable: asEntityAttributeReference('count'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect([...propagate(entity).inverted].toSorted()).toEqual([
+      'count',
+      'seen',
+    ]);
+  });
+
+  it('refuses a scalar compared against a date', () => {
+    const entity = buildEntityConstraints(
+      {
+        seen: {
+          name: 'Seen',
+          type: 'datetime',
+          parameters: { type: 'full', min: '2026-01-01', max: '2026-12-31' },
+        },
+        weight: {
+          name: 'Weight',
+          type: 'scalar',
+          component: 'VisualAnalogScale',
+          validation: {
+            lessThanVariable: asEntityAttributeReference('seen'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect([...propagate(entity).inverted].toSorted()).toEqual([
+      'seen',
+      'weight',
+    ]);
+  });
+
+  it('leaves a number compared against a number alone', () => {
+    // The boundary the refusal must not cross: two ends the runtime can
+    // genuinely order still propagate, and are not reported.
+    const { groups, inverted } = propagate(chain(0, 10));
+
+    expect([...inverted]).toEqual([]);
+    expect(groups.get('c')?.constraints.minValue).toBe(2);
+  });
+
+  it('leaves two dates at different resolutions alone', () => {
+    // The other boundary: a comparison across resolutions is not the pairing
+    // this refuses. The runtime parses both ends as instants and enforces it,
+    // and `comparatorBound` writes each bound in the units of the end it lands
+    // on — so the pair generates, as the case above it asserts in detail.
+    const entity = buildEntityConstraints(
+      {
+        start: {
+          name: 'Start',
+          type: 'datetime',
+          parameters: { type: 'full', min: '2026-01-15', max: '2026-12-31' },
+        },
+        end: {
+          name: 'End',
+          type: 'datetime',
+          parameters: { type: 'month', min: '2026-01', max: '2026-12' },
+          validation: {
+            greaterThanVariable: asEntityAttributeReference('start'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect([...propagate(entity).inverted]).toEqual([]);
   });
 });
 
