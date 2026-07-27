@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { findValidationContradictions } from '../variables/validation-contradictions.ts';
+import { EgoVariablesSchema, VariablesSchema } from '../variables/variable.ts';
 
 describe('findValidationContradictions — local checks', () => {
   it('reports minLength > maxLength, stripping both members', () => {
@@ -355,5 +356,63 @@ describe('findValidationContradictions — bound disjointness', () => {
         d: { name: 'd', type: 'scalar' },
       }),
     ).toEqual([]);
+  });
+});
+
+describe('record schema conformance — contradiction refinement', () => {
+  it('rejects a node variables record with inverted bounds, anchored at the offending rule', () => {
+    const result = VariablesSchema.safeParse({
+      a: {
+        name: 'age',
+        type: 'number',
+        component: 'Number',
+        validation: { minValue: 10, maxValue: 2 },
+      },
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((candidate) =>
+        candidate.message.includes(
+          'minValue (10) is greater than maxValue (2)',
+        ),
+      );
+      expect(issue?.path).toEqual(['a', 'validation', 'minValue']);
+    }
+  });
+
+  it('rejects an ego variables record with a strict comparator cycle', () => {
+    const result = EgoVariablesSchema.safeParse({
+      a: {
+        name: 'start',
+        type: 'number',
+        component: 'Number',
+        validation: { greaterThanVariable: 'b' },
+      },
+      b: {
+        name: 'end',
+        type: 'number',
+        component: 'Number',
+        validation: { greaterThanVariable: 'a' },
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts the same constraint stated from both sides', () => {
+    const result = VariablesSchema.safeParse({
+      a: {
+        name: 'start',
+        type: 'number',
+        component: 'Number',
+        validation: { lessThanVariable: 'b' },
+      },
+      b: {
+        name: 'end',
+        type: 'number',
+        component: 'Number',
+        validation: { greaterThanVariable: 'a' },
+      },
+    });
+    expect(result.success).toBe(true);
   });
 });

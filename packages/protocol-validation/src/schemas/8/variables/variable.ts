@@ -7,6 +7,7 @@ import {
   getVariableNames,
 } from '../../../utils/validation-helpers.ts';
 import { ComponentTypes, VariableTypes, type VariableType } from './types.ts';
+import { findValidationContradictions } from './validation-contradictions.ts';
 import { validations, type ValidationName } from './validation.ts';
 
 /**
@@ -348,6 +349,24 @@ const rejectEgoUnique = (variables: VariablesRecord, ctx: z.RefinementCtx) => {
   }
 };
 
+// Contradictory validation-rule combinations (inverted bounds, impossible
+// reference structures, disjoint bounds) are rejected at the record level —
+// the analyser needs every sibling variable in scope. The v7→v8 migration
+// strips the same combinations from existing protocols.
+const rejectValidationContradictions = (
+  variables: VariablesRecord,
+  ctx: z.RefinementCtx,
+) => {
+  for (const contradiction of findValidationContradictions(variables)) {
+    const anchor = contradiction.strips[0];
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: contradiction.message,
+      path: [anchor.variableId, 'validation', anchor.rule],
+    });
+  }
+};
+
 type AllKeys<T> = T extends unknown ? keyof T : never;
 export type VariablePropertyKey = AllKeys<Variable>;
 
@@ -371,16 +390,19 @@ const checkDuplicateVariableNames = <T extends Record<string, Variable>>(
 export const VariablesSchema = z
   .record(VariableNameSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
-  .superRefine(rejectEncryptedOnNonTextNode);
+  .superRefine(rejectEncryptedOnNonTextNode)
+  .superRefine(rejectValidationContradictions);
 
 export const EdgeVariablesSchema = z
   .record(VariableNameSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
-  .superRefine(rejectEncrypted('Edge'));
+  .superRefine(rejectEncrypted('Edge'))
+  .superRefine(rejectValidationContradictions);
 
 export const EgoVariablesSchema = z
   .record(VariableNameSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncrypted('Ego'))
-  .superRefine(rejectEgoUnique);
+  .superRefine(rejectEgoUnique)
+  .superRefine(rejectValidationContradictions);
 export type Variables = z.infer<typeof VariablesSchema>;
