@@ -1,3 +1,8 @@
+import {
+  RELATIVE_DATE_PICKER_DEFAULT_AFTER,
+  RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
+} from '@codaco/shared-consts';
+
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { addDays, todayYmd } from '../utils/ymd';
@@ -30,8 +35,8 @@ export default function RelativeDatePickerField(
 ) {
   const {
     anchor,
-    before = 180,
-    after = 0,
+    before = RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
+    after = RELATIVE_DATE_PICKER_DEFAULT_AFTER,
     value,
     onChange,
     name,

@@ -2,6 +2,10 @@ import {
   VARIABLE_REFERENCE_VALIDATIONS,
   type Variables,
 } from '@codaco/protocol-validation';
+import {
+  RELATIVE_DATE_PICKER_DEFAULT_AFTER,
+  RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
+} from '@codaco/shared-consts';
 
 import type { VariableEntry } from '../../types';
 import { toVariableEntry } from '../attributes';
@@ -13,12 +17,6 @@ import {
 } from './dateWindow';
 import type { EntityConstraints, VariableConstraints } from './types';
 import { SCALAR_DOMAIN } from './valueSpace';
-
-// Mirrors RelativeDatePicker's own defaults, which useProtocolForm turns into
-// hard min/max validators; a generated value outside this window fails
-// validation even though the protocol declares no explicit bound.
-const RELATIVE_DEFAULT_BEFORE = 180;
-const RELATIVE_DEFAULT_AFTER = 0;
 
 function readNumber(
   source: Record<string, unknown> | undefined,
@@ -52,9 +50,14 @@ function resolveDateWindow(
   const parameters = entry.parameters;
 
   if (entry.component === 'RelativeDatePicker') {
+    // The field's own defaults, which useProtocolForm turns into hard min/max
+    // validators: a generated value outside this window fails validation even
+    // though the protocol declares no explicit bound.
     const anchor = readString(parameters, 'anchor') ?? today;
-    const before = readNumber(parameters, 'before') ?? RELATIVE_DEFAULT_BEFORE;
-    const after = readNumber(parameters, 'after') ?? RELATIVE_DEFAULT_AFTER;
+    const before =
+      readNumber(parameters, 'before') ?? RELATIVE_DATE_PICKER_DEFAULT_BEFORE;
+    const after =
+      readNumber(parameters, 'after') ?? RELATIVE_DATE_PICKER_DEFAULT_AFTER;
     return {
       resolution: 'full',
       min: addDays(anchor, -before),

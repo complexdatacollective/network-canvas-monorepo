@@ -1,6 +1,9 @@
 import { en, Faker } from '@faker-js/faker';
 
-import type { VariableValue } from '@codaco/shared-consts';
+import {
+  DATE_PICKER_DEFAULT_MIN,
+  type VariableValue,
+} from '@codaco/shared-consts';
 
 import {
   addSteps,
@@ -32,16 +35,6 @@ const DISTINCT_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
  * where `addSteps` emits a malformed bound that reparses as year 0.
  */
 const UNIQUE_DATE_REACH_YEARS = 1000;
-
-/**
- * The earliest date a date field offers when the protocol declares no minimum.
- * Duplicated from fresco-ui's `DatePicker` (`DEFAULT_MIN`), which this package
- * cannot depend on — protocol-utilities must stay free of UI dependencies, the
- * same reason `constraints/dateWindow` duplicates that field's ymd arithmetic.
- * A value before it passes every validator and still cannot be selected or
- * displayed.
- */
-const PICKER_DEFAULT_MIN = '1920-01-01';
 
 // valueSpaceSize's unique-text feasibility maths assumes distinctText draws
 // from exactly TEXT_ALPHABET_SIZE symbols. If this literal ever drifted from
@@ -351,7 +344,7 @@ export class ValueGenerator {
     resolution: DateResolution,
   ): string {
     const reach = addSteps(max, -span, resolution);
-    const floor = truncateToResolution(PICKER_DEFAULT_MIN, resolution);
+    const floor = truncateToResolution(DATE_PICKER_DEFAULT_MIN, resolution);
     return reach < floor && floor <= max ? floor : reach;
   }
 

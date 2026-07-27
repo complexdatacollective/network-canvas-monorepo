@@ -1,18 +1,15 @@
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import type { ComponentType } from '@codaco/protocol-validation';
+import {
+  RELATIVE_DATE_PICKER_DEFAULT_AFTER,
+  RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
+} from '@codaco/shared-consts';
 
 type BoundedField = {
   component?: ComponentType;
   parameters?: Record<string, unknown>;
 };
-
-// RelativeDatePickerField's own defaults
-// (packages/fresco-ui/src/form/fields/RelativeDatePicker.tsx), mirrored here
-// so a field that omits `before`/`after` still gets the bounds the rendered
-// component computes for its own min/max attributes.
-const RELATIVE_DEFAULT_BEFORE = 180;
-const RELATIVE_DEFAULT_AFTER = 0;
 
 /**
  * Derive a datetime field's hard `min`/`max` validation bounds from its
@@ -23,9 +20,9 @@ const RELATIVE_DEFAULT_AFTER = 0;
  *
  * - DatePicker forwards `parameters.min`/`parameters.max` verbatim.
  * - RelativeDatePicker pre-computes absolute bounds from
- *   `parameters.anchor`/`before`/`after`, defaulting to today, 180 days
- *   before and 0 days after — the same defaults RelativeDatePickerField
- *   applies to its own native min/max attributes.
+ *   `parameters.anchor`/`before`/`after`, defaulting to today and the shared
+ *   before/after span — the same constants RelativeDatePickerField applies to
+ *   its own native min/max attributes.
  *
  * Returns `{}` for any other component, or when the field has no
  * `parameters` object at all (matching DatePickerField/RelativeDatePickerField,
@@ -50,9 +47,9 @@ export function buildDatePickerBoundProps(
     const { anchor, before, after } = parameters;
     const anchorYmd = typeof anchor === 'string' ? anchor : todayYmd();
     const beforeDays =
-      typeof before === 'number' ? before : RELATIVE_DEFAULT_BEFORE;
+      typeof before === 'number' ? before : RELATIVE_DATE_PICKER_DEFAULT_BEFORE;
     const afterDays =
-      typeof after === 'number' ? after : RELATIVE_DEFAULT_AFTER;
+      typeof after === 'number' ? after : RELATIVE_DATE_PICKER_DEFAULT_AFTER;
     return {
       min: addDays(anchorYmd, -beforeDays),
       max: addDays(anchorYmd, afterDays),

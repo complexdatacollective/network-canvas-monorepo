@@ -1,3 +1,5 @@
+import { DATE_PICKER_DEFAULT_MIN } from '@codaco/shared-consts';
+
 import {
   addSteps,
   type DateResolution,
@@ -43,14 +45,14 @@ const UNIQUE_NUMBER_HEADROOM = 100_000;
 const DEFAULT_MAX_SELECTED = 2;
 
 /**
- * The earliest date a date field offers when the protocol declares no minimum,
- * and how far back a draw reaches from its ceiling without one, in steps at
- * each resolution. Mirrored from `ValueGenerator`'s own date fallbacks the way
- * `generateEntityAttributes` mirrors the number range: what the draw walks is
- * what the count has to describe, and the pair are held together by the
- * conformance tests that draw a date variable's whole space.
+ * How far back a draw reaches from its ceiling when the protocol declares no
+ * floor, in steps at each resolution. Mirrored from `ValueGenerator`'s own date
+ * fallbacks the way `generateEntityAttributes` mirrors the number range: what
+ * the draw walks is what the count has to describe, and the pair are held
+ * together by the conformance tests that draw a date variable's whole space.
+ * The floor both stop at is the date picker's own, read from
+ * `DATE_PICKER_DEFAULT_MIN`.
  */
-const PICKER_DEFAULT_MIN = '1920-01-01';
 const DATE_DEFAULT_REACH: Record<DateResolution, number> = {
   year: 40,
   month: 480,
@@ -171,7 +173,7 @@ function openDateFloor(
     -(unique ? UNIQUE_DATE_REACH : DATE_DEFAULT_REACH)[resolution],
     resolution,
   );
-  const floor = truncateToResolution(PICKER_DEFAULT_MIN, resolution);
+  const floor = truncateToResolution(DATE_PICKER_DEFAULT_MIN, resolution);
   return reach < floor && floor <= max ? floor : reach;
 }
 

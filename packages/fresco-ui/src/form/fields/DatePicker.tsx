@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { DATE_PICKER_DEFAULT_MIN } from '@codaco/shared-consts';
+
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import InputField from './InputField';
@@ -69,7 +71,18 @@ function todayYmd(): Ymd {
   };
 }
 
-const DEFAULT_MIN: Ymd = { year: 1920, month: 1, day: 1 };
+// The shared default arrives in the same YYYY-MM-DD form a caller-supplied
+// bound does, so it is read by the same parser rather than restated as parts
+// here. A malformed shared value is a source mistake, not a bound to ignore.
+function requireYmd(value: string): Ymd {
+  const parsed = parseYmd(value);
+  if (!parsed) {
+    throw new Error(`Expected a YYYY-MM-DD date bound, received "${value}".`);
+  }
+  return parsed;
+}
+
+const DEFAULT_MIN: Ymd = requireYmd(DATE_PICKER_DEFAULT_MIN);
 
 const months: SelectOption[] = [
   { value: '01', label: 'January' },

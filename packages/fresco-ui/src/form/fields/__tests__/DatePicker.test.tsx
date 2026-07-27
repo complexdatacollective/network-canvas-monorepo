@@ -155,6 +155,20 @@ describe('DatePickerField month mode', () => {
     expect(years).not.toContain('2021');
   });
 
+  // The floor is stated here rather than read from DATE_PICKER_DEFAULT_MIN:
+  // @codaco/protocol-utilities generates dates against that constant without
+  // being able to see this component, so moving it has to be a deliberate edit
+  // in both places rather than a silent shift on one side.
+  it('offers no year before 1920 when no min is given', () => {
+    render(<DatePickerField type="month" name="date" max="2020-12-31" />);
+    const [yearSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect) throw new Error('year select not rendered');
+
+    const years = optionValues(yearSelect);
+    expect(years[years.length - 1]).toBe('1920');
+    expect(years).not.toContain('1919');
+  });
+
   it('omits months before min.month when min year is selected', () => {
     render(
       <DatePickerField
