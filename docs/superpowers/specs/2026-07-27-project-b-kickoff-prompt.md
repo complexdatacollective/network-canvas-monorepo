@@ -58,18 +58,27 @@ Validation rules are a **form-field** mechanism — the interview applies them t
 
 That is harmless until the same variable is also rendered in a form somewhere, at which point the form validates a value the bin set without validation. Measured on a protocol where two variables sit in both a name generator's form and a following bin stage: **57 of 80 generated nodes fail validation** (0 of 80 with the form alone) — 45 failing `minSelected: 2`, 24 failing `differentFrom`.
 
-**Proposed rule: reject any validation rule other than `required` on a variable used as an `OrdinalBin` or `CategoricalBin` prompt variable.**
+**The rule to implement: a variable may not be used BOTH as a form field and as an `OrdinalBin` or `CategoricalBin` prompt variable.**
 
-Why that framing rather than "reject it when the variable is also used in a form":
+This was chosen over the narrower alternative (rejecting individual rules a bin cannot satisfy) because it is one sentence a researcher can act on, rather than asking them to reason about which validation rules a drag interaction can honour.
 
-- `CategoricalBin` writes exactly one option value, so `minSelected: 2` is _structurally_ unsatisfiable regardless of what else the protocol contains.
-- `sameAs`, `differentFrom`, `unique` and the comparators have no mechanism in a drag interaction.
-- `required` is genuinely satisfied — a bin assigns a value.
-- Not conditioning on form usage catches the case where the form is added _after_ the bin, which a conditional check would miss at authoring time.
+**It must be enforced in both directions in the Architect editor:**
 
-`rejectEgoUnique` is the precedent: it refuses `unique` on ego variables because the runtime validator cannot apply it there. This is the same shape.
+- Choosing the prompt variable for an OrdinalBin or CategoricalBin must exclude any variable already used as a form field.
+- Adding a variable to a form must exclude any variable already used as a bin prompt variable.
 
-Worth checking during brainstorming whether any other interface assigns a variable outside a form field and needs the same treatment.
+Enforcing only one direction leaves the other order of authoring open, which is how a researcher would actually hit it.
+
+Things to work out during brainstorming:
+
+- **What counts as "used in a form".** The form-field surfaces are `form.fields[].variable` on EgoForm / AlterForm / AlterEdgeForm / the name-generator variants, plus NetworkComposer's `nodeForm.fields[]` and `edges[].form.fields[]`, plus FamilyPedigree's forms. Confirm that list against the schema rather than trusting it.
+- **`CategoricalBin.otherVariable` is a genuine edge case.** It IS rendered in a `Field` (an `InputField` for the free-text "other" option) — but that Field carries a hard-coded `required` and does NOT receive the codebook variable's validation props. So it is form-rendered yet unvalidated. Decide deliberately whether it counts as form usage, bin usage, or neither.
+- **Existing protocols in the wild.** A migration cannot simply strip one side — removing the form field loses data collection, removing the bin stage loses an interview step. This probably needs to surface as an Architect validation error the researcher resolves, rather than an automatic migration.
+- Whether the schema should reject it outright, or whether this is better as Architect logic-validation plus editor UI, given the migration problem above.
+
+`rejectEgoUnique` remains the precedent for the mechanism, if a schema-level refinement turns out to be right.
+
+Worth checking whether any other interface assigns a variable outside a form field and needs the same treatment.
 
 ## Important: things that look contradictory and are not
 
