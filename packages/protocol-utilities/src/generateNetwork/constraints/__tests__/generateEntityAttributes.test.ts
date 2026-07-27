@@ -1466,4 +1466,176 @@ describe('generateEntityAttributes', () => {
 
     expect(first).toEqual(second);
   });
+
+  it('satisfies the corner shape greedy drawing painted itself into, on every seed', () => {
+    // B drawn 4 leaves D and A nothing that satisfies every rule at once, so
+    // a draw that never reconsiders fails half its seeds. B=3, A=4, D∈{3,4}
+    // always exists; finding it is what the complete search is for.
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: {
+            minValue: 3,
+            maxValue: 4,
+            differentFrom: asEntityAttributeReference('b'),
+          },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: { minValue: 3, maxValue: 4 },
+        },
+        d: {
+          name: 'D',
+          type: 'number',
+          validation: {
+            minValue: 2,
+            maxValue: 4,
+            lessThanOrEqualToVariable: asEntityAttributeReference('a'),
+            greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          Number(attrs.a) !== Number(attrs.b) &&
+          Number(attrs.d) <= Number(attrs.a) &&
+          Number(attrs.d) >= Number(attrs.b) &&
+          Number(attrs.a) >= 3 &&
+          Number(attrs.a) <= 4 &&
+          Number(attrs.b) >= 3 &&
+          Number(attrs.b) <= 4 &&
+          Number(attrs.d) >= 2 &&
+          Number(attrs.d) <= 4,
+      ),
+    ).toEqual([]);
+  });
+
+  it('varies the assignment a solved component takes across entities', () => {
+    // 45 assignments satisfy a < b over [0, 9]. A search that always returned
+    // the lexicographically-first one would hand every entity identical
+    // values, which is exactly what synthetic data must not do.
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 9 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 9,
+            greaterThanVariable: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const ctx = makeContext(11);
+    const seen = new Map<string, number>();
+    for (let index = 0; index < 200; index++) {
+      const attrs = generateEntityAttributes(
+        entity,
+        ctx,
+        { entity: 'node', type: 'person' },
+        index,
+      );
+      expect(Number(attrs.b)).toBeGreaterThan(Number(attrs.a));
+      const key = `${String(attrs.a)}|${String(attrs.b)}`;
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    }
+
+    expect(seen.size).toBeGreaterThanOrEqual(20);
+    expect(Math.max(...seen.values())).toBeLessThanOrEqual(80);
+  });
+
+  it('issues distinct unique values through a solved component', () => {
+    const entity = buildEntityConstraints(
+      {
+        u: {
+          name: 'U',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 9,
+            unique: true,
+            differentFrom: asEntityAttributeReference('v'),
+          },
+        },
+        v: {
+          name: 'V',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 9 },
+        },
+      },
+      TODAY,
+    );
+
+    const ctx = makeContext(3);
+    const drawn = new Set<number>();
+    for (let index = 0; index < 8; index++) {
+      const attrs = generateEntityAttributes(
+        entity,
+        ctx,
+        { entity: 'node', type: 'person' },
+        index,
+      );
+      expect(attrs.u).not.toBe(attrs.v);
+      drawn.add(Number(attrs.u));
+    }
+
+    expect(drawn.size).toBe(8);
+  });
+
+  it('remains deterministic for a seed when a component is solved', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: {
+            minValue: 3,
+            maxValue: 4,
+            differentFrom: asEntityAttributeReference('b'),
+          },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: { minValue: 3, maxValue: 4 },
+        },
+      },
+      TODAY,
+    );
+
+    const run = (): Record<string, VariableValue>[] => {
+      const ctx = makeContext(5);
+      const results: Record<string, VariableValue>[] = [];
+      for (let index = 0; index < 5; index++) {
+        results.push(
+          generateEntityAttributes(
+            entity,
+            ctx,
+            { entity: 'node', type: 'person' },
+            index,
+          ),
+        );
+      }
+      return results;
+    };
+
+    expect(run()).toEqual(run());
+  });
 });

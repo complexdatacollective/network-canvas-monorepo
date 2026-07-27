@@ -12,11 +12,18 @@ import {
 import { type ConstraintConflict, SyntheticDataConstraintError } from './error';
 import {
   comparatorGap,
+  differentFromGroups,
   groupComparatorEdges,
   intersectGroupConstraints,
   propagateComparatorBounds,
   tighten,
 } from './groupConstraints';
+import {
+  type SolvableComponent,
+  solvableComponents,
+  solveComponent,
+  type TractableComponent,
+} from './solver';
 import type {
   ConstrainedVariable,
   EntityConstraints,
@@ -40,43 +47,6 @@ export type EntityScopeRef =
 
 function scopeKey(scope: EntityScopeRef): string {
   return scope.entity === 'ego' ? 'ego' : `${scope.entity}:${scope.type}`;
-}
-
-/**
- * Which groups each group's value must differ from.
- *
- * `differentFrom` binds both of its ends, so the pair is recorded from both:
- * the ordering pass keeps one dependency edge per pair and drops it entirely
- * when it would close a cycle, which leaves the group that declared the rule as
- * likely to be drawn first as the group it names.
- */
-function differentFromGroups(
-  entity: EntityConstraints,
-  groupOf: Map<string, string>,
-): Map<string, Set<string>> {
-  const excluded = new Map<string, Set<string>>();
-
-  const link = (from: string, to: string): void => {
-    const targets = excluded.get(from) ?? new Set<string>();
-    targets.add(to);
-    excluded.set(from, targets);
-  };
-
-  for (const [id, variable] of entity) {
-    const targetId = variable.constraints.differentFrom;
-    if (targetId === undefined || !entity.has(targetId)) continue;
-
-    const group = groupOf.get(id) ?? id;
-    const target = groupOf.get(targetId) ?? targetId;
-    // One group holds a single value, which cannot differ from itself;
-    // `resolveGenerationOrder` reports that as a contradiction.
-    if (group === target) continue;
-
-    link(group, target);
-    link(target, group);
-  }
-
-  return excluded;
 }
 
 function isNumeric(variable: ConstrainedVariable): boolean {
@@ -604,6 +574,19 @@ export function generateEntityAttributes(
     excluded,
   };
 
+  const componentOf = new Map<string, SolvableComponent>();
+  for (const component of solvableComponents(
+    propagated,
+    order,
+    edges,
+    excluded,
+  )) {
+    for (const group of component.groups) componentOf.set(group, component);
+  }
+  const state: DrawState = { scope, index, resolved, only, existing };
+  const solved = new Map<string, VariableValue>();
+  const attempted = new Set<SolvableComponent>();
+
   for (const group of order) {
     const memberIds = membersOf.get(group) ?? [group];
     if (only && !memberIds.some((id) => only.has(id))) continue;
@@ -611,13 +594,35 @@ export function generateEntityAttributes(
     const variable = plan.groups.get(group);
     if (variable === undefined) continue;
 
-    const value = drawGroup(plan, group, variable, ctx, {
-      scope,
-      index,
-      resolved,
-      only,
-      existing,
-    });
+    // A whole component is settled at its first drawn group, so every value
+    // is chosen in sight of every rule. Anything short of a solution — an
+    // oversized component, an exhausted search, a genuinely unsatisfiable
+    // set — leaves `solved` empty and the greedy path below drawing exactly
+    // as it always has.
+    const component = componentOf.get(group);
+    if (component?.tractable !== undefined && !attempted.has(component)) {
+      attempted.add(component);
+      const assignment = solveTractableComponent(
+        component.tractable,
+        plan,
+        ctx,
+        state,
+      );
+      if (assignment !== undefined) {
+        for (const [solvedGroup, value] of assignment) {
+          solved.set(solvedGroup, value);
+        }
+      }
+    }
+
+    const value = drawGroup(
+      plan,
+      group,
+      variable,
+      ctx,
+      state,
+      solved.get(group),
+    );
 
     for (const id of memberIds) {
       resolved[id] = value;
@@ -626,6 +631,119 @@ export function generateEntityAttributes(
   }
 
   return produced;
+}
+
+/**
+ * One complete solve of a component for the entity being generated.
+ *
+ * Groups the entity keeps values for enter as pins; groups outside the run
+ * with nothing held are dropped along with their constraints, which is what
+ * the greedy path does with a rule whose counterpart never resolves. Free
+ * groups' domains lose whatever a unique registry has already issued — their
+ * own previous values are given back first, so a redraw may keep them — and
+ * are searched in a seeded shuffle: the run stays reproducible for a seed
+ * while entities land on different assignments.
+ *
+ * Returns the free groups' values, or undefined when the search found no
+ * solution or ran out of budget — never a refusal, always a fallback.
+ */
+function solveTractableComponent(
+  tractable: TractableComponent,
+  plan: Plan,
+  ctx: GenerationContext,
+  { scope, resolved, only, existing }: DrawState,
+): Map<string, VariableValue> | undefined {
+  const registry = scopeKey(scope);
+  const pins = new Map<string, VariableValue>();
+  const exclude = new Set<string>();
+  const free: string[] = [];
+
+  for (const group of tractable.groups) {
+    const memberIds = plan.membersOf.get(group) ?? [group];
+
+    if (only && !memberIds.some((id) => only.has(id))) {
+      const held = groupValue(memberIds, resolved);
+      // A null counterpart never binds a comparator, and no drawn value can
+      // collide with it, so dropping the group mirrors ignoring the rule.
+      if (held === undefined || held === null) exclude.add(group);
+      else pins.set(group, held);
+      continue;
+    }
+
+    if (only && existing) {
+      const keeper = memberIds.find(
+        (id) => !only.has(id) && existing[id] !== undefined,
+      );
+      if (keeper !== undefined) {
+        const held = existing[keeper];
+        if (held === undefined || held === null) exclude.add(group);
+        else pins.set(group, held);
+        continue;
+      }
+    }
+
+    free.push(group);
+  }
+
+  if (free.length === 0) return undefined;
+
+  const uniqueSlots = new Map<string, string>();
+  for (const group of free) {
+    if (plan.groups.get(group)?.constraints.unique !== true) continue;
+    const memberIds = plan.membersOf.get(group) ?? [group];
+    uniqueSlots.set(group, slotOf(memberIds));
+
+    // Released before the domains are read, so a solution that lands back on
+    // the entity's own value reclaims it rather than being refused it. The
+    // greedy fallback re-releases on failure, which the registry tolerates.
+    if (existing !== undefined) {
+      const previous = groupValue(memberIds, existing);
+      if (previous !== undefined) {
+        ctx.uniqueRegistry.release(registry, slotOf(memberIds), previous);
+      }
+    }
+  }
+
+  const verdict = solveComponent(tractable, {
+    pins,
+    exclude,
+    ...(uniqueSlots.size > 0
+      ? {
+          restrict: (group: string, value: VariableValue): boolean => {
+            const slot = uniqueSlots.get(group);
+            return (
+              slot === undefined ||
+              !ctx.uniqueRegistry.isTaken(registry, slot, value)
+            );
+          },
+        }
+      : {}),
+    orderDomain: (_group, values) => seededShuffle(ctx, values),
+  });
+
+  if (verdict.kind !== 'sat') return undefined;
+
+  const assignment = new Map<string, VariableValue>();
+  for (const group of free) {
+    const value = verdict.assignment.get(group);
+    if (value !== undefined) assignment.set(group, value);
+  }
+  return assignment;
+}
+
+/** Fisher-Yates over the run's seeded generator, so output is reproducible. */
+function seededShuffle(
+  ctx: GenerationContext,
+  values: readonly VariableValue[],
+): VariableValue[] {
+  const copy = [...values];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = ctx.valueGen.randomInt(0, i);
+    const swap = copy[i]!;
+    copy[i] = copy[j]!;
+    copy[j] = swap;
+  }
+  return copy;
 }
 
 /** The entity's groups and the rules between them, resolved once. */
@@ -718,6 +836,7 @@ function drawGroup(
   variable: ConstrainedVariable,
   ctx: GenerationContext,
   { scope, index, resolved, only, existing }: DrawState,
+  solved?: VariableValue,
 ): VariableValue {
   const { membersOf, edges } = plan;
   const memberIds = membersOf.get(group) ?? [group];
@@ -739,6 +858,10 @@ function drawGroup(
       if (!only.has(id) && held !== undefined) return claim(held);
     }
   }
+
+  // A value the component solve already chose. Its slot was released before
+  // the solve read the registry, so claiming is all that is left to do.
+  if (solved !== undefined) return claim(solved);
 
   // A group being redrawn over a value the entity already holds gives that
   // value's slot back first. Without it the entity would occupy two of the

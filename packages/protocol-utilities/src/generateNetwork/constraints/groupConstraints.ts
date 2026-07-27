@@ -210,6 +210,43 @@ export function comparatorGap(type: 'number' | 'scalar'): number {
 }
 
 /**
+ * Which groups each group's value must differ from.
+ *
+ * `differentFrom` binds both of its ends, so the pair is recorded from both:
+ * the ordering pass keeps one dependency edge per pair and drops it entirely
+ * when it would close a cycle, which leaves the group that declared the rule as
+ * likely to be drawn first as the group it names.
+ */
+export function differentFromGroups(
+  entity: EntityConstraints,
+  groupOf: Map<string, string>,
+): Map<string, Set<string>> {
+  const excluded = new Map<string, Set<string>>();
+
+  const link = (from: string, to: string): void => {
+    const targets = excluded.get(from) ?? new Set<string>();
+    targets.add(to);
+    excluded.set(from, targets);
+  };
+
+  for (const [id, variable] of entity) {
+    const targetId = variable.constraints.differentFrom;
+    if (targetId === undefined || !entity.has(targetId)) continue;
+
+    const group = groupOf.get(id) ?? id;
+    const target = groupOf.get(targetId) ?? targetId;
+    // One group holds a single value, which cannot differ from itself;
+    // `resolveGenerationOrder` reports that as a contradiction.
+    if (group === target) continue;
+
+    link(group, target);
+    link(target, group);
+  }
+
+  return excluded;
+}
+
+/**
  * Every comparator in the entity, rewritten as an ordering between the groups
  * that hold the two values. Both ends of an edge inside one group are the same
  * value, so nothing is left to order — a strict comparator of that shape is a
@@ -245,12 +282,13 @@ type Range = {
 };
 
 /**
- * How far apart a strict comparator holds its two ends, in the units the upper
- * end is drawn in: a whole number, one step of the scalar grid, or one unit at
- * the resolution both date windows share.
+ * How far apart a strict comparator provably holds its two ends: the finer of
+ * the two ends' granularities, or one unit at the resolution both date windows
+ * share. `gridUpper`/`gridLower` say which end sits on the scalar grid, so the
+ * bound stepped towards that end can be rounded back onto it.
  */
-type Span =
-  | { kind: 'numeric'; gap: number; grid: boolean }
+export type Span =
+  | { kind: 'numeric'; gap: number; gridUpper: boolean; gridLower: boolean }
   | { kind: 'date'; resolution: DateResolution };
 
 function isNumeric(variable: ConstrainedVariable): boolean {
@@ -261,17 +299,29 @@ function isNumeric(variable: ConstrainedVariable): boolean {
  * Comparisons the generator cannot step across — a number against a date, or
  * two dates written at different resolutions, whose bounds would not even
  * compare as strings — leave nothing to propagate.
+ *
+ * The numeric gap is the finer of the two ends' granularities, which is the
+ * largest step a strict comparison is guaranteed to leave: both ends are
+ * multiples of it, so any two distinct values differ by at least it. Stepping
+ * by the coarser end's unit instead over-tightens — a scalar strictly below a
+ * number pinned to 1 still reaches 0.99, not 0 — and an over-tight bound turns
+ * satisfiable protocols into refusals.
  */
-function comparatorSpan(
+export function comparatorSpan(
   lower: ConstrainedVariable,
   upper: ConstrainedVariable,
 ): Span | undefined {
   if (isNumeric(lower) && isNumeric(upper)) {
-    const grid = upper.entry.type === 'scalar';
+    const gridUpper = upper.entry.type === 'scalar';
+    const gridLower = lower.entry.type === 'scalar';
     return {
       kind: 'numeric',
-      gap: comparatorGap(grid ? 'scalar' : 'number'),
-      grid,
+      gap: Math.min(
+        comparatorGap(gridUpper ? 'scalar' : 'number'),
+        comparatorGap(gridLower ? 'scalar' : 'number'),
+      ),
+      gridUpper,
+      gridLower,
     };
   }
 
@@ -416,7 +466,7 @@ export function propagateComparatorBounds(
     if (span?.kind === 'numeric' && from.minValue !== undefined) {
       into.minValue = tighten(
         into.minValue,
-        onGrid(from.minValue + steps * span.gap, span.grid),
+        onGrid(from.minValue + steps * span.gap, span.gridUpper),
         true,
       );
     } else if (span?.kind === 'date' && from.windowMin !== undefined) {
@@ -441,7 +491,7 @@ export function propagateComparatorBounds(
     if (span?.kind === 'numeric' && from.maxValue !== undefined) {
       into.maxValue = tighten(
         into.maxValue,
-        onGrid(from.maxValue - steps * span.gap, span.grid),
+        onGrid(from.maxValue - steps * span.gap, span.gridLower),
         false,
       );
     } else if (span?.kind === 'date' && from.windowMax !== undefined) {

@@ -122,4 +122,58 @@ describe('propagateComparatorBounds', () => {
 
     expect([...propagate(entity).inverted]).toEqual([]);
   });
+
+  it('steps a strict scalar-below-number comparison by the scalar grid', () => {
+    // `s < n` with `n` pinned to 1: the largest grid value below 1 is 0.99.
+    // Stepping by the number's whole-unit gap instead would empty the scalar's
+    // range and falsely refuse a protocol `s = 0.5, n = 1` satisfies.
+    const entity = buildEntityConstraints(
+      {
+        s: {
+          name: 'S',
+          type: 'scalar',
+          component: 'VisualAnalogScale',
+          validation: { lessThanVariable: asEntityAttributeReference('n') },
+        },
+        n: {
+          name: 'N',
+          type: 'number',
+          validation: { minValue: 1, maxValue: 1 },
+        },
+      },
+      TODAY,
+    );
+
+    const { groups, inverted } = propagate(entity);
+
+    expect(groups.get('s')?.constraints.maxValue).toBe(0.99);
+    expect([...inverted]).toEqual([]);
+  });
+
+  it('keeps a scalar ceiling stepped down from a number on the scalar grid', () => {
+    // 3 - 0.01 lands beside the grid in binary floating point; the stored
+    // bound must be the grid value itself or every draw would clamp oddly.
+    const entity = buildEntityConstraints(
+      {
+        s: {
+          name: 'S',
+          type: 'scalar',
+          component: 'VisualAnalogScale',
+          validation: { lessThanVariable: asEntityAttributeReference('n') },
+        },
+        n: {
+          name: 'N',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 3 },
+        },
+      },
+      TODAY,
+    );
+
+    const { groups } = propagate(entity);
+
+    // The scalar's own domain caps it at 1 before the comparator's 2.99 could.
+    expect(groups.get('s')?.constraints.maxValue).toBe(1);
+    expect(groups.get('n')?.constraints.minValue).toBe(0.01);
+  });
 });

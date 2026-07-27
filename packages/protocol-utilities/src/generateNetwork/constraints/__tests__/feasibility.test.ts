@@ -524,6 +524,157 @@ describe('analyseFeasibility', () => {
     expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
   });
 
+  it('reports a differentFrom its comparator pins to a single shared value', () => {
+    // Interval reasoning alone accepts this: every bound overlaps. But
+    // `b <= a` with these ranges forces both to 4, and 4 cannot differ from 4.
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 3, maxValue: 4, differentFrom: 'b' },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: {
+          minValue: 4,
+          maxValue: 5,
+          lessThanOrEqualToVariable: 'a',
+        },
+      },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['A', 'B']);
+    expect(conflicts[0]?.rules).toContain('differentFrom');
+    expect(conflicts[0]?.rules).toContain('lessThanOrEqualToVariable');
+    expect(conflicts[0]?.reason).toContain('no combination of values');
+  });
+
+  it('accepts the pinned differentFrom shape once the bounds leave an escape', () => {
+    // Identical rules, but b's floor is 3: b = 3, a = 4 satisfies everything.
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 3, maxValue: 4, differentFrom: 'b' },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: {
+          minValue: 3,
+          maxValue: 4,
+          lessThanOrEqualToVariable: 'a',
+        },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('accepts the corner shape the greedy path cannot always draw', () => {
+    // B=3, A=4, D∈{3,4} satisfies every rule; refusing it would trade a
+    // draw-order defect for a soundness one.
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 3, maxValue: 4, differentFrom: 'b' },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: { minValue: 3, maxValue: 4 },
+      },
+      d: {
+        name: 'D',
+        type: 'number',
+        validation: {
+          minValue: 2,
+          maxValue: 4,
+          lessThanOrEqualToVariable: 'a',
+          greaterThanOrEqualToVariable: 'b',
+        },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('accepts a strict chain from a number through a scalar to a pinned number', () => {
+    // m = 0, s = 0.5, n = 1: the scalar grid holds ninety-nine values strictly
+    // between the two integers.
+    const codebook = codebookWith({
+      m: {
+        name: 'M',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 0 },
+      },
+      s: {
+        name: 'S',
+        type: 'scalar',
+        component: 'VisualAnalogScale',
+        validation: { greaterThanVariable: 'm', lessThanVariable: 'n' },
+      },
+      n: {
+        name: 'N',
+        type: 'number',
+        validation: { minValue: 1, maxValue: 1 },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('reports an odd ring of mutually different booleans', () => {
+    // Five booleans in a differentFrom ring form an odd cycle over two
+    // values, which no assignment two-colours. Only a complete search can
+    // see this; every pair in isolation is satisfiable.
+    const variables: Record<string, unknown> = {};
+    for (let i = 0; i < 5; i++) {
+      variables[`v${i}`] = {
+        name: `V${i}`,
+        type: 'boolean',
+        validation: { differentFrom: i > 0 ? `v${i - 1}` : 'v4' },
+      };
+    }
+
+    const conflicts = analyseFeasibility(
+      codebookWith(variables),
+      [nameGenerator],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['differentFrom']);
+    expect(conflicts[0]?.variableNames).toEqual(['V0', 'V1', 'V2', 'V3', 'V4']);
+  });
+
+  it('reports two single-option ordinals required to differ', () => {
+    const codebook = codebookWith({
+      x: {
+        name: 'X',
+        type: 'ordinal',
+        options: [{ label: 'Only', value: 1 }],
+      },
+      y: {
+        name: 'Y',
+        type: 'ordinal',
+        options: [{ label: 'Only', value: 1 }],
+        validation: { differentFrom: 'x' },
+      },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['X', 'Y']);
+    expect(conflicts[0]?.rules).toEqual(['differentFrom']);
+  });
+
   it('reports unique against a value space smaller than the worst-case count', () => {
     const codebook = codebookWith({
       band: {
