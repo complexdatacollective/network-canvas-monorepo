@@ -463,7 +463,18 @@ const max: ValidationFunction<number | string> = (maxParam) => () => {
  *
  * Short-circuits on an empty/unanswered field (undefined/null or an empty
  * array) so this optional rule only applies once a selection has been made;
- * `required` owns emptiness.
+ * `required` owns emptiness. This is deliberate, not a gap, and has been
+ * re-verified: `[]` is indistinguishable from "unanswered" at the value
+ * level — CheckboxGroup (see CheckboxGroup.tsx `handleChange`) produces the
+ * exact same `[]` whether a field was never touched or was ticked then
+ * unticked, so there is no way to flag "cleared on purpose" without also
+ * flagging "never answered". The protocol schema agrees: `minSelected` no
+ * longer implies `required` as of the v8 migration (see
+ * protocol-validation/src/schemas/8/migration.ts, the "min* validator no
+ * longer implies required" note and backfill step), and
+ * `categoricalValidations` in protocol-validation's variable.ts lets a
+ * codebook pick `minSelected` without `required`. Pair `minSelected` with
+ * `required: true` on the variable to also reject an empty selection.
  */
 const minSelected: ValidationFunction<number> = (minParam) => () => {
   invariant(typeof minParam === 'number', 'Min items must be specified');
