@@ -23,11 +23,13 @@ function renderStrong(chunks: ReactNode) {
 }
 
 export function Hero({
+  backdropItemVariants,
   containerVariants,
   itemVariants,
   newsItems,
   scrollStyle,
 }: {
+  backdropItemVariants?: Variants;
   containerVariants?: Variants;
   itemVariants?: Variants;
   newsItems: readonly NewsItem[];
@@ -76,7 +78,7 @@ export function Hero({
         </motion.div>
 
         <motion.div
-          variants={itemVariants}
+          variants={backdropItemVariants}
           data-testid="hero-news-wrapper"
           className="entrance-motion-item tablet-portrait:col-start-1 tablet-portrait:row-start-3 tablet-portrait:mt-0 tablet-portrait:min-w-0 mt-12"
         >

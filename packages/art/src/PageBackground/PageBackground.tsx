@@ -619,10 +619,11 @@ export function PageBackground({
       ref={layerRef}
       aria-hidden="true"
       data-testid="page-background-layer"
-      className="pointer-events-none fixed inset-0 z-1 overflow-hidden"
+      className="pointer-events-none fixed inset-0 overflow-hidden"
       style={{
         ...maskStyle,
         ...scrollStyle,
+        zIndex: -1,
         visibility: resolved === false ? 'hidden' : undefined,
       }}
     >
