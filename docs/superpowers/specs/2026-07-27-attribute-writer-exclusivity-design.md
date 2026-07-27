@@ -67,15 +67,36 @@ migrated to v8 classifies identically to a native v8 one.
 | --- | --- |
 | `FormFieldSchema.variable` | `stages[].form.fields[].variable` (EgoForm, AlterForm, AlterEdgeForm, NameGenerator) and `stages[].nodeConfig.form[].variable` (FamilyPedigree) |
 | `ComposerFormFieldSchema.variable` | `stages[].nodeForm.fields[].variable`, `stages[].edges[].form.fields[].variable` (NetworkComposer) |
-| `NameGeneratorQuickAdd.quickAdd` | `stages[].quickAdd` — `QuickAddField` threads the codebook validation props (validate-on-change), so it is a validating writer |
+| `NameGeneratorQuickAdd.quickAdd` | `stages[].quickAdd` — validated **after this project's redesign**: today `QuickNodeForm` passes hard-coded `required` + `minLength: 1` and ignores codebook rules; the rewire threads the codebook variable's validation through the same field-metadata path, exactly like the `otherVariable` redesign. The migration sets `required: true` on quickAdd targets unless already `true`, and Architect seeds `required: true` on newly created quickAdd variables. (NetworkComposer's `quickAdd` has no field machinery — direct `addNode` — and stays `unvalidatedAttribute`.) |
 | `categoricalBinPromptSchema.otherVariable` | `stages[].prompts[].otherVariable` — validated after the redesign above |
 
-**unvalidatedAttribute** — writers that bypass validation: OrdinalBin and
-CategoricalBin `prompts[].variable`, the Sociogram highlight variable,
-TieStrengthCensus's edge variable, and the census/pedigree nomination
-writers. The implementation plan performs a one-time definitive sweep of
-every tagged reference in `schemas/8/` and classifies each writer site;
-future stage types classify themselves by tagging at authoring time.
+**unvalidatedAttribute** — writers that bypass validation (the definitive
+sweep, every site traced to its interview dispatch): OrdinalBin and
+CategoricalBin `prompts[].variable`; NameGenerator-family
+`prompts[].additionalAttributes[].variable` (reducer-applied boolean flags);
+Sociogram `prompts[].highlight.variable` (tap toggle) and
+`prompts[].layout.layoutVariable` (drag positions); TieStrengthCensus
+`prompts[].edgeVariable` (closed option domain, but no rules honoured);
+Geospatial `prompts[].variable`; FamilyPedigree
+`nominationPrompts[].variable` (toggle) and all eight
+`nodeConfig`/`edgeConfig` variables (wizard/transform writes); NetworkComposer
+`quickAdd`, `layoutVariable`, and `convexHullVariable`.
+
+**Read-only (untagged for usage, outside the rule)**: Narrative preset
+`layoutVariable`/`groupVariable`/`highlight[]`, NarrativePedigree
+`diseases[].variable` (its write is FamilyPedigree's nomination toggle), the
+six validation reference rules, shape-mapping variables, filter-rule
+attributes, and the untagged sort keys. DyadCensus and OneToManyDyadCensus
+create edges only and write no attributes.
+
+Two collector facts the implementation must handle: the FamilyPedigree and
+NarrativePedigree stages declare no top-level `subject`, so their hits carry
+`subject: undefined` — the conflict finder derives the entity/type from the
+stage's own `nodeConfig`/`edgeConfig` instead of skipping them; and the
+narrowed duplicate tag declarations in `common/prompts.ts` (highlight,
+CategoricalBin variable/otherVariable) must carry identical `usage` values to
+their base declarations or the collector's union-merge de-dupe produces
+spurious double hits.
 
 **The rule**: no `(subject entity, subject type, variable id)` may have hits
 in both classes. Same-class sharing remains legal — two bins may share a
@@ -103,12 +124,19 @@ untagged display references).
   `required` backfill, with a notes line. Deliberately no migration for role
   conflicts themselves.
 
-### interview (CategoricalBin)
+### interview (CategoricalBin + NameGenerator QuickAdd)
 
-The other-input `Field` is wired to the codebook variable's validation as
-described above. This is an interface change: implementation runs the
+Two rewires of the same class, replacing hard-coded validation with the
+codebook variable's rules via the forms field-metadata path
+(`selectFieldMetadataFromVariables` → validation props): the CategoricalBin
+other-input `Field`, and `QuickNodeForm`'s quick-add field (dropping its
+hard-coded `required` + `minLength: 1`). No runtime fallbacks in either case.
+Both are interface changes: implementation runs the
 `verifying-an-interface-change` matrix (e2e configuration matrix, ARIA
-snapshots, Chromatic) and updates the CategoricalBin stories.
+snapshots, Chromatic) for CategoricalBin and NameGenerator, and updates their
+stories. The migration's `required` backfill covers both target sets
+(otherVariable targets and quickAdd targets) with the same
+unless-already-`true` semantics.
 
 ### Architect
 
