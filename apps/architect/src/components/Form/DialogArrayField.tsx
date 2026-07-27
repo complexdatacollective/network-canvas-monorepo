@@ -132,6 +132,7 @@ type DialogEditorProps = FrescoReduxArrayFieldEditorProps<ArrayItem> & {
   editorFieldsComponent: Renderer;
   editorProps?: Record<string, unknown>;
   editorTitle: string;
+  editorValidate?: (values: Record<string, unknown>) => Record<string, unknown>;
   itemSelector?: ItemSelector;
   normalizeItem: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
@@ -150,6 +151,7 @@ const DialogEditor = ({
   editorFieldsComponent,
   editorProps,
   editorTitle,
+  editorValidate,
   itemSelector,
   normalizeItem,
   onBeforeSave,
@@ -241,6 +243,7 @@ const DialogEditor = ({
         id={editFormName}
         onSubmit={handleSave}
         initialValues={initialValues}
+        validate={editorValidate}
       >
         <Layout>
           {createElement(editorFieldsComponent, {
@@ -267,6 +270,7 @@ type DialogArrayFieldOwnProps<T extends ArrayItem> = Omit<
   editorFieldsComponent: Renderer;
   editorProps?: Record<string, unknown>;
   editorTitle: string;
+  editorValidate?: (values: Record<string, unknown>) => Record<string, unknown>;
   itemLabel?: string;
   itemSelector?: ItemSelector;
   itemTemplate?: () => Partial<T>;
@@ -285,6 +289,7 @@ function DialogArrayFieldBase<T extends ArrayItem>({
   editorFieldsComponent,
   editorProps,
   editorTitle,
+  editorValidate,
   itemLabel = 'item',
   itemSelector,
   itemTemplate = () => ({}),
@@ -338,6 +343,7 @@ function DialogArrayFieldBase<T extends ArrayItem>({
         editorFieldsComponent,
         editorProps,
         editorTitle,
+        editorValidate,
         itemSelector,
         normalizeItem,
         onBeforeSave,

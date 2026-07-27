@@ -4,6 +4,7 @@ import {
   buildProspectiveVariables,
   DRAFT_VARIABLE_ID,
   findDraftContradictions,
+  makeFieldEditorValidate,
 } from '../contradictions';
 
 const numberVariable = (
@@ -93,5 +94,58 @@ describe('findDraftContradictions', () => {
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('minSelectedExceedsOptions');
+  });
+});
+
+describe('makeFieldEditorValidate', () => {
+  const allVariables = {
+    colors: {
+      name: 'colors',
+      type: 'categorical',
+      options: [
+        { label: 'Red', value: 'red' },
+        { label: 'Blue', value: 'blue' },
+        { label: 'Green', value: 'green' },
+      ],
+      validation: { minSelected: 3 },
+    },
+  };
+
+  it('flags a contradiction introduced by shrinking the options', () => {
+    const validate = makeFieldEditorValidate(allVariables);
+    const errors = validate({
+      variable: 'colors',
+      validation: { minSelected: 3 },
+      options: [
+        { label: 'Red', value: 'red' },
+        { label: 'Blue', value: 'blue' },
+      ],
+    });
+    expect(errors.validation).toContain('minSelected');
+  });
+
+  it('passes a coherent draft and ignores dialogs without validation', () => {
+    const validate = makeFieldEditorValidate(allVariables);
+    expect(
+      validate({
+        variable: 'colors',
+        validation: { minSelected: 3 },
+        options: [
+          { label: 'Red', value: 'red' },
+          { label: 'Blue', value: 'blue' },
+          { label: 'Green', value: 'green' },
+        ],
+      }),
+    ).toEqual({});
+    expect(validate({ variable: 'colors' })).toEqual({});
+  });
+
+  it('derives the type from the chosen component for a new variable', () => {
+    const validate = makeFieldEditorValidate({});
+    const errors = validate({
+      component: 'Text',
+      validation: { minLength: 10, maxLength: 2 },
+    });
+    expect(errors.validation).toContain('minLength');
   });
 });

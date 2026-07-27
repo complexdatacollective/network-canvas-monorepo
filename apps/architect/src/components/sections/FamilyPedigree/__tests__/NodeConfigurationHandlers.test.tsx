@@ -45,6 +45,7 @@ vi.mock('~/ducks/hooks', () => ({ useAppDispatch: () => noop }));
 
 vi.mock('~/selectors/codebook', () => ({
   getVariableOptionsForSubject: () => [],
+  getVariablesForSubjectSelector: () => ({}),
   makeGetVariable: () => () => undefined,
 }));
 
