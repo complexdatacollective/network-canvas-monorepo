@@ -362,8 +362,19 @@ describe('generateConstrained', () => {
     }
   });
 
+  // A window left open at the top, which is what a descriptor assembled outside
+  // `buildVariableConstraints` carries: its own windows close at the last date
+  // the field offers, so the generator's fallback — and the date injected into
+  // it — is what an open one exercises.
   it('resolves an unbounded date against the injected date, not the clock', () => {
-    const variable = make({ id: 'v', name: 'V', type: 'datetime' });
+    const entry: VariableEntry = { id: 'v', name: 'V', type: 'datetime' };
+    const variable: ConstrainedVariable = {
+      entry,
+      constraints: {
+        ...buildVariableConstraints(entry, TODAY),
+        dateWindow: { resolution: 'full' },
+      },
+    };
 
     const first = new ValueGenerator(7, TODAY).generateConstrained(variable, 0);
     const second = new ValueGenerator(7, TODAY).generateConstrained(

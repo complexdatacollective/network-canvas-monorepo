@@ -1,4 +1,9 @@
-import { stepsBetween } from './dateWindow';
+import {
+  addSteps,
+  type DateResolution,
+  stepsBetween,
+  truncateToResolution,
+} from './dateWindow';
 import type { ConstrainedVariable, VariableConstraints } from './types';
 
 /**
@@ -36,6 +41,26 @@ const UNIQUE_NUMBER_HEADROOM = 100_000;
 
 /** How many options a categorical draw picks when nothing declares a ceiling. */
 const DEFAULT_MAX_SELECTED = 2;
+
+/**
+ * The earliest date a date field offers when the protocol declares no minimum,
+ * and how far back a draw reaches from its ceiling without one, in steps at
+ * each resolution. Mirrored from `ValueGenerator`'s own date fallbacks the way
+ * `generateEntityAttributes` mirrors the number range: what the draw walks is
+ * what the count has to describe, and the pair are held together by the
+ * conformance tests that draw a date variable's whole space.
+ */
+const PICKER_DEFAULT_MIN = '1920-01-01';
+const DATE_DEFAULT_REACH: Record<DateResolution, number> = {
+  year: 40,
+  month: 480,
+  full: 3650,
+};
+const UNIQUE_DATE_REACH: Record<DateResolution, number> = {
+  year: 1000,
+  month: 12_000,
+  full: 365_250,
+};
 
 /**
  * Scaling a decimal bound lands a hair beside the integer it should be
@@ -128,6 +153,26 @@ export function selectionSizeRange(variable: ConstrainedVariable): {
       optionCount,
     ),
   };
+}
+
+/**
+ * The floor a date is drawn from when the protocol declares none: as far back
+ * as the draw's own span reaches, held at the earliest date the picker offers.
+ * A ceiling already before that date is one the protocol declared, and reaching
+ * behind it is then the only way to have a range at all.
+ */
+function openDateFloor(
+  max: string,
+  resolution: DateResolution,
+  unique: boolean,
+): string {
+  const reach = addSteps(
+    max,
+    -(unique ? UNIQUE_DATE_REACH : DATE_DEFAULT_REACH)[resolution],
+    resolution,
+  );
+  const floor = truncateToResolution(PICKER_DEFAULT_MIN, resolution);
+  return reach < floor && floor <= max ? floor : reach;
 }
 
 /** The `rank`-th `k`-subset of `{0, …, n - 1}`, in lexicographic order. */
@@ -244,12 +289,18 @@ export function valueSpaceSize(
 
     case 'datetime': {
       const window = constraints.dateWindow;
-      if (!window?.min || !window.max) return 'unbounded';
+      // `buildVariableConstraints` closes every window it builds at the last
+      // date the field offers, so only a descriptor assembled elsewhere can
+      // arrive without a ceiling. Reading today's date to supply one here would
+      // move the count with the wall clock, which a seeded run has to survive.
+      if (!window?.max) return 'unbounded';
+
+      const min =
+        window.min ??
+        openDateFloor(window.max, window.resolution, constraints.unique);
+
       return cap(
-        Math.max(
-          0,
-          stepsBetween(window.min, window.max, window.resolution) + 1,
-        ),
+        Math.max(0, stepsBetween(min, window.max, window.resolution) + 1),
       );
     }
 

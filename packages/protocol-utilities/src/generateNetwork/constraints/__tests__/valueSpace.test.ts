@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { ValueGenerator } from '../../../ValueGenerator';
 import { buildVariableConstraints } from '../buildConstraints';
 import type { ConstrainedVariable } from '../types';
 import { valueSpaceSize } from '../valueSpace';
@@ -10,6 +11,21 @@ function make(
   entry: Parameters<typeof buildVariableConstraints>[0],
 ): ConstrainedVariable {
   return { entry, constraints: buildVariableConstraints(entry, TODAY) };
+}
+
+/** A date variable whose picker declares nothing but the resolution it writes. */
+function openDate(
+  type: 'year' | 'month' | 'full',
+  unique: boolean,
+): ConstrainedVariable {
+  return make({
+    id: 'v',
+    name: 'V',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type },
+    ...(unique ? { validation: { unique: true } } : {}),
+  });
 }
 
 describe('valueSpaceSize', () => {
@@ -199,9 +215,94 @@ describe('valueSpaceSize', () => {
     expect(valueSpaceSize(variable, 100)).toBe(5);
   });
 
-  it('treats a date variable with no bounds as unbounded', () => {
-    const variable = make({ id: 'v', name: 'V', type: 'datetime' });
-    expect(valueSpaceSize(variable, 100)).toBe('unbounded');
+  // A date the protocol leaves open is still drawn from a window: the picker
+  // offers nothing before 1920 or after today, and the generator reaches back
+  // a decade from there, or as far as the picker allows where the value has to
+  // be distinct. Counting it as unbounded is what let a `unique` date pass this
+  // analysis and then run out of years partway through the network.
+  it.each([
+    { unique: false, type: 'year', size: 41 },
+    { unique: false, type: 'month', size: 481 },
+    { unique: false, type: 'full', size: 3651 },
+    { unique: true, type: 'year', size: 107 },
+    { unique: true, type: 'month', size: 1279 },
+    { unique: true, type: 'full', size: 38_925 },
+  ] as const)(
+    'counts the $type window a date with unique $unique is drawn over',
+    ({ unique, type, size }) => {
+      expect(valueSpaceSize(openDate(type, unique), 1_000_000)).toBe(size);
+    },
+  );
+
+  // What feasibility spends. It accepts a `unique` variable once this count
+  // reports at least one value per entity, so every value counted has to be
+  // reachable by a distinct sequence number, and none beyond them.
+  it.each([
+    { unique: false, type: 'year', size: 41 },
+    { unique: false, type: 'month', size: 481 },
+    { unique: false, type: 'full', size: 3651 },
+    { unique: true, type: 'year', size: 107 },
+    { unique: true, type: 'month', size: 1279 },
+    { unique: true, type: 'full', size: 38_925 },
+  ] as const)(
+    'reaches every one of the $size $type dates counted for unique $unique',
+    ({ unique, type, size }) => {
+      const variable = openDate(type, unique);
+      const generator = new ValueGenerator(1, TODAY);
+
+      // Read here rather than taken from the table, so the count's own picture
+      // of the window is what the draw is held against: the two describe the
+      // same space, or this fails whichever of them moved.
+      expect(valueSpaceSize(variable, size + 1)).toBe(size);
+
+      const drawn = new Set<string>();
+      for (let seq = 0; seq < size; seq++) {
+        drawn.add(
+          String(
+            generator.generateConstrained(variable, 0, { distinctSeq: seq }),
+          ),
+        );
+      }
+
+      expect(drawn.size).toBe(size);
+      // One past the count wraps, so the space holds no further value.
+      expect(
+        drawn.has(
+          String(
+            generator.generateConstrained(variable, 0, { distinctSeq: size }),
+          ),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  // A floor the protocol declares is the picker's own `min`, and the field
+  // offers every date from it up to today.
+  it('counts a declared floor up to the day the picker stops offering', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '2000-01-01' },
+      validation: { unique: true },
+    });
+    expect(valueSpaceSize(variable, 1_000)).toBe(27);
+  });
+
+  // A floor later than today leaves the draw one date, which is the floor
+  // itself. Counted as the one value that guarantees rather than as the empty
+  // range a fabricated ceiling would describe.
+  it('counts a date floor beyond today as the single date it reaches', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '2030-01-01' },
+      validation: { unique: true },
+    });
+    expect(valueSpaceSize(variable, 1_000)).toBe(1);
   });
 
   it('returns zero rather than a negative count for an inverted date window', () => {
@@ -293,6 +394,9 @@ describe('valueSpaceSize', () => {
   it('treats layout and location as unbounded', () => {
     expect(
       valueSpaceSize(make({ id: 'v', name: 'V', type: 'layout' }), 100),
+    ).toBe('unbounded');
+    expect(
+      valueSpaceSize(make({ id: 'v', name: 'V', type: 'location' }), 100),
     ).toBe('unbounded');
   });
 });
