@@ -3,10 +3,15 @@ import type {
   StructuralCodebook,
   Variables,
 } from '@codaco/protocol-validation';
-import type { NcNode } from '@codaco/shared-consts';
+import type { NcNode, VariableValue } from '@codaco/shared-consts';
 
 import type { ResolvedGenerationConfig } from '../config';
-import { countPromptFixedValues, type PromptFixedValues } from '../nodes';
+import {
+  collectPromptFixedAssignments,
+  countPromptFixedValues,
+  type PromptFixedValues,
+  ruleBrokenByFixedValues,
+} from '../nodes';
 import { collectBinOnlyVariables } from './binOnlyVariables';
 import { buildEntityConstraints } from './buildConstraints';
 import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
@@ -37,10 +42,13 @@ type EntityScope = {
   worstCaseCount: number;
   /** Values prompts write onto this type, and how many entities can hold each. */
   fixedValues: PromptFixedValues;
+  /** Each prompt's whole set of values, as one entity ends up holding it. */
+  fixedAssignments: readonly Record<string, VariableValue>[];
 };
 
 const NO_UNVALIDATED_VARIABLES: ReadonlySet<string> = new Set();
 const NO_FIXED_VALUES: PromptFixedValues = new Map();
+const NO_FIXED_ASSIGNMENTS: readonly Record<string, VariableValue>[] = [];
 
 // The reference-bearing constraints that can merge two variables into one
 // group: `sameAs` directly, and a comparator as one link of a non-strict cycle.
@@ -155,6 +163,29 @@ function analyseEntity(
       reason,
     });
   };
+
+  // A rule with both of its ends fixed is settled before anything is drawn:
+  // the prompt states both values, so the pair the finished node holds is the
+  // pair the protocol wrote. Nothing a seed does can rescue one the rule
+  // cannot hold, which is what makes this a refusal here rather than a draw
+  // that fails on some seeds and not others.
+  const brokenReported = new Set<string>();
+  for (const assignment of scope.fixedAssignments) {
+    const broken = ruleBrokenByFixedValues(entity, assignment);
+    if (broken === undefined) continue;
+
+    const key = `${broken.rule}:${broken.variableIds.join(',')}`;
+    if (brokenReported.has(key)) continue;
+    brokenReported.add(key);
+
+    report(
+      broken.variableIds,
+      [broken.rule, 'additionalAttributes'],
+      `a prompt fixes these variables to ${broken.values
+        .map((value) => String(value))
+        .join(' and ')}, which ${broken.rule} cannot hold`,
+    );
+  }
 
   for (const [id, variable] of entity) {
     const { constraints, entry } = variable;
@@ -484,6 +515,7 @@ export function analyseFeasibility(
   const counts = worstCaseEntityCounts(stages, config, externalData);
   const binOnly = collectBinOnlyVariables(stages);
   const promptFixed = countPromptFixedValues(stages, config, externalData);
+  const promptAssignments = collectPromptFixedAssignments(stages, externalData);
   const scopes: EntityScope[] = [
     {
       entity: 'ego',
@@ -493,6 +525,7 @@ export function analyseFeasibility(
       // No stage fixes a value on ego: `additionalAttributes` belongs to a
       // name-generator prompt, whose subject is always a node.
       fixedValues: NO_FIXED_VALUES,
+      fixedAssignments: NO_FIXED_ASSIGNMENTS,
     },
   ];
 
@@ -507,6 +540,7 @@ export function analyseFeasibility(
       unvalidated: binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES,
       worstCaseCount: counts.node.get(type) ?? 0,
       fixedValues: promptFixed.get(type) ?? NO_FIXED_VALUES,
+      fixedAssignments: promptAssignments.get(type) ?? NO_FIXED_ASSIGNMENTS,
     });
   }
 
@@ -525,6 +559,7 @@ export function analyseFeasibility(
       // `additionalAttributes` writes onto the nodes a prompt creates, never
       // onto an edge.
       fixedValues: NO_FIXED_VALUES,
+      fixedAssignments: NO_FIXED_ASSIGNMENTS,
     });
   }
 

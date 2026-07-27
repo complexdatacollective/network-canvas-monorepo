@@ -1009,6 +1009,187 @@ describe('values a prompt fixes', () => {
       }),
     ).toEqual([]);
   });
+
+  it('counts a stage whose prompts share its ceiling once', () => {
+    // The ceiling is the stage's: `createNodesForStage` counts every prompt
+    // against the same `maxNodes`, so a one-node stage puts the value on one
+    // node however many of its prompts fix it. Summing each prompt's own
+    // maximum would refuse a protocol that generates perfectly well.
+    const stage = {
+      ...fixingGenerator(1),
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Name people',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+        {
+          id: 'p2',
+          text: 'Name more people',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+      ],
+    } as unknown as Stage;
+
+    expect(analyseFeasibility(uniqueFlag, [stage], config)).toEqual([]);
+  });
+
+  it('still reports a ceiling two prompts of one stage can fill twice over', () => {
+    // Sharing the ceiling is not the same as under-counting it: two nodes is
+    // still two holders, whichever prompt made them.
+    const stage = {
+      ...fixingGenerator(2),
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Name people',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+        {
+          id: 'p2',
+          text: 'Name more people',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+      ],
+    } as unknown as Stage;
+
+    const conflicts = analyseFeasibility(uniqueFlag, [stage], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.reason).toContain('on up to 2 nodes');
+  });
+});
+
+/**
+ * A prompt naming both ends of a rule leaves the draw nothing to choose
+ * between them, so whether the pair satisfies the rule is settled by the
+ * protocol rather than by the seed.
+ */
+describe('a rule between two values one prompt fixes', () => {
+  function pinningGenerator(
+    values: Record<string, boolean>,
+    type = 'NameGenerator',
+  ): Stage {
+    return {
+      id: 'stage-pin',
+      type,
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Name people',
+          additionalAttributes: Object.entries(values).map(
+            ([variable, value]) => ({ variable, value }),
+          ),
+        },
+      ],
+      behaviours: { minNodes: 3, maxNodes: 3 },
+    } as unknown as Stage;
+  }
+
+  const sameAsPair = codebookWith({
+    a: { name: 'A', type: 'boolean' },
+    b: { name: 'B', type: 'boolean', validation: { sameAs: 'a' } },
+  });
+  const differentFromPair = codebookWith({
+    a: { name: 'A', type: 'boolean' },
+    b: { name: 'B', type: 'boolean', validation: { differentFrom: 'a' } },
+  });
+
+  it('reports a sameAs pair fixed to values that disagree', () => {
+    const conflicts = analyseFeasibility(
+      sameAsPair,
+      [pinningGenerator({ a: false, b: true })],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['sameAs', 'additionalAttributes']);
+    expect(conflicts[0]?.variableNames).toEqual(['A', 'B']);
+    expect(conflicts[0]?.reason).toBe(
+      'a prompt fixes these variables to false and true, which sameAs cannot hold',
+    );
+  });
+
+  it('reports a differentFrom pair fixed to one value', () => {
+    const conflicts = analyseFeasibility(
+      differentFromPair,
+      [pinningGenerator({ a: true, b: true })],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual([
+      'differentFrom',
+      'additionalAttributes',
+    ]);
+    expect(conflicts[0]?.reason).toBe(
+      'a prompt fixes these variables to true and true, which differentFrom cannot hold',
+    );
+  });
+
+  it('accepts a sameAs pair fixed to one value', () => {
+    expect(
+      analyseFeasibility(
+        sameAsPair,
+        [pinningGenerator({ a: true, b: true })],
+        config,
+      ),
+    ).toEqual([]);
+  });
+
+  it('accepts a differentFrom pair fixed to values that differ', () => {
+    expect(
+      analyseFeasibility(
+        differentFromPair,
+        [pinningGenerator({ a: true, b: false })],
+        config,
+      ),
+    ).toEqual([]);
+  });
+
+  it('accepts a rule with only one of its ends fixed', () => {
+    // The other end is still the draw's to choose, and generation resolves it
+    // against the value the node ends up holding.
+    expect(
+      analyseFeasibility(sameAsPair, [pinningGenerator({ a: false })], config),
+    ).toEqual([]);
+  });
+
+  it('leaves a roster stage holding rows to the draw', () => {
+    // A row's own value wins over the prompt's, so which of a prompt's values
+    // reach one node depends on the row — passed over at the draw instead.
+    expect(
+      analyseFeasibility(
+        sameAsPair,
+        [pinningGenerator({ a: false, b: true }, 'NameGeneratorRoster')],
+        config,
+        {
+          'stage-pin': [
+            {
+              [entityPrimaryKeyProperty]: 'r1',
+              type: 'person',
+              [entityAttributesProperty]: { a: false },
+            } as unknown as NcNode,
+          ],
+        },
+      ),
+    ).toEqual([]);
+  });
+
+  it('reports a roster stage with no rows to draw from', () => {
+    // Nothing overrides the prompt there: the stage fabricates every node it
+    // makes, and each one carries the whole assignment.
+    const conflicts = analyseFeasibility(
+      sameAsPair,
+      [pinningGenerator({ a: false, b: true }, 'NameGeneratorRoster')],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['sameAs', 'additionalAttributes']);
+  });
 });
 
 describe('SyntheticDataConstraintError', () => {

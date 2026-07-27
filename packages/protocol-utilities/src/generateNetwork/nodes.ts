@@ -8,6 +8,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import type { VariableEntry } from '../types';
 import {
   claimFixedValues,
   generateAttributesForEntity,
@@ -17,6 +18,11 @@ import {
 } from './attributes';
 import type { GenerationConfig } from './config';
 import type { EntityScopeRef } from './constraints/generateEntityAttributes';
+import {
+  COMPARATOR_DIRECTION,
+  COMPARISON_RULES,
+  type EntityConstraints,
+} from './constraints/types';
 import { valueKey } from './constraints/uniqueRegistry';
 import type { GenerationContext, StageOfType } from './context';
 import { getSubjectType } from './subject';
@@ -102,9 +108,14 @@ function isPromptedNodeStage(stage: Stage): stage is PromptedNodeStage {
  * unlike a drawn value this one cannot vary with the seed — which makes it
  * decidable before any drawing whether more nodes than a `unique` variable
  * allows are going to end up holding it. Counted at each stage's node ceiling,
- * for the same reason the rest of feasibility counts worst cases, and summed
- * across every prompt fixing the same pair, because a `unique` value is claimed
- * once for the whole run.
+ * for the same reason the rest of feasibility counts worst cases.
+ *
+ * The ceiling belongs to the stage rather than to each of its prompts:
+ * `createNodesForStage` counts every prompt of a stage against the same
+ * `maxNodes`, so a stage allowed one node creates one node however many of its
+ * prompts fix the value, and summing each prompt's independent maximum would
+ * refuse a protocol that generates perfectly well. Stages are summed against
+ * each other, because a `unique` value is claimed once for the whole run.
  *
  * A roster stage is the one place a prompt's value can fail to land: the row's
  * own value for the variable wins there (see `createNodesForStage`), so only
@@ -129,6 +140,8 @@ export function countPromptFixedValues(
         ? externalData?.[stage.id]
         : undefined;
 
+    const forStage: PromptFixedValues = new Map();
+
     for (const prompt of stage.prompts) {
       for (const { variable, value } of prompt.additionalAttributes ?? []) {
         const carriers = pool
@@ -141,23 +154,202 @@ export function countPromptFixedValues(
           : maxNodes;
         if (carriers === 0) continue;
 
-        const forType: PromptFixedValues = byType.get(nodeType) ?? new Map();
         const forVariable =
-          forType.get(variable) ?? new Map<string, FixedValueTally>();
+          forStage.get(variable) ?? new Map<string, FixedValueTally>();
         // Keyed as the registry keys it, so this counts the same values the
         // registry would judge equal.
         const key = valueKey(value);
         forVariable.set(key, {
           value,
-          count: (forVariable.get(key)?.count ?? 0) + carriers,
+          // The most this stage can spend, not the sum of what its prompts
+          // could each spend alone: they share the stage's capacity.
+          count: Math.max(forVariable.get(key)?.count ?? 0, carriers),
         });
-        forType.set(variable, forVariable);
-        byType.set(nodeType, forType);
+        forStage.set(variable, forVariable);
       }
+    }
+
+    if (forStage.size === 0) continue;
+
+    const forType: PromptFixedValues = byType.get(nodeType) ?? new Map();
+    for (const [variable, values] of forStage) {
+      const running =
+        forType.get(variable) ?? new Map<string, FixedValueTally>();
+      for (const [key, { value, count }] of values) {
+        running.set(key, {
+          value,
+          count: (running.get(key)?.count ?? 0) + count,
+        });
+      }
+      forType.set(variable, running);
+    }
+    byType.set(nodeType, forType);
+  }
+
+  return byType;
+}
+
+/**
+ * The values one prompt's `additionalAttributes` write onto every node it
+ * creates, keyed by node type, for the prompts whose whole set is certain to
+ * land together.
+ *
+ * A rule with both of its ends fixed leaves the draw nothing to choose, so the
+ * pair either satisfies the rule as the protocol states it or nothing can make
+ * it — which is decidable before any drawing. Prompts fixing fewer than two
+ * variables are left out: no rule can span a single fixed value and something
+ * the draw is still free to choose for it.
+ *
+ * A roster stage holding rows is left out too. A row's own value wins over the
+ * prompt's there, so which of a prompt's values reach one node depends on the
+ * row drawn — data rather than protocol, settled at the draw by passing the row
+ * over. A roster stage with no rows fabricates every node it makes, so its
+ * prompt's values all land and it is counted here like any other.
+ */
+export function collectPromptFixedAssignments(
+  stages: Stage[],
+  externalData: Record<string, NcNode[]> | undefined,
+): Map<string, Record<string, VariableValue>[]> {
+  const byType = new Map<string, Record<string, VariableValue>[]>();
+
+  for (const stage of stages) {
+    if (!isPromptedNodeStage(stage)) continue;
+    if (
+      stage.type === 'NameGeneratorRoster' &&
+      externalData?.[stage.id] !== undefined
+    ) {
+      continue;
+    }
+
+    const nodeType = getSubjectType(stage.subject, 'node');
+    if (nodeType === undefined) continue;
+
+    for (const prompt of stage.prompts) {
+      const additional = prompt.additionalAttributes ?? [];
+      if (additional.length < 2) continue;
+
+      const values: Record<string, VariableValue> = {};
+      for (const { variable, value } of additional) values[variable] = value;
+
+      const forType = byType.get(nodeType) ?? [];
+      forType.push(values);
+      byType.set(nodeType, forType);
     }
   }
 
   return byType;
+}
+
+/** A rule an entity's fixed values break, as the pair that breaks it. */
+export type BrokenFixedRule = {
+  /** Both ends of the rule, in the order the codebook declares them. */
+  variableIds: string[];
+  /** The fixed values those variables hold, in the same order. */
+  values: VariableValue[];
+  rule: string;
+};
+
+/**
+ * Whether a comparator holds between two values neither of which is drawn.
+ *
+ * Read the way `applyComparatorBounds` reads a counterpart it is drawing
+ * against: a datetime against a date string, anything else against a number,
+ * and a pair it cannot order left alone rather than judged. Dates compare as
+ * strings, which is how the runtime's own min/max validators compare them.
+ */
+function comparatorHolds(
+  entry: VariableEntry,
+  own: VariableValue,
+  other: VariableValue,
+  { ownerIsUpper, strict }: { ownerIsUpper: boolean; strict: boolean },
+): boolean {
+  if (entry.type === 'datetime') {
+    if (typeof own !== 'string' || own === '') return true;
+    if (typeof other !== 'string' || other === '') return true;
+    const [upper, lower] = ownerIsUpper ? [own, other] : [other, own];
+    return strict ? upper > lower : upper >= lower;
+  }
+
+  const ownNumber = Number(own);
+  const otherNumber = Number(other);
+  if (Number.isNaN(ownNumber) || Number.isNaN(otherNumber)) return true;
+
+  const [upper, lower] = ownerIsUpper
+    ? [ownNumber, otherNumber]
+    : [otherNumber, ownNumber];
+  return strict ? upper > lower : upper >= lower;
+}
+
+/**
+ * The first rule an entity's fixed values break between two of themselves, if
+ * any.
+ *
+ * A value put on an entity rather than drawn for it — a roster row's, a
+ * prompt's `additionalAttributes` — is generated around rather than chosen, so
+ * a rule with one fixed end and one drawn end is resolved by the draw. A rule
+ * with both ends fixed is not: nothing is left to choose, and the assignment
+ * either satisfies it or no generation can. That has to be judged before the
+ * assignment is accepted, because the draw is asked only for the variables the
+ * fixed values leave over and never sees the pair at all.
+ *
+ * A value that is absent or null is passed over, as the draw passes over a null
+ * counterpart: a rule needs two values to be broken by.
+ */
+export function ruleBrokenByFixedValues(
+  entity: EntityConstraints,
+  fixed: Record<string, VariableValue>,
+): BrokenFixedRule | undefined {
+  const declared = [...entity.keys()];
+  const held = (id: string): VariableValue | undefined => {
+    const value = fixed[id];
+    return value === null ? undefined : value;
+  };
+
+  for (const [id, { constraints, entry }] of entity) {
+    const own = held(id);
+    if (own === undefined) continue;
+
+    const broken = (
+      target: string,
+      rule: string,
+      other: VariableValue,
+    ): BrokenFixedRule => {
+      const targetFirst = declared.indexOf(target) < declared.indexOf(id);
+      return {
+        variableIds: targetFirst ? [target, id] : [id, target],
+        values: targetFirst ? [other, own] : [own, other],
+        rule,
+      };
+    };
+
+    const { sameAs, differentFrom } = constraints;
+
+    if (sameAs !== undefined) {
+      const other = held(sameAs);
+      if (other !== undefined && valueKey(other) !== valueKey(own)) {
+        return broken(sameAs, 'sameAs', other);
+      }
+    }
+
+    if (differentFrom !== undefined) {
+      const other = held(differentFrom);
+      if (other !== undefined && valueKey(other) === valueKey(own)) {
+        return broken(differentFrom, 'differentFrom', other);
+      }
+    }
+
+    for (const rule of COMPARISON_RULES) {
+      const target = constraints[rule];
+      if (target === undefined) continue;
+      const other = held(target);
+      if (other === undefined) continue;
+      if (!comparatorHolds(entry, own, other, COMPARATOR_DIRECTION[rule])) {
+        return broken(target, rule, other);
+      }
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -168,13 +360,15 @@ export function countPromptFixedValues(
  * and the search walks on from there — so a pool with nothing to pass over
  * consumes exactly the one random number it always did, and picks exactly the
  * row it always did. `undefined` means the window holds no row the network can
- * still take, which is a roster whose remaining values are all spoken for.
+ * still take, which is a roster whose remaining values are all spoken for or
+ * whose remaining rows all break a rule between values nothing draws.
  */
 function takeDrawableRosterRow(
   ctx: GenerationContext,
   scope: EntityScopeRef,
   pool: NcNode[],
   from: number,
+  rulesAllow: (row: NcNode) => boolean,
 ): NcNode | undefined {
   const window = pool.length - from;
   if (window <= 0) return undefined;
@@ -185,6 +379,7 @@ function takeDrawableRosterRow(
     const index = from + ((start - from + step) % window);
     const candidate = pool[index]!;
     if (!rosterRowIsDrawable(ctx, scope, candidate)) continue;
+    if (!rulesAllow(candidate)) continue;
 
     pool[index] = pool[from]!;
     pool[from] = candidate;
@@ -261,6 +456,23 @@ export function createNodesForStage(
 
   const scope = { entity: 'node', type: nodeType } as const;
   const variableIds = Object.keys(nodeTypeDef.variables ?? {});
+  const constraints: EntityConstraints =
+    ctx.entityConstraints.node.get(nodeType) ?? new Map();
+
+  /** Every value the node is given rather than drawn, settled before the draw. */
+  const fixedValuesFor = (
+    row: NcNode | undefined,
+  ): Record<string, VariableValue> => {
+    if (row === undefined) return { ...additionalAttrs };
+
+    const rosterValues = row[entityAttributesProperty];
+    // The roster interface lets the roster value win a collision with a
+    // prompt attribute, while a name generator panel lets the prompt win.
+    return roster.allowFabrication
+      ? { ...rosterValues, ...additionalAttrs }
+      : { ...additionalAttrs, ...rosterValues };
+  };
+
   reserveRosterValues(ctx, scope, pool);
 
   for (let i = 0; i < count; i++) {
@@ -271,7 +483,21 @@ export function createNodesForStage(
       (!roster.allowFabrication ||
         ctx.valueGen.randomFloat(0, 1) < ctx.config.rosterDrawRatio);
     const picked = wantsRosterRow
-      ? takeDrawableRosterRow(ctx, scope, pool, drawn)
+      ? takeDrawableRosterRow(
+          ctx,
+          scope,
+          pool,
+          drawn,
+          // A row whose values break a rule between two of them, or between one
+          // of them and a value the prompt fixes, is passed over exactly as one
+          // repeating a `unique` value is: no draw stands between those values
+          // and the finished node, so the row is simply not one this protocol
+          // can use. Refusing instead would fail a roster of hundreds over rows
+          // the draw might never have reached.
+          (row) =>
+            ruleBrokenByFixedValues(constraints, fixedValuesFor(row)) ===
+            undefined,
+        )
       : undefined;
 
     // A roster stage builds nodes only from rows, so a pool holding none the
@@ -282,24 +508,13 @@ export function createNodesForStage(
     }
 
     let primaryKey = uuid();
-    const fixed: Record<string, VariableValue> = {};
+    const fixed = fixedValuesFor(picked);
 
     if (picked) {
       drawn += 1;
 
       primaryKey = picked[entityPrimaryKeyProperty];
       roster.used.add(primaryKey);
-
-      const rosterValues = picked[entityAttributesProperty];
-      // The roster interface lets the roster value win a collision with a
-      // prompt attribute, while a name generator panel lets the prompt win.
-      if (roster.allowFabrication) {
-        Object.assign(fixed, rosterValues, additionalAttrs);
-      } else {
-        Object.assign(fixed, additionalAttrs, rosterValues);
-      }
-    } else {
-      Object.assign(fixed, additionalAttrs);
     }
 
     // A roster row and a prompt's `additionalAttributes` settle their variables
