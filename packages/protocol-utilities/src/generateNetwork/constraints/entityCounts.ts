@@ -1,4 +1,7 @@
-import type { Stage } from '@codaco/protocol-validation';
+import {
+  collectEntityAttributeReferences,
+  type Stage,
+} from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import type { GenerationConfig } from '../config';
@@ -110,6 +113,35 @@ function pedigreeNodeCeiling(config: GenerationConfig): number {
   return Math.max(max, min);
 }
 
+/**
+ * The edge types some stage names an attribute of.
+ *
+ * `handleFamilyPedigree` builds its edges with empty attributes — the interface
+ * draws parent-child links and collects nothing on them — so a pedigree edge
+ * carries a value only where another stage writes one onto an edge it did not
+ * create. `handleAlterEdgeForm` is that stage today: it walks every existing
+ * edge of its subject type, pedigree-built ones included, and fills the
+ * variables its form renders.
+ *
+ * Which handlers write edges they did not create is a property of the
+ * generator rather than of the schema, so this gate is deliberately wider than
+ * that one stage: any attribute reference resolving to an edge type keeps that
+ * type's pedigree edges counted, whether or not the stage naming it would write
+ * them. Reading the schema's own `entityAttributeReference` tags — as
+ * `collectBinOnlyVariables` reads them — means a reference site added later
+ * counts on its own, without this code being updated, and errs towards
+ * refusing up front rather than running out of values partway through a draw.
+ */
+function edgeTypesWithNamedAttributes(stages: Stage[]): ReadonlySet<string> {
+  const types = new Set<string>();
+
+  for (const hit of collectEntityAttributeReferences({ stages })) {
+    if (hit.subject?.entity === 'edge') types.add(hit.subject.type);
+  }
+
+  return types;
+}
+
 /** The largest number of unordered pairs a subject node type could ever reach. */
 function pairsFor(
   nodeType: string | undefined,
@@ -130,9 +162,15 @@ function pairsFor(
  * edge definition) by the pair count over its subject node type — a run
  * creates at most one edge of a type per unordered node pair per prompt, so
  * bounds accumulate per prompt. FamilyPedigree instead bounds its edge type by
- * one less than its node ceiling, the parent-child edges it actually creates.
- * Counts sum across stages producing the same type, since a `unique` constraint
- * spans the whole run.
+ * one less than its node ceiling, the parent-child edges it actually creates,
+ * and only where some stage could put a value on one at all. Counts sum across
+ * stages producing the same type, since a `unique` constraint spans the whole
+ * run.
+ *
+ * Edges are therefore counted as the entities that can hold a value, not as
+ * every entity the run creates, because holding values is the only thing the
+ * count is asked about: feasibility measures a `unique` variable's value space
+ * against it, and an edge born empty spends none of that space.
  *
  * `externalData` is `generateNetwork`'s own roster argument, read here for the
  * same three-way meaning `createNodesForStage` gives it: a roster stage with no
@@ -191,6 +229,8 @@ export function worstCaseEntityCounts(
     );
   }
 
+  const filledEdgeTypes = edgeTypesWithNamedAttributes(stages);
+
   for (const stage of stages) {
     if (isPairEdgeStage(stage)) {
       const pairs = pairsFor(getSubjectType(stage.subject, 'node'), node);
@@ -223,7 +263,13 @@ export function worstCaseEntityCounts(
 
     if (stage.type === 'FamilyPedigree') {
       const edgeType = stage.edgeConfig?.type;
-      if (edgeType) {
+      // Pedigree edges are born empty, so they consume a `unique` variable's
+      // values only where another stage can fill them — see
+      // {@link edgeTypesWithNamedAttributes}. Counting them regardless refused
+      // protocols that generate perfectly well, a pedigree edge type carrying a
+      // finite-domain `unique` variable no stage ever writes being the whole of
+      // the example.
+      if (edgeType && filledEdgeTypes.has(edgeType)) {
         // `handleFamilyPedigree` creates exactly `n - 1` edges (one per node
         // index 1..n-1), never pairwise, so the pair count over-counts by
         // roughly 5x at the default config maximum. Bound it by the true
