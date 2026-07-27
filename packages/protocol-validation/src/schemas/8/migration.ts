@@ -1069,6 +1069,15 @@ const migrationV7toV8 = createMigration({
             month: /^\d{4}-\d{2}$/,
             year: /^\d{4}$/,
           } as const;
+          // full is finest, year is coarsest. Truncation is only intent-
+          // preserving when the ORIGINAL string is itself a fully-valid date
+          // at the picker's own resolution or at a strictly finer one — e.g.
+          // '2020-05-03' truncates to a year picker's '2020'. A value that
+          // merely happens to slice into a valid-looking prefix, such as
+          // '2020-01-01oops' or '2020garbage', is not a date at any
+          // resolution and must be deleted rather than blessed by slicing.
+          const resolutionRank = { year: 0, month: 1, full: 2 } as const;
+          const resolutionsFinestFirst = ['full', 'month', 'year'] as const;
           const floors = {
             minLength: 0,
             maxLength: 1,
@@ -1106,15 +1115,19 @@ const migrationV7toV8 = createMigration({
                 delete parameters[bound];
                 continue;
               }
-              const truncated = value.slice(0, resolutionLength[resolution]);
+              const matchedResolution = resolutionsFinestFirst.find(
+                (candidate) =>
+                  patterns[candidate].test(value) &&
+                  isValidCalendarDate(value, candidate),
+              );
               if (
-                patterns[resolution].test(truncated) &&
-                isValidCalendarDate(truncated, resolution)
+                matchedResolution === undefined ||
+                resolutionRank[matchedResolution] < resolutionRank[resolution]
               ) {
-                parameters[bound] = truncated;
-              } else {
                 delete parameters[bound];
+                continue;
               }
+              parameters[bound] = value.slice(0, resolutionLength[resolution]);
             }
             if (
               typeof parameters.min === 'string' &&

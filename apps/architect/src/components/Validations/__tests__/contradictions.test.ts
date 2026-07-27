@@ -148,4 +148,37 @@ describe('makeFieldEditorValidate', () => {
     });
     expect(errors.validation).toContain('minLength');
   });
+
+  // Finding C: the dialog is the only editor surface that can change
+  // `parameters` (the row editor's `checkDraft` path never sees them), so it
+  // must forward the draft parameters into the analyser or an edit like this
+  // one — narrowing a DatePicker window until it no longer overlaps a
+  // committed comparator's other side — would slip through unvalidated.
+  it('flags a disjointBounds contradiction introduced by editing parameters.max', () => {
+    const dateVariables = {
+      start: {
+        name: 'start',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', min: '2020' },
+        validation: { lessThanVariable: 'end' },
+      },
+      end: {
+        name: 'end',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', max: '2025' },
+        validation: {},
+      },
+    };
+    const validate = makeFieldEditorValidate(dateVariables);
+    const errors = validate({
+      variable: 'end',
+      validation: {},
+      parameters: { type: 'year', max: '2019' },
+    });
+    expect(errors.validation).toContain(
+      'can never be satisfied because their value ranges do not overlap',
+    );
+  });
 });

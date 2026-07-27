@@ -365,6 +365,103 @@ describe('findValidationContradictions — bound disjointness', () => {
   });
 });
 
+describe('findValidationContradictions — Finding D: sameAs option-set disjointness', () => {
+  const categorical = (
+    name: string,
+    optionValues: (string | number)[],
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'categorical',
+    options: optionValues.map((value) => ({ label: String(value), value })),
+    validation,
+  });
+
+  it('reports a sameAs categorical group whose option values share nothing', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['red', 'blue'], { sameAs: 'b' }),
+      b: categorical('b', ['green', 'yellow']),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" are joined by sameAs but share no option values',
+    );
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  it('accepts a sameAs categorical group with overlapping option values', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['red', 'blue'], { sameAs: 'b' }),
+        b: categorical('b', ['blue', 'green']),
+      }),
+    ).toEqual([]);
+  });
+
+  it('skips the option-set check when a member has no options array', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['red', 'blue'], { sameAs: 'b' }),
+        b: { name: 'b', type: 'categorical', validation: {} },
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — Finding E: comparator-forced equality groups', () => {
+  const number = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'number',
+    validation,
+  });
+
+  it('rejects mutual non-strict comparators plus differentFrom, stripping differentFrom only', () => {
+    const result = findValidationContradictions({
+      a: number('a', {
+        greaterThanOrEqualToVariable: 'b',
+        differentFrom: 'b',
+      }),
+      b: number('b', { greaterThanOrEqualToVariable: 'a' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('sameAsGroupConflict');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  it('rejects a three-member non-strict cycle whose bounds are disjoint, stripping the cycle comparators', () => {
+    const result = findValidationContradictions({
+      a: number('a', {
+        greaterThanOrEqualToVariable: 'b',
+        minValue: 10,
+        maxValue: 20,
+      }),
+      b: number('b', { greaterThanOrEqualToVariable: 'c' }),
+      c: number('c', { greaterThanOrEqualToVariable: 'a', maxValue: 5 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toHaveLength(3);
+    expect(
+      result[0]?.strips.every(
+        (strip) => strip.rule === 'greaterThanOrEqualToVariable',
+      ),
+    ).toBe(true);
+  });
+
+  it('still accepts mutual non-strict comparators alone', () => {
+    expect(
+      findValidationContradictions({
+        c: number('c', { greaterThanOrEqualToVariable: 'd' }),
+        d: number('d', { greaterThanOrEqualToVariable: 'c' }),
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe('record schema conformance — contradiction refinement', () => {
   it('rejects a node variables record with inverted bounds, anchored at the offending rule', () => {
     const result = VariablesSchema.safeParse({

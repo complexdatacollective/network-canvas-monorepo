@@ -21,6 +21,8 @@ export type ProspectiveDraft = {
   validation: UnknownRecord;
   /** Draft options for ordinal/categorical variables, from form state. */
   options?: unknown;
+  /** Draft component parameters (e.g. DatePicker min/max), from form state. */
+  parameters?: unknown;
 };
 
 export const buildProspectiveVariables = ({
@@ -29,6 +31,7 @@ export const buildProspectiveVariables = ({
   variableType,
   validation,
   options,
+  parameters,
 }: ProspectiveDraft): UnknownRecord => {
   const id = currentVariableId || DRAFT_VARIABLE_ID;
   const existing = allVariables[id];
@@ -42,6 +45,7 @@ export const buildProspectiveVariables = ({
       type: variableType,
       validation,
       ...(options !== undefined ? { options } : {}),
+      ...(parameters !== undefined ? { parameters } : {}),
     },
   };
 };
@@ -115,6 +119,7 @@ export const makeFieldEditorValidate =
       variableType,
       validation,
       options: values.options,
+      parameters: values.parameters,
     })[0];
     return first ? { validation: first.message } : {};
   };

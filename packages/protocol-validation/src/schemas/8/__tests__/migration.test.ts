@@ -4333,6 +4333,25 @@ describe('Migration V7 to V8', () => {
       expect(variables.b).not.toHaveProperty('parameters.min');
     });
 
+    it('deletes a value that merely slices into a valid-looking prefix', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'full_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '2020-01-01oops' },
+        },
+        b: {
+          name: 'year_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'year', min: '2020garbage' },
+        },
+      });
+      expect(variables.a).not.toHaveProperty('parameters.min');
+      expect(variables.b).not.toHaveProperty('parameters.min');
+    });
+
     it('leaves RelativeDatePicker parameters alone', () => {
       const variables = migrateVariables({
         a: {
@@ -4439,6 +4458,29 @@ describe('Migration V7 to V8', () => {
       });
       expect(variables.a).toHaveProperty('validation.sameAs', 'b');
       expect(variables.a).not.toHaveProperty('validation.greaterThanVariable');
+    });
+
+    it('strips a sameAs categorical group whose option values share nothing', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'categorical',
+          options: [
+            { label: 'Red', value: 'red' },
+            { label: 'Blue', value: 'blue' },
+          ],
+          validation: { sameAs: 'b' },
+        },
+        b: {
+          name: 'b',
+          type: 'categorical',
+          options: [
+            { label: 'Green', value: 'green' },
+            { label: 'Yellow', value: 'yellow' },
+          ],
+        },
+      });
+      expect(variables.a).not.toHaveProperty('validation.sameAs');
     });
 
     it('strips validation references to a differently-typed variable', () => {

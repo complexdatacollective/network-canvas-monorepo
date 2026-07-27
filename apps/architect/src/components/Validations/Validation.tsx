@@ -261,14 +261,13 @@ const Validation = ({
             autoFocus
           />
         </div>
-        {(isBeingEdited ? draftKey : itemKey) === 'unique' &&
-          uniqueValueCount !== undefined && (
-            <Paragraph className="text-sm text-current/70">
-              This variable has only {uniqueValueCount} possible values, so
-              &lsquo;Must be unique&rsquo; may become impossible to satisfy once
-              more than {uniqueValueCount} entities hold a value.
-            </Paragraph>
-          )}
+        {draftKey === 'unique' && uniqueValueCount !== undefined && (
+          <Paragraph className="text-sm text-current/70">
+            This variable has only {uniqueValueCount} possible values, so
+            &lsquo;Must be unique&rsquo; may become impossible to satisfy once
+            more than {uniqueValueCount} entities hold a value.
+          </Paragraph>
+        )}
         {draftKey && isValidationWithNumberValue(draftKey) && (
           <div className={MULTI_SELECT_OPTION_CLASSES}>
             <InputField

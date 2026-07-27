@@ -145,53 +145,40 @@ const usableReference = (
   return target;
 };
 
+const hasUsableSameAs = (variables: UnknownRecord, id: string): boolean =>
+  usableReference(variables, id, 'sameAs') !== undefined;
+
 /**
- * `sameAs` is symmetric and transitive in effect — every member of a chain
- * ends up holding one value — so variables joined by it merge into groups.
+ * A pairwise conflict between two variables forced equal can arise either
+ * directly from a `sameAs` edge or, since Finding E, transitively from a
+ * non-strict comparator cycle. The message should name whichever mechanism
+ * is actually in play. "Either participant carries a usable sameAs" is the
+ * simplest deterministic signal for that: `usableReference` only ever unions
+ * same-typed variables into an equality group, so if either named variable
+ * has a usable `sameAs` at all, that edge is necessarily what put it in this
+ * group (sameAs and the comparator SCCs are unioned into the same union-find,
+ * but a variable's own `sameAs` edge is always toward its own group).
  */
-function buildSameAsGroups(variables: UnknownRecord): {
-  groupOf: Map<string, string>;
-  membersOf: Map<string, string[]>;
-} {
-  const parent = new Map<string, string>();
-  for (const id of Object.keys(variables)) parent.set(id, id);
+const equalityRequirementClause = (
+  variables: UnknownRecord,
+  a: string,
+  b: string,
+): string =>
+  hasUsableSameAs(variables, a) || hasUsableSameAs(variables, b)
+    ? 'sameAs already requires them to be equal'
+    : 'the comparison rules already require them to be equal';
 
-  const find = (id: string): string => {
-    let root = id;
-    for (;;) {
-      const next = parent.get(root);
-      if (next === undefined || next === root) break;
-      root = next;
-    }
-    let cursor = id;
-    while (cursor !== root) {
-      const next = parent.get(cursor);
-      if (next === undefined) break;
-      parent.set(cursor, root);
-      cursor = next;
-    }
-    return root;
-  };
-
-  for (const id of Object.keys(variables)) {
-    const target = usableReference(variables, id, 'sameAs');
-    if (target === undefined) continue;
-    const rootA = find(target);
-    const rootB = find(id);
-    if (rootA !== rootB) parent.set(rootB, rootA);
-  }
-
-  const groupOf = new Map<string, string>();
-  const membersOf = new Map<string, string[]>();
-  for (const id of Object.keys(variables)) {
-    const root = find(id);
-    groupOf.set(id, root);
-    const members = membersOf.get(root) ?? [];
-    members.push(id);
-    membersOf.set(root, members);
-  }
-  return { groupOf, membersOf };
-}
+/**
+ * Same wording choice as `equalityRequirementClause`, phrased for a
+ * multi-member group rather than a named pair.
+ */
+const groupEqualityDescription = (
+  variables: UnknownRecord,
+  members: string[],
+): string =>
+  members.some((member) => hasUsableSameAs(variables, member))
+    ? 'are joined by sameAs'
+    : 'are forced equal by the comparison rules';
 
 type ComparatorEdge = {
   lower: string;
@@ -247,6 +234,142 @@ function comparatorEdges(variables: UnknownRecord): ComparatorEdge[] {
     }
   }
   return [...byKey.values()];
+}
+
+/**
+ * Strongly-connected components of the non-strict canonical comparator
+ * subgraph, treating each `{ lower, upper }` edge as directed lower→upper
+ * ("lower is at most upper"). A component with more than one member is a set
+ * of variables a non-strict comparator cycle forces to hold one shared value
+ * — `a >= b` plus `b >= a` is the two-node case; a longer all-non-strict
+ * chain back to its start is the same shape. Iterative-safe Tarjan (the
+ * `strongconnect` recursion is still used, but variable counts per entity
+ * are small enough that stack depth is not a practical concern).
+ */
+function nonStrictComparatorComponents(edges: ComparatorEdge[]): string[][] {
+  const adjacency = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (edge.strict) continue;
+    const list = adjacency.get(edge.lower) ?? [];
+    list.push(edge.upper);
+    adjacency.set(edge.lower, list);
+    if (!adjacency.has(edge.upper)) adjacency.set(edge.upper, []);
+  }
+
+  const index = new Map<string, number>();
+  const lowlink = new Map<string, number>();
+  const onStack = new Set<string>();
+  const stack: string[] = [];
+  const components: string[][] = [];
+  let counter = 0;
+
+  const strongconnect = (node: string): void => {
+    index.set(node, counter);
+    lowlink.set(node, counter);
+    counter += 1;
+    stack.push(node);
+    onStack.add(node);
+
+    for (const next of adjacency.get(node) ?? []) {
+      if (!index.has(next)) {
+        strongconnect(next);
+        const nodeLow = lowlink.get(node);
+        const nextLow = lowlink.get(next);
+        if (nodeLow !== undefined && nextLow !== undefined) {
+          lowlink.set(node, Math.min(nodeLow, nextLow));
+        }
+      } else if (onStack.has(next)) {
+        const nodeLow = lowlink.get(node);
+        const nextIndex = index.get(next);
+        if (nodeLow !== undefined && nextIndex !== undefined) {
+          lowlink.set(node, Math.min(nodeLow, nextIndex));
+        }
+      }
+    }
+
+    if (lowlink.get(node) === index.get(node)) {
+      const component: string[] = [];
+      for (;;) {
+        const member = stack.pop();
+        if (member === undefined) break;
+        onStack.delete(member);
+        component.push(member);
+        if (member === node) break;
+      }
+      components.push(component);
+    }
+  };
+
+  for (const node of adjacency.keys()) {
+    if (!index.has(node)) strongconnect(node);
+  }
+
+  return components.filter((component) => component.length > 1);
+}
+
+/**
+ * The equality groups a set of variables collapse into: the union of (a)
+ * `sameAs` edges — symmetric and transitive, every chain member ends up
+ * holding one value — and (b) strongly-connected components of the
+ * non-strict comparator graph (Finding E), which force their members equal
+ * the same way. Both sources feed one union-find so every downstream group
+ * check (strict-comparator-in-group, differentFrom-in-group, interval and
+ * option-set intersection) sees the combined membership.
+ */
+function buildEqualityGroups(
+  variables: UnknownRecord,
+  edges: ComparatorEdge[],
+): {
+  groupOf: Map<string, string>;
+  membersOf: Map<string, string[]>;
+} {
+  const parent = new Map<string, string>();
+  for (const id of Object.keys(variables)) parent.set(id, id);
+
+  const find = (id: string): string => {
+    let root = id;
+    for (;;) {
+      const next = parent.get(root);
+      if (next === undefined || next === root) break;
+      root = next;
+    }
+    let cursor = id;
+    while (cursor !== root) {
+      const next = parent.get(cursor);
+      if (next === undefined) break;
+      parent.set(cursor, root);
+      cursor = next;
+    }
+    return root;
+  };
+
+  const union = (a: string, b: string): void => {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA !== rootB) parent.set(rootB, rootA);
+  };
+
+  for (const id of Object.keys(variables)) {
+    const target = usableReference(variables, id, 'sameAs');
+    if (target !== undefined) union(target, id);
+  }
+
+  for (const component of nonStrictComparatorComponents(edges)) {
+    const [anchor] = component;
+    if (anchor === undefined) continue;
+    for (const member of component.slice(1)) union(anchor, member);
+  }
+
+  const groupOf = new Map<string, string>();
+  const membersOf = new Map<string, string[]>();
+  for (const id of Object.keys(variables)) {
+    const root = find(id);
+    groupOf.set(id, root);
+    const members = membersOf.get(root) ?? [];
+    members.push(id);
+    membersOf.set(root, members);
+  }
+  return { groupOf, membersOf };
 }
 
 type GroupEdge = { strict: boolean; sources: VariableRuleRef[] };
@@ -333,12 +456,13 @@ function referenceStructureContradictions(
     for (const strip of strips) claimed.add(stripKey(strip));
   }
 
-  const { groupOf, membersOf } = buildSameAsGroups(variables);
+  const edges = comparatorEdges(variables);
+  const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
 
   // Group-level comparator dependency graph (upper depends on lower). An edge
   // whose ends fall inside one group is a class-9 conflict when strict.
   const dependencies = new Map<string, Map<string, GroupEdge>>();
-  for (const edge of comparatorEdges(variables)) {
+  for (const edge of edges) {
     const upper = groupOf.get(edge.upper);
     const lower = groupOf.get(edge.lower);
     if (upper === undefined || lower === undefined) continue;
@@ -351,7 +475,7 @@ function referenceStructureContradictions(
       const message =
         edge.lower === edge.upper
           ? `Variable "${ownerName}": ${first.rule} references the variable itself`
-          : `Variable "${ownerName}": ${first.rule} references "${nameOf(otherId, variables[otherId])}", but sameAs already requires them to be equal`;
+          : `Variable "${ownerName}": ${first.rule} references "${nameOf(otherId, variables[otherId])}", but ${equalityRequirementClause(variables, first.variableId, otherId)}`;
       found.push({
         class: 'sameAsGroupConflict',
         message,
@@ -387,7 +511,7 @@ function referenceStructureContradictions(
     const message =
       id === target
         ? `Variable "${nameOf(id, variable)}": differentFrom references the variable itself`
-        : `Variable "${nameOf(id, variable)}": differentFrom references "${nameOf(target, variables[target])}", but sameAs already requires them to be equal`;
+        : `Variable "${nameOf(id, variable)}": differentFrom references "${nameOf(target, variables[target])}", but ${equalityRequirementClause(variables, id, target)}`;
     found.push({
       class: 'sameAsGroupConflict',
       message,
@@ -512,11 +636,74 @@ const isEmptyInterval = (interval: Interval | undefined): boolean =>
   interval.max !== undefined &&
   interval.min > interval.max;
 
+/**
+ * A variable's option values, for the categorical/ordinal `sameAs`-group
+ * check (Finding D). `undefined` — not an empty set — means "unusable for
+ * this check": raw migration input may not have an `options` array at all,
+ * and that must skip the check rather than be treated as zero options.
+ */
+const optionValues = (variable: unknown): Set<string | number> | undefined => {
+  const options = asRecord(variable)?.options;
+  if (!Array.isArray(options)) return undefined;
+  const values = new Set<string | number>();
+  for (const option of options) {
+    const value = asRecord(option)?.value;
+    if (typeof value === 'string' || typeof value === 'number') {
+      values.add(value);
+    }
+  }
+  return values;
+};
+
+/**
+ * The rules a group-level emptiness conflict (interval or, for Finding D,
+ * option-value-set) resolves by stripping: every member's `sameAs` (the
+ * pre-Finding-E policy) plus, since a group can now also be forced together
+ * by a non-strict comparator cycle, every non-strict comparator edge whose
+ * both ends fall inside this group. A purely `sameAs` group yields only the
+ * first; a purely comparator-forced group (no member has `sameAs` at all)
+ * yields only the second.
+ */
+const groupEqualityStrips = (
+  variables: UnknownRecord,
+  members: string[],
+  internalNonStrictEdges: ComparatorEdge[],
+): VariableRuleRef[] => {
+  const sameAsStrips = members
+    .filter((member) => hasUsableSameAs(variables, member))
+    .map((member): VariableRuleRef => ({ variableId: member, rule: 'sameAs' }));
+  const comparatorStrips = internalNonStrictEdges.flatMap(
+    (edge) => edge.sources,
+  );
+  return [...sameAsStrips, ...comparatorStrips];
+};
+
 function disjointBoundsContradictions(
   variables: UnknownRecord,
 ): ValidationContradiction[] {
   const found: ValidationContradiction[] = [];
-  const { groupOf, membersOf } = buildSameAsGroups(variables);
+  const edges = comparatorEdges(variables);
+  const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
+
+  // Non-strict comparator edges whose both ends fall inside one equality
+  // group, bucketed by that group — the rules a comparator-forced group's
+  // emptiness conflict strips (see `groupEqualityStrips`).
+  const internalNonStrictEdgesByGroup = new Map<string, ComparatorEdge[]>();
+  for (const edge of edges) {
+    if (edge.strict) continue;
+    const lowerGroup = groupOf.get(edge.lower);
+    const upperGroup = groupOf.get(edge.upper);
+    if (
+      lowerGroup === undefined ||
+      upperGroup === undefined ||
+      lowerGroup !== upperGroup
+    ) {
+      continue;
+    }
+    const bucket = internalNonStrictEdgesByGroup.get(lowerGroup) ?? [];
+    bucket.push(edge);
+    internalNonStrictEdgesByGroup.set(lowerGroup, bucket);
+  }
 
   const groupIntervals = new Map<string, Interval | undefined>();
   for (const [group, members] of membersOf) {
@@ -526,33 +713,85 @@ function disjointBoundsContradictions(
     }
     groupIntervals.set(group, interval);
 
+    const internalNonStrictEdges =
+      internalNonStrictEdgesByGroup.get(group) ?? [];
+
     if (members.length > 1 && isEmptyInterval(interval)) {
-      const strips = members
-        .filter(
-          (member) =>
-            usableReference(variables, member, 'sameAs') !== undefined,
-        )
-        .map(
-          (member): VariableRuleRef => ({
-            variableId: member,
-            rule: 'sameAs',
-          }),
-        );
-      const [first, ...rest] = strips;
-      if (!first) continue;
-      const names = members.map(
-        (member) => `"${nameOf(member, variables[member])}"`,
+      const strips = groupEqualityStrips(
+        variables,
+        members,
+        internalNonStrictEdges,
       );
-      found.push({
-        class: 'disjointBounds',
-        message: `Variables ${names.join(', ')} are joined by sameAs but their rules leave no value they can share`,
-        variableIds: members,
-        strips: [first, ...rest],
-      });
+      const [first, ...rest] = strips;
+      if (first) {
+        const names = members.map(
+          (member) => `"${nameOf(member, variables[member])}"`,
+        );
+        found.push({
+          class: 'disjointBounds',
+          message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but their rules leave no value they can share`,
+          variableIds: members,
+          strips: [first, ...rest],
+        });
+      }
+    }
+
+    // Finding D: a sameAs-joined categorical/ordinal group whose members'
+    // option value sets share nothing is equally unsatisfiable — no value
+    // any member offers is a value every member offers. Comparators never
+    // apply to these types (see `requireType` on the four comparator
+    // rules), so such a group can only ever be sameAs-forced; the shared
+    // strip/message helpers still handle the general case defensively.
+    if (members.length > 1) {
+      const types = new Set(members.map((member) => typeOf(variables[member])));
+      const [onlyType] = types;
+      if (
+        types.size === 1 &&
+        (onlyType === 'categorical' || onlyType === 'ordinal')
+      ) {
+        const memberOptionValues: Set<string | number>[] = [];
+        let everyMemberHasOptions = true;
+        for (const member of members) {
+          const values = optionValues(variables[member]);
+          if (values === undefined) {
+            everyMemberHasOptions = false;
+            break;
+          }
+          memberOptionValues.push(values);
+        }
+        const [firstValues, ...restValues] = memberOptionValues;
+        if (everyMemberHasOptions && firstValues) {
+          let intersection = firstValues;
+          for (const values of restValues) {
+            intersection = new Set(
+              [...intersection].filter((value) => values.has(value)),
+            );
+          }
+          if (intersection.size === 0) {
+            const strips = groupEqualityStrips(
+              variables,
+              members,
+              internalNonStrictEdges,
+            );
+            const [first, ...rest] = strips;
+            if (first) {
+              const names = members.map(
+                (member) => `"${nameOf(member, variables[member])}"`,
+              );
+              found.push({
+                class: 'disjointBounds',
+                message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but share no option values`,
+                variableIds: members,
+                strips: [first, ...rest],
+              });
+            }
+          }
+        }
+      }
     }
   }
 
-  for (const edge of comparatorEdges(variables)) {
+  for (const edge of edges) {
     const upperGroup = groupOf.get(edge.upper);
     const lowerGroup = groupOf.get(edge.lower);
     if (
