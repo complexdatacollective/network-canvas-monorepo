@@ -1,10 +1,16 @@
 import { defineConfig } from '@vite-pwa/assets-generator/config';
 
-// The source icon is full-bleed (grid background baked in, compass mark already
-// inside the maskable safe zone), so every variant renders at padding 0. The
-// minimal2023Preset defaults would instead letterbox the apple/maskable icons
-// onto a white 30%-padded tile, which is exactly the white-bordered dock icon
-// this replaces. Matches apps/interviewer/pwa-assets.config.ts.
+// The source icon is full-bleed (grid background baked in), so every variant
+// renders at padding 0. The minimal2023Preset defaults would instead letterbox
+// the apple icon onto a white 30%-padded tile, which is the white-bordered dock
+// icon this replaces.
+//
+// No maskable variant is generated here. Safari renders the apple-touch-icon at
+// ~0.90 of the tile while Chrome renders a maskable icon at ~1.06, so identical
+// pixels come out ~1.18x larger in Chrome. The maskable icon therefore needs
+// its own artwork, pre-scaled to 0.85, and is committed at
+// public/maskable-icon-512x512.png; apps/architect/vite.config.ts lists it in
+// the manifest. Matches apps/interviewer/pwa-assets.config.ts.
 export default defineConfig({
   preset: {
     transparent: {
@@ -12,8 +18,9 @@ export default defineConfig({
       favicons: [[48, 'favicon.ico']],
       padding: 0,
     },
+    // Empty rather than absent: the Preset type requires the key.
     maskable: {
-      sizes: [512],
+      sizes: [],
       padding: 0,
     },
     apple: {
