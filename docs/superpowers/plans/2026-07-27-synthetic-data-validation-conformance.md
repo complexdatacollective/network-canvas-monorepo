@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- **No `any` types.** Explicitly forbidden repo-wide. Do not resolve type errors with `as` assertions either — fix the cause.
+- **No `any` types.** Explicitly forbidden repo-wide. Do not resolve type errors with `as` assertions either — fix the cause. Where a value arrives from an untyped boundary (the protocol's `Record<string, unknown>` validation object), narrow it with a runtime type guard and `invariant` on failure, naming the offending variable and rule — do not cast. The one exception is a test file loading a JSON protocol fixture, where the repo's existing tests already cross that boundary with `as unknown as Stage`; match the surrounding style there.
 - **No barrel files.** Do not create `index.ts` re-export files. `packages/protocol-utilities/src/index.ts` already exists and is the package entry point; add to it only what external consumers need.
 - **Never re-export** a function or variable from a module that does not define it.
 - **Only export what another module actually imports.** Run `pnpm knip` before opening the PR.
@@ -3559,6 +3559,46 @@ describe('buildFieldValidationProps', () => {
       }),
     ).toEqual({ greaterThanVariable: { attribute: 'v1', type: 'number' } });
   });
+
+  it('throws, naming the variable and rule, on a non-numeric bound', () => {
+    expect(() =>
+      buildFieldValidationProps({
+        type: 'text',
+        variable: 'v1',
+        validation: { minLength: '24' },
+      }),
+    ).toThrow(/"v1".*"minLength".*string.*a number is required/);
+  });
+
+  it('throws on a NaN bound', () => {
+    expect(() =>
+      buildFieldValidationProps({
+        type: 'number',
+        variable: 'v1',
+        validation: { maxValue: Number.NaN },
+      }),
+    ).toThrow(/"maxValue"/);
+  });
+
+  it('throws on a non-boolean required', () => {
+    expect(() =>
+      buildFieldValidationProps({
+        type: 'text',
+        variable: 'v1',
+        validation: { required: 'yes' },
+      }),
+    ).toThrow(/"required"/);
+  });
+
+  it('throws on a non-string variable reference', () => {
+    expect(() =>
+      buildFieldValidationProps({
+        type: 'text',
+        variable: 'v2',
+        validation: { sameAs: 42 },
+      }),
+    ).toThrow(/"sameAs"/);
+  });
 });
 ```
 
@@ -3572,6 +3612,8 @@ Expected: FAIL — `Failed to resolve import "../buildFieldValidationProps"`.
 Create `packages/interview/src/forms/buildFieldValidationProps.ts`:
 
 ```ts
+import { invariant } from 'es-toolkit';
+
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import type { Variable } from '@codaco/protocol-validation';
 
@@ -3580,6 +3622,40 @@ type ValidatedField = {
   variable: string;
   validation?: Record<string, unknown>;
 };
+
+/**
+ * Read a rule off the protocol's untyped validation object, asserting its
+ * type rather than casting it. A malformed value cannot survive schema
+ * validation, so reaching one of these invariants means the protocol
+ * bypassed the schema — fail loudly and name the culprit rather than feeding
+ * a bad parameter to a validator that would report a generic
+ * "An error occurred while validating."
+ */
+function readRule<T>(
+  validation: Record<string, unknown>,
+  key: string,
+  variable: string,
+  expected: string,
+  isValid: (value: unknown) => value is T,
+): T | undefined {
+  const value = validation[key];
+  if (value === undefined) return undefined;
+  invariant(
+    isValid(value),
+    `Variable "${variable}" declares a "${key}" validation of ${typeof value}, but ${expected} is required.`,
+  );
+  return value;
+}
+
+const isBoolean = (value: unknown): value is boolean =>
+  typeof value === 'boolean';
+const isNumber = (value: unknown): value is number =>
+  typeof value === 'number' && !Number.isNaN(value);
+const isString = (value: unknown): value is string => typeof value === 'string';
+const isPattern = (
+  value: unknown,
+): value is ValidationPropsCatalogue['pattern'] =>
+  typeof value === 'object' && value !== null && 'regex' in value;
 
 /**
  * Map a codebook variable's validation object onto Field validation props.
@@ -3593,55 +3669,63 @@ export function buildFieldValidationProps(
   const validation = field.validation;
   if (!validation) return props;
 
-  if (validation.required !== undefined)
-    props.required = validation.required as boolean;
-  if (validation.minLength !== undefined)
-    props.minLength = validation.minLength as number;
-  if (validation.maxLength !== undefined)
-    props.maxLength = validation.maxLength as number;
-  if (validation.minValue !== undefined)
-    props.minValue = validation.minValue as number;
-  if (validation.maxValue !== undefined)
-    props.maxValue = validation.maxValue as number;
-  if (validation.minSelected !== undefined)
-    props.minSelected = validation.minSelected as number;
-  if (validation.maxSelected !== undefined)
-    props.maxSelected = validation.maxSelected as number;
-  if (validation.pattern !== undefined)
-    props.pattern = validation.pattern as ValidationPropsCatalogue['pattern'];
+  const { variable } = field;
+  const bool = (key: string) =>
+    readRule(validation, key, variable, 'a boolean', isBoolean);
+  const num = (key: string) =>
+    readRule(validation, key, variable, 'a number', isNumber);
+  const ref = (key: string) =>
+    readRule(validation, key, variable, 'a variable id', isString);
+
+  const required = bool('required');
+  if (required !== undefined) props.required = required;
+
+  for (const key of [
+    'minLength',
+    'maxLength',
+    'minValue',
+    'maxValue',
+    'minSelected',
+    'maxSelected',
+  ] as const) {
+    const value = num(key);
+    if (value !== undefined) props[key] = value;
+  }
+
+  const pattern = readRule(
+    validation,
+    'pattern',
+    variable,
+    'an object with a regex',
+    isPattern,
+  );
+  if (pattern !== undefined) props.pattern = pattern;
+
   // The protocol stores `unique` as a boolean, but the validator needs the
   // attribute name to collect other entities' values.
-  if (validation.unique === true) props.unique = field.variable;
-  if (validation.differentFrom !== undefined)
-    props.differentFrom = validation.differentFrom as string;
-  if (validation.sameAs !== undefined)
-    props.sameAs = validation.sameAs as string;
-  if (validation.greaterThanVariable !== undefined)
-    props.greaterThanVariable = {
-      attribute: validation.greaterThanVariable as string,
-      type: field.type,
-    };
-  if (validation.lessThanVariable !== undefined)
-    props.lessThanVariable = {
-      attribute: validation.lessThanVariable as string,
-      type: field.type,
-    };
-  if (validation.greaterThanOrEqualToVariable !== undefined)
-    props.greaterThanOrEqualToVariable = {
-      attribute: validation.greaterThanOrEqualToVariable as string,
-      type: field.type,
-    };
-  if (validation.lessThanOrEqualToVariable !== undefined)
-    props.lessThanOrEqualToVariable = {
-      attribute: validation.lessThanOrEqualToVariable as string,
-      type: field.type,
-    };
+  if (bool('unique') === true) props.unique = variable;
+
+  const differentFrom = ref('differentFrom');
+  if (differentFrom !== undefined) props.differentFrom = differentFrom;
+
+  const sameAs = ref('sameAs');
+  if (sameAs !== undefined) props.sameAs = sameAs;
+
+  for (const key of [
+    'greaterThanVariable',
+    'lessThanVariable',
+    'greaterThanOrEqualToVariable',
+    'lessThanOrEqualToVariable',
+  ] as const) {
+    const attribute = ref(key);
+    if (attribute !== undefined) props[key] = { attribute, type: field.type };
+  }
 
   return props;
 }
 ```
 
-The `as` casts above are carried over verbatim from `useProtocolForm`; the source object is `Record<string, unknown>` from the protocol, so this is the existing boundary, not new type erosion. Do not add any others.
+This is not a verbatim extraction: `useProtocolForm` cast each value blindly, which fed a malformed parameter straight into a validator whose own `invariant` then failed inside `makeValidationFunction`'s catch, surfacing as a generic "An error occurred while validating." on the field. Asserting here names the variable and the rule instead. Both `createFieldMetadata` (same file's selector, `packages/interview/src/selectors/forms.ts:94,111`) and fresco-ui's own `maxLength` validator already throw on malformed input, so this matches the surrounding contract.
 
 - [ ] **Step 4: Use it from `useProtocolForm`**
 
