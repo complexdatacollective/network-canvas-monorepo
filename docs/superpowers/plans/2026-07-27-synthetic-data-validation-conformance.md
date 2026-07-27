@@ -3498,9 +3498,9 @@ git commit -m "feat(protocol-utilities): generate constraint-conforming syntheti
 
 ---
 
-### Task 10: Extract the field validation props
+### Task 10: Extract and harden the field validation props
 
-The conformance test must validate against the _same_ props `useProtocolForm` builds, or it proves nothing. Extract that mapping into a pure function both use.
+The conformance test must validate against the _same_ props `useProtocolForm` builds, or it proves nothing. Extract that mapping into a pure function both use, replacing its blind casts with runtime type guards that fail loudly and name the offending variable.
 
 **Files:**
 
