@@ -19,6 +19,8 @@ type ValidationSectionProps = {
   entity: string;
   variableType?: string;
   existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
+  allVariables: Record<string, Variable>;
+  currentVariableId: string;
 };
 const ValidationSection = ({
   disabled = false,
@@ -26,6 +28,8 @@ const ValidationSection = ({
   entity,
   variableType = '',
   existingVariables,
+  allVariables,
+  currentVariableId,
 }: ValidationSectionProps) => {
   const dispatch = useAppDispatch();
   // Create memoized selector for hasValidation
@@ -72,6 +76,8 @@ const ValidationSection = ({
         variableType={variableType}
         entity={entity}
         existingVariables={existingVariablesForType}
+        allVariables={allVariables}
+        currentVariableId={currentVariableId}
       />
     </Section>
   );

@@ -295,6 +295,8 @@ const PromptFields = ({
           typeof variableType === 'string' ? variableType : undefined
         }
         existingVariables={omit(existingVariables, variable)}
+        allVariables={existingVariables}
+        currentVariableId={typeof variable === 'string' ? variable : ''}
       />
     </>
   );

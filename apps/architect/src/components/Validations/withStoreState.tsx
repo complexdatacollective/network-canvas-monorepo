@@ -22,6 +22,7 @@ const mapStateToProps = (
   return {
     validationOptions,
     value: formValueSelector(form)(state, name),
+    draftOptions: formValueSelector(form)(state, 'options'),
   };
 };
 
