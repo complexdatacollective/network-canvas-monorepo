@@ -66,6 +66,12 @@ export async function generateSyntheticSessions(
         isSynthetic: true,
       });
 
+      // Record the row before filling it in: `createSession` has already
+      // committed it, so a rejected `updateSession` (a failed encryption or
+      // IndexedDB write) has to roll this row back too, not just its
+      // predecessors.
+      generated.push({ sessionId: session.id, droppedOut });
+
       await updateSession(session.id, {
         currentStep,
         progress: getInterviewProgress(protocol.protocol.stages, currentStep)
@@ -75,7 +81,6 @@ export async function generateSyntheticSessions(
       });
 
       if (!droppedOut) completedCount++;
-      generated.push({ sessionId: session.id, droppedOut });
       onProgress?.(i + 1, count);
     }
 

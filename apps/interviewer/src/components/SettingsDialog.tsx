@@ -24,10 +24,8 @@ import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import {
-  type ConstraintConflict,
-  SyntheticDataConstraintError,
-} from '@codaco/protocol-utilities';
+import { SyntheticDataConstraintError } from '@codaco/protocol-utilities';
+import { GenerationFailureDescription } from '~/components/GenerationFailureDescription';
 import { HomeModal } from '~/components/HomeModal';
 import {
   ManageAuthenticator,
@@ -83,47 +81,6 @@ function StorageProgress({ value }: { value: number }) {
       label="Storage usage"
       className="text-sea-green h-2"
     />
-  );
-}
-
-// Mirrors the bullet wording `SyntheticDataConstraintError` composes into its
-// flat, newline-joined message (see
-// packages/protocol-utilities/src/generateNetwork/constraints/error.ts), but
-// renders each conflict as its own list item so the toast stays readable
-// without depending on whitespace being preserved.
-function ConstraintConflictItem({
-  conflict,
-}: {
-  conflict: ConstraintConflict;
-}) {
-  const subject =
-    conflict.entity === 'ego'
-      ? 'ego'
-      : `${conflict.entity} "${conflict.entityTypeName ?? conflict.entityType}"`;
-  const variables = conflict.variableNames
-    .map((name) => `"${name}"`)
-    .join(' and ');
-  return (
-    <li>
-      {subject}, {variables} ({conflict.rules.join(', ')}): {conflict.reason}
-    </li>
-  );
-}
-
-function ConstraintConflictList({
-  conflicts,
-}: {
-  conflicts: ConstraintConflict[];
-}) {
-  return (
-    <ul className="mt-2 list-disc space-y-1 pl-5">
-      {conflicts.map((conflict) => (
-        <ConstraintConflictItem
-          key={`${conflict.entity}-${conflict.variableIds.join('-')}`}
-          conflict={conflict}
-        />
-      ))}
-    </ul>
   );
 }
 
@@ -274,15 +231,9 @@ export function SettingsDialog({
       // other failure falls back to its flat message. Either way, this needs
       // a researcher to read and act on it, so it doesn't auto-dismiss.
       if (error instanceof SyntheticDataConstraintError) {
-        const [summary] = error.message.split('\n');
         toast.add({
           title: 'Generation failed',
-          description: (
-            <>
-              <p>{summary}</p>
-              <ConstraintConflictList conflicts={error.conflicts} />
-            </>
-          ),
+          description: <GenerationFailureDescription error={error} />,
           variant: 'destructive',
           timeout: 0,
         });

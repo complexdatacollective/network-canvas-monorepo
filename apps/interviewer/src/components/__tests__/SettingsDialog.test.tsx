@@ -385,6 +385,15 @@ describe('SettingsDialog synthetic tab — generation failure toast', () => {
       /node "Person", "Band" \(unique\): only 2 distinct values are possible/,
     );
     expect(conflictItem.tagName).toBe('LI');
+    // The conflicts sit in a bounded, focusable scroll region rather than
+    // growing the toast: the toast is anchored to the bottom of the screen, so
+    // an unbounded list carries its own title and Close control off the top.
+    // GenerationFailureDescription.stories.tsx measures that geometry for real.
+    const region = screen.getByRole('region', {
+      name: 'Conflicting validation rules',
+    });
+    expect(region).toContainElement(conflictItem);
+    expect(region).toHaveAttribute('tabindex', '0');
   });
 });
 

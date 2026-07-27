@@ -200,6 +200,51 @@ describe('generateSyntheticSessions', () => {
     ).rejects.toBeInstanceOf(SyntheticDataConstraintError);
   });
 
+  it('rolls back the row whose own update failed, not just its predecessors', async () => {
+    // `createSession` inserts the row; `updateSession` fills it in. A failure
+    // between the two — a rejected encryption or IndexedDB write — leaves a
+    // committed row that the batch never finished. It has to roll back too.
+    mockGenerateNetwork.mockImplementation(generationResult);
+    mockUpdateSession.mockRejectedValueOnce(new Error('database write failed'));
+
+    await expect(
+      generateSyntheticSessions({
+        protocolHash: HASH,
+        count: 5,
+        simulateDropOut: false,
+        respectSkipLogicAndFiltering: false,
+      }),
+    ).rejects.toThrow('database write failed');
+
+    expect(mockCreateSession).toHaveBeenCalledTimes(1);
+    expect(mockDeleteSessions).toHaveBeenCalledWith(['session-1']);
+    expect(store.size).toBe(0);
+  });
+
+  it('rolls back every earlier row when a later update fails', async () => {
+    mockGenerateNetwork.mockImplementation(generationResult);
+    mockUpdateSession
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('database write failed'));
+
+    await expect(
+      generateSyntheticSessions({
+        protocolHash: HASH,
+        count: 5,
+        simulateDropOut: false,
+        respectSkipLogicAndFiltering: false,
+      }),
+    ).rejects.toThrow('database write failed');
+
+    expect(mockDeleteSessions).toHaveBeenCalledWith([
+      'session-1',
+      'session-2',
+      'session-3',
+    ]);
+    expect(store.size).toBe(0);
+  });
+
   it('does not attempt a rollback when nothing was written yet', async () => {
     throwAfter(0);
 
