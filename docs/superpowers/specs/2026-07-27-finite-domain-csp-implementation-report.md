@@ -277,6 +277,33 @@ superseded by these corpus-measured rates.
   Guarded by "allocates overlapping unique ranges so later entities keep a
   value" (100 seeds × 2 entities), mutation-verified red by re-shuffling
   unique domains.
+- **P1 (third round), interacting unique slots**: with **two** unique groups
+  in one component — `a` and `b` unique over `[0,2]`, `a differentFrom b`,
+  three entities — no per-entity ordering is capacity-safe: bottom-up
+  pairing allocates `(1,0)` then `(0,1)` and strands the third entity, while
+  the greedy draw's per-slot **monotonic** sequences stay offset and reach
+  `(1,0), (2,1), (0,2)`. Since cross-entity allocation is deliberately out
+  of scope, a component with more than one free unique slot now **declines**
+  and takes the greedy path untouched (zero stream footprint), preserving
+  the sequence draw's proven allocation exactly. Single-unique components
+  keep the bottom-up solve. Guarded by "leaves interacting unique groups to
+  the sequence ladder" (60 seeds × 3 entities), mutation-verified red by
+  re-allowing multi-unique solves.
+- **P2 (third round), duplicate option values**: an imported protocol may
+  list one categorical value under two labels; position-based enumeration
+  fabricated multiset selections (`['x','x']`) the deduplicating draw can
+  never produce. Domains now enumerate over distinct option values
+  (first occurrence kept), with `domainSize` counting the same set. Guarded
+  by "drops duplicate option values before enumerating selections",
+  mutation-verified red by restoring the raw list.
+- **P2 (third round), unknown must not unlock reserved values**: the second
+  reserved-allowing pass now runs only on a **proven** `unsat`, never on
+  `unknown` — an exhausted budget means unreserved assignments may remain
+  unexplored, and is handled like any other exhausted budget (fallback). The
+  distinction is not black-box observable at the real node budget (reserved
+  values only widen the second search, so a pass-1 unknown implies a pass-2
+  unknown in every constructible case); the change aligns the code with the
+  documented "unknown reads as oversized" contract.
 
 ### The number-domain decision
 

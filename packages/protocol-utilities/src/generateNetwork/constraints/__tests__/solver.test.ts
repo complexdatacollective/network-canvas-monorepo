@@ -335,6 +335,33 @@ describe('solvableComponents', () => {
     }
   });
 
+  it('drops duplicate option values before enumerating selections', () => {
+    // An imported protocol may list one value under two labels; the draw
+    // deduplicates every selection, so the domain must never hold a multiset
+    // like ['x','x'] that no participant control can produce.
+    const options = [
+      { label: 'First X', value: 'x' },
+      { label: 'Second X', value: 'x' },
+      { label: 'Y', value: 'y' },
+    ];
+    const entity = build({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options,
+        validation: { differentFrom: ref('twin') },
+      },
+      twin: { name: 'Twin', type: 'categorical', options },
+    });
+
+    const [component] = componentsOf(entity);
+    const domain = component?.tractable?.domains.get('tags');
+
+    expect(domain?.map((value) => valueKey(value)).toSorted()).toEqual(
+      [valueKey(['x']), valueKey(['x', 'y']), valueKey(['y'])].toSorted(),
+    );
+  });
+
   it('declines a categorical whose combination space overflows the budget', () => {
     const options = Array.from({ length: 24 }, (_v, i) => ({
       label: `O${i}`,

@@ -722,9 +722,18 @@ function solveTractableComponent(
   const uniqueSlots = new Map<string, string>();
   for (const group of free) {
     if (plan.groups.get(group)?.constraints.unique !== true) continue;
-    const memberIds = plan.membersOf.get(group) ?? [group];
-    uniqueSlots.set(group, slotOf(memberIds));
+    uniqueSlots.set(group, slotOf(plan.membersOf.get(group) ?? [group]));
+  }
 
+  // Two unique slots inside one component cannot be allocated safely one
+  // entity at a time: whichever pairing this entity takes can strand a later
+  // one, and cross-entity allocation is deliberately not modelled here. The
+  // greedy draw's per-slot monotonic sequences allocate those families the
+  // way they always have, so the component is left to them untouched.
+  if (uniqueSlots.size > 1) return undefined;
+
+  for (const group of uniqueSlots.keys()) {
+    const memberIds = plan.membersOf.get(group) ?? [group];
     // Released before the domains are read, so a solution that lands back on
     // the entity's own value reclaims it rather than being refused it. The
     // greedy fallback re-releases on failure, which the registry tolerates.
@@ -777,9 +786,11 @@ function solveTractableComponent(
 
   // Values reserved for roster rows still to be drawn give way exactly as
   // they do on the greedy path: preferred against while anything else
-  // satisfies the component, taken once nothing else does.
+  // satisfies the component, taken once nothing else provably does. Only a
+  // proven unsat unlocks them — an unknown means unreserved assignments may
+  // remain unexplored, and is handled like any other exhausted budget.
   let verdict = solveWith(false);
-  if (verdict.kind !== 'sat' && uniqueSlots.size > 0) {
+  if (verdict.kind === 'unsat' && uniqueSlots.size > 0) {
     verdict = solveWith(true);
   }
 

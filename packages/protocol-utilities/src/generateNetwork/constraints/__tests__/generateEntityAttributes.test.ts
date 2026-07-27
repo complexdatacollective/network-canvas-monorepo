@@ -1762,6 +1762,54 @@ describe('generateEntityAttributes', () => {
     }
   });
 
+  it('leaves interacting unique groups to the sequence ladder', () => {
+    // Two unique slots inside one component cannot be allocated safely one
+    // entity at a time: a and b unique over [0,2] with a differentFrom b
+    // admit the complete allocation (1,0), (2,1), (0,2), but any per-entity
+    // ordering can pair the slots so the third entity is left (2,2). The
+    // greedy draw's per-slot monotonic sequences reach it, so such
+    // components must fall back rather than be solved.
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 2,
+            unique: true,
+            differentFrom: asEntityAttributeReference('b'),
+          },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 2, unique: true },
+        },
+      },
+      TODAY,
+    );
+
+    for (let seed = 0; seed < 60; seed++) {
+      const ctx = makeContext(seed);
+      const seenA = new Set<number>();
+      const seenB = new Set<number>();
+      for (let index = 0; index < 3; index++) {
+        const attrs = generateEntityAttributes(
+          entity,
+          ctx,
+          { entity: 'node', type: 'person' },
+          index,
+        );
+        expect(attrs.a).not.toBe(attrs.b);
+        seenA.add(Number(attrs.a));
+        seenB.add(Number(attrs.b));
+      }
+      expect(seenA.size).toBe(3);
+      expect(seenB.size).toBe(3);
+    }
+  });
+
   it('consumes exactly one seeded draw for a solved component', () => {
     // The solve seeds a local shuffle from a single draw, so the shared
     // stream advances by the same amount whatever the search does — a capped

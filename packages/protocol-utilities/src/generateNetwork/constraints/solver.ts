@@ -103,6 +103,19 @@ function subsetSizes(variable: ConstrainedVariable): {
 }
 
 /**
+ * Option values with duplicates dropped, first occurrence kept. An imported
+ * protocol may list one value under two labels; the draw deduplicates every
+ * selection it emits, so a position-based enumeration over the raw list
+ * would fabricate multiset selections like `['x','x']` that no draw and no
+ * participant control can produce.
+ */
+function distinctOptionValues(
+  options: readonly { value: string | number | boolean }[],
+): (string | number | boolean)[] {
+  return [...new Set(options.map((option) => option.value))];
+}
+
+/**
  * Option subsets whose sizes fall inside the selection bounds, smallest sizes
  * first and lexicographic by option position within a size. Undefined once the
  * count passes `cap` — combinatorial domains routinely explode, and an
@@ -201,7 +214,7 @@ function domainSize(
     }
 
     case 'categorical': {
-      const count = entry.options?.length ?? 0;
+      const count = distinctOptionValues(entry.options ?? []).length;
       if (count === 0) return undefined;
       const { min, max } = subsetSizes(variable);
       let total = 0;
@@ -287,7 +300,7 @@ function enumerateDomain(
     }
 
     case 'categorical': {
-      const options = (entry.options ?? []).map((option) => option.value);
+      const options = distinctOptionValues(entry.options ?? []);
       if (options.length === 0) return undefined;
       const { min, max } = subsetSizes(variable);
       return enumerateSubsets(options, min, max, cap);
