@@ -855,6 +855,109 @@ describe('cross-variable rules across a seed sweep', () => {
 
     expect(failures).toEqual([]);
   });
+
+  it('solves the rest of a component around a prompt-fixed attribute', () => {
+    // additionalAttributes fixes `flag` before anything is drawn, so the
+    // solve must treat it as assigned — `twin differentFrom flag` leaves
+    // exactly one boolean for every node.
+    const codebook = personCodebook({
+      flag: { name: 'Flag', type: 'boolean' },
+      twin: {
+        name: 'Twin',
+        type: 'boolean',
+        validation: { differentFrom: 'flag' },
+      },
+    });
+    const stage = {
+      id: 'stage-1',
+      type: 'NameGenerator',
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Name people',
+          additionalAttributes: [{ variable: 'flag', value: true }],
+        },
+      ],
+      behaviours: { minNodes: 4, maxNodes: 4 },
+    } as unknown as Stage;
+
+    const failures: string[] = [];
+    for (let seed = 1; seed <= 40; seed++) {
+      const { network } = generateNetwork({ seed, codebook, stages: [stage] });
+      for (const node of network.nodes) {
+        const attrs = node[entityAttributesProperty];
+        complain(
+          failures,
+          attrs.flag === true && attrs.twin === false,
+          () => `seed ${seed}: ${JSON.stringify(attrs)}`,
+        );
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it('generates a chain that forces a number into a fractional range', () => {
+    // `v1 < v0` against a scalar leaves `v1` the propagated range
+    // [0.01, 0.99], which holds no integer; the number draw falls back to
+    // two-decimal floats there. The complete solver deliberately declines
+    // such components — their reachable set is not crisply enumerable — so
+    // feasibility must keep accepting this and the greedy path must keep
+    // generating values that satisfy every comparison.
+    const codebook = personCodebook({
+      v0: { name: 'V0', type: 'scalar', component: 'VisualAnalogScale' },
+      v1: {
+        name: 'V1',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 3, lessThanVariable: 'v0' },
+      },
+      v2: {
+        name: 'V2',
+        type: 'scalar',
+        component: 'VisualAnalogScale',
+        validation: { lessThanVariable: 'v1' },
+      },
+      v3: {
+        name: 'V3',
+        type: 'number',
+        validation: {
+          minValue: 0,
+          maxValue: 3,
+          lessThanOrEqualToVariable: 'v2',
+        },
+      },
+    });
+
+    const failures: string[] = [];
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [nameGeneratorStage],
+      });
+
+      for (const node of network.nodes) {
+        const attrs = node[entityAttributesProperty];
+        const [v0, v1, v2, v3] = ['v0', 'v1', 'v2', 'v3'].map((id) =>
+          Number(attrs[id]),
+        );
+        complain(
+          failures,
+          v1! < v0! &&
+            v2! < v1! &&
+            v3! <= v2! &&
+            v1! >= 0 &&
+            v1! <= 3 &&
+            v3! >= 0,
+          () => `seed ${seed}: ${JSON.stringify({ v0, v1, v2, v3 })}`,
+        );
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
 });
 
 /**

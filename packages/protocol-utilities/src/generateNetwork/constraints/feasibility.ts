@@ -12,11 +12,13 @@ import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
 import { worstCaseEntityCounts } from './entityCounts';
 import type { ConstraintConflict } from './error';
 import {
+  differentFromGroups,
   emptyGroupBounds,
   groupComparatorEdges,
   intersectGroupConstraints,
   propagateComparatorBounds,
 } from './groupConstraints';
+import { solvableComponents, solveComponent } from './solver';
 import {
   COMPARISON_RULES,
   type ConstrainedVariable,
@@ -107,12 +109,17 @@ function analyseEntity(
   const { order, membersOf, groupOf, cycles } = resolveGenerationOrder(entity);
   const groups = intersectGroupConstraints(entity, membersOf);
   const uniqueReported = new Set<string>();
+  // Groups an earlier check has already refused. The complete search below
+  // skips components touching them: re-proving a contradiction that already
+  // has a targeted message would only report it twice, less usefully.
+  const implicated = new Set<string>();
 
   const report = (
     variableIds: string[],
     rules: string[],
     reason: string,
   ): void => {
+    for (const id of variableIds) implicated.add(groupOf.get(id) ?? id);
     conflicts.push({
       entity: scope.entity,
       ...(scope.entityType !== undefined
@@ -270,7 +277,11 @@ function analyseEntity(
   // checks above, a single variable's bounds or a group's members' against each
   // other, and neither needs a comparator to be wrong.
   const edges = groupComparatorEdges(entity, groupOf);
-  const { inverted } = propagateComparatorBounds(groups, order, edges);
+  const { groups: propagated, inverted } = propagateComparatorBounds(
+    groups,
+    order,
+    edges,
+  );
   const cyclicGroups = new Set(
     cycles.flat().map((id) => groupOf.get(id) ?? id),
   );
@@ -319,7 +330,75 @@ function analyseEntity(
     );
   }
 
+  // Interval reasoning cannot represent "this range minus the value another
+  // variable took", so shapes like a differentFrom pinned to a single shared
+  // value slip through every check above and used to surface as seed-dependent
+  // draw failures. Where a component's domains are small enough to enumerate,
+  // a complete search settles it: exhausting the space without a solution is a
+  // proof of unsatisfiability, and anything short of that proof — including a
+  // search that ran out of budget — never refuses.
+  const components = solvableComponents(
+    propagated,
+    order,
+    edges,
+    differentFromGroups(entity, groupOf),
+  );
+  for (const component of components) {
+    if (component.tractable === undefined) continue;
+    if (component.groups.some((group) => implicated.has(group))) continue;
+    if (solveComponent(component.tractable).kind !== 'unsat') continue;
+
+    const members = new Set(component.groups);
+    const ids = [...entity.keys()].filter((id) =>
+      members.has(groupOf.get(id) ?? id),
+    );
+    report(
+      ids,
+      solvedComponentRules(entity, ids),
+      'no combination of values these rules allow can satisfy all of them at once',
+    );
+  }
+
   return conflicts;
+}
+
+/**
+ * The rules a solver refusal names: every reference rule the component's
+ * members declare, plus the declared bounds that box the search in. A scalar's
+ * implicit 0-1 scale is left out — naming a rule the protocol never wrote
+ * points its author at nothing.
+ */
+function solvedComponentRules(
+  entity: EntityConstraints,
+  ids: readonly string[],
+): string[] {
+  const rules = new Set<string>(
+    REFERENCE_RULES.filter((rule) =>
+      ids.some((id) => entity.get(id)?.constraints[rule] !== undefined),
+    ),
+  );
+
+  for (const id of ids) {
+    const variable = entity.get(id);
+    if (variable === undefined) continue;
+    const { entry, constraints } = variable;
+
+    if (entry.type !== 'scalar') {
+      if (constraints.minValue !== undefined) rules.add('minValue');
+      if (constraints.maxValue !== undefined) rules.add('maxValue');
+    }
+    if (constraints.minSelected !== undefined) rules.add('minSelected');
+    if (constraints.maxSelected !== undefined) rules.add('maxSelected');
+    const window = constraints.dateWindow;
+    if (
+      window !== undefined &&
+      (window.min !== undefined || window.max !== undefined)
+    ) {
+      rules.add('parameters');
+    }
+  }
+
+  return [...rules];
 }
 
 /**
