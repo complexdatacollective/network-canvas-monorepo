@@ -302,7 +302,12 @@ const Validation = ({
         )}
         {draftIssues.length > 0 && (
           <div className="mt-2 basis-full">
-            <FieldErrors id={draftIssuesId} errors={draftIssues} show />
+            <FieldErrors
+              id={draftIssuesId}
+              errors={draftIssues}
+              show
+              variant="box"
+            />
           </div>
         )}
       </div>
