@@ -107,6 +107,29 @@ describe('analyseFeasibility', () => {
     expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
   });
 
+  it('reports a required variable whose ceiling permits only an empty string', () => {
+    const codebook = codebookWith({
+      name: {
+        name: 'Name',
+        type: 'text',
+        validation: { required: true, maxLength: 0 },
+      },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['required', 'maxLength']);
+  });
+
+  it('leaves a zero length ceiling alone when the variable is not required', () => {
+    const codebook = codebookWith({
+      name: { name: 'Name', type: 'text', validation: { maxLength: 0 } },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
   it('reports minSelected above the option count', () => {
     const codebook = codebookWith({
       tags: {

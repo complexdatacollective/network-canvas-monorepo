@@ -207,6 +207,17 @@ function analyseEntity(
       );
     }
 
+    // The same contradiction in the length rules: `maxLength: 0` leaves the
+    // empty string as the only value it permits, and `required` rejects it.
+    // `textDrawLength` picks length 0 and `fitToLength` emits `""`.
+    if (constraints.required && constraints.maxLength === 0) {
+      report(
+        [id],
+        ['required', 'maxLength'],
+        'maxLength 0 permits only an empty string, which required rejects',
+      );
+    }
+
     const optionCount = entry.options?.length ?? 0;
     if (
       constraints.minSelected !== undefined &&
