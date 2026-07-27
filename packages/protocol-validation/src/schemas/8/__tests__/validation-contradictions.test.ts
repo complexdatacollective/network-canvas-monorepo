@@ -76,6 +76,50 @@ describe('findValidationContradictions — local checks', () => {
     ]);
   });
 
+  // Sixth-wave Finding 3: categoricalOptionsSchema permits duplicate-VALUE
+  // option entries, but the runtime can only ever select a distinct value —
+  // minSelected must be judged against the DISTINCT value count, not the
+  // entry count.
+  it('reports minSelected greater than the DISTINCT option value count, despite more entries', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'colors',
+        type: 'categorical',
+        options: [
+          { label: 'Red', value: 'x' },
+          { label: 'Red (again)', value: 'x' },
+          { label: 'Blue', value: 'y' },
+        ],
+        validation: { minSelected: 3 },
+      },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('minSelectedExceedsOptions');
+    expect(result[0]?.message).toBe(
+      'Variable "colors": minSelected (3) is greater than the number of options (2)',
+    );
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'minSelected' },
+    ]);
+  });
+
+  it('accepts minSelected equal to the distinct option value count despite a duplicate entry', () => {
+    expect(
+      findValidationContradictions({
+        a: {
+          name: 'colors',
+          type: 'categorical',
+          options: [
+            { label: 'Red', value: 'x' },
+            { label: 'Red (again)', value: 'x' },
+            { label: 'Blue', value: 'y' },
+          ],
+          validation: { minSelected: 2 },
+        },
+      }),
+    ).toEqual([]);
+  });
+
   it('accepts equal bounds and minSelected equal to the option count', () => {
     expect(
       findValidationContradictions({
@@ -451,6 +495,18 @@ describe('findValidationContradictions — second-wave Finding 1: shared-option 
       }),
     ).toEqual([]);
   });
+
+  // Sixth-wave Finding 3: a duplicate-VALUE option entry on one side of the
+  // group must not inflate the shared-value count the intersection is
+  // compared against — `optionValues` already builds a Set, so this is a
+  // regression guard rather than a behaviour change.
+  it('counts distinct shared values even when one member has a duplicate-value entry', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['x', 'x', 'y'], { sameAs: 'b', minSelected: 2 }),
+      b: categorical('b', ['x', 'y']),
+    });
+    expect(result).toEqual([]);
+  });
 });
 
 describe('findValidationContradictions — Finding E: comparator-forced equality groups', () => {
@@ -613,15 +669,18 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
 
   const trueOnly = [{ label: 'Yes', value: true }];
 
+  // Sixth-wave Finding 2 renamed this class from 'singletonBooleanDomain' to
+  // 'pinnedEqualDifferentFrom' and generalised the message when the boolean
+  // check was folded into the type-agnostic pinned-value check.
   it('rejects two true-only booleans joined by differentFrom', () => {
     const result = findValidationContradictions({
       a: boolean('a', { differentFrom: 'b' }, trueOnly),
       b: boolean('b', {}, trueOnly),
     });
     expect(result).toHaveLength(1);
-    expect(result[0]?.class).toBe('singletonBooleanDomain');
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" must differ but can only hold the same value',
+      'Variables "a", "b" must differ but their rules pin both to the same value',
     );
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
     expect(result[0]?.strips).toEqual([
@@ -657,6 +716,103 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
         b: boolean('b', { differentFrom: 'c' }),
         c: boolean('c', { differentFrom: 'd' }),
         d: boolean('d', { differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — sixth-wave Finding 2: pinned-equal differentFrom', () => {
+  const number = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'number',
+    validation,
+  });
+
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  it('rejects two number variables each pinned by minValue === maxValue to the same value', () => {
+    const result = findValidationContradictions({
+      a: number('a', { minValue: 5, maxValue: 5, differentFrom: 'b' }),
+      b: number('b', { minValue: 5, maxValue: 5 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" must differ but their rules pin both to the same value',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  it('accepts two number variables pinned to different values', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', { minValue: 5, maxValue: 5, differentFrom: 'b' }),
+        b: number('b', { minValue: 6, maxValue: 6 }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts a differentFrom pair where only one side is pinned', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', { minValue: 5, maxValue: 5, differentFrom: 'b' }),
+        b: number('b', { minValue: 1, maxValue: 10 }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('rejects two full-resolution DatePickers each pinned to the same fixed window', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2020-05-03', max: '2020-05-03' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker('b', { min: '2020-05-03', max: '2020-05-03' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+  });
+
+  it('accepts two full-resolution DatePickers pinned to different fixed windows', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-05-03', max: '2020-05-03' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker('b', { min: '2020-05-04', max: '2020-05-04' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A month/year-resolution DatePicker's equal-looking min/max window still
+  // leaves every day within that coarser unit selectable — it is not pinned
+  // to one runtime value the way a full-resolution equal window is.
+  it('does not treat a month-resolution equal window as pinned', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'month', min: '2020-05', max: '2020-05' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker('b', { type: 'month', min: '2020-05', max: '2020-05' }),
       }),
     ).toEqual([]);
   });

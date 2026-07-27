@@ -11,7 +11,7 @@ export type ContradictionClass =
   | 'sameAsGroupConflict'
   | 'disjointBounds'
   | 'oddDifferentFromCycle'
-  | 'singletonBooleanDomain';
+  | 'pinnedEqualDifferentFrom';
 
 export type VariableRuleRef = {
   variableId: string;
@@ -67,9 +67,27 @@ const referenceRule = (
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 };
 
-const optionCount = (variable: unknown): number | undefined => {
+/**
+ * A variable's distinct option values, for both the `minSelected` cardinality
+ * check below and the categorical/ordinal `sameAs`-group check (Finding D).
+ * `undefined` — not an empty set — means "unusable for this check": raw
+ * migration input may not have an `options` array at all, and that must skip
+ * the check rather than be treated as zero options. `categoricalOptionsSchema`
+ * permits duplicate-VALUE entries (the runtime can only ever select a
+ * distinct value), so this counts distinct values, not entries — sixth-wave
+ * Finding 3.
+ */
+const optionValues = (variable: unknown): Set<string | number> | undefined => {
   const options = asRecord(variable)?.options;
-  return Array.isArray(options) ? options.length : undefined;
+  if (!Array.isArray(options)) return undefined;
+  const values = new Set<string | number>();
+  for (const option of options) {
+    const value = asRecord(option)?.value;
+    if (typeof value === 'string' || typeof value === 'number') {
+      values.add(value);
+    }
+  }
+  return values;
 };
 
 const BOUND_PAIRS = [
@@ -100,7 +118,7 @@ function localContradictions(
       }
     }
     const minSelected = numberRule(variable, 'minSelected');
-    const options = optionCount(variable);
+    const options = optionValues(variable)?.size;
     if (
       minSelected !== undefined &&
       options !== undefined &&
@@ -696,25 +714,6 @@ const isEmptyInterval = (interval: Interval | undefined): boolean =>
   interval.min > interval.max;
 
 /**
- * A variable's option values, for the categorical/ordinal `sameAs`-group
- * check (Finding D). `undefined` — not an empty set — means "unusable for
- * this check": raw migration input may not have an `options` array at all,
- * and that must skip the check rather than be treated as zero options.
- */
-const optionValues = (variable: unknown): Set<string | number> | undefined => {
-  const options = asRecord(variable)?.options;
-  if (!Array.isArray(options)) return undefined;
-  const values = new Set<string | number>();
-  for (const option of options) {
-    const value = asRecord(option)?.value;
-    if (typeof value === 'string' || typeof value === 'number') {
-      values.add(value);
-    }
-  }
-  return values;
-};
-
-/**
  * A boolean variable's effective domain, for the singleton-domain
  * `differentFrom` check (fifth-wave Finding 5). `booleanOptionsSchema`
  * (variable.ts) permits an `options` array exposing only one of {true,
@@ -750,6 +749,106 @@ const dateResolutionOf = (variable: unknown): DateResolution => {
   const type = asRecord(record.parameters)?.type;
   return type === 'month' || type === 'year' ? type : 'full';
 };
+
+/**
+ * The single runtime value a variable's OWN rules pin it to, if any —
+ * sixth-wave Finding 2's generalisation of the fifth-wave singleton-boolean
+ * check to every type a `differentFrom` edge can join. `undefined` means "not
+ * pinned": the variable can still hold more than one value under its current
+ * rules, so a `differentFrom` partner cannot be judged against it here.
+ *
+ *   - number: a `minValue`/`maxValue` window collapsed to one point
+ *     (`minValue === maxValue`) pins that value.
+ *   - boolean: `booleanDomain`'s existing singleton-`options` logic (the
+ *     fifth-wave Finding 5 check, folded in here).
+ *   - datetime: a min/max window collapsed to one point pins that day
+ *     — but ONLY at full resolution. A month/year-resolution DatePicker's
+ *     equal-looking min/max (e.g. both '2020') still leaves every day in
+ *     that month/year selectable, so it is not a pinned value the way a
+ *     full-resolution equal window is.
+ *   - ordinal/categorical: an option SET, even a single-member one, is not
+ *     pinned the same way — Finding 2 scopes this out; see the file-level
+ *     option-set disjointness check (Finding D) for that family's own
+ *     equality-group handling.
+ *   - text/scalar/layout: no rule on these types ever collapses to one
+ *     runtime value.
+ */
+const pinnedValue = (
+  variable: unknown,
+): string | number | boolean | undefined => {
+  switch (typeOf(variable)) {
+    case 'number': {
+      const min = numberRule(variable, 'minValue');
+      const max = numberRule(variable, 'maxValue');
+      return min !== undefined && min === max ? min : undefined;
+    }
+    case 'boolean': {
+      const domain = booleanDomain(variable);
+      return domain.size === 1 ? [...domain][0] : undefined;
+    }
+    case 'datetime': {
+      if (dateResolutionOf(variable) !== 'full') return undefined;
+      const window = dateWindowInterval(variable);
+      return window?.min !== undefined && window.min === window.max
+        ? window.min
+        : undefined;
+    }
+    default:
+      return undefined;
+  }
+};
+
+/**
+ * `differentFrom` edges (same-typed endpoints, per `usableReference`) whose
+ * two ends are each individually pinned (`pinnedValue`) to the SAME runtime
+ * value — unsatisfiable regardless of the rest of the validation graph, since
+ * neither endpoint has any other value to fall back to. Checked per raw
+ * `differentFrom` rule instance, directly between the two endpoint
+ * VARIABLES — not at equality-group granularity, mirroring the fifth-wave
+ * check this generalises. Self-references are skipped: those are already
+ * reported as a class-9 `sameAsGroupConflict` (a group-of-one).
+ *
+ * Also returns the claimed variable-id pairs so `oddDifferentFromCycleContradictions`
+ * can exclude them from its boolean bipartite graph — a pair already reported
+ * here must not ALSO surface as (or be folded into) an odd-cycle report.
+ */
+function pinnedEqualDifferentFromContradictions(variables: UnknownRecord): {
+  contradictions: ValidationContradiction[];
+  claimedPairs: Set<string>;
+} {
+  const conflicts = new Map<string, VariableRuleRef[]>();
+
+  for (const [id, variable] of Object.entries(variables)) {
+    const target = usableReference(variables, id, 'differentFrom');
+    if (target === undefined || target === id) continue;
+    const valueA = pinnedValue(variable);
+    const valueB = pinnedValue(variables[target]);
+    if (valueA === undefined || valueB === undefined || valueA !== valueB) {
+      continue;
+    }
+    const [lower, upper] = [id, target].toSorted();
+    if (lower === undefined || upper === undefined) continue;
+    const key = `${lower}${KEY_SEPARATOR}${upper}`;
+    const sources = conflicts.get(key) ?? [];
+    sources.push({ variableId: id, rule: 'differentFrom' });
+    conflicts.set(key, sources);
+  }
+
+  const contradictions: ValidationContradiction[] = [];
+  for (const [key, sources] of conflicts) {
+    const [lower, upper] = key.split(KEY_SEPARATOR);
+    const [first, ...rest] = sources;
+    if (!lower || !upper || !first) continue;
+    contradictions.push({
+      class: 'pinnedEqualDifferentFrom',
+      message: `Variables "${nameOf(lower, variables[lower])}", "${nameOf(upper, variables[upper])}" must differ but their rules pin both to the same value`,
+      variableIds: [lower, upper],
+      strips: [first, ...rest],
+    });
+  }
+
+  return { contradictions, claimedPairs: new Set(conflicts.keys()) };
+}
 
 /**
  * The rules a group-level emptiness conflict (interval or, for Finding D,
@@ -1028,56 +1127,24 @@ const pathToRoot = (parent: Map<string, string>, from: string): string[] => {
  * exact check for arbitrary k — that's out of scope here and left to the
  * interview runtime's own fill-time enforcement as a backstop.
  *
- * Fifth-wave Finding 5: bipartiteness alone assumes every boolean's domain is
- * the full {true, false} — but `booleanOptionsSchema` (variable.ts) permits
- * an `options` array exposing only ONE value, and a `differentFrom` edge
- * between two variables pinned to the SAME singleton domain is unsatisfiable
- * no matter how the rest of the graph 2-colours (`{true} ≠ {true}` has no
- * solution). That is checked per raw `differentFrom` rule instance, directly
- * between the two endpoint VARIABLES — not at equality-group granularity like
- * the rest of this function. DELIBERATE LIMIT: domain propagation through
- * chains (a singleton forcing a neighbour's effective domain, cascading to a
- * third variable) is left to the interview runtime's own fill-time
- * enforcement as a backstop, same as the k-colourability limit above.
+ * `claimedPairs` (sorted `id\0id` keys) comes from
+ * `pinnedEqualDifferentFromContradictions`, run once by the caller over ALL
+ * types: a boolean pair already reported there — both ends pinned to the same
+ * value (fifth-wave Finding 5, generalised by sixth-wave Finding 2) — is
+ * excluded from the bipartite graph below so it isn't ALSO folded into an
+ * odd-cycle report. DELIBERATE LIMIT: domain propagation through chains (a
+ * pinned value forcing a neighbour's effective domain, cascading to a third
+ * variable) is left to the interview runtime's own fill-time enforcement as a
+ * backstop, same as the k-colourability limit above.
  */
 function oddDifferentFromCycleContradictions(
   variables: UnknownRecord,
+  claimedPairs: Set<string>,
 ): ValidationContradiction[] {
   const edges = comparatorEdges(variables);
   const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
 
   const found: ValidationContradiction[] = [];
-  const singletonConflicts = new Map<string, VariableRuleRef[]>();
-
-  for (const [id, variable] of Object.entries(variables)) {
-    if (typeOf(variable) !== 'boolean') continue;
-    const target = usableReference(variables, id, 'differentFrom');
-    if (target === undefined || target === id) continue;
-    const domainA = booleanDomain(variable);
-    const domainB = booleanDomain(variables[target]);
-    if (domainA.size !== 1 || domainB.size !== 1) continue;
-    const [onlyA] = domainA;
-    const [onlyB] = domainB;
-    if (onlyA !== onlyB) continue;
-    const [lower, upper] = [id, target].toSorted();
-    if (lower === undefined || upper === undefined) continue;
-    const key = `${lower}${KEY_SEPARATOR}${upper}`;
-    const sources = singletonConflicts.get(key) ?? [];
-    sources.push({ variableId: id, rule: 'differentFrom' });
-    singletonConflicts.set(key, sources);
-  }
-
-  for (const [key, sources] of singletonConflicts) {
-    const [lower, upper] = key.split(KEY_SEPARATOR);
-    const [first, ...rest] = sources;
-    if (!lower || !upper || !first) continue;
-    found.push({
-      class: 'singletonBooleanDomain',
-      message: `Variables "${nameOf(lower, variables[lower])}", "${nameOf(upper, variables[upper])}" must differ but can only hold the same value`,
-      variableIds: [lower, upper],
-      strips: [first, ...rest],
-    });
-  }
 
   const edgesByKey = new Map<string, BooleanDifferentFromEdge>();
   const adjacency = new Map<string, Set<string>>();
@@ -1099,10 +1166,11 @@ function oddDifferentFromCycleContradictions(
     if (
       lowerVar !== undefined &&
       upperVar !== undefined &&
-      singletonConflicts.has(`${lowerVar}${KEY_SEPARATOR}${upperVar}`)
+      claimedPairs.has(`${lowerVar}${KEY_SEPARATOR}${upperVar}`)
     ) {
-      // Already reported above; keep it out of the bipartite graph so it
-      // isn't ALSO folded into an oddDifferentFromCycle report.
+      // Already reported by pinnedEqualDifferentFromContradictions; keep it
+      // out of the bipartite graph so it isn't ALSO folded into an
+      // oddDifferentFromCycle report.
       continue;
     }
     const [lower, upper] = [groupA, groupB].toSorted();
@@ -1220,10 +1288,13 @@ function oddDifferentFromCycleContradictions(
 export function findValidationContradictions(
   variables: UnknownRecord,
 ): ValidationContradiction[] {
+  const { contradictions: pinnedEqualContradictions, claimedPairs } =
+    pinnedEqualDifferentFromContradictions(variables);
   return [
     ...localContradictions(variables),
     ...referenceStructureContradictions(variables),
     ...disjointBoundsContradictions(variables),
-    ...oddDifferentFromCycleContradictions(variables),
+    ...pinnedEqualContradictions,
+    ...oddDifferentFromCycleContradictions(variables, claimedPairs),
   ];
 }

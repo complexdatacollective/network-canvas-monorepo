@@ -48,10 +48,25 @@ const DATE_RESOLUTIONS_FINEST_FIRST = ['full', 'month', 'year'] as const;
  * authored intent); anything else invalid is stripped. Shared by the
  * codebook-variable DatePicker step and the NetworkComposer stage-field
  * DatePicker step below — both carry the same `{ type?, min?, max? }` shape.
+ *
+ * `type` itself is normalised first: `datePickerParametersSchema` only
+ * accepts 'full'/'month'/'year' (or omitted, defaulting to 'full'). A legacy
+ * value outside that set — e.g. a 'week' resolution a later app version
+ * once offered — is treated as 'full' for the bounds logic below, but the
+ * stray key must be deleted rather than left in place, or the post-migration
+ * document fails the enum check the bounds logic already assumed passed.
  */
 const normalizeDatePickerParameters = (
   parameters: Record<string, unknown>,
 ): void => {
+  if (
+    parameters.type !== undefined &&
+    parameters.type !== 'month' &&
+    parameters.type !== 'year' &&
+    parameters.type !== 'full'
+  ) {
+    delete parameters.type;
+  }
   const resolution =
     parameters.type === 'month' || parameters.type === 'year'
       ? parameters.type

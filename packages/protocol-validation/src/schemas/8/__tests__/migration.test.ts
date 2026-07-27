@@ -4357,6 +4357,27 @@ describe('Migration V7 to V8', () => {
       expect(variables?.b).not.toHaveProperty('parameters.min');
     });
 
+    // Sixth-wave Finding 1: an unsupported `type` (e.g. a legacy 'week'
+    // resolution) was treated as 'full' for the bounds logic but left in
+    // place, so the migrated document failed the strictObject's
+    // full/month/year enum. The stray key must be deleted, falling back to
+    // the schema's own 'full' default.
+    it('deletes an unsupported DatePicker type and keeps a valid bound', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'week_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'week', min: '2020-01-01' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.type');
+      expect(variables?.a).toHaveProperty('parameters.min', '2020-01-01');
+    });
+
     it('leaves RelativeDatePicker parameters alone', () => {
       const migratedRaw = migrateVariables({
         a: {
@@ -4573,6 +4594,34 @@ describe('Migration V7 to V8', () => {
       expect(fields?.[0]).toHaveProperty('parameters.min', '1990');
       expect(fields?.[0]).toHaveProperty('parameters.max', '2020');
       expect(fields?.[1]).toHaveProperty('parameters.minLabel', 'Distant');
+    });
+
+    // Sixth-wave Finding 1: the same unsupported-`type` deletion applies to
+    // the composer's own DatePicker field parameters (shared normalisation
+    // function), not only the codebook-variable path above.
+    it('deletes an unsupported DatePicker type on a nodeForm field', () => {
+      const migratedRaw = migrateStages([
+        composerStage({
+          nodeForm: {
+            fields: [
+              {
+                variable: 'birth_date',
+                component: 'DatePicker',
+                parameters: { type: 'week', min: '2020-01-01' },
+              },
+            ],
+          },
+        }),
+      ]);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const field = stage.nodeForm?.fields?.[0];
+      expect(field).not.toHaveProperty('parameters.type');
+      expect(field).toHaveProperty('parameters.min', '2020-01-01');
     });
   });
 
