@@ -1,3 +1,5 @@
+import { todayYmd } from './constraints/dateWindow';
+
 /**
  * A closed `[min, max]` numeric range a random draw is sampled from.
  */
@@ -39,9 +41,15 @@ export type GenerationConfig = {
    * least one node), so the stage presents as partially complete.
    */
   inProgressClearRatio: number;
+  /**
+   * The date RelativeDatePicker bounds are resolved against, as YYYY-MM-DD.
+   * Resolved per-run rather than baked into the defaults so it tracks the
+   * real date, and so tests can pin it.
+   */
+  today: string;
 };
 
-const DEFAULT_GENERATION_CONFIG: GenerationConfig = {
+const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> = {
   rosterDrawRatio: 0.7,
   nodeCount: { min: 1, max: 8 },
   dropOutFactor: 0.15,
@@ -56,5 +64,9 @@ const DEFAULT_GENERATION_CONFIG: GenerationConfig = {
 export function resolveGenerationConfig(
   overrides?: Partial<GenerationConfig>,
 ): GenerationConfig {
-  return { ...DEFAULT_GENERATION_CONFIG, ...overrides };
+  return {
+    ...DEFAULT_GENERATION_CONFIG,
+    today: todayYmd(),
+    ...overrides,
+  };
 }

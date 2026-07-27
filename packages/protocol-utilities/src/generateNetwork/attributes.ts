@@ -20,6 +20,7 @@ export function toVariableEntry(id: string, variable: Variable): VariableEntry {
     component: 'component' in variable ? variable.component : undefined,
     options,
     validation: 'validation' in variable ? variable.validation : undefined,
+    parameters: 'parameters' in variable ? variable.parameters : undefined,
   };
 }
 
