@@ -178,7 +178,7 @@ function domainSize(
       return flat(2);
 
     case 'ordinal': {
-      const count = entry.options?.length ?? 0;
+      const count = distinctOptionValues(entry.options ?? []).length;
       return count === 0 ? undefined : flat(count);
     }
 
@@ -255,9 +255,9 @@ function enumerateDomain(
       return [false, true];
 
     case 'ordinal': {
-      const options = entry.options ?? [];
-      if (options.length === 0 || options.length > cap) return undefined;
-      return options.map((option) => option.value);
+      const values = distinctOptionValues(entry.options ?? []);
+      if (values.length === 0 || values.length > cap) return undefined;
+      return values;
     }
 
     case 'number': {

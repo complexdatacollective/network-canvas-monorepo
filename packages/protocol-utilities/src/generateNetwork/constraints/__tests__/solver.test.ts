@@ -473,6 +473,20 @@ describe('solvableComponents', () => {
         options,
         validation: { differentFrom: ref('flag') },
       },
+      // One value under two labels, which the schema permits and an imported
+      // protocol can carry. The draw only ever reaches the single value they
+      // collapse to, so counting entries here would put the solver's domain
+      // above valueSpaceSize — the drift this test exists to catch, and which
+      // a fixture of distinct values cannot expose.
+      repeated: {
+        name: 'Repeated',
+        type: 'ordinal',
+        options: [
+          { label: 'One', value: 1 },
+          { label: 'Uno', value: 1 },
+        ],
+        validation: { differentFrom: ref('band') },
+      },
       flag: { name: 'Flag', type: 'boolean' },
       tags: {
         name: 'Tags',
@@ -504,6 +518,7 @@ describe('solvableComponents', () => {
       'b',
       'band',
       'flag',
+      'repeated',
       's1',
       's2',
       'tags',
