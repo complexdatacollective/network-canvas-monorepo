@@ -50,6 +50,27 @@ The companion project's feasibility analyser detects all of these. Its implement
 
 - `unique` against a finite value space. Whether `unique` on a three-option ordinal is satisfiable depends on how many nodes a stage generates, which is a runtime property. Architect could reasonably _warn_ when `unique` is applied to a variable with a small finite value space (ordinal, categorical, boolean, or a tightly bounded number), but it cannot decide it.
 
+## A second, separate class: rules an interface cannot enforce
+
+Validation rules are a **form-field** mechanism — the interview applies them through `useProtocolForm`, which renders `Field` components. An interface that assigns a variable by some other means never validates it.
+
+`OrdinalBin` and `CategoricalBin` are exactly that. Verified in the runtime: `OrdinalBin` renders no `Field` at all, and `CategoricalBin`'s only `Field` is for the prompt's `otherVariable` free-text input — the bin's own variable is written by a bare `updateNode` dispatch (`[variable]: [bin.value]`). So a rule on a bin's prompt variable is never enforced by the bin.
+
+That is harmless until the same variable is also rendered in a form somewhere, at which point the form validates a value the bin set without validation. Measured on a protocol where two variables sit in both a name generator's form and a following bin stage: **57 of 80 generated nodes fail validation** (0 of 80 with the form alone) — 45 failing `minSelected: 2`, 24 failing `differentFrom`.
+
+**Proposed rule: reject any validation rule other than `required` on a variable used as an `OrdinalBin` or `CategoricalBin` prompt variable.**
+
+Why that framing rather than "reject it when the variable is also used in a form":
+
+- `CategoricalBin` writes exactly one option value, so `minSelected: 2` is _structurally_ unsatisfiable regardless of what else the protocol contains.
+- `sameAs`, `differentFrom`, `unique` and the comparators have no mechanism in a drag interaction.
+- `required` is genuinely satisfied — a bin assigns a value.
+- Not conditioning on form usage catches the case where the form is added _after_ the bin, which a conditional check would miss at authoring time.
+
+`rejectEgoUnique` is the precedent: it refuses `unique` on ego variables because the runtime validator cannot apply it there. This is the same shape.
+
+Worth checking during brainstorming whether any other interface assigns a variable outside a form field and needs the same treatment.
+
 ## Important: things that look contradictory and are not
 
 The companion project initially got this wrong and refused valid protocols. Do not repeat it. All of the following are **satisfiable and must remain expressible**:
