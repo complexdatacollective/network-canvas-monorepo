@@ -262,6 +262,21 @@ superseded by these corpus-measured rates.
   subsequent draws, and domain sizes never show through as extra
   consumption. Guarded by "consumes exactly one seeded draw for a solved
   component" and the cap-file's exact-count assertion.
+- **P1 (second round), unique allocation capacity**: shuffling a `unique`
+  group's domain let one entity take an allocation that stranded the next —
+  `u` over `[0,1]`, `v` over `[1,2]`, `v > u` admits `(0,1)` then `(1,2)`,
+  but a shuffled `(0,2)` first left the second entity nothing, a
+  seed-dependent throw the old distinct-sequence ladder never produced.
+  Unique groups now keep their ascending enumeration order — the same
+  bottom-up consumption discipline as the sequence draw, and lexicographic
+  search still backtracks within the entity — while groups without a
+  registry slot keep the shuffle (their choices cost nothing across
+  entities, and unique values already vary across entities through the
+  ladder itself). This restores allocation parity with the pre-solver path;
+  a global cross-entity unique constraint stays out of scope per the spec.
+  Guarded by "allocates overlapping unique ranges so later entities keep a
+  value" (100 seeds × 2 entities), mutation-verified red by re-shuffling
+  unique domains.
 
 ### The number-domain decision
 

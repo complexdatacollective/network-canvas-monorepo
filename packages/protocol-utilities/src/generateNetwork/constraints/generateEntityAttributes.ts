@@ -764,7 +764,14 @@ function solveTractableComponent(
             },
           }
         : {}),
-      orderDomain: (_group, values) => shuffledBy(rand, values),
+      // A unique group's slot is shared with every entity still to come, so
+      // its values are consumed bottom-up the way the distinct-sequence draw
+      // always consumed them: u over [0,1] and v over [1,2] with v > u must
+      // allocate (0,1) before (1,2), where a shuffle could take (0,2) and
+      // strand the next entity. Groups without a slot cost nothing across
+      // entities and keep the shuffle that makes their data vary.
+      orderDomain: (group, values) =>
+        uniqueSlots.has(group) ? [...values] : shuffledBy(rand, values),
     });
   };
 

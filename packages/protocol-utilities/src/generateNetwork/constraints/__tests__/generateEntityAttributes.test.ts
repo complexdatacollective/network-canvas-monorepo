@@ -1722,6 +1722,46 @@ describe('generateEntityAttributes', () => {
     expect([0, 1, 2]).toContain(Number(forced.u));
   });
 
+  it('allocates overlapping unique ranges so later entities keep a value', () => {
+    // u over [0,1] and v over [1,2] with v > u leave exactly one allocation
+    // for two entities: (0,1) then (1,2). A shuffled first solve could take
+    // (0,2) and strand the second entity — unique groups must consume their
+    // values bottom-up, the way the distinct-sequence draw always did.
+    const entity = buildEntityConstraints(
+      {
+        u: {
+          name: 'U',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 1, unique: true },
+        },
+        v: {
+          name: 'V',
+          type: 'number',
+          validation: {
+            minValue: 1,
+            maxValue: 2,
+            unique: true,
+            greaterThanVariable: asEntityAttributeReference('u'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    for (let seed = 0; seed < 100; seed++) {
+      const ctx = makeContext(seed);
+      for (let index = 0; index < 2; index++) {
+        const attrs = generateEntityAttributes(
+          entity,
+          ctx,
+          { entity: 'node', type: 'person' },
+          index,
+        );
+        expect(Number(attrs.v)).toBeGreaterThan(Number(attrs.u));
+      }
+    }
+  });
+
   it('consumes exactly one seeded draw for a solved component', () => {
     // The solve seeds a local shuffle from a single draw, so the shared
     // stream advances by the same amount whatever the search does — a capped
