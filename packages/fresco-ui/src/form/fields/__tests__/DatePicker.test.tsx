@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import Field from '../../Field/Field';
 import UnconnectedField from '../../Field/UnconnectedField';
@@ -488,5 +488,66 @@ describe('DatePickerField within Form — submit path', () => {
       expect(screen.getByTestId('birthDate-field-error')).toBeInTheDocument();
     });
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+// With no `max`, the year and month dropdowns are ceilinged at today. "Today"
+// is read in UTC, matching every other date helper in the ecosystem — the
+// relative picker's anchor, and the generator that produces the values this
+// field displays. A local reading would sit a day either side of those for
+// most of the world.
+//
+// Each case pins an instant where the UTC date and the local date fall in
+// different months or years, so a local reading is visibly wrong. Which case
+// catches it depends on the runner's offset: a runner ahead of UTC fails the
+// UTC-July and UTC-2026 cases, one behind fails the UTC-August case. On a
+// runner at UTC exactly the two readings coincide and nothing here can tell
+// them apart.
+describe('DatePickerField ceiling with no max', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function monthOptionsFor2026(): string[] {
+    render(<DatePickerField type="month" name="date" value="2026-01" />);
+    const [, monthSelect] = screen.getAllByRole('combobox');
+    if (!monthSelect) throw new Error('month select not rendered');
+    return optionValues(monthSelect);
+  }
+
+  it('stops at the UTC month when the local date has already rolled over', () => {
+    vi.useFakeTimers();
+    // UTC 31 July; 1 August anywhere from UTC+1 east.
+    vi.setSystemTime('2026-07-31T23:00:00.000Z');
+
+    expect(monthOptionsFor2026()).toEqual([
+      '01',
+      '02',
+      '03',
+      '04',
+      '05',
+      '06',
+      '07',
+    ]);
+  });
+
+  it('reaches the UTC month when the local date has not yet rolled over', () => {
+    vi.useFakeTimers();
+    // UTC 1 August; still 31 July anywhere from UTC-1 west.
+    vi.setSystemTime('2026-08-01T00:30:00.000Z');
+
+    expect(monthOptionsFor2026()).toContain('08');
+  });
+
+  it('stops at the UTC year on the last night of December', () => {
+    vi.useFakeTimers();
+    // UTC 31 December 2026; already 2027 anywhere from UTC+1 east.
+    vi.setSystemTime('2026-12-31T23:30:00.000Z');
+
+    render(<DatePickerField type="month" name="date" value="2026-01" />);
+    const [yearSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect) throw new Error('year select not rendered');
+
+    expect(optionValues(yearSelect)[0]).toBe('2026');
   });
 });

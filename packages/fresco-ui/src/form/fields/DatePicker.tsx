@@ -6,6 +6,7 @@ import { DATE_PICKER_DEFAULT_MIN } from '@codaco/shared-consts';
 
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
+import { todayYmd } from '../utils/ymd';
 import InputField from './InputField';
 import SelectField from './Select/Native';
 import type { SelectOption } from './Select/shared';
@@ -60,15 +61,6 @@ function parseYmd(value: string): Ymd | null {
     return null;
   }
   return { year, month, day };
-}
-
-function todayYmd(): Ymd {
-  const now = new Date();
-  return {
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
-    day: now.getDate(),
-  };
 }
 
 // The shared default arrives in the same YYYY-MM-DD form a caller-supplied
@@ -134,10 +126,14 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     () => (min ? (parseYmd(min) ?? DEFAULT_MIN) : DEFAULT_MIN),
     [min],
   );
-  const maxYmd = useMemo(
-    () => (max ? (parseYmd(max) ?? todayYmd()) : todayYmd()),
-    [max],
-  );
+  // "Today" is read in UTC, from the same helper the relative picker anchors on
+  // and the same one that produces the dates this field is asked to display.
+  // A local reading would put this ceiling a day either side of every other
+  // date in the system, so the offered months would disagree with the value.
+  const maxYmd = useMemo(() => {
+    const ceiling = requireYmd(todayYmd());
+    return max ? (parseYmd(max) ?? ceiling) : ceiling;
+  }, [max]);
 
   const initialMonthParts = getMonthParts(value);
   const [selectedYear, setSelectedYear] = useState<string | undefined>(
