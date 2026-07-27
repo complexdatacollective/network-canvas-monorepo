@@ -22,6 +22,9 @@ function makeContext(seed = 1): GenerationContext {
     externalData: undefined,
     respectSkipLogicAndFiltering: false,
     uniqueRegistry: new UniqueRegistry(),
+    // These tests pass their constraints to `generateEntityAttributes`
+    // directly, so the context's per-type maps are never read.
+    entityConstraints: { ego: new Map(), node: new Map(), edge: new Map() },
   };
 }
 

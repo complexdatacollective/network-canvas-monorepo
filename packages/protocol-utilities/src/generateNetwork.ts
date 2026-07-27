@@ -11,6 +11,12 @@ import {
   type GenerationConfig,
   resolveGenerationConfig,
 } from './generateNetwork/config';
+import { buildEntityConstraints } from './generateNetwork/constraints/buildConstraints';
+import {
+  analyseFeasibility,
+  SyntheticDataConstraintError,
+} from './generateNetwork/constraints/feasibility';
+import type { EntityConstraints } from './generateNetwork/constraints/types';
 import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
 import type {
   GenerationContext,
@@ -90,18 +96,48 @@ export function generateNetwork(
     config,
   } = params;
 
+  const resolvedConfig = resolveGenerationConfig(config);
+
+  // Refused before anything is drawn, and before the seed is consulted: a
+  // protocol whose declared rules no value can satisfy fails the same way on
+  // every seed rather than only on the ones that happen to reach the
+  // contradiction.
+  const conflicts = analyseFeasibility(codebook, stages, resolvedConfig);
+  if (conflicts.length > 0) {
+    throw new SyntheticDataConstraintError(conflicts);
+  }
+
   const valueGen = new ValueGenerator(
     seed ?? Math.floor(Math.random() * 100000),
+    resolvedConfig.today,
   );
+
+  const constraintsByType = (
+    definitions: StructuralCodebook['node'] | StructuralCodebook['edge'],
+  ): Map<string, EntityConstraints> =>
+    new Map(
+      Object.entries(definitions ?? {}).map(([type, definition]) => [
+        type,
+        buildEntityConstraints(definition.variables, resolvedConfig.today),
+      ]),
+    );
 
   const ctx: GenerationContext = {
     codebook,
     valueGen,
-    config: resolveGenerationConfig(config),
+    config: resolvedConfig,
     usedRosterUids: new Set<string>(),
     externalData,
     respectSkipLogicAndFiltering,
     uniqueRegistry: new UniqueRegistry(),
+    entityConstraints: {
+      ego: buildEntityConstraints(
+        codebook.ego?.variables,
+        resolvedConfig.today,
+      ),
+      node: constraintsByType(codebook.node),
+      edge: constraintsByType(codebook.edge),
+    },
   };
 
   const draft: NetworkDraft = {

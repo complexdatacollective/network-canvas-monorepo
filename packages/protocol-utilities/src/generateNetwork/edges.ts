@@ -1,6 +1,5 @@
 import { v4 as uuid } from 'uuid';
 
-import type { Variables } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -8,7 +7,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { generateAttributes } from './attributes';
+import { generateAttributesForEntity } from './attributes';
 import type { GenerationContext } from './context';
 
 export function getNodesOfType(nodes: NcNode[], nodeType: string): NcNode[] {
@@ -29,7 +28,6 @@ export function createEdgesForPairs(
   nodes: NcNode[],
   edgeType: string,
   probability: number,
-  edgeVariables?: Variables,
 ): { edges: NcEdge[]; negativeIndices: [number, number][] } {
   const edges: NcEdge[] = [];
   const negativeIndices: [number, number][] = [];
@@ -37,9 +35,11 @@ export function createEdgesForPairs(
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       if (ctx.valueGen.randomFloat(0, 1) < probability) {
-        const attrs = edgeVariables
-          ? generateAttributes(edgeVariables, ctx.valueGen, edges.length)
-          : {};
+        const attrs = generateAttributesForEntity(
+          ctx,
+          { entity: 'edge', type: edgeType },
+          edges.length,
+        );
 
         const edge: NcEdge = {
           [entityPrimaryKeyProperty]: uuid(),

@@ -7,7 +7,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { generateAttributes } from './attributes';
+import { generateAttributesForEntity } from './attributes';
 import type { GenerationConfig } from './config';
 import type { GenerationContext, StageOfType } from './context';
 import { getSubjectType } from './subject';
@@ -129,9 +129,9 @@ export function createNodesForStage(
 
   for (let i = 0; i < count; i++) {
     const nodeIndex = existingNodeCount + i;
-    const attrs = generateAttributes(
-      nodeTypeDef.variables,
-      ctx.valueGen,
+    const attrs = generateAttributesForEntity(
+      ctx,
+      { entity: 'node', type: nodeType },
       nodeIndex,
     );
 

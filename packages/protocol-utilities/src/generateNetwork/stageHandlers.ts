@@ -8,7 +8,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { generateAttributes, toVariableEntry } from './attributes';
+import { generateAttributesForEntity } from './attributes';
 import type { GenerationContext, NetworkDraft, StageOfType } from './context';
 import { createEdgesForPairs } from './edges';
 import { getStageFilteredEdges, getStageFilteredNodes } from './filtering';
@@ -29,8 +29,6 @@ export function handleNameGenerators(
   };
   const form = 'form' in stage ? stage.form : undefined;
   const subjectType = getSubjectType(stage.subject, 'node');
-  const nodeTypeDef =
-    subjectType !== undefined ? ctx.codebook.node?.[subjectType] : undefined;
 
   let stageNodeCount = 0;
   for (const prompt of stage.prompts) {
@@ -46,20 +44,24 @@ export function handleNameGenerators(
 
     // A stage form fills any codebook variables a drawn node does not yet have.
     // Values are indexed by the running node total (before these nodes are added).
-    if (form && nodeTypeDef?.variables) {
-      const formVarIds = new Set(form.fields.map((f) => f.variable));
+    if (form && subjectType !== undefined) {
+      const formVarIds = form.fields.map((field) => field.variable);
       for (const node of newNodes) {
         const attrs = node[entityAttributesProperty];
-        for (const varId of formVarIds) {
-          const varDef = nodeTypeDef.variables[varId];
-          if (varDef && !(varId in attrs)) {
-            const entry = toVariableEntry(varId, varDef);
-            attrs[varId] = ctx.valueGen.generateForVariable(
-              entry,
-              draft.nodes.length,
-            );
-          }
-        }
+        const missing = new Set(
+          formVarIds.filter((varId) => !(varId in attrs)),
+        );
+        if (missing.size === 0) continue;
+
+        Object.assign(
+          attrs,
+          generateAttributesForEntity(
+            ctx,
+            { entity: 'node', type: subjectType },
+            draft.nodes.length,
+            { existing: attrs, only: missing },
+          ),
+        );
       }
     }
 
@@ -88,7 +90,6 @@ export function handleSociogram(
           ctx.config.sociogramEdgeProbability.min,
           ctx.config.sociogramEdgeProbability.max,
         ),
-        ctx.codebook.edge?.[createEdge]?.variables,
       );
       draft.edges.push(...newEdges);
     }
@@ -136,7 +137,6 @@ export function handleDyadCensus(
       subjectNodes,
       createEdgeType,
       probability,
-      ctx.codebook.edge?.[createEdgeType]?.variables,
     );
     draft.edges.push(...newEdges);
 
@@ -177,23 +177,25 @@ export function handleTieStrengthCensus(
       ctx.config.censusEdgeProbability.min,
       ctx.config.censusEdgeProbability.max,
     );
-    const edgeTypeDef = ctx.codebook.edge?.[createEdgeType];
     const { edges: newEdges, negativeIndices } = createEdgesForPairs(
       ctx,
       subjectNodes,
       createEdgeType,
       probability,
-      edgeTypeDef?.variables,
     );
 
-    const edgeVarDef = edgeVariable
-      ? edgeTypeDef?.variables?.[edgeVariable]
-      : undefined;
-    if (edgeVariable && edgeVarDef) {
+    if (edgeVariable) {
       for (let edgeIdx = 0; edgeIdx < newEdges.length; edgeIdx++) {
-        const entry = toVariableEntry(edgeVariable, edgeVarDef);
-        newEdges[edgeIdx]![entityAttributesProperty][edgeVariable] =
-          ctx.valueGen.generateForVariable(entry, edgeIdx);
+        const attrs = newEdges[edgeIdx]![entityAttributesProperty];
+        Object.assign(
+          attrs,
+          generateAttributesForEntity(
+            ctx,
+            { entity: 'edge', type: createEdgeType },
+            edgeIdx,
+            { existing: attrs, only: new Set([edgeVariable]) },
+          ),
+        );
       }
     }
 
@@ -282,13 +284,10 @@ export function handleEgoForm(
   ctx: GenerationContext,
   draft: NetworkDraft,
 ): void {
-  const egoVars = ctx.codebook.ego?.variables;
-  if (egoVars) {
-    Object.assign(
-      draft.egoAttributes,
-      generateAttributes(egoVars, ctx.valueGen, 0),
-    );
-  }
+  Object.assign(
+    draft.egoAttributes,
+    generateAttributesForEntity(ctx, { entity: 'ego' }, 0),
+  );
 }
 
 export function handleAlterForm(
@@ -303,21 +302,19 @@ export function handleAlterForm(
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
-  const nodeTypeDef = ctx.codebook.node?.[subjectType];
-  if (!nodeTypeDef?.variables) return;
-
-  const formVarIds = form.fields.map((f) => f.variable);
+  const formVarIds = new Set(form.fields.map((field) => field.variable));
 
   for (let nodeIndex = 0; nodeIndex < subjectNodes.length; nodeIndex++) {
-    const node = subjectNodes[nodeIndex]!;
-    for (const varId of formVarIds) {
-      const varDef = nodeTypeDef.variables[varId];
-      if (varDef) {
-        const entry = toVariableEntry(varId, varDef);
-        node[entityAttributesProperty][varId] =
-          ctx.valueGen.generateForVariable(entry, nodeIndex);
-      }
-    }
+    const attrs = subjectNodes[nodeIndex]![entityAttributesProperty];
+    Object.assign(
+      attrs,
+      generateAttributesForEntity(
+        ctx,
+        { entity: 'node', type: subjectType },
+        nodeIndex,
+        { existing: attrs, only: formVarIds },
+      ),
+    );
   }
 }
 
@@ -333,21 +330,19 @@ export function handleAlterEdgeForm(
   if (subjectType === undefined) return;
 
   const subjectEdges = getStageFilteredEdges(ctx, draft, stage, subjectType);
-  const edgeTypeDef = ctx.codebook.edge?.[subjectType];
-  if (!edgeTypeDef?.variables) return;
-
-  const formVarIds = form.fields.map((f) => f.variable);
+  const formVarIds = new Set(form.fields.map((field) => field.variable));
 
   for (let edgeIndex = 0; edgeIndex < subjectEdges.length; edgeIndex++) {
-    const edge = subjectEdges[edgeIndex]!;
-    for (const varId of formVarIds) {
-      const varDef = edgeTypeDef.variables[varId];
-      if (varDef) {
-        const entry = toVariableEntry(varId, varDef);
-        edge[entityAttributesProperty][varId] =
-          ctx.valueGen.generateForVariable(entry, edgeIndex);
-      }
-    }
+    const attrs = subjectEdges[edgeIndex]![entityAttributesProperty];
+    Object.assign(
+      attrs,
+      generateAttributesForEntity(
+        ctx,
+        { entity: 'edge', type: subjectType },
+        edgeIndex,
+        { existing: attrs, only: formVarIds },
+      ),
+    );
   }
 }
 
@@ -363,7 +358,6 @@ export function handleFamilyPedigree(
   );
 
   const nodeType = stage.nodeConfig?.type;
-  const nodeTypeDef = nodeType ? ctx.codebook.node?.[nodeType] : undefined;
   const edgeType = stage.edgeConfig?.type;
   const egoVariable = stage.nodeConfig?.egoVariable;
 
@@ -371,9 +365,9 @@ export function handleFamilyPedigree(
 
   const familyNodes: NcNode[] = [];
   for (let nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
-    const attrs = generateAttributes(
-      nodeTypeDef?.variables,
-      ctx.valueGen,
+    const attrs = generateAttributesForEntity(
+      ctx,
+      { entity: 'node', type: nodeType },
       draft.nodes.length + nodeIndex,
     );
 
@@ -385,7 +379,7 @@ export function handleFamilyPedigree(
     });
   }
 
-  // generateAttributes randomises egoVariable per node like any other boolean
+  // Attribute generation randomises egoVariable per node like any other boolean
   // codebook variable, but the runtime marks exactly one pedigree node as ego
   // (FamilyPedigree's egoCellTransform sets true on the proband and explicit
   // false on every other alter/partner/child). Pin that here, after
@@ -480,7 +474,6 @@ export function handleNetworkComposer(
         ctx.config.networkComposerEdgeProbability.min,
         ctx.config.networkComposerEdgeProbability.max,
       ),
-      ctx.codebook.edge?.[edgeType]?.variables,
     );
     draft.edges.push(...newEdges);
   }

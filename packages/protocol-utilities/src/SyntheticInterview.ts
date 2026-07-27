@@ -22,6 +22,8 @@ import {
   NODE_COLORS,
   ORDINAL_COLORS,
 } from './constants';
+import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints';
+import { todayYmd } from './generateNetwork/constraints/dateWindow';
 import type {
   AddCategoricalBinPromptInput,
   AddDiseaseNominationStepInput,
@@ -1563,7 +1565,10 @@ export class SyntheticInterview {
   }
 
   getNetwork(): NcNetwork {
-    const valueGen = new ValueGenerator(this.seed);
+    // One date for the whole network, so a run that straddles midnight cannot
+    // resolve two nodes' relative-date windows against different anchors.
+    const today = todayYmd();
+    const valueGen = new ValueGenerator(this.seed, today);
     const stagesById = new Map(this.stages.map((stage) => [stage.id, stage]));
 
     const ncNodes = this.nodes.map((nodeEntry, index) => {
@@ -1580,11 +1585,15 @@ export class SyntheticInterview {
             // Procedurally-generated nodes get random synthetic values;
             // manually-seeded nodes keep unset attributes neutral so the
             // caller's scenario isn't corrupted by random data.
-            attributes[varId] = (
-              nodeEntry.manual
-                ? valueGen.neutralForVariable(variable)
-                : valueGen.generateForVariable(variable, index)
-            ) as VariableValue;
+            attributes[varId] = nodeEntry.manual
+              ? valueGen.neutralForVariable(variable)
+              : valueGen.generateConstrained(
+                  {
+                    entry: variable,
+                    constraints: buildVariableConstraints(variable, today),
+                  },
+                  index,
+                );
           }
         }
       }

@@ -3,6 +3,7 @@ import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 
 import type { ValueGenerator } from '../ValueGenerator';
 import type { GenerationConfig } from './config';
+import type { EntityConstraints } from './constraints/types';
 import type { UniqueRegistry } from './constraints/uniqueRegistry';
 
 /**
@@ -27,6 +28,15 @@ export type GenerationContext = {
   respectSkipLogicAndFiltering: boolean;
   /** Values already issued for `unique` variables, keyed by entity scope. */
   uniqueRegistry: UniqueRegistry;
+  /**
+   * Each entity type's constraint descriptors, built once per run. Resolving
+   * them per entity would rebuild the same descriptors for every node drawn.
+   */
+  entityConstraints: {
+    ego: EntityConstraints;
+    node: Map<string, EntityConstraints>;
+    edge: Map<string, EntityConstraints>;
+  };
 };
 
 /**
