@@ -134,9 +134,32 @@ export function buildVariableConstraints(
   };
 }
 
+/**
+ * The same entry with its declared validation rules dropped, leaving only what
+ * the variable's type and input control imply (a scalar's unit domain, a date
+ * picker's window). Used for a variable nothing validates: the value still has
+ * to be one the type can hold, but no rule applies to it.
+ */
+function withoutValidation(entry: VariableEntry): VariableEntry {
+  const { validation: _validation, ...rest } = entry;
+  return rest;
+}
+
+/**
+ * Every variable of one entity type, paired with the constraints a generated
+ * value must satisfy.
+ *
+ * `unvalidated` names variables whose declared rules the interview never
+ * applies — see `collectBinOnlyVariables`. They stay in the map, so the
+ * generator still produces a value for each, but carry no rules: feasibility
+ * then finds nothing to conflict over, and the draw cannot exhaust a value
+ * space it was never meant to honour. Omitting the argument analyses every
+ * variable, which is the stricter reading rather than a laxer one.
+ */
 export function buildEntityConstraints(
   variables: Variables | undefined,
   today: string,
+  unvalidated: ReadonlySet<string> = new Set(),
 ): EntityConstraints {
   const result: EntityConstraints = new Map();
   if (!variables) return result;
@@ -145,7 +168,10 @@ export function buildEntityConstraints(
     const entry = toVariableEntry(varId, variable);
     result.set(varId, {
       entry,
-      constraints: buildVariableConstraints(entry, today),
+      constraints: buildVariableConstraints(
+        unvalidated.has(varId) ? withoutValidation(entry) : entry,
+        today,
+      ),
     });
   }
 
