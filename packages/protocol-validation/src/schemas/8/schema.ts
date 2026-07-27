@@ -45,6 +45,7 @@ import type { ComposerFormField } from './stages/network-composer.ts';
 import {
   NON_RENDERABLE_VARIABLE_TYPES,
   type Variable,
+  VARIABLE_TYPE_COMPONENTS,
 } from './variables/index.ts';
 import {
   findValidationContradictions,
@@ -214,6 +215,53 @@ const validateFormFieldVariable = (
       path,
     });
   }
+};
+
+/**
+ * NetworkComposer stage-field component check (thirteenth-wave Finding 3). A
+ * composer field picks its own `component` from ComposerComponentSchema,
+ * which lists every renderable control rather than the ones legal for the
+ * variable it writes — so a numeric `age` rendered as a `DatePicker` parsed
+ * cleanly, while the runtime rendered a date control and still classified the
+ * field numeric (interview's useProtocolForm keys `type: 'number'` off the
+ * codebook variable), persisting a date string into a numeric variable.
+ *
+ * The legal pairings come from `VARIABLE_TYPE_COMPONENTS`, the same lists the
+ * codebook variable schemas build their own `component` fields from, so this
+ * check cannot drift from what a codebook variable may declare. Layout and
+ * location variables have no control at all (their list is empty), so any
+ * field for one is rejected with the non-renderable wording
+ * `validateFormFieldVariable` uses for ordinary form fields.
+ *
+ * A field naming a variable absent from the codebook is skipped: the
+ * entity-attribute reference pass owns that error.
+ */
+const validateComposerFieldComponents = (
+  codebookVariables: Record<string, Variable>,
+  fields: ComposerFormField[] | undefined,
+  fieldsPath: (string | number)[],
+  addIssue: IssueReporter,
+) => {
+  if (!fields) return;
+  fields.forEach((field, fieldIndex) => {
+    const variable = codebookVariables[field.variable];
+    if (!variable) return;
+    const allowedComponents: readonly string[] =
+      VARIABLE_TYPE_COMPONENTS[variable.type];
+    if (allowedComponents.includes(field.component)) return;
+    const path = [...fieldsPath, fieldIndex, 'component'];
+    if (allowedComponents.length === 0) {
+      addIssue({
+        message: `NetworkComposer field variable "${variable.name}" of type "${variable.type}" cannot be rendered as a form field.`,
+        path,
+      });
+      return;
+    }
+    addIssue({
+      message: `NetworkComposer field for "${variable.name}" uses the "${field.component}" input control, which cannot render a ${variable.type} variable. Valid controls: ${allowedComponents.join(', ')}.`,
+      path,
+    });
+  });
 };
 
 /**
@@ -456,17 +504,46 @@ const ProtocolSchema = z
       // checked independently: validation references are scoped to a single
       // subject (R2/owningVariable), so they can never share a group.
       if (stage.type === 'NetworkComposer') {
-        validateComposerFieldContradictions(
-          getVariablesForSubject(protocol.codebook, stage.subject),
+        const nodeVariables = getVariablesForSubject(
+          protocol.codebook,
+          stage.subject,
+        );
+        const nodeFormPath = ['stages', stageIndex, 'nodeForm', 'fields'];
+        validateComposerFieldComponents(
+          nodeVariables,
           stage.nodeForm?.fields,
-          ['stages', stageIndex, 'nodeForm', 'fields'],
+          nodeFormPath,
+          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+        );
+        validateComposerFieldContradictions(
+          nodeVariables,
+          stage.nodeForm?.fields,
+          nodeFormPath,
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
         );
         stage.edges?.forEach((edge, edgeIndex) => {
-          validateComposerFieldContradictions(
-            getVariablesForSubject(protocol.codebook, edge.subject),
+          const edgeVariables = getVariablesForSubject(
+            protocol.codebook,
+            edge.subject,
+          );
+          const edgeFormPath = [
+            'stages',
+            stageIndex,
+            'edges',
+            edgeIndex,
+            'form',
+            'fields',
+          ];
+          validateComposerFieldComponents(
+            edgeVariables,
             edge.form?.fields,
-            ['stages', stageIndex, 'edges', edgeIndex, 'form', 'fields'],
+            edgeFormPath,
+            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+          );
+          validateComposerFieldContradictions(
+            edgeVariables,
+            edge.form?.fields,
+            edgeFormPath,
             (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
           );
         });

@@ -811,6 +811,42 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
       }),
     ).toEqual([]);
   });
+
+  // Thirteenth-wave Finding 2: the runtime's BooleanField defaults to Yes/No
+  // only when no options are supplied at all, so an ABSENT options list still
+  // means "both values", while an explicitly EMPTY one offers none. The
+  // schema rejects the empty list outright; the analyser must not meanwhile
+  // reason over values the control never renders.
+  it('models an options-less boolean as offering both values', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', { differentFrom: 'b' }),
+        b: boolean('b'),
+      }),
+    ).toEqual([]);
+  });
+
+  it('does not pin an explicitly empty-options boolean to a value', () => {
+    // With `[]` modelled as both values, `a` and `b` would each look pinned
+    // (to different values in the singleton case, to nothing here) — what
+    // matters is that an empty control never yields a pinned value for the
+    // differentFrom check to reason about.
+    expect(
+      findValidationContradictions({
+        a: boolean('a', { differentFrom: 'b' }, []),
+        b: boolean('b', {}, []),
+      }),
+    ).toEqual([]);
+  });
+
+  it('still treats a singleton options array as a pinned value', () => {
+    const result = findValidationContradictions({
+      a: boolean('a', { differentFrom: 'b' }, trueOnly),
+      b: boolean('b', {}, trueOnly),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
 });
 
 describe('findValidationContradictions — sixth-wave Finding 2: pinned-equal differentFrom', () => {

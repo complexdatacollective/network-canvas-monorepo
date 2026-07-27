@@ -799,15 +799,24 @@ const isEmptyInterval = (interval: Interval | undefined): boolean =>
  * A boolean variable's effective domain, for the singleton-domain
  * `differentFrom` check (fifth-wave Finding 5). `booleanOptionsSchema`
  * (variable.ts) permits an `options` array exposing only one of {true,
- * false} — unlike `optionValues` above, "no usable options data" (absent, or
- * present but empty/malformed) falls back to the full two-value domain
- * rather than being treated as unusable: every boolean variable has SOME
- * domain, and the unrestricted default is the correct one when `options`
- * doesn't narrow it.
+ * false} — unlike `optionValues` above, ABSENT options data falls back to the
+ * full two-value domain rather than being treated as unusable: an
+ * options-less boolean renders fresco-ui's BooleanField Yes/No default, so
+ * the unrestricted domain is the correct model.
+ *
+ * Thirteenth-wave Finding 2: an EXPLICITLY EMPTY array is different, and no
+ * longer shares that fallback. BooleanField defaults its options only when
+ * the prop is `undefined`, so `options: []` renders no buttons at all and
+ * offers no value — modelling it as both values made the analyser reason
+ * over values the runtime never exposes. The schema now rejects it outright;
+ * this keeps the two layers agreeing on raw (pre-schema) migration input
+ * too. A NON-empty array carrying no usable boolean value is malformed
+ * rather than deliberately empty, so it keeps the two-value fallback.
  */
 const booleanDomain = (variable: unknown): Set<boolean> => {
   const options = asRecord(variable)?.options;
   if (!Array.isArray(options)) return new Set([true, false]);
+  if (options.length === 0) return new Set();
   const domain = new Set<boolean>();
   for (const option of options) {
     const value = asRecord(option)?.value;

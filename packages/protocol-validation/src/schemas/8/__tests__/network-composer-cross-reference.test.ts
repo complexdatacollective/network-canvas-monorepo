@@ -24,8 +24,11 @@ const baseStage = {
       form: {
         fields: [
           {
+            // `closeness` is an ordinal variable, so its control must be one
+            // ordinal can render (thirteenth-wave Finding 3); this fixture
+            // previously paired it with a VisualAnalogScale.
             variable: 'closeness',
-            component: ComponentTypes.VisualAnalogScale,
+            component: ComponentTypes.RadioGroup,
             label: 'How close?',
           },
         ],
@@ -576,4 +579,240 @@ describe('NetworkComposer stage-effective overlay contradictions (tenth-wave Fin
       ),
     ).toBe(false);
   });
+});
+
+// Thirteenth-wave Finding 3: a composer field picks its own control from
+// ComposerComponentSchema, which lists every renderable control rather than
+// the ones legal for the variable it writes. Nothing previously compared the
+// two, so a numeric variable rendered as a DatePicker parsed cleanly while
+// the runtime persisted a date string into a numeric variable.
+describe('NetworkComposer stage-field component/variable-type pairing', () => {
+  const composerProtocolWithPersonVariables = (
+    variables: Record<string, Record<string, unknown>>,
+    stage: Record<string, unknown>,
+  ) => {
+    const base = createBaseProtocol();
+    return {
+      ...base,
+      codebook: {
+        ...base.codebook,
+        node: {
+          ...base.codebook.node,
+          person: {
+            ...base.codebook.node.person,
+            variables: {
+              ...base.codebook.node.person.variables,
+              ...variables,
+            },
+          },
+        },
+      },
+      stages: [stage],
+    };
+  };
+
+  const nodeFormOnly = (fields: Record<string, unknown>[]) => ({
+    ...baseStage,
+    nodeForm: { fields },
+    edges: [],
+  });
+
+  it('rejects a DatePicker field for a number variable, anchored at the component', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        {},
+        nodeFormOnly([
+          { variable: 'age', component: ComponentTypes.DatePicker },
+        ]),
+      ),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('cannot render a number variable'),
+    );
+    expect(issue?.message).toContain('Valid controls: Number');
+    expect(issue?.path).toEqual([
+      'stages',
+      0,
+      'nodeForm',
+      'fields',
+      0,
+      'component',
+    ]);
+  });
+
+  it('rejects a Number field for a categorical variable', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        {},
+        nodeFormOnly([
+          { variable: 'category', component: ComponentTypes.Number },
+        ]),
+      ),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(
+      result.error.issues.some((candidate) =>
+        candidate.message.includes('cannot render a categorical variable'),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects a field for a layout variable as non-renderable', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        {},
+        nodeFormOnly([
+          { variable: 'layoutPosition', component: ComponentTypes.Text },
+        ]),
+      ),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(
+      result.error.issues.some((candidate) =>
+        candidate.message.includes('cannot be rendered as a form field'),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects an illegal pairing in an edge form too', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        {},
+        {
+          ...baseStage,
+          nodeForm: { fields: [] },
+          edges: [
+            {
+              id: 'edge-1',
+              subject: { entity: 'edge', type: 'knows' },
+              form: {
+                fields: [
+                  {
+                    variable: 'duration',
+                    component: ComponentTypes.RadioGroup,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('cannot render a number variable'),
+    );
+    expect(issue?.path).toEqual([
+      'stages',
+      0,
+      'edges',
+      0,
+      'form',
+      'fields',
+      0,
+      'component',
+    ]);
+  });
+
+  it.each([
+    ['datetime', ComponentTypes.DatePicker],
+    ['datetime', ComponentTypes.RelativeDatePicker],
+  ])('accepts a %s variable rendered as %s', (_type, component) => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        { event_a: { name: 'EventA', type: 'datetime' } },
+        nodeFormOnly([{ variable: 'event_a', component }]),
+      ),
+    );
+    expect(
+      result.success,
+      JSON.stringify(!result.success && result.error.issues),
+    ).toBe(true);
+  });
+
+  it.each([
+    ['age', ComponentTypes.Number],
+    ['name', ComponentTypes.Text],
+    ['name', ComponentTypes.TextArea],
+    ['category', ComponentTypes.CheckboxGroup],
+    ['category', ComponentTypes.ToggleButtonGroup],
+    ['strength', ComponentTypes.RadioGroup],
+    ['strength', ComponentTypes.LikertScale],
+  ])(
+    'accepts the codebook variable %s rendered as %s',
+    (variable, component) => {
+      const result = ProtocolSchemaV8.safeParse(
+        composerProtocolWithPersonVariables(
+          {},
+          nodeFormOnly([{ variable, component }]),
+        ),
+      );
+      expect(
+        result.success,
+        JSON.stringify(!result.success && result.error.issues),
+      ).toBe(true);
+    },
+  );
+
+  it.each([
+    ['boolean', ComponentTypes.Boolean],
+    ['boolean', ComponentTypes.Toggle],
+  ])('accepts a %s variable rendered as %s', (_type, component) => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        { is_close: { name: 'IsClose', type: 'boolean' } },
+        nodeFormOnly([{ variable: 'is_close', component }]),
+      ),
+    );
+    expect(
+      result.success,
+      JSON.stringify(!result.success && result.error.issues),
+    ).toBe(true);
+  });
+
+  it('accepts a scalar variable rendered as a VisualAnalogScale', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        { warmth: { name: 'Warmth', type: 'scalar' } },
+        nodeFormOnly([
+          { variable: 'warmth', component: ComponentTypes.VisualAnalogScale },
+        ]),
+      ),
+    );
+    expect(
+      result.success,
+      JSON.stringify(!result.success && result.error.issues),
+    ).toBe(true);
+  });
+
+  // The entity-attribute reference pass owns the missing-variable error; the
+  // component check must skip such a field rather than crash on it.
+  it('leaves a field naming a variable absent from the codebook to the reference pass', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        {},
+        nodeFormOnly([
+          { variable: 'not_in_codebook', component: ComponentTypes.DatePicker },
+        ]),
+      ),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(
+      result.error.issues.some((candidate) =>
+        candidate.message.includes('cannot render'),
+      ),
+    ).toBe(false);
+  });
+
+  // Thirteenth-wave Finding 1 note: the composer duplicate-variable check is
+  // per form, but the SAME variable id in a nodeForm and an edge form is not
+  // expressible in a valid protocol anyway — the codebook rejects a variable
+  // record key reused across entity types. The per-form scope is covered at
+  // stage level in network-composer.test.ts.
 });

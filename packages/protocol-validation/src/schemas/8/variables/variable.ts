@@ -6,7 +6,12 @@ import {
   findDuplicateName,
   getVariableNames,
 } from '../../../utils/validation-helpers.ts';
-import { ComponentTypes, VariableTypes, type VariableType } from './types.ts';
+import {
+  type ComponentType,
+  ComponentTypes,
+  VariableTypes,
+  type VariableType,
+} from './types.ts';
 import { findValidationContradictions } from './validation-contradictions.ts';
 import { validations, type ValidationName } from './validation.ts';
 
@@ -106,6 +111,54 @@ export const VARIABLE_TYPE_VALIDATIONS = {
   location: {},
 } as const satisfies Record<VariableType, ValidationMask>;
 
+// The input controls each variable type can be rendered with. Every variable
+// schema below builds its own `component` field from these lists, so the
+// record below cannot drift from what the schemas accept.
+const textComponents = [ComponentTypes.Text, ComponentTypes.TextArea] as const;
+const numberComponents = [ComponentTypes.Number] as const;
+const scalarComponents = [ComponentTypes.VisualAnalogScale] as const;
+const ordinalComponents = [
+  ComponentTypes.RadioGroup,
+  ComponentTypes.LikertScale,
+] as const;
+const categoricalComponents = [
+  ComponentTypes.CheckboxGroup,
+  ComponentTypes.ToggleButtonGroup,
+] as const;
+// datetime and boolean each split across TWO variable schemas (the control
+// determines which `parameters`/`options` shape applies), so their lists are
+// declared per schema and composed into the per-type record below.
+const datePickerComponents = [ComponentTypes.DatePicker] as const;
+const relativeDatePickerComponents = [
+  ComponentTypes.RelativeDatePicker,
+] as const;
+const booleanChoiceComponents = [ComponentTypes.Boolean] as const;
+const booleanToggleComponents = [ComponentTypes.Toggle] as const;
+
+/**
+ * The single source of truth for which input controls each variable type can
+ * be rendered with — the component counterpart of
+ * `VARIABLE_TYPE_VALIDATIONS`. The variable schemas above/below build their
+ * `component` fields from the same lists, and the NetworkComposer stage-field
+ * check (schema.ts) reads this record to reject a stage field whose own
+ * `component` cannot render the codebook variable it writes (thirteenth-wave
+ * Finding 3).
+ *
+ * Layout and location variables have no participant-facing control at all, so
+ * their lists are empty.
+ */
+export const VARIABLE_TYPE_COMPONENTS = {
+  text: textComponents,
+  number: numberComponents,
+  datetime: [...datePickerComponents, ...relativeDatePickerComponents],
+  scalar: scalarComponents,
+  boolean: [...booleanChoiceComponents, ...booleanToggleComponents],
+  ordinal: ordinalComponents,
+  categorical: categoricalComponents,
+  layout: [],
+  location: [],
+} as const satisfies Record<VariableType, readonly ComponentType[]>;
+
 export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 export type VariableOption = VariableOptions[number];
 export type VariableOptionValue = VariableOption['value'];
@@ -123,13 +176,13 @@ const baseVariableSchema = z.strictObject({
 
 const numberVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.number),
-  component: z.literal(ComponentTypes.Number).optional(),
+  component: z.enum(numberComponents).optional(),
   validation: z.strictObject(validations).pick(numberValidations).optional(),
 });
 
 const scalarVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.scalar),
-  component: z.literal(ComponentTypes.VisualAnalogScale).optional(),
+  component: z.enum(scalarComponents).optional(),
   parameters: z
     .strictObject({
       minLabel: z.string().optional(),
@@ -251,7 +304,7 @@ export const datePickerParametersSchema = z
 
 const dateTimeDatePickerSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.datetime),
-  component: z.literal(ComponentTypes.DatePicker).optional(),
+  component: z.enum(datePickerComponents).optional(),
   parameters: datePickerParametersSchema.optional(),
   validation: z.strictObject(validations).pick(datetimeValidations).optional(),
 });
@@ -309,35 +362,43 @@ export const relativeDatePickerParametersSchema = z
 
 const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.datetime),
-  component: z.literal(ComponentTypes.RelativeDatePicker).optional(),
+  component: z.enum(relativeDatePickerComponents).optional(),
   parameters: relativeDatePickerParametersSchema.optional(),
   validation: z.strictObject(validations).pick(datetimeValidations).optional(),
 });
 
 const textVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.text),
-  component: z.enum([ComponentTypes.Text, ComponentTypes.TextArea]).optional(),
+  component: z.enum(textComponents).optional(),
   validation: z.strictObject(validations).pick(textValidations).optional(),
 });
 
-const booleanOptionsSchema = z.array(
-  z.strictObject({
-    label: z.string(),
-    value: z.boolean(),
-    negative: z.boolean().optional(),
-  }),
-);
+// Thirteenth-wave Finding 2: an explicitly empty array is not the same as no
+// `options` at all. fresco-ui's BooleanField defaults to Yes/No only when the
+// prop is `undefined` (a destructuring default), so `options: []` renders a
+// control with no buttons — unanswerable, and fatal on a required variable.
+// `findValidationContradictions`'s `booleanDomain` models the same
+// distinction.
+const booleanOptionsSchema = z
+  .array(
+    z.strictObject({
+      label: z.string(),
+      value: z.boolean(),
+      negative: z.boolean().optional(),
+    }),
+  )
+  .min(1, 'Boolean options must offer at least one choice');
 
 const booleanBooleanVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.boolean),
-  component: z.literal(ComponentTypes.Boolean).optional(),
+  component: z.enum(booleanChoiceComponents).optional(),
   validation: z.strictObject(validations).pick(booleanValidations).optional(),
   options: booleanOptionsSchema.optional(), // This is different from the categorical options!
 });
 
 const booleanToggleVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.boolean),
-  component: z.literal(ComponentTypes.Toggle).optional(),
+  component: z.enum(booleanToggleComponents).optional(),
   validation: z.strictObject(validations).pick(booleanValidations).optional(),
 });
 
@@ -356,18 +417,14 @@ const categoricalOptionsSchema = z
 
 const ordinalVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.ordinal),
-  component: z
-    .enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale])
-    .optional(),
+  component: z.enum(ordinalComponents).optional(),
   options: categoricalOptionsSchema,
   validation: z.strictObject(validations).pick(ordinalValidations).optional(),
 });
 
 const categoricalVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.categorical),
-  component: z
-    .enum([ComponentTypes.CheckboxGroup, ComponentTypes.ToggleButtonGroup])
-    .optional(),
+  component: z.enum(categoricalComponents).optional(),
   options: categoricalOptionsSchema,
   validation: z
     .strictObject(validations)

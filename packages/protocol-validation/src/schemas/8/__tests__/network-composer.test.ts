@@ -413,3 +413,98 @@ describe('ComposerFormFieldSchema', () => {
     expect(result.success).toBe(true);
   });
 });
+
+// Thirteenth-wave Finding 1: every field renders under its variable's name
+// (interview's useProtocolForm passes `name: field.variable`), so two fields
+// for one variable collide on a single form value while each contributes its
+// own control and parameters — e.g. two required DatePickers pinned to
+// disjoint singleton windows, which no value can satisfy.
+describe('ComposerFormSchema duplicate variables', () => {
+  it('rejects a nodeForm listing the same variable twice, anchored at the second field', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_year',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year', min: '1990', max: '1990' },
+          },
+          {
+            variable: 'birth_year',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year', min: '2000', max: '2000' },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('duplicate variable "birth_year"'),
+    );
+    expect(issue?.path).toEqual(['nodeForm', 'fields', 1, 'variable']);
+  });
+
+  it('rejects a duplicate variable in an edge form', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              { variable: 'met_date', component: ComponentTypes.DatePicker },
+              { variable: 'met_date', component: ComponentTypes.DatePicker },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('duplicate variable "met_date"'),
+    );
+    expect(issue?.path).toEqual(['edges', 0, 'form', 'fields', 1, 'variable']);
+  });
+
+  // The check is scoped to ONE form: a nodeForm field and an edge form field
+  // resolve against different subjects and render in different form
+  // instances, so a repeat across the two is not a collision. (A protocol
+  // could not express this anyway — the codebook rejects a variable record
+  // key reused across entity types — which is exactly why the scoping is
+  // pinned here, at stage level, where no codebook is in play.)
+  it('accepts the same variable name once in nodeForm and once in an edge form', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [{ variable: 'note', component: ComponentTypes.Text }],
+      },
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [{ variable: 'note', component: ComponentTypes.Text }],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts two fields for different variables', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          { variable: 'age', component: ComponentTypes.Number },
+          { variable: 'name', component: ComponentTypes.Text },
+        ],
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+});

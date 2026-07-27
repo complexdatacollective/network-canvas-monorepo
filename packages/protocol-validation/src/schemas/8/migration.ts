@@ -5,7 +5,11 @@ import {
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
 import { ordinalColorSequence } from './common/prompts.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
-import { findValidationContradictions } from './variables/validation-contradictions.ts';
+import {
+  type ContradictionClass,
+  findValidationContradictions,
+  type ValidationContradiction,
+} from './variables/validation-contradictions.ts';
 import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation.ts';
 import {
   DATE_RESOLUTION,
@@ -31,6 +35,69 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null
     ? (value as Record<string, unknown>)
     : null;
+
+// The contradiction classes the analyser derives from ONE variable's own
+// non-reference rules (`localContradictions` in
+// validation-contradictions.ts): a min/max bound pair inverted against
+// itself, and a `minSelected` above that variable's own option count. Every
+// other class is structural — it reads a reference rule, spans an equality
+// group, or spans a comparator cycle — and stays strictly one-at-a-time.
+const LOCAL_CONTRADICTION_CLASSES = new Set<ContradictionClass>([
+  'invertedBounds',
+  'minSelectedExceedsOptions',
+]);
+
+const REFERENCE_VALIDATION_RULES = new Set<string>(
+  VARIABLE_REFERENCE_VALIDATIONS,
+);
+
+/**
+ * The contradictions the strip fixpoint may repair TOGETHER in one pass
+ * (thirteenth-wave Finding 4). Repairing strictly one contradiction per pass
+ * and re-running the whole analyser is quadratic in the number of independent
+ * repairs (measured ~0.16s / 1.56s / 6.68s for 100 / 500 / 1000 variables
+ * each carrying an inverted bound pair, with 2000 not finishing), and the
+ * one-at-a-time rule only ever existed to protect INTERDEPENDENT
+ * contradictions, where one repair takes another off the list before it is
+ * ever applied (see the step's own comment).
+ *
+ * A repair is batchable only when it is provably independent of every other:
+ *
+ *   - it belongs to a local class, so the analyser computed it from one
+ *     variable's own rules and options alone — no other variable's repair can
+ *     make it stop (or start) holding;
+ *   - it names exactly one variable, and every rule it strips belongs to that
+ *     same variable and is not a reference rule (sameAs / differentFrom /
+ *     comparators), which are the rules that place a variable in an equality
+ *     group or comparator cycle; and
+ *   - no earlier member of the batch already claimed that variable, so the
+ *     batch's strip variable-sets are pairwise disjoint and two repairs can
+ *     never remove rules from one variable off the same pre-strip analysis.
+ *
+ * An empty result means nothing was safely batchable and the caller falls
+ * back to applying the single first contradiction, exactly as before.
+ */
+const independentLocalRepairs = (
+  contradictions: ValidationContradiction[],
+): ValidationContradiction[] => {
+  const batch: ValidationContradiction[] = [];
+  const claimed = new Set<string>();
+  for (const contradiction of contradictions) {
+    if (!LOCAL_CONTRADICTION_CLASSES.has(contradiction.class)) continue;
+    const [owner, ...otherVariableIds] = contradiction.variableIds;
+    if (owner === undefined || otherVariableIds.length > 0) continue;
+    if (claimed.has(owner)) continue;
+    const stripsOwnPlainRulesOnly = contradiction.strips.every(
+      (strip) =>
+        strip.variableId === owner &&
+        !REFERENCE_VALIDATION_RULES.has(strip.rule),
+    );
+    if (!stripsOwnPlainRulesOnly) continue;
+    claimed.add(owner);
+    batch.push(contradiction);
+  }
+  return batch;
+};
 
 // full is finest, year is coarsest. Truncation is only intent-preserving when
 // the ORIGINAL string is itself a fully-valid date at the picker's own
@@ -246,6 +313,7 @@ const migrationV7toV8 = createMigration({
 - Amplify comparator options \`includes\` and \`excludes\` for ordinal and categorical variables to allow multiple selections.
 - Removed 'displayVariable' property, if set. This property was not used, and has been marked as deprecated for a long time.
 - Removed 'options' property for boolean Toggle variables. This property was not used.
+- A boolean variable's \`options\` must now offer at least one choice. An empty list rendered a control with no buttons at all, which a participant could never answer; the empty list is removed so the variable falls back to the standard Yes/No choices.
 - Changed FilterRule type to use the same entity names as elsewhere
 - Added 'name' property to protocol (required dependency for migration)
 - Renamed 'iconVariant' to 'icon' on node definitions.
@@ -290,7 +358,15 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // Remove 'options' property from Toggle boolean variables
+        // Remove 'options' property from Toggle boolean variables, and from
+        // any boolean variable whose options are an EMPTY array
+        // (thirteenth-wave Finding 2): the interview's BooleanField falls back
+        // to its Yes/No default only when no options are supplied at all, so
+        // an empty array rendered a control with no buttons — unanswerable,
+        // and fatal on a required variable. Deleting the property restores
+        // that default. This must stay ahead of the contradiction fixpoint
+        // below, whose boolean-domain reasoning now treats an explicitly
+        // empty options array as offering no value.
         paths: [
           'codebook.node.*.variables',
           'codebook.edge.*.variables',
@@ -304,9 +380,11 @@ const migrationV7toV8 = createMigration({
           )) {
             if (typeof variable === 'object' && variable !== null) {
               const typedVariable = variable as Record<string, unknown>;
+              if (typedVariable.type !== 'boolean') continue;
               if (
-                typedVariable.type === 'boolean' &&
-                typedVariable.component === 'Toggle'
+                typedVariable.component === 'Toggle' ||
+                (Array.isArray(typedVariable.options) &&
+                  typedVariable.options.length === 0)
               ) {
                 delete typedVariable.options;
               }
@@ -1273,6 +1351,13 @@ const migrationV7toV8 = createMigration({
         // unnecessarily). Re-analysing after each single strip lets a
         // resolved contradiction take its dependents off the list before they
         // are ever removed.
+        //
+        // Thirteenth-wave Finding 4: that protection is only needed where
+        // contradictions CAN be interdependent. Repairs that are provably
+        // independent — see `independentLocalRepairs` — are applied together
+        // in one pass instead, which takes a protocol of N independently
+        // broken variables from N+1 analyser runs to 2. Anything structural
+        // stays one-at-a-time.
         paths: [
           'codebook.node.*.variables',
           'codebook.edge.*.variables',
@@ -1322,14 +1407,19 @@ const migrationV7toV8 = createMigration({
           }, 0);
           const maxPasses = totalValidationRuleCount + 1;
           for (let pass = 0; pass < maxPasses; pass++) {
-            const [contradiction] =
-              findValidationContradictions(typedVariables);
-            if (!contradiction) break;
-            for (const strip of contradiction.strips) {
-              const validation = asRecord(
-                asRecord(typedVariables[strip.variableId])?.validation,
-              );
-              if (validation) delete validation[strip.rule];
+            const contradictions = findValidationContradictions(typedVariables);
+            const [firstContradiction] = contradictions;
+            if (!firstContradiction) break;
+            const batch = independentLocalRepairs(contradictions);
+            for (const contradiction of batch.length > 0
+              ? batch
+              : [firstContradiction]) {
+              for (const strip of contradiction.strips) {
+                const validation = asRecord(
+                  asRecord(typedVariables[strip.variableId])?.validation,
+                );
+                if (validation) delete validation[strip.rule];
+              }
             }
           }
           return variables;

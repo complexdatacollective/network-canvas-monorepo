@@ -319,6 +319,48 @@ describe('Migration V7 to V8', () => {
       ).toHaveProperty('options');
     });
 
+    // Thirteenth-wave Finding 2: the v8 schema now rejects an explicitly
+    // empty boolean options array (the control renders no buttons at all, so
+    // the variable can never be answered). Removing the property restores the
+    // runtime's Yes/No default, keeping existing protocols valid.
+    it('removes an explicitly empty options array from a Boolean variable', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                hasChildren: {
+                  name: 'HasChildren',
+                  type: 'boolean',
+                  component: 'Boolean',
+                  options: [],
+                  validation: { required: true },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as unknown as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      expect(
+        parsed.data?.codebook.node?.person?.variables?.hasChildren,
+      ).not.toHaveProperty('options');
+      expect(
+        parsed.data?.codebook.node?.person?.variables?.hasChildren,
+      ).toHaveProperty('validation.required', true);
+    });
+
     it('does not affect non-boolean variables', () => {
       const v7Protocol = {
         schemaVersion: 7 as const,
@@ -4918,6 +4960,94 @@ describe('Migration V7 to V8', () => {
       for (const variable of Object.values(parsedVariables)) {
         expect(variable).not.toHaveProperty('validation.minValue');
         expect(variable).not.toHaveProperty('validation.maxValue');
+      }
+    });
+
+    // Thirteenth-wave Finding 4: independent LOCAL repairs are now applied in
+    // one batch per pass instead of one per pass. The migrated result must be
+    // identical to what the one-at-a-time loop produced.
+    it('produces the one-at-a-time result for many independent inverted-bound variables', () => {
+      const variables: Record<string, unknown> = {};
+      const expected: Record<string, unknown> = {};
+      for (let index = 0; index < 250; index++) {
+        variables[`v${index}`] = {
+          name: `v${index}`,
+          type: 'number',
+          validation: { minValue: 10, maxValue: 2, required: true },
+        };
+        expected[`v${index}`] = {
+          name: `v${index}`,
+          type: 'number',
+          validation: { required: true },
+        };
+      }
+      const migratedRaw = migrateVariables(variables);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      expect(parsed.data?.codebook.ego?.variables).toEqual(expected);
+    });
+
+    // Two local contradictions on ONE variable are not pairwise disjoint, so
+    // they cannot share a pass; the fixpoint still repairs both.
+    it('repairs two local contradictions on the same variable across passes', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'categorical',
+          options: [
+            { label: 'x', value: 'x' },
+            { label: 'y', value: 'y' },
+          ],
+          validation: { minSelected: 5, maxSelected: 1, required: true },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.minSelected');
+      expect(variables?.a).not.toHaveProperty('validation.maxSelected');
+      expect(variables?.a).toHaveProperty('validation.required', true);
+    });
+
+    // Local repairs batch; the structural contradiction in the same protocol
+    // keeps its one-at-a-time treatment, so the strict comparator that only
+    // looked group-internal before the sameAs group was dissolved survives.
+    it('batches local repairs without changing structural repair behaviour', () => {
+      const variables: Record<string, unknown> = {
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: {
+            sameAs: 'b',
+            differentFrom: 'b',
+            greaterThanVariable: 'b',
+          },
+        },
+        b: { name: 'b', type: 'number' },
+      };
+      for (let index = 0; index < 50; index++) {
+        variables[`v${index}`] = {
+          name: `v${index}`,
+          type: 'number',
+          validation: { minValue: 10, maxValue: 2, required: true },
+        };
+      }
+      const migratedRaw = migrateVariables(variables);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const parsedVariables = parsed.data?.codebook.ego?.variables;
+      expect(parsedVariables?.a).not.toHaveProperty('validation.sameAs');
+      expect(parsedVariables?.a).not.toHaveProperty('validation.differentFrom');
+      expect(parsedVariables?.a).toHaveProperty(
+        'validation.greaterThanVariable',
+        'b',
+      );
+      for (let index = 0; index < 50; index++) {
+        expect(parsedVariables?.[`v${index}`]).toEqual({
+          name: `v${index}`,
+          type: 'number',
+          validation: { required: true },
+        });
       }
     });
   });

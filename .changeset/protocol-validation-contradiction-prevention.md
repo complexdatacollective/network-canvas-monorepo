@@ -12,3 +12,11 @@ parameters. The v7→v8 migration strips or normalises all of these in existing
 protocols (see the migration notes). Protocols already at schema version 8
 that carry a contradiction will now fail validation — the interview forms
 they produced were already unsubmittable.
+
+Three further unanswerable configurations are rejected for the same reason: a
+Network Composer form listing one variable in two fields (both fields render
+under the same form value), a Network Composer field whose input control
+cannot render its variable's type (for example a date picker on a numeric
+variable), and a boolean variable whose `options` list is empty (the control
+renders no choices at all). The migration removes an empty boolean `options`
+list so existing protocols keep the standard Yes/No choices.

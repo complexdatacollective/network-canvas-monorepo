@@ -375,4 +375,60 @@ describe('variable schema conformance', () => {
       ).toBe(false);
     });
   });
+  // Thirteenth-wave Finding 2: fresco-ui's BooleanField applies its Yes/No
+  // default only when the `options` prop is `undefined` (a destructuring
+  // default), so an explicitly empty array renders a control with no buttons
+  // at all — unanswerable, and fatal on a required variable.
+  describe('boolean options', () => {
+    const booleanVariable = (options?: unknown) => ({
+      isClose: {
+        name: 'is_close',
+        type: 'boolean',
+        component: 'Boolean',
+        validation: { required: true },
+        ...(options !== undefined ? { options } : {}),
+      },
+    });
+
+    it('rejects an explicitly empty options array', () => {
+      const result = VariablesSchema.safeParse(booleanVariable([]));
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      expect(
+        result.error.issues.some((issue) => issue.path.includes('options')),
+      ).toBe(true);
+    });
+
+    it('accepts a boolean variable with no options at all', () => {
+      expect(VariablesSchema.safeParse(booleanVariable()).success).toBe(true);
+    });
+
+    it('accepts a single-option (singleton-domain) boolean', () => {
+      expect(
+        VariablesSchema.safeParse(
+          booleanVariable([{ label: 'Yes', value: true }]),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('accepts a two-option boolean', () => {
+      expect(
+        VariablesSchema.safeParse(
+          booleanVariable([
+            { label: 'Yes', value: true },
+            { label: 'No', value: false },
+          ]),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('applies to edge and ego variables too', () => {
+      expect(EdgeVariablesSchema.safeParse(booleanVariable([])).success).toBe(
+        false,
+      );
+      expect(EgoVariablesSchema.safeParse(booleanVariable([])).success).toBe(
+        false,
+      );
+    });
+  });
 });

@@ -84,7 +84,38 @@ export type ComposerFormField = z.infer<typeof ComposerFormFieldSchema>;
 // strips an empty fields array on save. The runtime renders "No attributes to
 // edit" for an empty/absent form.
 export const ComposerFormSchema = z.strictObject({
-  fields: z.array(ComposerFormFieldSchema).optional(),
+  fields: z
+    .array(ComposerFormFieldSchema)
+    .superRefine((fields, ctx) => {
+      // Thirteenth-wave Finding 1: one form may not write the same variable
+      // twice. Every field renders under its variable's name (interview's
+      // useProtocolForm passes `name: field.variable` to each Field), so two
+      // fields for one variable collide on a single form value while each
+      // still contributing its own component/parameters and validation — two
+      // required DatePicker fields pinned to disjoint singleton windows would
+      // leave no satisfiable answer. The stage-effective overlay in schema.ts
+      // cannot catch that either: it keys by variable, so only the last
+      // field's overrides survive. Two fields writing one attribute is
+      // incoherent authoring whatever the parameters, so reject the second
+      // occurrence outright. The scope is one form: nodeForm and each edge
+      // type's form resolve their references against different subjects, so
+      // they are checked independently (the codebook separately forbids one
+      // variable key from spanning entity types, so a shared key cannot in
+      // practice reach both).
+      const seen = new Set<string>();
+      for (const [index, field] of fields.entries()) {
+        if (seen.has(field.variable)) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Network Composer form fields contain duplicate variable "${field.variable}"`,
+            path: [index, 'variable'],
+          });
+          continue;
+        }
+        seen.add(field.variable);
+      }
+    })
+    .optional(),
 });
 export type ComposerForm = z.infer<typeof ComposerFormSchema>;
 
