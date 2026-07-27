@@ -81,6 +81,17 @@ describe('valueSpaceSize', () => {
     expect(valueSpaceSize(variable, 100)).toBe('unbounded');
   });
 
+  it('returns zero rather than a negative count for an inverted date window', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '2024-01-01', max: '2020-01-01' },
+    });
+    expect(valueSpaceSize(variable, 100)).toBe(0);
+  });
+
   it('treats text with no maxLength as unbounded', () => {
     expect(
       valueSpaceSize(make({ id: 'v', name: 'V', type: 'text' }), 100),

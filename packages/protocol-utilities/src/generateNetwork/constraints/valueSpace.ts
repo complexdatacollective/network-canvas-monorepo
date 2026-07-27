@@ -60,7 +60,12 @@ export function valueSpaceSize(
     case 'datetime': {
       const window = constraints.dateWindow;
       if (!window?.min || !window.max) return 'unbounded';
-      return cap(stepsBetween(window.min, window.max, window.resolution) + 1);
+      return cap(
+        Math.max(
+          0,
+          stepsBetween(window.min, window.max, window.resolution) + 1,
+        ),
+      );
     }
 
     case 'text': {
