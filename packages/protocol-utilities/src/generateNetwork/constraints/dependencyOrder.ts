@@ -25,7 +25,7 @@ export type GenerationOrder = {
  * A comparator constraint in one canonical direction: `upper` must be greater
  * than (`strict`) or at least (`!strict`) `lower`.
  */
-type ComparatorEdge = {
+export type ComparatorEdge = {
   lower: string;
   upper: string;
   strict: boolean;
@@ -91,7 +91,9 @@ function createEqualityClasses(ids: readonly string[]): EqualityClasses {
  * ("end after start" plus "start before end") collapses to one edge instead of
  * looking like a cycle.
  */
-function canonicalComparatorEdges(entity: EntityConstraints): ComparatorEdge[] {
+export function canonicalComparatorEdges(
+  entity: EntityConstraints,
+): ComparatorEdge[] {
   const edges: ComparatorEdge[] = [];
   const seen = new Set<string>();
 

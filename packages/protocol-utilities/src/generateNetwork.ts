@@ -11,6 +11,7 @@ import {
   type GenerationConfig,
   resolveGenerationConfig,
 } from './generateNetwork/config';
+import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
 import type {
   GenerationContext,
   NetworkDraft,
@@ -100,6 +101,7 @@ export function generateNetwork(
     usedRosterUids: new Set<string>(),
     externalData,
     respectSkipLogicAndFiltering,
+    uniqueRegistry: new UniqueRegistry(),
   };
 
   const draft: NetworkDraft = {

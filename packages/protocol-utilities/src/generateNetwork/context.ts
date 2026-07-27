@@ -3,6 +3,7 @@ import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 
 import type { ValueGenerator } from '../ValueGenerator';
 import type { GenerationConfig } from './config';
+import type { UniqueRegistry } from './constraints/uniqueRegistry';
 
 /**
  * The concrete member of the {@link Stage} discriminated union for a given
@@ -24,6 +25,8 @@ export type GenerationContext = {
   /** Pre-parsed roster rows keyed by stage id (see `generateNetwork`). */
   externalData: Record<string, NcNode[]> | undefined;
   respectSkipLogicAndFiltering: boolean;
+  /** Values already issued for `unique` variables, keyed by entity scope. */
+  uniqueRegistry: UniqueRegistry;
 };
 
 /**
