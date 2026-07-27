@@ -135,11 +135,13 @@ export function numberDrawBounds(constraints: VariableConstraints): {
 }
 
 /**
- * How many options a categorical draw selects, as an inclusive size range.
+ * How many values a categorical draw selects, as an inclusive size range.
  *
  * Read by the draw and by the count for the same reason as
- * {@link numberDrawBounds}. A selection is never wider than the option list,
- * whatever the rules say. Without a declared ceiling a draw keeps its
+ * {@link numberDrawBounds}. A selection is never wider than the values the
+ * option list offers — sized by {@link distinctOptionValues} rather than by
+ * entries, because a selection is a set and two entries carrying one value
+ * contribute one member to it. Without a declared ceiling a draw keeps its
  * selections small, which is realistic but nowhere near one value per entity; a
  * `unique` variable reaches every size instead.
  *
@@ -158,7 +160,7 @@ export function selectionSizeRange(variable: ConstrainedVariable): {
   min: number;
   max: number;
 } {
-  const optionCount = variable.entry.options?.length ?? 0;
+  const optionCount = distinctOptionValues(variable.entry).length;
   const { minSelected, maxSelected, unique } = variable.constraints;
 
   const max = Math.min(
@@ -214,25 +216,26 @@ function unrankCombination(n: number, k: number, rank: number): number[] {
 }
 
 /**
- * The `rank`-th selection a categorical draw can make, as option indices.
+ * The `rank`-th selection a categorical draw can make, as option values.
  *
  * Ranks walk the whole combination space: sizes in order, and each size's
- * subsets in lexicographic order. Choosing a contiguous run of options instead
+ * subsets in lexicographic order. Choosing a contiguous run of values instead
  * would reach only as many selections as there are starting points, and a
  * `unique` variable would exhaust its values long before the count said so.
  * Past the end of the space the sequence wraps.
  *
- * Selections are positions in the option list, so two entries carrying one
- * value give two ranks that draw the same value. {@link valueSpaceSize} counts
- * the values rather than the ranks for that reason, leaving a rank per value
- * and never the other way round.
+ * Combined over {@link distinctOptionValues} rather than over option
+ * positions. Two entries carrying one value are one member of a selection, so a
+ * position-based subset of size two could collapse to a single-value answer no
+ * `minSelected: 2` accepts — while {@link valueSpaceSize} counted the pair it
+ * never drew.
  */
 export function categoricalSelectionAt(
   variable: ConstrainedVariable,
   rank: number,
-): number[] {
-  const optionCount = variable.entry.options?.length ?? 0;
-  if (optionCount === 0) return [];
+): (string | number | boolean)[] {
+  const values = distinctOptionValues(variable.entry);
+  if (values.length === 0) return [];
   const { min, max } = selectionSizeRange(variable);
 
   const sizes: { size: number; count: number }[] = [];
@@ -240,7 +243,7 @@ export function categoricalSelectionAt(
   // An inverted pair is a contradiction feasibility reports; here it draws the
   // smallest selection its rules describe rather than nothing at all.
   for (let size = min; size <= Math.max(min, max); size++) {
-    const count = binomial(optionCount, size);
+    const count = binomial(values.length, size);
     sizes.push({ size, count });
     total += count;
   }
@@ -248,7 +251,12 @@ export function categoricalSelectionAt(
   let remaining = rank % total;
   for (const { size, count } of sizes) {
     if (remaining < count) {
-      return unrankCombination(optionCount, size, remaining);
+      const selected: (string | number | boolean)[] = [];
+      for (const at of unrankCombination(values.length, size, remaining)) {
+        const value = values[at];
+        if (value !== undefined) selected.push(value);
+      }
+      return selected;
     }
     remaining -= count;
   }
@@ -257,22 +265,31 @@ export function categoricalSelectionAt(
 }
 
 /**
- * How many values an option list offers, counted the way the unique registry
- * counts them: by {@link valueKey}, so the count and the draws it is spent on
- * judge sameness identically.
+ * The values an option list offers, first occurrence kept, deduplicated the way
+ * the unique registry deduplicates: by {@link valueKey}, so the count, the
+ * selection range and the draws they are spent on judge sameness identically.
  *
  * Entries, not values, are what the schema requires two of — an imported
- * protocol may list one value under two labels. The draw reaches such a value
- * once however many entries carry it, so counting entries would let a `unique`
- * variable pass feasibility and then exhaust generation partway through the
- * network.
- *
- * Deliberately not what {@link selectionSizeRange} measures: that is how many
- * options a draw picks, which is a position in the raw list.
+ * protocol may list one value under two labels. Everything downstream of an
+ * option list works in values: a draw reaches such a value once however many
+ * entries carry it, and a selection holding it twice is the same selection. So
+ * this is what a categorical selection is sized by, drawn from and counted
+ * over; sizing any of them by entries lets the three disagree.
  */
-function distinctOptionCount(entry: VariableEntry): number {
-  return new Set((entry.options ?? []).map((option) => valueKey(option.value)))
-    .size;
+export function distinctOptionValues(
+  entry: VariableEntry,
+): (string | number | boolean)[] {
+  const seen = new Set<string>();
+  const values: (string | number | boolean)[] = [];
+
+  for (const option of entry.options ?? []) {
+    const key = valueKey(option.value);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    values.push(option.value);
+  }
+
+  return values;
 }
 
 /**
@@ -296,24 +313,17 @@ export function valueSpaceSize(
       return 2;
 
     case 'ordinal':
-      return cap(distinctOptionCount(entry));
+      return cap(distinctOptionValues(entry).length);
 
     case 'categorical': {
-      const optionCount = distinctOptionCount(entry);
+      const optionCount = distinctOptionValues(entry).length;
+      // Sizes come from `selectionSizeRange`, which is already held to the
+      // values the option list offers and is the same range the draw walks.
+      // Clamping again here would be a second opinion on how wide a selection
+      // can be, and the two could then disagree.
       const { min, max } = selectionSizeRange(variable);
       let total = 0;
-      // Selection sizes are counted in options picked, which duplicate entries
-      // make more numerous than the values they carry, so the range is held to
-      // the list the values themselves make: a size no set of distinct values
-      // can fill counts nothing, and a floor above them is met by the values
-      // the entries at that size collapse to. Held rather than left to
-      // `binomial`'s zero so the floor moves too — a duplicate-free list is
-      // already inside its own option count and is counted exactly as before.
-      for (
-        let size = Math.min(min, optionCount);
-        size <= Math.min(max, optionCount);
-        size++
-      ) {
+      for (let size = min; size <= max; size++) {
         total += binomial(optionCount, size);
         if (total >= ceiling) return 'unbounded';
       }

@@ -18,6 +18,7 @@ import type {
 } from './generateNetwork/constraints/types';
 import {
   categoricalSelectionAt,
+  distinctOptionValues,
   numberDrawBounds,
   SCALAR_DECIMAL_PLACES,
   SCALAR_DOMAIN,
@@ -257,29 +258,29 @@ export class ValueGenerator {
       }
 
       case 'categorical': {
-        const options = entry.options ?? [];
-        if (options.length === 0) return null;
-
-        const picked: (number | string | boolean)[] = [];
+        // Drawn from the values the options offer rather than from the options
+        // themselves: a selection is a set, so two entries carrying one value
+        // are one thing to pick. Picking by position could take both and hand
+        // back a shorter answer than the size it selected, which `minSelected`
+        // then rejects.
+        const values = distinctOptionValues(entry);
+        if (values.length === 0) return null;
 
         // A distinct value has to be reachable for every selection the value
         // space counts, so a sequence number indexes the combination space
         // itself. A free draw only has to be plausible, and takes a run of
-        // adjacent options.
+        // adjacent values.
         if (seq !== undefined) {
-          for (const at of categoricalSelectionAt(variable, seq)) {
-            const option = options[at];
-            if (option) picked.push(option.value);
-          }
-          return [...new Set(picked)];
+          return [...new Set(categoricalSelectionAt(variable, seq))];
         }
 
         const { min, max } = selectionSizeRange(variable);
         const span = Math.max(1, max - min + 1);
         const count = Math.max(min, Math.min(max, min + (index % span)));
+        const picked: (number | string | boolean)[] = [];
         for (let i = 0; i < count; i++) {
-          const option = options[(index + i) % options.length];
-          if (option) picked.push(option.value);
+          const value = values[(index + i) % values.length];
+          if (value !== undefined) picked.push(value);
         }
         return [...new Set(picked)];
       }

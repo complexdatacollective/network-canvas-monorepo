@@ -4,7 +4,7 @@ import { ValueGenerator } from '../../../ValueGenerator';
 import { buildVariableConstraints } from '../buildConstraints';
 import type { ConstrainedVariable } from '../types';
 import { valueKey } from '../uniqueRegistry';
-import { valueSpaceSize } from '../valueSpace';
+import { selectionSizeRange, valueSpaceSize } from '../valueSpace';
 
 const TODAY = '2026-07-27';
 
@@ -130,9 +130,13 @@ describe('valueSpaceSize', () => {
     expect(reachedByDraw(variable, 64).size).toBe(3);
   });
 
-  // A selection floor the distinct values cannot reach is still met, by the
-  // value the entries at that size collapse to: two entries of one value
-  // satisfy `minSelected: 2` and are drawn as that single value.
+  // A selection floor above the distinct values is not met by anything: two
+  // entries of one value are one member of a selection, and `minSelected: 2` is
+  // asking for a second the list does not have. The range collapses to the one
+  // value the draw can reach, and the count reports that one value — what no
+  // count can do is invent the second. Refusing such a protocol belongs to
+  // feasibility's own `minSelected` guard, which still measures against the
+  // entry count and so does not yet see this one.
   it('counts a categorical whose selection floor exceeds its distinct values', () => {
     const variable = make({
       id: 'v',
@@ -144,8 +148,32 @@ describe('valueSpaceSize', () => {
       ],
       validation: { minSelected: 2, maxSelected: 2 },
     });
+    expect(selectionSizeRange(variable)).toEqual({ min: 1, max: 1 });
     expect(valueSpaceSize(variable, 100)).toBe(1);
     expect(reachedByDraw(variable, 64).size).toBe(1);
+  });
+
+  // The selection range is what the draw walks and what the count is summed
+  // over, so it has to be sized in values too. Four entries carrying three
+  // values reach a three-value selection and never a four-value one, whatever
+  // `maxSelected` says.
+  it('sizes the selection range by distinct values, not by entries', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'categorical',
+      options: [
+        { label: 'A', value: 'a' },
+        { label: 'Also A', value: 'a' },
+        { label: 'B', value: 'b' },
+        { label: 'C', value: 'c' },
+      ],
+      validation: { minSelected: 1, maxSelected: 4 },
+    });
+    expect(selectionSizeRange(variable)).toEqual({ min: 1, max: 3 });
+    // C(3,1) + C(3,2) + C(3,3) = 3 + 3 + 1
+    expect(valueSpaceSize(variable, 100)).toBe(7);
+    expect(reachedByDraw(variable, 64).size).toBe(7);
   });
 
   // Selection bounds the protocol leaves out are the generator's own defaults,

@@ -275,6 +275,50 @@ describe('generateConstrained', () => {
     }
   });
 
+  // The schema requires a categorical to offer two options but not two values,
+  // so an imported protocol can list one value under two labels. A selection is
+  // a set: picking both entries hands back one value, which is a shorter answer
+  // than the size the draw chose and one the interview rejects outright ("Too
+  // few selected. Select at least 2 values."). Selecting values rather than
+  // positions is what keeps every draw the size its own range names.
+  it('draws full-size selections from an option list that repeats a value', () => {
+    const gen = new ValueGenerator(1, TODAY);
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'categorical',
+      options: [
+        { label: 'A', value: 'a' },
+        { label: 'Also A', value: 'a' },
+        { label: 'B', value: 'b' },
+        { label: 'C', value: 'c' },
+      ],
+      validation: { minSelected: 2, maxSelected: 2, unique: true },
+    });
+
+    // The three pairs three values make, not the six four positions make.
+    expect(valueSpaceSize(variable, 100)).toBe(3);
+
+    const drawn = new Set<string>();
+    for (let seq = 0; seq < 3; seq++) {
+      const value = gen.generateConstrained(variable, 0, { distinctSeq: seq });
+      if (!Array.isArray(value)) {
+        throw new Error(`expected an array, received ${typeof value}`);
+      }
+      expect(value).toHaveLength(2);
+      drawn.add(valueKey(value));
+    }
+    expect(drawn.size).toBe(3);
+
+    for (let index = 0; index < 12; index++) {
+      const value = gen.generateConstrained(variable, index);
+      if (!Array.isArray(value)) {
+        throw new Error(`expected an array, received ${typeof value}`);
+      }
+      expect(value).toHaveLength(2);
+    }
+  });
+
   // What feasibility spends. It accepts a `unique` variable once
   // `valueSpaceSize` reports at least one value per entity, so every value that
   // count includes has to be reachable by a distinct sequence number — a draw
