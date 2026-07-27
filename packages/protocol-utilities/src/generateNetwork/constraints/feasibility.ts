@@ -6,14 +6,14 @@ import type {
 
 import type { GenerationConfig } from '../config';
 import { buildEntityConstraints } from './buildConstraints';
-import { resolveGenerationOrder } from './dependencyOrder';
+import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
 import { worstCaseEntityCounts } from './entityCounts';
-import { intersectGroupConstraints } from './groupConstraints';
 import {
-  COMPARATOR_DIRECTION,
-  COMPARISON_RULES,
-  type EntityConstraints,
-} from './types';
+  groupComparatorEdges,
+  intersectGroupConstraints,
+  propagateComparatorBounds,
+} from './groupConstraints';
+import { COMPARISON_RULES, type EntityConstraints } from './types';
 import { valueSpaceSize } from './valueSpace';
 
 export type ConstraintConflict = {
@@ -69,6 +69,51 @@ function namesOf(entity: EntityConstraints, ids: string[]): string[] {
   return ids.map((id) => entity.get(id)?.entry.name ?? id);
 }
 
+/**
+ * Groups joined by comparators, as the sets that have to be satisfiable
+ * together. Reporting per component rather than per variable describes a chain
+ * once, instead of naming each link of it as its own conflict.
+ */
+function comparatorComponents(edges: readonly ComparatorEdge[]): string[][] {
+  const adjacency = new Map<string, Set<string>>();
+
+  const link = (from: string, to: string): void => {
+    const neighbours = adjacency.get(from) ?? new Set<string>();
+    neighbours.add(to);
+    adjacency.set(from, neighbours);
+  };
+
+  for (const edge of edges) {
+    link(edge.lower, edge.upper);
+    link(edge.upper, edge.lower);
+  }
+
+  const seen = new Set<string>();
+  const components: string[][] = [];
+
+  for (const start of adjacency.keys()) {
+    if (seen.has(start)) continue;
+    seen.add(start);
+
+    const component: string[] = [];
+    const pending = [start];
+    while (pending.length > 0) {
+      const group = pending.pop();
+      if (group === undefined) break;
+      component.push(group);
+      for (const next of adjacency.get(group) ?? []) {
+        if (seen.has(next)) continue;
+        seen.add(next);
+        pending.push(next);
+      }
+    }
+
+    components.push(component);
+  }
+
+  return components;
+}
+
 function analyseEntity(
   scope: EntityScope,
   config: GenerationConfig,
@@ -76,7 +121,7 @@ function analyseEntity(
   const entity = buildEntityConstraints(scope.variables, config.today);
   const conflicts: ConstraintConflict[] = [];
 
-  const { membersOf, groupOf, cycles } = resolveGenerationOrder(entity);
+  const { order, membersOf, groupOf, cycles } = resolveGenerationOrder(entity);
   const groups = intersectGroupConstraints(entity, membersOf);
   const uniqueReported = new Set<string>();
 
@@ -170,44 +215,6 @@ function analyseEntity(
     // points at itself; `resolveGenerationOrder`'s cycle detection (below)
     // already reports that self-loop, so no separate check is needed here.
 
-    for (const rule of COMPARISON_RULES) {
-      const targetId = constraints[rule];
-      if (targetId === undefined) continue;
-
-      const target = entity.get(targetId);
-      if (!target) continue;
-
-      const { ownerIsUpper, strict } = COMPARATOR_DIRECTION[rule];
-
-      const selfBound = ownerIsUpper
-        ? constraints.maxValue
-        : constraints.minValue;
-      const targetBound = ownerIsUpper
-        ? target.constraints.minValue
-        : target.constraints.maxValue;
-
-      if (selfBound !== undefined && targetBound !== undefined) {
-        // Bounds that merely touch satisfy a non-strict comparator, so only a
-        // strict one is contradicted by them being equal.
-        const impossible = ownerIsUpper
-          ? strict
-            ? selfBound <= targetBound
-            : selfBound < targetBound
-          : strict
-            ? selfBound >= targetBound
-            : selfBound > targetBound;
-
-        if (impossible) {
-          const direction = ownerIsUpper ? 'above' : 'below';
-          report(
-            [id, targetId],
-            [rule],
-            `its own bounds cannot reach a value ${strict ? direction : `at or ${direction}`} "${target.entry.name}"`,
-          );
-        }
-      }
-    }
-
     if (constraints.unique) {
       if (scope.entity === 'ego') {
         report([id], ['unique'], 'unique is not supported on ego variables');
@@ -236,6 +243,40 @@ function analyseEntity(
         }
       }
     }
+  }
+
+  // Comparators only contradict each other as a system: `a < b < c` on `[0, 1]`
+  // has three pairs that each fit and no assignment that does. Propagation
+  // settles the whole system, and a group left with an empty range is a chain
+  // the declared bounds cannot hold.
+  const edges = groupComparatorEdges(entity, groupOf);
+  const { inverted } = propagateComparatorBounds(groups, order, edges);
+  const cyclicGroups = new Set(
+    cycles.flat().map((id) => groupOf.get(id) ?? id),
+  );
+
+  for (const component of comparatorComponents(edges)) {
+    if (!component.some((group) => inverted.has(group))) continue;
+    // A cycle is reported below with the reason that describes it; its members'
+    // bounds crossing over is that same contradiction counted twice.
+    if (component.some((group) => cyclicGroups.has(group))) continue;
+
+    const members = new Set(component);
+    const ids = [...entity.keys()].filter((id) =>
+      members.has(groupOf.get(id) ?? id),
+    );
+    const rules = COMPARISON_RULES.filter((rule) =>
+      ids.some((id) => {
+        const target = entity.get(id)?.constraints[rule];
+        return target !== undefined && entity.has(target);
+      }),
+    );
+
+    report(
+      ids,
+      rules,
+      'the comparisons between these variables do not fit inside the bounds they declare',
+    );
   }
 
   for (const cycle of cycles) {

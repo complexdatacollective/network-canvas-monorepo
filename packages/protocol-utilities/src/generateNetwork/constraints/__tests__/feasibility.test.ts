@@ -228,6 +228,144 @@ describe('analyseFeasibility', () => {
     expect(conflicts[0]?.rules).toEqual(['greaterThanOrEqualToVariable']);
   });
 
+  it('reports a chain of comparisons too long for the range it runs in', () => {
+    // Every pair fits: `a < b` and `b < c` each have room in `[0, 1]`. The
+    // three together need three distinct values and have two.
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 1 },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 1, greaterThanVariable: 'a' },
+      },
+      c: {
+        name: 'C',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 1, greaterThanVariable: 'b' },
+      },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['A', 'B', 'C']);
+    expect(conflicts[0]?.rules).toEqual(['greaterThanVariable']);
+    expect(conflicts[0]?.reason).toContain('do not fit inside the bounds');
+  });
+
+  it('reports a four-variable chain that needs one value more than it has', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 2 },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 2, greaterThanVariable: 'a' },
+      },
+      c: {
+        name: 'C',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 2, greaterThanVariable: 'b' },
+      },
+      d: {
+        name: 'D',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 2, greaterThanVariable: 'c' },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toHaveLength(
+      1,
+    );
+  });
+
+  it('reports four dates that cannot be ordered inside a three-day window', () => {
+    const window = {
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', min: '2020-01-01', max: '2020-01-03' },
+    } as const;
+
+    const codebook = codebookWith({
+      w: { name: 'W', ...window },
+      x: {
+        name: 'X',
+        ...window,
+        validation: { greaterThanVariable: 'w' },
+      },
+      y: {
+        name: 'Y',
+        ...window,
+        validation: { greaterThanVariable: 'x' },
+      },
+      z: {
+        name: 'Z',
+        ...window,
+        validation: { greaterThanVariable: 'y' },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toHaveLength(
+      1,
+    );
+  });
+
+  it('accepts a chain that exactly fills the range it runs in', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 2 },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 2, greaterThanVariable: 'a' },
+      },
+      c: {
+        name: 'C',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 2, greaterThanVariable: 'b' },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('accepts a four-variable chain that exactly fills its range', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 3 },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 3, greaterThanVariable: 'a' },
+      },
+      c: {
+        name: 'C',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 3, greaterThanVariable: 'b' },
+      },
+      d: {
+        name: 'D',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 3, greaterThanVariable: 'c' },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
   it('reports unique against a value space smaller than the worst-case count', () => {
     const codebook = codebookWith({
       band: {

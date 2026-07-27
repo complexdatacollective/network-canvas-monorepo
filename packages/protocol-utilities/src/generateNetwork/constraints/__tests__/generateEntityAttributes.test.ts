@@ -586,6 +586,299 @@ describe('generateEntityAttributes', () => {
     ).toEqual([]);
   });
 
+  it('keeps a variable that declares no bounds under the ceiling a comparator gives it', () => {
+    // `baseline` has no rules of its own, so nothing but the comparison bounds
+    // it. Drawing it from the generator's realistic default range would put it
+    // above everything `score` can reach, and `score` would then have to leave
+    // its own maximum to stay above it.
+    const entity = buildEntityConstraints(
+      {
+        score: {
+          name: 'Score',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 10 },
+        },
+        baseline: {
+          name: 'Baseline',
+          type: 'number',
+          validation: { lessThanVariable: asEntityAttributeReference('score') },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          Number(attrs.baseline) < Number(attrs.score) &&
+          Number(attrs.score) >= 0 &&
+          Number(attrs.score) <= 10,
+      ),
+    ).toEqual([]);
+  });
+
+  it('satisfies a four-variable chain whose range is exactly four values wide', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 3 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 3,
+            greaterThanVariable: asEntityAttributeReference('a'),
+          },
+        },
+        c: {
+          name: 'C',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 3,
+            greaterThanVariable: asEntityAttributeReference('b'),
+          },
+        },
+        d: {
+          name: 'D',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 3,
+            greaterThanVariable: asEntityAttributeReference('c'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          Number(attrs.b) > Number(attrs.a) &&
+          Number(attrs.c) > Number(attrs.b) &&
+          Number(attrs.d) > Number(attrs.c) &&
+          allWithin(attrs, 0, 3),
+      ),
+    ).toEqual([]);
+  });
+
+  it('keeps every value inside its own bounds when the chain cannot be satisfied', () => {
+    // Three strictly increasing values do not fit two. The feasibility pass
+    // refuses this protocol; until it is consulted the draw still has to stay
+    // inside the bounds a participant's form would enforce, because a value
+    // outside them fails a validator the broken comparison does not.
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 1 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 1,
+            greaterThanVariable: asEntityAttributeReference('a'),
+          },
+        },
+        c: {
+          name: 'C',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 1,
+            greaterThanVariable: asEntityAttributeReference('b'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(breaches(entity, 500, (attrs) => allWithin(attrs, 0, 1))).toEqual(
+      [],
+    );
+  });
+
+  it('reserves nothing for a differentFrom target that cannot collide', () => {
+    // `far` shares no value with `b`, so it can never take one away. Reserving
+    // room for it anyway would leave `a` a range with nothing in it.
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 1 },
+        },
+        far: {
+          name: 'Far',
+          type: 'number',
+          validation: { minValue: 50, maxValue: 60 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 1,
+            greaterThanVariable: asEntityAttributeReference('a'),
+            differentFrom: asEntityAttributeReference('far'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          Number(attrs.b) > Number(attrs.a) &&
+          Number(attrs.b) !== Number(attrs.far) &&
+          Number(attrs.a) >= 0 &&
+          Number(attrs.a) <= 1 &&
+          Number(attrs.b) >= 0 &&
+          Number(attrs.b) <= 1 &&
+          Number(attrs.far) >= 50 &&
+          Number(attrs.far) <= 60,
+      ),
+    ).toEqual([]);
+
+    // Widened, so what was reserved can be seen rather than inferred: `b > a`
+    // alone leaves `a` everything below `b`'s ceiling, and a step held back for
+    // `far` would take the top of that away for a value `far` cannot hold.
+    const roomy = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 5 },
+        },
+        far: {
+          name: 'Far',
+          type: 'number',
+          validation: { minValue: 50, maxValue: 60 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 5,
+            greaterThanVariable: asEntityAttributeReference('a'),
+            differentFrom: asEntityAttributeReference('far'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const drawn = new Set<number>();
+    for (let seed = 0; seed < 500; seed++) {
+      drawn.add(
+        Number(
+          generateEntityAttributes(
+            roomy,
+            makeContext(seed),
+            'node:person',
+            seed,
+          ).a,
+        ),
+      );
+    }
+
+    expect(Math.max(...drawn)).toBe(4);
+  });
+
+  it('leaves a dependent its last value when a comparator has used up the rest', () => {
+    // `b > a` on a two-value range leaves `b` one value, and `d` is drawn
+    // before it: taking that value would strand `b`, which no redraw of `b`
+    // could recover from. `a = 0, b = 1, d = 0` is the only assignment.
+    //
+    // Declared both ways round, because the two put `d` on opposite sides of
+    // `a`: with `d` first, what `b` is left is known only from the propagated
+    // bounds, since `a` has not been drawn yet.
+    const bounds = { minValue: 0, maxValue: 1 };
+    const a = { name: 'A', type: 'number', validation: bounds } as const;
+    const d = { name: 'D', type: 'number', validation: bounds } as const;
+    const b = {
+      name: 'B',
+      type: 'number',
+      validation: {
+        ...bounds,
+        greaterThanVariable: asEntityAttributeReference('a'),
+        differentFrom: asEntityAttributeReference('d'),
+      },
+    } as const;
+
+    for (const variables of [
+      { a, d, b },
+      { d, a, b },
+    ]) {
+      expect(
+        breaches(
+          buildEntityConstraints(variables, TODAY),
+          500,
+          (attrs) =>
+            Number(attrs.b) > Number(attrs.a) &&
+            Number(attrs.b) !== Number(attrs.d) &&
+            allWithin(attrs, 0, 1),
+        ),
+      ).toEqual([]);
+    }
+  });
+
+  it('honours differentFrom when its ordering edge was dropped', () => {
+    // `d >= b` already orders the pair, so the `differentFrom` edge would close
+    // a cycle and is dropped: `b` is drawn first, where its own declaration has
+    // nothing to point at. The rule binds both ends, so `d` avoids `b`.
+    const entity = buildEntityConstraints(
+      {
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 2,
+            differentFrom: asEntityAttributeReference('d'),
+          },
+        },
+        d: {
+          name: 'D',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 2,
+            greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          Number(attrs.d) >= Number(attrs.b) &&
+          Number(attrs.b) !== Number(attrs.d) &&
+          allWithin(attrs, 0, 2),
+      ),
+    ).toEqual([]);
+  });
+
   it('satisfies a date chain inside a five-day window', () => {
     const window = {
       component: 'DatePicker',
