@@ -72,6 +72,41 @@ describe('analyseFeasibility', () => {
     );
   });
 
+  it('reports a required variable whose ceiling permits only an empty selection', () => {
+    const codebook = codebookWith({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'B', value: 'b' },
+        ],
+        validation: { required: true, maxSelected: 0 },
+      },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['required', 'maxSelected']);
+  });
+
+  it('leaves a zero ceiling alone when the variable is not required', () => {
+    const codebook = codebookWith({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'B', value: 'b' },
+        ],
+        validation: { maxSelected: 0 },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
   it('reports minSelected above the option count', () => {
     const codebook = codebookWith({
       tags: {

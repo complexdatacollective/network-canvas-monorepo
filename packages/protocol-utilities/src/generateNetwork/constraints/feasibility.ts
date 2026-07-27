@@ -188,6 +188,18 @@ function analyseEntity(
       );
     }
 
+    // `maxSelected: 0` leaves the empty selection as the only drawable value,
+    // and `required` is the one rule that rejects it. Without this the draw
+    // emits `[]` and the interview refuses it — invalid data rather than a
+    // refusal, which is the outcome this pass exists to prevent.
+    if (constraints.required && constraints.maxSelected === 0) {
+      report(
+        [id],
+        ['required', 'maxSelected'],
+        'maxSelected 0 permits only an empty selection, which required rejects',
+      );
+    }
+
     const optionCount = entry.options?.length ?? 0;
     if (
       constraints.minSelected !== undefined &&
