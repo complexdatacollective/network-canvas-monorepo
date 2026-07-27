@@ -52,6 +52,21 @@ and may have moved:
 - `findValidationContradictions(variables)` takes **one entity's variables record** and returns
   `{ class, variableIds, rules, message, path }[]`.
 
+**The delegation surface grew after this spec was written.** Several more per-variable checks landed in
+`feasibility.ts` during PR #1108's review cycles, and each is a delegation candidate to re-assess
+against #1107's final catalogue rather than assumed to be ours:
+
+- `required` with `maxSelected: 0`, and with `maxLength: 0` (`419310753`, `f173ec851`) — the ceiling
+  admits only the empty value that `required` rejects.
+- `maxLength < 0` and `maxSelected < 0` (`cd4345137`) — unconditional on `required`, because a
+  negative ceiling admits nothing at all. Negative _floors_ are deliberately left alone as vacuous.
+- `minSelected` against **distinct** option values rather than entries (`1621143f0`). #1107 counts
+  distinct values too, for the same reason, so this one is very likely delegable.
+- A rule whose two ends are both fixed by one prompt (`e46787d60`) — protocol data, so decidable
+  statically, but it needs prompt information #1107's analyser does not receive. Likely stays.
+- Heterogeneous `sameAs` groups (`a62fa9154`) — #1107's R2 makes these unexpressible, so ours becomes
+  defensive rather than load-bearing once it lands.
+
 ## Work item 1 — delegate the shared classes
 
 Have `analyseFeasibility` call `findValidationContradictions` for the classes #1107 owns, instead of
