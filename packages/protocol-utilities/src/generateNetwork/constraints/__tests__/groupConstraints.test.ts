@@ -139,6 +139,9 @@ describe('intersectGroupConstraints', () => {
   });
 
   it('leaves the options alone when a member has no options of its own', () => {
+    // `emptyGroupBounds` refuses this group for its types; the intersection
+    // still has to leave the ordinal something rather than emptying its list
+    // over a member that was never going to contribute one.
     const entity = buildEntityConstraints(
       {
         a: { name: 'Rating A', type: 'ordinal', options: labelled([1, 2]) },
@@ -191,7 +194,10 @@ describe('emptyGroupBounds', () => {
       TODAY,
     );
 
-    expect(crossings(entity)).toEqual([]);
+    // The types are what is wrong with this pairing, and the only thing
+    // reported: an ordinal's option list is not narrowed by a member that has
+    // none, so there is no options conflict to name alongside it.
+    expect(crossings(entity).map(({ rules }) => rules)).toEqual([['type']]);
   });
 
   it('leaves a lone member falling short of its own to the per-variable check', () => {
@@ -212,7 +218,7 @@ describe('emptyGroupBounds', () => {
       TODAY,
     );
 
-    expect(crossings(entity)).toEqual([]);
+    expect(crossings(entity).map(({ rules }) => rules)).toEqual([['type']]);
   });
 
   it('reports a minSelected the options left to the group cannot fill', () => {
@@ -267,6 +273,117 @@ describe('emptyGroupBounds', () => {
         rules: ['minSelected', 'options'],
         detail:
           'minSelected 3 exceeds the 2 options shared by "Foods A" (1, 2) and by "Foods B" (1, 2), which one of these variables already declares on its own',
+      },
+    ]);
+  });
+
+  it('reports the types of a group whose members hold different ones', () => {
+    // `sameAs` names a variable id and the schema asks nothing of the type it
+    // names, so this is a protocol a researcher can write today. Drawn, it
+    // leaves the boolean's attribute holding the text value.
+    const entity = buildEntityConstraints(
+      {
+        a: { name: 'Note', type: 'text' },
+        b: {
+          name: 'Flag',
+          type: 'boolean',
+          validation: { sameAs: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    expect(crossings(entity)).toEqual([
+      {
+        rules: ['type'],
+        detail:
+          'the types of "Note" (text) and "Flag" (boolean) have no value in common',
+      },
+    ]);
+  });
+
+  it('reports the types of an ordinal held equal to a categorical', () => {
+    // Drawing from options is not enough to share a value: a categorical value
+    // is an array of option values and an ordinal value is a single one.
+    const entity = buildEntityConstraints(
+      {
+        a: { name: 'Rating', type: 'ordinal', options: labelled([1, 2]) },
+        b: {
+          name: 'Foods',
+          type: 'categorical',
+          options: labelled([1, 2]),
+          validation: { sameAs: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    expect(crossings(entity)).toEqual([
+      {
+        rules: ['type'],
+        detail:
+          'the types of "Rating" (ordinal) and "Foods" (categorical) have no value in common',
+      },
+    ]);
+  });
+
+  it('reports nothing about the types of a group that shares one', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: { name: 'Note A', type: 'text' },
+        b: {
+          name: 'Note B',
+          type: 'text',
+          validation: { sameAs: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    expect(crossings(entity)).toEqual([]);
+  });
+
+  it('leaves a number held equal to a scalar to its bounds', () => {
+    // Both are drawn as plain numbers, and the scalar's 0-1 scale reaches the
+    // group as minValue/maxValue, so the bounds already say whatever there is
+    // to say about which values the two can share. The number declares the
+    // rule because the schema gives `scalar` no `sameAs` of its own.
+    const entity = buildEntityConstraints(
+      {
+        a: { name: 'Weight', type: 'scalar' },
+        b: {
+          name: 'Count',
+          type: 'number',
+          validation: { sameAs: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    expect(crossings(entity)).toEqual([]);
+  });
+
+  it('reports a number whose declared range the scalar scale excludes', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: { name: 'Weight', type: 'scalar' },
+        b: {
+          name: 'Count',
+          type: 'number',
+          validation: {
+            minValue: 5,
+            maxValue: 10,
+            sameAs: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(crossings(entity)).toEqual([
+      {
+        rules: ['minValue', 'maxValue'],
+        detail: 'minValue 5 exceeds maxValue 1',
       },
     ]);
   });

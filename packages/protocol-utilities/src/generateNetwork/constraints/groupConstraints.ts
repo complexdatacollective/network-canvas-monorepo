@@ -54,11 +54,11 @@ function optionDomain(
  * `undefined` where no member has any and there is nothing to intersect.
  *
  * A member with no options of its own is passed over rather than emptying the
- * intersection. `sameAs` between an ordinal and a text variable is already a
- * rule the runtime cannot check — the two types share no value of any kind — so
- * which options the ordinal keeps is not what is wrong with that pairing, and
- * reading "offers no options" as "shares none of them" would refuse every such
- * pairing for a reason naming nothing a researcher could correct.
+ * intersection. A group mixing an ordinal with a type that has no option domain
+ * is refused for its types rather than its options — see
+ * `incompatibleGroupTypes` — and reading "offers no options" as "shares none of
+ * them" would report that same group a second time as an options conflict,
+ * naming a list a researcher could edit forever without fixing anything.
  */
 function sharedOptionValues(
   members: readonly ConstrainedVariable[],
@@ -117,8 +117,9 @@ function intersectEntry(
  * capped at `maxLength: 24` joined to one requiring `minLength: 24` needs a
  * value of exactly 24 characters, which neither member alone would produce.
  *
- * The representative supplies the type, since a `sameAs` between variables of
- * different types has no meaning the runtime could check.
+ * The representative supplies the type. A group whose members do not agree on
+ * one is refused before anything is drawn, so which member supplies it decides
+ * nothing a generated value depends on.
  */
 function intersectConstraints(
   members: readonly ConstrainedVariable[],
@@ -232,6 +233,59 @@ const INTERSECTED_BOUNDS = [
 const ALSO_DECLARED =
   ', which one of these variables already declares on its own';
 
+/**
+ * The values a variable's type can hold, as a key two types share only when one
+ * value could sit in either of them.
+ *
+ * `number` and `scalar` share one: both are drawn as plain numbers, and a
+ * scalar's 0-1 scale reaches the group as `minValue`/`maxValue`, so the
+ * intersected bounds already confine the draw to a value either can carry — and
+ * where they cannot, the `minValue`/`maxValue` crossing reports it.
+ *
+ * Nothing else shares one with anything but itself. `text` and `datetime` are
+ * both written as strings, but only one of them holds `"Elda"`, and holding the
+ * group to dates instead would owe the text member the `minLength`/`maxLength`
+ * it declared, which no date format can be asked to meet. `ordinal` and
+ * `categorical` are both drawn from options, but a categorical value is an
+ * array of them and an ordinal value is a single one.
+ */
+function valueKind(type: VariableEntry['type']): string {
+  return type === 'scalar' ? 'number' : type;
+}
+
+/**
+ * The types a group's members cannot all hold one value of.
+ *
+ * `sameAs` names a variable id and the schema asks nothing of the type it
+ * names, so a text variable can be held equal to a boolean. The group keeps one
+ * of the two types and draws a single value against it, which leaves the other
+ * member holding something no participant control could have produced for it: a
+ * boolean attribute reading `"Elda"`, or a text attribute reading `false`. The
+ * raw equality the rule asks for is satisfied and the data is still wrong,
+ * which is why this is refused up front rather than drawn and checked.
+ *
+ * Reported as the types it is, not as the options or bounds it also disturbs.
+ * Those name lists and numbers a researcher can edit without ever reaching the
+ * fault; the types name it exactly.
+ */
+function incompatibleGroupTypes(
+  members: readonly ConstrainedVariable[],
+): EmptyGroupBound[] {
+  const kinds = new Set(members.map(({ entry }) => valueKind(entry.type)));
+  if (kinds.size < 2) return [];
+
+  const declared = members
+    .map(({ entry }) => `"${entry.name}" (${entry.type})`)
+    .join(' and ');
+
+  return [
+    {
+      rules: ['type'],
+      detail: `the types of ${declared} have no value in common`,
+    },
+  ];
+}
+
 /** What a member offers, as the researcher reads it: `"Rating A" (1, 2)`. */
 function offeredBy(member: ConstrainedVariable): string {
   const values = (optionDomain(member) ?? [])
@@ -305,7 +359,8 @@ function emptyGroupOptions(
  * comparators, can merge members whose own ranges are each satisfiable into a
  * group whose intersection is empty — `[1, 5]` held equal to `[?, 0]` describes
  * a value that is both at least 1 and at most 0. An option list is a bound of
- * the same kind, and crosses the same way.
+ * the same kind, and crosses the same way; so is the members' type, which
+ * settles which values exist to be bounded at all.
  *
  * A bound pair one member's own declaration already crosses is reported too,
  * worded so it reads as the separate thing it is. The per-variable check names
@@ -318,7 +373,7 @@ export function emptyGroupBounds(
   members: readonly ConstrainedVariable[],
   intersected: VariableConstraints,
 ): EmptyGroupBound[] {
-  const empty: EmptyGroupBound[] = [];
+  const empty: EmptyGroupBound[] = incompatibleGroupTypes(members);
 
   for (const { min, max } of INTERSECTED_BOUNDS) {
     const floor = intersected[min];
