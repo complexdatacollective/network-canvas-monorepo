@@ -100,8 +100,14 @@ export function generateNetwork(
   // Refused before anything is drawn, and before the seed is consulted: a
   // protocol whose declared rules no value can satisfy fails the same way on
   // every seed rather than only on the ones that happen to reach the
-  // contradiction.
-  const conflicts = analyseFeasibility(codebook, stages, resolvedConfig);
+  // contradiction. The roster rows go in because they bound how many people a
+  // roster stage can add, and a stage that adds none needs no values at all.
+  const conflicts = analyseFeasibility(
+    codebook,
+    stages,
+    resolvedConfig,
+    externalData,
+  );
   if (conflicts.length > 0) {
     throw new SyntheticDataConstraintError(conflicts);
   }

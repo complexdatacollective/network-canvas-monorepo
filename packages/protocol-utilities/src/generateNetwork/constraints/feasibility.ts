@@ -3,6 +3,7 @@ import type {
   StructuralCodebook,
   Variables,
 } from '@codaco/protocol-validation';
+import type { NcNode } from '@codaco/shared-consts';
 
 import type { GenerationConfig } from '../config';
 import { collectBinOnlyVariables } from './binOnlyVariables';
@@ -321,12 +322,18 @@ function analyseEntity(
   return conflicts;
 }
 
+/**
+ * `externalData` is the roster rows generation will draw from, keyed by stage
+ * id. Omitting it reads every roster stage as fabricating people, which counts
+ * more entities rather than fewer — see {@link worstCaseEntityCounts}.
+ */
 export function analyseFeasibility(
   codebook: StructuralCodebook,
   stages: Stage[],
   config: GenerationConfig,
+  externalData?: Record<string, NcNode[]>,
 ): ConstraintConflict[] {
-  const counts = worstCaseEntityCounts(stages, config);
+  const counts = worstCaseEntityCounts(stages, config, externalData);
   const binOnly = collectBinOnlyVariables(stages);
   const scopes: EntityScope[] = [
     {
