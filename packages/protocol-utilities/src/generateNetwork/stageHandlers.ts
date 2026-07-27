@@ -216,6 +216,37 @@ export function handleTieStrengthCensus(
   }
 }
 
+/**
+ * Sorts every subject node into a bin by drawing the prompt's variable for it.
+ *
+ * The draw goes through the constrained path so the variable's own rules and any
+ * rule it shares with another variable hold: `only` is the single variable this
+ * prompt rewrites, and `existing` lets a rule whose target sits outside that
+ * subset resolve against the value the node already carries. A prompt naming no
+ * codebook variable matches nothing and leaves the node untouched.
+ */
+function binSubjectNodes(
+  ctx: GenerationContext,
+  subjectType: string,
+  subjectNodes: readonly NcNode[],
+  variable: string,
+): void {
+  const only = new Set([variable]);
+
+  for (const [nodeIndex, node] of subjectNodes.entries()) {
+    const attrs = node[entityAttributesProperty];
+    Object.assign(
+      attrs,
+      generateAttributesForEntity(
+        ctx,
+        { entity: 'node', type: subjectType },
+        nodeIndex,
+        { existing: attrs, only },
+      ),
+    );
+  }
+}
+
 export function handleOrdinalBin(
   ctx: GenerationContext,
   draft: NetworkDraft,
@@ -225,20 +256,9 @@ export function handleOrdinalBin(
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
-  const nodeTypeDef = ctx.codebook.node?.[subjectType];
 
   for (const prompt of stage.prompts) {
-    const varDef = nodeTypeDef?.variables?.[prompt.variable];
-    if (!varDef) continue;
-
-    const variableOptions = 'options' in varDef ? (varDef.options ?? []) : [];
-    if (variableOptions.length === 0) continue;
-
-    for (const node of subjectNodes) {
-      const optionIndex = ctx.valueGen.randomInt(0, variableOptions.length - 1);
-      node[entityAttributesProperty][prompt.variable] =
-        variableOptions[optionIndex]!.value;
-    }
+    binSubjectNodes(ctx, subjectType, subjectNodes, prompt.variable);
   }
 }
 
@@ -251,32 +271,9 @@ export function handleCategoricalBin(
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
-  const nodeTypeDef = ctx.codebook.node?.[subjectType];
 
   for (const prompt of stage.prompts) {
-    const varDef = nodeTypeDef?.variables?.[prompt.variable];
-    if (!varDef) continue;
-
-    const variableOptions =
-      'options' in varDef
-        ? (varDef.options?.filter((o) => typeof o.value !== 'boolean') ?? [])
-        : [];
-    if (variableOptions.length === 0) continue;
-
-    for (const node of subjectNodes) {
-      const count = ctx.valueGen.randomInt(
-        1,
-        Math.min(2, variableOptions.length),
-      );
-      const picked: (string | number)[] = [];
-      const startIdx = ctx.valueGen.randomInt(0, variableOptions.length - 1);
-      for (let c = 0; c < count; c++) {
-        picked.push(
-          variableOptions[(startIdx + c) % variableOptions.length]!.value,
-        );
-      }
-      node[entityAttributesProperty][prompt.variable] = picked;
-    }
+    binSubjectNodes(ctx, subjectType, subjectNodes, prompt.variable);
   }
 }
 

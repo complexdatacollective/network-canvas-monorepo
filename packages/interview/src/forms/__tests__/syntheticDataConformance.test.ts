@@ -924,19 +924,20 @@ const binNameGenerator = {
   behaviours: { minNodes: 8, maxNodes: 8 },
 };
 
-const binGeneratorOnly = [binNameGenerator] as unknown as Stage[];
+const ORDINAL_BIN_ID = 'stage-ordinal-bin';
+const CATEGORICAL_BIN_ID = 'stage-categorical-bin';
 
 const binStages = [
   binNameGenerator,
   {
-    id: 'stage-ordinal-bin',
+    id: ORDINAL_BIN_ID,
     type: 'OrdinalBin',
     label: 'Ordinal bin',
     subject: { entity: 'node', type: 'binned' },
     prompts: [{ id: 'p2', text: 'Sort', variable: 'binOther' }],
   },
   {
-    id: 'stage-categorical-bin',
+    id: CATEGORICAL_BIN_ID,
     type: 'CategoricalBin',
     label: 'Categorical bin',
     subject: { entity: 'node', type: 'binned' },
@@ -944,9 +945,14 @@ const binStages = [
   },
 ] as unknown as Stage[];
 
+/** The same protocol with the named bin stages taken out. */
+function binStagesWithout(...stageIds: string[]): Stage[] {
+  return binStages.filter((stage) => !stageIds.includes(stage.id));
+}
+
 /**
- * Counts nodes whose attributes fail validation across ten seeds, so the two
- * tests below compare the same protocol with and without its bin stages.
+ * Counts nodes whose attributes fail validation across ten seeds, so the tests
+ * below compare the same protocol with and without each of its bin stages.
  */
 async function countViolatingNodes(stageList: Stage[]): Promise<number> {
   let violating = 0;
@@ -982,21 +988,52 @@ async function countViolatingNodes(stageList: Stage[]): Promise<number> {
   return violating;
 }
 
-describe('known gap: bin stages bypass the constrained draw', () => {
-  it('satisfies the same rules when no bin stage touches the variables', async () => {
-    expect(await countViolatingNodes(binGeneratorOnly)).toBe(0);
-  });
-
+describe('bin stages', () => {
   // handleOrdinalBin and handleCategoricalBin in
-  // packages/protocol-utilities/src/generateNetwork/stageHandlers.ts assign
-  // their prompt's variable straight from the option list, bypassing
-  // generateEntityAttributes, so any cross-variable rule on a binned variable
-  // is defeated. Of the 80 nodes this fixture generates, 0 violate their rules
-  // without a bin stage, 24 with the OrdinalBin alone, 76 with the
-  // CategoricalBin alone and 80 with both. Recorded rather than avoided: once
-  // the handlers route through the constrained path this test fails, which is
-  // the signal to delete it and fold the fixture into the suite above.
-  it('loses those rules once the bin stages run', async () => {
-    expect(await countViolatingNodes(binStages)).toBeGreaterThan(0);
+  // packages/protocol-utilities/src/generateNetwork/stageHandlers.ts once
+  // assigned their prompt's variable straight from the option list, bypassing
+  // generateEntityAttributes: of the 80 nodes this fixture generates, 24
+  // violated their rules with the OrdinalBin alone, 76 with the CategoricalBin
+  // alone and 80 with both. Each of those rows is a case here, so a handler
+  // that stopped drawing through the constrained path is caught by the row that
+  // exercises it rather than by the combined protocol alone.
+  it.each([
+    ['no bin stage', binStagesWithout(ORDINAL_BIN_ID, CATEGORICAL_BIN_ID)],
+    ['an OrdinalBin', binStagesWithout(CATEGORICAL_BIN_ID)],
+    ['a CategoricalBin', binStagesWithout(ORDINAL_BIN_ID)],
+    ['both bin stages', binStages],
+  ])(
+    'leaves no node violating its rules with %s',
+    async (_label, stageList) => {
+      expect(await countViolatingNodes(stageList)).toBe(0);
+    },
+  );
+
+  // Conformance alone would be satisfied by a handler that wrote nothing, and a
+  // bin stage that sorts no node into a bin is not the interaction it stands
+  // for. Every subject node still holds a value of each prompt's variable.
+  it('sorts every subject node into a bin', () => {
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook: binCodebook,
+      stages: binStages,
+      config: { today },
+    });
+
+    expect(network.nodes).toHaveLength(8);
+
+    const ordinalValues = THREE_OPTIONS.map((option) => option.value);
+    const categoricalValues = FOUR_OPTIONS.map((option) => option.value);
+
+    for (const node of network.nodes) {
+      const attributes = node[entityAttributesProperty];
+      expect(ordinalValues).toContain(attributes.binOther);
+      expect(Array.isArray(attributes.binTwin)).toBe(true);
+      for (const value of Array.isArray(attributes.binTwin)
+        ? attributes.binTwin
+        : []) {
+        expect(categoricalValues).toContain(value);
+      }
+    }
   });
 });
