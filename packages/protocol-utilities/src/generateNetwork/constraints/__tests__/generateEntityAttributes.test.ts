@@ -1184,7 +1184,7 @@ describe('generateEntityAttributes', () => {
     ).toEqual([]);
   });
 
-  it('leaves a date comparison alone when the two pickers write at different resolutions', () => {
+  it('satisfies a date comparison between two pickers written at different resolutions', () => {
     const entity = buildEntityConstraints(
       {
         start: {
@@ -1211,12 +1211,18 @@ describe('generateEntityAttributes', () => {
         const start = String(attrs.start);
         const finish = String(attrs.finish);
         return (
+          // Each value written in its own picker's units. The comparison was
+          // once folded at the wrong resolution, which left `finish` holding a
+          // 'YYYY-MM' string its own field could not show.
           /^\d{4}-\d{2}$/.test(start) &&
           start >= '2026-01' &&
           start <= '2026-12' &&
           /^\d{4}-\d{2}-\d{2}$/.test(finish) &&
           finish >= '2026-01-15' &&
-          finish <= '2026-12-31'
+          finish <= '2026-12-31' &&
+          // And the comparison itself, judged the way the runtime judges it:
+          // by parsing both, which puts '2026-07' at '2026-07-01'.
+          new Date(finish).valueOf() > new Date(start).valueOf()
         );
       }),
     ).toEqual([]);

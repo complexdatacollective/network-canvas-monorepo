@@ -15,7 +15,8 @@ import { SCALAR_DECIMAL_PLACES } from './valueSpace';
 /**
  * Keeps whichever of two bounds is tighter. Dates are compared as strings,
  * which orders them correctly as long as both are written at the same
- * resolution — every caller here checks that first.
+ * resolution — every caller here either checks that or writes the candidate at
+ * the current bound's resolution first, which is what `comparatorBound` does.
  */
 export function tighten<T extends number | string>(
   current: T | undefined,
@@ -374,6 +375,61 @@ export function comparatorGap(type: 'number' | 'scalar'): number {
 }
 
 /**
+ * The resolution a date string is written at, read from the string itself
+ * rather than from the window it came from: the runtime's comparator parses
+ * this string, and something that is no date at all has no resolution to step.
+ */
+function valueResolution(value: string): DateResolution | undefined {
+  if (/^\d{4}$/.test(value)) return 'year';
+  if (/^\d{4}-\d{2}$/.test(value)) return 'month';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'full';
+  return undefined;
+}
+
+/** A date string rewritten at `resolution`, dropping or defaulting components. */
+function atResolution(value: string, resolution: DateResolution): string {
+  const [year = '0000', month = '01', day = '01'] = value.split('-');
+  if (resolution === 'year') return year;
+  if (resolution === 'month') return `${year}-${month}`;
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * The bound a comparison against one date puts on the other end, written at
+ * that end's own resolution.
+ *
+ * The runtime compares dates by parsing both ends with `new Date(...)`, and
+ * ECMAScript reads a date-only string as UTC midnight beginning the period it
+ * names: `2010-12` is the same instant as `2010-12-01`, and `2010` the same as
+ * `2010-01-01`. Two dates written at different resolutions therefore do compare
+ * — the coarser one simply sits at the start of its period — so a comparison
+ * across resolutions is a rule the runtime enforces and one generation has to
+ * satisfy rather than skip.
+ *
+ * Rewriting `target` at `resolution` can only move it earlier, onto the start
+ * of the period containing it, and only when `resolution` is the coarser of the
+ * two. Where it moves at all the two ends no longer coincide, and that decides
+ * the step: a floor has to clear the whole period whether or not the comparison
+ * is strict, because `2009-06` does not reach `2009-06-17`; a ceiling already
+ * clears it, and steps back only when the two do coincide and the comparison is
+ * strict.
+ */
+export function comparatorBound(
+  target: string,
+  resolution: DateResolution,
+  { boundsUpper, strict }: { boundsUpper: boolean; strict: boolean },
+): string | undefined {
+  if (valueResolution(target) === undefined) return undefined;
+
+  const here = atResolution(target, resolution);
+  const coincides = atResolution(here, 'full') === atResolution(target, 'full');
+
+  return boundsUpper
+    ? addSteps(here, strict || !coincides ? 1 : 0, resolution)
+    : addSteps(here, strict && coincides ? -1 : 0, resolution);
+}
+
+/**
  * Every comparator in the entity, rewritten as an ordering between the groups
  * that hold the two values. Both ends of an edge inside one group are the same
  * value, so nothing is left to order — a strict comparator of that shape is a
@@ -409,13 +465,15 @@ type Range = {
 };
 
 /**
- * How far apart a strict comparator holds its two ends, in the units the upper
- * end is drawn in: a whole number, one step of the scalar grid, or one unit at
- * the resolution both date windows share.
+ * How far apart a strict comparator holds its two ends, in the units each end
+ * is drawn in: a whole number, one step of the scalar grid, or one unit at each
+ * date window's own resolution. The two resolutions are carried separately
+ * because a bound crossing between them is rewritten into the units of the end
+ * it lands on, which `comparatorBound` does.
  */
 type Span =
   | { kind: 'numeric'; gap: number; grid: boolean }
-  | { kind: 'date'; resolution: DateResolution };
+  | { kind: 'date'; lower: DateResolution; upper: DateResolution };
 
 function isNumeric(variable: ConstrainedVariable): boolean {
   return variable.entry.type === 'number' || variable.entry.type === 'scalar';
@@ -423,8 +481,10 @@ function isNumeric(variable: ConstrainedVariable): boolean {
 
 /**
  * Comparisons the generator cannot step across — a number against a date, or
- * two dates written at different resolutions, whose bounds would not even
- * compare as strings — leave nothing to propagate.
+ * either end carrying no window to step within — leave nothing to propagate.
+ * Two dates written at different resolutions are not among them: the runtime
+ * compares those as instants, so the comparison is real and propagating it is
+ * a matter of writing each bound in the units of the end it constrains.
  */
 function comparatorSpan(
   lower: ConstrainedVariable,
@@ -443,15 +503,13 @@ function comparatorSpan(
     return undefined;
   }
 
-  const resolution = upper.constraints.dateWindow?.resolution;
-  if (
-    resolution === undefined ||
-    lower.constraints.dateWindow?.resolution !== resolution
-  ) {
+  const upperResolution = upper.constraints.dateWindow?.resolution;
+  const lowerResolution = lower.constraints.dateWindow?.resolution;
+  if (upperResolution === undefined || lowerResolution === undefined) {
     return undefined;
   }
 
-  return { kind: 'date', resolution };
+  return { kind: 'date', lower: lowerResolution, upper: upperResolution };
 }
 
 /**
@@ -586,7 +644,10 @@ export function propagateComparatorBounds(
     } else if (span?.kind === 'date' && from.windowMin !== undefined) {
       into.windowMin = tighten(
         into.windowMin,
-        addSteps(from.windowMin, steps, span.resolution),
+        comparatorBound(from.windowMin, span.upper, {
+          boundsUpper: true,
+          strict: edge.strict,
+        }),
         true,
       );
     }
@@ -611,7 +672,10 @@ export function propagateComparatorBounds(
     } else if (span?.kind === 'date' && from.windowMax !== undefined) {
       into.windowMax = tighten(
         into.windowMax,
-        addSteps(from.windowMax, -steps, span.resolution),
+        comparatorBound(from.windowMax, span.lower, {
+          boundsUpper: false,
+          strict: edge.strict,
+        }),
         false,
       );
     }

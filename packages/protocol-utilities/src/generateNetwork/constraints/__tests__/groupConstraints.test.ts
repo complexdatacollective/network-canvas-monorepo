@@ -6,8 +6,10 @@ import {
 } from '@codaco/protocol-validation';
 
 import { buildEntityConstraints } from '../buildConstraints';
+import type { DateResolution } from '../dateWindow';
 import { resolveGenerationOrder } from '../dependencyOrder';
 import {
+  comparatorBound,
   emptyGroupBounds,
   groupComparatorEdges,
   intersectGroupConstraints,
@@ -391,9 +393,12 @@ describe('propagateComparatorBounds', () => {
     });
   });
 
-  it('propagates nothing between dates written at different resolutions', () => {
-    // '2026-01' and '2026-01-15' do not compare as strings, so a bound carried
-    // across this comparison would leave each end holding the other's units.
+  it('rewrites a bound crossing between two resolutions into the units it lands in', () => {
+    // The runtime parses both ends with `new Date(...)`, which puts a partial
+    // date at the first instant of its period: `2026-01` is `2026-01-01`. So
+    // the earliest month after `2026-01-15` is `2026-02`, January having begun
+    // before the day it must follow; and the latest day before `2026-12` is
+    // `2026-11-30`, the two coinciding on the first of December.
     const entity = buildEntityConstraints(
       {
         start: {
@@ -415,8 +420,82 @@ describe('propagateComparatorBounds', () => {
 
     const { groups, inverted } = propagate(entity);
 
-    expect(groups.get('end')?.constraints.dateWindow?.min).toBe('2026-01');
-    expect(groups.get('start')?.constraints.dateWindow?.max).toBe('2026-12-31');
+    expect(groups.get('end')?.constraints.dateWindow).toEqual({
+      resolution: 'month',
+      min: '2026-02',
+      max: '2026-12',
+    });
+    expect(groups.get('start')?.constraints.dateWindow).toEqual({
+      resolution: 'full',
+      min: '2026-01-15',
+      max: '2026-11-30',
+    });
     expect([...inverted]).toEqual([]);
+  });
+});
+
+/**
+ * The bound one end of a date comparison puts on the other, which is the whole
+ * of what makes a cross-resolution comparison enforceable rather than skipped.
+ * Tabulated directly because the two resolutions and the two strictnesses
+ * interact: a floor steps whenever the ends fail to coincide, strict or not,
+ * while a ceiling steps only when they do coincide and the rule is strict.
+ */
+describe('comparatorBound', () => {
+  const floor = (target: string, resolution: DateResolution, strict: boolean) =>
+    comparatorBound(target, resolution, { boundsUpper: true, strict });
+  const ceiling = (
+    target: string,
+    resolution: DateResolution,
+    strict: boolean,
+  ) => comparatorBound(target, resolution, { boundsUpper: false, strict });
+
+  it('steps a coinciding bound only where the comparison is strict', () => {
+    expect(floor('2026-06-17', 'full', true)).toBe('2026-06-18');
+    expect(floor('2026-06-17', 'full', false)).toBe('2026-06-17');
+    expect(ceiling('2026-06-17', 'full', true)).toBe('2026-06-16');
+    expect(ceiling('2026-06-17', 'full', false)).toBe('2026-06-17');
+  });
+
+  it('reads a coarser target at the first instant of its period', () => {
+    // `2026-06` is `2026-06-01`, so a strictly later day is the second and the
+    // latest earlier day is the last of May. A non-strict floor may sit on the
+    // first itself, the two being the same instant.
+    expect(floor('2026-06', 'full', true)).toBe('2026-06-02');
+    expect(floor('2026-06', 'full', false)).toBe('2026-06-01');
+    expect(ceiling('2026-06', 'full', true)).toBe('2026-05-31');
+    expect(ceiling('2026-06', 'full', false)).toBe('2026-06-01');
+    expect(floor('2026', 'full', true)).toBe('2026-01-02');
+    expect(floor('2026', 'month', false)).toBe('2026-01');
+  });
+
+  it('clears the whole period when the coarser end is the one being bounded', () => {
+    // `2026-06` starts before `2026-06-17`, so it satisfies neither `>` nor
+    // `>=` and the floor is July either way. The ceiling is June either way,
+    // for the same reason: it already sits earlier.
+    expect(floor('2026-06-17', 'month', true)).toBe('2026-07');
+    expect(floor('2026-06-17', 'month', false)).toBe('2026-07');
+    expect(ceiling('2026-06-17', 'month', true)).toBe('2026-06');
+    expect(ceiling('2026-06-17', 'month', false)).toBe('2026-06');
+    expect(floor('2026-06-17', 'year', false)).toBe('2027');
+    expect(ceiling('2026-06-17', 'year', true)).toBe('2026');
+  });
+
+  it('leaves a value that is no date at all unbounded', () => {
+    expect(
+      comparatorBound('', 'full', { boundsUpper: true, strict: true }),
+    ).toBe(undefined);
+    expect(
+      comparatorBound('not a date', 'full', {
+        boundsUpper: true,
+        strict: true,
+      }),
+    ).toBe(undefined);
+    expect(
+      comparatorBound('2026-06-17T09:00:00Z', 'full', {
+        boundsUpper: true,
+        strict: true,
+      }),
+    ).toBe(undefined);
   });
 });

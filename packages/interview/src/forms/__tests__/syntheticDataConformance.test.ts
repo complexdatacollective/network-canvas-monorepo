@@ -1223,3 +1223,253 @@ describe('a variable used by both a form and a binning stage', () => {
     }
   });
 });
+
+/**
+ * Two date pickers at different resolutions, joined by a comparator.
+ *
+ * `compareVariables` parses both ends with `new Date(...)`, and ECMAScript
+ * reads a date-only string as UTC midnight at the start of the period it names:
+ * `2010-12` and `2010-12-01` are the same instant, and `2010` is `2010-01-01`.
+ * A coarse value therefore does compare against a fine one — it sits at the
+ * first instant of its own period — so a protocol pairing the two is one the
+ * runtime enforces and generation has to satisfy.
+ *
+ * Every window below is deliberately wide enough on the side the comparator
+ * pushes towards that a satisfying value exists for every value of the
+ * counterpart. A run that cannot find one is generation's failure, not the
+ * fixture's.
+ */
+const crossResolutionVariables: Variables = {
+  xrMonth: {
+    name: 'Start month',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
+    validation: { required: true },
+  },
+  // `> instant(xrMonth)`, which for `2010-12` is `2010-12-01`: the window has
+  // to reach past the first of the month, not merely into it.
+  xrDayAfterMonth: {
+    name: 'Day after month',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
+    validation: { greaterThanVariable: ref('xrMonth') },
+  },
+  // `< instant(xrMonth)`, which for `2000-01` is `2000-01-01`, so this one
+  // needs a window opening before the counterpart's.
+  xrDayBeforeMonth: {
+    name: 'Day before month',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full', min: '1995-01-01', max: '2010-12-31' },
+    validation: { lessThanVariable: ref('xrMonth') },
+  },
+  xrDayAtLeastMonth: {
+    name: 'Day at least month',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
+    validation: { greaterThanOrEqualToVariable: ref('xrMonth') },
+  },
+  xrDayAtMostMonth: {
+    name: 'Day at most month',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full', min: '1995-01-01', max: '2010-12-31' },
+    validation: { lessThanOrEqualToVariable: ref('xrMonth') },
+  },
+
+  // The other direction: the coarse end is the one being bounded. A month
+  // strictly after `2009-06-17` is `2009-07`, because `2009-06` would land on
+  // the first of June — before the day it must follow.
+  xrDay: {
+    name: 'Anchor day',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full', min: '2000-01-01', max: '2009-12-31' },
+    validation: { required: true },
+  },
+  xrMonthAfterDay: {
+    name: 'Month after day',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
+    validation: { greaterThanVariable: ref('xrDay') },
+  },
+  // Non-strict, and still not satisfied by the month containing the day:
+  // `2009-06 >= 2009-06-17` is false, the month having started first.
+  xrMonthAtLeastDay: {
+    name: 'Month at least day',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
+    validation: { greaterThanOrEqualToVariable: ref('xrDay') },
+  },
+  xrMonthBeforeDay: {
+    name: 'Month before day',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'month', min: '1995-01-01', max: '2009-12-31' },
+    validation: { lessThanVariable: ref('xrDay') },
+  },
+
+  // Two steps apart: a year reads as its own first of January.
+  xrYear: {
+    name: 'Anchor year',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'year', min: '2000-01-01', max: '2009-12-31' },
+    validation: { required: true },
+  },
+  xrDayAfterYear: {
+    name: 'Day after year',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
+    validation: { greaterThanVariable: ref('xrYear') },
+  },
+  xrYearBeforeDay: {
+    name: 'Year before day',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'year', min: '1995-01-01', max: '2009-12-31' },
+    validation: { lessThanVariable: ref('xrDay') },
+  },
+
+  // A pair whose windows only just overlap, which is what makes this one about
+  // the bounds settled before any draw rather than the fold applied during it.
+  // `xrTightMonth` reaching `2010-12` would leave `xrTightDay` needing a day
+  // after `2010-12-01` and offered nothing past it, and the draw could only
+  // pick the violating `2010-12-01`. The month has to be kept off `2010-12` in
+  // the first place — which is propagation's job, not the fold's.
+  xrTightMonth: {
+    name: 'Tight month',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'month', min: '2010-01-01', max: '2010-12-31' },
+    validation: { required: true },
+  },
+  xrTightDay: {
+    name: 'Tight day',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full', min: '2010-01-01', max: '2010-12-01' },
+    validation: { greaterThanVariable: ref('xrTightMonth') },
+  },
+};
+
+const crossResolutionCodebook: Codebook = {
+  ego: { variables: crossResolutionVariables },
+};
+
+const crossResolutionStages = [
+  {
+    id: 'stage-cross-resolution',
+    type: 'EgoForm',
+    label: 'Dates',
+    form: { fields: formFields(crossResolutionVariables) },
+  },
+] as unknown as Stage[];
+
+/** A generated value as a failure message shows it. */
+function shown(value: VariableValue): string {
+  return JSON.stringify(value) ?? 'undefined';
+}
+
+/**
+ * Each seed's failures, worded with the values that produced them so a report
+ * names the assignment rather than only the rule it broke.
+ */
+async function crossResolutionFailures(seed: number): Promise<string[]> {
+  const { network } = generateNetwork({
+    seed,
+    codebook: crossResolutionCodebook,
+    stages: crossResolutionStages,
+    config: { today },
+  });
+
+  const attributes = network.ego[entityAttributesProperty];
+  const formValues = toFormValues(attributes);
+  const failures: string[] = [];
+
+  for (const [variableId, variable] of Object.entries(
+    crossResolutionVariables,
+  )) {
+    const messages = await validateAttribute({
+      codebook: crossResolutionCodebook,
+      network,
+      subject: { entity: 'ego' },
+      variableId,
+      variable,
+      formValues,
+    });
+
+    failures.push(
+      ...messages.map(
+        (message) =>
+          `seed ${seed}: ${variableId}=${shown(attributes[variableId])} ` +
+          `(against xrMonth=${shown(attributes.xrMonth)}, ` +
+          `xrDay=${shown(attributes.xrDay)}, ` +
+          `xrYear=${shown(attributes.xrYear)}): ${message}`,
+      ),
+    );
+  }
+
+  return failures;
+}
+
+describe('date comparators across picker resolutions', () => {
+  it('generates values that pass the real form validators', async () => {
+    const failures: string[] = [];
+    for (let seed = 1; seed <= 25; seed++) {
+      failures.push(...(await crossResolutionFailures(seed)));
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  // The comparison is only genuinely exercised where each variable is written
+  // at its own picker's resolution. A generator that emitted `2010-12` into the
+  // full-resolution field would satisfy the comparator by holding a string the
+  // field cannot show — the defect the resolution guard was added to stop — so
+  // the shapes are pinned alongside the rules.
+  it('writes every value at its own picker resolution', () => {
+    const shapes: Record<string, RegExp> = {
+      xrMonth: /^\d{4}-\d{2}$/,
+      xrDayAfterMonth: /^\d{4}-\d{2}-\d{2}$/,
+      xrDayBeforeMonth: /^\d{4}-\d{2}-\d{2}$/,
+      xrDayAtLeastMonth: /^\d{4}-\d{2}-\d{2}$/,
+      xrDayAtMostMonth: /^\d{4}-\d{2}-\d{2}$/,
+      xrDay: /^\d{4}-\d{2}-\d{2}$/,
+      xrMonthAfterDay: /^\d{4}-\d{2}$/,
+      xrMonthAtLeastDay: /^\d{4}-\d{2}$/,
+      xrMonthBeforeDay: /^\d{4}-\d{2}$/,
+      xrYear: /^\d{4}$/,
+      xrDayAfterYear: /^\d{4}-\d{2}-\d{2}$/,
+      xrYearBeforeDay: /^\d{4}$/,
+      xrTightMonth: /^\d{4}-\d{2}$/,
+      xrTightDay: /^\d{4}-\d{2}-\d{2}$/,
+    };
+
+    const wrong: string[] = [];
+    for (let seed = 1; seed <= 25; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: crossResolutionCodebook,
+        stages: crossResolutionStages,
+        config: { today },
+      });
+      const attributes = network.ego[entityAttributesProperty];
+
+      for (const [variableId, shape] of Object.entries(shapes)) {
+        const value = attributes[variableId];
+        if (typeof value !== 'string' || !shape.test(value)) {
+          wrong.push(`seed ${seed}: ${variableId}=${shown(value)}`);
+        }
+      }
+    }
+
+    expect(wrong).toEqual([]);
+  });
+});

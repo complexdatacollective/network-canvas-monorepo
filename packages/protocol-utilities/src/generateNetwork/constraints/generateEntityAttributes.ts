@@ -11,6 +11,7 @@ import {
 } from './dependencyOrder';
 import { type ConstraintConflict, SyntheticDataConstraintError } from './error';
 import {
+  comparatorBound,
   comparatorGap,
   groupComparatorEdges,
   intersectGroupConstraints,
@@ -214,20 +215,28 @@ function reserveHeadroom(
       continue;
     }
 
-    // At differing resolutions the reserved step would be the wrong size and
-    // the two bounds would not compare as strings, so leave those alone.
     if (
       entry.type !== 'datetime' ||
       bounds.dateWindow?.max === undefined ||
-      window === undefined ||
-      bounds.dateWindow.resolution !== window.resolution
+      window === undefined
     ) {
       continue;
     }
 
+    // The dependent's ceiling read in this group's units before the reserved
+    // steps are taken off it, so the steps are this group's own size. Read
+    // non-strictly, the strict comparator's step being one of the `steps`
+    // already counted; at a shared resolution that leaves the ceiling exactly
+    // as it was written.
+    const ceiling = comparatorBound(bounds.dateWindow.max, window.resolution, {
+      boundsUpper: false,
+      strict: false,
+    });
+    if (ceiling === undefined) continue;
+
     windowMax = tighten(
       windowMax,
-      addSteps(bounds.dateWindow.max, -steps, window.resolution),
+      addSteps(ceiling, -steps, window.resolution),
       false,
     );
   }
@@ -331,7 +340,7 @@ function groupValue(
 function applyComparatorBounds(
   variable: ConstrainedVariable,
   group: string,
-  { edges, membersOf, propagated }: Plan,
+  { edges, membersOf }: Plan,
   resolved: Record<string, VariableValue>,
 ): VariableConstraints {
   const { entry, constraints } = variable;
@@ -369,19 +378,16 @@ function applyComparatorBounds(
     if (entry.type === 'datetime') {
       if (typeof target !== 'string' || target === '') continue;
 
-      // A value written at another resolution — or at none, being no date at
-      // all — is in units these bounds are not: it does not compare against
-      // them as a string, and a step measured here would be the wrong size for
-      // it. `propagateComparatorBounds` leaves the same comparison alone.
-      if (
-        propagated.get(otherGroup)?.constraints.dateWindow?.resolution !==
-        resolution
-      ) {
-        continue;
-      }
+      // Written at this group's own resolution, which is the one the value
+      // drawn here has to be in. A counterpart that is no date at all — the
+      // comparison naming a variable of some other type — yields no bound and
+      // leaves this group to its own rules.
+      const bound = comparatorBound(target, resolution, {
+        boundsUpper: groupIsUpper,
+        strict: edge.strict,
+      });
+      if (bound === undefined) continue;
 
-      const steps = edge.strict ? 1 : 0;
-      const bound = addSteps(target, groupIsUpper ? steps : -steps, resolution);
       if (groupIsUpper) windowMin = tighten(windowMin, bound, true);
       else windowMax = tighten(windowMax, bound, false);
       continue;
