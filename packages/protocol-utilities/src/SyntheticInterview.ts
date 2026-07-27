@@ -5,6 +5,7 @@ import type {
   Item,
   Stage,
   StageType,
+  StructuralCodebook,
   VariableType,
 } from '@codaco/protocol-validation';
 import {
@@ -22,8 +23,16 @@ import {
   NODE_COLORS,
   ORDINAL_COLORS,
 } from './constants';
+import {
+  claimFixedValues,
+  generateAttributesForEntity,
+} from './generateNetwork/attributes';
+import { resolveGenerationConfig } from './generateNetwork/config';
 import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints';
 import { todayYmd } from './generateNetwork/constraints/dateWindow';
+import type { EntityConstraints } from './generateNetwork/constraints/types';
+import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
+import type { GenerationContext } from './generateNetwork/context';
 import type {
   AddCategoricalBinPromptInput,
   AddDiseaseNominationStepInput,
@@ -1568,33 +1577,68 @@ export class SyntheticInterview {
     // One date for the whole network, so a run that straddles midnight cannot
     // resolve two nodes' relative-date windows against different anchors.
     const today = todayYmd();
-    const valueGen = new ValueGenerator(this.seed, today);
+    const ctx = this.generationContext(today);
     const stagesById = new Map(this.stages.map((stage) => [stage.id, stage]));
+
+    // Values the caller wrote onto a node outright, restricted to the type's
+    // codebook variables — an attribute no variable declares has no rules to
+    // satisfy and no place in the network.
+    const explicitOf = (
+      nodeEntry: NodeEntry,
+    ): Record<string, VariableValue> => {
+      const explicit: Record<string, VariableValue> = {};
+      const variables = this.nodeTypes.get(nodeEntry.type)?.variables;
+      for (const varId of variables?.keys() ?? []) {
+        if (!(varId in nodeEntry.explicitAttributes)) continue;
+        explicit[varId] = nodeEntry.explicitAttributes[varId] as VariableValue;
+      }
+      return explicit;
+    };
+
+    // Recorded before any node is drawn, not as each node is reached: a
+    // `unique` value written onto the last node is still one the first node's
+    // draw must not be issued.
+    for (const nodeEntry of this.nodes) {
+      claimFixedValues(
+        ctx,
+        { entity: 'node', type: nodeEntry.type },
+        explicitOf(nodeEntry),
+      );
+    }
 
     const ncNodes = this.nodes.map((nodeEntry, index) => {
       const nodeType = this.nodeTypes.get(nodeEntry.type);
+      const explicit = explicitOf(nodeEntry);
       const attributes: Record<string, VariableValue> = {};
 
       if (nodeType) {
+        // Procedurally-generated nodes are drawn as one entity, so `sameAs`,
+        // `differentFrom`, the comparators and `unique` are satisfied against
+        // the values the node actually holds — the caller's own among them.
+        // Manually-seeded nodes keep unset attributes neutral so the caller's
+        // scenario isn't corrupted by random data.
+        const drawn = nodeEntry.manual
+          ? undefined
+          : generateAttributesForEntity(
+              ctx,
+              { entity: 'node', type: nodeEntry.type },
+              index,
+              {
+                existing: explicit,
+                only: new Set(
+                  [...nodeType.variables.keys()].filter(
+                    (varId) => !(varId in explicit),
+                  ),
+                ),
+              },
+            );
+
         for (const [varId, variable] of nodeType.variables) {
-          if (varId in nodeEntry.explicitAttributes) {
-            attributes[varId] = nodeEntry.explicitAttributes[
-              varId
-            ] as VariableValue;
-          } else {
-            // Procedurally-generated nodes get random synthetic values;
-            // manually-seeded nodes keep unset attributes neutral so the
-            // caller's scenario isn't corrupted by random data.
-            attributes[varId] = nodeEntry.manual
-              ? valueGen.neutralForVariable(variable)
-              : valueGen.generateConstrained(
-                  {
-                    entry: variable,
-                    constraints: buildVariableConstraints(variable, today),
-                  },
-                  index,
-                );
-          }
+          const value = varId in explicit ? explicit[varId] : drawn?.[varId];
+          attributes[varId] =
+            value === undefined
+              ? ctx.valueGen.neutralForVariable(variable)
+              : value;
         }
       }
 
@@ -1667,6 +1711,73 @@ export class SyntheticInterview {
   }
 
   // --- Internal builders ---
+
+  /**
+   * The context one `getNetwork()` call draws through: the same machinery
+   * `generateNetwork` uses, so a builder's validation rules are honoured by one
+   * implementation of those semantics rather than by a second copy of them.
+   *
+   * `today` is settled by the caller and threaded through both the value
+   * generator and every date window built here, because reading the clock per
+   * draw is what once stopped a fixed seed reproducing across UTC midnight.
+   *
+   * Only `entityConstraints` reaches a draw. The codebook carries the entity
+   * type names a refusal reports and nothing else, and the roster and
+   * skip-logic fields describe a `generateNetwork` run this entry point does
+   * not have: nodes here are the ones the caller asked for, not ones a stage
+   * fabricated.
+   *
+   * A rule the interview would not actually apply — a binning stage's prompt
+   * variable, which `generateNetwork` drops via `collectBinOnlyVariables` — is
+   * kept rather than dropped. Reading it needs the stage list typed as `Stage`,
+   * which this builder's stage configs only satisfy at runtime, and honouring
+   * a rule nothing enforces yields a value that is valid either way.
+   */
+  private generationContext(today: string): GenerationContext {
+    const constraintsOf = (
+      variables: Map<string, VariableEntry>,
+    ): EntityConstraints =>
+      new Map(
+        [...variables].map(([varId, entry]) => [
+          varId,
+          { entry, constraints: buildVariableConstraints(entry, today) },
+        ]),
+      );
+
+    const codebook: StructuralCodebook = {
+      node: Object.fromEntries(
+        [...this.nodeTypes].map(([id, entry]) => [id, { name: entry.name }]),
+      ),
+      edge: Object.fromEntries(
+        [...this.edgeTypes].map(([id, entry]) => [id, { name: entry.name }]),
+      ),
+    };
+
+    return {
+      codebook,
+      valueGen: new ValueGenerator(this.seed, today),
+      config: resolveGenerationConfig({ today }),
+      usedRosterUids: new Set(),
+      externalData: undefined,
+      respectSkipLogicAndFiltering: false,
+      uniqueRegistry: new UniqueRegistry(),
+      entityConstraints: {
+        ego: constraintsOf(this.egoVariables),
+        node: new Map(
+          [...this.nodeTypes].map(([id, entry]) => [
+            id,
+            constraintsOf(entry.variables),
+          ]),
+        ),
+        edge: new Map(
+          [...this.edgeTypes].map(([id, entry]) => [
+            id,
+            constraintsOf(entry.variables),
+          ]),
+        ),
+      },
+    };
+  }
 
   private buildCodebook() {
     const node: Record<string, unknown> = {};

@@ -4,8 +4,10 @@ import { type Filter, stageSchema } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  type NcNetwork,
 } from '@codaco/shared-consts';
 
+import { SyntheticDataConstraintError } from '../generateNetwork/constraints/error';
 import { SyntheticInterview } from '../SyntheticInterview';
 
 describe('SyntheticInterview', () => {
@@ -1343,5 +1345,324 @@ describe('addInformationStage items', () => {
     };
     expect(stage.items.map((i) => i.id)).toEqual(['item-a', 'item-b']);
     expect(stage.interviewScript).toBe('Internal note.');
+  });
+});
+
+describe('validation rules on generated nodes', () => {
+  // Enough seeds that a rule satisfied by luck on one of them cannot pass:
+  // two booleans agree half the time by chance, so a single seed proves
+  // nothing about `sameAs`.
+  const SEEDS = [1, 2, 7, 42, 99, 1234, 20260727];
+
+  const attributesOf = (network: NcNetwork) =>
+    network.nodes.map((node) => node[entityAttributesProperty]);
+
+  it('gives every member of a sameAs pair one value', () => {
+    for (const seed of SEEDS) {
+      const si = new SyntheticInterview(seed);
+      const nt = si.addNodeType();
+      const flagA = nt.addVariable({ type: 'boolean', name: 'flagA' });
+      const flagB = nt.addVariable({
+        type: 'boolean',
+        name: 'flagB',
+        validation: { sameAs: flagA.id },
+      });
+      si.addStage('Sociogram', {
+        subject: { entity: 'node', type: nt.id },
+        initialNodes: { count: 8 },
+      });
+
+      for (const attrs of attributesOf(si.getNetwork())) {
+        expect(attrs[flagB.id]).toBe(attrs[flagA.id]);
+      }
+    }
+  });
+
+  it('orders a comparison rule against the value its counterpart was given', () => {
+    for (const seed of SEEDS) {
+      const si = new SyntheticInterview(seed);
+      const nt = si.addNodeType();
+      const low = nt.addVariable({
+        type: 'number',
+        name: 'low',
+        validation: { minValue: 0, maxValue: 100 },
+      });
+      const high = nt.addVariable({
+        type: 'number',
+        name: 'high',
+        validation: { minValue: 0, maxValue: 100, greaterThanVariable: low.id },
+      });
+      si.addStage('Sociogram', {
+        subject: { entity: 'node', type: nt.id },
+        initialNodes: { count: 8 },
+      });
+
+      for (const attrs of attributesOf(si.getNetwork())) {
+        expect(Number(attrs[high.id])).toBeGreaterThan(Number(attrs[low.id]));
+      }
+    }
+  });
+
+  it('keeps a differentFrom pair apart', () => {
+    for (const seed of SEEDS) {
+      const si = new SyntheticInterview(seed);
+      const nt = si.addNodeType();
+      // A two-option ordinal, so a colliding draw is likely rather than
+      // merely possible.
+      const first = nt.addVariable({
+        type: 'ordinal',
+        name: 'first',
+        options: [
+          { label: 'A', value: 1 },
+          { label: 'B', value: 2 },
+        ],
+      });
+      const second = nt.addVariable({
+        type: 'ordinal',
+        name: 'second',
+        options: [
+          { label: 'A', value: 1 },
+          { label: 'B', value: 2 },
+        ],
+        validation: { differentFrom: first.id },
+      });
+      si.addStage('Sociogram', {
+        subject: { entity: 'node', type: nt.id },
+        initialNodes: { count: 8 },
+      });
+
+      for (const attrs of attributesOf(si.getNetwork())) {
+        expect(attrs[second.id]).not.toBe(attrs[first.id]);
+      }
+    }
+  });
+
+  it('issues a unique variable no value twice across the whole network', () => {
+    for (const seed of SEEDS) {
+      const si = new SyntheticInterview(seed);
+      const nt = si.addNodeType();
+      const codeName = nt.addVariable({
+        type: 'text',
+        name: 'codeName',
+        validation: { unique: true },
+      });
+      // Two stages, so the registry has to be shared across them rather than
+      // reset per stage.
+      si.addStage('Sociogram', {
+        subject: { entity: 'node', type: nt.id },
+        initialNodes: { count: 12 },
+      });
+      si.addStage('Narrative', {
+        subject: { entity: 'node', type: nt.id },
+        initialNodes: { count: 12 },
+      });
+
+      const issued = attributesOf(si.getNetwork()).map(
+        (attrs) => attrs[codeName.id],
+      );
+      expect(new Set(issued).size).toBe(issued.length);
+    }
+  });
+
+  it('draws around a value the caller set outright', () => {
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const anchor = nt.addVariable({
+      type: 'number',
+      name: 'anchor',
+      validation: { minValue: 0, maxValue: 100 },
+    });
+    const echo = nt.addVariable({
+      type: 'number',
+      name: 'echo',
+      validation: { minValue: 0, maxValue: 100, sameAs: anchor.id },
+    });
+    const above = nt.addVariable({
+      type: 'number',
+      name: 'above',
+      validation: {
+        minValue: 0,
+        maxValue: 100,
+        greaterThanVariable: anchor.id,
+      },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 4 },
+    });
+    si.setNodeAttribute(0, anchor.id, 12);
+
+    const attrs = attributesOf(si.getNetwork())[0]!;
+    expect(attrs[anchor.id]).toBe(12);
+    expect(attrs[echo.id]).toBe(12);
+    expect(Number(attrs[above.id])).toBeGreaterThan(12);
+  });
+
+  it('never issues a unique value another node was given outright', () => {
+    for (const seed of SEEDS) {
+      const si = new SyntheticInterview(seed);
+      const nt = si.addNodeType();
+      const flag = nt.addVariable({
+        type: 'boolean',
+        name: 'flag',
+        validation: { unique: true },
+      });
+      // A boolean holds two values, so a node fixed to one leaves exactly one
+      // for the draw — and the fixed node is the *last*, which a registry
+      // populated as nodes are reached would not have seen in time.
+      si.addStage('Sociogram', {
+        subject: { entity: 'node', type: nt.id },
+        initialNodes: { count: 2 },
+      });
+      si.setNodeAttribute(1, flag.id, true);
+
+      const issued = attributesOf(si.getNetwork()).map(
+        (attrs) => attrs[flag.id],
+      );
+      expect(issued).toEqual([false, true]);
+    }
+  });
+
+  it('refuses a codebook whose rules leave a node no value, rather than emitting one that breaks them', () => {
+    // No feasibility pass runs here — its verdict is measured against how many
+    // entities a `generateNetwork` run would fabricate, and this builder's
+    // nodes are the ones the caller asked for. What refuses instead is the
+    // draw, which runs out against the count that is actually being generated:
+    // a boolean holds two values and this asks for three distinct ones.
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    nt.addVariable({
+      type: 'boolean',
+      name: 'flag',
+      validation: { unique: true },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 3 },
+    });
+
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+    expect(() => si.getNetwork()).toThrow(/cannot all be satisfied together/);
+  });
+
+  it('leaves a manual node its neutral values rather than solving them', () => {
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const flagA = nt.addVariable({ type: 'boolean', name: 'flagA' });
+    const flagB = nt.addVariable({
+      type: 'boolean',
+      name: 'flagB',
+      validation: { sameAs: flagA.id },
+    });
+    const stage = si.addStage('Narrative', {
+      subject: { entity: 'node', type: nt.id },
+    });
+    si.addManualNode(stage.id, nt.id, 'person-1', { [flagA.id]: true });
+
+    const attrs = attributesOf(si.getNetwork())[0]!;
+    expect(attrs[flagA.id]).toBe(true);
+    // `sameAs` would make this true; the manual contract says unanswered.
+    expect(attrs[flagB.id]).toBe(false);
+  });
+
+  it('draws a codebook carrying no cross-variable rule to the values it always has', () => {
+    // Every Storybook story's fixture is a codebook of this shape, so a drift
+    // in what it draws rewrites every visual baseline at once. These values are
+    // the ones the builder produced before nodes were drawn as whole entities,
+    // pinned so that moving them has to be a deliberate act rather than a side
+    // effect of a change to the constraint machinery. Date variables are left
+    // out: an open date window ends at today, which no fixed expectation
+    // survives.
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    nt.addVariable({ type: 'text', name: 'label' });
+    nt.addVariable({
+      type: 'number',
+      name: 'age',
+      validation: { minValue: 18, maxValue: 90 },
+    });
+    nt.addVariable({
+      type: 'number',
+      name: 'small',
+      validation: { maxValue: 9 },
+    });
+    nt.addVariable({ type: 'boolean', name: 'active' });
+    nt.addVariable({ type: 'ordinal', name: 'rating' });
+    nt.addVariable({ type: 'categorical', name: 'interests' });
+    nt.addVariable({
+      type: 'scalar',
+      name: 'closeness',
+      component: 'VisualAnalogScale',
+    });
+    nt.addVariable({ type: 'layout', name: 'position' });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 4 },
+    });
+
+    const ids = si.getVariableIds(nt.id);
+    const byName = attributesOf(si.getNetwork()).map((attrs) =>
+      Object.fromEntries(
+        [
+          'name',
+          'label',
+          'age',
+          'small',
+          'active',
+          'rating',
+          'interests',
+          'closeness',
+          'position',
+          // The node type seeds its own "name" variable ahead of these.
+        ].map((name, at) => [name, attrs[ids[at]!]]),
+      ),
+    );
+
+    expect(byName).toEqual([
+      {
+        name: 'Mohammad',
+        label: 'Charlie',
+        age: 22,
+        small: 1,
+        active: false,
+        rating: 1,
+        interests: ['family'],
+        closeness: 0.71,
+        position: { x: 0.1, y: 0.1 },
+      },
+      {
+        name: 'Rey',
+        label: 'Claudia',
+        age: 40,
+        small: -20,
+        active: true,
+        rating: 2,
+        interests: ['work', 'school'],
+        closeness: 0.29,
+        position: { x: 0.27, y: 0.33 },
+      },
+      {
+        name: 'Edgar',
+        label: 'Pearl',
+        age: 32,
+        small: -21,
+        active: false,
+        rating: 3,
+        interests: ['school'],
+        closeness: 0.05,
+        position: { x: 0.44000000000000006, y: 0.56 },
+      },
+      {
+        name: 'Arnold',
+        label: 'Presley',
+        age: 40,
+        small: -47,
+        active: false,
+        rating: 4,
+        interests: ['neighborhood', 'family'],
+        closeness: 0.44,
+        position: { x: 0.61, y: 0.79 },
+      },
+    ]);
   });
 });
