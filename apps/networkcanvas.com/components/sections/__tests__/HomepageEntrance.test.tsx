@@ -53,8 +53,10 @@ describe('HomepageEntrance', () => {
 
     expect(backgroundRender).toHaveBeenLastCalledWith({ reveal: false });
     expect(screen.getByTestId('homepage-background')).toBeInTheDocument();
-    expect(screen.getByText('Homepage content')).toBeInTheDocument();
-    expect(document.querySelectorAll('.relative.z-10')).toHaveLength(0);
+    expect(screen.getByText('Homepage content').parentElement).toHaveClass(
+      'relative',
+      'z-10',
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Start entrance' }));
 
