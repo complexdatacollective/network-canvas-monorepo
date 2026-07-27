@@ -14,8 +14,11 @@ import type {
   VariableConstraints,
 } from './generateNetwork/constraints/types';
 import {
+  categoricalSelectionAt,
+  numberDrawBounds,
   SCALAR_DECIMAL_PLACES,
   SCALAR_DOMAIN,
+  selectionSizeRange,
   TEXT_ALPHABET_SIZE,
   textDrawLength,
 } from './generateNetwork/constraints/valueSpace';
@@ -29,6 +32,16 @@ const DISTINCT_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
  * where `addSteps` emits a malformed bound that reparses as year 0.
  */
 const UNIQUE_DATE_REACH_YEARS = 1000;
+
+/**
+ * The earliest date a date field offers when the protocol declares no minimum.
+ * Duplicated from fresco-ui's `DatePicker` (`DEFAULT_MIN`), which this package
+ * cannot depend on — protocol-utilities must stay free of UI dependencies, the
+ * same reason `constraints/dateWindow` duplicates that field's ymd arithmetic.
+ * A value before it passes every validator and still cannot be selected or
+ * displayed.
+ */
+const PICKER_DEFAULT_MIN = '1920-01-01';
 
 // valueSpaceSize's unique-text feasibility maths assumes distinctText draws
 // from exactly TEXT_ALPHABET_SIZE symbols. If this literal ever drifted from
@@ -189,14 +202,9 @@ export class ValueGenerator {
       }
 
       case 'number': {
-        const lowerBound = constraints.minValue ?? 18;
+        const { min: lowerBound, max: upperBound } =
+          numberDrawBounds(constraints);
         const min = Math.ceil(lowerBound);
-        // The default [18, 80] range is far too small to hold a unique value
-        // per entity, and valueSpaceSize calls an unbounded number
-        // "unbounded" — so a unique variable widens the range to make that
-        // claim true. A non-unique variable keeps the realistic default.
-        const defaultMax = constraints.unique ? min + this.uniqueHeadroom : 80;
-        const upperBound = constraints.maxValue ?? Math.max(min, defaultMax);
         const max = Math.floor(upperBound);
 
         // A range such as [10.5, 10.7] holds no integer. The schema does not
@@ -215,7 +223,7 @@ export class ValueGenerator {
           );
         }
 
-        if (seq !== undefined) return min + (seq % Math.max(1, max - min + 1));
+        if (seq !== undefined) return min + (seq % (max - min + 1));
         return this.randomInt(min, max);
       }
 
@@ -258,19 +266,26 @@ export class ValueGenerator {
       case 'categorical': {
         const options = entry.options ?? [];
         if (options.length === 0) return null;
-        const min = Math.max(1, constraints.minSelected ?? 1);
-        const defaultMax = constraints.unique ? options.length : 2;
-        const max = Math.min(
-          constraints.maxSelected ?? defaultMax,
-          options.length,
-        );
-        const span = Math.max(1, max - min + 1);
-        const base = seq ?? index;
-        const count = Math.max(min, Math.min(max, min + (base % span)));
 
         const picked: (number | string | boolean)[] = [];
+
+        // A distinct value has to be reachable for every selection the value
+        // space counts, so a sequence number indexes the combination space
+        // itself. A free draw only has to be plausible, and takes a run of
+        // adjacent options.
+        if (seq !== undefined) {
+          for (const at of categoricalSelectionAt(variable, seq)) {
+            const option = options[at];
+            if (option) picked.push(option.value);
+          }
+          return [...new Set(picked)];
+        }
+
+        const { min, max } = selectionSizeRange(variable);
+        const span = Math.max(1, max - min + 1);
+        const count = Math.max(min, Math.min(max, min + (index % span)));
         for (let i = 0; i < count; i++) {
-          const option = options[(base + i) % options.length];
+          const option = options[(index + i) % options.length];
           if (option) picked.push(option.value);
         }
         return [...new Set(picked)];
@@ -286,7 +301,8 @@ export class ValueGenerator {
           ? this.uniqueDateHeadroom(window.resolution)
           : this.defaultDateSpan(window.resolution);
         const min =
-          window.min ?? addSteps(max, -defaultSpan, window.resolution);
+          window.min ??
+          this.defaultDateMin(max, defaultSpan, window.resolution);
         const span = Math.max(0, stepsBetween(min, max, window.resolution));
         const offset =
           seq !== undefined ? seq % (span + 1) : this.randomInt(0, span);
@@ -311,22 +327,32 @@ export class ValueGenerator {
   }
 
   /**
-   * How far an unbounded `unique` variable may range beyond its default
-   * window. Set well above the largest entity count generation can reach so
-   * the value space the feasibility pass calls "unbounded" really is.
-   */
-  private readonly uniqueHeadroom = 100_000;
-
-  /**
-   * The same headroom for dates, in steps at the window's own resolution.
-   * Bounded by the calendar rather than by entity count: no span wider than
-   * {@link UNIQUE_DATE_REACH_YEARS} stays a real date at year resolution, so a
-   * year-resolution space is narrower than the numeric headroom by necessity.
+   * How far back an unbounded `unique` date may reach, in steps at the window's
+   * own resolution. Bounded by the calendar rather than by entity count: no
+   * span wider than {@link UNIQUE_DATE_REACH_YEARS} stays a real date at year
+   * resolution, so a year-resolution space is narrower than a numeric one by
+   * necessity.
    */
   private uniqueDateHeadroom(resolution: DateResolution): number {
     if (resolution === 'year') return UNIQUE_DATE_REACH_YEARS;
     if (resolution === 'month') return UNIQUE_DATE_REACH_YEARS * 12;
     return Math.round(UNIQUE_DATE_REACH_YEARS * 365.25);
+  }
+
+  /**
+   * The start of a date window the protocol left open: as far back as the
+   * resolution allows, held at whatever the field itself offers. A `max`
+   * already below that floor is a bound the protocol declared, and reaching
+   * before it is then the only way to have a range at all.
+   */
+  private defaultDateMin(
+    max: string,
+    span: number,
+    resolution: DateResolution,
+  ): string {
+    const reach = addSteps(max, -span, resolution);
+    const floor = truncateToResolution(PICKER_DEFAULT_MIN, resolution);
+    return reach < floor && floor <= max ? floor : reach;
   }
 
   /** Roughly a decade back, replacing the old faker.date.past() window. */

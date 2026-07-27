@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { buildVariableConstraints } from '../generateNetwork/constraints/buildConstraints';
 import type { ConstrainedVariable } from '../generateNetwork/constraints/types';
+import { valueKey } from '../generateNetwork/constraints/uniqueRegistry';
+import { valueSpaceSize } from '../generateNetwork/constraints/valueSpace';
 import type { VariableEntry } from '../types';
 import { ValueGenerator } from '../ValueGenerator';
 
@@ -9,6 +11,22 @@ const TODAY = '2026-07-27';
 
 function make(entry: VariableEntry): ConstrainedVariable {
   return { entry, constraints: buildVariableConstraints(entry, TODAY) };
+}
+
+function categoricalWith(
+  optionCount: number,
+  validation: Record<string, unknown>,
+): ConstrainedVariable {
+  return make({
+    id: 'v',
+    name: 'V',
+    type: 'categorical',
+    options: Array.from({ length: optionCount }, (_, at) => ({
+      label: `Option ${at + 1}`,
+      value: `o${at + 1}`,
+    })),
+    validation,
+  });
 }
 
 /**
@@ -229,6 +247,73 @@ describe('generateConstrained', () => {
     }
   });
 
+  // What feasibility spends. It accepts a `unique` variable once
+  // `valueSpaceSize` reports at least one value per entity, so every value that
+  // count includes has to be reachable by a distinct sequence number — a draw
+  // that walks fewer of them passes the analysis and then runs out mid-network.
+  it.each([
+    { options: 4, minSelected: 2, maxSelected: 2, size: 6 },
+    { options: 4, minSelected: 1, maxSelected: 4, size: 15 },
+    { options: 5, minSelected: 2, maxSelected: 3, size: 20 },
+    { options: 3, minSelected: 1, maxSelected: 3, size: 7 },
+    { options: 6, minSelected: 3, maxSelected: 3, size: 20 },
+  ])(
+    'reaches every one of the $size selections counted for $options options over $minSelected-$maxSelected',
+    ({ options, minSelected, maxSelected, size }) => {
+      const gen = new ValueGenerator(1);
+      const variable = categoricalWith(options, {
+        minSelected,
+        maxSelected,
+        unique: true,
+      });
+
+      expect(valueSpaceSize(variable, size + 1)).toBe(size);
+
+      const drawn = new Set<string>();
+      for (let seq = 0; seq < size; seq++) {
+        const value = gen.generateConstrained(variable, 0, {
+          distinctSeq: seq,
+        });
+        if (!Array.isArray(value)) {
+          throw new Error(`expected an array, received ${typeof value}`);
+        }
+        expect(value.length).toBeGreaterThanOrEqual(minSelected);
+        expect(value.length).toBeLessThanOrEqual(maxSelected);
+        expect(new Set(value).size).toBe(value.length);
+        // Keyed the way the unique registry keys a claim, so two orderings of
+        // one selection count as the collision the registry would call it.
+        drawn.add(valueKey(value));
+      }
+
+      expect(drawn.size).toBe(size);
+    },
+  );
+
+  // The default floor of 18 is a realism default for ages, not a rule, so a
+  // declared ceiling below it wins. `SyntheticInterview.getNetwork` draws
+  // straight from `buildVariableConstraints`, with nothing between the declared
+  // bounds and the draw to lower a floor left above the ceiling.
+  it('honours a number ceiling below the default floor', () => {
+    const gen = new ValueGenerator(1);
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'number',
+      validation: { maxValue: 5 },
+    });
+
+    for (let index = 0; index < 25; index++) {
+      expect(
+        Number(gen.generateConstrained(variable, index)),
+      ).toBeLessThanOrEqual(5);
+      expect(
+        Number(
+          gen.generateConstrained(variable, index, { distinctSeq: index }),
+        ),
+      ).toBeLessThanOrEqual(5);
+    }
+  });
+
   it('emits a datetime at the component resolution inside its window', () => {
     const gen = new ValueGenerator(1);
     const variable = make({
@@ -303,6 +388,58 @@ describe('generateConstrained', () => {
         expect(value <= TODAY).toBe(true);
       }
     }
+  });
+
+  // A DatePicker given no `min` offers no year before 1920 (fresco-ui's
+  // DatePicker.tsx, DEFAULT_MIN), so an earlier value passes every validator
+  // and still cannot be entered or shown.
+  it('keeps an unbounded unique date inside the years its picker offers', () => {
+    const gen = new ValueGenerator(1, TODAY);
+
+    for (const type of ['year', 'month', 'full'] as const) {
+      const variable = make({
+        id: 'v',
+        name: 'V',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type },
+        validation: { unique: true },
+      });
+
+      for (let seq = 0; seq < 60; seq++) {
+        const value = String(
+          gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+        );
+        expect(value >= '1920').toBe(true);
+        expect(value <= TODAY).toBe(true);
+      }
+    }
+  });
+
+  // The floor stands in for a bound the protocol left open. One the protocol
+  // declares is the picker's own `min`, which the field then offers.
+  it('draws inside a declared window that starts before the picker default', () => {
+    const gen = new ValueGenerator(1, TODAY);
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '1850-01-01', max: '1900-01-01' },
+      validation: { unique: true },
+    });
+
+    const drawn = new Set<string>();
+    for (let seq = 0; seq < 51; seq++) {
+      const value = String(
+        gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+      );
+      expect(value >= '1850').toBe(true);
+      expect(value <= '1900').toBe(true);
+      drawn.add(value);
+    }
+
+    expect(drawn.size).toBe(51);
   });
 
   it('is deterministic for a given seed', () => {
