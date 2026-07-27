@@ -14,7 +14,12 @@ export type DateWindow = {
 // cannot depend on (protocol-utilities must stay free of UI dependencies).
 // Arithmetic runs in UTC so bounds are stable regardless of runtime timezone;
 // the runtime's min/max validators compare these strings lexically, so any
-// drift would produce off-by-one-day failures near DST boundaries.
+// drift would produce off-by-one-day failures near DST boundaries. The
+// duplication is verified rather than trusted: @codaco/interview depends on
+// both packages and holds the two implementations to the same results
+// (src/forms/__tests__/ymdParity.test.ts). Constants shared with those fields
+// are not duplicated at all — they live in @codaco/shared-consts, which this
+// package already depends on.
 function formatYmd(year: number, month: number, day: number): string {
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
