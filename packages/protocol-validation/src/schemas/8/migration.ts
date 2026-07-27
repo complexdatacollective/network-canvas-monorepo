@@ -5,14 +5,10 @@ import {
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
 import { ordinalColorSequence } from './common/prompts.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
-import {
-  findMixedResolutionSameAsGroups,
-  findValidationContradictions,
-} from './variables/validation-contradictions.ts';
+import { findValidationContradictions } from './variables/validation-contradictions.ts';
 import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation.ts';
 import {
   DATE_RESOLUTION,
-  isIsoDate,
   isValidDateAtResolution,
 } from './variables/variable.ts';
 
@@ -48,9 +44,8 @@ const DATE_RESOLUTIONS_FINEST_FIRST = ['full', 'month', 'year'] as const;
  * Normalises a DatePicker `parameters` record's `min`/`max` in place: real
  * dates written exactly at the picker's resolution with `min <= max`.
  * Finer-than-resolution bounds are truncated (the extra precision is
- * authored intent); anything else invalid is stripped. Shared by the
- * codebook-variable DatePicker step and the NetworkComposer stage-field
- * DatePicker step below — both carry the same `{ type?, min?, max? }` shape.
+ * authored intent); anything else invalid is stripped. Used by the
+ * codebook-variable DatePicker step below.
  *
  * `type` itself is normalised first: `datePickerParametersSchema` only
  * accepts 'full'/'month'/'year' (or omitted, defaulting to 'full'). A legacy
@@ -110,47 +105,6 @@ const normalizeDatePickerParameters = (
   ) {
     delete parameters.min;
     delete parameters.max;
-  }
-};
-
-// The only keys `relativeDatePickerParametersSchema` (variable.ts) permits —
-// anything else fails that strictObject outright.
-const RELATIVE_DATE_PICKER_KEYS = new Set(['anchor', 'before', 'after']);
-
-/**
- * Normalises a RelativeDatePicker `parameters` record in place, mirroring
- * `normalizeDatePickerParameters` above: a real ISO `anchor` date (the shared
- * `isIsoDate`) whose year is at least 1000 (ninth-wave Finding 6 — see the
- * anchor-year check below), non-negative integer `before`/`after` offsets,
- * and only those three keys — the schema is a strictObject, so one
- * unrecognised key fails the whole object rather than just itself. Used by
- * the NetworkComposer stage-field RelativeDatePicker step below only; the
- * codebook-variable DatePicker step above intentionally skips
- * RelativeDatePicker variables (see its own comment) and this function does
- * not change that.
- */
-const normalizeRelativeDatePickerParameters = (
-  parameters: Record<string, unknown>,
-): void => {
-  for (const key of Object.keys(parameters)) {
-    if (!RELATIVE_DATE_PICKER_KEYS.has(key)) delete parameters[key];
-  }
-  if (typeof parameters.anchor !== 'string' || !isIsoDate(parameters.anchor)) {
-    delete parameters.anchor;
-  } else if (Number(parameters.anchor.slice(0, 4)) < 1000) {
-    // Ninth-wave Finding 6: fresco-ui's runtime ymd arithmetic still
-    // two-digit-coerces a small year, so an anchor below 1000 already
-    // produced a wrong (1900s-coerced) window — deleting it reverts the
-    // picker to its interview-date default rather than keeping a value that
-    // was already broken at runtime.
-    delete parameters.anchor;
-  }
-  for (const bound of ['before', 'after'] as const) {
-    const value = parameters[bound];
-    if (value === undefined) continue;
-    if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
-      delete parameters[bound];
-    }
   }
 };
 
@@ -257,7 +211,7 @@ const migrationV7toV8 = createMigration({
 - The NameGenerator \`form.title\` (heading of the add-a-person dialog) is now required. Any NameGenerator form without one is given "Add {node type name}" (e.g. "Add Person").
 - A codebook variable referenced by a form field must define a \`component\` (input control). Previously this was only checked by the Architect editor; a protocol violating it crashed the interview when the form rendered.
 - Several free-text fields that the Architect editor already requires are now required (non-empty) in the schema: a prompt's \`text\`, a form field's \`prompt\`, an introduction panel's \`title\` and \`text\`, an Information item's \`content\`, a Narrative preset's \`label\`, a side panel's \`title\`, a NameGeneratorRoster \`dataSource\`, and its \`searchOptions.matchProperties\` (at least one). Any that were empty are backfilled — the form-field prompt from the variable's name, the panel title from the stage label, a preset/side-panel label by position — else a plain default. An empty \`searchOptions\`, and an Information asset item with no asset id (a broken reference), are dropped. (The FamilyPedigree \`censusPrompt\`, NarrativePedigree disease \`label\`/\`color\`, and Anonymisation \`explanationText\` are likewise required but are v8-only, so no migration is needed.)
-- The Sociogram, Narrative, and NetworkComposer \`background\` is now required and must be exactly one of its two variants: an image (\`image\` set, no \`concentricCircles\`) or concentric circles (\`concentricCircles\` set to a whole number, no \`image\`; 0 renders no rings). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise \`concentricCircles\` defaults to 4, matching what the interview already rendered.
+- The Sociogram and Narrative \`background\` is now required and must be exactly one of its two variants: an image (\`image\` set, no \`concentricCircles\`) or concentric circles (\`concentricCircles\` set to a whole number, no \`image\`; 0 renders no rings). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise \`concentricCircles\` defaults to 4, matching what the interview already rendered.
 - An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color default to the first palette color (\`ord-color-seq-1\`), the runtime's previous fallback.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored, as was an empty-string \`otherVariable\`. Such orphaned properties are removed.
 - A CategoricalBin prompt with \`otherVariable\` set now requires both \`otherVariablePrompt\` and \`otherOptionLabel\` (previously a missing label silently dropped the whole "other" bin). A missing value is backfilled from the other authored one, else "Please specify" / "Other".
@@ -265,8 +219,6 @@ const migrationV7toV8 = createMigration({
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed.
-- A NetworkComposer stage field's RelativeDatePicker \`anchor\` must likewise use a four-digit year of 1000 or later — the interview's date arithmetic still coerces a smaller year, so such an anchor already produced a wrong window. An anchor below that floor is removed, reverting the field to its interview-date default.
-- A NetworkComposer stage field can no longer render one of a \`sameAs\`-joined pair of datetime variables at a different date resolution than the other — the interview compares their stored values as exact strings, so a mismatched resolution can never actually satisfy \`sameAs\` even when the underlying codebook variables agree. The offending field's DatePicker resolution override is removed, reverting it to full resolution.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -1245,31 +1197,6 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // NetworkComposer form fields carry their own component/parameters
-        // (see network-composer.ts's ComposerFormFieldSchema) independent of
-        // the codebook variable, so a field rendering DatePicker or
-        // RelativeDatePicker needs the same normalisation as those
-        // components get elsewhere — DatePicker as a codebook variable
-        // above, RelativeDatePicker via its own schema (variable.ts), which
-        // — unlike the codebook-variable step above — this composer path
-        // does not skip (fifth-wave Finding 1). `nodeForm` and each edge
-        // type's `form` are the two places composer fields live; paths that
-        // don't exist on a given stage are no-ops.
-        paths: ['stages[].nodeForm.fields[]', 'stages[].edges[].form.fields[]'],
-        fn: <V>(field: V) => {
-          const typedField = asRecord(field);
-          if (!typedField) return field;
-          const parameters = asRecord(typedField.parameters);
-          if (!parameters) return field;
-          if (typedField.component === 'DatePicker') {
-            normalizeDatePickerParameters(parameters);
-          } else if (typedField.component === 'RelativeDatePicker') {
-            normalizeRelativeDatePickerParameters(parameters);
-          }
-          return field;
-        },
-      },
-      {
         // Strip contradictory validation-rule combinations per the
         // minimal-strip policy — the analyser names exactly the rules to
         // remove. Cross-type references go first (the analyser ignores them,
@@ -1347,117 +1274,6 @@ const migrationV7toV8 = createMigration({
             }
           }
           return variables;
-        },
-      },
-      {
-        // Seventh-wave Finding 2: a NetworkComposer field's own component/
-        // parameters overlay (see network-composer.ts's ComposerFormFieldSchema)
-        // renders a codebook variable independently of the codebook
-        // variable's own rendering, so a stage can desynchronise a
-        // sameAs-joined datetime group's resolution even when the codebook
-        // variables themselves are consistent — the codebook-level strip
-        // step above only ever looks at the codebook. Must run AFTER that
-        // step (so the baseline it overlays onto is itself already
-        // resolution-consistent for any sameAs group — Finding 1 strips a
-        // codebook-only mismatch's sameAs entirely) and after the composer
-        // field DatePicker/RelativeDatePicker parameter-normalisation step
-        // above (so `parameters.type` values are already valid). nodeForm
-        // and each edge type's form are resolved independently: sameAs never
-        // crosses subjects (R2/owningVariable scoping), so a node-subject
-        // group and an edge-subject group can never mix.
-        //
-        // The field whose own DatePicker `parameters.type` is coarser than
-        // full is always the offender when a mismatch appears here (a
-        // RelativeDatePicker field is always full resolution, and the
-        // codebook baseline this overlays onto is already consistent by the
-        // time this step runs) — deleting that `type` reverts the field to
-        // full resolution, its own default. More than one field in a group
-        // can carry a diverging override, so — mirroring the codebook-level
-        // strip loop above — this re-checks and strips the first offender
-        // repeatedly to a fixpoint rather than assuming one pass suffices.
-        paths: ['stages[]'],
-        fn: <V>(stage: V) => {
-          const typedStage = asRecord(stage);
-          if (!typedStage || typedStage.type !== 'NetworkComposer') {
-            return stage;
-          }
-
-          const resolveOverlay = (subject: unknown, fields: unknown): void => {
-            if (!Array.isArray(fields)) return;
-            const codebookVariables = codebookVariablesForSubject(
-              codebook,
-              subject,
-            );
-            const maxPasses = fields.length + 1;
-            for (let pass = 0; pass < maxPasses; pass++) {
-              const overlaid: Record<string, unknown> = {
-                ...codebookVariables,
-              };
-              for (const field of fields) {
-                const typedField = asRecord(field);
-                const variableId = typedField?.variable;
-                if (
-                  typeof variableId !== 'string' ||
-                  !(variableId in codebookVariables)
-                ) {
-                  continue;
-                }
-                overlaid[variableId] = {
-                  ...asRecord(codebookVariables[variableId]),
-                  component: typedField?.component,
-                  parameters: typedField?.parameters,
-                };
-              }
-
-              const [mismatch] = findMixedResolutionSameAsGroups(overlaid);
-              if (!mismatch) break;
-
-              const offendingField = fields.find((field) => {
-                const typedField = asRecord(field);
-                if (typedField?.component !== 'DatePicker') return false;
-                if (
-                  typeof typedField.variable !== 'string' ||
-                  !mismatch.members.includes(typedField.variable)
-                ) {
-                  return false;
-                }
-                const type = asRecord(typedField.parameters)?.type;
-                return type === 'month' || type === 'year';
-              });
-              const typedOffendingField = asRecord(offendingField);
-              const parameters = asRecord(typedOffendingField?.parameters);
-              if (!typedOffendingField || !parameters) break;
-              delete parameters.type;
-              // Ninth-wave Finding 1: deleting `type` reverts this field to
-              // full resolution, so a surviving min/max — valid at the OLD,
-              // coarser resolution — must be re-validated against full
-              // resolution too, exactly like every other type-deletion path
-              // (normalizeDatePickerParameters itself, and the composer-field
-              // normalisation step above). Skipping this left a bare year
-              // ('2020') in place, which the v8 schema then rejected as an
-              // invalid full-resolution YYYY-MM-DD date.
-              normalizeDatePickerParameters(parameters);
-              if (Object.keys(parameters).length === 0) {
-                delete typedOffendingField.parameters;
-              }
-            }
-          };
-
-          resolveOverlay(
-            typedStage.subject,
-            asRecord(typedStage.nodeForm)?.fields,
-          );
-          if (Array.isArray(typedStage.edges)) {
-            for (const edge of typedStage.edges) {
-              const typedEdge = asRecord(edge);
-              if (!typedEdge) continue;
-              resolveOverlay(
-                typedEdge.subject,
-                asRecord(typedEdge.form)?.fields,
-              );
-            }
-          }
-          return stage;
         },
       },
       {
