@@ -36,6 +36,7 @@ import {
   selectFieldMetadataWithSubject,
 } from '../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
+import { buildFieldValidationProps } from './buildFieldValidationProps';
 import { coerceFormValues } from './coerceFormValues';
 
 const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
@@ -207,53 +208,15 @@ export default function useProtocolForm({
       props.initialValue = initialValues[field.variable];
     }
 
-    // Pass validation properties directly from the protocol validation object
     if ('validation' in field && field.validation) {
-      const validation = field.validation as Record<string, unknown>;
-
-      if (validation.required !== undefined)
-        props.required = validation.required as boolean;
-      if (validation.minLength !== undefined)
-        props.minLength = validation.minLength as number;
-      if (validation.maxLength !== undefined)
-        props.maxLength = validation.maxLength as number;
-      if (validation.minValue !== undefined)
-        props.minValue = validation.minValue as number;
-      if (validation.maxValue !== undefined)
-        props.maxValue = validation.maxValue as number;
-      if (validation.minSelected !== undefined)
-        props.minSelected = validation.minSelected as number;
-      if (validation.maxSelected !== undefined)
-        props.maxSelected = validation.maxSelected as number;
-      if (validation.pattern !== undefined)
-        props.pattern =
-          validation.pattern as ValidationPropsCatalogue['pattern'];
-      // For 'unique', the protocol uses boolean but validation needs the attribute name
-      if (validation.unique === true) props.unique = field.variable;
-      if (validation.differentFrom !== undefined)
-        props.differentFrom = validation.differentFrom as string;
-      if (validation.sameAs !== undefined)
-        props.sameAs = validation.sameAs as string;
-      if (validation.greaterThanVariable !== undefined)
-        props.greaterThanVariable = {
-          attribute: validation.greaterThanVariable as string,
+      Object.assign(
+        props,
+        buildFieldValidationProps({
           type: field.type,
-        };
-      if (validation.lessThanVariable !== undefined)
-        props.lessThanVariable = {
-          attribute: validation.lessThanVariable as string,
-          type: field.type,
-        };
-      if (validation.greaterThanOrEqualToVariable !== undefined)
-        props.greaterThanOrEqualToVariable = {
-          attribute: validation.greaterThanOrEqualToVariable as string,
-          type: field.type,
-        };
-      if (validation.lessThanOrEqualToVariable !== undefined)
-        props.lessThanOrEqualToVariable = {
-          attribute: validation.lessThanOrEqualToVariable as string,
-          type: field.type,
-        };
+          variable: fieldName,
+          validation: field.validation as Record<string, unknown>,
+        }),
+      );
     }
 
     // Pass validation context for context-dependent validations (unique, sameAs, differentFrom, etc.)
