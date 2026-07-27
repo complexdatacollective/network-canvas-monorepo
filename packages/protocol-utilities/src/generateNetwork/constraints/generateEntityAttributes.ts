@@ -13,11 +13,18 @@ import { type ConstraintConflict, SyntheticDataConstraintError } from './error';
 import {
   comparatorBound,
   comparatorGap,
+  differentFromGroups,
   groupComparatorEdges,
   intersectGroupConstraints,
   propagateComparatorBounds,
   tighten,
 } from './groupConstraints';
+import {
+  type SolvableComponent,
+  solvableComponents,
+  solveComponent,
+  type TractableComponent,
+} from './solver';
 import type {
   ConstrainedVariable,
   EntityConstraints,
@@ -41,43 +48,6 @@ export type EntityScopeRef =
 
 export function scopeKey(scope: EntityScopeRef): string {
   return scope.entity === 'ego' ? 'ego' : `${scope.entity}:${scope.type}`;
-}
-
-/**
- * Which groups each group's value must differ from.
- *
- * `differentFrom` binds both of its ends, so the pair is recorded from both:
- * the ordering pass keeps one dependency edge per pair and drops it entirely
- * when it would close a cycle, which leaves the group that declared the rule as
- * likely to be drawn first as the group it names.
- */
-function differentFromGroups(
-  entity: EntityConstraints,
-  groupOf: Map<string, string>,
-): Map<string, Set<string>> {
-  const excluded = new Map<string, Set<string>>();
-
-  const link = (from: string, to: string): void => {
-    const targets = excluded.get(from) ?? new Set<string>();
-    targets.add(to);
-    excluded.set(from, targets);
-  };
-
-  for (const [id, variable] of entity) {
-    const targetId = variable.constraints.differentFrom;
-    if (targetId === undefined || !entity.has(targetId)) continue;
-
-    const group = groupOf.get(id) ?? id;
-    const target = groupOf.get(targetId) ?? targetId;
-    // One group holds a single value, which cannot differ from itself;
-    // `resolveGenerationOrder` reports that as a contradiction.
-    if (group === target) continue;
-
-    link(group, target);
-    link(target, group);
-  }
-
-  return excluded;
 }
 
 function isNumeric(variable: ConstrainedVariable): boolean {
@@ -642,6 +612,20 @@ export function generateEntityAttributes(
     excluded,
   };
 
+  const componentOf = new Map<string, SolvableComponent>();
+  for (const component of componentsFor(
+    entity,
+    propagated,
+    order,
+    edges,
+    excluded,
+  )) {
+    for (const group of component.groups) componentOf.set(group, component);
+  }
+  const state: DrawState = { scope, index, resolved, only, existing };
+  const solved = new Map<string, VariableValue>();
+  const attempted = new Set<SolvableComponent>();
+
   for (const group of order) {
     const memberIds = membersOf.get(group) ?? [group];
     if (only && !memberIds.some((id) => only.has(id))) continue;
@@ -649,13 +633,35 @@ export function generateEntityAttributes(
     const variable = plan.groups.get(group);
     if (variable === undefined) continue;
 
-    const value = drawGroup(plan, group, variable, ctx, {
-      scope,
-      index,
-      resolved,
-      only,
-      existing,
-    });
+    // A whole component is settled at its first drawn group, so every value
+    // is chosen in sight of every rule. Anything short of a solution — an
+    // oversized component, an exhausted search, a genuinely unsatisfiable
+    // set — leaves `solved` empty and the greedy path below drawing exactly
+    // as it always has.
+    const component = componentOf.get(group);
+    if (component?.tractable !== undefined && !attempted.has(component)) {
+      attempted.add(component);
+      const assignment = solveTractableComponent(
+        component.tractable,
+        plan,
+        ctx,
+        state,
+      );
+      if (assignment !== undefined) {
+        for (const [solvedGroup, value] of assignment) {
+          solved.set(solvedGroup, value);
+        }
+      }
+    }
+
+    const value = drawGroup(
+      plan,
+      group,
+      variable,
+      ctx,
+      state,
+      solved.get(group),
+    );
 
     for (const id of memberIds) {
       resolved[id] = value;
@@ -664,6 +670,199 @@ export function generateEntityAttributes(
   }
 
   return produced;
+}
+
+/**
+ * Component analysis memoised by the entity-type descriptor it derives from.
+ *
+ * Every input to `solvableComponents` is a pure function of the descriptor,
+ * generation runs once per entity, and neither the components nor their
+ * domains are ever mutated (each solve copies what it filters or reorders) —
+ * so a type's domains are built once per run instead of once per node, which
+ * for a wide-but-tractable categorical is the difference between one and
+ * thousands of six-figure-element enumerations.
+ */
+const componentCache = new WeakMap<EntityConstraints, SolvableComponent[]>();
+
+function componentsFor(
+  entity: EntityConstraints,
+  propagated: Map<string, ConstrainedVariable>,
+  order: readonly string[],
+  edges: readonly ComparatorEdge[],
+  excluded: Map<string, Set<string>>,
+): SolvableComponent[] {
+  const cached = componentCache.get(entity);
+  if (cached !== undefined) return cached;
+  const components = solvableComponents(propagated, order, edges, excluded);
+  componentCache.set(entity, components);
+  return components;
+}
+
+/**
+ * One complete solve of a component for the entity being generated.
+ *
+ * Groups the entity keeps values for enter as pins; groups outside the run
+ * with nothing held are dropped along with their constraints, which is what
+ * the greedy path does with a rule whose counterpart never resolves. Free
+ * groups' domains lose whatever a unique registry has already issued — their
+ * own previous values are given back first, so a redraw may keep them — and
+ * are searched in a seeded shuffle: the run stays reproducible for a seed
+ * while entities land on different assignments.
+ *
+ * Returns the free groups' values, or undefined when the search found no
+ * solution or ran out of budget — never a refusal, always a fallback.
+ */
+function solveTractableComponent(
+  tractable: TractableComponent,
+  plan: Plan,
+  ctx: GenerationContext,
+  { scope, resolved, only, existing }: DrawState,
+): Map<string, VariableValue> | undefined {
+  const registry = scopeKey(scope);
+  const pins = new Map<string, VariableValue>();
+  const exclude = new Set<string>();
+  const free: string[] = [];
+
+  for (const group of tractable.groups) {
+    const memberIds = plan.membersOf.get(group) ?? [group];
+
+    if (only && !memberIds.some((id) => only.has(id))) {
+      const held = groupValue(memberIds, resolved);
+      // A null counterpart never binds a comparator, and no drawn value can
+      // collide with it, so dropping the group mirrors ignoring the rule.
+      if (held === undefined || held === null) exclude.add(group);
+      else pins.set(group, held);
+      continue;
+    }
+
+    if (only && existing) {
+      const keeper = memberIds.find(
+        (id) => !only.has(id) && existing[id] !== undefined,
+      );
+      if (keeper !== undefined) {
+        const held = existing[keeper];
+        if (held === undefined || held === null) exclude.add(group);
+        else pins.set(group, held);
+        continue;
+      }
+    }
+
+    free.push(group);
+  }
+
+  if (free.length === 0) return undefined;
+
+  const uniqueSlots = new Map<string, string>();
+  for (const group of free) {
+    if (plan.groups.get(group)?.constraints.unique !== true) continue;
+    uniqueSlots.set(group, slotOf(plan.membersOf.get(group) ?? [group]));
+  }
+
+  // Two unique slots inside one component cannot be allocated safely one
+  // entity at a time: whichever pairing this entity takes can strand a later
+  // one, and cross-entity allocation is deliberately not modelled here. The
+  // greedy draw's per-slot monotonic sequences allocate those families the
+  // way they always have, so the component is left to them untouched.
+  if (uniqueSlots.size > 1) return undefined;
+
+  for (const group of uniqueSlots.keys()) {
+    const memberIds = plan.membersOf.get(group) ?? [group];
+    // Released before the domains are read, so a solution that lands back on
+    // the entity's own value reclaims it rather than being refused it. The
+    // greedy fallback re-releases on failure, which the registry tolerates.
+    if (existing !== undefined) {
+      const previous = groupValue(memberIds, existing);
+      if (previous !== undefined) {
+        ctx.uniqueRegistry.release(registry, slotOf(memberIds), previous);
+      }
+    }
+  }
+
+  // One draw from the run's stream seeds a local shuffle, so the stream
+  // advances by exactly one step per solve whatever the search does — a
+  // capped or unsatisfiable solve cannot shift the draws that follow it, and
+  // a domain's size never shows through as extra consumption.
+  const shuffleSeed = ctx.valueGen.randomInt(0, 2 ** 31 - 1);
+
+  const solveWith = (
+    allowReserved: boolean,
+  ): ReturnType<typeof solveComponent> => {
+    const rand = mulberry32(shuffleSeed);
+    return solveComponent(tractable, {
+      pins,
+      exclude,
+      ...(uniqueSlots.size > 0
+        ? {
+            restrict: (group: string, value: VariableValue): boolean => {
+              const slot = uniqueSlots.get(group);
+              if (slot === undefined) return true;
+              if (ctx.uniqueRegistry.isTaken(registry, slot, value)) {
+                return false;
+              }
+              return (
+                allowReserved ||
+                !ctx.uniqueRegistry.isReserved(registry, slot, value)
+              );
+            },
+          }
+        : {}),
+      // A unique group's slot is shared with every entity still to come, so
+      // its values are consumed bottom-up the way the distinct-sequence draw
+      // always consumed them: u over [0,1] and v over [1,2] with v > u must
+      // allocate (0,1) before (1,2), where a shuffle could take (0,2) and
+      // strand the next entity. Groups without a slot cost nothing across
+      // entities and keep the shuffle that makes their data vary.
+      orderDomain: (group, values) =>
+        uniqueSlots.has(group) ? [...values] : shuffledBy(rand, values),
+    });
+  };
+
+  // Values reserved for roster rows still to be drawn give way exactly as
+  // they do on the greedy path: preferred against while anything else
+  // satisfies the component, taken once nothing else provably does. Only a
+  // proven unsat unlocks them — an unknown means unreserved assignments may
+  // remain unexplored, and is handled like any other exhausted budget.
+  let verdict = solveWith(false);
+  if (verdict.kind === 'unsat' && uniqueSlots.size > 0) {
+    verdict = solveWith(true);
+  }
+
+  if (verdict.kind !== 'sat') return undefined;
+
+  const assignment = new Map<string, VariableValue>();
+  for (const group of free) {
+    const value = verdict.assignment.get(group);
+    if (value !== undefined) assignment.set(group, value);
+  }
+  return assignment;
+}
+
+// The same generator the corpus harness uses; any small seeded PRNG works, as
+// long as it is not the run's own faker stream.
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Fisher-Yates over a local seeded stream, so output is reproducible. */
+function shuffledBy(
+  rand: () => number,
+  values: readonly VariableValue[],
+): VariableValue[] {
+  const copy = [...values];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    const swap = copy[i]!;
+    copy[i] = copy[j]!;
+    copy[j] = swap;
+  }
+  return copy;
 }
 
 /** The entity's groups and the rules between them, resolved once. */
@@ -756,6 +955,7 @@ function drawGroup(
   variable: ConstrainedVariable,
   ctx: GenerationContext,
   { scope, index, resolved, only, existing }: DrawState,
+  solved?: VariableValue,
 ): VariableValue {
   const { membersOf } = plan;
   const memberIds = membersOf.get(group) ?? [group];
@@ -777,6 +977,10 @@ function drawGroup(
       if (!only.has(id) && held !== undefined) return claim(held);
     }
   }
+
+  // A value the component solve already chose. Its slot was released before
+  // the solve read the registry, so claiming is all that is left to do.
+  if (solved !== undefined) return claim(solved);
 
   // A group being redrawn over a value the entity already holds gives that
   // value's slot back first. Without it the entity would occupy two of the
