@@ -51,19 +51,36 @@ describe('worstCaseEntityCounts', () => {
     expect(counts.node.get('person')).toBe(12);
   });
 
-  it('counts FamilyPedigree nodes against its configured node type', () => {
-    const stage = {
+  function familyPedigree(): Stage {
+    return {
       id: 'stage-fp',
       type: 'FamilyPedigree',
       label: 'Pedigree',
       nodeConfig: { type: 'relative' },
+      edgeConfig: { type: 'kin' },
       prompts: [],
     } as unknown as Stage;
+  }
 
-    const counts = worstCaseEntityCounts([stage], config);
+  it('counts FamilyPedigree nodes against its configured node type', () => {
+    const counts = worstCaseEntityCounts([familyPedigree()], config);
     expect(counts.node.get('relative')).toBe(
       config.familyPedigreeNodeCount.max,
     );
+    expect(counts.edge.get('kin')).toBe(config.familyPedigreeNodeCount.max - 1);
+  });
+
+  it('counts an inverted FamilyPedigree range as the generator draws it', () => {
+    // `randomInt` collapses an inverted range to its `min`, so the stage builds
+    // 20 nodes and 19 edges; reading `max` alone would report 10 and 9.
+    const inverted = resolveGenerationConfig({
+      today: '2026-07-27',
+      familyPedigreeNodeCount: { min: 20, max: 10 },
+    });
+
+    const counts = worstCaseEntityCounts([familyPedigree()], inverted);
+    expect(counts.node.get('relative')).toBe(20);
+    expect(counts.edge.get('kin')).toBe(19);
   });
 
   it('bounds an edge type by the pair count over its node type', () => {

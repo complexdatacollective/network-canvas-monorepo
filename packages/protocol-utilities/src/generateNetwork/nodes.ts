@@ -5,9 +5,15 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateAttributesForEntity } from './attributes';
+import {
+  generateAttributesForEntity,
+  reclaimOverwrittenValues,
+  releaseRosterValues,
+  reserveRosterValues,
+} from './attributes';
 import type { GenerationConfig } from './config';
 import type { GenerationContext, StageOfType } from './context';
 import { getSubjectType } from './subject';
@@ -128,13 +134,12 @@ export function createNodesForStage(
   const newNodes: NcNode[] = [];
   let drawn = 0;
 
+  const scope = { entity: 'node', type: nodeType } as const;
+  reserveRosterValues(ctx, scope, pool);
+
   for (let i = 0; i < count; i++) {
     const nodeIndex = existingNodeCount + i;
-    const attrs = generateAttributesForEntity(
-      ctx,
-      { entity: 'node', type: nodeType },
-      nodeIndex,
-    );
+    const generated = generateAttributesForEntity(ctx, scope, nodeIndex);
 
     const takeFromRoster =
       drawn < pool.length &&
@@ -142,6 +147,7 @@ export function createNodesForStage(
         ctx.valueGen.randomFloat(0, 1) < ctx.config.rosterDrawRatio);
 
     let primaryKey = uuid();
+    const overrides: Record<string, VariableValue> = {};
 
     if (takeFromRoster) {
       const swapIndex = ctx.valueGen.randomInt(drawn, pool.length - 1);
@@ -157,12 +163,20 @@ export function createNodesForStage(
       // The roster interface lets the roster value win a collision with a
       // prompt attribute, while a name generator panel lets the prompt win.
       if (roster.allowFabrication) {
-        Object.assign(attrs, rosterValues, additionalAttrs);
+        Object.assign(overrides, rosterValues, additionalAttrs);
       } else {
-        Object.assign(attrs, additionalAttrs, rosterValues);
+        Object.assign(overrides, additionalAttrs, rosterValues);
       }
     } else {
-      Object.assign(attrs, additionalAttrs);
+      Object.assign(overrides, additionalAttrs);
+    }
+
+    const attrs = { ...generated, ...overrides };
+    if (Object.keys(overrides).length > 0) {
+      // Whatever was overwritten was drawn from a `unique` variable's value
+      // space and claimed there; the registry has to be told which value the
+      // node ended up holding.
+      reclaimOverwrittenValues(ctx, scope, generated, attrs);
     }
 
     const node: NcNode = {
@@ -174,6 +188,11 @@ export function createNodesForStage(
     };
     newNodes.push(node);
   }
+
+  // Rows left in the pool are drawable by a later prompt or stage, which
+  // reserves them again; holding the reservation open past this draw would keep
+  // their values from nodes no roster row is waiting for.
+  releaseRosterValues(ctx, scope, pool);
 
   return newNodes;
 }

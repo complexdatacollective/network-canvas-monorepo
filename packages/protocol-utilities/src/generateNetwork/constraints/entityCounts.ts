@@ -39,6 +39,19 @@ function add(counts: Map<string, number>, key: string, value: number): void {
   counts.set(key, (counts.get(key) ?? 0) + value);
 }
 
+/**
+ * The most nodes a FamilyPedigree stage can build, as `getNodeCountBounds`
+ * treats a name generator's: an inverted configured range is honoured by
+ * raising the ceiling to the floor, because `randomInt` collapses such a range
+ * to its `min` rather than refusing it. Reading `max` alone would under-count,
+ * and an under-count lets a `unique` variable pass feasibility and then run out
+ * of values partway through the run.
+ */
+function pedigreeNodeCeiling(config: GenerationConfig): number {
+  const { min, max } = config.familyPedigreeNodeCount;
+  return Math.max(max, min);
+}
+
 /** The largest number of unordered pairs a subject node type could ever reach. */
 function pairsFor(
   nodeType: string | undefined,
@@ -59,9 +72,9 @@ function pairsFor(
  * edge definition) by the pair count over its subject node type — a run
  * creates at most one edge of a type per unordered node pair per prompt, so
  * bounds accumulate per prompt. FamilyPedigree instead bounds its edge type by
- * `familyPedigreeNodeCount.max - 1`, the parent-child edges it actually
- * creates. Counts sum across stages producing the same type, since a `unique`
- * constraint spans the whole run.
+ * one less than its node ceiling, the parent-child edges it actually creates.
+ * Counts sum across stages producing the same type, since a `unique` constraint
+ * spans the whole run.
  */
 export function worstCaseEntityCounts(
   stages: Stage[],
@@ -82,7 +95,7 @@ export function worstCaseEntityCounts(
     if (stage.type === 'FamilyPedigree') {
       const nodeType = stage.nodeConfig?.type;
       if (nodeType) {
-        add(node, nodeType, config.familyPedigreeNodeCount.max);
+        add(node, nodeType, pedigreeNodeCeiling(config));
       }
     }
   }
@@ -124,11 +137,7 @@ export function worstCaseEntityCounts(
         // index 1..n-1), never pairwise, so the pair count over-counts by
         // roughly 5x at the default config maximum. Bound it by the true
         // maximum instead.
-        add(
-          edge,
-          edgeType,
-          Math.max(config.familyPedigreeNodeCount.max - 1, 0),
-        );
+        add(edge, edgeType, Math.max(pedigreeNodeCeiling(config) - 1, 0));
       }
     }
   }

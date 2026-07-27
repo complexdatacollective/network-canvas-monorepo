@@ -38,7 +38,7 @@ export type EntityScopeRef =
   | { entity: 'ego' }
   | { entity: 'node' | 'edge'; type: string };
 
-function scopeKey(scope: EntityScopeRef): string {
+export function scopeKey(scope: EntityScopeRef): string {
   return scope.entity === 'ego' ? 'ego' : `${scope.entity}:${scope.type}`;
 }
 
@@ -555,6 +555,27 @@ function slotOf(memberIds: readonly string[]): string {
 }
 
 /**
+ * The members of every group the registry issues values for, keyed by the slot
+ * they are issued from. Callers that put a value on an entity without drawing
+ * it — a roster row, a prompt's `additionalAttributes` — need this to say which
+ * slot that value belongs to.
+ */
+export function uniqueSlotMembers(
+  entity: EntityConstraints,
+): Map<string, string[]> {
+  const { membersOf } = resolveGenerationOrder(entity);
+  const groups = intersectGroupConstraints(entity, membersOf);
+  const slots = new Map<string, string[]>();
+
+  for (const [group, memberIds] of membersOf) {
+    if (groups.get(group)?.constraints.unique !== true) continue;
+    slots.set(slotOf(memberIds), memberIds);
+  }
+
+  return slots;
+}
+
+/**
  * Generates one entity's attributes in dependency order, so each variable is
  * drawn once every value it is defined against is known. Variables joined by
  * `sameAs` share a single value drawn against their combined rules.
@@ -765,6 +786,7 @@ function drawGroup(
 
   const draw = (
     bounded: ConstrainedVariable,
+    avoidReserved: boolean,
   ): { value: VariableValue } | undefined => {
     for (let attempt = 0; attempt < MAX_REDRAWS; attempt++) {
       // A redraw has to land somewhere else, so failed attempts walk the
@@ -782,7 +804,12 @@ function drawGroup(
       );
       if (
         !forbidden.has(valueKey(value)) &&
-        !(unique && ctx.uniqueRegistry.isTaken(registry, slot, value))
+        !(unique && ctx.uniqueRegistry.isTaken(registry, slot, value)) &&
+        !(
+          unique &&
+          avoidReserved &&
+          ctx.uniqueRegistry.isReserved(registry, slot, value)
+        )
       ) {
         return { value };
       }
@@ -798,9 +825,18 @@ function drawGroup(
   // giving up on a value that was available all along. Only a draw that has
   // already failed reaches here, so nothing that succeeds is drawn differently.
   const unreserved = plan.propagated.get(group);
-  const drawn =
-    draw(boundsOf(variable)) ??
-    (unreserved === undefined ? undefined : draw(boundsOf(unreserved)));
+  const attempt = (
+    avoidReserved: boolean,
+  ): { value: VariableValue } | undefined =>
+    draw(boundsOf(variable), avoidReserved) ??
+    (unreserved === undefined
+      ? undefined
+      : draw(boundsOf(unreserved), avoidReserved));
+
+  // Values reserved for roster rows still to be drawn are a precaution of the
+  // same kind, and give way for the same reason: a row that is never drawn
+  // holds nothing, so a value it reserved is better taken than refused.
+  const drawn = attempt(true) ?? (unique ? attempt(false) : undefined);
 
   if (drawn === undefined) {
     const members: ConstrainedVariable[] = [];

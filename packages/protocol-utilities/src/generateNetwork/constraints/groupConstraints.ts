@@ -143,6 +143,14 @@ const INTERSECTED_BOUNDS = [
 ] as const;
 
 /**
+ * Said of a bound pair a member's own declaration already crosses, so the group
+ * conflict and the per-variable conflict raised for that member cannot be read
+ * as the same fact reported twice.
+ */
+const ALSO_DECLARED =
+  ', which one of these variables already declares on its own';
+
+/**
  * The bounds a group's intersected rules leave nothing between.
  *
  * A group holds one value for all of its members, so that value has to satisfy
@@ -151,8 +159,12 @@ const INTERSECTED_BOUNDS = [
  * group whose intersection is empty — `[1, 5]` held equal to `[?, 0]` describes
  * a value that is both at least 1 and at most 0.
  *
- * A bound pair one member's own declaration already crosses is left out: that
- * member is the contradiction, and the per-variable checks describe it.
+ * A bound pair one member's own declaration already crosses is reported too,
+ * worded so it reads as the separate thing it is. The per-variable check names
+ * only that member, and correcting what it names need not leave the group
+ * satisfiable — `minLength 10`/`maxLength 2` held equal to `maxLength 4` still
+ * has nothing between 10 and 4 once the member's own pair is put right. Leaving
+ * it out costs a researcher a second round trip to find that out.
  */
 export function emptyGroupBounds(
   members: readonly ConstrainedVariable[],
@@ -176,11 +188,12 @@ export function emptyGroupBounds(
         ownFloor > ownCeiling
       );
     });
-    if (memberCrosses) continue;
 
     empty.push({
       rules: [min, max],
-      detail: `${min} ${floor} exceeds ${max} ${ceiling}`,
+      detail: `${min} ${floor} exceeds ${max} ${ceiling}${
+        memberCrosses ? ALSO_DECLARED : ''
+      }`,
     });
   }
 
@@ -194,10 +207,12 @@ export function emptyGroupBounds(
     return own?.min !== undefined && own.max !== undefined && own.min > own.max;
   });
 
-  if (windowCrosses && !memberWindowCrosses) {
+  if (windowCrosses) {
     empty.push({
       rules: ['parameters'],
-      detail: `the date range ${window.min} to ${window.max} is empty`,
+      detail: `the date range ${window.min} to ${window.max} is empty${
+        memberWindowCrosses ? ALSO_DECLARED : ''
+      }`,
     });
   }
 
