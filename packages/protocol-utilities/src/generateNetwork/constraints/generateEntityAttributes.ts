@@ -331,8 +331,7 @@ function groupValue(
 function applyComparatorBounds(
   variable: ConstrainedVariable,
   group: string,
-  edges: readonly ComparatorEdge[],
-  membersOf: Map<string, string[]>,
+  { edges, membersOf, propagated }: Plan,
   resolved: Record<string, VariableValue>,
 ): VariableConstraints {
   const { entry, constraints } = variable;
@@ -369,6 +368,17 @@ function applyComparatorBounds(
 
     if (entry.type === 'datetime') {
       if (typeof target !== 'string' || target === '') continue;
+
+      // A value written at another resolution — or at none, being no date at
+      // all — is in units these bounds are not: it does not compare against
+      // them as a string, and a step measured here would be the wrong size for
+      // it. `propagateComparatorBounds` leaves the same comparison alone.
+      if (
+        propagated.get(otherGroup)?.constraints.dateWindow?.resolution !==
+        resolution
+      ) {
+        continue;
+      }
 
       const steps = edge.strict ? 1 : 0;
       const bound = addSteps(target, groupIsUpper ? steps : -steps, resolution);
@@ -520,9 +530,10 @@ function soleValue(
  */
 function forbiddenKeys(
   group: string,
-  { membersOf, edges, propagated, excluded }: Plan,
+  plan: Plan,
   resolved: Record<string, VariableValue>,
 ): Set<string> {
+  const { membersOf, propagated, excluded } = plan;
   const keys = new Set<string>();
 
   for (const other of excluded.get(group) ?? []) {
@@ -537,7 +548,7 @@ function forbiddenKeys(
 
     const sole = soleValue(
       variable.entry,
-      applyComparatorBounds(variable, other, edges, membersOf, resolved),
+      applyComparatorBounds(variable, other, plan, resolved),
     );
     if (sole !== undefined) keys.add(valueKey(sole));
   }
@@ -740,7 +751,7 @@ function drawGroup(
   ctx: GenerationContext,
   { scope, index, resolved, only, existing }: DrawState,
 ): VariableValue {
-  const { membersOf, edges } = plan;
+  const { membersOf } = plan;
   const memberIds = membersOf.get(group) ?? [group];
   const { unique } = variable.constraints;
   const registry = scopeKey(scope);
@@ -780,7 +791,7 @@ function drawGroup(
     entry: source.entry,
     constraints: withFallbackFloor(
       source.entry,
-      applyComparatorBounds(source, group, edges, membersOf, resolved),
+      applyComparatorBounds(source, group, plan, resolved),
     ),
   });
 

@@ -1152,6 +1152,76 @@ describe('generateEntityAttributes', () => {
     ).toEqual([]);
   });
 
+  it('satisfies a date chain between two pickers written in months', () => {
+    const window = {
+      component: 'DatePicker',
+      parameters: { type: 'month', min: '2026-01', max: '2026-06' },
+    } as const;
+
+    const entity = buildEntityConstraints(
+      {
+        start: { name: 'Start', type: 'datetime', ...window },
+        finish: {
+          name: 'Finish',
+          type: 'datetime',
+          ...window,
+          validation: {
+            greaterThanVariable: asEntityAttributeReference('start'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          String(attrs.finish) > String(attrs.start) &&
+          allWithin(attrs, '2026-01', '2026-06'),
+      ),
+    ).toEqual([]);
+  });
+
+  it('leaves a date comparison alone when the two pickers write at different resolutions', () => {
+    const entity = buildEntityConstraints(
+      {
+        start: {
+          name: 'Start',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'month', min: '2026-01', max: '2026-12' },
+        },
+        finish: {
+          name: 'Finish',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'full', min: '2026-01-15', max: '2026-12-31' },
+          validation: {
+            greaterThanVariable: asEntityAttributeReference('start'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(entity, 500, (attrs) => {
+        const start = String(attrs.start);
+        const finish = String(attrs.finish);
+        return (
+          /^\d{4}-\d{2}$/.test(start) &&
+          start >= '2026-01' &&
+          start <= '2026-12' &&
+          /^\d{4}-\d{2}-\d{2}$/.test(finish) &&
+          finish >= '2026-01-15' &&
+          finish <= '2026-12-31'
+        );
+      }),
+    ).toEqual([]);
+  });
+
   it('satisfies a variable bounded from both sides by other variables', () => {
     const entity = buildEntityConstraints(
       {
