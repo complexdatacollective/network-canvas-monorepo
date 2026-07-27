@@ -4,7 +4,7 @@ import type { Stage } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../generateNetwork';
-import { SyntheticDataConstraintError } from '../generateNetwork/constraints/feasibility';
+import { SyntheticDataConstraintError } from '../generateNetwork/constraints/error';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 

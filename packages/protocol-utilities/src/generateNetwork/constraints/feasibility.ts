@@ -8,6 +8,7 @@ import type { GenerationConfig } from '../config';
 import { buildEntityConstraints } from './buildConstraints';
 import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
 import { worstCaseEntityCounts } from './entityCounts';
+import type { ConstraintConflict } from './error';
 import {
   emptyGroupBounds,
   groupComparatorEdges,
@@ -20,39 +21,6 @@ import {
   type EntityConstraints,
 } from './types';
 import { valueSpaceSize } from './valueSpace';
-
-export type ConstraintConflict = {
-  entity: 'ego' | 'node' | 'edge';
-  /** The codebook key, which a programmatic consumer needs to locate the type. */
-  entityType?: string;
-  /** The type's human-readable name, absent only when the codebook omits one. */
-  entityTypeName?: string;
-  variableIds: string[];
-  variableNames: string[];
-  rules: string[];
-  reason: string;
-};
-
-export class SyntheticDataConstraintError extends Error {
-  readonly conflicts: ConstraintConflict[];
-
-  constructor(conflicts: ConstraintConflict[]) {
-    const lines = conflicts.map((conflict) => {
-      const subject =
-        conflict.entity === 'ego'
-          ? 'ego'
-          : `${conflict.entity} "${conflict.entityTypeName ?? conflict.entityType}"`;
-      return `  - ${subject}, ${conflict.variableNames.map((name) => `"${name}"`).join(' and ')} (${conflict.rules.join(', ')}): ${conflict.reason}`;
-    });
-
-    super(
-      'Synthetic data cannot be generated: this protocol declares validation ' +
-        `rules that no value can satisfy.\n${lines.join('\n')}`,
-    );
-    this.name = 'SyntheticDataConstraintError';
-    this.conflicts = conflicts;
-  }
-}
 
 type EntityScope = {
   entity: 'ego' | 'node' | 'edge';

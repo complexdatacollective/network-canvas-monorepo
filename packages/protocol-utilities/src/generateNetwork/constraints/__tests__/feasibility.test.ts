@@ -3,10 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
 
 import { resolveGenerationConfig } from '../../config';
-import {
-  analyseFeasibility,
-  SyntheticDataConstraintError,
-} from '../feasibility';
+import { SyntheticDataConstraintError } from '../error';
+import { analyseFeasibility } from '../feasibility';
 
 const config = resolveGenerationConfig({ today: '2026-07-27' });
 

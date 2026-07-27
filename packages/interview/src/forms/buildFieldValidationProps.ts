@@ -38,10 +38,6 @@ const isBoolean = (value: unknown): value is boolean =>
 const isNumber = (value: unknown): value is number =>
   typeof value === 'number' && !Number.isNaN(value);
 const isString = (value: unknown): value is string => typeof value === 'string';
-const isPattern = (
-  value: unknown,
-): value is ValidationPropsCatalogue['pattern'] =>
-  typeof value === 'object' && value !== null && 'regex' in value;
 
 /**
  * Map a codebook variable's validation object onto Field validation props.
@@ -77,15 +73,6 @@ export function buildFieldValidationProps(
     const value = num(key);
     if (value !== undefined) props[key] = value;
   }
-
-  const pattern = readRule(
-    validation,
-    'pattern',
-    variable,
-    'an object with a regex',
-    isPattern,
-  );
-  if (pattern !== undefined) props.pattern = pattern;
 
   // The protocol stores `unique` as a boolean, but the validator needs the
   // attribute name to collect other entities' values.

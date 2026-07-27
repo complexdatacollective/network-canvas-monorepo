@@ -1,3 +1,4 @@
+import type { StructuralCodebook } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
 
 import type { VariableEntry } from '../../types';
@@ -8,6 +9,7 @@ import {
   KEY_SEPARATOR,
   resolveGenerationOrder,
 } from './dependencyOrder';
+import { type ConstraintConflict, SyntheticDataConstraintError } from './error';
 import {
   comparatorGap,
   groupComparatorEdges,
@@ -30,6 +32,15 @@ import { SCALAR_DECIMAL_PLACES } from './valueSpace';
  * values drawn along the way rule out.
  */
 const MAX_REDRAWS = 1000;
+
+/** Which entity's constraints and unique-value registry a draw belongs to. */
+export type EntityScopeRef =
+  | { entity: 'ego' }
+  | { entity: 'node' | 'edge'; type: string };
+
+function scopeKey(scope: EntityScopeRef): string {
+  return scope.entity === 'ego' ? 'ego' : `${scope.entity}:${scope.type}`;
+}
 
 /**
  * Which groups each group's value must differ from.
@@ -555,7 +566,7 @@ function slotOf(memberIds: readonly string[]): string {
 export function generateEntityAttributes(
   entity: EntityConstraints,
   ctx: GenerationContext,
-  scope: string,
+  scope: EntityScopeRef,
   index: number,
   options?: {
     existing?: Record<string, VariableValue>;
@@ -580,6 +591,7 @@ export function generateEntityAttributes(
     edges,
   );
   const plan: Plan = {
+    variables: entity,
     membersOf,
     edges,
     groups: reserveExclusionHeadroom(
@@ -618,6 +630,8 @@ export function generateEntityAttributes(
 
 /** The entity's groups and the rules between them, resolved once. */
 type Plan = {
+  /** Every variable's own descriptor, before grouping merged any of them. */
+  variables: EntityConstraints;
   membersOf: Map<string, string[]>;
   edges: readonly ComparatorEdge[];
   /**
@@ -638,12 +652,65 @@ type Plan = {
 
 /** What the run so far contributes to the draw. */
 type DrawState = {
-  scope: string;
+  scope: EntityScopeRef;
   index: number;
   resolved: Record<string, VariableValue>;
   only: Set<string> | undefined;
   existing: Record<string, VariableValue> | undefined;
 };
+
+/**
+ * The rule names a group's members declare, so a refusal can say what was being
+ * satisfied. `dateWindow` is reported as `parameters`, the protocol field a
+ * date picker's bounds are configured in.
+ */
+function declaredRules(members: readonly ConstrainedVariable[]): string[] {
+  const rules = new Set<string>();
+
+  for (const { constraints } of members) {
+    for (const [rule, value] of Object.entries(constraints)) {
+      if (value === undefined || value === false) continue;
+      rules.add(rule === 'dateWindow' ? 'parameters' : rule);
+    }
+  }
+
+  return [...rules];
+}
+
+/**
+ * The refusal a group left without a value raises. Feasibility analysis proves
+ * impossible only what the declared bounds alone rule out, so a protocol it
+ * accepted can still reach here — a `differentFrom` whose counterpart the
+ * comparators pin to the one value left, say. Reported as the same error
+ * carrying the same conflict shape, because whoever configured the protocol has
+ * the same thing to look at either way.
+ */
+function exhaustedConflict(
+  scope: EntityScopeRef,
+  codebook: StructuralCodebook,
+  members: readonly ConstrainedVariable[],
+): ConstraintConflict {
+  const definition =
+    scope.entity === 'ego'
+      ? undefined
+      : scope.entity === 'node'
+        ? codebook.node?.[scope.type]
+        : codebook.edge?.[scope.type];
+
+  return {
+    entity: scope.entity,
+    ...(scope.entity === 'ego' ? {} : { entityType: scope.type }),
+    ...(definition?.name !== undefined
+      ? { entityTypeName: definition.name }
+      : {}),
+    variableIds: members.map((member) => member.entry.id),
+    variableNames: members.map((member) => member.entry.name),
+    rules: declaredRules(members),
+    reason:
+      'no value satisfies these rules alongside the values chosen for the ' +
+      'variables they refer to',
+  };
+}
 
 function drawGroup(
   plan: Plan,
@@ -655,9 +722,10 @@ function drawGroup(
   const { membersOf, edges } = plan;
   const memberIds = membersOf.get(group) ?? [group];
   const { unique } = variable.constraints;
+  const registry = scopeKey(scope);
   const slot = slotOf(memberIds);
   const claim = (value: VariableValue): VariableValue => {
-    if (unique) ctx.uniqueRegistry.claim(scope, slot, value);
+    if (unique) ctx.uniqueRegistry.claim(registry, slot, value);
     return value;
   };
 
@@ -681,7 +749,7 @@ function drawGroup(
   if (unique && existing !== undefined) {
     const previous = groupValue(memberIds, existing);
     if (previous !== undefined) {
-      ctx.uniqueRegistry.release(scope, slot, previous);
+      ctx.uniqueRegistry.release(registry, slot, previous);
     }
   }
 
@@ -702,7 +770,7 @@ function drawGroup(
       // A redraw has to land somewhere else, so failed attempts walk the
       // distinct-value sequence; only the first draw is free to be random.
       const seq = unique
-        ? ctx.uniqueRegistry.nextSeq(scope, slot)
+        ? ctx.uniqueRegistry.nextSeq(registry, slot)
         : attempt > 0
           ? attempt
           : undefined;
@@ -714,7 +782,7 @@ function drawGroup(
       );
       if (
         !forbidden.has(valueKey(value)) &&
-        !(unique && ctx.uniqueRegistry.isTaken(scope, slot, value))
+        !(unique && ctx.uniqueRegistry.isTaken(registry, slot, value))
       ) {
         return { value };
       }
@@ -735,11 +803,15 @@ function drawGroup(
     (unreserved === undefined ? undefined : draw(boundsOf(unreserved)));
 
   if (drawn === undefined) {
-    throw new Error(
-      `Could not draw a satisfying value for "${variable.entry.name}" after ${MAX_REDRAWS} attempts. ` +
-        'No value satisfies its own rules alongside the values already drawn for the variables it ' +
-        'references. Feasibility analysis refuses what the declared bounds alone prove impossible, ' +
-        'which is not every combination that can end up here.',
+    const members: ConstrainedVariable[] = [];
+    for (const id of memberIds) {
+      const member = plan.variables.get(id);
+      if (member !== undefined) members.push(member);
+    }
+
+    throw new SyntheticDataConstraintError(
+      [exhaustedConflict(scope, ctx.codebook, members)],
+      'this protocol declares validation rules that cannot all be satisfied together',
     );
   }
 

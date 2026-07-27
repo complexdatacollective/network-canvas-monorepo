@@ -7,6 +7,7 @@ import { ValueGenerator } from '../../../ValueGenerator';
 import { resolveGenerationConfig } from '../../config';
 import type { GenerationContext } from '../../context';
 import { buildEntityConstraints } from '../buildConstraints';
+import { SyntheticDataConstraintError } from '../error';
 import { generateEntityAttributes } from '../generateEntityAttributes';
 import type { EntityConstraints } from '../types';
 import { UniqueRegistry } from '../uniqueRegistry';
@@ -44,7 +45,7 @@ function breaches(
     const attributes = generateEntityAttributes(
       entity,
       makeContext(seed),
-      'node:person',
+      { entity: 'node', type: 'person' },
       seed,
     );
     if (!rule(attributes)) failures.push(attributes);
@@ -94,7 +95,12 @@ describe('generateEntityAttributes', () => {
       TODAY,
     );
 
-    const attrs = generateEntityAttributes(entity, makeContext(), 'ego', 0);
+    const attrs = generateEntityAttributes(
+      entity,
+      makeContext(),
+      { entity: 'ego' },
+      0,
+    );
 
     expect(attrs.a).toHaveLength(24);
     expect(attrs.b).toHaveLength(24);
@@ -119,7 +125,12 @@ describe('generateEntityAttributes', () => {
       TODAY,
     );
 
-    const attrs = generateEntityAttributes(entity, makeContext(), 'ego', 0);
+    const attrs = generateEntityAttributes(
+      entity,
+      makeContext(),
+      { entity: 'ego' },
+      0,
+    );
 
     expect(attrs.a).toHaveLength(24);
     expect(attrs.b).toBe(attrs.a);
@@ -138,10 +149,16 @@ describe('generateEntityAttributes', () => {
       TODAY,
     );
 
-    const attrs = generateEntityAttributes(entity, makeContext(), 'ego', 0, {
-      existing: { a: 'Persisted' },
-      only: new Set(['b']),
-    });
+    const attrs = generateEntityAttributes(
+      entity,
+      makeContext(),
+      { entity: 'ego' },
+      0,
+      {
+        existing: { a: 'Persisted' },
+        only: new Set(['b']),
+      },
+    );
 
     expect(attrs).toEqual({ b: 'Persisted' });
   });
@@ -163,7 +180,7 @@ describe('generateEntityAttributes', () => {
       const attrs = generateEntityAttributes(
         entity,
         makeContext(index),
-        'ego',
+        { entity: 'ego' },
         index,
       );
       expect(attrs.b).not.toBe(attrs.a);
@@ -204,8 +221,83 @@ describe('generateEntityAttributes', () => {
     // redraw bound must be reached rather than a reordered array being
     // accepted as "different" — the runtime would reject that.
     expect(() =>
-      generateEntityAttributes(entity, makeContext(), 'node:person', 0),
-    ).toThrow(/Could not draw a satisfying value/);
+      generateEntityAttributes(
+        entity,
+        makeContext(),
+        { entity: 'node', type: 'person' },
+        0,
+      ),
+    ).toThrow(SyntheticDataConstraintError);
+  });
+
+  it('refuses an exhausted draw with the exported error, naming the variable', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'categorical',
+          options: [
+            { label: 'X', value: 'x' },
+            { label: 'Y', value: 'y' },
+          ],
+          validation: { minSelected: 2, maxSelected: 2 },
+        },
+        b: {
+          name: 'Second Choice',
+          type: 'categorical',
+          options: [
+            { label: 'X', value: 'x' },
+            { label: 'Y', value: 'y' },
+          ],
+          validation: {
+            minSelected: 2,
+            maxSelected: 2,
+            differentFrom: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const ctx: GenerationContext = {
+      ...makeContext(),
+      codebook: { node: { person: { name: 'Person' } } },
+    };
+
+    let thrown: unknown;
+    try {
+      generateEntityAttributes(
+        entity,
+        ctx,
+        { entity: 'node', type: 'person' },
+        0,
+      );
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(SyntheticDataConstraintError);
+    // The expectation above has already failed the test if this is some other
+    // error; the guard is only what narrows `thrown` for the assertions below.
+    if (!(thrown instanceof SyntheticDataConstraintError)) return;
+
+    expect(thrown.message).toContain('"Second Choice"');
+    expect(thrown.message).toContain('node "Person"');
+    expect(thrown.message).toContain(
+      'this protocol declares validation rules that cannot all be satisfied together',
+    );
+    expect(thrown.conflicts).toEqual([
+      {
+        entity: 'node',
+        entityType: 'person',
+        entityTypeName: 'Person',
+        variableIds: ['b'],
+        variableNames: ['Second Choice'],
+        rules: ['minSelected', 'maxSelected', 'differentFrom'],
+        reason:
+          'no value satisfies these rules alongside the values chosen for the variables they refer to',
+      },
+    ]);
   });
 
   it('satisfies greaterThanVariable', () => {
@@ -233,7 +325,7 @@ describe('generateEntityAttributes', () => {
       const attrs = generateEntityAttributes(
         entity,
         makeContext(index),
-        'node:person',
+        { entity: 'node', type: 'person' },
         index,
       );
       expect(Number(attrs.high)).toBeGreaterThan(Number(attrs.low));
@@ -265,7 +357,7 @@ describe('generateEntityAttributes', () => {
       const attrs = generateEntityAttributes(
         entity,
         makeContext(index),
-        'node:person',
+        { entity: 'node', type: 'person' },
         index,
       );
       expect(Number(attrs.used)).toBeLessThanOrEqual(Number(attrs.cap));
@@ -300,7 +392,7 @@ describe('generateEntityAttributes', () => {
       const attrs = generateEntityAttributes(
         entity,
         makeContext(seed),
-        'node:person',
+        { entity: 'node', type: 'person' },
         seed,
       );
       expect(Number(attrs.b)).toBeGreaterThan(Number(attrs.a));
@@ -332,7 +424,7 @@ describe('generateEntityAttributes', () => {
       const attrs = generateEntityAttributes(
         entity,
         makeContext(seed),
-        'node:person',
+        { entity: 'node', type: 'person' },
         seed,
       );
       expect(attrs.a).toBe(0);
@@ -360,7 +452,12 @@ describe('generateEntityAttributes', () => {
     const ctx = makeContext();
     const seen = new Set<unknown>();
     for (let index = 0; index < 3; index++) {
-      const attrs = generateEntityAttributes(entity, ctx, 'node:person', index);
+      const attrs = generateEntityAttributes(
+        entity,
+        ctx,
+        { entity: 'node', type: 'person' },
+        index,
+      );
       expect(seen.has(attrs.band)).toBe(false);
       seen.add(attrs.band);
     }
@@ -383,8 +480,18 @@ describe('generateEntityAttributes', () => {
     );
 
     const ctx = makeContext();
-    const first = generateEntityAttributes(entity, ctx, 'node:person', 0);
-    const second = generateEntityAttributes(entity, ctx, 'node:place', 0);
+    const first = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'person' },
+      0,
+    );
+    const second = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'place' },
+      0,
+    );
 
     expect(second.band).toBe(first.band);
   });
@@ -413,7 +520,7 @@ describe('generateEntityAttributes', () => {
     const attrs = generateEntityAttributes(
       entity,
       makeContext(),
-      'node:person',
+      { entity: 'node', type: 'person' },
       0,
       {
         existing: { low: 42 },
@@ -794,7 +901,7 @@ describe('generateEntityAttributes', () => {
           generateEntityAttributes(
             roomy,
             makeContext(seed),
-            'node:person',
+            { entity: 'node', type: 'person' },
             seed,
           ).a,
         ),
@@ -919,7 +1026,7 @@ describe('generateEntityAttributes', () => {
           generateEntityAttributes(
             roomy,
             makeContext(seed),
-            'node:person',
+            { entity: 'node', type: 'person' },
             seed,
           ).w,
         ),
@@ -1109,7 +1216,12 @@ describe('generateEntityAttributes', () => {
     const ctx = makeContext();
     const issued: VariableValue[] = [];
     for (let index = 0; index < 40; index++) {
-      const attrs = generateEntityAttributes(entity, ctx, 'node:person', index);
+      const attrs = generateEntityAttributes(
+        entity,
+        ctx,
+        { entity: 'node', type: 'person' },
+        index,
+      );
       expect(Number(attrs.b)).toBeGreaterThan(Number(attrs.a));
       issued.push(attrs.b ?? null);
     }
@@ -1149,7 +1261,12 @@ describe('generateEntityAttributes', () => {
     for (let index = 0; index < 20 && !refused; index++) {
       try {
         issued.push(
-          generateEntityAttributes(entity, ctx, 'node:person', index).b ?? null,
+          generateEntityAttributes(
+            entity,
+            ctx,
+            { entity: 'node', type: 'person' },
+            index,
+          ).b ?? null,
         );
       } catch {
         refused = true;
@@ -1185,12 +1302,28 @@ describe('generateEntityAttributes', () => {
     );
 
     const ctx = makeContext();
-    const pinned = generateEntityAttributes(entity, ctx, 'node:person', 0, {
-      existing: { a: 2 },
-      only: new Set(['b']),
-    });
-    const second = generateEntityAttributes(entity, ctx, 'node:person', 1);
-    const third = generateEntityAttributes(entity, ctx, 'node:person', 2);
+    const pinned = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'person' },
+      0,
+      {
+        existing: { a: 2 },
+        only: new Set(['b']),
+      },
+    );
+    const second = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'person' },
+      1,
+    );
+    const third = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'person' },
+      2,
+    );
 
     expect(pinned.b).toBe(2);
     expect(new Set([pinned.b, second.a, third.a]).size).toBe(3);
@@ -1214,19 +1347,35 @@ describe('generateEntityAttributes', () => {
     );
 
     const ctx = makeContext();
-    expect(generateEntityAttributes(entity, ctx, 'node:person', 0).band).toBe(
-      1,
-    );
+    expect(
+      generateEntityAttributes(
+        entity,
+        ctx,
+        { entity: 'node', type: 'person' },
+        0,
+      ).band,
+    ).toBe(1);
 
-    const again = generateEntityAttributes(entity, ctx, 'node:person', 0, {
-      existing: { band: 1 },
-      only: new Set(['band']),
-    });
+    const again = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'person' },
+      0,
+      {
+        existing: { band: 1 },
+        only: new Set(['band']),
+      },
+    );
 
     expect(again.band).toBe(1);
     expect(() =>
-      generateEntityAttributes(entity, ctx, 'node:person', 1),
-    ).toThrow(/Could not draw a satisfying value/);
+      generateEntityAttributes(
+        entity,
+        ctx,
+        { entity: 'node', type: 'person' },
+        1,
+      ),
+    ).toThrow(SyntheticDataConstraintError);
   });
 
   it('releases only the value the regenerating entity itself held', () => {
@@ -1251,23 +1400,49 @@ describe('generateEntityAttributes', () => {
     );
 
     const ctx = makeContext();
-    const first = generateEntityAttributes(entity, ctx, 'node:person', 0);
-    const second = generateEntityAttributes(entity, ctx, 'node:person', 1);
-    const place = generateEntityAttributes(entity, ctx, 'node:place', 0);
+    const first = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'person' },
+      0,
+    );
+    const second = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'person' },
+      1,
+    );
+    const place = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'place' },
+      0,
+    );
 
     expect(new Set([first.band, second.band]).size).toBe(2);
     expect(place.band).toBe(first.band);
 
-    generateEntityAttributes(entity, ctx, 'node:place', 0, {
-      existing: { band: place.band ?? null },
-      only: new Set(['band']),
-    });
+    generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'place' },
+      0,
+      {
+        existing: { band: place.band ?? null },
+        only: new Set(['band']),
+      },
+    );
 
     // Both of the person scope's values are still held by the two entities
     // that were issued them, so a third has nothing distinct left.
     expect(() =>
-      generateEntityAttributes(entity, ctx, 'node:person', 2),
-    ).toThrow(/Could not draw a satisfying value/);
+      generateEntityAttributes(
+        entity,
+        ctx,
+        { entity: 'node', type: 'person' },
+        2,
+      ),
+    ).toThrow(SyntheticDataConstraintError);
   });
 
   it('is deterministic for a given seed', () => {
@@ -1276,8 +1451,18 @@ describe('generateEntityAttributes', () => {
       TODAY,
     );
 
-    const first = generateEntityAttributes(entity, makeContext(9), 'ego', 0);
-    const second = generateEntityAttributes(entity, makeContext(9), 'ego', 0);
+    const first = generateEntityAttributes(
+      entity,
+      makeContext(9),
+      { entity: 'ego' },
+      0,
+    );
+    const second = generateEntityAttributes(
+      entity,
+      makeContext(9),
+      { entity: 'ego' },
+      0,
+    );
 
     expect(first).toEqual(second);
   });

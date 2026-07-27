@@ -76,8 +76,9 @@ export function getNodeCountBounds(
     behaviours && 'maxNodes' in behaviours && behaviours.maxNodes !== undefined
       ? behaviours.maxNodes
       : config.nodeCount.max;
-  // A configured minNodes above the max (or above an explicit maxNodes) must not
-  // invert the range, or randomInt(min, max) throws and the preview hangs.
+  // A configured minNodes above the max is honoured by raising the ceiling to
+  // meet it. `maxNodes` is also the stage's capacity, so leaving the range
+  // inverted would clamp the stage below the minimum the protocol asks for.
   return { minNodes, maxNodes: Math.max(maxNodes, minNodes) };
 }
 

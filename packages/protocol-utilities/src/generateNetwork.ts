@@ -12,10 +12,8 @@ import {
   resolveGenerationConfig,
 } from './generateNetwork/config';
 import { buildEntityConstraints } from './generateNetwork/constraints/buildConstraints';
-import {
-  analyseFeasibility,
-  SyntheticDataConstraintError,
-} from './generateNetwork/constraints/feasibility';
+import { SyntheticDataConstraintError } from './generateNetwork/constraints/error';
+import { analyseFeasibility } from './generateNetwork/constraints/feasibility';
 import type { EntityConstraints } from './generateNetwork/constraints/types';
 import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
 import type {

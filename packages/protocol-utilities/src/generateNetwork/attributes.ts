@@ -2,7 +2,10 @@ import type { Variable } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
 
 import type { VariableEntry } from '../types';
-import { generateEntityAttributes } from './constraints/generateEntityAttributes';
+import {
+  type EntityScopeRef,
+  generateEntityAttributes,
+} from './constraints/generateEntityAttributes';
 import type { EntityConstraints } from './constraints/types';
 import type { GenerationContext } from './context';
 
@@ -24,15 +27,6 @@ export function toVariableEntry(id: string, variable: Variable): VariableEntry {
     validation: 'validation' in variable ? variable.validation : undefined,
     parameters: 'parameters' in variable ? variable.parameters : undefined,
   };
-}
-
-/** Which entity's constraints and unique-value registry a draw belongs to. */
-type EntityScopeRef =
-  | { entity: 'ego' }
-  | { entity: 'node' | 'edge'; type: string };
-
-function scopeKey(ref: EntityScopeRef): string {
-  return ref.entity === 'ego' ? 'ego' : `${ref.entity}:${ref.type}`;
 }
 
 function constraintsFor(
@@ -65,7 +59,7 @@ export function generateAttributesForEntity(
   return generateEntityAttributes(
     constraintsFor(ctx, ref),
     ctx,
-    scopeKey(ref),
+    ref,
     index,
     options,
   );
