@@ -1,3 +1,4 @@
+import { createSelector } from '@reduxjs/toolkit';
 import { compose, withHandlers } from 'react-recompose';
 import { connect } from 'react-redux';
 import type { FormAction } from 'redux-form';
@@ -19,20 +20,36 @@ type OwnProps = {
   type: string;
 };
 
-const mapStateToProps = (state: RootState, props: OwnProps) => ({
-  allVariables: getVariablesForSubjectSelector(state, {
-    entity: props.entity,
-    type: props.type,
-  }),
-});
+// A factory function (rather than a single module-level mapStateToProps)
+// gives each connected component instance (this HOC backs both
+// CategoricalBinPrompts and OrdinalBinPrompts) its own memoized subject
+// selector, so a fresh {entity, type} object is only allocated when those
+// primitives actually change — matching getVariablesForSubjectSelector's
+// reselect memoization instead of defeating it every render.
+const makeMapStateToProps = () => {
+  const getSubject = createSelector(
+    [
+      (_state: RootState, props: OwnProps) => props.entity,
+      (_state: RootState, props: OwnProps) => props.type,
+    ],
+    (entity, type) => ({ entity, type }),
+  );
 
-const store = connect(mapStateToProps, {
+  return (state: RootState, props: OwnProps) => ({
+    allVariables: getVariablesForSubjectSelector(
+      state,
+      getSubject(state, props),
+    ),
+  });
+};
+
+const store = connect(makeMapStateToProps, {
   updateVariable: updateVariableAsync,
   changeForm: change,
 });
 
 type HandlerProps = OwnProps &
-  ReturnType<typeof mapStateToProps> & {
+  ReturnType<ReturnType<typeof makeMapStateToProps>> & {
     updateVariable: typeof updateVariableAsync;
     changeForm: (form: string, field: string, value: unknown) => FormAction;
   };

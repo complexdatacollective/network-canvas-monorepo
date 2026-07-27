@@ -14,7 +14,10 @@ import ValidatedField from '~/components/Form/ValidatedField';
 import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import type { RootState } from '~/ducks/modules/root';
-import { getVariablesForSubjectSelector } from '~/selectors/codebook';
+import {
+  EMPTY_VARIABLES,
+  getVariablesForSubjectSelector,
+} from '~/selectors/codebook';
 
 import { makeFieldEditorValidate } from '../../Validations/contradictions';
 import FieldFields from './FieldFields';
@@ -52,13 +55,16 @@ const Form = ({
   entity = null,
   disableFormTitle = false,
 }: FormProps) => {
+  // Memoized on the primitives so the subject object identity is stable
+  // across renders, matching getVariablesForSubjectSelector's reselect
+  // memoization instead of defeating it every render.
+  const subject = useMemo(
+    () =>
+      isSubjectEntity(entity) ? { entity, type: type ?? undefined } : null,
+    [entity, type],
+  );
   const allVariables = useSelector((state: RootState) =>
-    isSubjectEntity(entity)
-      ? getVariablesForSubjectSelector(state, {
-          entity,
-          type: type ?? undefined,
-        })
-      : {},
+    subject ? getVariablesForSubjectSelector(state, subject) : EMPTY_VARIABLES,
   );
   const editorValidate = useMemo(
     () => makeFieldEditorValidate(allVariables),

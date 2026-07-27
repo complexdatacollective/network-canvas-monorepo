@@ -43,6 +43,7 @@ import {
 import { getFamilyPedigreeNodeTypeChangeBlock } from '~/ducks/modules/protocol/stages';
 import type { RootState } from '~/ducks/store';
 import {
+  EMPTY_VARIABLES,
   getVariableOptionsForSubject,
   getVariablesForSubjectSelector,
   makeGetVariable,
@@ -172,13 +173,17 @@ const NodeConfigurationInner = ({
       ? getVariableOptionsForSubject(state, { entity: 'node', type: nodeType })
       : [],
   );
+  // Memoized on nodeType so the subject object identity is stable across
+  // renders, matching getVariablesForSubjectSelector's reselect memoization
+  // instead of defeating it every render.
+  const nodeVariablesSubject = useMemo(
+    () => (nodeType ? { entity: 'node' as const, type: nodeType } : null),
+    [nodeType],
+  );
   const allVariables = useSelector((state: RootState) =>
-    nodeType
-      ? getVariablesForSubjectSelector(state, {
-          entity: 'node',
-          type: nodeType,
-        })
-      : {},
+    nodeVariablesSubject
+      ? getVariablesForSubjectSelector(state, nodeVariablesSubject)
+      : EMPTY_VARIABLES,
   );
   const editorValidate = useMemo(
     () => makeFieldEditorValidate(allVariables),

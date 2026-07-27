@@ -32,8 +32,15 @@ const EditableAttributesList = ({
   title = 'Edit attribute',
   handleChangeFields,
 }: EditableAttributesListProps) => {
+  // Memoized on the primitives so the subject object identity is stable
+  // across renders, matching getVariablesForSubjectSelector's reselect
+  // memoization instead of defeating it every render.
+  const subject = useMemo(
+    () => ({ entity, type: type ?? undefined }),
+    [entity, type],
+  );
   const allVariables = useSelector((state: RootState) =>
-    getVariablesForSubjectSelector(state, { entity, type: type ?? undefined }),
+    getVariablesForSubjectSelector(state, subject),
   );
   const editorValidate = useMemo(
     () => makeFieldEditorValidate(allVariables),

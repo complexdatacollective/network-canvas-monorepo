@@ -213,7 +213,9 @@ const Validations = ({
       return option;
     }
     const hasLegalTarget = Object.keys(existingVariables).some(
-      (candidateId) => checkDraft(option.value, candidateId).length === 0,
+      (candidateId) =>
+        checkDraft(option.value, candidateId, editingKey ?? undefined)
+          .length === 0,
     );
     return hasLegalTarget ? option : { ...option, disabled: true };
   });

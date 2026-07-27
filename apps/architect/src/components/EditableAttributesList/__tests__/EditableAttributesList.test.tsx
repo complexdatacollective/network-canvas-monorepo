@@ -48,36 +48,51 @@ vi.mock('~/components/Form/ValidatedFieldArray', () => ({
 
 // Standing in for the codebook: one categorical variable whose committed
 // `minSelected: 3` would contradict a draft that shrinks its options below 3.
-vi.mock('~/selectors/codebook', () => ({
-  getVariablesForSubjectSelector: () => ({
-    colors: {
-      name: 'colors',
-      type: 'categorical',
-      options: [
-        { label: 'Red', value: 'red' },
-        { label: 'Blue', value: 'blue' },
-        { label: 'Green', value: 'green' },
-      ],
-      validation: { minSelected: 3 },
+// Memoized on the `subject` object's own identity (a self-contained stand-in
+// for getVariablesForSubjectSelector's real reselect memoization) so the
+// referential-stability test below can exercise Finding 1's actual contract:
+// a fresh subject reference per call (the bug) produces a fresh result, while
+// a stable subject reference (the fix, via EditableAttributesList's useMemo)
+// hits the cache and returns the same result.
+vi.mock('~/selectors/codebook', () => {
+  const cache = new WeakMap<object, Record<string, unknown>>();
+  return {
+    getVariablesForSubjectSelector: (_state: unknown, subject: object) => {
+      if (!cache.has(subject)) {
+        cache.set(subject, {
+          colors: {
+            name: 'colors',
+            type: 'categorical',
+            options: [
+              { label: 'Red', value: 'red' },
+              { label: 'Blue', value: 'blue' },
+              { label: 'Green', value: 'green' },
+            ],
+            validation: { minSelected: 3 },
+          },
+        });
+      }
+      return cache.get(subject);
     },
-  }),
-}));
+  };
+});
 
 const store = configureStore({ reducer: () => ({}) });
 
-const renderList = () =>
-  render(
-    <Provider store={store}>
-      <EditableAttributesList
-        fieldName="nodeForm.fields"
-        entity="node"
-        type="person"
-        form="edit-stage"
-        editFormName="node-attr-edit"
-        handleChangeFields={() => undefined}
-      />
-    </Provider>,
-  );
+const listTree = () => (
+  <Provider store={store}>
+    <EditableAttributesList
+      fieldName="nodeForm.fields"
+      entity="node"
+      type="person"
+      form="edit-stage"
+      editFormName="node-attr-edit"
+      handleChangeFields={() => undefined}
+    />
+  </Provider>
+);
+
+const renderList = () => render(listTree());
 
 it('binds the dialog array field to the given fieldName + editFormName', () => {
   renderList();
@@ -118,4 +133,19 @@ it('wires editorValidate from the entity/type variables so a contradictory draft
     ],
   });
   expect(coherent).toEqual({});
+});
+
+// PR #1107 Finding 1: an unmemoized `{ entity, type }` subject object,
+// rebuilt on every render, defeats getVariablesForSubjectSelector's
+// memoization and so invalidates the makeFieldEditorValidate useMemo below
+// it on every re-render — even when entity/type haven't changed. The fix
+// memoizes the subject on [entity, type].
+it('keeps editorValidate referentially stable across a re-render with unchanged entity/type', () => {
+  const { rerender } = renderList();
+  const firstEditorValidate = capturedEditorValidate;
+  expect(firstEditorValidate).toBeInstanceOf(Function);
+
+  rerender(listTree());
+
+  expect(capturedEditorValidate).toBe(firstEditorValidate);
 });

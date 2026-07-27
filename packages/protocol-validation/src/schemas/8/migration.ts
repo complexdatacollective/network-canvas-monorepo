@@ -6,6 +6,7 @@ import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
 import { ordinalColorSequence } from './common/prompts.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
 import { findValidationContradictions } from './variables/validation-contradictions.ts';
+import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation.ts';
 
 // Operators whose operand is a categorical option value (as opposed to a count,
 // like OPTIONS_*, or a regex). Their legacy scalar operands are wrapped in a
@@ -1157,19 +1158,11 @@ const migrationV7toV8 = createMigration({
           const typedVariables = asRecord(variables);
           if (!typedVariables) return variables;
 
-          const referenceRules = [
-            'sameAs',
-            'differentFrom',
-            'greaterThanVariable',
-            'lessThanVariable',
-            'greaterThanOrEqualToVariable',
-            'lessThanOrEqualToVariable',
-          ] as const;
           for (const variable of Object.values(typedVariables)) {
             const typedVariable = asRecord(variable);
             const validation = asRecord(typedVariable?.validation);
             if (!typedVariable || !validation) continue;
-            for (const rule of referenceRules) {
+            for (const rule of VARIABLE_REFERENCE_VALIDATIONS) {
               const target = validation[rule];
               if (typeof target !== 'string') continue;
               const targetVariable = asRecord(typedVariables[target]);
