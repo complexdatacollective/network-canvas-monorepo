@@ -17,3 +17,8 @@ interview no longer derives the slider's bounds from validation.
 
 Number variables are unaffected, and scalars keep `required` and the comparison
 rules, which compare two scalars on the same scale.
+
+Also adds a `VARIABLE_TYPE_VALIDATIONS` export: the record of which validation
+rules each variable type accepts. Every variable schema now picks its
+`validation` shape from this record, so an authoring UI can build its per-type
+rule list from the same source rather than maintaining a parallel copy.

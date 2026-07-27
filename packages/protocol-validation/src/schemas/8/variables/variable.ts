@@ -6,8 +6,104 @@ import {
   findDuplicateName,
   getVariableNames,
 } from '../../../utils/validation-helpers.ts';
-import { ComponentTypes, VariableTypes } from './types.ts';
-import { validations } from './validation.ts';
+import { ComponentTypes, VariableTypes, type VariableType } from './types.ts';
+import { validations, type ValidationName } from './validation.ts';
+
+/**
+ * The validation rules a single variable type accepts. Keys are listed in the
+ * order an authoring UI should offer them.
+ */
+type ValidationMask = Partial<Record<ValidationName, true>>;
+
+const textValidations = {
+  required: true,
+  minLength: true,
+  maxLength: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+} as const satisfies ValidationMask;
+
+const numberValidations = {
+  required: true,
+  minValue: true,
+  maxValue: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+  lessThanVariable: true,
+  greaterThanVariable: true,
+  lessThanOrEqualToVariable: true,
+  greaterThanOrEqualToVariable: true,
+} as const satisfies ValidationMask;
+
+const datetimeValidations = {
+  required: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+  lessThanVariable: true,
+  greaterThanVariable: true,
+  lessThanOrEqualToVariable: true,
+  greaterThanOrEqualToVariable: true,
+} as const satisfies ValidationMask;
+
+// A scalar response is recorded on a normalised 0-1 scale, so it takes no value
+// bounds: `minValue`/`maxValue` are integers, making the only expressible pair
+// {0, 1} — the scale it already has. The comparison rules remain, since
+// comparing two scalars on the same scale is meaningful.
+const scalarValidations = {
+  required: true,
+  lessThanVariable: true,
+  greaterThanVariable: true,
+  lessThanOrEqualToVariable: true,
+  greaterThanOrEqualToVariable: true,
+} as const satisfies ValidationMask;
+
+const booleanValidations = {
+  required: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+} as const satisfies ValidationMask;
+
+// Ordinal is single-select, so minSelected/maxSelected (which expect an array
+// value) do not apply — only categorical carries them.
+const ordinalValidations = {
+  required: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+} as const satisfies ValidationMask;
+
+const categoricalValidations = {
+  required: true,
+  minSelected: true,
+  maxSelected: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+} as const satisfies ValidationMask;
+
+/**
+ * The single source of truth for which validation rules each variable type
+ * accepts. Every variable schema below picks its `validation` shape from its
+ * entry here, and an authoring UI builds its per-type rule list from the same
+ * record — so a UI can never offer a rule that would fail validation.
+ *
+ * Layout and location variables take no validation at all.
+ */
+export const VARIABLE_TYPE_VALIDATIONS = {
+  text: textValidations,
+  number: numberValidations,
+  datetime: datetimeValidations,
+  scalar: scalarValidations,
+  boolean: booleanValidations,
+  ordinal: ordinalValidations,
+  categorical: categoricalValidations,
+  layout: {},
+  location: {},
+} as const satisfies Record<VariableType, ValidationMask>;
 
 export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 export type VariableOption = VariableOptions[number];
@@ -27,21 +123,7 @@ const baseVariableSchema = z.strictObject({
 const numberVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.number),
   component: z.literal(ComponentTypes.Number).optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      minValue: true,
-      maxValue: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-      greaterThanVariable: true,
-      lessThanVariable: true,
-      greaterThanOrEqualToVariable: true,
-      lessThanOrEqualToVariable: true,
-    })
-    .optional(),
+  validation: z.strictObject(validations).pick(numberValidations).optional(),
 });
 
 const scalarVariableSchema = baseVariableSchema.extend({
@@ -53,20 +135,7 @@ const scalarVariableSchema = baseVariableSchema.extend({
       maxLabel: z.string().optional(),
     })
     .optional(),
-  // A scalar response is recorded on a normalised 0-1 scale, so it takes no
-  // value bounds: `minValue`/`maxValue` are integers, making the only
-  // expressible pair {0, 1} — the scale it already has. The comparison rules
-  // remain, since comparing two scalars on the same scale is meaningful.
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      greaterThanVariable: true,
-      lessThanVariable: true,
-      greaterThanOrEqualToVariable: true,
-      lessThanOrEqualToVariable: true,
-    })
-    .optional(),
+  validation: z.strictObject(validations).pick(scalarValidations).optional(),
 });
 
 const dateTimeDatePickerSchema = baseVariableSchema.extend({
@@ -79,19 +148,7 @@ const dateTimeDatePickerSchema = baseVariableSchema.extend({
       max: z.string().optional(),
     })
     .optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-      greaterThanVariable: true,
-      lessThanVariable: true,
-      greaterThanOrEqualToVariable: true,
-      lessThanOrEqualToVariable: true,
-    })
-    .optional(),
+  validation: z.strictObject(validations).pick(datetimeValidations).optional(),
 });
 
 const isIsoDate = (value: string) => {
@@ -149,35 +206,13 @@ const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
       // there is no `before < after` relationship to enforce.
     })
     .optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-      greaterThanVariable: true,
-      lessThanVariable: true,
-      greaterThanOrEqualToVariable: true,
-      lessThanOrEqualToVariable: true,
-    })
-    .optional(),
+  validation: z.strictObject(validations).pick(datetimeValidations).optional(),
 });
 
 const textVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.text),
   component: z.enum([ComponentTypes.Text, ComponentTypes.TextArea]).optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      minLength: true,
-      maxLength: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-    })
-    .optional(),
+  validation: z.strictObject(validations).pick(textValidations).optional(),
 });
 
 const booleanOptionsSchema = z.array(
@@ -191,30 +226,14 @@ const booleanOptionsSchema = z.array(
 const booleanBooleanVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.boolean),
   component: z.literal(ComponentTypes.Boolean).optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-    })
-    .optional(),
+  validation: z.strictObject(validations).pick(booleanValidations).optional(),
   options: booleanOptionsSchema.optional(), // This is different from the categorical options!
 });
 
 const booleanToggleVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.boolean),
   component: z.literal(ComponentTypes.Toggle).optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-    })
-    .optional(),
+  validation: z.strictObject(validations).pick(booleanValidations).optional(),
 });
 
 // Options Schema for categorical and ordinal variables. Option values are
@@ -236,17 +255,7 @@ const ordinalVariableSchema = baseVariableSchema.extend({
     .enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale])
     .optional(),
   options: categoricalOptionsSchema,
-  // Ordinal is single-select, so minSelected/maxSelected (which expect an
-  // array value) do not apply — only categorical carries them.
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-    })
-    .optional(),
+  validation: z.strictObject(validations).pick(ordinalValidations).optional(),
 });
 
 const categoricalVariableSchema = baseVariableSchema.extend({
@@ -257,14 +266,7 @@ const categoricalVariableSchema = baseVariableSchema.extend({
   options: categoricalOptionsSchema,
   validation: z
     .strictObject(validations)
-    .pick({
-      required: true,
-      minSelected: true,
-      maxSelected: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-    })
+    .pick(categoricalValidations)
     .optional(),
 });
 

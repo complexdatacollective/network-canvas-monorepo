@@ -1,59 +1,19 @@
-import { get, startCase, without } from 'es-toolkit/compat';
+import { startCase, without } from 'es-toolkit/compat';
 
-import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
+import {
+  VARIABLE_REFERENCE_VALIDATIONS,
+  VARIABLE_TYPE_VALIDATIONS,
+} from '@codaco/protocol-validation';
 
-const VALIDATIONS = {
-  text: [
-    'required',
-    'minLength',
-    'maxLength',
-    'unique',
-    'differentFrom',
-    'sameAs',
-  ],
-  number: [
-    'required',
-    'minValue',
-    'maxValue',
-    'unique',
-    'differentFrom',
-    'sameAs',
-    'lessThanVariable',
-    'greaterThanVariable',
-    'lessThanOrEqualToVariable',
-    'greaterThanOrEqualToVariable',
-  ],
-  datetime: [
-    'required',
-    'unique',
-    'differentFrom',
-    'sameAs',
-    'lessThanVariable',
-    'greaterThanVariable',
-    'lessThanOrEqualToVariable',
-    'greaterThanOrEqualToVariable',
-  ],
-  // A scalar records a normalised 0-1 value, so it offers no value bounds —
-  // only requiredness and comparisons against another scalar on the same scale.
-  scalar: [
-    'required',
-    'lessThanVariable',
-    'greaterThanVariable',
-    'lessThanOrEqualToVariable',
-    'greaterThanOrEqualToVariable',
-  ],
-  boolean: ['required', 'unique', 'differentFrom', 'sameAs'],
-  ordinal: ['required', 'unique', 'differentFrom', 'sameAs'],
-  categorical: [
-    'required',
-    'minSelected',
-    'maxSelected',
-    'unique',
-    'differentFrom',
-    'sameAs',
-  ],
-  passphrase: ['minLength', 'maxLength'],
-};
+// The Anonymisation stage's passphrase is not a codebook variable — its
+// validation lives on the stage schema — so it has no entry in the shared
+// per-variable-type record.
+const PASSPHRASE_VALIDATIONS = ['minLength', 'maxLength'];
+
+const isVariableType = (
+  type: string,
+): type is keyof typeof VARIABLE_TYPE_VALIDATIONS =>
+  Object.hasOwn(VARIABLE_TYPE_VALIDATIONS, type);
 
 const VALIDATIONS_WITH_NUMBER_VALUES = [
   'minLength',
@@ -97,9 +57,20 @@ const isValidationWithNumberValue = (validation: string): boolean =>
 const isValidationWithListValue = (validation: string): boolean =>
   VARIABLE_REFERENCE_VALIDATIONS.some((key) => key === validation);
 
-// Internal helper - not exported
-const getValidationsForVariableType = (variableType: string): string[] =>
-  get(VALIDATIONS, variableType, []) as string[];
+// Internal helper - not exported. Derived from the protocol schema's own
+// per-type `validation` picks, so the dropdown can never offer a rule that
+// would make the saved protocol fail validation.
+const getValidationsForVariableType = (variableType: string): string[] => {
+  if (variableType === 'passphrase') {
+    return PASSPHRASE_VALIDATIONS;
+  }
+
+  if (!isVariableType(variableType)) {
+    return [];
+  }
+
+  return Object.keys(VARIABLE_TYPE_VALIDATIONS[variableType]);
+};
 
 const getValidationsForEntity = (
   validations: string[],

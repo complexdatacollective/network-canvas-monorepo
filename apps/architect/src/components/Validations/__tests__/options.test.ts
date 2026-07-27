@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { VARIABLE_TYPE_VALIDATIONS } from '@codaco/protocol-validation';
+
 import {
   getValidationOptionsForVariableType,
   isValidationWithListValue,
@@ -8,6 +10,29 @@ import {
 } from '../options';
 
 describe('Validation options', () => {
+  // The dropdown is built from the protocol schema's own per-type `validation`
+  // picks. Assert the two agree, so a rule can never be offered that would make
+  // the saved protocol fail validation.
+  describe('agreement with the protocol schema', () => {
+    it.each(Object.entries(VARIABLE_TYPE_VALIDATIONS))(
+      'offers exactly the rules the schema accepts for %s',
+      (variableType, acceptedRules) => {
+        const offered = getValidationOptionsForVariableType(
+          variableType,
+          'node',
+        ).map((option) => option.value);
+
+        expect(offered).toEqual(Object.keys(acceptedRules));
+      },
+    );
+
+    it('offers nothing for a type the schema does not know', () => {
+      expect(getValidationOptionsForVariableType('nonsense', 'node')).toEqual(
+        [],
+      );
+    });
+  });
+
   describe('getValidationOptionsForVariableType', () => {
     describe('comparison variable validations availability', () => {
       const typesWithComparisonValidations = ['number', 'datetime', 'scalar'];
