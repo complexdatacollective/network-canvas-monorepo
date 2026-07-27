@@ -20,9 +20,17 @@
  * nodes), while still bounding a pathological instance to well under a
  * second.
  */
-export const MAX_COMPONENT_VARIABLES = 8;
-export const MAX_DOMAIN_PRODUCT = 200_000;
-export const MAX_SEARCH_NODES = 50_000;
+
+/**
+ * A tunable budget. Declared as a number rather than left at the literal it
+ * happens to start at, because `solverCap.test.ts` substitutes a smaller one
+ * through the module: a literal type would only accept itself.
+ */
+type Budget = number;
+
+export const MAX_COMPONENT_VARIABLES: Budget = 8;
+export const MAX_DOMAIN_PRODUCT: Budget = 200_000;
+export const MAX_SEARCH_NODES: Budget = 50_000;
 
 /**
  * Ceiling on the values a component's domains hold once materialised, where
@@ -32,4 +40,4 @@ export const MAX_SEARCH_NODES = 50_000;
  * count stays modest — C(20,8) is under the product cap yet nearly a
  * million elements.
  */
-export const MAX_DOMAIN_ELEMENTS = 200_000;
+export const MAX_DOMAIN_ELEMENTS: Budget = 200_000;

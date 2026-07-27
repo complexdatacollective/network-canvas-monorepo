@@ -1373,7 +1373,7 @@ const crossResolutionStages = [
 ] as unknown as Stage[];
 
 /** A generated value as a failure message shows it. */
-function shown(value: VariableValue): string {
+function shown(value: VariableValue | undefined): string {
   return JSON.stringify(value) ?? 'undefined';
 }
 
