@@ -45,6 +45,11 @@ describe('addSteps', () => {
     expect(addSteps('2026-11', 3, 'month')).toBe('2027-02');
   });
 
+  it('steps back across a year boundary at month resolution', () => {
+    expect(addSteps('2026-02', -2, 'month')).toBe('2025-12');
+    expect(addSteps('2026-01', -13, 'month')).toBe('2024-12');
+  });
+
   it('steps by years at year resolution', () => {
     expect(addSteps('2026', -2, 'year')).toBe('2024');
   });

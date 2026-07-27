@@ -340,9 +340,10 @@ describe('resolveGenerationOrder', () => {
       TODAY,
     );
 
-    expect(resolveGenerationOrder(entity).cycles.length).toBeGreaterThanOrEqual(
-      1,
-    );
+    const result = resolveGenerationOrder(entity);
+
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]?.toSorted()).toEqual(['a', 'b', 'c', 'd']);
   });
 
   it('reports a differentFrom across a comparator equality class', () => {
