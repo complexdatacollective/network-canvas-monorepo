@@ -12,6 +12,7 @@ import {
 import type { ConstrainedVariable } from './types';
 import { valueKey } from './uniqueRegistry';
 import {
+  distinctOptionValues,
   SCALAR_DECIMAL_PLACES,
   SCALAR_DOMAIN,
   selectionSizeRange,
@@ -110,12 +111,6 @@ function subsetSizes(variable: ConstrainedVariable): {
  * would fabricate multiset selections like `['x','x']` that no draw and no
  * participant control can produce.
  */
-function distinctOptionValues(
-  options: readonly { value: string | number | boolean }[],
-): (string | number | boolean)[] {
-  return [...new Set(options.map((option) => option.value))];
-}
-
 /**
  * Option subsets whose sizes fall inside the selection bounds, smallest sizes
  * first and lexicographic by option position within a size. Undefined once the
@@ -178,7 +173,7 @@ function domainSize(
       return flat(2);
 
     case 'ordinal': {
-      const count = distinctOptionValues(entry.options ?? []).length;
+      const count = distinctOptionValues(entry).length;
       return count === 0 ? undefined : flat(count);
     }
 
@@ -219,7 +214,7 @@ function domainSize(
     }
 
     case 'categorical': {
-      const optionCount = distinctOptionValues(entry.options ?? []).length;
+      const optionCount = distinctOptionValues(entry).length;
       if (optionCount === 0) return undefined;
       const { min, max } = subsetSizes(variable);
       let count = 0;
@@ -255,7 +250,7 @@ function enumerateDomain(
       return [false, true];
 
     case 'ordinal': {
-      const values = distinctOptionValues(entry.options ?? []);
+      const values = distinctOptionValues(entry);
       if (values.length === 0 || values.length > cap) return undefined;
       return values;
     }
@@ -308,7 +303,7 @@ function enumerateDomain(
     }
 
     case 'categorical': {
-      const options = distinctOptionValues(entry.options ?? []);
+      const options = distinctOptionValues(entry);
       if (options.length === 0) return undefined;
       const { min, max } = subsetSizes(variable);
       return enumerateSubsets(options, min, max, cap);

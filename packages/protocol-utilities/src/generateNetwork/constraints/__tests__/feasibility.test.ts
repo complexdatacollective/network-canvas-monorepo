@@ -203,6 +203,46 @@ describe('analyseFeasibility', () => {
     expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
   });
 
+  it('counts a duplicated option value once against minSelected', () => {
+    // Two entries carrying one value offer a participant one thing to pick,
+    // and the draw collapses them to a single selection. Counting entries
+    // would accept this floor and leave the draw emitting `['a']`, which the
+    // form rejects as too few selected.
+    const codebook = codebookWith({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'Also A', value: 'a' },
+        ],
+        validation: { minSelected: 2 },
+      },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.reason).toContain('exceeds the 1 available options');
+  });
+
+  it('leaves a floor its distinct options can meet alone', () => {
+    const codebook = codebookWith({
+      tags: {
+        name: 'Tags',
+        type: 'categorical',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'Also A', value: 'a' },
+          { label: 'B', value: 'b' },
+        ],
+        validation: { minSelected: 2 },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
   it('reports minSelected above the option count', () => {
     const codebook = codebookWith({
       tags: {

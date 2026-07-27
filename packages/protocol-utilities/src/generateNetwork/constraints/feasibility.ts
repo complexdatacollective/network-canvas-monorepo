@@ -30,7 +30,7 @@ import {
   type ConstrainedVariable,
   type EntityConstraints,
 } from './types';
-import { valueSpaceSize } from './valueSpace';
+import { distinctOptionValues, valueSpaceSize } from './valueSpace';
 
 type EntityScope = {
   entity: 'ego' | 'node' | 'edge';
@@ -276,7 +276,11 @@ function analyseEntity(
       );
     }
 
-    const optionCount = entry.options?.length ?? 0;
+    // Counted over distinct values, not entries: two options carrying one
+    // value offer a participant one thing to pick, and the draw collapses them
+    // to a single selection. Counting entries would accept a floor no answer
+    // can reach and leave the draw to emit a short selection the form rejects.
+    const optionCount = distinctOptionValues(entry).length;
     if (
       constraints.minSelected !== undefined &&
       optionCount > 0 &&
