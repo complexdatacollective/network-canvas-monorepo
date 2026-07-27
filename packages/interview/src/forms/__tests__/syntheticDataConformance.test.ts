@@ -109,26 +109,99 @@ async function validateAttribute(options: {
 }
 
 /**
- * Every ego, node and edge attribute in the network, validated against its
- * codebook variable. Collects the whole list rather than throwing on the first
- * failure, so one run reports every problem.
+ * The variables a protocol puts inside a rendered form field, keyed by node or
+ * edge type.
+ *
+ * A validation rule is a form-field mechanism: the interview enforces one only
+ * where `useProtocolForm` builds a field for the variable. Interaction-driven
+ * stages write attributes without a field — a binning stage assigns its prompt
+ * variable by drag, a Sociogram writes a layout variable by drop — so this set
+ * is what a conformance assertion is entitled to check.
+ */
+type FormScope = {
+  ego: Set<string>;
+  node: Map<string, Set<string>>;
+  edge: Map<string, Set<string>>;
+};
+
+function addScopedVariables(
+  scoped: Map<string, Set<string>>,
+  type: string,
+  variables: string[],
+): void {
+  const forType = scoped.get(type) ?? new Set<string>();
+  for (const variable of variables) forType.add(variable);
+  scoped.set(type, forType);
+}
+
+function collectFormScope(stageList: Stage[]): FormScope {
+  const scope: FormScope = { ego: new Set(), node: new Map(), edge: new Map() };
+
+  for (const stage of stageList) {
+    // NetworkComposer keeps its field lists on the stage rather than under a
+    // `form` key: one for the node inspector, one per drawable edge type.
+    if (stage.type === 'NetworkComposer') {
+      addScopedVariables(
+        scope.node,
+        stage.subject.type,
+        (stage.nodeForm?.fields ?? []).map((field) => field.variable),
+      );
+      for (const edge of stage.edges ?? []) {
+        addScopedVariables(
+          scope.edge,
+          edge.subject.type,
+          (edge.form?.fields ?? []).map((field) => field.variable),
+        );
+      }
+      continue;
+    }
+
+    if (!('form' in stage)) continue;
+    const variables = stage.form.fields.map((field) => field.variable);
+
+    if (stage.type === 'EgoForm') {
+      for (const variable of variables) scope.ego.add(variable);
+      continue;
+    }
+
+    if (stage.subject.entity === 'node') {
+      addScopedVariables(scope.node, stage.subject.type, variables);
+    } else {
+      addScopedVariables(scope.edge, stage.subject.type, variables);
+    }
+  }
+
+  return scope;
+}
+
+/**
+ * Every form-rendered ego, node and edge attribute in the network, validated
+ * against its codebook variable. Collects the whole list rather than throwing
+ * on the first failure, so one run reports every problem.
  */
 async function collectFailures(
   codebook: Codebook,
   network: NcNetwork,
+  stageList: Stage[],
 ): Promise<string[]> {
+  const scope = collectFormScope(stageList);
   const failures: string[] = [];
 
   const checkEntity = async (
     subject: StageSubject,
     variables: Variables,
+    scoped: Set<string> | undefined,
     attributes: Record<string, VariableValue>,
     label: string,
     currentEntityId?: string,
   ): Promise<void> => {
+    if (scoped === undefined) return;
+
     const formValues = toFormValues(attributes);
 
     for (const [variableId, variable] of Object.entries(variables)) {
+      if (!scoped.has(variableId)) continue;
+
       const messages = await validateAttribute({
         codebook,
         network,
@@ -147,6 +220,7 @@ async function collectFailures(
   await checkEntity(
     { entity: 'ego' },
     codebook.ego?.variables ?? {},
+    scope.ego,
     network.ego[entityAttributesProperty],
     'ego',
   );
@@ -155,6 +229,7 @@ async function collectFailures(
     await checkEntity(
       { entity: 'node', type: node.type },
       codebook.node?.[node.type]?.variables ?? {},
+      scope.node.get(node.type),
       node[entityAttributesProperty],
       `node(${node.type})`,
       node[entityPrimaryKeyProperty],
@@ -165,6 +240,7 @@ async function collectFailures(
     await checkEntity(
       { entity: 'edge', type: edge.type },
       codebook.edge?.[edge.type]?.variables ?? {},
+      scope.edge.get(edge.type),
       edge[entityAttributesProperty],
       `edge(${edge.type})`,
       edge[entityPrimaryKeyProperty],
@@ -172,6 +248,19 @@ async function collectFailures(
   }
 
   return failures;
+}
+
+/**
+ * Form fields for every variable a form can render. Layout and location
+ * variables have no participant-facing control, so no form lists them.
+ */
+function formFields(variables: Variables): { variable: string }[] {
+  return Object.entries(variables)
+    .filter(
+      ([, variable]) =>
+        variable.type !== 'layout' && variable.type !== 'location',
+    )
+    .map(([variableId]) => ({ variable: variableId }));
 }
 
 const FOUR_OPTIONS: VariableOptions = [
@@ -764,14 +853,17 @@ const codebook: Codebook = {
 // Stage literals are deliberately partial: generation reads only the fields
 // below, and spelling out every author-facing field (introduction panels, form
 // titles, prompt colours) would bury what each fixture is actually exercising.
+//
+// Every rule-bearing variable above sits in one of these forms, because a
+// variable no form renders is a variable the interview never validates. The
+// name generators carry their node forms, an AlterEdgeForm carries the edge
+// form the Sociogram's edges would otherwise never reach.
 const stages = [
   {
     id: 'stage-ego',
     type: 'EgoForm',
     label: 'About you',
-    form: {
-      fields: Object.keys(egoVariables).map((variable) => ({ variable })),
-    },
+    form: { fields: formFields(egoVariables) },
   },
   {
     id: 'stage-people',
@@ -779,6 +871,7 @@ const stages = [
     label: 'People',
     subject: { entity: 'node', type: 'person' },
     prompts: [{ id: 'p1', text: 'Name people' }],
+    form: { title: 'About this person', fields: formFields(personVariables) },
     behaviours: { minNodes: 6, maxNodes: 6 },
   },
   {
@@ -787,6 +880,7 @@ const stages = [
     label: 'Tokens',
     subject: { entity: 'node', type: 'token' },
     prompts: [{ id: 'p2', text: 'Name tokens' }],
+    form: { title: 'About this token', fields: formFields(tokenVariables) },
     behaviours: { minNodes: 2, maxNodes: 2 },
   },
   {
@@ -803,9 +897,44 @@ const stages = [
       },
     ],
   },
+  {
+    id: 'stage-connections',
+    type: 'AlterEdgeForm',
+    label: 'About connections',
+    subject: { entity: 'edge', type: 'friend' },
+    form: { fields: formFields(friendVariables) },
+  },
 ] as unknown as Stage[];
 
 describe('synthetic data conformance', () => {
+  // The assertions below only look at form-rendered variables, so a fixture
+  // variable that no stage's form lists would be quietly dropped from the
+  // matrix rather than failing. Pinned so shrinking the coverage takes a
+  // deliberate edit here.
+  it('renders every rule-bearing fixture variable in a form', () => {
+    const scope = collectFormScope(stages);
+    const unchecked: string[] = [];
+
+    const check = (
+      variables: Variables,
+      scoped: Set<string> | undefined,
+      label: string,
+    ): void => {
+      for (const [variableId, variable] of Object.entries(variables)) {
+        if (!('validation' in variable)) continue;
+        if (scoped?.has(variableId)) continue;
+        unchecked.push(`${label}.${variableId}`);
+      }
+    };
+
+    check(egoVariables, scope.ego, 'ego');
+    check(personVariables, scope.node.get('person'), 'person');
+    check(tokenVariables, scope.node.get('token'), 'token');
+    check(friendVariables, scope.edge.get('friend'), 'friend');
+
+    expect(unchecked).toEqual([]);
+  });
+
   it('generates values that pass the real form validators for every legal rule', async () => {
     const { network } = generateNetwork({
       seed: 11,
@@ -822,7 +951,7 @@ describe('synthetic data conformance', () => {
     );
     expect(network.edges.length).toBeGreaterThan(0);
 
-    expect(await collectFailures(codebook, network)).toEqual([]);
+    expect(await collectFailures(codebook, network, stages)).toEqual([]);
   });
 
   it('holds for every seed in a run of ten', async () => {
@@ -836,7 +965,7 @@ describe('synthetic data conformance', () => {
         config: { today },
       });
       failures.push(
-        ...(await collectFailures(codebook, network)).map(
+        ...(await collectFailures(codebook, network, stages)).map(
           (failure) => `seed ${seed}: ${failure}`,
         ),
       );
@@ -846,9 +975,27 @@ describe('synthetic data conformance', () => {
   });
 });
 
-// A binned variable and the variable it is ruled against, so a bin stage's
-// direct write can be seen defeating a cross-variable rule.
-const binVariables: Variables = {
+/**
+ * A protocol shape that is hazardous to author: `binRank` and `binContexts` are
+ * listed in the name generator's form — so the interview builds a validated
+ * field for each — and are also the prompt variables of the bin stages that
+ * follow.
+ *
+ * Neither bin interface renders a field for its prompt variable. OrdinalBin
+ * renders no `Field` at all, and CategoricalBin renders one only for a prompt's
+ * `otherVariable`; both write the prompt variable straight through `updateNode`
+ * when a node is dropped. So a value the form validated is later replaced by
+ * one nothing validates, and the participant is never told.
+ *
+ * Generation cannot repair this, and should not try. A bin exists so that a
+ * participant may put any node in any bin: `differentFrom` on a binned variable
+ * forbids two nodes sharing a bin, and `minSelected: 2` forbids a node sitting
+ * in exactly one. Constraining the generator to satisfy those rules would make
+ * it emit arrangements the interface cannot produce. Keeping a validated
+ * variable out of a bin prompt is a protocol-authoring decision. The test below
+ * therefore measures the hazard rather than asserting it away.
+ */
+const hazardVariables: Variables = {
   binBand: {
     name: 'Bin band',
     type: 'ordinal',
@@ -856,8 +1003,8 @@ const binVariables: Variables = {
     options: THREE_OPTIONS,
     validation: { required: true },
   },
-  binOther: {
-    name: 'Bin other',
+  binRank: {
+    name: 'Bin rank',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -870,119 +1017,109 @@ const binVariables: Variables = {
     options: FOUR_OPTIONS,
     validation: { required: true, minSelected: 2, maxSelected: 3 },
   },
-  binTwin: {
-    name: 'Bin twin',
-    type: 'categorical',
-    component: 'CheckboxGroup',
-    options: FOUR_OPTIONS,
-    validation: { required: true, sameAs: ref('binContexts') },
-  },
 };
 
-const binCodebook: Codebook = {
+const hazardCodebook: Codebook = {
   node: {
     binned: {
       name: 'Binned',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
-      variables: binVariables,
+      variables: hazardVariables,
     },
   },
 };
 
-const binNameGenerator = {
+const hazardFormStage = {
   id: 'stage-binned',
   type: 'NameGenerator',
   label: 'Binned people',
   subject: { entity: 'node', type: 'binned' },
   prompts: [{ id: 'p1', text: 'Name people' }],
+  form: { title: 'About this person', fields: formFields(hazardVariables) },
   behaviours: { minNodes: 8, maxNodes: 8 },
 };
 
-const ORDINAL_BIN_ID = 'stage-ordinal-bin';
-const CATEGORICAL_BIN_ID = 'stage-categorical-bin';
+const hazardFormOnlyStages = [hazardFormStage] as unknown as Stage[];
 
-const binStages = [
-  binNameGenerator,
+const hazardFormAndBinStages = [
+  hazardFormStage,
   {
-    id: ORDINAL_BIN_ID,
+    id: 'stage-ordinal-bin',
     type: 'OrdinalBin',
     label: 'Ordinal bin',
     subject: { entity: 'node', type: 'binned' },
-    prompts: [{ id: 'p2', text: 'Sort', variable: 'binOther' }],
+    prompts: [{ id: 'p2', text: 'Sort', variable: 'binRank' }],
   },
   {
-    id: CATEGORICAL_BIN_ID,
+    id: 'stage-categorical-bin',
     type: 'CategoricalBin',
     label: 'Categorical bin',
     subject: { entity: 'node', type: 'binned' },
-    prompts: [{ id: 'p3', text: 'Sort', variable: 'binTwin' }],
+    prompts: [{ id: 'p3', text: 'Sort', variable: 'binContexts' }],
   },
 ] as unknown as Stage[];
 
-/** The same protocol with the named bin stages taken out. */
-function binStagesWithout(...stageIds: string[]): Stage[] {
-  return binStages.filter((stage) => !stageIds.includes(stage.id));
-}
+type HazardMeasurement = { nodes: number; violatingNodes: number };
 
 /**
- * Counts nodes whose attributes fail validation across ten seeds, so the tests
- * below compare the same protocol with and without each of its bin stages.
+ * Nodes whose form-rendered attributes fail their rules, across ten seeds. The
+ * scope is the name generator's form either way, so the two stage lists are
+ * measured against exactly the same fields.
  */
-async function countViolatingNodes(stageList: Stage[]): Promise<number> {
-  let violating = 0;
+async function measureHazard(stageList: Stage[]): Promise<HazardMeasurement> {
+  const measurement: HazardMeasurement = { nodes: 0, violatingNodes: 0 };
 
   for (let seed = 1; seed <= 10; seed++) {
     const { network } = generateNetwork({
       seed,
-      codebook: binCodebook,
+      codebook: hazardCodebook,
       stages: stageList,
       config: { today },
     });
 
     for (const node of network.nodes) {
-      const failures: string[] = [];
+      measurement.nodes += 1;
+
       const formValues = toFormValues(node[entityAttributesProperty]);
-      for (const [variableId, variable] of Object.entries(binVariables)) {
-        failures.push(
-          ...(await validateAttribute({
-            codebook: binCodebook,
-            network,
-            subject: { entity: 'node', type: node.type },
-            variableId,
-            variable,
-            formValues,
-            currentEntityId: node[entityPrimaryKeyProperty],
-          })),
-        );
+      let violated = false;
+      for (const [variableId, variable] of Object.entries(hazardVariables)) {
+        const messages = await validateAttribute({
+          codebook: hazardCodebook,
+          network,
+          subject: { entity: 'node', type: node.type },
+          variableId,
+          variable,
+          formValues,
+          currentEntityId: node[entityPrimaryKeyProperty],
+        });
+        if (messages.length > 0) violated = true;
       }
-      if (failures.length > 0) violating += 1;
+      if (violated) measurement.violatingNodes += 1;
     }
   }
 
-  return violating;
+  return measurement;
 }
 
-describe('bin stages', () => {
-  // handleOrdinalBin and handleCategoricalBin in
-  // packages/protocol-utilities/src/generateNetwork/stageHandlers.ts once
-  // assigned their prompt's variable straight from the option list, bypassing
-  // generateEntityAttributes: of the 80 nodes this fixture generates, 24
-  // violated their rules with the OrdinalBin alone, 76 with the CategoricalBin
-  // alone and 80 with both. Each of those rows is a case here, so a handler
-  // that stopped drawing through the constrained path is caught by the row that
-  // exercises it rather than by the combined protocol alone.
-  it.each([
-    ['no bin stage', binStagesWithout(ORDINAL_BIN_ID, CATEGORICAL_BIN_ID)],
-    ['an OrdinalBin', binStagesWithout(CATEGORICAL_BIN_ID)],
-    ['a CategoricalBin', binStagesWithout(ORDINAL_BIN_ID)],
-    ['both bin stages', binStages],
-  ])(
-    'leaves no node violating its rules with %s',
-    async (_label, stageList) => {
-      expect(await countViolatingNodes(stageList)).toBe(0);
-    },
-  );
+describe('a variable used by both a form and a binning stage', () => {
+  it('conforms while only the form writes it', async () => {
+    const measurement = await measureHazard(hazardFormOnlyStages);
+
+    expect(measurement.nodes).toBe(80);
+    expect(measurement.violatingNodes).toBe(0);
+  });
+
+  // Not a defect to fix in generation: the bin stages write the values a
+  // participant's drags would write, and those are the values the form's rules
+  // reject. The count is left unpinned because it is a property of the fixture's
+  // option counts, not a contract.
+  it('stops conforming once the bin stages write it', async () => {
+    const measurement = await measureHazard(hazardFormAndBinStages);
+
+    expect(measurement.nodes).toBe(80);
+    expect(measurement.violatingNodes).toBeGreaterThan(0);
+  });
 
   // Conformance alone would be satisfied by a handler that wrote nothing, and a
   // bin stage that sorts no node into a bin is not the interaction it stands
@@ -990,8 +1127,8 @@ describe('bin stages', () => {
   it('sorts every subject node into a bin', () => {
     const { network } = generateNetwork({
       seed: 1,
-      codebook: binCodebook,
-      stages: binStages,
+      codebook: hazardCodebook,
+      stages: hazardFormAndBinStages,
       config: { today },
     });
 
@@ -1002,10 +1139,10 @@ describe('bin stages', () => {
 
     for (const node of network.nodes) {
       const attributes = node[entityAttributesProperty];
-      expect(ordinalValues).toContain(attributes.binOther);
-      expect(Array.isArray(attributes.binTwin)).toBe(true);
-      for (const value of Array.isArray(attributes.binTwin)
-        ? attributes.binTwin
+      expect(ordinalValues).toContain(attributes.binRank);
+      expect(Array.isArray(attributes.binContexts)).toBe(true);
+      for (const value of Array.isArray(attributes.binContexts)
+        ? attributes.binContexts
         : []) {
         expect(categoricalValues).toContain(value);
       }
