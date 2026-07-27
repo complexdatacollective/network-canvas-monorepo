@@ -17,9 +17,9 @@ import { UniqueRegistry } from '../uniqueRegistry';
 
 // A three-node search budget: any component of five or more variables
 // provably exceeds it, since a solution alone needs one node per variable.
-vi.mock('../solverLimits', () => ({
-  MAX_COMPONENT_VARIABLES: 8,
-  MAX_DOMAIN_PRODUCT: 200_000,
+// Only the search budget shrinks; every other limit keeps its real value.
+vi.mock(import('../solverLimits'), async (importOriginal) => ({
+  ...(await importOriginal()),
   MAX_SEARCH_NODES: 3,
 }));
 

@@ -362,6 +362,43 @@ describe('solvableComponents', () => {
     );
   });
 
+  it('declines a categorical whose materialised elements overflow the budget', () => {
+    // C(20,8) = 125,970 subsets sits below the product cap, but each subset
+    // holds eight values — roughly a million elements built for every
+    // generated entity. Work is proportional to elements, not subsets, so
+    // the budget must count them.
+    const options = Array.from({ length: 20 }, (_v, i) => ({
+      label: `O${i}`,
+      value: i,
+    }));
+    const entity = build({
+      wide: {
+        name: 'Wide',
+        type: 'categorical',
+        options,
+        validation: {
+          minSelected: 8,
+          maxSelected: 8,
+          differentFrom: ref('narrow'),
+        },
+      },
+      narrow: {
+        name: 'Narrow',
+        type: 'categorical',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'B', value: 'b' },
+        ],
+        validation: { minSelected: 2, maxSelected: 2 },
+      },
+    });
+
+    const [component] = componentsOf(entity);
+
+    expect(component?.groups.toSorted()).toEqual(['narrow', 'wide']);
+    expect(component?.tractable).toBeUndefined();
+  });
+
   it('declines a categorical whose combination space overflows the budget', () => {
     const options = Array.from({ length: 24 }, (_v, i) => ({
       label: `O${i}`,

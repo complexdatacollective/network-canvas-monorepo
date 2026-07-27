@@ -5,6 +5,7 @@ import type { ComparatorEdge } from './dependencyOrder';
 import { comparatorSpan, type Span } from './groupConstraints';
 import {
   MAX_COMPONENT_VARIABLES,
+  MAX_DOMAIN_ELEMENTS,
   MAX_DOMAIN_PRODUCT,
   MAX_SEARCH_NODES,
 } from './solverLimits';
@@ -151,40 +152,44 @@ function enumerateSubsets(
   return subsets;
 }
 
+/** A domain's value count, and how many elements those values hold in total. */
+type DomainSize = { count: number; elements: number };
+
 /**
- * How many values {@link enumerateDomain} would return, without building any
- * of them. Kept branch-for-branch with the enumeration — the pair is guarded
- * by a test asserting the sizes agree with `valueSpaceSize` — so tractability
- * can be judged before a single value is materialised: a wide categorical
- * used to allocate its whole subset budget per entity merely to learn the
- * component was oversized.
+ * How many values {@link enumerateDomain} would return — and how many
+ * elements they carry once built, since a categorical selection of eight
+ * options costs eight — without building any of them. Kept branch-for-branch
+ * with the enumeration (the pair is guarded by a test asserting the counts
+ * agree with `valueSpaceSize`), so tractability can be judged before a single
+ * value is materialised: a wide categorical used to allocate its whole subset
+ * budget per entity merely to learn the component was oversized.
  */
 function domainSize(
   variable: ConstrainedVariable,
   cap: number,
-): number | undefined {
+): DomainSize | undefined {
   const { entry, constraints } = variable;
 
-  const within = (size: number): number | undefined =>
-    size > cap ? undefined : size;
+  const flat = (count: number): DomainSize | undefined =>
+    count > cap ? undefined : { count, elements: count };
 
   switch (entry.type) {
     case 'boolean':
-      return 2;
+      return flat(2);
 
     case 'ordinal': {
       const count = entry.options?.length ?? 0;
-      return count === 0 ? undefined : within(count);
+      return count === 0 ? undefined : flat(count);
     }
 
     case 'number': {
       const { minValue, maxValue } = constraints;
       if (minValue === undefined || maxValue === undefined) return undefined;
-      if (maxValue < minValue) return 0;
+      if (maxValue < minValue) return flat(0);
       const lo = Math.ceil(minValue);
       const hi = Math.floor(maxValue);
       if (hi < lo) return undefined;
-      return within(hi - lo + 1);
+      return flat(hi - lo + 1);
     }
 
     case 'scalar': {
@@ -197,10 +202,10 @@ function domainSize(
         constraints.maxValue ?? SCALAR_DOMAIN.maxValue,
         SCALAR_DOMAIN.maxValue,
       );
-      if (max <= min) return 1;
+      if (max <= min) return flat(1);
       const lo = Math.ceil(min * unit - 1e-6);
       const hi = Math.floor(max * unit + 1e-6);
-      return within(hi - lo + 1);
+      return flat(hi - lo + 1);
     }
 
     case 'datetime': {
@@ -209,20 +214,23 @@ function domainSize(
         return undefined;
       }
       const steps = stepsBetween(window.min, window.max, window.resolution);
-      if (steps < 0) return 0;
-      return within(steps + 1);
+      if (steps < 0) return flat(0);
+      return flat(steps + 1);
     }
 
     case 'categorical': {
-      const count = distinctOptionValues(entry.options ?? []).length;
-      if (count === 0) return undefined;
+      const optionCount = distinctOptionValues(entry.options ?? []).length;
+      if (optionCount === 0) return undefined;
       const { min, max } = subsetSizes(variable);
-      let total = 0;
+      let count = 0;
+      let elements = 0;
       for (let size = min; size <= max; size++) {
-        total += binomial(count, size);
-        if (total > cap) return undefined;
+        const subsets = binomial(optionCount, size);
+        count += subsets;
+        elements += subsets * size;
+        if (count > cap || elements > MAX_DOMAIN_ELEMENTS) return undefined;
       }
-      return total;
+      return { count, elements };
     }
 
     default:
@@ -426,15 +434,21 @@ function tractableOf(
 
   // Sizes are judged before anything is materialised: an oversized component
   // must cost a closed-form count per entity, not a mountain of discarded
-  // arrays.
+  // arrays. The element total is bounded alongside the product, because a
+  // combination-heavy categorical can hold a modest number of wide subsets
+  // whose materialisation and per-solve scans are what actually cost.
   let product = 1;
+  let elements = 0;
   for (const group of piece.groups) {
     const variable = groups.get(group);
     if (variable === undefined) return undefined;
     const size = domainSize(variable, MAX_DOMAIN_PRODUCT);
     if (size === undefined) return undefined;
-    product *= Math.max(1, size);
-    if (product > MAX_DOMAIN_PRODUCT) return undefined;
+    product *= Math.max(1, size.count);
+    elements += size.elements;
+    if (product > MAX_DOMAIN_PRODUCT || elements > MAX_DOMAIN_ELEMENTS) {
+      return undefined;
+    }
   }
 
   const domains = new Map<string, VariableValue[]>();

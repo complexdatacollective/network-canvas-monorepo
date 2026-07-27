@@ -20,6 +20,16 @@
  * nodes), while still bounding a pathological instance to well under a
  * second.
  */
-export const MAX_COMPONENT_VARIABLES = 8;
-export const MAX_DOMAIN_PRODUCT = 200_000;
-export const MAX_SEARCH_NODES = 50_000;
+export const MAX_COMPONENT_VARIABLES: number = 8;
+export const MAX_DOMAIN_PRODUCT: number = 200_000;
+export const MAX_SEARCH_NODES: number = 50_000;
+
+/**
+ * Ceiling on the values a component's domains hold once materialised, where
+ * a categorical selection of eight options counts eight. The product cap
+ * bounds the search space; this bounds the memory and per-solve scan work,
+ * which a combination-heavy categorical can blow through while its subset
+ * count stays modest — C(20,8) is under the product cap yet nearly a
+ * million elements.
+ */
+export const MAX_DOMAIN_ELEMENTS: number = 200_000;

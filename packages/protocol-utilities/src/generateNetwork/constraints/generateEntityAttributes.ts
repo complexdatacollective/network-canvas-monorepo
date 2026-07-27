@@ -607,7 +607,8 @@ export function generateEntityAttributes(
   };
 
   const componentOf = new Map<string, SolvableComponent>();
-  for (const component of solvableComponents(
+  for (const component of componentsFor(
+    entity,
     propagated,
     order,
     edges,
@@ -663,6 +664,32 @@ export function generateEntityAttributes(
   }
 
   return produced;
+}
+
+/**
+ * Component analysis memoised by the entity-type descriptor it derives from.
+ *
+ * Every input to `solvableComponents` is a pure function of the descriptor,
+ * generation runs once per entity, and neither the components nor their
+ * domains are ever mutated (each solve copies what it filters or reorders) —
+ * so a type's domains are built once per run instead of once per node, which
+ * for a wide-but-tractable categorical is the difference between one and
+ * thousands of six-figure-element enumerations.
+ */
+const componentCache = new WeakMap<EntityConstraints, SolvableComponent[]>();
+
+function componentsFor(
+  entity: EntityConstraints,
+  propagated: Map<string, ConstrainedVariable>,
+  order: readonly string[],
+  edges: readonly ComparatorEdge[],
+  excluded: Map<string, Set<string>>,
+): SolvableComponent[] {
+  const cached = componentCache.get(entity);
+  if (cached !== undefined) return cached;
+  const components = solvableComponents(propagated, order, edges, excluded);
+  componentCache.set(entity, components);
+  return components;
 }
 
 /**

@@ -304,6 +304,21 @@ superseded by these corpus-measured rates.
   values only widen the second search, so a pass-1 unknown implies a pass-2
   unknown in every constructible case); the change aligns the code with the
   documented "unknown reads as oversized" contract.
+- **P2 (fourth round), below-cap categorical rebuild cost**: C(20,8) =
+  125,970 subsets sits under the product cap, yet holds ~1M elements —
+  rebuilt for every generated entity. Two fixes: the tractability gate now
+  also bounds **materialised elements** (`MAX_DOMAIN_ELEMENTS`, counted
+  closed-form in the same pass, so the named shape declines to the cheap
+  greedy path), and the component analysis is **memoised per entity-type
+  descriptor** (a `WeakMap` keyed by the `EntityConstraints` map, every
+  input to which is a pure function of it; domains are never mutated — each
+  solve copies what it filters or reorders). The cache alone cut the
+  enumeration-heavy 101×101 scalar-pair benchmark from 0.064 ms to
+  0.038 ms per entity. Guarded by "declines a categorical whose
+  materialised elements overflow the budget", mutation-verified red by
+  zeroing the element accumulation; the memoisation is behaviour-invisible
+  by construction and is covered by the full suite plus the determinism
+  tests.
 
 ### The number-domain decision
 
