@@ -38,7 +38,7 @@ export function valueKey(value: VariableValue): string {
 
 export class UniqueRegistry {
   private readonly used = new Map<string, Set<string>>();
-  private readonly reserved = new Map<string, Set<string>>();
+  private readonly reserved = new Map<string, Map<string, number>>();
   private readonly sequences = new Map<string, number>();
 
   private slot(scope: string, variableId: string): string {
@@ -82,22 +82,36 @@ export class UniqueRegistry {
    * Holds a value back from generated draws without issuing it, for an entity
    * the run may still create. A roster row that can still be drawn reserves the
    * values it carries, so no node fabricated before it is issued one of them
-   * and leaves the row's own node holding a duplicate.
+   * and leaves the row's own node holding a duplicate. A value a prompt fixes
+   * is held for the whole run, for the same reason.
    *
    * Softer than a claim: a draw left with nothing else takes a reserved value
    * anyway. A row that is never drawn holds nothing, and refusing a value on
    * account of an entity that may never exist is worse than the duplicate the
    * reservation guards against.
+   *
+   * Holds are counted rather than kept in a set, because two of them can want
+   * the same value at once — a roster row carrying what a prompt elsewhere
+   * fixes, or two rows carrying one value — and a set would let whichever hold
+   * ended first give away a value the other still needed.
    */
   reserve(scope: string, variableId: string, value: VariableValue): void {
     const slot = this.slot(scope, variableId);
-    const values = this.reserved.get(slot) ?? new Set<string>();
-    values.add(valueKey(value));
-    this.reserved.set(slot, values);
+    const holds = this.reserved.get(slot) ?? new Map<string, number>();
+    const key = valueKey(value);
+    holds.set(key, (holds.get(key) ?? 0) + 1);
+    this.reserved.set(slot, holds);
   }
 
   unreserve(scope: string, variableId: string, value: VariableValue): void {
-    this.reserved.get(this.slot(scope, variableId))?.delete(valueKey(value));
+    const holds = this.reserved.get(this.slot(scope, variableId));
+    if (holds === undefined) return;
+
+    const key = valueKey(value);
+    const held = holds.get(key);
+    if (held === undefined) return;
+    if (held > 1) holds.set(key, held - 1);
+    else holds.delete(key);
   }
 
   isReserved(scope: string, variableId: string, value: VariableValue): boolean {

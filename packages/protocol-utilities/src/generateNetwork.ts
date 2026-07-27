@@ -7,6 +7,7 @@ import {
 import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
+import { reservePromptFixedValues } from './generateNetwork/attributes';
 import {
   type GenerationConfig,
   resolveGenerationConfig,
@@ -23,6 +24,7 @@ import type {
 } from './generateNetwork/context';
 import { buildCurrentNetwork } from './generateNetwork/filtering';
 import { markStageInProgress } from './generateNetwork/inProgress';
+import { countPromptFixedValues } from './generateNetwork/nodes';
 import {
   handleAlterEdgeForm,
   handleAlterForm,
@@ -155,6 +157,15 @@ export function generateNetwork(
       edge: constraintsByType(codebook.edge),
     },
   };
+
+  // Before the first stage runs, so a value a later prompt fixes is out of the
+  // way of the draws that come before it. Feasibility has already refused the
+  // protocols where no assignment works, so what is left here is the ones where
+  // a different draw is all that was needed.
+  reservePromptFixedValues(
+    ctx,
+    countPromptFixedValues(stages, resolvedConfig, externalData),
+  );
 
   const draft: NetworkDraft = {
     egoUid: uuid(),

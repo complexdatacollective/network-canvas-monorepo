@@ -62,4 +62,33 @@ describe('UniqueRegistry', () => {
 
     expect(registry.isTaken('node:person', 'band', 2)).toBe(true);
   });
+
+  it('keeps a value reserved until every hold on it is given up', () => {
+    // A prompt fixing a value holds it for the whole run while a roster stage
+    // holds the same value only for its own draw. Ending the shorter hold must
+    // not hand away a value the longer one still needs.
+    const registry = new UniqueRegistry();
+    registry.reserve('node:person', 'band', 2);
+    registry.reserve('node:person', 'band', 2);
+
+    registry.unreserve('node:person', 'band', 2);
+
+    expect(registry.isReserved('node:person', 'band', 2)).toBe(true);
+
+    registry.unreserve('node:person', 'band', 2);
+
+    expect(registry.isReserved('node:person', 'band', 2)).toBe(false);
+  });
+
+  it('ignores an unreserve of a value nothing is holding', () => {
+    const registry = new UniqueRegistry();
+    registry.reserve('node:person', 'band', 2);
+
+    registry.unreserve('node:person', 'band', 3);
+    registry.unreserve('node:person', 'unheld', 2);
+    registry.unreserve('node:person', 'band', 2);
+    registry.unreserve('node:person', 'band', 2);
+
+    expect(registry.isReserved('node:person', 'band', 2)).toBe(false);
+  });
 });

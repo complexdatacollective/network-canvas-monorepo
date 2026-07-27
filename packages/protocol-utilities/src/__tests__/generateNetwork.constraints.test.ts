@@ -1149,6 +1149,335 @@ describe('a unique value a prompt fixes', () => {
     expect(failures).toEqual([]);
   });
 
+  it(`keeps a fixed value away from an earlier stage's draw, over ${SEEDS} seeds`, () => {
+    // A prompt's value only reaches the registry when its node is built, which
+    // is too late for the stages before it: the first stage drew the opening
+    // value of the sequence, the second fixed the same one, and the pair came
+    // out identical on every seed. The protocol is satisfiable — the earlier
+    // draw simply has to go elsewhere — so it must generate, not be refused.
+    const failures: string[] = [];
+    const stages = [
+      {
+        id: 'stage-draw',
+        type: 'NameGenerator',
+        label: 'Name generator',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'p1', text: 'Name people' }],
+        behaviours: { minNodes: 1, maxNodes: 1 },
+      } as unknown as Stage,
+      fixingStage(1),
+    ];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: uniqueFlag,
+        stages,
+      });
+      const flags = network.nodes.map(
+        (node) => node[entityAttributesProperty].flagged,
+      );
+
+      complain(
+        failures,
+        flags.length === 2,
+        () => `seed ${seed}: ${flags.length} nodes, not 2`,
+      );
+      complain(
+        failures,
+        new Set(flags).size === flags.length,
+        () => `seed ${seed}: flags ${JSON.stringify(flags)} repeat`,
+      );
+      complain(
+        failures,
+        flags.includes(true),
+        () =>
+          `seed ${seed}: flags ${JSON.stringify(flags)} lost the fixed value`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`keeps a fixed value away from a later stage's draw, over ${SEEDS} seeds`, () => {
+    // The mirror of the above, where the fixed value is already claimed by the
+    // time the drawing stage runs. It passed before the reservation existed and
+    // has to keep passing: a hold that displaced the claim would trade one
+    // ordering's duplicate for the other's.
+    const failures: string[] = [];
+    const stages = [
+      fixingStage(1),
+      {
+        id: 'stage-draw',
+        type: 'NameGenerator',
+        label: 'Name generator',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'p1', text: 'Name people' }],
+        behaviours: { minNodes: 1, maxNodes: 1 },
+      } as unknown as Stage,
+    ];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: uniqueFlag,
+        stages,
+      });
+      const flags = network.nodes.map(
+        (node) => node[entityAttributesProperty].flagged,
+      );
+
+      complain(
+        failures,
+        flags.length === 2 && new Set(flags).size === 2,
+        () => `seed ${seed}: flags ${JSON.stringify(flags)} repeat`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`fills a value space a fixed value exactly completes, over ${SEEDS} seeds`, () => {
+    // Three bands for three people, one of them pinned to band 2. Nothing here
+    // is slack: a draw that takes band 2 before the pinned person arrives
+    // leaves a duplicate with nowhere else to go.
+    const failures: string[] = [];
+    const codebook = personCodebook({
+      band: {
+        name: 'Band',
+        type: 'ordinal',
+        options: [1, 2, 3].map((value) => ({ label: `Band ${value}`, value })),
+        validation: { unique: true },
+      },
+    });
+    const bandStage = (id: string, nodes: number, fixed?: number): Stage =>
+      ({
+        id,
+        type: 'NameGenerator',
+        label: 'Name generator',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          {
+            id: `${id}-p1`,
+            text: 'Name people',
+            ...(fixed === undefined
+              ? {}
+              : { additionalAttributes: [{ variable: 'band', value: fixed }] }),
+          },
+        ],
+        behaviours: { minNodes: nodes, maxNodes: nodes },
+      }) as unknown as Stage;
+    const stages = [bandStage('stage-draw', 2), bandStage('stage-fix', 1, 2)];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({ seed, codebook, stages });
+      const bands = network.nodes.map((node) =>
+        Number(node[entityAttributesProperty].band),
+      );
+
+      complain(
+        failures,
+        bands.length === 3 && new Set(bands).size === 3,
+        () => `seed ${seed}: bands ${bands.join(', ')} repeat a unique value`,
+      );
+      complain(
+        failures,
+        bands.includes(2),
+        () => `seed ${seed}: bands ${bands.join(', ')} lost the fixed value`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`keeps a fixed value held while a roster stage holds it too, over ${SEEDS} seeds`, () => {
+    // A roster row carries band 3 and a later prompt fixes band 3 as well, so
+    // both want it held back at once. The roster gives its hold up when its
+    // draw ends, and if that took the prompt's hold with it the middle stage
+    // would be free to draw band 3 and duplicate the pinned person. Bands 1 and
+    // 2 go to the roster so band 3 is the next one the middle stage's draw
+    // reaches, where a hold that survived is the only thing sending it past.
+    //
+    // Judged only on the seeds that leave the band 3 row in the pool. The seeds
+    // that draw it put the researcher's own value on one person and the
+    // prompt's on another, which is a duplicate from the data rather than from
+    // the draw and is not what this fixture is about.
+    const failures: string[] = [];
+    const codebook = personCodebook({
+      band: {
+        name: 'Band',
+        type: 'ordinal',
+        options: [1, 2, 3, 4].map((value) => ({
+          label: `Band ${value}`,
+          value,
+        })),
+        validation: { unique: true },
+      },
+    });
+    const rows = [1, 2, 3].map(
+      (band, index) =>
+        ({
+          [entityPrimaryKeyProperty]: `roster-${index}`,
+          type: 'person',
+          [entityAttributesProperty]: { band },
+        }) as unknown as NcNode,
+    );
+    const stages = [
+      {
+        id: 'stage-roster',
+        type: 'NameGeneratorRoster',
+        label: 'Roster',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'p1', text: 'Pick people' }],
+        behaviours: { minNodes: 2, maxNodes: 2 },
+      } as unknown as Stage,
+      {
+        id: 'stage-draw',
+        type: 'NameGenerator',
+        label: 'Name generator',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'p2', text: 'Name people' }],
+        behaviours: { minNodes: 1, maxNodes: 1 },
+      } as unknown as Stage,
+      {
+        id: 'stage-fix',
+        type: 'NameGenerator',
+        label: 'Name generator',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          {
+            id: 'p3',
+            text: 'Name people',
+            additionalAttributes: [{ variable: 'band', value: 3 }],
+          },
+        ],
+        behaviours: { minNodes: 1, maxNodes: 1 },
+      } as unknown as Stage,
+    ];
+
+    let judged = 0;
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages,
+        externalData: { 'stage-roster': rows.map((row) => ({ ...row })) },
+      });
+
+      if (
+        network.nodes.some(
+          (node) => node[entityPrimaryKeyProperty] === 'roster-2',
+        )
+      ) {
+        continue;
+      }
+      judged += 1;
+
+      const bands = network.nodes.map((node) =>
+        Number(node[entityAttributesProperty].band),
+      );
+
+      complain(
+        failures,
+        bands.length === 4 && new Set(bands).size === 4,
+        () => `seed ${seed}: bands ${bands.join(', ')} repeat a unique value`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+    expect(judged).toBeGreaterThan(0);
+  });
+
+  it(`gives a held value up to a draw with nowhere else to go, over ${SEEDS} seeds`, () => {
+    // Three bands, three people, and a hold on band 2 that the run may never
+    // spend: the prompt's value reaches only the row leaving `band` unset, and
+    // the roster stage takes two of its three rows. On the seeds that draw the
+    // two rows carrying bands 1 and 3, band 2 is the one value left for the
+    // fabricated person — so the hold has to give way. A claim in its place
+    // would refuse a protocol that generates perfectly well.
+    const failures: string[] = [];
+    const codebook = personCodebook({
+      band: {
+        name: 'Band',
+        type: 'ordinal',
+        options: [1, 2, 3].map((value) => ({ label: `Band ${value}`, value })),
+        validation: { unique: true },
+      },
+    });
+    const rows = [{ band: 1 }, { band: 3 }, {}].map(
+      (attributes, index) =>
+        ({
+          [entityPrimaryKeyProperty]: `roster-${index}`,
+          type: 'person',
+          [entityAttributesProperty]: attributes,
+        }) as unknown as NcNode,
+    );
+    const stages = [
+      {
+        id: 'stage-roster',
+        type: 'NameGeneratorRoster',
+        label: 'Roster',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          {
+            id: 'p1',
+            text: 'Pick people',
+            additionalAttributes: [{ variable: 'band', value: 2 }],
+          },
+        ],
+        behaviours: { minNodes: 2, maxNodes: 2 },
+      } as unknown as Stage,
+      {
+        id: 'stage-fabricate',
+        type: 'NameGenerator',
+        label: 'Name generator',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'p2', text: 'Name someone else' }],
+        behaviours: { minNodes: 1, maxNodes: 1 },
+      } as unknown as Stage,
+    ];
+
+    let spentTheHold = 0;
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      let nodes: NcNode[] = [];
+      try {
+        const { network } = generateNetwork({
+          seed,
+          codebook,
+          stages,
+          externalData: { 'stage-roster': rows.map((row) => ({ ...row })) },
+        });
+        nodes = network.nodes;
+      } catch (error) {
+        failures.push(`seed ${seed}: refused — ${String(error)}`);
+        continue;
+      }
+
+      const bands = nodes.map((node) =>
+        Number(node[entityAttributesProperty].band),
+      );
+      // The prompt's value lands only on the row leaving `band` unset, so a
+      // draw that passed that row over is one where the hold was never spent.
+      const drewTheUnsetRow = nodes.some(
+        (node) => node[entityPrimaryKeyProperty] === 'roster-2',
+      );
+      if (!drewTheUnsetRow) spentTheHold += 1;
+
+      complain(
+        failures,
+        bands.length === 3 && new Set(bands).size === 3,
+        () => `seed ${seed}: bands ${bands.join(', ')} repeat a unique value`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+    // Without seeds that leave band 2 unspent, nothing above needed the hold to
+    // give way and the assertion would hold under a claim as well.
+    expect(spentTheHold).toBeGreaterThan(0);
+  });
+
   it('generates a roster stage whose rows all supply the fixed variable', () => {
     // The row's own value wins over the prompt's on a roster stage, so the
     // fixed value never reaches a node and there is nothing to refuse.
