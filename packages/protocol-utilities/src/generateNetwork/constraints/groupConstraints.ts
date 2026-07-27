@@ -763,6 +763,13 @@ type PropagatedBounds = {
    * anything.
    */
   inverted: Set<string>;
+  /**
+   * The subset of {@link inverted} reported for the types at a comparison's
+   * ends rather than for any range: a number against a date has no satisfying
+   * assignment at bounds of any width, so a message about bounds would name the
+   * wrong fault.
+   */
+  incomparable: Set<string>;
 };
 
 /**
@@ -802,6 +809,7 @@ export function propagateComparatorBounds(
   const ranges = new Map<string, Range>();
   const declaredInverted = new Set<string>();
   const inverted = new Set<string>();
+  const incomparable = new Set<string>();
 
   for (const [group, { constraints }] of groups) {
     const range: Range = {
@@ -828,8 +836,10 @@ export function propagateComparatorBounds(
     const lower = groups.get(edge.lower);
     const upper = groups.get(edge.upper);
     if (!lower || !upper || !incomparableEnds(lower, upper)) continue;
-    inverted.add(edge.lower);
-    inverted.add(edge.upper);
+    for (const end of [edge.lower, edge.upper]) {
+      inverted.add(end);
+      incomparable.add(end);
+    }
   }
 
   for (const edge of ordered.toSorted((a, b) => at(a.lower) - at(b.lower))) {
@@ -907,5 +917,5 @@ export function propagateComparatorBounds(
     });
   }
 
-  return { groups: propagated, inverted };
+  return { groups: propagated, inverted, incomparable };
 }

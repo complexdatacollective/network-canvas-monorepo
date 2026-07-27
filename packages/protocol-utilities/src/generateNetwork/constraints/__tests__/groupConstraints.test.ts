@@ -563,9 +563,12 @@ describe('propagateComparatorBounds', () => {
   });
 
   it('reports every group a chain too long for its range leaves nothing for', () => {
-    const { groups, inverted } = propagate(chain(0, 1));
+    const { groups, inverted, incomparable } = propagate(chain(0, 1));
 
     expect([...inverted].toSorted()).toEqual(['a', 'b', 'c']);
+    // The fault here really is the range, so nothing is reported as a type
+    // mismatch: the two causes carry different messages.
+    expect([...incomparable]).toEqual([]);
     // The declared bounds are kept, so a draw made before the feasibility pass
     // refuses the protocol still lands inside them.
     expect(groups.get('a')?.constraints).toMatchObject({
@@ -766,9 +769,12 @@ describe('propagateComparatorBounds', () => {
       TODAY,
     );
 
-    const { groups, inverted } = propagate(entity);
+    const { groups, inverted, incomparable } = propagate(entity);
 
     expect([...inverted].toSorted()).toEqual(['age', 'born']);
+    // Reported apart from the ranges, because a range of any width would leave
+    // this pairing exactly as unsatisfiable.
+    expect([...incomparable].toSorted()).toEqual(['age', 'born']);
     // The declared bounds are kept, the way an over-long chain keeps its own:
     // a draw made before the feasibility pass refuses the protocol still lands
     // inside the range a participant's form would enforce.

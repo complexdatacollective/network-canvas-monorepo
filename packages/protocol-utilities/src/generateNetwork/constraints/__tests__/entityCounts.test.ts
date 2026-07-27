@@ -9,7 +9,7 @@ import {
 
 import { generateNetwork } from '../../../generateNetwork';
 import { resolveGenerationConfig } from '../../config';
-import { worstCaseEntityCounts } from '../entityCounts';
+import { edgeCountFor, worstCaseEntityCounts } from '../entityCounts';
 import { SyntheticDataConstraintError } from '../error';
 
 const config = resolveGenerationConfig({ today: '2026-07-27' });
@@ -36,13 +36,18 @@ function familyPedigree(): Stage {
   } as unknown as Stage;
 }
 
-function alterEdgeForm(variable: string): Stage {
+function alterEdgeForm(...variables: string[]): Stage {
   return {
     id: 'stage-edge-form',
     type: 'AlterEdgeForm',
     label: 'About this relationship',
     subject: { entity: 'edge', type: 'kin' },
-    form: { fields: [{ variable, prompt: 'Tell us about it' }] },
+    form: {
+      fields: variables.map((variable) => ({
+        variable,
+        prompt: 'Tell us about it',
+      })),
+    },
   } as unknown as Stage;
 }
 
@@ -90,7 +95,7 @@ describe('worstCaseEntityCounts', () => {
     // `handleFamilyPedigree` builds its edges with empty attributes, so nothing
     // in this protocol ever holds a value on one.
     const counts = worstCaseEntityCounts([familyPedigree()], config);
-    expect(counts.edge.get('kin')).toBeUndefined();
+    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(0);
   });
 
   it('counts pedigree edges once a stage names an attribute of their type', () => {
@@ -98,7 +103,62 @@ describe('worstCaseEntityCounts', () => {
       [familyPedigree(), alterEdgeForm('verified')],
       config,
     );
-    expect(counts.edge.get('kin')).toBe(config.familyPedigreeNodeCount.max - 1);
+    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(
+      config.familyPedigreeNodeCount.max - 1,
+    );
+  });
+
+  it('counts pedigree edges per variable, not per type', () => {
+    // `handleAlterEdgeForm` passes its field list to `generateEntityAttributes`
+    // as `only`, so a variable the form does not render is `undefined` on every
+    // pedigree edge even though a sibling variable of the same type is filled.
+    const counts = worstCaseEntityCounts(
+      [familyPedigree(), alterEdgeForm('note')],
+      config,
+    );
+    expect(edgeCountFor(counts.edge, 'kin', 'note')).toBe(
+      config.familyPedigreeNodeCount.max - 1,
+    );
+    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(0);
+  });
+
+  it('counts an unnamed variable on edges another stage creates', () => {
+    // Only pedigree edges are exempted. A Sociogram generates the whole
+    // attribute set of every edge it creates, so `verified` is on all six of
+    // them whether or not a form ever mentions it.
+    const sociogram = {
+      id: 'stage-sociogram',
+      type: 'Sociogram',
+      label: 'Link them',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'kin' } }],
+    } as unknown as Stage;
+
+    const counts = worstCaseEntityCounts(
+      [nameGenerator({ behaviours: { maxNodes: 4 } }), sociogram],
+      config,
+    );
+    // C(4, 2) = 6
+    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(6);
+  });
+
+  it('adds pedigree edges to the edges another stage creates of the same type', () => {
+    const sociogram = {
+      id: 'stage-sociogram',
+      type: 'Sociogram',
+      label: 'Link them',
+      subject: { entity: 'node', type: 'relative' },
+      prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'kin' } }],
+    } as unknown as Stage;
+
+    const counts = worstCaseEntityCounts(
+      [familyPedigree(), sociogram, alterEdgeForm('note')],
+      config,
+    );
+    // C(10, 2) = 45 pedigree-built people paired by the sociogram, plus the
+    // pedigree's own nine edges for the variable the form fills.
+    expect(edgeCountFor(counts.edge, 'kin', 'note')).toBe(54);
+    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(45);
   });
 
   it('reads only edge-subject references, not a node type of the same name', () => {
@@ -113,7 +173,7 @@ describe('worstCaseEntityCounts', () => {
     } as unknown as Stage;
 
     const counts = worstCaseEntityCounts([familyPedigree(), alterForm], config);
-    expect(counts.edge.get('kin')).toBeUndefined();
+    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(0);
   });
 
   it('counts an inverted FamilyPedigree range as the generator draws it', () => {
@@ -129,7 +189,7 @@ describe('worstCaseEntityCounts', () => {
       inverted,
     );
     expect(counts.node.get('relative')).toBe(20);
-    expect(counts.edge.get('kin')).toBe(19);
+    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(19);
   });
 
   it('bounds an edge type by the pair count over its node type', () => {
@@ -148,7 +208,7 @@ describe('worstCaseEntityCounts', () => {
 
     // C(4, 2) = 6
     const counts = worstCaseEntityCounts(stages, config);
-    expect(counts.edge.get('knows')).toBe(6);
+    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(6);
   });
 
   it('returns empty maps for a protocol with no entity-producing stages', () => {
@@ -161,7 +221,8 @@ describe('worstCaseEntityCounts', () => {
 
     const counts = worstCaseEntityCounts([stage], config);
     expect(counts.node.size).toBe(0);
-    expect(counts.edge.size).toBe(0);
+    expect(counts.edge.base.size).toBe(0);
+    expect(counts.edge.pedigree.size).toBe(0);
   });
 });
 
@@ -293,7 +354,7 @@ describe('worstCaseEntityCounts with roster rows', () => {
     const counts = worstCaseEntityCounts(stages, config, {
       'stage-roster': [rosterRow('a'), rosterRow('b')],
     });
-    expect(counts.edge.get('knows')).toBe(1);
+    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(1);
   });
 });
 
@@ -354,6 +415,7 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
             type: 'boolean',
             validation: { unique: true },
           },
+          note: { name: 'Note', type: 'text' },
         },
       },
     },
@@ -393,5 +455,84 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
     // refusal to the draw, where the form runs out of booleans partway through
     // and the message says nothing about how many edges there were.
     expect(generate).toThrow(/up to 9 edges of this type can be generated/);
+  });
+
+  it('generates when the form on that edge type fills a different variable', () => {
+    // `handleAlterEdgeForm` writes only the variables its form renders, so
+    // `verified` stays undefined on all nine edges however many of them the
+    // form touches.
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages: [familyPedigree(), alterEdgeForm('note')],
+    });
+
+    expect(network.edges.length).toBeGreaterThan(2);
+    expect(
+      network.edges.every(
+        (edge) => edge[entityAttributesProperty].verified === undefined,
+      ),
+    ).toBe(true);
+    expect(
+      network.edges.every(
+        (edge) => edge[entityAttributesProperty].note !== undefined,
+      ),
+    ).toBe(true);
+  });
+
+  it('still refuses when the form fills a variable held equal to the unique one', () => {
+    // The group holds one value, so what any member of it spends the whole
+    // group spends: nine edges carry `mirror`, so nine distinct values are
+    // needed however few of them carry `verified` itself.
+    const heldEqual = {
+      node: { relative: { name: 'Relative', color: 'nc-1', variables: {} } },
+      edge: {
+        kin: {
+          name: 'Kin',
+          color: 'edge-color-seq-1',
+          variables: {
+            verified: {
+              name: 'Verified',
+              type: 'boolean',
+              validation: { unique: true },
+            },
+            mirror: {
+              name: 'Mirror',
+              type: 'boolean',
+              validation: { sameAs: 'verified' },
+            },
+          },
+        },
+      },
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook: heldEqual,
+        stages: [familyPedigree(), alterEdgeForm('mirror')],
+      }),
+    ).toThrow(/up to 9 edges of this type can be generated/);
+  });
+
+  it('still refuses when another stage creates edges of the same type', () => {
+    // A Sociogram generates the whole attribute set of every edge it creates,
+    // so those edges hold `verified` whatever the form renders. Only the
+    // pedigree's own edges are ever exempted.
+    const sociogram = {
+      id: 'stage-sociogram',
+      type: 'Sociogram',
+      label: 'Link them',
+      subject: { entity: 'node', type: 'relative' },
+      prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'kin' } }],
+    } as unknown as Stage;
+
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook,
+        stages: [familyPedigree(), sociogram, alterEdgeForm('note')],
+      }),
+    ).toThrow(SyntheticDataConstraintError);
   });
 });

@@ -11,8 +11,45 @@ import { getSubjectType } from '../subject';
 
 type WorstCaseCounts = {
   node: Map<string, number>;
-  edge: Map<string, number>;
+  edge: EdgeCounts;
 };
+
+/**
+ * How many edges of each type can hold a value, split by what fills them.
+ *
+ * A FamilyPedigree edge is born with no attributes at all, so whether it can
+ * ever hold a value is a question about one variable rather than about its
+ * type: a form filling `note` on the same edge type leaves `code` undefined on
+ * every one of them. The two sources are therefore counted apart and combined
+ * per variable by {@link edgeCountFor}.
+ */
+export type EdgeCounts = {
+  /** Edges whose creating stage fills every variable of the type. */
+  base: Map<string, number>;
+  /** Edges a FamilyPedigree stage creates, which start empty. */
+  pedigree: Map<string, number>;
+  /** The variable ids some stage names an attribute of, per edge type. */
+  named: Map<string, ReadonlySet<string>>;
+};
+
+/**
+ * The most edges of `type` that can end up holding a value for `variableId`.
+ *
+ * Pedigree-built edges join the count only where some stage names that
+ * variable, since nothing else writes onto an edge it did not create. Edges
+ * from every other stage count for every variable, because those stages
+ * generate the type's whole attribute set as they create them — a structural
+ * fact about the draw rather than a rule about which stages exist.
+ */
+export function edgeCountFor(
+  counts: EdgeCounts,
+  type: string,
+  variableId: string,
+): number {
+  const base = counts.base.get(type) ?? 0;
+  const fillable = counts.named.get(type)?.has(variableId) ?? false;
+  return base + (fillable ? (counts.pedigree.get(type) ?? 0) : 0);
+}
 
 /**
  * How many nodes of one type the run can build, split by what bounds them.
@@ -108,38 +145,46 @@ function totalRows(rows: Map<string, number>): number {
  * and an under-count lets a `unique` variable pass feasibility and then run out
  * of values partway through the run.
  */
-function pedigreeNodeCeiling(config: GenerationConfig): number {
+export function pedigreeNodeCeiling(config: GenerationConfig): number {
   const { min, max } = config.familyPedigreeNodeCount;
   return Math.max(max, min);
 }
 
 /**
- * The edge types some stage names an attribute of.
+ * The variables some stage names an attribute of, per edge type.
  *
  * `handleFamilyPedigree` builds its edges with empty attributes — the interface
  * draws parent-child links and collects nothing on them — so a pedigree edge
  * carries a value only where another stage writes one onto an edge it did not
  * create. `handleAlterEdgeForm` is that stage today: it walks every existing
  * edge of its subject type, pedigree-built ones included, and fills the
- * variables its form renders.
+ * variables its form renders — and only those, since it passes its field list
+ * to `generateEntityAttributes` as `only`. A variable no form lists is
+ * therefore `undefined` on every pedigree edge of the type, which is why this
+ * is recorded per variable rather than per type.
  *
  * Which handlers write edges they did not create is a property of the
  * generator rather than of the schema, so this gate is deliberately wider than
- * that one stage: any attribute reference resolving to an edge type keeps that
- * type's pedigree edges counted, whether or not the stage naming it would write
- * them. Reading the schema's own `entityAttributeReference` tags — as
- * `collectBinOnlyVariables` reads them — means a reference site added later
+ * that one stage: any attribute reference resolving to an edge variable keeps
+ * that variable's pedigree edges counted, whether or not the stage naming it
+ * would write them. Reading the schema's own `entityAttributeReference` tags —
+ * as `collectBinOnlyVariables` reads them — means a reference site added later
  * counts on its own, without this code being updated, and errs towards
  * refusing up front rather than running out of values partway through a draw.
  */
-function edgeTypesWithNamedAttributes(stages: Stage[]): ReadonlySet<string> {
-  const types = new Set<string>();
+function namedEdgeAttributes(
+  stages: Stage[],
+): Map<string, ReadonlySet<string>> {
+  const named = new Map<string, Set<string>>();
 
   for (const hit of collectEntityAttributeReferences({ stages })) {
-    if (hit.subject?.entity === 'edge') types.add(hit.subject.type);
+    if (hit.subject?.entity !== 'edge') continue;
+    const variables = named.get(hit.subject.type) ?? new Set<string>();
+    variables.add(hit.variableId);
+    named.set(hit.subject.type, variables);
   }
 
-  return types;
+  return named;
 }
 
 /** The largest number of unordered pairs a subject node type could ever reach. */
@@ -162,15 +207,16 @@ function pairsFor(
  * edge definition) by the pair count over its subject node type — a run
  * creates at most one edge of a type per unordered node pair per prompt, so
  * bounds accumulate per prompt. FamilyPedigree instead bounds its edge type by
- * one less than its node ceiling, the parent-child edges it actually creates,
- * and only where some stage could put a value on one at all. Counts sum across
- * stages producing the same type, since a `unique` constraint spans the whole
- * run.
+ * one less than its node ceiling, the parent-child edges it actually creates.
+ * Counts sum across stages producing the same type, since a `unique` constraint
+ * spans the whole run.
  *
  * Edges are therefore counted as the entities that can hold a value, not as
  * every entity the run creates, because holding values is the only thing the
  * count is asked about: feasibility measures a `unique` variable's value space
- * against it, and an edge born empty spends none of that space.
+ * against it, and an edge born empty spends none of that space. Which pedigree
+ * edges are empty is settled per variable rather than per type — see
+ * {@link edgeCountFor}, which reads the two tallies this returns.
  *
  * `externalData` is `generateNetwork`'s own roster argument, read here for the
  * same three-way meaning `createNodesForStage` gives it: a roster stage with no
@@ -186,7 +232,8 @@ export function worstCaseEntityCounts(
   externalData?: Record<string, NcNode[]>,
 ): WorstCaseCounts {
   const node = new Map<string, number>();
-  const edge = new Map<string, number>();
+  const base = new Map<string, number>();
+  const pedigree = new Map<string, number>();
   const tallies = new Map<string, NodeTally>();
 
   for (const stage of stages) {
@@ -229,14 +276,12 @@ export function worstCaseEntityCounts(
     );
   }
 
-  const filledEdgeTypes = edgeTypesWithNamedAttributes(stages);
-
   for (const stage of stages) {
     if (isPairEdgeStage(stage)) {
       const pairs = pairsFor(getSubjectType(stage.subject, 'node'), node);
       for (const prompt of stage.prompts) {
         const edgeType = prompt.createEdge;
-        if (edgeType) add(edge, edgeType, pairs);
+        if (edgeType) add(base, edgeType, pairs);
       }
       continue;
     }
@@ -245,7 +290,7 @@ export function worstCaseEntityCounts(
       const pairs = pairsFor(getSubjectType(stage.subject, 'node'), node);
       for (const prompt of stage.prompts) {
         const edgeType = prompt.edges?.create;
-        if (edgeType) add(edge, edgeType, pairs);
+        if (edgeType) add(base, edgeType, pairs);
       }
       continue;
     }
@@ -256,28 +301,25 @@ export function worstCaseEntityCounts(
       // this count can never be lower than what the generator produces.
       for (const edgeDef of stage.edges ?? []) {
         const edgeType = edgeDef.subject?.type;
-        if (edgeType !== undefined) add(edge, edgeType, pairs);
+        if (edgeType !== undefined) add(base, edgeType, pairs);
       }
       continue;
     }
 
     if (stage.type === 'FamilyPedigree') {
       const edgeType = stage.edgeConfig?.type;
-      // Pedigree edges are born empty, so they consume a `unique` variable's
-      // values only where another stage can fill them — see
-      // {@link edgeTypesWithNamedAttributes}. Counting them regardless refused
-      // protocols that generate perfectly well, a pedigree edge type carrying a
-      // finite-domain `unique` variable no stage ever writes being the whole of
-      // the example.
-      if (edgeType && filledEdgeTypes.has(edgeType)) {
+      // Tallied apart from the rest because these edges start empty, and only
+      // the variables some stage names ever stop being — see
+      // {@link edgeCountFor}, which decides that per variable.
+      if (edgeType) {
         // `handleFamilyPedigree` creates exactly `n - 1` edges (one per node
         // index 1..n-1), never pairwise, so the pair count over-counts by
         // roughly 5x at the default config maximum. Bound it by the true
         // maximum instead.
-        add(edge, edgeType, Math.max(pedigreeNodeCeiling(config) - 1, 0));
+        add(pedigree, edgeType, Math.max(pedigreeNodeCeiling(config) - 1, 0));
       }
     }
   }
 
-  return { node, edge };
+  return { node, edge: { base, pedigree, named: namedEdgeAttributes(stages) } };
 }

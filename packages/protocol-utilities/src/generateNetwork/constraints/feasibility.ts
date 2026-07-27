@@ -15,7 +15,11 @@ import {
 import { collectBinOnlyVariables } from './binOnlyVariables';
 import { buildEntityConstraints } from './buildConstraints';
 import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
-import { worstCaseEntityCounts } from './entityCounts';
+import {
+  edgeCountFor,
+  pedigreeNodeCeiling,
+  worstCaseEntityCounts,
+} from './entityCounts';
 import type { ConstraintConflict } from './error';
 import {
   differentFromGroups,
@@ -30,6 +34,7 @@ import {
   type ConstrainedVariable,
   type EntityConstraints,
 } from './types';
+import { valueKey } from './uniqueRegistry';
 import { distinctOptionValues, valueSpaceSize } from './valueSpace';
 
 type EntityScope = {
@@ -39,12 +44,25 @@ type EntityScope = {
   variables: Variables | undefined;
   /** Variables of this type whose rules nothing in the interview applies. */
   unvalidated: ReadonlySet<string>;
-  worstCaseCount: number;
+  /**
+   * The most entities of this type that can hold a value for one variable.
+   * Per variable rather than per type, because a pedigree edge holds a value
+   * only for the variables some stage writes onto it.
+   */
+  worstCaseCountFor: (variableId: string) => number;
   /** Values prompts write onto this type, and how many entities can hold each. */
   fixedValues: PromptFixedValues;
+  /** The same, for the ego flag a FamilyPedigree stage pins on its own nodes. */
+  pedigreeFixedValues: PromptFixedValues;
   /** Each prompt's whole set of values, as one entity ends up holding it. */
   fixedAssignments: readonly Record<string, VariableValue>[];
 };
+
+/** Which part of the protocol wrote a value the draw never got to choose. */
+type FixedValueOrigin = 'prompt' | 'pedigree';
+
+/** How many entities hold one fixed value, and what wrote it onto them. */
+type FixedCarriers = { count: number; origins: Set<FixedValueOrigin> };
 
 const NO_UNVALIDATED_VARIABLES: ReadonlySet<string> = new Set();
 const NO_FIXED_VALUES: PromptFixedValues = new Map();
@@ -60,6 +78,64 @@ const REFERENCE_RULES = [...MERGING_RULES, 'differentFrom'] as const;
 
 function namesOf(entity: EntityConstraints, ids: string[]): string[] {
   return ids.map((id) => entity.get(id)?.entry.name ?? id);
+}
+
+/**
+ * What to call whatever wrote a fixed value, so the message points at the part
+ * of the protocol its author would edit.
+ */
+function fixedBy(origins: ReadonlySet<FixedValueOrigin>): string {
+  if (origins.size > 1) return 'the protocol';
+  return origins.has('pedigree') ? 'a family pedigree' : 'a prompt';
+}
+
+/**
+ * The ego flag each FamilyPedigree stage pins, counted like a prompt's fixed
+ * values so both reach the same refusal.
+ *
+ * The interface marks exactly one node of a pedigree as ego and every other
+ * node it builds as not-ego, whatever the flag's declared type, so a stage of
+ * `n` nodes pins `true` once and `false` `n - 1` times. Both are written rather
+ * than drawn: `handleFamilyPedigree` assigns them after generating the rest of
+ * the node, so no seed spreads them over more holders or fewer. Counted at the
+ * configured ceiling, for the same reason the rest of feasibility counts worst
+ * cases, and summed across stages because a `unique` value is claimed once for
+ * the whole run.
+ */
+function countPedigreeFixedValues(
+  stages: Stage[],
+  config: ResolvedGenerationConfig,
+): Map<string, PromptFixedValues> {
+  const byType = new Map<string, PromptFixedValues>();
+
+  for (const stage of stages) {
+    if (stage.type !== 'FamilyPedigree') continue;
+
+    const nodeType = stage.nodeConfig?.type;
+    const egoVariable = stage.nodeConfig?.egoVariable;
+    if (nodeType === undefined || egoVariable === undefined) continue;
+
+    const ceiling = pedigreeNodeCeiling(config);
+    const pinned: [boolean, number][] = [
+      [true, Math.min(ceiling, 1)],
+      [false, Math.max(ceiling - 1, 0)],
+    ];
+
+    const forType = byType.get(nodeType) ?? new Map();
+    const forVariable = forType.get(egoVariable) ?? new Map();
+    for (const [value, carriers] of pinned) {
+      if (carriers === 0) continue;
+      const key = valueKey(value);
+      forVariable.set(key, {
+        value,
+        count: (forVariable.get(key)?.count ?? 0) + carriers,
+      });
+    }
+    forType.set(egoVariable, forVariable);
+    byType.set(nodeType, forType);
+  }
+
+  return byType;
 }
 
 /**
@@ -130,18 +206,32 @@ function analyseEntity(
   // Folded onto groups because a `unique` value is claimed once for the whole
   // group its members share: two prompts fixing one value on two variables held
   // equal spend the same value twice, exactly as one prompt fixing it twice.
-  const fixedByGroup = new Map<string, Map<string, number>>();
+  const fixedByGroup = new Map<string, Map<string, FixedCarriers>>();
   const fixedDisplay = new Map<string, string>();
-  for (const [id, values] of scope.fixedValues) {
-    if (!entity.has(id)) continue;
-    const group = groupOf.get(id) ?? id;
-    const carriers = fixedByGroup.get(group) ?? new Map<string, number>();
-    for (const [key, { value, count }] of values) {
-      carriers.set(key, (carriers.get(key) ?? 0) + count);
-      fixedDisplay.set(key, String(value));
+  const foldFixedValues = (
+    values: PromptFixedValues,
+    origin: FixedValueOrigin,
+  ): void => {
+    for (const [id, tallies] of values) {
+      if (!entity.has(id)) continue;
+      const group = groupOf.get(id) ?? id;
+      const carriers =
+        fixedByGroup.get(group) ?? new Map<string, FixedCarriers>();
+      for (const [key, { value, count }] of tallies) {
+        const carrier = carriers.get(key) ?? {
+          count: 0,
+          origins: new Set<FixedValueOrigin>(),
+        };
+        carrier.count += count;
+        carrier.origins.add(origin);
+        carriers.set(key, carrier);
+        fixedDisplay.set(key, String(value));
+      }
+      fixedByGroup.set(group, carriers);
     }
-    fixedByGroup.set(group, carriers);
-  }
+  };
+  foldFixedValues(scope.fixedValues, 'prompt');
+  foldFixedValues(scope.pedigreeFixedValues, 'pedigree');
 
   const report = (
     variableIds: string[],
@@ -321,21 +411,26 @@ function analyseEntity(
         // reaches only the narrower value space, however wide its own is.
         const group = groupOf.get(id) ?? id;
         const members = membersOf.get(group) ?? [id];
-        const size = valueSpaceSize(
-          groups.get(group) ?? variable,
-          scope.worstCaseCount,
+        // The widest of the group's members, because the group holds one value
+        // and every entity carrying any member of it spends that value: a
+        // variable a form fills on nine edges spends nine, however few carry
+        // the member held equal to it.
+        const holders = members.reduce(
+          (most, member) => Math.max(most, scope.worstCaseCountFor(member)),
+          0,
         );
+        const size = valueSpaceSize(groups.get(group) ?? variable, holders);
 
         if (
           size !== 'unbounded' &&
-          size < scope.worstCaseCount &&
+          size < holders &&
           !uniqueReported.has(group)
         ) {
           uniqueReported.add(group);
           report(
             members,
             ['unique'],
-            `only ${size} distinct values are possible${members.length > 1 ? ' once these variables are held equal' : ''}, but up to ${scope.worstCaseCount} ${scope.entity}s of this type can be generated`,
+            `only ${size} distinct values are possible${members.length > 1 ? ' once these variables are held equal' : ''}, but up to ${holders} ${scope.entity}s of this type can be generated`,
           );
         }
 
@@ -346,21 +441,35 @@ function analyseEntity(
         // satisfies. Refused here rather than at the draw, so the protocol
         // fails the same way on every seed instead of on the ones whose node
         // count happened to reach two.
+        //
+        // A FamilyPedigree stage's ego flag is the same thing written by a
+        // stage: the interface marks its proband `true` and every other node it
+        // builds `false`, so a pedigree of three pins one value twice, and two
+        // pedigrees pin `true` once each. No draw stands between those pins and
+        // the finished network, which is why this is a refusal rather than
+        // something the unique registry could settle.
         const spent = [...(fixedByGroup.get(group) ?? [])].filter(
-          ([, count]) => count > 1,
+          ([, carrier]) => carrier.count > 1,
         );
         if (spent.length > 0 && !fixedReported.has(group)) {
           fixedReported.add(group);
           const detail = spent
             .map(
-              ([key, count]) =>
+              ([key, { count }]) =>
                 `${fixedDisplay.get(key) ?? key} on up to ${count} ${scope.entity}s`,
             )
             .join(' and to ');
+          const origins = new Set(
+            spent.flatMap(([, carrier]) => [...carrier.origins]),
+          );
           report(
             members,
-            ['unique', 'additionalAttributes'],
-            `a prompt fixes ${members.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${detail}, but unique allows one ${scope.entity} to hold a value`,
+            [
+              'unique',
+              ...(origins.has('prompt') ? ['additionalAttributes'] : []),
+              ...(origins.has('pedigree') ? ['egoVariable'] : []),
+            ],
+            `${fixedBy(origins)} fixes ${members.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${detail}, but unique allows one ${scope.entity} to hold a value`,
           );
         }
       }
@@ -409,11 +518,11 @@ function analyseEntity(
   // checks above, a single variable's bounds or a group's members' against each
   // other, and neither needs a comparator to be wrong.
   const edges = groupComparatorEdges(entity, groupOf);
-  const { groups: propagated, inverted } = propagateComparatorBounds(
-    groups,
-    order,
-    edges,
-  );
+  const {
+    groups: propagated,
+    inverted,
+    incomparable,
+  } = propagateComparatorBounds(groups, order, edges);
   const cyclicGroups = new Set(
     cycles.flat().map((id) => groupOf.get(id) ?? id),
   );
@@ -435,10 +544,15 @@ function analyseEntity(
       }),
     );
 
+    // A comparison whose ends are a number and a date has no satisfying pair of
+    // values at bounds of any width, so naming the bounds would send its author
+    // to widen a range that was never the problem.
     report(
       ids,
       rules,
-      'the comparisons between these variables do not fit inside the bounds they declare',
+      component.some((group) => incomparable.has(group))
+        ? 'a number is compared against a date here, which no assignment can satisfy'
+        : 'the comparisons between these variables do not fit inside the bounds they declare',
     );
   }
 
@@ -547,21 +661,25 @@ export function analyseFeasibility(
   const counts = worstCaseEntityCounts(stages, config, externalData);
   const binOnly = collectBinOnlyVariables(stages);
   const promptFixed = countPromptFixedValues(stages, config, externalData);
+  const pedigreeFixed = countPedigreeFixedValues(stages, config);
   const promptAssignments = collectPromptFixedAssignments(stages, externalData);
   const scopes: EntityScope[] = [
     {
       entity: 'ego',
       variables: codebook.ego?.variables,
       unvalidated: NO_UNVALIDATED_VARIABLES,
-      worstCaseCount: 1,
+      worstCaseCountFor: () => 1,
       // No stage fixes a value on ego: `additionalAttributes` belongs to a
-      // name-generator prompt, whose subject is always a node.
+      // name-generator prompt, and a pedigree's ego flag to its own nodes, both
+      // of whose subjects are always a node.
       fixedValues: NO_FIXED_VALUES,
+      pedigreeFixedValues: NO_FIXED_VALUES,
       fixedAssignments: NO_FIXED_ASSIGNMENTS,
     },
   ];
 
   for (const [type, definition] of Object.entries(codebook.node ?? {})) {
+    const nodeCount = counts.node.get(type) ?? 0;
     scopes.push({
       entity: 'node',
       entityType: type,
@@ -570,8 +688,11 @@ export function analyseFeasibility(
         : {}),
       variables: definition.variables,
       unvalidated: binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES,
-      worstCaseCount: counts.node.get(type) ?? 0,
+      // Every stage creating a node generates its whole attribute set, so one
+      // count covers each of the type's variables.
+      worstCaseCountFor: () => nodeCount,
       fixedValues: promptFixed.get(type) ?? NO_FIXED_VALUES,
+      pedigreeFixedValues: pedigreeFixed.get(type) ?? NO_FIXED_VALUES,
       fixedAssignments: promptAssignments.get(type) ?? NO_FIXED_ASSIGNMENTS,
     });
   }
@@ -587,10 +708,12 @@ export function analyseFeasibility(
       // Both binning stages take a node subject, so no edge variable can be
       // bin-assigned.
       unvalidated: NO_UNVALIDATED_VARIABLES,
-      worstCaseCount: counts.edge.get(type) ?? 0,
+      worstCaseCountFor: (variableId) =>
+        edgeCountFor(counts.edge, type, variableId),
       // `additionalAttributes` writes onto the nodes a prompt creates, never
       // onto an edge.
       fixedValues: NO_FIXED_VALUES,
+      pedigreeFixedValues: NO_FIXED_VALUES,
       fixedAssignments: NO_FIXED_ASSIGNMENTS,
     });
   }
