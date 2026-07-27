@@ -168,9 +168,7 @@ const Validations = ({
     const isRecord = (v: unknown): v is Record<string, unknown> =>
       typeof v === 'object' && v !== null && !Array.isArray(v);
     const options =
-      isRecord(current) && 'options' in current
-        ? (current as Record<string, unknown>).options
-        : undefined;
+      isRecord(current) && 'options' in current ? current.options : undefined;
     return Array.isArray(options) ? options.length : undefined;
   }, [variableType, draftOptions, allVariables, currentVariableId]);
 
