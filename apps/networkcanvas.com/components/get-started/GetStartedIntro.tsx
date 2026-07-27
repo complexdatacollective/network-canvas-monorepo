@@ -119,7 +119,7 @@ export function GetStartedIntro() {
                 rel={stage.external ? 'noreferrer' : undefined}
                 aria-label={t(`intro.stages.${stage.id}.accessibleName`)}
                 data-get-started-weave-interactive-target
-                variants={entrance.itemVariants}
+                variants={entrance.backdropItemVariants}
                 whileHover={reduceMotion ? undefined : { y: -5 }}
                 whileFocus={reduceMotion ? undefined : { y: -5 }}
                 className="entrance-motion-item focusable elevation-medium group tablet-portrait:last:col-span-2 tablet-landscape:last:col-span-1 tablet-portrait:p-10 tablet-portrait:pb-28 bg-surface/55 relative min-h-64 rounded p-8 pb-24 backdrop-blur-md"

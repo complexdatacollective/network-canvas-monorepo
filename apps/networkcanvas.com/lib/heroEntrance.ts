@@ -38,7 +38,30 @@ export function createHeroEntrance(reduceMotion: boolean) {
         },
       };
 
+  // An opacity below 1 forms a Backdrop Root, so translucent surfaces need
+  // entrance motion that never prevents them from sampling the page weave.
+  const backdropItemVariants: Variants = reduceMotion
+    ? {
+        hidden: { opacity: 1, visibility: 'visible', y: 0 },
+        visible: {
+          opacity: 1,
+          visibility: 'visible',
+          y: 0,
+          transition: { duration: 0 },
+        },
+      }
+    : {
+        hidden: { opacity: 1, visibility: 'hidden', y: 16 },
+        visible: {
+          opacity: 1,
+          visibility: 'visible',
+          y: 0,
+          transition: entranceSpring,
+        },
+      };
+
   return {
+    backdropItemVariants,
     initial: reduceMotion ? false : 'hidden',
     pageVariants,
     heroVariants,

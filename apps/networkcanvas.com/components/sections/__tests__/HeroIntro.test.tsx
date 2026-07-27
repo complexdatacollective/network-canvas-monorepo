@@ -86,17 +86,22 @@ vi.mock('~/components/layout/Header', () => ({
 
 vi.mock('~/components/sections/Hero', () => ({
   Hero: ({
+    backdropItemVariants,
     containerVariants,
     itemVariants,
     newsItems: heroNewsItems,
     scrollStyle,
   }: {
+    backdropItemVariants?: unknown;
     containerVariants?: unknown;
     itemVariants?: unknown;
     newsItems: readonly NewsItem[];
     scrollStyle?: unknown;
   }) => (
     <div
+      data-hero-backdrop-item-variants={
+        backdropItemVariants ? 'active' : 'none'
+      }
       data-hero-container-variants={containerVariants ? 'active' : 'none'}
       data-hero-item-variants={itemVariants ? 'active' : 'none'}
       data-hero-scroll-style={
@@ -174,6 +179,9 @@ describe('HeroIntro', () => {
       container.querySelector('[data-hero-container-variants]'),
     ).toHaveAttribute('data-hero-container-variants', 'active');
     expect(
+      container.querySelector('[data-hero-backdrop-item-variants]'),
+    ).toHaveAttribute('data-hero-backdrop-item-variants', 'active');
+    expect(
       container.querySelector('[data-hero-item-variants]'),
     ).toHaveAttribute('data-hero-item-variants', 'active');
   });
@@ -216,6 +224,9 @@ describe('HeroIntro', () => {
     expect(
       container.querySelector('[data-hero-container-variants]'),
     ).toHaveAttribute('data-hero-container-variants', 'active');
+    expect(
+      container.querySelector('[data-hero-backdrop-item-variants]'),
+    ).toHaveAttribute('data-hero-backdrop-item-variants', 'active');
     expect(
       container.querySelector('[data-hero-item-variants]'),
     ).toHaveAttribute('data-hero-item-variants', 'active');
@@ -268,6 +279,9 @@ describe('HeroIntro', () => {
     expect(
       container.querySelector('[data-hero-container-variants]'),
     ).toHaveAttribute('data-hero-container-variants', 'active');
+    expect(
+      container.querySelector('[data-hero-backdrop-item-variants]'),
+    ).toHaveAttribute('data-hero-backdrop-item-variants', 'active');
     expect(
       container.querySelector('[data-hero-item-variants]'),
     ).toHaveAttribute('data-hero-item-variants', 'active');

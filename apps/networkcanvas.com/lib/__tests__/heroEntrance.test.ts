@@ -12,6 +12,15 @@ describe('createHeroEntrance', () => {
       heroVariants: {
         visible: { transition: { staggerChildren: 0.12 } },
       },
+      backdropItemVariants: {
+        hidden: { opacity: 1, visibility: 'hidden', y: 16 },
+        visible: {
+          opacity: 1,
+          visibility: 'visible',
+          y: 0,
+          transition: { type: 'spring', stiffness: 100, damping: 20 },
+        },
+      },
       itemVariants: {
         hidden: { opacity: 0, y: 16 },
         visible: {
@@ -25,6 +34,15 @@ describe('createHeroEntrance', () => {
 
   it('removes initial transforms and delays for reduced motion', () => {
     expect(createHeroEntrance(true)).toEqual({
+      backdropItemVariants: {
+        hidden: { opacity: 1, visibility: 'visible', y: 0 },
+        visible: {
+          opacity: 1,
+          visibility: 'visible',
+          y: 0,
+          transition: { duration: 0 },
+        },
+      },
       initial: false,
       pageVariants: {
         hidden: {},
