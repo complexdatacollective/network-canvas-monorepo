@@ -127,12 +127,21 @@ const DialogItem = ({
   );
 };
 
+// `editorValidate`'s optional second argument carries the edit context
+// (currently the edited row's array index) — see InlineEditScreen/Form's
+// WrappedFormProps (eleventh-wave Finding 4). Single-argument validators
+// remain assignable, so callers without array context are unaffected.
+type EditorValidate = (
+  values: Record<string, unknown>,
+  props?: { editIndex?: number },
+) => Record<string, unknown>;
+
 type DialogEditorProps = FrescoReduxArrayFieldEditorProps<ArrayItem> & {
   addTitle: string;
   editorFieldsComponent: Renderer;
   editorProps?: Record<string, unknown>;
   editorTitle: string;
-  editorValidate?: (values: Record<string, unknown>) => Record<string, unknown>;
+  editorValidate?: EditorValidate;
   itemSelector?: ItemSelector;
   normalizeItem: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
@@ -141,6 +150,7 @@ type DialogEditorProps = FrescoReduxArrayFieldEditorProps<ArrayItem> & {
 
 const DialogEditor = ({
   item,
+  index,
   isNewItem,
   onSave,
   onCancel,
@@ -243,6 +253,11 @@ const DialogEditor = ({
         id={editFormName}
         onSubmit={handleSave}
         initialValues={initialValues}
+        // Eleventh-wave Finding 4: an existing item's committed array index,
+        // surfaced to `editorValidate` via redux-form's (values, props)
+        // validate signature. A new item is not in the committed array yet,
+        // so it has no index to report.
+        editIndex={isNewItem || index === null ? undefined : index}
         validate={editorValidate}
       >
         <Layout>
@@ -270,7 +285,7 @@ type DialogArrayFieldOwnProps<T extends ArrayItem> = Omit<
   editorFieldsComponent: Renderer;
   editorProps?: Record<string, unknown>;
   editorTitle: string;
-  editorValidate?: (values: Record<string, unknown>) => Record<string, unknown>;
+  editorValidate?: EditorValidate;
   itemLabel?: string;
   itemSelector?: ItemSelector;
   itemTemplate?: () => Partial<T>;

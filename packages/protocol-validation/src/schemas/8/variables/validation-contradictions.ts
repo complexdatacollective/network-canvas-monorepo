@@ -264,9 +264,12 @@ function comparatorEdges(variables: UnknownRecord): ComparatorEdge[] {
  * ("lower is at most upper"). A component with more than one member is a set
  * of variables a non-strict comparator cycle forces to hold one shared value
  * — `a >= b` plus `b >= a` is the two-node case; a longer all-non-strict
- * chain back to its start is the same shape. Iterative-safe Tarjan (the
- * `strongconnect` recursion is still used, but variable counts per entity
- * are small enough that stack depth is not a practical concern).
+ * chain back to its start is the same shape. Eleventh-wave Finding 2: Tarjan
+ * runs with an explicit frame stack rather than recursion — the analyser runs
+ * inside protocol parsing AND the v7→v8 migration, so a large imported
+ * protocol must not crash the import with a RangeError. The frames replay the
+ * recursive visit order exactly (same neighbour order, same component
+ * emission order).
  */
 function nonStrictComparatorComponents(edges: ComparatorEdge[]): string[][] {
   const adjacency = new Map<string, string[]>();
@@ -285,40 +288,65 @@ function nonStrictComparatorComponents(edges: ComparatorEdge[]): string[][] {
   const components: string[][] = [];
   let counter = 0;
 
-  const strongconnect = (node: string): void => {
-    index.set(node, counter);
-    lowlink.set(node, counter);
-    counter += 1;
-    stack.push(node);
-    onStack.add(node);
+  type Frame = { node: string; neighbours: string[]; next: number };
 
-    for (const next of adjacency.get(node) ?? []) {
-      if (!index.has(next)) {
-        strongconnect(next);
-        const nodeLow = lowlink.get(node);
-        const nextLow = lowlink.get(next);
-        if (nodeLow !== undefined && nextLow !== undefined) {
-          lowlink.set(node, Math.min(nodeLow, nextLow));
+  const strongconnect = (start: string): void => {
+    const frames: Frame[] = [];
+    const enter = (node: string): void => {
+      index.set(node, counter);
+      lowlink.set(node, counter);
+      counter += 1;
+      stack.push(node);
+      onStack.add(node);
+      frames.push({ node, neighbours: adjacency.get(node) ?? [], next: 0 });
+    };
+    enter(start);
+
+    while (frames.length > 0) {
+      const frame = frames[frames.length - 1];
+      if (!frame) break;
+      const { node } = frame;
+
+      if (frame.next < frame.neighbours.length) {
+        const next = frame.neighbours[frame.next];
+        frame.next += 1;
+        if (next === undefined) continue;
+        if (!index.has(next)) {
+          // Descend; `node`'s lowlink is folded in when this frame pops.
+          enter(next);
+        } else if (onStack.has(next)) {
+          const nodeLow = lowlink.get(node);
+          const nextIndex = index.get(next);
+          if (nodeLow !== undefined && nextIndex !== undefined) {
+            lowlink.set(node, Math.min(nodeLow, nextIndex));
+          }
         }
-      } else if (onStack.has(next)) {
+        continue;
+      }
+
+      // Neighbours exhausted: emit if this node roots a component, then
+      // return to the parent frame, folding this node's lowlink into it —
+      // the same order as the recursive call returning.
+      if (lowlink.get(node) === index.get(node)) {
+        const component: string[] = [];
+        for (;;) {
+          const member = stack.pop();
+          if (member === undefined) break;
+          onStack.delete(member);
+          component.push(member);
+          if (member === node) break;
+        }
+        components.push(component);
+      }
+      frames.pop();
+      const parent = frames[frames.length - 1];
+      if (parent) {
+        const parentLow = lowlink.get(parent.node);
         const nodeLow = lowlink.get(node);
-        const nextIndex = index.get(next);
-        if (nodeLow !== undefined && nextIndex !== undefined) {
-          lowlink.set(node, Math.min(nodeLow, nextIndex));
+        if (parentLow !== undefined && nodeLow !== undefined) {
+          lowlink.set(parent.node, Math.min(parentLow, nodeLow));
         }
       }
-    }
-
-    if (lowlink.get(node) === index.get(node)) {
-      const component: string[] = [];
-      for (;;) {
-        const member = stack.pop();
-        if (member === undefined) break;
-        onStack.delete(member);
-        component.push(member);
-        if (member === node) break;
-      }
-      components.push(component);
     }
   };
 
@@ -414,7 +442,11 @@ type GroupEdge = { strict: boolean; sources: VariableRuleRef[] };
 /**
  * Cycles in the group-level comparator graph. An all-non-strict cycle merely
  * forces its members equal, which one value satisfies; only cycles containing
- * a strict edge are unsatisfiable and reported.
+ * a strict edge are unsatisfiable and reported. Eleventh-wave Finding 2: the
+ * DFS runs with an explicit frame stack rather than recursion (see
+ * `nonStrictComparatorComponents`); the shared `path` array holds exactly the
+ * groups the recursive version accumulated per-call, so reported cycle
+ * orderings are unchanged.
  */
 function findStrictCycles(
   dependencies: Map<string, Map<string, GroupEdge>>,
@@ -423,46 +455,80 @@ function findStrictCycles(
   const reported = new Set<string>();
   const state = new Map<string, 'visiting' | 'done'>();
 
-  const visit = (group: string, stack: string[]): void => {
-    const current = state.get(group);
-    if (current === 'done') return;
-    if (current === 'visiting') {
-      const start = stack.indexOf(group);
-      const cycle = stack.slice(start === -1 ? 0 : start);
-      const edges: GroupEdge[] = [];
-      let hasStrict = false;
-      for (let index = 0; index < cycle.length; index++) {
-        const from = cycle[index];
-        const to = cycle[(index + 1) % cycle.length];
-        const edge =
-          from !== undefined && to !== undefined
-            ? dependencies.get(from)?.get(to)
-            : undefined;
-        if (edge) {
-          edges.push(edge);
-          if (edge.strict) hasStrict = true;
-        }
+  const reportCycle = (target: string, path: string[]): void => {
+    const start = path.indexOf(target);
+    const cycle = path.slice(start === -1 ? 0 : start);
+    const edges: GroupEdge[] = [];
+    let hasStrict = false;
+    for (let index = 0; index < cycle.length; index++) {
+      const from = cycle[index];
+      const to = cycle[(index + 1) % cycle.length];
+      const edge =
+        from !== undefined && to !== undefined
+          ? dependencies.get(from)?.get(to)
+          : undefined;
+      if (edge) {
+        edges.push(edge);
+        if (edge.strict) hasStrict = true;
       }
-      if (hasStrict) {
-        const key = cycle.toSorted().join(KEY_SEPARATOR);
-        if (!reported.has(key)) {
-          reported.add(key);
-          results.push({
-            groups: cycle,
-            sources: edges.flatMap((edge) => edge.sources),
-          });
-        }
+    }
+    if (hasStrict) {
+      const key = cycle.toSorted().join(KEY_SEPARATOR);
+      if (!reported.has(key)) {
+        reported.add(key);
+        results.push({
+          groups: cycle,
+          sources: edges.flatMap((edge) => edge.sources),
+        });
       }
-      return;
     }
-    state.set(group, 'visiting');
-    for (const dependency of dependencies.get(group)?.keys() ?? []) {
-      visit(dependency, [...stack, group]);
-    }
-    state.set(group, 'done');
   };
 
-  for (const group of dependencies.keys()) visit(group, []);
+  type Frame = { group: string; dependencies: string[]; next: number };
+
+  const visit = (root: string): void => {
+    const path: string[] = [];
+    const frames: Frame[] = [];
+    const enter = (group: string): void => {
+      state.set(group, 'visiting');
+      path.push(group);
+      frames.push({
+        group,
+        dependencies: [...(dependencies.get(group)?.keys() ?? [])],
+        next: 0,
+      });
+    };
+    enter(root);
+
+    while (frames.length > 0) {
+      const frame = frames[frames.length - 1];
+      if (!frame) break;
+
+      if (frame.next < frame.dependencies.length) {
+        const dependency = frame.dependencies[frame.next];
+        frame.next += 1;
+        if (dependency === undefined) continue;
+        const current = state.get(dependency);
+        if (current === 'done') continue;
+        if (current === 'visiting') {
+          // Back-edge: `path` is the chain of currently-visiting groups from
+          // the root down to `frame.group`, inclusive.
+          reportCycle(dependency, path);
+          continue;
+        }
+        enter(dependency);
+        continue;
+      }
+
+      state.set(frame.group, 'done');
+      frames.pop();
+      path.pop();
+    }
+  };
+
+  for (const group of dependencies.keys()) {
+    if (state.get(group) === undefined) visit(group);
+  }
   return results;
 }
 

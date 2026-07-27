@@ -16,7 +16,10 @@ vi.mock('~/components/Form/DialogArrayField', () => ({
 }));
 
 let capturedEditorValidate:
-  | ((values: Record<string, unknown>) => Record<string, unknown>)
+  | ((
+      values: Record<string, unknown>,
+      props?: { editIndex?: number },
+    ) => Record<string, unknown>)
   | undefined;
 
 vi.mock('~/components/Form/ValidatedFieldArray', () => ({
@@ -229,14 +232,17 @@ it('folds a sibling composer field component/parameters override into editorVali
   expect(mismatched?.validation).toContain('different resolutions');
 });
 
-// PR #1107 ninth-wave Finding 4: reassigning a field from `a` to `b` must
+// PR #1107 eleventh-wave Finding 4: reassigning a field from `a` to `b` must
 // exclude the field's OWN stale overlay entry (still keyed by `a`, its
-// pre-edit variable) by the field's stable id, not by the draft's NEW
-// `values.variable`. Excluding by the new variable id ('b') would leave `a`'s
-// committed year-picker override in the checked set even though, after save,
-// this field no longer renders `a` at all — producing a false conflict
-// against a variable the save is removing this field's override from.
-it('excludes a reassigned field’s own stale overlay entry from editorValidate', () => {
+// pre-edit variable). The exclusion happens at overlay construction time, by
+// the array index DialogArrayField surfaces as validate's `editIndex` prop —
+// NOT by the field's `id`, which imported protocols may omit
+// (ComposerFormFieldSchema.id is optional; this fixture is deliberately
+// id-less). Without the exclusion, `a`'s committed year-picker override would
+// stay in the checked set even though, after save, this field no longer
+// renders `a` at all — producing a false conflict against a variable the
+// save is removing this field's override from.
+it('excludes a reassigned id-less field’s own stale overlay entry from editorValidate', () => {
   const storeWithReassignedField = configureStore({
     reducer: () => ({
       form: {
@@ -245,7 +251,6 @@ it('excludes a reassigned field’s own stale overlay entry from editorValidate'
             nodeForm: {
               fields: [
                 {
-                  id: 'field-1',
                   variable: 'a',
                   component: 'DatePicker',
                   parameters: { type: 'year' },
@@ -273,15 +278,20 @@ it('excludes a reassigned field’s own stale overlay entry from editorValidate'
 
   expect(capturedEditorValidate).toBeInstanceOf(Function);
 
-  // Editing field-1, reassigning it from `a` to `b` at full resolution: `a`'s
-  // stale year-picker override must not leak in and conflict with `b`.
-  expect(
-    capturedEditorValidate?.({
-      id: 'field-1',
-      variable: 'b',
-      validation: {},
-      component: 'DatePicker',
-      parameters: {},
-    }),
-  ).toEqual({});
+  // Editing the field at index 0, reassigning it from `a` to `b` at full
+  // resolution: `a`'s stale year-picker override must not leak in and
+  // conflict with `b`.
+  const draft = {
+    variable: 'b',
+    validation: {},
+    component: 'DatePicker',
+    parameters: {},
+  };
+  expect(capturedEditorValidate?.(draft, { editIndex: 0 })).toEqual({});
+
+  // Mutation guard: without the index exclusion the stale override for `a`
+  // stays in the prospective model and reports a false contradiction.
+  expect(capturedEditorValidate?.(draft)?.validation).toContain(
+    'different resolutions',
+  );
 });

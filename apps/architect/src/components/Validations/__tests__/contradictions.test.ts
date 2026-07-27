@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { buildComposerFieldOverlay } from '../../sections/Form/composerHelpers';
 import {
   buildProspectiveVariables,
   DRAFT_VARIABLE_ID,
@@ -282,13 +283,16 @@ describe('makeFieldEditorValidate', () => {
         validation: {},
       },
     };
-    const siblingRendersAAsYearPicker = {
-      a: {
-        fieldId: 'field-a',
-        component: 'DatePicker',
-        parameters: { type: 'year' },
-      },
-    };
+    // The stage's committed composer fields. Deliberately id-less: imported
+    // protocols can omit ComposerFormFieldSchema's optional `id`, and the
+    // exclusion below must not depend on one (eleventh-wave Finding 4).
+    const composerFields = [
+      { variable: 'a', component: 'DatePicker', parameters: { type: 'year' } },
+    ];
+    const siblingRendersAAsYearPicker = buildComposerFieldOverlay(
+      composerFields,
+      undefined,
+    );
 
     it('accepts a year-picker draft matching how the sibling field renders the sameAs partner', () => {
       const validate = makeFieldEditorValidate(
@@ -319,42 +323,41 @@ describe('makeFieldEditorValidate', () => {
     });
 
     it('excludes the overlay entry for the field currently being edited', () => {
-      // Editing `a` itself (same field, not reassigned): its own overlay
-      // entry is the field's PRE-draft committed value and must not shadow —
-      // or here, since the dialog hasn't touched component/parameters,
-      // silently substitute for — the codebook definition
-      // `buildProspectiveVariables` falls back to. If the overlay leaked in
-      // for the field being edited, `a` would wrongly appear as a year
-      // picker against `b`'s full-resolution codebook definition and report
-      // a contradiction that doesn't exist. Excluded by the field's own id
-      // (ninth-wave Finding 4), matching what the overlay entry itself
-      // carries.
+      // Editing the field at index 0 (still assigned to `a`): its own
+      // overlay entry is the field's PRE-draft committed value and must not
+      // shadow — or here, since the dialog hasn't touched
+      // component/parameters, silently substitute for — the codebook
+      // definition `buildProspectiveVariables` falls back to. If the overlay
+      // leaked in for the field being edited, `a` would wrongly appear as a
+      // year picker against `b`'s full-resolution codebook definition and
+      // report a contradiction that doesn't exist. Excluded at overlay
+      // construction time by array index (eleventh-wave Finding 4), so an
+      // id-less imported field is excluded just the same.
       const validate = makeFieldEditorValidate(
         equalDatePickers,
-        siblingRendersAAsYearPicker,
+        buildComposerFieldOverlay(composerFields, 0),
       );
       const errors = validate({
-        id: 'field-a',
         variable: 'a',
         validation: { sameAs: 'b' },
       });
       expect(errors).toEqual({});
     });
 
-    // Ninth-wave Finding 4: reassigning THIS SAME field (fieldId 'field-a')
-    // from `a` to `b` must exclude `a`'s stale overlay entry by the field's
-    // own id, not by the draft's NEW `values.variable` ('b') — excluding by
-    // the new variable id would leave `a`'s pre-edit year-picker override in
-    // the checked set even though, after save, this field no longer renders
-    // `a` at all, producing a false contradiction against a variable the
-    // save is removing this field's override from.
-    it('excludes a reassigned field’s own stale overlay entry, keyed by its OLD variable', () => {
+    // Eleventh-wave Finding 4: reassigning the id-less field at index 0 from
+    // `a` to `b` must still exclude `a`'s stale overlay entry — the entry to
+    // drop is keyed by the field's OLD variable, so excluding by the draft's
+    // NEW `values.variable` ('b') would miss it, and the previous id-keyed
+    // exclusion had nothing to match for an id-less imported field. Index
+    // identity covers both: the stale year-picker override for `a` must not
+    // produce a false contradiction against a variable the save is removing
+    // this field's override from.
+    it('excludes a reassigned id-less field’s own stale overlay entry, keyed by its OLD variable', () => {
       const validate = makeFieldEditorValidate(
         equalDatePickers,
-        siblingRendersAAsYearPicker,
+        buildComposerFieldOverlay(composerFields, 0),
       );
       const errors = validate({
-        id: 'field-a',
         variable: 'b',
         validation: {},
         component: 'DatePicker',
@@ -364,11 +367,12 @@ describe('makeFieldEditorValidate', () => {
     });
 
     it('still applies a DIFFERENT field’s overlay when reassigning this one', () => {
-      // Reassigning `field-a` from `a` to `x`. `x`'s draft introduces a NEW
-      // sameAs relationship to `y`, whose sibling composer field (`field-y`
-      // — a DIFFERENT field entirely, untouched by this edit) renders it as
-      // a year picker. That sibling override must still be visible: only
-      // `field-a`'s OWN stale entry for `a` is excluded, not every entry.
+      // Reassigning the field at index 0 from `a` to `x`. `x`'s draft
+      // introduces a NEW sameAs relationship to `y`, whose sibling composer
+      // field (index 1 — a DIFFERENT field entirely, untouched by this edit)
+      // renders it as a year picker. That sibling override must still be
+      // visible: only index 0's OWN stale entry for `a` is excluded, not
+      // every entry.
       const variablesWithXY = {
         ...equalDatePickers,
         x: {
@@ -384,20 +388,21 @@ describe('makeFieldEditorValidate', () => {
           validation: {},
         },
       };
-      const overlayWithSibling = {
-        ...siblingRendersAAsYearPicker,
-        y: {
-          fieldId: 'field-y',
-          component: 'DatePicker',
-          parameters: { type: 'year' },
-        },
-      };
       const validate = makeFieldEditorValidate(
         variablesWithXY,
-        overlayWithSibling,
+        buildComposerFieldOverlay(
+          [
+            ...composerFields,
+            {
+              variable: 'y',
+              component: 'DatePicker',
+              parameters: { type: 'year' },
+            },
+          ],
+          0,
+        ),
       );
       const errors = validate({
-        id: 'field-a',
         variable: 'x',
         validation: { sameAs: 'y' },
         component: 'DatePicker',

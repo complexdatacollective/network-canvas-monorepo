@@ -219,6 +219,20 @@ export const datePickerParametersSchema = z
           path: [bound],
         });
       }
+      // Eleventh-wave Finding 1: '0000-12-31' is a real, round-tripping ISO
+      // date (JS Date supports year 0), but the native HTML date input's
+      // earliest selectable date is 0001-01-01, so a year-zero bound (e.g.
+      // max '0000-12-31' on a required field) leaves no selectable value
+      // that can ever pass. Years 0001-0999 stay valid at full resolution
+      // (the wave-3 small-year support); coarse resolutions are already
+      // floored at 1000 above.
+      if (resolution === 'full' && Number(value.slice(0, 4)) === 0) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `DatePicker "${bound}" must use a year of 0001 or later — the native date input starts at year 0001`,
+          path: [bound],
+        });
+      }
     }
     if (
       parameters.min !== undefined &&

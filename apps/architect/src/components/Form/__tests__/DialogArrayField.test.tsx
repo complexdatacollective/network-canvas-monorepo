@@ -55,7 +55,10 @@ const TextInput = ({ input }: WrappedFieldProps) => (
 const EditorFields = () => <Field name="label" component={TextInput} />;
 
 type OwnProps = {
-  editorValidate?: (values: Record<string, unknown>) => Record<string, unknown>;
+  editorValidate?: (
+    values: Record<string, unknown>,
+    props?: { editIndex?: number },
+  ) => Record<string, unknown>;
   normalizeItem?: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
 };
@@ -96,7 +99,7 @@ const setup = ({
   onBeforeSave,
 }: {
   initialItems?: Item[];
-  editorValidate?: (values: Record<string, unknown>) => Record<string, unknown>;
+  editorValidate?: OwnProps['editorValidate'];
   normalizeItem?: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
 } = {}) => {
@@ -276,6 +279,50 @@ describe('DialogArrayField', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(onBeforeSave).not.toHaveBeenCalled();
     expect(getItems()).toEqual([]);
+  });
+
+  // Eleventh-wave Finding 4: an existing item's committed array index is
+  // surfaced to editorValidate via redux-form's (values, props) validate
+  // signature, so a validate closure can scope itself to the edited row
+  // (e.g. excluding it from a sibling overlay) without relying on the row
+  // carrying an id. A new item is not in the committed array and reports no
+  // index.
+  it('surfaces the edited row’s index to editorValidate, and none for a new item', async () => {
+    const editorValidate = vi.fn<
+      (
+        values: Record<string, unknown>,
+        props?: { editIndex?: number },
+      ) => Record<string, unknown>
+    >(() => ({}));
+    setup({
+      initialItems: [
+        { id: 'item-1', label: 'First' },
+        { id: 'item-2', label: 'Second' },
+      ],
+      editorValidate,
+    });
+
+    const secondEditButton = screen.getAllByRole('button', {
+      name: 'Edit item',
+    })[1];
+    if (!secondEditButton) throw new Error('Expected two edit buttons');
+    fireEvent.click(secondEditButton);
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(editorValidate.mock.calls.at(-1)?.[1]).toMatchObject({
+      editIndex: 1,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    editorValidate.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(editorValidate.mock.calls.at(-1)?.[1]).toMatchObject({
+      editIndex: undefined,
+    });
   });
 
   it('prevents duplicate saves and dismissal while pre-save work is pending', async () => {

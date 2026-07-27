@@ -4397,6 +4397,33 @@ describe('Migration V7 to V8', () => {
       expect(variables?.b).not.toHaveProperty('parameters.min');
     });
 
+    // Eleventh-wave Finding 1: a year-zero full-resolution bound is a real,
+    // round-tripping ISO date, but the native HTML date input starts at year
+    // 0001, so no selectable value could ever satisfy it — the migration
+    // strips it the same way as the other unusable bounds. Years 0001-0999
+    // survive (the deliberate full-resolution small-year support).
+    it('strips a full-resolution year-zero bound but keeps a small-year one', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'year_zero',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { max: '0000-12-31' },
+        },
+        b: {
+          name: 'small_year',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '0001-01-01' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.max');
+      expect(variables?.b).toHaveProperty('parameters.min', '0001-01-01');
+    });
+
     // Sixth-wave Finding 1: an unsupported `type` (e.g. a legacy 'week'
     // resolution) was treated as 'full' for the bounds logic but left in
     // place, so the migrated document failed the strictObject's

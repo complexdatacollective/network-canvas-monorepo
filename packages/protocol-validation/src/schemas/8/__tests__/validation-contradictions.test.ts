@@ -1574,4 +1574,90 @@ describe('DatePicker parameters refinement', () => {
         .success,
     ).toBe(true);
   });
+
+  // Eleventh-wave Finding 1: '0000-12-31' is a real, round-tripping ISO date
+  // (JS Date supports year 0), but the native HTML date input's earliest
+  // selectable date is 0001-01-01 — a year-zero full-resolution bound (e.g.
+  // max '0000-12-31' on a required field) leaves no selectable value that can
+  // ever pass. Years 0001-0999 stay valid at full resolution (the wave-3
+  // small-year support above).
+  it('rejects a full-resolution bound whose year is 0000', () => {
+    const result = VariableSchema.safeParse(datePicker({ max: '0000-12-31' }));
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((issue) =>
+          issue.message.includes('native date input starts at year 0001'),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('still accepts the earliest native-input date at full resolution', () => {
+    expect(
+      VariableSchema.safeParse(datePicker({ min: '0001-01-01' })).success,
+    ).toBe(true);
+  });
+});
+
+// Eleventh-wave Finding 2: the analyser runs inside protocol parsing AND the
+// v7→v8 migration, so a large (or adversarial) imported protocol must degrade
+// to a slow-but-correct analysis, not crash the import with a RangeError from
+// a recursive graph walk. These sizes overflowed the call stack when the
+// Tarjan SCC walk and the strict-cycle DFS were recursive.
+describe('findValidationContradictions — large comparator graphs', () => {
+  const chainOf = (count: number, rule: string): Record<string, unknown> => {
+    const variables: Record<string, unknown> = {};
+    for (let i = 0; i < count; i++) {
+      variables[`v${i}`] = {
+        name: `v${i}`,
+        type: 'number',
+        validation: i < count - 1 ? { [rule]: `v${i + 1}` } : {},
+      };
+    }
+    return variables;
+  };
+
+  const cycleOf = (count: number, rule: string): Record<string, unknown> => {
+    const variables: Record<string, unknown> = {};
+    for (let i = 0; i < count; i++) {
+      variables[`v${i}`] = {
+        name: `v${i}`,
+        type: 'number',
+        validation: { [rule]: `v${(i + 1) % count}` },
+      };
+    }
+    return variables;
+  };
+
+  it('handles a long non-strict comparator chain without overflowing (Tarjan walk)', () => {
+    // A pure chain has no cycle, so nothing is forced equal and nothing is
+    // contradictory — but the SCC walk still descends its full length.
+    const result = findValidationContradictions(
+      chainOf(10_000, 'lessThanOrEqualToVariable'),
+    );
+    expect(result).toEqual([]);
+  });
+
+  it('handles a long strict comparator chain without overflowing (cycle DFS)', () => {
+    // greaterThanVariable makes each variable's group depend on its
+    // successor's, so the DFS entered at v0 descends the full chain (the
+    // lessThanVariable direction happens to be visited in topological order
+    // and never recursed deeply).
+    const result = findValidationContradictions(
+      chainOf(10_000, 'greaterThanVariable'),
+    );
+    expect(result).toEqual([]);
+  });
+
+  it('reports a single impossible cycle for a large strict comparator cycle', () => {
+    const size = 10_000;
+    const result = findValidationContradictions(
+      cycleOf(size, 'lessThanVariable'),
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('strictComparatorCycle');
+    expect(result[0]?.variableIds).toHaveLength(size);
+    expect(result[0]?.strips).toHaveLength(size);
+  });
 });

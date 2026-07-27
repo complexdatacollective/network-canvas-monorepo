@@ -70,24 +70,28 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * `variable` yet (a still-blank new row) are skipped; they render nothing
  * for any variable and so have no override to contribute.
  *
- * Each entry also carries the field's own `id` (ninth-wave Finding 4), so
- * `makeFieldEditorValidate` can exclude the entry contributed by the field
- * CURRENTLY being edited by that stable identity rather than by which
- * variable it targets — the id survives a reassignment (the field's variable
- * changing) even though the overlay's own key (the variable) does not.
+ * `excludeIndex` is the array position of the field currently being edited,
+ * whose entry is its pre-draft committed value and must never shadow the
+ * live draft values the editor validate layers on afterwards. Eleventh-wave
+ * Finding 4: excluding here, by index, replaces the previous exclusion
+ * inside `makeFieldEditorValidate` by the field's `id` — imported protocols
+ * can carry id-less fields (ComposerFormFieldSchema.id is optional), which
+ * escaped an id-keyed exclusion and left a stale override in the checked
+ * set; the index identifies the row regardless, and survives the edit
+ * reassigning the field to a different variable.
  */
-export const buildComposerFieldOverlay = (fields: unknown): VariableOverlay => {
+export const buildComposerFieldOverlay = (
+  fields: unknown,
+  excludeIndex?: number,
+): VariableOverlay => {
   if (!Array.isArray(fields)) return {};
   const overlay: VariableOverlay = {};
-  for (const field of fields) {
+  for (const [index, field] of fields.entries()) {
+    if (index === excludeIndex) continue;
     if (!isRecord(field)) continue;
-    const { id, variable, component, parameters } = field;
+    const { variable, component, parameters } = field;
     if (typeof variable !== 'string' || variable === '') continue;
-    overlay[variable] = {
-      fieldId: typeof id === 'string' ? id : undefined,
-      component,
-      parameters,
-    };
+    overlay[variable] = { component, parameters };
   }
   return overlay;
 };

@@ -105,48 +105,35 @@ export const floorIssue = (
  * see how a variable actually renders there, not just its codebook
  * definition.
  *
- * `fieldId` (ninth-wave Finding 4) is the composer FIELD's own stable id —
- * distinct from the variable id this entry is keyed by — so `withOverlay` can
- * exclude an entry by which FIELD contributed it, not by which variable it
- * currently points at. A field being reassigned from one variable to another
- * keeps the SAME id throughout the edit, so this identity survives the
- * reassignment even though the entry's own key (the variable) does not.
+ * The field currently being edited must contribute NO entry: its pre-draft
+ * committed value must never shadow the live draft values
+ * `buildProspectiveVariables` layers on afterwards. Eleventh-wave Finding 4:
+ * that exclusion happens at CONSTRUCTION time, by the field's array index
+ * (see composerHelpers.ts's `buildComposerFieldOverlay`) — the index
+ * identifies the row even when an imported field has no `id`
+ * (ComposerFormFieldSchema.id is optional) and survives the edit reassigning
+ * the field to a different variable, both of which an id- or variable-keyed
+ * exclusion here would miss.
  */
 export type VariableOverlay = Record<
   string,
-  { fieldId?: string; component?: unknown; parameters?: unknown }
+  { component?: unknown; parameters?: unknown }
 >;
 
 /**
- * `allVariables` with `overlay` layered on top, EXCLUDING the entry
- * contributed by `excludeFieldId` (always the field currently being edited,
- * by its own stable id — ninth-wave Finding 4): that field's own overlay
- * entry is its pre-draft committed value, which must never shadow the live
- * draft values `buildProspectiveVariables` layers on afterwards. Excluding by
- * FIELD id rather than by the draft's variable id matters when the edit
- * reassigns the field to a different variable — the overlay entry to exclude
- * is keyed by the field's OLD (pre-draft) variable, not the draft's new one,
- * so excluding by the draft's `values.variable` would miss it and leave a
- * stale entry for a variable the save is about to stop overriding. When
- * `excludeFieldId` is unknown (no `.id` on the draft), nothing is excluded by
- * field id — every entry stays, including this field's own, matching the
- * pre-fix behaviour for that case. Only `component`/`parameters` are
- * overridden — everything else (`options`, `validation`, `type`, ...) still
- * comes from the codebook. An overlay entry naming a variable absent from
- * `allVariables` is ignored defensively.
+ * `allVariables` with `overlay` layered on top. Only
+ * `component`/`parameters` are overridden — everything else (`options`,
+ * `validation`, `type`, ...) still comes from the codebook. An overlay entry
+ * naming a variable absent from `allVariables` is ignored defensively.
  */
 const withOverlay = (
   allVariables: UnknownRecord,
   overlay: VariableOverlay | undefined,
-  excludeFieldId: string | undefined,
 ): UnknownRecord => {
   if (!overlay) return allVariables;
-  const entries = Object.entries(overlay).filter(([id, entry]) => {
-    if (excludeFieldId !== undefined && entry.fieldId === excludeFieldId) {
-      return false;
-    }
-    return isRecord(allVariables[id]);
-  });
+  const entries = Object.entries(overlay).filter(([id]) =>
+    isRecord(allVariables[id]),
+  );
   if (entries.length === 0) return allVariables;
   const overlaid = { ...allVariables };
   for (const [id, { component, parameters }] of entries) {
@@ -168,7 +155,10 @@ const withOverlay = (
  * `overlay` is optional so this factory stays generic: callers that have no
  * stage-scoped sibling data (or that check codebook-level variables, not
  * NetworkComposer stage fields) simply omit it and get the previous,
- * codebook-only behaviour.
+ * codebook-only behaviour. The overlay must already EXCLUDE the field being
+ * edited — its pre-draft committed value would otherwise shadow the live
+ * draft — which composer callers achieve at construction time by the field's
+ * array index (eleventh-wave Finding 4; see `buildComposerFieldOverlay`).
  */
 export const makeFieldEditorValidate =
   (allVariables: UnknownRecord, overlay?: VariableOverlay) =>
@@ -183,17 +173,7 @@ export const makeFieldEditorValidate =
     const validation = isRecord(values.validation) ? values.validation : {};
     const currentVariableId =
       typeof values.variable === 'string' ? values.variable : '';
-    // The FIELD's own stable id (ninth-wave Finding 4) — not the variable it
-    // currently targets — identifies which overlay entry is this field's own
-    // pre-draft contribution, so a reassignment (currentVariableId pointing
-    // at a NEW variable) still excludes the right entry.
-    const editingFieldId =
-      typeof values.id === 'string' ? values.id : undefined;
-    const overlaidVariables = withOverlay(
-      allVariables,
-      overlay,
-      editingFieldId,
-    );
+    const overlaidVariables = withOverlay(allVariables, overlay);
     const existing = currentVariableId
       ? overlaidVariables[currentVariableId]
       : undefined;

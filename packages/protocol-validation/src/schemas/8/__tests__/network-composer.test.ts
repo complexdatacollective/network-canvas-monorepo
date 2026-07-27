@@ -260,6 +260,25 @@ describe('ComposerFormFieldSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  // Eleventh-wave Finding 1: the year-zero full-resolution rejection also
+  // arrives here through the shared `datePickerParametersSchema` — the native
+  // date input cannot select any date in year 0000.
+  it('rejects a nodeForm DatePicker field with a full-resolution year-zero bound', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_date',
+            component: ComponentTypes.DatePicker,
+            parameters: { max: '0000-12-31' },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('rejects a nodeForm DatePicker field with min after max', () => {
     const result = networkComposerStage.safeParse({
       ...baseStageWithComponent,

@@ -53,13 +53,24 @@ const EditableAttributesList = ({
   const composerFields = useSelector((state: RootState) =>
     formValueSelector(form)(state, fieldName),
   );
-  const overlay = useMemo(
-    () => buildComposerFieldOverlay(composerFields),
-    [composerFields],
-  );
+  // Eleventh-wave Finding 4: the overlay is built per validate call so the
+  // edited row itself — identified by the array index DialogArrayField
+  // surfaces as validate's `editIndex` prop — can be excluded at
+  // construction time. Excluding by index (rather than by the field's `id`,
+  // which imported protocols may omit) keeps the edited field's stale
+  // pre-draft override out of the checked set even across a reassignment to
+  // a different variable.
   const editorValidate = useMemo(
-    () => makeFieldEditorValidate(allVariables, overlay),
-    [allVariables, overlay],
+    () =>
+      (
+        values: Record<string, unknown>,
+        props?: { editIndex?: number },
+      ): Record<string, unknown> =>
+        makeFieldEditorValidate(
+          allVariables,
+          buildComposerFieldOverlay(composerFields, props?.editIndex),
+        )(values),
+    [allVariables, composerFields],
   );
 
   return (

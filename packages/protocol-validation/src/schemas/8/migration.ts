@@ -97,6 +97,15 @@ const normalizeDatePickerParameters = (
       delete parameters[bound];
       continue;
     }
+    // Eleventh-wave Finding 1: at full resolution the native HTML date input
+    // starts at year 0001, so a year-zero bound (a real ISO date — JS Date
+    // supports year 0) can never be satisfied by any selectable value and is
+    // stripped like the other unusable bounds above. Years 0001-0999 are kept
+    // (the deliberate full-resolution small-year support).
+    if (resolution === 'full' && Number(truncated.slice(0, 4)) === 0) {
+      delete parameters[bound];
+      continue;
+    }
     parameters[bound] = truncated;
   }
   if (
