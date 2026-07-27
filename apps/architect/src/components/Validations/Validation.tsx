@@ -241,7 +241,14 @@ const Validation = ({
 
   return (
     <div className={ROW_CLASSES} onKeyDown={handleKeyDown}>
-      <div className={MULTI_SELECT_OPTIONS_CLASSES}>
+      {/* `flex-wrap` (not part of the shared MULTI_SELECT_OPTIONS_CLASSES
+          constant, which other MultiSelect-style rows rely on staying a
+          single line) lets the FieldErrors message below drop to its own
+          full-width line instead of being squeezed to a sliver of space
+          beside two `flex-1` siblings (the rule-key select and the
+          value/reference control), which produced an unreadably narrow,
+          mid-word-wrapped error message. */}
+      <div className={`${MULTI_SELECT_OPTIONS_CLASSES} flex-wrap`}>
         <div className={MULTI_SELECT_OPTION_CLASSES}>
           <NativeSelectField
             options={options}
@@ -294,7 +301,9 @@ const Validation = ({
           </div>
         )}
         {draftIssues.length > 0 && (
-          <FieldErrors id={draftIssuesId} errors={draftIssues} show />
+          <div className="mt-2 basis-full">
+            <FieldErrors id={draftIssuesId} errors={draftIssues} show />
+          </div>
         )}
       </div>
       <div className={MULTI_SELECT_CONTROL_CLASSES}>
