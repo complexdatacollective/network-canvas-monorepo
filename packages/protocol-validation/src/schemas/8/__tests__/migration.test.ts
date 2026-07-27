@@ -4365,4 +4365,112 @@ describe('Migration V7 to V8', () => {
       expect(variables.b).toHaveProperty('validation.maxLength', 1);
     });
   });
+
+  describe('contradictory validation rule removal', () => {
+    const migrateVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          ego: { variables },
+        },
+        stages: [],
+      };
+      const migrated = migrationV7toV8.migrate(
+        v7Protocol as unknown as Protocol<7>,
+        { name: 'Test Protocol' },
+      ) as unknown as {
+        codebook: { ego: { variables: Record<string, unknown> } };
+      };
+      return migrated.codebook.ego.variables;
+    };
+
+    it('strips both members of an inverted pair', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'age',
+          type: 'number',
+          validation: { minValue: 10, maxValue: 2, required: true },
+        },
+      });
+      expect(variables.a).not.toHaveProperty('validation.minValue');
+      expect(variables.a).not.toHaveProperty('validation.maxValue');
+      expect(variables.a).toHaveProperty('validation.required', true);
+    });
+
+    it('strips sameAs and differentFrom when they name one target', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'text',
+          validation: { sameAs: 'b', differentFrom: 'b' },
+        },
+        b: { name: 'b', type: 'text' },
+      });
+      expect(variables.a).not.toHaveProperty('validation.sameAs');
+      expect(variables.a).not.toHaveProperty('validation.differentFrom');
+    });
+
+    it('strips the comparators forming a strict cycle, keeping bounds', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: { minValue: 0, greaterThanVariable: 'b' },
+        },
+        b: {
+          name: 'b',
+          type: 'number',
+          validation: { greaterThanVariable: 'a' },
+        },
+      });
+      expect(variables.a).not.toHaveProperty('validation.greaterThanVariable');
+      expect(variables.b).not.toHaveProperty('validation.greaterThanVariable');
+      expect(variables.a).toHaveProperty('validation.minValue', 0);
+    });
+
+    it('keeps sameAs when stripping a strict comparator inside its group', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: { sameAs: 'b', greaterThanVariable: 'b' },
+        },
+        b: { name: 'b', type: 'number' },
+      });
+      expect(variables.a).toHaveProperty('validation.sameAs', 'b');
+      expect(variables.a).not.toHaveProperty('validation.greaterThanVariable');
+    });
+
+    it('strips validation references to a differently-typed variable', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'text',
+          validation: { sameAs: 'b', required: true },
+        },
+        b: { name: 'b', type: 'number' },
+      });
+      expect(variables.a).not.toHaveProperty('validation.sameAs');
+      expect(variables.a).toHaveProperty('validation.required', true);
+    });
+
+    it('leaves coherent rules untouched (negative control)', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'start',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 10, lessThanVariable: 'b' },
+        },
+        b: {
+          name: 'end',
+          type: 'number',
+          validation: { greaterThanVariable: 'a', maxValue: 100 },
+        },
+      });
+      expect(variables.a).toHaveProperty('validation.minValue', 0);
+      expect(variables.a).toHaveProperty('validation.maxValue', 10);
+      expect(variables.a).toHaveProperty('validation.lessThanVariable', 'b');
+      expect(variables.b).toHaveProperty('validation.greaterThanVariable', 'a');
+    });
+  });
 });

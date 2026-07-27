@@ -5,6 +5,7 @@ import {
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
 import { ordinalColorSequence } from './common/prompts.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
+import { findValidationContradictions } from './variables/validation-contradictions.ts';
 
 // Operators whose operand is a categorical option value (as opposed to a count,
 // like OPTIONS_*, or a regex). Their legacy scalar operands are wrapped in a
@@ -141,6 +142,8 @@ const migrationV7toV8 = createMigration({
 - A CategoricalBin prompt with \`otherVariable\` set now requires both \`otherVariablePrompt\` and \`otherOptionLabel\` (previously a missing label silently dropped the whole "other" bin). A missing value is backfilled from the other authored one, else "Please specify" / "Other".
 - A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean variable to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
+- Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
+- DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -1120,6 +1123,62 @@ const migrationV7toV8 = createMigration({
             ) {
               delete parameters.min;
               delete parameters.max;
+            }
+          }
+          return variables;
+        },
+      },
+      {
+        // Strip contradictory validation-rule combinations per the
+        // minimal-strip policy — the analyser names exactly the rules to
+        // remove. Cross-type references go first (the analyser ignores them,
+        // but the schema's reference pass rejects them). Stripping only
+        // relaxes constraints, but a strip can change the next analysis (a
+        // de-grouped variable regains its own bounds), so loop to a fixpoint.
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          const typedVariables = asRecord(variables);
+          if (!typedVariables) return variables;
+
+          const referenceRules = [
+            'sameAs',
+            'differentFrom',
+            'greaterThanVariable',
+            'lessThanVariable',
+            'greaterThanOrEqualToVariable',
+            'lessThanOrEqualToVariable',
+          ] as const;
+          for (const variable of Object.values(typedVariables)) {
+            const typedVariable = asRecord(variable);
+            const validation = asRecord(typedVariable?.validation);
+            if (!typedVariable || !validation) continue;
+            for (const rule of referenceRules) {
+              const target = validation[rule];
+              if (typeof target !== 'string') continue;
+              const targetVariable = asRecord(typedVariables[target]);
+              // Dangling references are outside this step's scope; the
+              // reference pass reports them as it always has.
+              if (!targetVariable) continue;
+              if (targetVariable.type !== typedVariable.type) {
+                delete validation[rule];
+              }
+            }
+          }
+
+          for (let pass = 0; pass < 100; pass++) {
+            const contradictions = findValidationContradictions(typedVariables);
+            if (contradictions.length === 0) break;
+            for (const contradiction of contradictions) {
+              for (const strip of contradiction.strips) {
+                const validation = asRecord(
+                  asRecord(typedVariables[strip.variableId])?.validation,
+                );
+                if (validation) delete validation[strip.rule];
+              }
             }
           }
           return variables;
