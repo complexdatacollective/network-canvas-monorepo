@@ -38,6 +38,57 @@ function makeProtocol() {
   };
 }
 
+// A protocol whose validation rules cannot all be satisfied: minLength exceeds
+// maxLength, so no value exists and generateNetwork throws
+// SyntheticDataConstraintError.
+function makeUnsatisfiableProtocol() {
+  return {
+    name: 'T',
+    description: '',
+    schemaVersion: 8,
+    stages: [
+      {
+        id: 's1',
+        type: 'NameGenerator',
+        label: 'NG',
+        subject: { entity: 'node', type: 'node-1' },
+        prompts: [{ id: 'p1', text: 'Add people' }],
+        behaviours: { minNodes: 1, maxNodes: 1 },
+      },
+    ],
+    codebook: {
+      node: {
+        'node-1': {
+          name: 'Person',
+          variables: {
+            'var-code': {
+              name: 'Code',
+              type: 'text',
+              validation: { minLength: 24, maxLength: 10 },
+            },
+          },
+        },
+      },
+      edge: {},
+      ego: {},
+    },
+    assetManifest: {},
+  };
+}
+
+// An unsupported stage type makes generateNetwork throw an ordinary error
+// during buildSession.
+function makeUnbuildableProtocol() {
+  return {
+    name: 'T',
+    description: '',
+    schemaVersion: 8,
+    stages: [{ id: 'x', type: 'NotAStageType', label: 'X' }],
+    codebook: { node: {}, edge: {}, ego: {} },
+    assetManifest: {},
+  };
+}
+
 type TestPreviewPayload = Omit<PreviewPayload, 'protocol'> & {
   protocol: unknown;
 };
@@ -293,16 +344,13 @@ describe('PreviewHost', () => {
 
   it('shows an error fallback when payload processing throws', async () => {
     render(<PreviewHost />);
-    const protocol = {
-      name: 'T',
-      description: '',
-      schemaVersion: 8,
-      // An unsupported stage type makes generateNetwork throw during buildSession.
-      stages: [{ id: 'x', type: 'NotAStageType', label: 'X' }],
-      codebook: { node: {}, edge: {}, ego: {} },
-      assetManifest: {},
-    };
-    postPayload(openerStub, makePayload({ protocol, useSyntheticData: true }));
+    postPayload(
+      openerStub,
+      makePayload({
+        protocol: makeUnbuildableProtocol(),
+        useSyntheticData: true,
+      }),
+    );
 
     expect(
       await screen.findByText(/couldn't build the preview/i),
@@ -312,41 +360,13 @@ describe('PreviewHost', () => {
 
   it('names the conflicting variables and offers no retry when generation is unsatisfiable', async () => {
     render(<PreviewHost />);
-    const protocol = {
-      name: 'T',
-      description: '',
-      schemaVersion: 8,
-      stages: [
-        {
-          id: 's1',
-          type: 'NameGenerator',
-          label: 'NG',
-          subject: { entity: 'node', type: 'node-1' },
-          prompts: [{ id: 'p1', text: 'Add people' }],
-          behaviours: { minNodes: 1, maxNodes: 1 },
-        },
-      ],
-      codebook: {
-        node: {
-          'node-1': {
-            name: 'Person',
-            variables: {
-              'var-code': {
-                name: 'Code',
-                type: 'text',
-                // minLength exceeds maxLength: no value can satisfy this rule,
-                // so generateNetwork throws SyntheticDataConstraintError.
-                validation: { minLength: 24, maxLength: 10 },
-              },
-            },
-          },
-        },
-        edge: {},
-        ego: {},
-      },
-      assetManifest: {},
-    };
-    postPayload(openerStub, makePayload({ protocol, useSyntheticData: true }));
+    postPayload(
+      openerStub,
+      makePayload({
+        protocol: makeUnsatisfiableProtocol(),
+        useSyntheticData: true,
+      }),
+    );
 
     expect(
       await screen.findByText(/protocol can't be previewed/i),
@@ -367,45 +387,104 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload({ useSyntheticData: false }));
     await screen.findByTestId('shell-mounted');
 
-    const protocol = {
-      name: 'T',
-      description: '',
-      schemaVersion: 8,
-      stages: [
-        {
-          id: 's1',
-          type: 'NameGenerator',
-          label: 'NG',
-          subject: { entity: 'node', type: 'node-1' },
-          prompts: [{ id: 'p1', text: 'Add people' }],
-          behaviours: { minNodes: 1, maxNodes: 1 },
-        },
-      ],
-      codebook: {
-        node: {
-          'node-1': {
-            name: 'Person',
-            variables: {
-              'var-code': {
-                name: 'Code',
-                type: 'text',
-                validation: { minLength: 24, maxLength: 10 },
-              },
-            },
-          },
-        },
-        edge: {},
-        ego: {},
-      },
-      assetManifest: {},
-    };
     shellMock.mockClear();
-    postPayload(openerStub, makePayload({ protocol, useSyntheticData: true }));
+    postPayload(
+      openerStub,
+      makePayload({
+        protocol: makeUnsatisfiableProtocol(),
+        useSyntheticData: true,
+      }),
+    );
 
     expect(
       await screen.findByText(/protocol can't be previewed/i),
     ).toBeInTheDocument();
     expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+  });
+
+  it('drops the rule conflicts when a later rebuild fails for another reason', async () => {
+    render(<PreviewHost />);
+    postPayload(
+      openerStub,
+      makePayload({
+        protocol: makeUnsatisfiableProtocol(),
+        useSyntheticData: true,
+      }),
+    );
+    await screen.findByText(/protocol can't be previewed/i);
+
+    postPayload(
+      openerStub,
+      makePayload({
+        protocol: makeUnbuildableProtocol(),
+        useSyntheticData: true,
+      }),
+    );
+
+    expect(
+      await screen.findByText(/couldn't build the preview/i),
+    ).toBeInTheDocument();
+    // The earlier failure's conflicts must not survive: they describe rules the
+    // second build never even reached, so telling the user to edit them is wrong.
+    expect(
+      screen.queryByText(/protocol can't be previewed/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/minLength 24 exceeds maxLength 10/i)).toBeNull();
+    expect(
+      screen.getByRole('button', { name: /try again/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('drops a generic failure when a later rebuild is unsatisfiable', async () => {
+    render(<PreviewHost />);
+    postPayload(
+      openerStub,
+      makePayload({
+        protocol: makeUnbuildableProtocol(),
+        useSyntheticData: true,
+      }),
+    );
+    await screen.findByText(/couldn't build the preview/i);
+
+    postPayload(
+      openerStub,
+      makePayload({
+        protocol: makeUnsatisfiableProtocol(),
+        useSyntheticData: true,
+      }),
+    );
+
+    expect(
+      await screen.findByText(/protocol can't be previewed/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+    ).toBeInTheDocument();
+    // The generic screen's retry can only fail the same way here, so no part of
+    // it may survive alongside the conflict list.
+    expect(
+      screen.queryByText(/couldn't build the preview/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /try again/i })).toBeNull();
+  });
+
+  it('shows the preview once a corrected protocol arrives', async () => {
+    render(<PreviewHost />);
+    postPayload(
+      openerStub,
+      makePayload({
+        protocol: makeUnsatisfiableProtocol(),
+        useSyntheticData: true,
+      }),
+    );
+    await screen.findByText(/protocol can't be previewed/i);
+
+    postPayload(openerStub, makePayload());
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(
+      screen.queryByText(/protocol can't be previewed/i),
+    ).not.toBeInTheDocument();
   });
 
   it('ignores payload messages from a non-opener source', () => {

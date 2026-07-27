@@ -79,16 +79,18 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
     stageMetadata,
   };
 }
+// A build fails for exactly one reason, so the reasons share one slot: a later
+// failure can never leave an earlier one's screen behind.
+type PreviewFailure =
+  | { kind: 'constraints'; conflicts: ConstraintConflict[] }
+  | { kind: 'processing' };
 export function PreviewHost() {
   const [interviewPayload, setInterviewPayload] =
     useState<InterviewPayload | null>(null);
   const [protocolId, setProtocolId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
-  const [processingFailed, setProcessingFailed] = useState(false);
-  const [constraintConflicts, setConstraintConflicts] = useState<
-    ConstraintConflict[] | null
-  >(null);
+  const [failure, setFailure] = useState<PreviewFailure | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   // Index of the stage receiving a one-stage preview override, or null.
   // The notice only shows while that stage is the one being viewed.
@@ -121,15 +123,14 @@ export function PreviewHost() {
         // leaves a stale network on screen with no sign that this build failed.
         setInterviewPayload(null);
         if (error instanceof SyntheticDataConstraintError) {
-          setConstraintConflicts(error.conflicts);
+          setFailure({ kind: 'constraints', conflicts: error.conflicts });
         } else {
           console.error('Failed to build preview payload', error);
-          setProcessingFailed(true);
+          setFailure({ kind: 'processing' });
         }
         return;
       }
-      setProcessingFailed(false);
-      setConstraintConflicts(null);
+      setFailure(null);
       setInterviewPayload(nextPayload);
       setProtocolId(previewPayload.protocolId);
       setCurrentStep(previewPayload.startStage);
@@ -216,7 +217,7 @@ export function PreviewHost() {
       </div>
     );
   }
-  if (!interviewPayload && constraintConflicts) {
+  if (!interviewPayload && failure?.kind === 'constraints') {
     return (
       <div className="flex h-dvh w-full flex-col items-center gap-4 overflow-y-auto p-8 pt-16 text-center">
         <Heading level="h1" margin="none" className="text-2xl font-semibold">
@@ -228,7 +229,7 @@ export function PreviewHost() {
           preview it again.
         </Paragraph>
         <div className="flex w-full max-w-xl flex-col gap-3 text-left">
-          {constraintConflicts.map((conflict, index) => (
+          {failure.conflicts.map((conflict, index) => (
             <Alert
               key={`${conflict.entity}-${conflict.variableIds.join(',')}-${index}`}
               variant="destructive"
@@ -250,7 +251,7 @@ export function PreviewHost() {
       </div>
     );
   }
-  if (!interviewPayload && processingFailed) {
+  if (!interviewPayload && failure?.kind === 'processing') {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
         <Heading level="h1" margin="none" className="text-2xl font-semibold">
@@ -264,7 +265,7 @@ export function PreviewHost() {
           <Button
             color="primary"
             onClick={() => {
-              setProcessingFailed(false);
+              setFailure(null);
               setRetryNonce((n) => n + 1);
             }}
           >

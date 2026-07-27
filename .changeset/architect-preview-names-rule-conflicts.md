@@ -11,4 +11,6 @@ button that could only fail in exactly the same way.
 
 A preview that fails to rebuild also clears what was on screen, so an earlier
 successful preview is never left showing as though it were the protocol you
-just changed.
+just changed. Each attempt reports only its own reason for failing: a list of
+rule clashes from an earlier attempt is never left up next to a failure that
+had nothing to do with those rules.
