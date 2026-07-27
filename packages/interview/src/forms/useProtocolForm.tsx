@@ -285,25 +285,10 @@ export default function useProtocolForm({
     }
 
     // Handle VisualAnalogScale parameters
-    if (field.component === 'VisualAnalogScale') {
-      if (field.parameters) {
-        const params = field.parameters;
-        if (typeof params.minLabel === 'string')
-          props.minLabel = params.minLabel;
-        if (typeof params.maxLabel === 'string')
-          props.maxLabel = params.maxLabel;
-      }
-
-      // Forward scalar validation.minValue/maxValue onto the slider's display
-      // min/max (dual-use keys survive prop filtering) so the track physically
-      // constrains selection, in addition to the submit-time validators.
-      if ('validation' in field && field.validation) {
-        const validation = field.validation as Record<string, unknown>;
-        if (typeof validation.minValue === 'number')
-          props.min = validation.minValue;
-        if (typeof validation.maxValue === 'number')
-          props.max = validation.maxValue;
-      }
+    if (field.component === 'VisualAnalogScale' && field.parameters) {
+      const params = field.parameters;
+      if (typeof params.minLabel === 'string') props.minLabel = params.minLabel;
+      if (typeof params.maxLabel === 'string') props.maxLabel = params.maxLabel;
     }
 
     // Handle DatePicker parameters

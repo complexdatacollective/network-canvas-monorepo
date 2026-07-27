@@ -5,16 +5,13 @@ import { change, formValueSelector } from 'redux-form';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import MultiSelect from '~/components/Form/MultiSelect';
+import MultiSelect, { type OptionGetter } from '~/components/Form/MultiSelect';
 import { useAppDispatch } from '~/ducks/hooks';
 type BucketSortOrderSectionProps = {
   form: string;
   disabled?: boolean;
   maxItems?: number;
-  optionGetter: () => Array<{
-    label: string;
-    value: string;
-  }>;
+  optionGetter: OptionGetter;
   summary?: React.ReactNode;
 };
 const getDefaultSummary = () => (

@@ -1491,6 +1491,87 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('scalar value bounds', () => {
+    const scalarProtocol = (validation: Record<string, unknown>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                closeness: {
+                  name: 'Closeness',
+                  type: 'scalar',
+                  component: 'VisualAnalogScale',
+                  validation,
+                },
+                age: {
+                  name: 'Age',
+                  type: 'number',
+                  component: 'Number',
+                  validation: { minValue: 0, maxValue: 100 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      }) as Protocol<7>;
+
+    const migrateScalar = (validation: Record<string, unknown>) =>
+      ProtocolSchemaV8.parse(
+        migrationV7toV8.migrate(scalarProtocol(validation), {
+          name: 'Test Protocol',
+        }),
+      ).codebook.node?.person?.variables;
+
+    it('drops a complete pair', () => {
+      const closeness = migrateScalar({ minValue: 2, maxValue: 10 })?.closeness;
+
+      expect(closeness).not.toHaveProperty('validation.minValue');
+      expect(closeness).not.toHaveProperty('validation.maxValue');
+    });
+
+    it('drops a lone minValue', () => {
+      const closeness = migrateScalar({ minValue: 7 })?.closeness;
+
+      expect(closeness).not.toHaveProperty('validation.minValue');
+    });
+
+    it('drops a lone maxValue', () => {
+      const closeness = migrateScalar({ maxValue: 7 })?.closeness;
+
+      expect(closeness).not.toHaveProperty('validation.maxValue');
+    });
+
+    it('keeps the requiredness a dropped minValue conferred', () => {
+      const closeness = migrateScalar({ minValue: 7 })?.closeness;
+
+      expect(closeness).toHaveProperty('validation.required', true);
+    });
+
+    it('leaves other validation rules on the scalar intact', () => {
+      const closeness = migrateScalar({
+        required: true,
+        minValue: 2,
+        maxValue: 10,
+      })?.closeness;
+
+      expect(closeness).toHaveProperty('validation.required', true);
+    });
+
+    it('leaves number variable bounds intact', () => {
+      const age = migrateScalar({ required: true })?.age;
+
+      expect(age).toHaveProperty('validation.minValue', 0);
+      expect(age).toHaveProperty('validation.maxValue', 100);
+    });
+  });
+
   describe('min* validator implies required', () => {
     it('sets required:true on a node variable with minValue', () => {
       const v7Protocol = {

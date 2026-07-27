@@ -6,12 +6,15 @@ import { Field } from 'redux-form';
 import Button from '@codaco/fresco-ui/Button';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import type { Variable } from '@codaco/protocol-validation';
-import { cx } from '~/utils/cva';
 
 import Validation from './Validation';
 
-const validate = (validations: Record<string, unknown>): string | undefined => {
-  const values = toPairs(validations);
+// redux-form calls a field validator with the field's raw value, which is null
+// or undefined until the field holds one.
+type ValidationsValue = Record<string, unknown> | null | undefined;
+
+const validate = (validations: ValidationsValue): string | undefined => {
+  const values = toPairs(validations ?? {});
 
   const check = values.reduce((acc: string[], [key, value]) => {
     if (!isNull(value)) {
@@ -90,12 +93,7 @@ const ValidationsField = ({
   const errorId = useId();
 
   return (
-    <div
-      className={cx(
-        'rounded-xl border-2 border-transparent transition-colors',
-        hasError && 'border-destructive',
-      )}
-    >
+    <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-5">
         {input.value.map(([key, value]) => (
           <Validation

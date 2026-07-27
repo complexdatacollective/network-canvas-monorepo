@@ -3,16 +3,13 @@ import { change, formValueSelector } from 'redux-form';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import MultiSelect from '~/components/Form/MultiSelect';
+import MultiSelect, { type OptionGetter } from '~/components/Form/MultiSelect';
 import { useAppDispatch } from '~/ducks/hooks';
 type BinSortOrderSectionProps = {
   form: string;
   disabled?: boolean;
   maxItems?: number;
-  optionGetter: () => Array<{
-    label: string;
-    value: string;
-  }>;
+  optionGetter: OptionGetter;
   summary?: React.ReactNode;
 };
 const getDefaultSummary = () => (

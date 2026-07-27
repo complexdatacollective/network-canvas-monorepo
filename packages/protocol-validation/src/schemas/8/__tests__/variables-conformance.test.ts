@@ -305,4 +305,74 @@ describe('variable schema conformance', () => {
       expect(result.success).toBe(true);
     });
   });
+
+  describe('scalar value bounds', () => {
+    const scalarVariables = (validation: Record<string, unknown>) => ({
+      closeness: {
+        name: 'closeness',
+        type: 'scalar',
+        component: 'VisualAnalogScale',
+        validation,
+      },
+    });
+
+    it('rejects a minValue', () => {
+      expect(
+        VariablesSchema.safeParse(scalarVariables({ minValue: 10 })).success,
+      ).toBe(false);
+    });
+
+    it('rejects a maxValue', () => {
+      expect(
+        VariablesSchema.safeParse(scalarVariables({ maxValue: 10 })).success,
+      ).toBe(false);
+    });
+
+    it('rejects a complete pair', () => {
+      expect(
+        VariablesSchema.safeParse(
+          scalarVariables({ minValue: 2, maxValue: 10 }),
+        ).success,
+      ).toBe(false);
+    });
+
+    it('accepts requiredness and comparisons against another scalar', () => {
+      const result = VariablesSchema.safeParse({
+        closeness: {
+          name: 'closeness',
+          type: 'scalar',
+          component: 'VisualAnalogScale',
+          validation: { required: true, greaterThanVariable: 'trust' },
+        },
+        trust: {
+          name: 'trust',
+          type: 'scalar',
+          component: 'VisualAnalogScale',
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('leaves number variable bounds untouched', () => {
+      const result = VariablesSchema.safeParse({
+        age: {
+          name: 'age',
+          type: 'number',
+          component: 'Number',
+          validation: { minValue: 18 },
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('applies to edge and ego variables too', () => {
+      expect(
+        EdgeVariablesSchema.safeParse(scalarVariables({ minValue: 10 }))
+          .success,
+      ).toBe(false);
+      expect(
+        EgoVariablesSchema.safeParse(scalarVariables({ minValue: 10 })).success,
+      ).toBe(false);
+    });
+  });
 });
