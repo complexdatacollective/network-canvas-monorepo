@@ -140,6 +140,8 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         expect(Object.values(toNode![entityAttributesProperty])).toContain(
           toName,
         );
+
+        await tsc.waitForPairChange([fromName, toName]);
       },
     },
     {
