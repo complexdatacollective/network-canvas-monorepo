@@ -61,7 +61,7 @@ async function main() {
     } else {
       error('❌ Protocol validation failed:');
       // biome-ignore lint/suspicious/noConsole: CLI script intentionally uses console for error output
-      console.error(result.error);
+      console.error(result.error.message);
       process.exit(1);
     }
   } catch (_error) {
