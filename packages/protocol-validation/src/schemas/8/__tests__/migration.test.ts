@@ -4283,17 +4283,13 @@ describe('Migration V7 to V8', () => {
         },
         stages: [],
       };
-      const migrated = migrationV7toV8.migrate(
-        v7Protocol as unknown as Protocol<7>,
-        { name: 'Test Protocol' },
-      ) as unknown as {
-        codebook: { ego: { variables: Record<string, unknown> } };
-      };
-      return migrated.codebook.ego.variables;
+      return migrationV7toV8.migrate(v7Protocol as unknown as Protocol<7>, {
+        name: 'Test Protocol',
+      });
     };
 
     it('truncates finer-than-resolution bounds and strips coarser ones', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'year_picker',
           type: 'datetime',
@@ -4307,14 +4303,17 @@ describe('Migration V7 to V8', () => {
           parameters: { min: '2020', max: '2021-06-15' },
         },
       });
-      expect(variables.a).toHaveProperty('parameters.min', '2020');
-      expect(variables.a).toHaveProperty('parameters.max', '2021');
-      expect(variables.b).not.toHaveProperty('parameters.min');
-      expect(variables.b).toHaveProperty('parameters.max', '2021-06-15');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.min', '2020');
+      expect(variables?.a).toHaveProperty('parameters.max', '2021');
+      expect(variables?.b).not.toHaveProperty('parameters.min');
+      expect(variables?.b).toHaveProperty('parameters.max', '2021-06-15');
     });
 
     it('strips both bounds when min is after max, and malformed values', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'window',
           type: 'datetime',
@@ -4328,13 +4327,16 @@ describe('Migration V7 to V8', () => {
           parameters: { min: 'not-a-date' },
         },
       });
-      expect(variables.a).not.toHaveProperty('parameters.min');
-      expect(variables.a).not.toHaveProperty('parameters.max');
-      expect(variables.b).not.toHaveProperty('parameters.min');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
+      expect(variables?.a).not.toHaveProperty('parameters.max');
+      expect(variables?.b).not.toHaveProperty('parameters.min');
     });
 
     it('deletes a value that merely slices into a valid-looking prefix', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'full_picker',
           type: 'datetime',
@@ -4348,12 +4350,15 @@ describe('Migration V7 to V8', () => {
           parameters: { type: 'year', min: '2020garbage' },
         },
       });
-      expect(variables.a).not.toHaveProperty('parameters.min');
-      expect(variables.b).not.toHaveProperty('parameters.min');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
+      expect(variables?.b).not.toHaveProperty('parameters.min');
     });
 
     it('leaves RelativeDatePicker parameters alone', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'relative',
           type: 'datetime',
@@ -4361,7 +4366,10 @@ describe('Migration V7 to V8', () => {
           parameters: { anchor: '2020-05-03', before: 180 },
         },
       });
-      expect(variables.a).toHaveProperty('parameters.anchor', '2020-05-03');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.anchor', '2020-05-03');
     });
 
     // Third-wave Finding 2: isValidCalendarDate must not fall into
@@ -4369,7 +4377,7 @@ describe('Migration V7 to V8', () => {
     // 1900-1999), which would falsely reject a real four-digit year like
     // '0099' during normalisation.
     it('keeps a real four-digit date whose year is below 100', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'full_picker',
           type: 'datetime',
@@ -4377,11 +4385,14 @@ describe('Migration V7 to V8', () => {
           parameters: { min: '0099-12-31' },
         },
       });
-      expect(variables.a).toHaveProperty('parameters.min', '0099-12-31');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.min', '0099-12-31');
     });
 
     it('still strips an impossible calendar date with a small year', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'full_picker',
           type: 'datetime',
@@ -4389,11 +4400,14 @@ describe('Migration V7 to V8', () => {
           parameters: { min: '0099-02-30' },
         },
       });
-      expect(variables.a).not.toHaveProperty('parameters.min');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
     });
 
     it('strips count-valued rules below their floors and keeps legal ones', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'first_name',
           type: 'text',
@@ -4405,33 +4419,78 @@ describe('Migration V7 to V8', () => {
           validation: { minLength: 0, maxLength: 1 },
         },
       });
-      expect(variables.a).not.toHaveProperty('validation.maxLength');
-      expect(variables.a).not.toHaveProperty('validation.minLength');
-      expect(variables.a).toHaveProperty('validation.required', true);
-      expect(variables.b).toHaveProperty('validation.minLength', 0);
-      expect(variables.b).toHaveProperty('validation.maxLength', 1);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.maxLength');
+      expect(variables?.a).not.toHaveProperty('validation.minLength');
+      expect(variables?.a).toHaveProperty('validation.required', true);
+      expect(variables?.b).toHaveProperty('validation.minLength', 0);
+      expect(variables?.b).toHaveProperty('validation.maxLength', 1);
     });
   });
 
   describe('NetworkComposer stage DatePicker field normalisation (third-wave Finding 7)', () => {
+    // A full codebook (rather than the empty one used elsewhere in this file)
+    // is required here: a NetworkComposer stage's `subject`/`quickAdd`/
+    // `layoutVariable`/form-field `variable` references are cross-checked
+    // against the codebook by ProtocolSchemaV8, so the fixture must define
+    // every variable a stage below references to parse as valid v8 output.
+    const composerCodebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' as const },
+          variables: {
+            name: { name: 'Name', type: 'text', component: 'Text' },
+            layout_position: { name: 'LayoutPosition', type: 'layout' },
+            birth_date: { name: 'BirthDate', type: 'datetime' },
+            birth_year: { name: 'BirthYear', type: 'datetime' },
+            closeness: {
+              name: 'Closeness',
+              type: 'scalar',
+              component: 'VisualAnalogScale',
+            },
+          },
+        },
+      },
+      edge: {
+        knows: {
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+          variables: {
+            met_date: { name: 'MetDate', type: 'datetime' },
+          },
+        },
+      },
+    };
+
+    const composerStage = (overrides: Record<string, unknown>) => ({
+      id: 's1',
+      label: 'Compose',
+      type: 'NetworkComposer',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'name',
+      layoutVariable: 'layout_position',
+      background: { concentricCircles: 4 },
+      ...overrides,
+    });
+
     const migrateStages = (stages: unknown[]) => {
       const v7Protocol = {
         schemaVersion: 7 as const,
-        codebook: {},
+        codebook: composerCodebook,
         stages,
       };
-      const migrated = migrationV7toV8.migrate(
-        v7Protocol as unknown as Protocol<7>,
-        { name: 'Test Protocol' },
-      ) as unknown as { stages: Record<string, unknown>[] };
-      return migrated.stages;
+      return migrationV7toV8.migrate(v7Protocol as unknown as Protocol<7>, {
+        name: 'Test Protocol',
+      });
     };
 
     it('truncates a nodeForm DatePicker field bound finer than its resolution', () => {
-      const [stage] = migrateStages([
-        {
-          id: 's1',
-          type: 'NetworkComposer',
+      const migratedRaw = migrateStages([
+        composerStage({
           nodeForm: {
             fields: [
               {
@@ -4441,22 +4500,22 @@ describe('Migration V7 to V8', () => {
               },
             ],
           },
-        },
+        }),
       ]);
-      const field = (
-        (stage as Record<string, unknown>).nodeForm as {
-          fields: Record<string, unknown>[];
-        }
-      ).fields[0];
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const field = stage.nodeForm?.fields?.[0];
       expect(field).toHaveProperty('parameters.min', '2020');
       expect(field).toHaveProperty('parameters.max', '2021');
     });
 
     it('strips both bounds of an edge form DatePicker field when min is after max', () => {
-      const [stage] = migrateStages([
-        {
-          id: 's1',
-          type: 'NetworkComposer',
+      const migratedRaw = migrateStages([
+        composerStage({
           edges: [
             {
               id: 'e1',
@@ -4472,21 +4531,22 @@ describe('Migration V7 to V8', () => {
               },
             },
           ],
-        },
+        }),
       ]);
-      const typedStage = stage as Record<string, unknown>;
-      const edges = typedStage.edges as Record<string, unknown>[];
-      const form = edges[0]?.form as { fields: Record<string, unknown>[] };
-      const field = form.fields[0];
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const field = stage.edges?.[0]?.form?.fields?.[0];
       expect(field).not.toHaveProperty('parameters.min');
       expect(field).not.toHaveProperty('parameters.max');
     });
 
     it('leaves a valid nodeForm DatePicker window and non-date parameters alone', () => {
-      const [stage] = migrateStages([
-        {
-          id: 's1',
-          type: 'NetworkComposer',
+      const migratedRaw = migrateStages([
+        composerStage({
           nodeForm: {
             fields: [
               {
@@ -4501,16 +4561,18 @@ describe('Migration V7 to V8', () => {
               },
             ],
           },
-        },
+        }),
       ]);
-      const fields = (
-        (stage as Record<string, unknown>).nodeForm as {
-          fields: Record<string, unknown>[];
-        }
-      ).fields;
-      expect(fields[0]).toHaveProperty('parameters.min', '1990');
-      expect(fields[0]).toHaveProperty('parameters.max', '2020');
-      expect(fields[1]).toHaveProperty('parameters.minLabel', 'Distant');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const fields = stage.nodeForm?.fields;
+      expect(fields?.[0]).toHaveProperty('parameters.min', '1990');
+      expect(fields?.[0]).toHaveProperty('parameters.max', '2020');
+      expect(fields?.[1]).toHaveProperty('parameters.minLabel', 'Distant');
     });
   });
 
@@ -4523,30 +4585,29 @@ describe('Migration V7 to V8', () => {
         },
         stages: [],
       };
-      const migrated = migrationV7toV8.migrate(
-        v7Protocol as unknown as Protocol<7>,
-        { name: 'Test Protocol' },
-      ) as unknown as {
-        codebook: { ego: { variables: Record<string, unknown> } };
-      };
-      return migrated.codebook.ego.variables;
+      return migrationV7toV8.migrate(v7Protocol as unknown as Protocol<7>, {
+        name: 'Test Protocol',
+      });
     };
 
     it('strips both members of an inverted pair', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'age',
           type: 'number',
           validation: { minValue: 10, maxValue: 2, required: true },
         },
       });
-      expect(variables.a).not.toHaveProperty('validation.minValue');
-      expect(variables.a).not.toHaveProperty('validation.maxValue');
-      expect(variables.a).toHaveProperty('validation.required', true);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.minValue');
+      expect(variables?.a).not.toHaveProperty('validation.maxValue');
+      expect(variables?.a).toHaveProperty('validation.required', true);
     });
 
     it('strips sameAs and differentFrom when they name one target', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'a',
           type: 'text',
@@ -4554,12 +4615,15 @@ describe('Migration V7 to V8', () => {
         },
         b: { name: 'b', type: 'text' },
       });
-      expect(variables.a).not.toHaveProperty('validation.sameAs');
-      expect(variables.a).not.toHaveProperty('validation.differentFrom');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.sameAs');
+      expect(variables?.a).not.toHaveProperty('validation.differentFrom');
     });
 
     it('strips the comparators forming a strict cycle, keeping bounds', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'a',
           type: 'number',
@@ -4571,13 +4635,16 @@ describe('Migration V7 to V8', () => {
           validation: { greaterThanVariable: 'a' },
         },
       });
-      expect(variables.a).not.toHaveProperty('validation.greaterThanVariable');
-      expect(variables.b).not.toHaveProperty('validation.greaterThanVariable');
-      expect(variables.a).toHaveProperty('validation.minValue', 0);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.greaterThanVariable');
+      expect(variables?.b).not.toHaveProperty('validation.greaterThanVariable');
+      expect(variables?.a).toHaveProperty('validation.minValue', 0);
     });
 
     it('keeps sameAs when stripping a strict comparator inside its group', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'a',
           type: 'number',
@@ -4585,12 +4652,15 @@ describe('Migration V7 to V8', () => {
         },
         b: { name: 'b', type: 'number' },
       });
-      expect(variables.a).toHaveProperty('validation.sameAs', 'b');
-      expect(variables.a).not.toHaveProperty('validation.greaterThanVariable');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('validation.sameAs', 'b');
+      expect(variables?.a).not.toHaveProperty('validation.greaterThanVariable');
     });
 
     it('strips a sameAs categorical group whose option values share nothing', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'a',
           type: 'categorical',
@@ -4609,11 +4679,14 @@ describe('Migration V7 to V8', () => {
           ],
         },
       });
-      expect(variables.a).not.toHaveProperty('validation.sameAs');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.sameAs');
     });
 
     it('strips validation references to a differently-typed variable', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'a',
           type: 'text',
@@ -4621,12 +4694,15 @@ describe('Migration V7 to V8', () => {
         },
         b: { name: 'b', type: 'number' },
       });
-      expect(variables.a).not.toHaveProperty('validation.sameAs');
-      expect(variables.a).toHaveProperty('validation.required', true);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.sameAs');
+      expect(variables?.a).toHaveProperty('validation.required', true);
     });
 
     it('leaves coherent rules untouched (negative control)', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'start',
           type: 'number',
@@ -4638,14 +4714,20 @@ describe('Migration V7 to V8', () => {
           validation: { greaterThanVariable: 'a', maxValue: 100 },
         },
       });
-      expect(variables.a).toHaveProperty('validation.minValue', 0);
-      expect(variables.a).toHaveProperty('validation.maxValue', 10);
-      expect(variables.a).toHaveProperty('validation.lessThanVariable', 'b');
-      expect(variables.b).toHaveProperty('validation.greaterThanVariable', 'a');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('validation.minValue', 0);
+      expect(variables?.a).toHaveProperty('validation.maxValue', 10);
+      expect(variables?.a).toHaveProperty('validation.lessThanVariable', 'b');
+      expect(variables?.b).toHaveProperty(
+        'validation.greaterThanVariable',
+        'a',
+      );
     });
 
     it('strips every differentFrom edge in an odd boolean cycle via the fixpoint loop', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'a',
           type: 'boolean',
@@ -4662,19 +4744,22 @@ describe('Migration V7 to V8', () => {
           validation: { differentFrom: 'a', required: true },
         },
       });
-      expect(variables.a).not.toHaveProperty('validation.differentFrom');
-      expect(variables.b).not.toHaveProperty('validation.differentFrom');
-      expect(variables.c).not.toHaveProperty('validation.differentFrom');
-      expect(variables.a).toHaveProperty('validation.required', true);
-      expect(variables.b).toHaveProperty('validation.required', true);
-      expect(variables.c).toHaveProperty('validation.required', true);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.b).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.c).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.a).toHaveProperty('validation.required', true);
+      expect(variables?.b).toHaveProperty('validation.required', true);
+      expect(variables?.c).toHaveProperty('validation.required', true);
     });
 
     // Third-wave Finding 1: a triangle plus a branch rule hanging off one of
     // its members. The old whole-component strip removed d's differentFrom
     // too; the fix reconstructs only the triangle itself.
     it('keeps a branch differentFrom rule hanging off an odd boolean cycle', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'a',
           type: 'boolean',
@@ -4696,10 +4781,13 @@ describe('Migration V7 to V8', () => {
           validation: { differentFrom: 'a' },
         },
       });
-      expect(variables.a).not.toHaveProperty('validation.differentFrom');
-      expect(variables.b).not.toHaveProperty('validation.differentFrom');
-      expect(variables.c).not.toHaveProperty('validation.differentFrom');
-      expect(variables.d).toHaveProperty('validation.differentFrom', 'a');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.b).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.c).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.d).toHaveProperty('validation.differentFrom', 'a');
     });
 
     // Third-wave Finding 4: A sameAs B (also stated as differentFrom, making
@@ -4709,7 +4797,7 @@ describe('Migration V7 to V8', () => {
     // SAME pre-strip pass (the old behaviour) would additionally strip
     // greaterThanVariable even though it is fine once the group is gone.
     it('keeps a strict comparator that only looked group-internal in the same pre-strip pass', () => {
-      const variables = migrateVariables({
+      const migratedRaw = migrateVariables({
         a: {
           name: 'a',
           type: 'number',
@@ -4721,9 +4809,15 @@ describe('Migration V7 to V8', () => {
         },
         b: { name: 'b', type: 'number' },
       });
-      expect(variables.a).not.toHaveProperty('validation.sameAs');
-      expect(variables.a).not.toHaveProperty('validation.differentFrom');
-      expect(variables.a).toHaveProperty('validation.greaterThanVariable', 'b');
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.sameAs');
+      expect(variables?.a).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.a).toHaveProperty(
+        'validation.greaterThanVariable',
+        'b',
+      );
     });
   });
 });
