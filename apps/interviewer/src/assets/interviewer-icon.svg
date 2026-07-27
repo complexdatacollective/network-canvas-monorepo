@@ -9,7 +9,11 @@
     </filter>
   </defs>
   <rect width="1024" height="1024" fill="url(#bg)"/>
-  <g filter="url(#shadow)" transform="translate(512,512) scale(0.96) translate(-490,-495)">
+  <!-- The anchor is optical, not geometric: the large bottom-right node
+       outweighs the other two, so centring the bounding box (anchor x 490)
+       leaves the mark looking right-heavy. 513 is half way to the ink
+       centroid at 536. -->
+  <g filter="url(#shadow)" transform="translate(512,512) scale(0.96) translate(-513,-495)">
     <g stroke="#dd1f5a" stroke-width="58" stroke-linecap="round">
       <line x1="310" y1="355" x2="680" y2="265"/>
       <line x1="310" y1="355" x2="635" y2="725"/>
