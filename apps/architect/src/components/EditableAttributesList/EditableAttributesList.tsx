@@ -1,11 +1,17 @@
+import { useMemo } from 'react';
+import { useSelector } from 'react-redux';
+
 import DialogArrayField from '~/components/Form/DialogArrayField';
 import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
+import type { RootState } from '~/ducks/modules/root';
+import { getVariablesForSubjectSelector } from '~/selectors/codebook';
 
 import ComposerFieldPreview from '../sections/Form/ComposerFieldPreview';
 import {
   composerItemSelector,
   composerNormalizeField,
 } from '../sections/Form/composerHelpers';
+import { makeFieldEditorValidate } from '../Validations/contradictions';
 import ComposerAttributeFields from './ComposerAttributeFields';
 
 type EditableAttributesListProps = {
@@ -25,29 +31,40 @@ const EditableAttributesList = ({
   editFormName = 'editable-list-form',
   title = 'Edit attribute',
   handleChangeFields,
-}: EditableAttributesListProps) => (
-  <ValidatedFieldArray
-    name={fieldName}
-    component={DialogArrayField}
-    // Editable attributes are optional (no node/edge attributes is valid).
-    validation={{}}
-    componentProps={{
-      addTitle: title,
-      editorFieldsComponent: ComposerAttributeFields,
-      editorProps: { type, entity },
-      editorTitle: title,
-      itemLabel: 'attribute',
-      itemSelector: composerItemSelector(entity, type),
-      normalizeItem: (value: unknown) =>
-        composerNormalizeField(value as Record<string, unknown>),
-      onBeforeSave: (value: unknown) =>
-        handleChangeFields(value as Record<string, unknown>),
-      previewComponent: ComposerFieldPreview,
-      previewProps: { entity, type },
-      requestedEditFormName: editFormName,
-      sortable: true,
-    }}
-  />
-);
+}: EditableAttributesListProps) => {
+  const allVariables = useSelector((state: RootState) =>
+    getVariablesForSubjectSelector(state, { entity, type: type ?? undefined }),
+  );
+  const editorValidate = useMemo(
+    () => makeFieldEditorValidate(allVariables),
+    [allVariables],
+  );
+
+  return (
+    <ValidatedFieldArray
+      name={fieldName}
+      component={DialogArrayField}
+      // Editable attributes are optional (no node/edge attributes is valid).
+      validation={{}}
+      componentProps={{
+        addTitle: title,
+        editorFieldsComponent: ComposerAttributeFields,
+        editorProps: { type, entity },
+        editorTitle: title,
+        editorValidate,
+        itemLabel: 'attribute',
+        itemSelector: composerItemSelector(entity, type),
+        normalizeItem: (value: unknown) =>
+          composerNormalizeField(value as Record<string, unknown>),
+        onBeforeSave: (value: unknown) =>
+          handleChangeFields(value as Record<string, unknown>),
+        previewComponent: ComposerFieldPreview,
+        previewProps: { entity, type },
+        requestedEditFormName: editFormName,
+        sortable: true,
+      }}
+    />
+  );
+};
 
 export default EditableAttributesList;

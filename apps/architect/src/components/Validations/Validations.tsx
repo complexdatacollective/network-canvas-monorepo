@@ -13,7 +13,7 @@ import Button from '@codaco/fresco-ui/Button';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import type { Variable } from '@codaco/protocol-validation';
 
-import { findDraftContradictions } from './contradictions';
+import { findDraftContradictions, floorIssue } from './contradictions';
 import { isValidationWithListValue } from './options';
 import Validation from './Validation';
 
@@ -179,6 +179,11 @@ const Validations = ({
         ruleValue: unknown,
         replacingKey?: string,
       ): string[] => {
+        // R1 floor check runs ahead of the contradiction analyser: a below-floor
+        // value (e.g. maxLength 0) is meaningless input the schema would reject
+        // outright, so there is no point feeding it into findDraftContradictions.
+        const floor = floorIssue(ruleKey, ruleValue);
+        if (floor) return [floor];
         const prospective: Record<string, unknown> = { ...value };
         if (replacingKey && replacingKey !== ruleKey) {
           delete prospective[replacingKey];

@@ -1,22 +1,41 @@
 import { compose, withHandlers } from 'react-recompose';
 import { connect } from 'react-redux';
 import type { FormAction } from 'redux-form';
-import { change } from 'redux-form';
+import { change, SubmissionError } from 'redux-form';
 
 import { updateVariableAsync } from '../../../ducks/modules/protocol/codebook';
+import type { RootState } from '../../../ducks/modules/root';
+import { getVariablesForSubjectSelector } from '../../../selectors/codebook';
+import { findDraftContradictions } from '../../Validations/contradictions';
 
-const store = connect(null, {
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+type OwnProps = {
+  form: string;
+  entity: 'node' | 'edge' | 'ego';
+  type: string;
+};
+
+const mapStateToProps = (state: RootState, props: OwnProps) => ({
+  allVariables: getVariablesForSubjectSelector(state, {
+    entity: props.entity,
+    type: props.type,
+  }),
+});
+
+const store = connect(mapStateToProps, {
   updateVariable: updateVariableAsync,
   changeForm: change,
 });
 
-type HandlerProps = {
-  updateVariable: typeof updateVariableAsync;
-  changeForm: (form: string, field: string, value: unknown) => FormAction;
-  form: string;
-  entity: string;
-  type: string;
-};
+type HandlerProps = OwnProps &
+  ReturnType<typeof mapStateToProps> & {
+    updateVariable: typeof updateVariableAsync;
+    changeForm: (form: string, field: string, value: unknown) => FormAction;
+  };
 
 const handlers = withHandlers({
   handleChangePrompt:
@@ -30,10 +49,39 @@ const handlers = withHandlers({
       variableOptions: unknown;
       [key: string]: unknown;
     }) => {
+      // Saving new options for the bound variable can make its own committed
+      // validation rules (e.g. minSelected) impossible to satisfy — check
+      // before writing, the same way the field-editor dialog does. Widened to
+      // `unknown` so the isRecord guards below narrow it freshly: Variable is a
+      // discriminated union, and some of its members (e.g. layout) have no
+      // `validation` field, which defeats isRecord's narrowing when applied
+      // directly to the union type.
+      const existingVariable: unknown = props.allVariables[variable];
+      const existingValidation =
+        isRecord(existingVariable) && isRecord(existingVariable.validation)
+          ? existingVariable.validation
+          : undefined;
+      const variableType =
+        isRecord(existingVariable) && typeof existingVariable.type === 'string'
+          ? existingVariable.type
+          : undefined;
+      if (variableType && existingValidation) {
+        const contradiction = findDraftContradictions({
+          allVariables: props.allVariables,
+          currentVariableId: variable,
+          variableType,
+          validation: existingValidation,
+          options: variableOptions,
+        })[0];
+        if (contradiction) {
+          throw new SubmissionError({ variableOptions: contradiction.message });
+        }
+      }
+
       props.changeForm(props.form, '_modified', Date.now()); // TODO: can we avoid this?
 
       await props.updateVariable({
-        entity: props.entity as 'node' | 'edge' | 'ego',
+        entity: props.entity,
         type: props.type,
         variable,
         configuration: { options: variableOptions } as Record<string, unknown>,

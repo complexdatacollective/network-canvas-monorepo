@@ -60,6 +60,28 @@ export const findDraftContradictions = (
   );
 };
 
+// R1 (schema shape) rejects a rule value below these floors with a generic
+// Zod message. Gating them here — ahead of the schema — lets the row editor
+// disable the save and explain why, instead of surfacing that generic message
+// only after a failed protocol save.
+const RULE_FLOORS: Record<string, number> = {
+  minLength: 0,
+  maxLength: 1,
+  minSelected: 0,
+  maxSelected: 1,
+};
+
+export const floorIssue = (
+  ruleKey: string,
+  value: unknown,
+): string | undefined => {
+  const floor = RULE_FLOORS[ruleKey];
+  if (floor === undefined || typeof value !== 'number' || Number.isNaN(value)) {
+    return undefined;
+  }
+  return value < floor ? `${ruleKey} must be at least ${floor}` : undefined;
+};
+
 /**
  * redux-form sync validate for the field-editor dialog. Errors are keyed at
  * `validation` so they surface through the Validations field's FieldErrors on
@@ -83,6 +105,10 @@ export const makeFieldEditorValidate =
         ? existingType
         : (getTypeForComponent(component) ?? '');
     if (!variableType) return {};
+    const floor = Object.entries(validation)
+      .map(([ruleKey, ruleValue]) => floorIssue(ruleKey, ruleValue))
+      .find((message): message is string => message !== undefined);
+    if (floor) return { validation: floor };
     const first = findDraftContradictions({
       allVariables,
       currentVariableId,
