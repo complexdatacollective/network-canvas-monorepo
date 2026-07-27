@@ -128,6 +128,82 @@ export function intersectGroupConstraints(
   return groups;
 }
 
+/** A bound pair a group's members leave nothing between. */
+type EmptyGroupBound = {
+  /** The two constraint keys that cross. */
+  rules: string[];
+  /** What crossed, worded as the per-variable checks word it. */
+  detail: string;
+};
+
+const INTERSECTED_BOUNDS = [
+  { min: 'minValue', max: 'maxValue' },
+  { min: 'minLength', max: 'maxLength' },
+  { min: 'minSelected', max: 'maxSelected' },
+] as const;
+
+/**
+ * The bounds a group's intersected rules leave nothing between.
+ *
+ * A group holds one value for all of its members, so that value has to satisfy
+ * every member's bounds at once. `sameAs`, and a cycle of non-strict
+ * comparators, can merge members whose own ranges are each satisfiable into a
+ * group whose intersection is empty — `[1, 5]` held equal to `[?, 0]` describes
+ * a value that is both at least 1 and at most 0.
+ *
+ * A bound pair one member's own declaration already crosses is left out: that
+ * member is the contradiction, and the per-variable checks describe it.
+ */
+export function emptyGroupBounds(
+  members: readonly ConstrainedVariable[],
+  intersected: VariableConstraints,
+): EmptyGroupBound[] {
+  const empty: EmptyGroupBound[] = [];
+
+  for (const { min, max } of INTERSECTED_BOUNDS) {
+    const floor = intersected[min];
+    const ceiling = intersected[max];
+    if (floor === undefined || ceiling === undefined || floor <= ceiling) {
+      continue;
+    }
+
+    const memberCrosses = members.some(({ constraints }) => {
+      const ownFloor = constraints[min];
+      const ownCeiling = constraints[max];
+      return (
+        ownFloor !== undefined &&
+        ownCeiling !== undefined &&
+        ownFloor > ownCeiling
+      );
+    });
+    if (memberCrosses) continue;
+
+    empty.push({
+      rules: [min, max],
+      detail: `${min} ${floor} exceeds ${max} ${ceiling}`,
+    });
+  }
+
+  const window = intersected.dateWindow;
+  const windowCrosses =
+    window?.min !== undefined &&
+    window.max !== undefined &&
+    window.min > window.max;
+  const memberWindowCrosses = members.some(({ constraints }) => {
+    const own = constraints.dateWindow;
+    return own?.min !== undefined && own.max !== undefined && own.min > own.max;
+  });
+
+  if (windowCrosses && !memberWindowCrosses) {
+    empty.push({
+      rules: ['parameters'],
+      detail: `the date range ${window.min} to ${window.max} is empty`,
+    });
+  }
+
+  return empty;
+}
+
 /** The gap a strict comparator must leave, in the units the type is drawn in. */
 export function comparatorGap(type: 'number' | 'scalar'): number {
   return type === 'scalar' ? 10 ** -SCALAR_DECIMAL_PLACES : 1;
@@ -263,8 +339,11 @@ type PropagatedBounds = {
   /** Each group's rules, narrowed by every comparator that bounds it. */
   groups: Map<string, ConstrainedVariable>;
   /**
-   * Groups propagation left with an empty range. Their own rules were
-   * satisfiable in isolation; the comparators around them are not.
+   * Groups propagation itself emptied: the comparators around them are what
+   * their range could not hold. A group whose range was already empty when
+   * propagation started is left out, because that is either one variable's own
+   * bounds crossing or a group's members' bounds failing to overlap — both of
+   * which the feasibility pass reports without propagating anything.
    */
   inverted: Set<string>;
 };

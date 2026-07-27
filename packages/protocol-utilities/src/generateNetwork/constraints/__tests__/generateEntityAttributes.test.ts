@@ -839,6 +839,124 @@ describe('generateEntityAttributes', () => {
     }
   });
 
+  it('draws a counterpart the reservation has only made look single-valued', () => {
+    // `y` reserves a step for its own exclusion, which takes `x`'s reserved
+    // ceiling down to 8 and makes `x` look pinned there. It is not: what the
+    // comparators leave `x` is `[8, 9]`, and `w = 8, x = 9, y = 10` satisfies
+    // everything. Forbidding `w` its only value would give that up.
+    const variables = {
+      w: {
+        name: 'W',
+        type: 'number',
+        validation: { minValue: 8, maxValue: 8 },
+      },
+      x: {
+        name: 'X',
+        type: 'number',
+        validation: {
+          minValue: 8,
+          maxValue: 10,
+          lessThanVariable: asEntityAttributeReference('y'),
+          differentFrom: asEntityAttributeReference('w'),
+        },
+      },
+      y: {
+        name: 'Y',
+        type: 'number',
+        validation: {
+          minValue: 0,
+          maxValue: 10,
+          differentFrom: asEntityAttributeReference('z'),
+        },
+      },
+      z: {
+        name: 'Z',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 10 },
+      },
+    } as const;
+
+    const satisfies = (attrs: Record<string, VariableValue>): boolean =>
+      Number(attrs.x) < Number(attrs.y) &&
+      Number(attrs.x) !== Number(attrs.w) &&
+      Number(attrs.y) !== Number(attrs.z) &&
+      Number(attrs.w) >= 8 &&
+      Number(attrs.w) <= 9 &&
+      Number(attrs.x) >= 8 &&
+      Number(attrs.x) <= 10 &&
+      Number(attrs.y) >= 0 &&
+      Number(attrs.y) <= 10 &&
+      Number(attrs.z) >= 0 &&
+      Number(attrs.z) <= 10;
+
+    expect(
+      breaches(buildEntityConstraints(variables, TODAY), 500, satisfies),
+    ).toEqual([]);
+
+    // Widened by one, so the value the unsound forbid took away can be seen
+    // rather than inferred: `w = 8` is legal and was drawn 0 times in 500.
+    const roomy = buildEntityConstraints(
+      {
+        ...variables,
+        w: {
+          name: 'W',
+          type: 'number',
+          validation: { minValue: 8, maxValue: 9 },
+        },
+      },
+      TODAY,
+    );
+
+    expect(breaches(roomy, 500, satisfies)).toEqual([]);
+
+    const drawn = new Set<number>();
+    for (let seed = 0; seed < 500; seed++) {
+      drawn.add(
+        Number(
+          generateEntityAttributes(
+            roomy,
+            makeContext(seed),
+            'node:person',
+            seed,
+          ).w,
+        ),
+      );
+    }
+
+    expect(drawn).toContain(8);
+  });
+
+  it('draws a sameAs group inside the overlap of its members bounds', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: {
+            minValue: 1,
+            maxValue: 5,
+            sameAs: asEntityAttributeReference('b'),
+          },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: { minValue: 3, maxValue: 8 },
+        },
+      },
+      TODAY,
+    );
+
+    expect(
+      breaches(
+        entity,
+        500,
+        (attrs) =>
+          Number(attrs.a) === Number(attrs.b) && allWithin(attrs, 3, 5),
+      ),
+    ).toEqual([]);
+  });
+
   it('honours differentFrom when its ordering edge was dropped', () => {
     // `d >= b` already orders the pair, so the `differentFrom` edge would close
     // a cycle and is dropped: `b` is drawn first, where its own declaration has

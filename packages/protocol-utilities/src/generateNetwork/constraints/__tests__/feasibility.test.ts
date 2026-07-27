@@ -106,6 +106,166 @@ describe('analyseFeasibility', () => {
     );
   });
 
+  it('reports a non-strict comparator cycle whose members cannot overlap', () => {
+    // `a >= b` and `b >= a` merge into one equality group. Each variable's own
+    // range holds values; the one value they have to share has to be at least 3
+    // and at most 0.
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { maxValue: 0, greaterThanOrEqualToVariable: 'b' },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: {
+          minValue: 3,
+          maxValue: 5,
+          greaterThanOrEqualToVariable: 'a',
+        },
+      },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['A', 'B']);
+    expect(conflicts[0]?.rules).toEqual([
+      'greaterThanOrEqualToVariable',
+      'minValue',
+      'maxValue',
+    ]);
+    expect(conflicts[0]?.reason).toContain('bounds do not overlap');
+    expect(conflicts[0]?.reason).toContain('minValue 3 exceeds maxValue 0');
+  });
+
+  it('reports a sameAs group closed by a comparator that cannot overlap', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 1, maxValue: 5, sameAs: 'b' },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: { maxValue: 0, greaterThanOrEqualToVariable: 'a' },
+      },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['A', 'B']);
+    expect(conflicts[0]?.reason).toContain('minValue 1 exceeds maxValue 0');
+  });
+
+  it('reports a sameAs group whose members cannot overlap, with no comparator', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 1, maxValue: 5, sameAs: 'b' },
+      },
+      b: { name: 'B', type: 'number', validation: { maxValue: 0 } },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['A', 'B']);
+    expect(conflicts[0]?.rules).toEqual(['sameAs', 'minValue', 'maxValue']);
+  });
+
+  it('reports a three-variable non-strict cycle that cannot overlap', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: {
+          minValue: 4,
+          maxValue: 8,
+          greaterThanOrEqualToVariable: 'c',
+        },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: {
+          minValue: 0,
+          maxValue: 10,
+          greaterThanOrEqualToVariable: 'a',
+        },
+      },
+      c: {
+        name: 'C',
+        type: 'number',
+        validation: {
+          minValue: 0,
+          maxValue: 3,
+          greaterThanOrEqualToVariable: 'b',
+        },
+      },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['A', 'B', 'C']);
+    expect(conflicts[0]?.reason).toContain('minValue 4 exceeds maxValue 3');
+  });
+
+  it('reports a group whose lengths cannot overlap', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'text',
+        validation: { maxLength: 4, sameAs: 'b' },
+      },
+      b: { name: 'B', type: 'text', validation: { minLength: 8 } },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['sameAs', 'minLength', 'maxLength']);
+    expect(conflicts[0]?.reason).toContain('minLength 8 exceeds maxLength 4');
+  });
+
+  it('leaves a group out where one member crosses its own bounds', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'text',
+        validation: { minLength: 10, maxLength: 2, sameAs: 'b' },
+      },
+      b: { name: 'B', type: 'text' },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['A']);
+  });
+
+  it('accepts a group whose members bounds do overlap', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 1, maxValue: 5, sameAs: 'b' },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: { minValue: 3, maxValue: 8 },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
   it('accepts a variable declared both at least and at most another', () => {
     const codebook = codebookWith({
       a: {

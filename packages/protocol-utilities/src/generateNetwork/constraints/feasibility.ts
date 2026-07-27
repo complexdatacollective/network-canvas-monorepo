@@ -9,11 +9,16 @@ import { buildEntityConstraints } from './buildConstraints';
 import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
 import { worstCaseEntityCounts } from './entityCounts';
 import {
+  emptyGroupBounds,
   groupComparatorEdges,
   intersectGroupConstraints,
   propagateComparatorBounds,
 } from './groupConstraints';
-import { COMPARISON_RULES, type EntityConstraints } from './types';
+import {
+  COMPARISON_RULES,
+  type ConstrainedVariable,
+  type EntityConstraints,
+} from './types';
 import { valueSpaceSize } from './valueSpace';
 
 export type ConstraintConflict = {
@@ -57,13 +62,13 @@ type EntityScope = {
   worstCaseCount: number;
 };
 
+// The reference-bearing constraints that can merge two variables into one
+// group: `sameAs` directly, and a comparator as one link of a non-strict cycle.
+const MERGING_RULES = ['sameAs', ...COMPARISON_RULES] as const;
+
 // Reference-bearing constraint keys, checked against a cycle's members to
 // report only the rules actually involved in it.
-const REFERENCE_RULES = [
-  'sameAs',
-  ...COMPARISON_RULES,
-  'differentFrom',
-] as const;
+const REFERENCE_RULES = [...MERGING_RULES, 'differentFrom'] as const;
 
 function namesOf(entity: EntityConstraints, ids: string[]): string[] {
   return ids.map((id) => entity.get(id)?.entry.name ?? id);
@@ -245,10 +250,47 @@ function analyseEntity(
     }
   }
 
+  // A group's members all hold one value, so it has to satisfy every member's
+  // bounds at once. Merged by `sameAs` or by a cycle of non-strict comparators,
+  // members whose own ranges are each satisfiable can still leave no range
+  // between them, and no draw can be inside a range that is not there.
+  for (const [group, memberIds] of membersOf) {
+    if (memberIds.length < 2) continue;
+
+    const intersected = groups.get(group);
+    if (intersected === undefined) continue;
+
+    const members: ConstrainedVariable[] = [];
+    for (const id of memberIds) {
+      const member = entity.get(id);
+      if (member !== undefined) members.push(member);
+    }
+
+    const crossings = emptyGroupBounds(members, intersected.constraints);
+    if (crossings.length === 0) continue;
+
+    const held = MERGING_RULES.filter((rule) =>
+      memberIds.some((id) => {
+        const target = entity.get(id)?.constraints[rule];
+        return target !== undefined && memberIds.includes(target);
+      }),
+    );
+
+    report(
+      memberIds,
+      [...held, ...crossings.flatMap((crossing) => crossing.rules)],
+      'these variables are held to a single value, but their bounds do not ' +
+        `overlap: ${crossings.map((crossing) => crossing.detail).join('; ')}`,
+    );
+  }
+
   // Comparators only contradict each other as a system: `a < b < c` on `[0, 1]`
   // has three pairs that each fit and no assignment that does. Propagation
   // settles the whole system, and a group left with an empty range is a chain
-  // the declared bounds cannot hold.
+  // the declared bounds cannot hold. It reports only the groups its own walks
+  // emptied — a group whose range had already crossed over is one of the two
+  // checks above, a single variable's bounds or a group's members' against each
+  // other, and neither needs a comparator to be wrong.
   const edges = groupComparatorEdges(entity, groupOf);
   const { inverted } = propagateComparatorBounds(groups, order, edges);
   const cyclicGroups = new Set(

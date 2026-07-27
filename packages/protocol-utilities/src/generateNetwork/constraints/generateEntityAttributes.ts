@@ -500,10 +500,19 @@ function soleValue(
  * A counterpart still to be drawn contributes too, when the rules have narrowed
  * it to a single value: taking that value here would leave it nothing at all,
  * and no redraw of its own could recover it.
+ *
+ * That single value is read from the counterpart's propagated bounds rather
+ * than its reserved ones. The reservation has already subtracted the steps its
+ * own dependents might need, which is a precaution and not a limit, so a
+ * counterpart that looks pinned after it can still have values to draw and
+ * forbidding one would take away a value that was genuinely available. What
+ * this guarantees is therefore narrow: a counterpart the comparators alone pin
+ * to one value keeps it. One left two or more values can still be emptied by
+ * the draws around it, which is what the reservation is for.
  */
 function forbiddenKeys(
   group: string,
-  { membersOf, edges, groups, excluded }: Plan,
+  { membersOf, edges, propagated, excluded }: Plan,
   resolved: Record<string, VariableValue>,
 ): Set<string> {
   const keys = new Set<string>();
@@ -515,7 +524,7 @@ function forbiddenKeys(
       continue;
     }
 
-    const variable = groups.get(other);
+    const variable = propagated.get(other);
     if (variable === undefined) continue;
 
     const sole = soleValue(
@@ -582,6 +591,7 @@ export function generateEntityAttributes(
       edges,
       exclusionCounts(propagated, excluded),
     ),
+    propagated,
     excluded,
   };
 
@@ -613,8 +623,18 @@ export function generateEntityAttributes(
 type Plan = {
   membersOf: Map<string, string[]>;
   edges: readonly ComparatorEdge[];
-  /** Each group's combined rules, propagated and with headroom reserved. */
+  /**
+   * Each group's combined rules, propagated and with headroom reserved. What
+   * every group is drawn against.
+   */
   groups: Map<string, ConstrainedVariable>;
+  /**
+   * The same rules before the reservation narrowed them, which is every value
+   * the comparators leave a group rather than the ones left after room was held
+   * back for its dependents. Read wherever a group has to be judged genuinely
+   * out of values rather than merely narrow.
+   */
+  propagated: Map<string, ConstrainedVariable>;
   /** Which groups each group's value must differ from. */
   excluded: Map<string, Set<string>>;
 };
@@ -655,38 +675,56 @@ function drawGroup(
     }
   }
 
-  const bounded: ConstrainedVariable = {
-    entry: variable.entry,
+  const forbidden = forbiddenKeys(group, plan, resolved);
+
+  const boundsOf = (source: ConstrainedVariable): ConstrainedVariable => ({
+    entry: source.entry,
     constraints: withFallbackFloor(
-      variable.entry,
-      applyComparatorBounds(variable, group, edges, membersOf, resolved),
+      source.entry,
+      applyComparatorBounds(source, group, edges, membersOf, resolved),
     ),
+  });
+
+  const draw = (
+    bounded: ConstrainedVariable,
+  ): { value: VariableValue } | undefined => {
+    for (let attempt = 0; attempt < MAX_REDRAWS; attempt++) {
+      // A redraw has to land somewhere else, so failed attempts walk the
+      // distinct-value sequence; only the first draw is free to be random.
+      const seq = unique
+        ? ctx.uniqueRegistry.nextSeq(scope, slot)
+        : attempt > 0
+          ? attempt
+          : undefined;
+
+      const value = ctx.valueGen.generateConstrained(
+        bounded,
+        index,
+        seq !== undefined ? { distinctSeq: seq } : {},
+      );
+      if (
+        !forbidden.has(valueKey(value)) &&
+        !(unique && ctx.uniqueRegistry.isTaken(scope, slot, value))
+      ) {
+        return { value };
+      }
+    }
+
+    return undefined;
   };
 
-  const forbidden = forbiddenKeys(group, plan, resolved);
-  let value: VariableValue = null;
-  let satisfied = false;
+  // Room held back for the groups drawn against this one is a precaution, not a
+  // bound the protocol declares. Where honouring it leaves nothing to draw, the
+  // group's own propagated bounds are tried instead — a value inside those
+  // still satisfies every rule this group carries, and the alternative is
+  // giving up on a value that was available all along. Only a draw that has
+  // already failed reaches here, so nothing that succeeds is drawn differently.
+  const unreserved = plan.propagated.get(group);
+  const drawn =
+    draw(boundsOf(variable)) ??
+    (unreserved === undefined ? undefined : draw(boundsOf(unreserved)));
 
-  for (let attempt = 0; attempt < MAX_REDRAWS && !satisfied; attempt++) {
-    // A redraw has to land somewhere else, so failed attempts walk the
-    // distinct-value sequence; only the first draw is free to be random.
-    const seq = unique
-      ? ctx.uniqueRegistry.nextSeq(scope, slot)
-      : attempt > 0
-        ? attempt
-        : undefined;
-
-    value = ctx.valueGen.generateConstrained(
-      bounded,
-      index,
-      seq !== undefined ? { distinctSeq: seq } : {},
-    );
-    satisfied =
-      !forbidden.has(valueKey(value)) &&
-      !(unique && ctx.uniqueRegistry.isTaken(scope, slot, value));
-  }
-
-  if (!satisfied) {
+  if (drawn === undefined) {
     throw new Error(
       `Could not draw a satisfying value for "${variable.entry.name}" after ${MAX_REDRAWS} attempts. ` +
         'No value satisfies its own rules alongside the values already drawn for the variables it ' +
@@ -695,5 +733,5 @@ function drawGroup(
     );
   }
 
-  return claim(value);
+  return claim(drawn.value);
 }
