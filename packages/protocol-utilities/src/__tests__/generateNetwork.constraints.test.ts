@@ -172,6 +172,43 @@ describe('generateNetwork constraint conformance', () => {
     }
   });
 
+  it('regenerates a unique variable whose value space exactly fits the node count', () => {
+    // Five distinct values for five nodes is exactly satisfiable, so
+    // feasibility accepts it. The AlterForm then rewrites a value each node
+    // already holds: unless the slot that value took is given back, the
+    // registry believes all five are spoken for and the first regeneration
+    // runs out of values.
+    const values = [1, 2, 3, 4, 5];
+    const { network } = generateNetwork({
+      seed: 3,
+      codebook: personCodebook({
+        band: {
+          name: 'Band',
+          type: 'ordinal',
+          options: values.map((value) => ({ label: `Band ${value}`, value })),
+          validation: { unique: true },
+        },
+      }),
+      stages: [
+        nameGeneratorStage,
+        {
+          id: 'stage-alter',
+          type: 'AlterForm',
+          label: 'Alter form',
+          subject: { entity: 'node', type: 'person' },
+          form: { fields: [{ variable: 'band', prompt: 'Band' }] },
+        } as unknown as Stage,
+      ],
+    });
+
+    const bands = network.nodes.map(
+      (node) => node[entityAttributesProperty].band,
+    );
+    expect(bands).toHaveLength(5);
+    expect(new Set(bands).size).toBe(5);
+    expect(bands.every((band) => values.includes(Number(band)))).toBe(true);
+  });
+
   // The DatePicker writes `YYYY` from its year select, `YYYY-MM` from its
   // year/month pair and `YYYY-MM-DD` from its `type="date"` input; the
   // RelativeDatePicker writes `YYYY-MM-DD`. A value at any other resolution

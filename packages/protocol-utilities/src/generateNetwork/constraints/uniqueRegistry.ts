@@ -57,6 +57,19 @@ export class UniqueRegistry {
     this.used.set(slot, values);
   }
 
+  /**
+   * Gives a slot's value back, for an entity about to replace the one it holds.
+   *
+   * No holder is recorded, because a slot only ever issues a value once: the
+   * entity that holds it is the only one that can be giving it back, and an
+   * equal value in another slot or another scope is keyed separately and left
+   * alone. Callers must release before drawing the replacement, so a redraw
+   * that lands on the same value reclaims it rather than being refused it.
+   */
+  release(scope: string, variableId: string, value: VariableValue): void {
+    this.used.get(this.slot(scope, variableId))?.delete(valueKey(value));
+  }
+
   nextSeq(scope: string, variableId: string): number {
     const slot = this.slot(scope, variableId);
     const next = this.sequences.get(slot) ?? 0;

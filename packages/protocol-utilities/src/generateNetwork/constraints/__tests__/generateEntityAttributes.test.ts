@@ -1196,6 +1196,80 @@ describe('generateEntityAttributes', () => {
     expect(new Set([pinned.b, second.a, third.a]).size).toBe(3);
   });
 
+  it('leaves a regenerated value claimed when the redraw lands back on it', () => {
+    // One option, so the redraw can only land on the value the entity already
+    // holds. Giving the slot back without reclaiming it would leave the
+    // registry believing nothing is taken, and the next entity would be
+    // issued the value this one is still holding.
+    const entity = buildEntityConstraints(
+      {
+        band: {
+          name: 'Band',
+          type: 'ordinal',
+          options: [{ label: 'A', value: 1 }],
+          validation: { unique: true },
+        },
+      },
+      TODAY,
+    );
+
+    const ctx = makeContext();
+    expect(generateEntityAttributes(entity, ctx, 'node:person', 0).band).toBe(
+      1,
+    );
+
+    const again = generateEntityAttributes(entity, ctx, 'node:person', 0, {
+      existing: { band: 1 },
+      only: new Set(['band']),
+    });
+
+    expect(again.band).toBe(1);
+    expect(() =>
+      generateEntityAttributes(entity, ctx, 'node:person', 1),
+    ).toThrow(/Could not draw a satisfying value/);
+  });
+
+  it('releases only the value the regenerating entity itself held', () => {
+    // Two scopes hold the same two values, so a person and a place legitimately
+    // hold equal ones. Regenerating the place must give back the place's slot
+    // and leave the person's alone — which is why no holder is recorded: within
+    // one slot a value is only ever issued once, so its holder is the only
+    // entity that can be handing it back.
+    const entity = buildEntityConstraints(
+      {
+        band: {
+          name: 'Band',
+          type: 'ordinal',
+          options: [
+            { label: 'A', value: 1 },
+            { label: 'B', value: 2 },
+          ],
+          validation: { unique: true },
+        },
+      },
+      TODAY,
+    );
+
+    const ctx = makeContext();
+    const first = generateEntityAttributes(entity, ctx, 'node:person', 0);
+    const second = generateEntityAttributes(entity, ctx, 'node:person', 1);
+    const place = generateEntityAttributes(entity, ctx, 'node:place', 0);
+
+    expect(new Set([first.band, second.band]).size).toBe(2);
+    expect(place.band).toBe(first.band);
+
+    generateEntityAttributes(entity, ctx, 'node:place', 0, {
+      existing: { band: place.band ?? null },
+      only: new Set(['band']),
+    });
+
+    // Both of the person scope's values are still held by the two entities
+    // that were issued them, so a third has nothing distinct left.
+    expect(() =>
+      generateEntityAttributes(entity, ctx, 'node:person', 2),
+    ).toThrow(/Could not draw a satisfying value/);
+  });
+
   it('is deterministic for a given seed', () => {
     const entity = buildEntityConstraints(
       { a: { name: 'A', type: 'text' }, b: { name: 'B', type: 'number' } },

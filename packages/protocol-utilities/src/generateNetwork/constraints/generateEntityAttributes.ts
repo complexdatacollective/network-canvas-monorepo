@@ -675,6 +675,19 @@ function drawGroup(
     }
   }
 
+  // A group being redrawn over a value the entity already holds gives that
+  // value's slot back first. Without it the entity would occupy two of the
+  // slot's values while holding one, and a value space sized to the entity
+  // count — which feasibility accepts — runs out partway through the run.
+  // Released before the draw, not after, so a redraw that lands on the same
+  // value reclaims it: the entity's one claim is never left at zero.
+  if (unique && existing !== undefined) {
+    const previous = groupValue(memberIds, existing);
+    if (previous !== undefined) {
+      ctx.uniqueRegistry.release(scope, slot, previous);
+    }
+  }
+
   const forbidden = forbiddenKeys(group, plan, resolved);
 
   const boundsOf = (source: ConstrainedVariable): ConstrainedVariable => ({
