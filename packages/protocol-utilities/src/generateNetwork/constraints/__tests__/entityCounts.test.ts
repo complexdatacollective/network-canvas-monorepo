@@ -32,6 +32,14 @@ describe('worstCaseEntityCounts', () => {
     expect(counts.node.get('person')).toBe(20);
   });
 
+  it('counts a minNodes floor above the config maximum, as the generator does', () => {
+    const counts = worstCaseEntityCounts(
+      [nameGenerator({ behaviours: { minNodes: 20 } })],
+      config,
+    );
+    expect(counts.node.get('person')).toBe(20);
+  });
+
   it('sums across every stage producing the same node type', () => {
     const counts = worstCaseEntityCounts(
       [

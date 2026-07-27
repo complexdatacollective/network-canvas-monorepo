@@ -16,7 +16,7 @@ import { getSubjectType } from './subject';
  * Node-subject stages that fabricate nodes: the three name-generator variants
  * and NetworkComposer (a from-scratch builder).
  */
-type NodeCreationStage = StageOfType<
+export type NodeCreationStage = StageOfType<
   | 'NameGenerator'
   | 'NameGeneratorQuickAdd'
   | 'NameGeneratorRoster'
@@ -63,7 +63,7 @@ function getPromptAdditionalAttributes(
   );
 }
 
-function getNodeCountBounds(
+export function getNodeCountBounds(
   stage: NodeCreationStage,
   config: GenerationConfig,
 ): { minNodes: number; maxNodes: number } {
