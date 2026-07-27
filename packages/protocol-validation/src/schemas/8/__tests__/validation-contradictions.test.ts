@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { findValidationContradictions } from '../variables/validation-contradictions.ts';
-import { EgoVariablesSchema, VariablesSchema } from '../variables/variable.ts';
+import {
+  EgoVariablesSchema,
+  VariableSchema,
+  VariablesSchema,
+} from '../variables/variable.ts';
 
 describe('findValidationContradictions — local checks', () => {
   it('reports minLength > maxLength, stripping both members', () => {
@@ -414,5 +418,64 @@ describe('record schema conformance — contradiction refinement', () => {
       },
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe('R1 — absolute floors on count-valued rules', () => {
+  it('rejects maxLength 0 and negative minLength', () => {
+    expect(
+      VariableSchema.safeParse({
+        name: 'first_name',
+        type: 'text',
+        component: 'Text',
+        validation: { maxLength: 0 },
+      }).success,
+    ).toBe(false);
+    expect(
+      VariableSchema.safeParse({
+        name: 'first_name',
+        type: 'text',
+        component: 'Text',
+        validation: { minLength: -1 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects maxSelected 0 and negative minSelected', () => {
+    const categorical = (validation: Record<string, number>) => ({
+      name: 'colors',
+      type: 'categorical',
+      component: 'CheckboxGroup',
+      options: [
+        { label: 'Red', value: 'red' },
+        { label: 'Blue', value: 'blue' },
+      ],
+      validation,
+    });
+    expect(
+      VariableSchema.safeParse(categorical({ maxSelected: 0 })).success,
+    ).toBe(false);
+    expect(
+      VariableSchema.safeParse(categorical({ minSelected: -1 })).success,
+    ).toBe(false);
+  });
+
+  it('accepts the floor values themselves and negative minValue/maxValue', () => {
+    expect(
+      VariableSchema.safeParse({
+        name: 'first_name',
+        type: 'text',
+        component: 'Text',
+        validation: { minLength: 0, maxLength: 1 },
+      }).success,
+    ).toBe(true);
+    expect(
+      VariableSchema.safeParse({
+        name: 'temperature',
+        type: 'number',
+        component: 'Number',
+        validation: { minValue: -40, maxValue: -1 },
+      }).success,
+    ).toBe(true);
   });
 });
