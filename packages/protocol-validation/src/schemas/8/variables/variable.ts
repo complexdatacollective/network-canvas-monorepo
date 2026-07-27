@@ -251,13 +251,27 @@ export const relativeDatePickerParametersSchema = z
     after: z.number().int().optional(),
   })
   .superRefine((parameters, ctx) => {
-    if (parameters.anchor !== undefined && !isIsoDate(parameters.anchor)) {
-      ctx.addIssue({
-        code: 'custom' as const,
-        message:
-          'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
-        path: ['anchor'],
-      });
+    if (parameters.anchor !== undefined) {
+      if (!isIsoDate(parameters.anchor)) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message:
+            'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
+          path: ['anchor'],
+        });
+      } else if (Number(parameters.anchor.slice(0, 4)) < 1000) {
+        // Ninth-wave Finding 6, consistent with the wave-8 coarse-resolution
+        // year floor above: fresco-ui's runtime ymd arithmetic still
+        // two-digit-coerces a small year, so an anchor below 1000 produces a
+        // wrong runtime window even though it is a real, round-tripping ISO
+        // date.
+        ctx.addIssue({
+          code: 'custom' as const,
+          message:
+            'RelativeDatePicker anchor must use a four-digit year of 1000 or later',
+          path: ['anchor'],
+        });
+      }
     }
     if (parameters.before !== undefined && parameters.before < 0) {
       ctx.addIssue({

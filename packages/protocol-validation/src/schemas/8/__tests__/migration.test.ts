@@ -1816,6 +1816,46 @@ describe('Migration V7 to V8', () => {
         'validation',
       );
     });
+
+    // Ninth-wave Finding 5: an inert below-floor minLength (v7 never enforced
+    // a floor, so -1 constrained nothing) must be stripped BEFORE this
+    // backfill runs, or the backfill fabricates requiredness the protocol
+    // never actually had. The floor strip removes minLength first, so by the
+    // time this step inspects the validation map there is no minLength left
+    // to trigger it.
+    it('does not fabricate required from a below-floor minLength that gets stripped', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                nickname: {
+                  name: 'Nickname',
+                  type: 'text',
+                  component: 'Text',
+                  validation: { minLength: -1 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const nickname = parsed.codebook.node?.person?.variables?.nickname;
+      expect(nickname).not.toHaveProperty('validation.required');
+      expect(nickname).not.toHaveProperty('validation.minLength');
+    });
   });
 
   describe('ego unique validation removal', () => {
@@ -4760,6 +4800,39 @@ describe('Migration V7 to V8', () => {
       expect(field).not.toHaveProperty('parameters.junk');
     });
 
+    // Ninth-wave Finding 6: an anchor below the four-digit-year floor is a
+    // real, round-tripping ISO date, but fresco-ui's runtime ymd arithmetic
+    // still two-digit-coerces a small year, so it already produced a wrong
+    // window — deleted rather than kept, reverting the field to its
+    // interview-date default.
+    it('strips an anchor whose year is below 1000, and the result parses', () => {
+      const migratedRaw = migrateStages([
+        composerStage({
+          nodeForm: {
+            fields: [
+              {
+                variable: 'birth_date',
+                component: 'RelativeDatePicker',
+                parameters: { anchor: '0099-12-31', before: 10 },
+              },
+            ],
+          },
+        }),
+      ]);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const field = stage.nodeForm?.fields?.[0];
+      expect(field).not.toHaveProperty('parameters.anchor');
+      expect(field).toHaveProperty('parameters.before', 10);
+    });
+
     it('leaves a valid anchor/before/after window alone', () => {
       const migratedRaw = migrateStages([
         composerStage({
@@ -4906,6 +4979,80 @@ describe('Migration V7 to V8', () => {
       if (stage?.type !== 'NetworkComposer') return;
       const field = stage.edges?.[0]?.form?.fields?.[0];
       expect(field).not.toHaveProperty('parameters.type');
+    });
+
+    // Ninth-wave Finding 1: deleting the offending field's `type` here
+    // reverts it to full resolution, so a surviving min/max — valid only at
+    // the OLD, coarser resolution — must be re-validated too, not merely
+    // have `type` removed, or the migrated document fails to parse (the
+    // bound is stranded as an invalid full-resolution date). Exercises both
+    // places composer fields live: nodeForm and an edge type's form.
+    it('re-normalises stranded bounds when a nodeForm field override is stripped', () => {
+      const migratedRaw = migrateStages([
+        composerStage({
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                component: 'DatePicker',
+                parameters: { type: 'year', min: '2020', max: '2021' },
+              },
+            ],
+          },
+        }),
+      ]);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const field = stage.nodeForm?.fields?.[0];
+      expect(field).not.toHaveProperty('parameters.type');
+      expect(field).not.toHaveProperty('parameters.min');
+      expect(field).not.toHaveProperty('parameters.max');
+    });
+
+    it('re-normalises stranded bounds when an edge form field override is stripped', () => {
+      const migratedRaw = migrateStages([
+        composerStage({
+          edges: [
+            {
+              id: 'e1',
+              subject: { entity: 'edge', type: 'knows' },
+              form: {
+                fields: [
+                  {
+                    variable: 'edge_event_a',
+                    component: 'DatePicker',
+                    parameters: {
+                      type: 'month',
+                      min: '2020-05',
+                      max: '2020-06',
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      ]);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const field = stage.edges?.[0]?.form?.fields?.[0];
+      expect(field).not.toHaveProperty('parameters.type');
+      expect(field).not.toHaveProperty('parameters.min');
+      expect(field).not.toHaveProperty('parameters.max');
     });
 
     // Both fields diverge to a DIFFERENT non-full resolution — one strip
@@ -5059,6 +5206,39 @@ describe('Migration V7 to V8', () => {
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('validation.sameAs', 'b');
       expect(variables?.a).not.toHaveProperty('validation.greaterThanVariable');
+    });
+
+    // Ninth-wave Finding 3: A's sameAs already forces the {a, b} group; the
+    // one-way `lessThanOrEqualToVariable` merely sits between the two — it
+    // did not itself group them (only a sameAs edge, or a genuine strongly-
+    // connected comparator cycle, does that). The minimal-strip repair takes
+    // the sameAs edge only, and the `<=` rule survives migration intact.
+    it('strips sameAs only when a one-way comparator sits inside a sameAs group, keeping the comparator', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: {
+            maxValue: 5,
+            sameAs: 'b',
+            lessThanOrEqualToVariable: 'b',
+          },
+        },
+        b: { name: 'b', type: 'number', validation: { minValue: 10 } },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.sameAs');
+      expect(variables?.a).toHaveProperty(
+        'validation.lessThanOrEqualToVariable',
+        'b',
+      );
+      expect(variables?.a).toHaveProperty('validation.maxValue', 5);
+      expect(variables?.b).toHaveProperty('validation.minValue', 10);
     });
 
     it('strips a sameAs categorical group whose option values share nothing', () => {

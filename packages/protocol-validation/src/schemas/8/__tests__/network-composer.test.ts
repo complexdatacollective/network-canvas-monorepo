@@ -298,6 +298,55 @@ describe('ComposerFormFieldSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  // Ninth-wave Finding 6, consistent with the wave-8 coarse-resolution year
+  // floor: fresco-ui's runtime ymd arithmetic still two-digit-coerces a
+  // small year, so a RelativeDatePicker anchor below 1000 would already
+  // produce a wrong window even though it is a real, round-tripping ISO
+  // date.
+  it('rejects an edge form RelativeDatePicker field with an anchor year below 1000', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'met_date',
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { anchor: '0999-12-31' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts an edge form RelativeDatePicker field with an anchor year at exactly 1000', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'met_date',
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { anchor: '1000-01-01' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('accepts a valid nodeForm DatePicker window and a valid edge RelativeDatePicker window', () => {
     const result = networkComposerStage.safeParse({
       ...baseStageWithComponent,

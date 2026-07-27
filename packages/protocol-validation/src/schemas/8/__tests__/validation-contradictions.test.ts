@@ -633,6 +633,25 @@ describe('findValidationContradictions — Finding E: comparator-forced equality
       }),
     ).toEqual([]);
   });
+
+  // Ninth-wave Finding 3: a's sameAs already forces the group; the one-way
+  // `lessThanOrEqualToVariable` merely sits between two members it did not
+  // group (only a sameAs edge, or a genuine SCC, does that). The
+  // minimal-strip repair must take the sameAs edge only, leaving the
+  // comparator standing.
+  it('strips sameAs only when a one-way non-strict comparator merely sits inside a sameAs group', () => {
+    const result = findValidationContradictions({
+      a: number('a', {
+        maxValue: 5,
+        sameAs: 'b',
+        lessThanOrEqualToVariable: 'b',
+      }),
+      b: number('b', { minValue: 10 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
 });
 
 describe('findValidationContradictions — second-wave Finding 4: odd boolean differentFrom cycles', () => {

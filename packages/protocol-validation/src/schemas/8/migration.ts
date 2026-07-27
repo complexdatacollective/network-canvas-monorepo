@@ -120,12 +120,14 @@ const RELATIVE_DATE_PICKER_KEYS = new Set(['anchor', 'before', 'after']);
 /**
  * Normalises a RelativeDatePicker `parameters` record in place, mirroring
  * `normalizeDatePickerParameters` above: a real ISO `anchor` date (the shared
- * `isIsoDate`), non-negative integer `before`/`after` offsets, and only those
- * three keys — the schema is a strictObject, so one unrecognised key fails
- * the whole object rather than just itself. Used by the NetworkComposer
- * stage-field RelativeDatePicker step below only; the codebook-variable
- * DatePicker step above intentionally skips RelativeDatePicker variables (see
- * its own comment) and this function does not change that.
+ * `isIsoDate`) whose year is at least 1000 (ninth-wave Finding 6 — see the
+ * anchor-year check below), non-negative integer `before`/`after` offsets,
+ * and only those three keys — the schema is a strictObject, so one
+ * unrecognised key fails the whole object rather than just itself. Used by
+ * the NetworkComposer stage-field RelativeDatePicker step below only; the
+ * codebook-variable DatePicker step above intentionally skips
+ * RelativeDatePicker variables (see its own comment) and this function does
+ * not change that.
  */
 const normalizeRelativeDatePickerParameters = (
   parameters: Record<string, unknown>,
@@ -134,6 +136,13 @@ const normalizeRelativeDatePickerParameters = (
     if (!RELATIVE_DATE_PICKER_KEYS.has(key)) delete parameters[key];
   }
   if (typeof parameters.anchor !== 'string' || !isIsoDate(parameters.anchor)) {
+    delete parameters.anchor;
+  } else if (Number(parameters.anchor.slice(0, 4)) < 1000) {
+    // Ninth-wave Finding 6: fresco-ui's runtime ymd arithmetic still
+    // two-digit-coerces a small year, so an anchor below 1000 already
+    // produced a wrong (1900s-coerced) window — deleting it reverts the
+    // picker to its interview-date default rather than keeping a value that
+    // was already broken at runtime.
     delete parameters.anchor;
   }
   for (const bound of ['before', 'after'] as const) {
@@ -256,6 +265,7 @@ const migrationV7toV8 = createMigration({
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed.
+- A NetworkComposer stage field's RelativeDatePicker \`anchor\` must likewise use a four-digit year of 1000 or later — the interview's date arithmetic still coerces a smaller year, so such an anchor already produced a wrong window. An anchor below that floor is removed, reverting the field to its interview-date default.
 - A NetworkComposer stage field can no longer render one of a \`sameAs\`-joined pair of datetime variables at a different date resolution than the other — the interview compares their stored values as exact strings, so a mismatched resolution can never actually satisfy \`sameAs\` even when the underlying codebook variables agree. The offending field's DatePicker resolution override is removed, reverting it to full resolution.
 `,
   migrate: (doc, deps) => {
@@ -1104,9 +1114,51 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
+        // Ninth-wave Finding 5: count-valued rules have absolute floors
+        // (minLength/minSelected at least 0, maxLength/maxSelected at least
+        // 1); an inert below-floor value (e.g. minLength: -1, which v7 never
+        // enforced) is removed. This MUST run before the min-implies-required
+        // backfill below: that step infers requiredness from a min*
+        // validator's mere presence, so a below-floor minLength/minSelected
+        // still in place there would fabricate `required: true` for a rule
+        // that never actually constrained anything. maxLength/maxSelected
+        // don't feed that backfill, but share the same floor set, so they are
+        // stripped in the same pass.
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          if (!variables || typeof variables !== 'object') return variables;
+          const floors = {
+            minLength: 0,
+            maxLength: 1,
+            minSelected: 0,
+            maxSelected: 1,
+          } as const;
+          for (const variable of Object.values(
+            variables as Record<string, unknown>,
+          )) {
+            const validation = asRecord(asRecord(variable)?.validation);
+            if (!validation) continue;
+            for (const [rule, floor] of Object.entries(floors)) {
+              const value = validation[rule];
+              if (typeof value === 'number' && value < floor) {
+                delete validation[rule];
+              }
+            }
+          }
+          return variables;
+        },
+      },
+      {
         // A min* validator no longer implies the field is required, but older
         // protocols relied on that coupling to make fields de-facto mandatory.
-        // Preserve their behaviour by marking such variables required.
+        // Preserve their behaviour by marking such variables required. Runs
+        // AFTER the below-floor count-rule strip above, so an inert
+        // minLength/minSelected (already removed by then) cannot fabricate
+        // requiredness.
         paths: [
           'codebook.node.*.variables',
           'codebook.edge.*.variables',
@@ -1165,10 +1217,11 @@ const migrationV7toV8 = createMigration({
       },
       {
         // DatePicker `min`/`max` must be real dates written exactly at the
-        // picker's resolution with `min <= max`, and count-valued rules have
-        // absolute floors (minLength/minSelected >= 0, maxLength/maxSelected
-        // >= 1). Truncate finer-than-resolution date bounds — the extra
-        // precision is authored intent — and strip anything else invalid.
+        // picker's resolution with `min <= max`. Truncate finer-than-
+        // resolution date bounds — the extra precision is authored intent —
+        // and strip anything else invalid. (Count-valued rule floors are
+        // stripped earlier, before the min-implies-required backfill — see
+        // that step's comment for why the order matters.)
         paths: [
           'codebook.node.*.variables',
           'codebook.edge.*.variables',
@@ -1176,27 +1229,11 @@ const migrationV7toV8 = createMigration({
         ],
         fn: <V>(variables: V) => {
           if (!variables || typeof variables !== 'object') return variables;
-          const floors = {
-            minLength: 0,
-            maxLength: 1,
-            minSelected: 0,
-            maxSelected: 1,
-          } as const;
           for (const variable of Object.values(
             variables as Record<string, unknown>,
           )) {
             const typedVariable = asRecord(variable);
             if (!typedVariable) continue;
-
-            const validation = asRecord(typedVariable.validation);
-            if (validation) {
-              for (const [rule, floor] of Object.entries(floors)) {
-                const value = validation[rule];
-                if (typeof value === 'number' && value < floor) {
-                  delete validation[rule];
-                }
-              }
-            }
 
             if (typedVariable.type !== 'datetime') continue;
             if (typedVariable.component === 'RelativeDatePicker') continue;
@@ -1391,6 +1428,15 @@ const migrationV7toV8 = createMigration({
               const parameters = asRecord(typedOffendingField?.parameters);
               if (!typedOffendingField || !parameters) break;
               delete parameters.type;
+              // Ninth-wave Finding 1: deleting `type` reverts this field to
+              // full resolution, so a surviving min/max — valid at the OLD,
+              // coarser resolution — must be re-validated against full
+              // resolution too, exactly like every other type-deletion path
+              // (normalizeDatePickerParameters itself, and the composer-field
+              // normalisation step above). Skipping this left a bare year
+              // ('2020') in place, which the v8 schema then rejected as an
+              // invalid full-resolution YYYY-MM-DD date.
+              normalizeDatePickerParameters(parameters);
               if (Object.keys(parameters).length === 0) {
                 delete typedOffendingField.parameters;
               }

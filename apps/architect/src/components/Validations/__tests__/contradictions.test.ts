@@ -283,7 +283,11 @@ describe('makeFieldEditorValidate', () => {
       },
     };
     const siblingRendersAAsYearPicker = {
-      a: { component: 'DatePicker', parameters: { type: 'year' } },
+      a: {
+        fieldId: 'field-a',
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+      },
     };
 
     it('accepts a year-picker draft matching how the sibling field renders the sameAs partner', () => {
@@ -314,23 +318,92 @@ describe('makeFieldEditorValidate', () => {
       expect(errors.validation).toContain('different resolutions');
     });
 
-    it('excludes the overlay entry for the variable currently being edited', () => {
-      // Editing `a` itself: its own overlay entry is the field's PRE-draft
-      // committed value and must not shadow — or here, since the dialog
-      // hasn't touched component/parameters, silently substitute for — the
-      // codebook definition `buildProspectiveVariables` falls back to. If
-      // the overlay leaked in for the variable being edited, `a` would
-      // wrongly appear as a year picker against `b`'s full-resolution
-      // codebook definition and report a contradiction that doesn't exist.
+    it('excludes the overlay entry for the field currently being edited', () => {
+      // Editing `a` itself (same field, not reassigned): its own overlay
+      // entry is the field's PRE-draft committed value and must not shadow —
+      // or here, since the dialog hasn't touched component/parameters,
+      // silently substitute for — the codebook definition
+      // `buildProspectiveVariables` falls back to. If the overlay leaked in
+      // for the field being edited, `a` would wrongly appear as a year
+      // picker against `b`'s full-resolution codebook definition and report
+      // a contradiction that doesn't exist. Excluded by the field's own id
+      // (ninth-wave Finding 4), matching what the overlay entry itself
+      // carries.
       const validate = makeFieldEditorValidate(
         equalDatePickers,
         siblingRendersAAsYearPicker,
       );
       const errors = validate({
+        id: 'field-a',
         variable: 'a',
         validation: { sameAs: 'b' },
       });
       expect(errors).toEqual({});
+    });
+
+    // Ninth-wave Finding 4: reassigning THIS SAME field (fieldId 'field-a')
+    // from `a` to `b` must exclude `a`'s stale overlay entry by the field's
+    // own id, not by the draft's NEW `values.variable` ('b') — excluding by
+    // the new variable id would leave `a`'s pre-edit year-picker override in
+    // the checked set even though, after save, this field no longer renders
+    // `a` at all, producing a false contradiction against a variable the
+    // save is removing this field's override from.
+    it('excludes a reassigned field’s own stale overlay entry, keyed by its OLD variable', () => {
+      const validate = makeFieldEditorValidate(
+        equalDatePickers,
+        siblingRendersAAsYearPicker,
+      );
+      const errors = validate({
+        id: 'field-a',
+        variable: 'b',
+        validation: {},
+        component: 'DatePicker',
+        parameters: {},
+      });
+      expect(errors).toEqual({});
+    });
+
+    it('still applies a DIFFERENT field’s overlay when reassigning this one', () => {
+      // Reassigning `field-a` from `a` to `x`. `x`'s draft introduces a NEW
+      // sameAs relationship to `y`, whose sibling composer field (`field-y`
+      // — a DIFFERENT field entirely, untouched by this edit) renders it as
+      // a year picker. That sibling override must still be visible: only
+      // `field-a`'s OWN stale entry for `a` is excluded, not every entry.
+      const variablesWithXY = {
+        ...equalDatePickers,
+        x: {
+          name: 'x',
+          type: 'datetime',
+          component: 'DatePicker',
+          validation: {},
+        },
+        y: {
+          name: 'y',
+          type: 'datetime',
+          component: 'DatePicker',
+          validation: {},
+        },
+      };
+      const overlayWithSibling = {
+        ...siblingRendersAAsYearPicker,
+        y: {
+          fieldId: 'field-y',
+          component: 'DatePicker',
+          parameters: { type: 'year' },
+        },
+      };
+      const validate = makeFieldEditorValidate(
+        variablesWithXY,
+        overlayWithSibling,
+      );
+      const errors = validate({
+        id: 'field-a',
+        variable: 'x',
+        validation: { sameAs: 'y' },
+        component: 'DatePicker',
+        parameters: {},
+      });
+      expect(errors.validation).toContain('different resolutions');
     });
   });
 });

@@ -767,8 +767,15 @@ type DateResolution = 'full' | 'month' | 'year';
  * `parameters.type` can coarsen it to 'month'/'year' — a RelativeDatePicker
  * always stores a full date, and a variable with no component configured yet
  * has no resolution of its own to disagree with, so both default to 'full'.
+ *
+ * Exported at module level ONLY (see `findMixedResolutionSameAsGroups`'s own
+ * export comment below) so schema.ts's NetworkComposer stage-effective-
+ * overlay check (seventh/ninth-wave Finding 2) can derive a composer FIELD's
+ * own resolution the same way: `field.component`/`field.parameters` shares
+ * enough shape with a variable record (both just read `.component` and
+ * `.parameters`) that this function works unchanged on either.
  */
-const dateResolutionOf = (variable: unknown): DateResolution => {
+export const dateResolutionOf = (variable: unknown): DateResolution => {
   const record = asRecord(variable);
   if (record?.component !== 'DatePicker') return 'full';
   const type = asRecord(record.parameters)?.type;
@@ -877,12 +884,25 @@ function pinnedEqualDifferentFromContradictions(variables: UnknownRecord): {
 
 /**
  * The rules a group-level emptiness conflict (interval or, for Finding D,
- * option-value-set) resolves by stripping: every member's `sameAs` (the
- * pre-Finding-E policy) plus, since a group can now also be forced together
- * by a non-strict comparator cycle, every non-strict comparator edge whose
- * both ends fall inside this group. A purely `sameAs` group yields only the
- * first; a purely comparator-forced group (no member has `sameAs` at all)
- * yields only the second.
+ * option-value-set) resolves by stripping: every member's `sameAs` when the
+ * group has any (the pre-Finding-E policy) — otherwise, since a group can
+ * also be forced together purely by a non-strict comparator cycle, every
+ * non-strict comparator edge whose both ends fall inside this group.
+ *
+ * Ninth-wave Finding 3: a group with at least one `sameAs` edge strips ONLY
+ * the `sameAs` edges, never `internalNonStrictEdges` too. A "hybrid" group —
+ * `sameAs`-joined members that also happen to have a one-way non-strict
+ * comparator sitting between two of them (e.g. A sameAs B, plus A <= B) —
+ * previously stripped that comparator as well, even though it never forced
+ * the grouping (only a `sameAs` edge, or a genuine strongly-connected
+ * comparator cycle, does that — see `buildEqualityGroups`). Stripping
+ * `sameAs` alone already resolves the group; the comparator is an
+ * independent, still-satisfiable rule and the minimal-strip policy leaves it
+ * standing. `internalNonStrictEdges` is only ever non-empty AND relevant when
+ * `sameAsStrips` is empty, since a no-`sameAs` group is formed exclusively by
+ * union()-ing one strongly-connected component's own members (see
+ * `buildEqualityGroups`), so those edges are then genuinely the ones that
+ * forced the group to exist.
  */
 const groupEqualityStrips = (
   variables: UnknownRecord,
@@ -892,10 +912,8 @@ const groupEqualityStrips = (
   const sameAsStrips = members
     .filter((member) => hasUsableSameAs(variables, member))
     .map((member): VariableRuleRef => ({ variableId: member, rule: 'sameAs' }));
-  const comparatorStrips = internalNonStrictEdges.flatMap(
-    (edge) => edge.sources,
-  );
-  return [...sameAsStrips, ...comparatorStrips];
+  if (sameAsStrips.length > 0) return sameAsStrips;
+  return internalNonStrictEdges.flatMap((edge) => edge.sources);
 };
 
 function disjointBoundsContradictions(

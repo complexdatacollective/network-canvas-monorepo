@@ -264,4 +264,126 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
     );
     expect(result.success).toBe(true);
   });
+
+  // Ninth-wave Finding 2: the codebook's own sameAs group is uniformly
+  // year-resolution here (both event_a/event_b carry `parameters: { type:
+  // 'year' }`), satisfying the per-subject codebook check on its own — only
+  // a field OVERRIDE to full resolution desyncs the group. The previous
+  // offending-field search only matched a DatePicker field carrying a
+  // month/year `type`, so it never caught this direction.
+  const composerProtocolWithCoarseDatetimes = (
+    stage: Record<string, unknown>,
+  ) => {
+    const base = createBaseProtocol();
+    return {
+      ...base,
+      codebook: {
+        ...base.codebook,
+        node: {
+          ...base.codebook.node,
+          person: {
+            ...base.codebook.node.person,
+            variables: {
+              ...base.codebook.node.person.variables,
+              event_a: {
+                name: 'EventA',
+                type: 'datetime',
+                component: ComponentTypes.DatePicker,
+                parameters: { type: 'year' },
+                validation: { sameAs: 'event_b' },
+              },
+              event_b: {
+                name: 'EventB',
+                type: 'datetime',
+                component: ComponentTypes.DatePicker,
+                parameters: { type: 'year' },
+              },
+            },
+          },
+        },
+      },
+      stages: [stage],
+    };
+  };
+
+  it('rejects a nodeForm field overriding a coarse codebook baseline to full resolution via a parameterless DatePicker', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithCoarseDatetimes({
+        ...baseStage,
+        nodeForm: {
+          fields: [
+            { variable: 'event_a', component: ComponentTypes.DatePicker },
+          ],
+        },
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes(
+        'renders it at a datetime resolution that no longer matches',
+      ),
+    );
+    expect(issue?.path).toEqual([
+      'stages',
+      0,
+      'nodeForm',
+      'fields',
+      0,
+      'parameters',
+    ]);
+  });
+
+  it('rejects a nodeForm field overriding a coarse codebook baseline to full resolution via RelativeDatePicker', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithCoarseDatetimes({
+        ...baseStage,
+        nodeForm: {
+          fields: [
+            {
+              variable: 'event_a',
+              component: ComponentTypes.RelativeDatePicker,
+              parameters: { anchor: '2020-01-01' },
+            },
+          ],
+        },
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes(
+        'renders it at a datetime resolution that no longer matches',
+      ),
+    );
+    expect(issue?.path).toEqual([
+      'stages',
+      0,
+      'nodeForm',
+      'fields',
+      0,
+      'parameters',
+    ]);
+  });
+
+  it('accepts a nodeForm field overriding one member to match a coarse codebook baseline', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithCoarseDatetimes({
+        ...baseStage,
+        nodeForm: {
+          fields: [
+            {
+              variable: 'event_a',
+              component: ComponentTypes.DatePicker,
+              parameters: { type: 'year' },
+            },
+          ],
+        },
+      }),
+    );
+    expect(
+      result.success,
+      JSON.stringify(!result.success && result.error.issues),
+    ).toBe(true);
+  });
 });

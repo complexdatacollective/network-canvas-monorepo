@@ -46,7 +46,10 @@ import {
   NON_RENDERABLE_VARIABLE_TYPES,
   type Variable,
 } from './variables/index.ts';
-import { findMixedResolutionSameAsGroups } from './variables/validation-contradictions.ts';
+import {
+  dateResolutionOf,
+  findMixedResolutionSameAsGroups,
+} from './variables/validation-contradictions.ts';
 
 // Operators that expect numeric values for comparison
 const NUMERIC_COMPARISON_OPERATORS = [
@@ -215,11 +218,11 @@ const validateFormFieldVariable = (
 
 /**
  * NetworkComposer stage-effective-overlay resolution check (seventh-wave
- * Finding 2). A NetworkComposer field carries its OWN `component`/
- * `parameters` independent of the codebook variable (see
- * network-composer.ts's ComposerFormFieldSchema), so a stage can render a
- * sameAs-joined datetime variable at a different resolution than the
- * codebook variable's own default — the per-subject codebook check
+ * Finding 2, direction fix ninth-wave Finding 2). A NetworkComposer field
+ * carries its OWN `component`/`parameters` independent of the codebook
+ * variable (see network-composer.ts's ComposerFormFieldSchema), so a stage
+ * can render a sameAs-joined datetime variable at a different resolution
+ * than the codebook variable's own default — the per-subject codebook check
  * (`rejectValidationContradictions`, run per node/edge type) never sees this,
  * because it only ever looks at the codebook variables themselves. This
  * builds the STAGE-EFFECTIVE view for one subject (codebook definitions with
@@ -227,15 +230,20 @@ const validateFormFieldVariable = (
  * for exactly the variables those fields write) and re-runs the narrow
  * sameAs-only mixed-resolution check (Finding 1's scoping) against it.
  *
- * Only the FIRST field (in field-array order) that both belongs to a
- * mismatched group AND is a `DatePicker` field carrying a non-full
- * `parameters.type` is reported — that is necessarily the field whose
- * overlay introduced the mismatch (a `RelativeDatePicker` field is always
- * full resolution, so it can never be the coarser outlier; and the codebook
- * variables it is layered onto are themselves guaranteed resolution-
- * consistent for any sameAs group the migration has already stripped, per
- * Finding 1). This mirrors the migration's own first-offender field choice
- * below.
+ * The codebook variables a mismatched group is layered onto are themselves
+ * guaranteed resolution-consistent (any sameAs group the migration has
+ * already stripped, per Finding 1, or that Architect never let an author
+ * create in the codebook to begin with) — so ANY mismatch here is
+ * necessarily introduced by exactly one field's own override diverging from
+ * ITS OWN codebook variable's resolution. `dateResolutionOf` reads the same
+ * `component`/`parameters` shape a field and a variable both carry, so
+ * comparing it on each side catches BOTH directions: a field coarsening a
+ * full-resolution codebook default (a DatePicker with `type: 'month'` or
+ * `'year'`), and a field restoring full resolution against a coarse codebook
+ * default (a DatePicker with no `type` — including no `parameters` at all —
+ * or a RelativeDatePicker, which is always full resolution). Only the FIRST
+ * such field (in field-array order) is reported, mirroring the migration's
+ * own first-offender field choice below.
  */
 const validateComposerFieldResolutions = (
   codebookVariables: Record<string, Variable>,
@@ -257,13 +265,12 @@ const validateComposerFieldResolutions = (
   }
 
   for (const group of findMixedResolutionSameAsGroups(overlaid)) {
-    const fieldIndex = fields.findIndex(
-      (field) =>
-        field.component === 'DatePicker' &&
-        group.members.includes(field.variable) &&
-        (field.parameters?.type === 'month' ||
-          field.parameters?.type === 'year'),
-    );
+    const fieldIndex = fields.findIndex((field) => {
+      if (!group.members.includes(field.variable)) return false;
+      const base = codebookVariables[field.variable];
+      if (!base) return false;
+      return dateResolutionOf(field) !== dateResolutionOf(base);
+    });
     const offendingField = fieldIndex === -1 ? undefined : fields[fieldIndex];
     if (!offendingField) continue;
     const otherNames = group.members
