@@ -37,12 +37,78 @@ const isValidCalendarDate = (
   if (resolution === 'month') return true;
   const year = Number(value.slice(0, 4));
   const day = Number(value.slice(8, 10));
-  const date = new Date(Date.UTC(year, month - 1, day));
+  // Built via setUTCFullYear rather than Date.UTC(year, ...): Date.UTC (like
+  // the multi-arg Date constructor) maps a 0-99 year into 1900-1999, which
+  // would falsely reject a real four-digit year like '0099'; setUTCFullYear
+  // has no such two-digit-year special case.
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
   return (
     date.getUTCFullYear() === year &&
     date.getUTCMonth() === month - 1 &&
     date.getUTCDate() === day
   );
+};
+
+const DATE_RESOLUTION_LENGTH = { full: 10, month: 7, year: 4 } as const;
+const DATE_RESOLUTION_PATTERNS = {
+  full: /^\d{4}-\d{2}-\d{2}$/,
+  month: /^\d{4}-\d{2}$/,
+  year: /^\d{4}$/,
+} as const;
+// full is finest, year is coarsest. Truncation is only intent-preserving when
+// the ORIGINAL string is itself a fully-valid date at the picker's own
+// resolution or at a strictly finer one — e.g. '2020-05-03' truncates to a
+// year picker's '2020'. A value that merely happens to slice into a
+// valid-looking prefix, such as '2020-01-01oops' or '2020garbage', is not a
+// date at any resolution and must be deleted rather than blessed by slicing.
+const DATE_RESOLUTION_RANK = { year: 0, month: 1, full: 2 } as const;
+const DATE_RESOLUTIONS_FINEST_FIRST = ['full', 'month', 'year'] as const;
+
+/**
+ * Normalises a DatePicker `parameters` record's `min`/`max` in place: real
+ * dates written exactly at the picker's resolution with `min <= max`.
+ * Finer-than-resolution bounds are truncated (the extra precision is
+ * authored intent); anything else invalid is stripped. Shared by the
+ * codebook-variable DatePicker step and the NetworkComposer stage-field
+ * DatePicker step below — both carry the same `{ type?, min?, max? }` shape.
+ */
+const normalizeDatePickerParameters = (
+  parameters: Record<string, unknown>,
+): void => {
+  const resolution =
+    parameters.type === 'month' || parameters.type === 'year'
+      ? parameters.type
+      : 'full';
+  for (const bound of ['min', 'max'] as const) {
+    const value = parameters[bound];
+    if (value === undefined) continue;
+    if (typeof value !== 'string') {
+      delete parameters[bound];
+      continue;
+    }
+    const matchedResolution = DATE_RESOLUTIONS_FINEST_FIRST.find(
+      (candidate) =>
+        DATE_RESOLUTION_PATTERNS[candidate].test(value) &&
+        isValidCalendarDate(value, candidate),
+    );
+    if (
+      matchedResolution === undefined ||
+      DATE_RESOLUTION_RANK[matchedResolution] < DATE_RESOLUTION_RANK[resolution]
+    ) {
+      delete parameters[bound];
+      continue;
+    }
+    parameters[bound] = value.slice(0, DATE_RESOLUTION_LENGTH[resolution]);
+  }
+  if (
+    typeof parameters.min === 'string' &&
+    typeof parameters.max === 'string' &&
+    parameters.min > parameters.max
+  ) {
+    delete parameters.min;
+    delete parameters.max;
+  }
 };
 
 const codebookVariable = (
@@ -1064,21 +1130,6 @@ const migrationV7toV8 = createMigration({
         ],
         fn: <V>(variables: V) => {
           if (!variables || typeof variables !== 'object') return variables;
-          const resolutionLength = { full: 10, month: 7, year: 4 } as const;
-          const patterns = {
-            full: /^\d{4}-\d{2}-\d{2}$/,
-            month: /^\d{4}-\d{2}$/,
-            year: /^\d{4}$/,
-          } as const;
-          // full is finest, year is coarsest. Truncation is only intent-
-          // preserving when the ORIGINAL string is itself a fully-valid date
-          // at the picker's own resolution or at a strictly finer one — e.g.
-          // '2020-05-03' truncates to a year picker's '2020'. A value that
-          // merely happens to slice into a valid-looking prefix, such as
-          // '2020-01-01oops' or '2020garbage', is not a date at any
-          // resolution and must be deleted rather than blessed by slicing.
-          const resolutionRank = { year: 0, month: 1, full: 2 } as const;
-          const resolutionsFinestFirst = ['full', 'month', 'year'] as const;
           const floors = {
             minLength: 0,
             maxLength: 1,
@@ -1105,41 +1156,28 @@ const migrationV7toV8 = createMigration({
             if (typedVariable.component === 'RelativeDatePicker') continue;
             const parameters = asRecord(typedVariable.parameters);
             if (!parameters) continue;
-            const resolution =
-              parameters.type === 'month' || parameters.type === 'year'
-                ? parameters.type
-                : 'full';
-            for (const bound of ['min', 'max'] as const) {
-              const value = parameters[bound];
-              if (value === undefined) continue;
-              if (typeof value !== 'string') {
-                delete parameters[bound];
-                continue;
-              }
-              const matchedResolution = resolutionsFinestFirst.find(
-                (candidate) =>
-                  patterns[candidate].test(value) &&
-                  isValidCalendarDate(value, candidate),
-              );
-              if (
-                matchedResolution === undefined ||
-                resolutionRank[matchedResolution] < resolutionRank[resolution]
-              ) {
-                delete parameters[bound];
-                continue;
-              }
-              parameters[bound] = value.slice(0, resolutionLength[resolution]);
-            }
-            if (
-              typeof parameters.min === 'string' &&
-              typeof parameters.max === 'string' &&
-              parameters.min > parameters.max
-            ) {
-              delete parameters.min;
-              delete parameters.max;
-            }
+            normalizeDatePickerParameters(parameters);
           }
           return variables;
+        },
+      },
+      {
+        // NetworkComposer form fields carry their own component/parameters
+        // (see network-composer.ts's ComposerFormFieldSchema) independent of
+        // the codebook variable, so a field rendering DatePicker needs the
+        // same min/max normalisation as a codebook DatePicker variable above.
+        // `nodeForm` and each edge type's `form` are the two places composer
+        // fields live; paths that don't exist on a given stage are no-ops.
+        paths: ['stages[].nodeForm.fields[]', 'stages[].edges[].form.fields[]'],
+        fn: <V>(field: V) => {
+          const typedField = asRecord(field);
+          if (!typedField || typedField.component !== 'DatePicker') {
+            return field;
+          }
+          const parameters = asRecord(typedField.parameters);
+          if (!parameters) return field;
+          normalizeDatePickerParameters(parameters);
+          return field;
         },
       },
       {
@@ -1148,7 +1186,18 @@ const migrationV7toV8 = createMigration({
         // remove. Cross-type references go first (the analyser ignores them,
         // but the schema's reference pass rejects them). Stripping only
         // relaxes constraints, but a strip can change the next analysis (a
-        // de-grouped variable regains its own bounds), so loop to a fixpoint.
+        // de-grouped variable regains its own bounds), so loop to a fixpoint —
+        // applying only the FIRST contradiction's strips each pass, not
+        // every contradiction the analyser currently reports. Two
+        // contradictions can be interdependent (e.g. A sameAs B plus
+        // A differentFrom B plus A greaterThanVariable B: stripping sameAs
+        // and differentFrom alone already resolves the group, which un-scopes
+        // greaterThanVariable from it — but that same-pass, pre-strip
+        // analysis also flags greaterThanVariable as a strict comparator
+        // inside the (still-intact) sameAs group and would strip it too,
+        // unnecessarily). Re-analysing after each single strip lets a
+        // resolved contradiction take its dependents off the list before they
+        // are ever removed.
         paths: [
           'codebook.node.*.variables',
           'codebook.edge.*.variables',
@@ -1175,16 +1224,25 @@ const migrationV7toV8 = createMigration({
             }
           }
 
+          // Each pass strips at least one rule (a contradiction's `strips`
+          // tuple is never empty), so 100 passes bound at least 100 removed
+          // rule instances — comfortably more than any realistic authored
+          // protocol's contradictions, let alone ones chained tightly enough
+          // to require re-analysis between every single strip. If a
+          // pathological protocol ever did exhaust the bound, any
+          // contradiction left standing is still caught: the v8 schema's own
+          // `rejectValidationContradictions` refinement runs on the migrated
+          // output and would surface it as a normal validation failure
+          // instead of silently shipping bad data.
           for (let pass = 0; pass < 100; pass++) {
-            const contradictions = findValidationContradictions(typedVariables);
-            if (contradictions.length === 0) break;
-            for (const contradiction of contradictions) {
-              for (const strip of contradiction.strips) {
-                const validation = asRecord(
-                  asRecord(typedVariables[strip.variableId])?.validation,
-                );
-                if (validation) delete validation[strip.rule];
-              }
+            const [contradiction] =
+              findValidationContradictions(typedVariables);
+            if (!contradiction) break;
+            for (const strip of contradiction.strips) {
+              const validation = asRecord(
+                asRecord(typedVariables[strip.variableId])?.validation,
+              );
+              if (validation) delete validation[strip.rule];
             }
           }
           return variables;

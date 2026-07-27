@@ -521,10 +521,13 @@ describe('findValidationContradictions — second-wave Finding 4: odd boolean di
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('oddDifferentFromCycle');
-    expect(result[0]?.message).toBe(
-      'Variables "a", "b", "c": their differentFrom rules cannot all be satisfied with only two possible values',
-    );
+    // Member order in the message reflects the reconstructed cycle's BFS
+    // traversal (third-wave Finding 1), not authoring order — pin the
+    // membership rather than a fragile exact ordering.
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.message).toContain(
+      'their differentFrom rules cannot all be satisfied with only two possible values',
+    );
     expect(result[0]?.strips).toHaveLength(3);
     expect(
       result[0]?.strips.every((strip) => strip.rule === 'differentFrom'),
@@ -562,6 +565,87 @@ describe('findValidationContradictions — second-wave Finding 4: odd boolean di
         a: text('a', { differentFrom: 'b' }),
         b: text('b', { differentFrom: 'c' }),
         c: text('c', { differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — third-wave Finding 1: odd-cycle strips scope to the cycle', () => {
+  const boolean = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'boolean',
+    validation,
+  });
+
+  it('strips only the triangle, leaving a branch rule hanging off it untouched', () => {
+    // a-b-c is an odd cycle (triangle); d merely branches off a and never
+    // closes a loop of its own, so d's differentFrom is a valid rule (e.g. a
+    // branch condition) that must survive.
+    const result = findValidationContradictions({
+      a: boolean('a', { differentFrom: 'b' }),
+      b: boolean('b', { differentFrom: 'c' }),
+      c: boolean('c', { differentFrom: 'a' }),
+      d: boolean('d', { differentFrom: 'a' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toHaveLength(3);
+    expect(
+      result[0]?.strips.every(
+        (strip) => strip.rule === 'differentFrom' && strip.variableId !== 'd',
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('findValidationContradictions — third-wave Finding 3: mixed-resolution datetime equality groups', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  it('rejects a year-resolution DatePicker sameAs a full-resolution one', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { sameAs: 'b' }),
+      b: datePicker('b', {}),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" are joined by sameAs but store dates at different resolutions',
+    );
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  it('accepts two year-resolution DatePickers joined by sameAs', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { type: 'year' }, { sameAs: 'b' }),
+        b: datePicker('b', { type: 'year' }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts mixed resolutions related only by a one-directional comparator', () => {
+    // A single lessThanOrEqualToVariable edge (not mutual) never forms a
+    // strongly-connected component, so buildEqualityGroups keeps a and b in
+    // separate groups — this check is scoped to equality groups only.
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year' },
+          { lessThanOrEqualToVariable: 'b' },
+        ),
+        b: datePicker('b', {}),
       }),
     ).toEqual([]);
   });
@@ -801,5 +885,22 @@ describe('DatePicker parameters refinement', () => {
         datePicker({ min: '2020-01-15', max: '2020-01-15' }),
       ).success,
     ).toBe(true);
+  });
+
+  // Third-wave Finding 2: Date.UTC(year, ...) maps a 0-99 year into
+  // 1900-1999 (the legacy two-digit-year rule), which would falsely reject a
+  // real four-digit year like '0099'. isIsoDate/isValidDateAtResolution must
+  // round-trip small years correctly while still rejecting genuinely invalid
+  // calendar dates.
+  it('accepts a real four-digit date whose year is below 100', () => {
+    expect(
+      VariableSchema.safeParse(datePicker({ min: '0099-12-31' })).success,
+    ).toBe(true);
+  });
+
+  it('still rejects an impossible calendar date with a small year', () => {
+    expect(
+      VariableSchema.safeParse(datePicker({ min: '0099-02-30' })).success,
+    ).toBe(false);
   });
 });

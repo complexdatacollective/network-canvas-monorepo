@@ -147,8 +147,13 @@ const isIsoDate = (value: string) => {
   const day = Number(match[3]);
   // Date.parse/UTC normalize impossible calendar dates (e.g. 2020-02-31 ->
   // 2020-03-02), so round-trip the components and require an exact match to
-  // reject invalid days-of-month and out-of-range months.
-  const date = new Date(Date.UTC(year, month - 1, day));
+  // reject invalid days-of-month and out-of-range months. Built via
+  // setUTCFullYear rather than Date.UTC(year, ...): Date.UTC (like the
+  // multi-arg Date constructor) maps a 0-99 year into 1900-1999, which would
+  // falsely reject a real four-digit year like '0099'; setUTCFullYear has no
+  // such two-digit-year special case.
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
   return (
     date.getUTCFullYear() === year &&
     date.getUTCMonth() === month - 1 &&
@@ -175,87 +180,93 @@ const isValidDateAtResolution = (
   return isIsoDate(value);
 };
 
+// Shared with NetworkComposer's per-stage-field parameters (see
+// network-composer.ts's ComposerFormFieldSchema), which lets a NetworkComposer
+// form field render a DatePicker with its own min/max/resolution window
+// independent of the codebook variable's own component. Exported so that
+// schema can re-validate the same shape without duplicating it.
+export const datePickerParametersSchema = z
+  .strictObject({
+    type: z.enum(['full', 'month', 'year']).optional(),
+    min: z.string().optional(),
+    max: z.string().optional(),
+  })
+  .superRefine((parameters, ctx) => {
+    const resolution = parameters.type ?? 'full';
+    const { label } = DATE_RESOLUTION[resolution];
+    for (const bound of ['min', 'max'] as const) {
+      const value = parameters[bound];
+      if (value !== undefined && !isValidDateAtResolution(value, resolution)) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `DatePicker "${bound}" must be a valid ${label} date matching the picker's resolution`,
+          path: [bound],
+        });
+      }
+    }
+    if (
+      parameters.min !== undefined &&
+      parameters.max !== undefined &&
+      isValidDateAtResolution(parameters.min, resolution) &&
+      isValidDateAtResolution(parameters.max, resolution) &&
+      parameters.min > parameters.max
+    ) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'DatePicker "min" must not be after "max"',
+        path: ['max'],
+      });
+    }
+  });
+
 const dateTimeDatePickerSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.datetime),
   component: z.literal(ComponentTypes.DatePicker).optional(),
-  parameters: z
-    .strictObject({
-      type: z.enum(['full', 'month', 'year']).optional(),
-      min: z.string().optional(),
-      max: z.string().optional(),
-    })
-    .superRefine((parameters, ctx) => {
-      const resolution = parameters.type ?? 'full';
-      const { label } = DATE_RESOLUTION[resolution];
-      for (const bound of ['min', 'max'] as const) {
-        const value = parameters[bound];
-        if (
-          value !== undefined &&
-          !isValidDateAtResolution(value, resolution)
-        ) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `DatePicker "${bound}" must be a valid ${label} date matching the picker's resolution`,
-            path: [bound],
-          });
-        }
-      }
-      if (
-        parameters.min !== undefined &&
-        parameters.max !== undefined &&
-        isValidDateAtResolution(parameters.min, resolution) &&
-        isValidDateAtResolution(parameters.max, resolution) &&
-        parameters.min > parameters.max
-      ) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: 'DatePicker "min" must not be after "max"',
-          path: ['max'],
-        });
-      }
-    })
-    .optional(),
+  parameters: datePickerParametersSchema.optional(),
   validation: z.strictObject(validations).pick(datetimeValidations).optional(),
 });
+
+// Shared with NetworkComposer's per-stage-field parameters, mirroring
+// `datePickerParametersSchema` above.
+export const relativeDatePickerParametersSchema = z
+  .strictObject({
+    anchor: z.string().optional(),
+    before: z.number().int().optional(),
+    after: z.number().int().optional(),
+  })
+  .superRefine((parameters, ctx) => {
+    if (parameters.anchor !== undefined && !isIsoDate(parameters.anchor)) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message:
+          'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
+        path: ['anchor'],
+      });
+    }
+    if (parameters.before !== undefined && parameters.before < 0) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'RelativeDatePicker "before" must not be negative',
+        path: ['before'],
+      });
+    }
+    if (parameters.after !== undefined && parameters.after < 0) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'RelativeDatePicker "after" must not be negative',
+        path: ['after'],
+      });
+    }
+    // `before` and `after` are independent non-negative offsets in opposite
+    // directions from the anchor (earliest = anchor - before, latest =
+    // anchor + after; see RelativeDatePicker, default before=180/after=0), so
+    // there is no `before < after` relationship to enforce.
+  });
 
 const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.datetime),
   component: z.literal(ComponentTypes.RelativeDatePicker).optional(),
-  parameters: z
-    .strictObject({
-      anchor: z.string().optional(),
-      before: z.number().int().optional(),
-      after: z.number().int().optional(),
-    })
-    .superRefine((parameters, ctx) => {
-      if (parameters.anchor !== undefined && !isIsoDate(parameters.anchor)) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message:
-            'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
-          path: ['anchor'],
-        });
-      }
-      if (parameters.before !== undefined && parameters.before < 0) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: 'RelativeDatePicker "before" must not be negative',
-          path: ['before'],
-        });
-      }
-      if (parameters.after !== undefined && parameters.after < 0) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: 'RelativeDatePicker "after" must not be negative',
-          path: ['after'],
-        });
-      }
-      // `before` and `after` are independent non-negative offsets in opposite
-      // directions from the anchor (earliest = anchor - before, latest =
-      // anchor + after; see RelativeDatePicker, default before=180/after=0), so
-      // there is no `before < after` relationship to enforce.
-    })
-    .optional(),
+  parameters: relativeDatePickerParametersSchema.optional(),
   validation: z.strictObject(validations).pick(datetimeValidations).optional(),
 });
 

@@ -546,6 +546,27 @@ type Interval = { min?: number; max?: number };
 
 const DATE_PART_PATTERN = /^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/;
 
+// Both helpers below build via `new Date(0)` + `setUTCFullYear` rather than
+// `Date.UTC(year, ...)`: Date.UTC (like the multi-arg Date constructor) maps
+// a 0-99 year into 1900-1999, which would silently corrupt a real four-digit
+// year like '0099'; setUTCFullYear has no such two-digit-year special case.
+const utcDayNumber = (
+  year: number,
+  monthIndex: number,
+  day: number,
+): number => {
+  const date = new Date(0);
+  date.setUTCFullYear(year, monthIndex, day);
+  return date.getTime() / 86_400_000;
+};
+
+// Day 0 of the following month is the last day of `month` (1-based).
+const lastDayOfMonth = (year: number, month: number): number => {
+  const date = new Date(0);
+  date.setUTCFullYear(year, month, 0);
+  return date.getUTCDate();
+};
+
 /**
  * A date bound as a UTC day number. A partial date expands to its earliest
  * day for a `min` bound and its latest for a `max` bound, so coarse
@@ -557,14 +578,13 @@ const dayNumber = (value: string, edge: 'min' | 'max'): number | undefined => {
   const year = Number(match[1]);
   const month =
     match[2] !== undefined ? Number(match[2]) : edge === 'min' ? 1 : 12;
-  // Day 0 of the following month is the last day of `month`.
   const day =
     match[3] !== undefined
       ? Number(match[3])
       : edge === 'min'
         ? 1
-        : new Date(Date.UTC(year, month, 0)).getUTCDate();
-  return Date.UTC(year, month - 1, day) / 86_400_000;
+        : lastDayOfMonth(year, month);
+  return utcDayNumber(year, month - 1, day);
 };
 
 const dateWindowInterval = (variable: unknown): Interval | undefined => {
@@ -654,6 +674,22 @@ const optionValues = (variable: unknown): Set<string | number> | undefined => {
     }
   }
   return values;
+};
+
+type DateResolution = 'full' | 'month' | 'year';
+
+/**
+ * A datetime variable's storage resolution, for the mixed-resolution
+ * equality-group check (third-wave Finding 3). Only a DatePicker's own
+ * `parameters.type` can coarsen it to 'month'/'year' — a RelativeDatePicker
+ * always stores a full date, and a variable with no component configured yet
+ * has no resolution of its own to disagree with, so both default to 'full'.
+ */
+const dateResolutionOf = (variable: unknown): DateResolution => {
+  const record = asRecord(variable);
+  if (record?.component !== 'DatePicker') return 'full';
+  const type = asRecord(record.parameters)?.type;
+  return type === 'month' || type === 'year' ? type : 'full';
 };
 
 /**
@@ -820,6 +856,42 @@ function disjointBoundsContradictions(
         }
       }
     }
+
+    // Third-wave Finding 3: an equality group of datetime variables whose
+    // members store dates at different resolutions can never hold equal
+    // stored strings even when their windows overlap ('2020' at year
+    // resolution can never equal '2020-05-03' at full resolution). Scoped to
+    // equality groups only — a bare comparator relationship (never unioned
+    // into a multi-member group) stays conservative, per the existing
+    // interval/option-set checks' own scoping.
+    if (members.length > 1) {
+      const types = new Set(members.map((member) => typeOf(variables[member])));
+      const [onlyType] = types;
+      if (types.size === 1 && onlyType === 'datetime') {
+        const resolutions = new Set(
+          members.map((member) => dateResolutionOf(variables[member])),
+        );
+        if (resolutions.size > 1) {
+          const strips = groupEqualityStrips(
+            variables,
+            members,
+            internalNonStrictEdges,
+          );
+          const [first, ...rest] = strips;
+          if (first) {
+            const names = members.map(
+              (member) => `"${nameOf(member, variables[member])}"`,
+            );
+            found.push({
+              class: 'disjointBounds',
+              message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but store dates at different resolutions`,
+              variableIds: members,
+              strips: [first, ...rest],
+            });
+          }
+        }
+      }
+    }
   }
 
   for (const edge of edges) {
@@ -865,6 +937,22 @@ type BooleanDifferentFromEdge = {
   groupA: string;
   groupB: string;
   sources: VariableRuleRef[];
+};
+
+// The BFS-tree path from `from` up to the component's root, following
+// `parent` pointers. Each node is assigned a parent exactly once (when first
+// visited), so this is well-defined regardless of how much of the component
+// the BFS has explored by the time it is called.
+const pathToRoot = (parent: Map<string, string>, from: string): string[] => {
+  const path = [from];
+  let cursor = from;
+  for (;;) {
+    const next = parent.get(cursor);
+    if (next === undefined) break;
+    path.push(next);
+    cursor = next;
+  }
+  return path;
 };
 
 /**
@@ -932,39 +1020,74 @@ function oddDifferentFromCycleContradictions(
 
   for (const start of adjacency.keys()) {
     if (visited.has(start)) continue;
-    const componentNodes = new Set<string>();
+    const parent = new Map<string, string>();
     const queue: string[] = [start];
     visited.add(start);
     color.set(start, 0);
     let bipartite = true;
+    // Only the FIRST conflict is used to reconstruct a strip-worthy cycle —
+    // a component can contain more than one odd cycle (e.g. two triangles
+    // sharing a vertex), but Finding 1 only strips the one, so a valid rule
+    // elsewhere in the component (a differentFrom edge that merely branches
+    // off the cycle, never closing a loop of its own) is left untouched. The
+    // BFS still runs to completion rather than stopping at the first
+    // conflict, so `visited` correctly covers the whole component and later
+    // `start`s never re-enter it with a fresh, incommensurate colouring.
+    let conflict: { node: string; neighbor: string } | undefined;
 
     while (queue.length > 0) {
       const node = queue.shift();
       if (node === undefined) break;
-      componentNodes.add(node);
       const nodeColor = color.get(node);
       if (nodeColor === undefined) continue;
       for (const neighbor of adjacency.get(node) ?? []) {
         if (!visited.has(neighbor)) {
           visited.add(neighbor);
           color.set(neighbor, nodeColor === 0 ? 1 : 0);
+          parent.set(neighbor, node);
           queue.push(neighbor);
         } else if (color.get(neighbor) === nodeColor) {
           bipartite = false;
+          conflict ??= { node, neighbor };
         }
       }
     }
 
-    if (bipartite) continue;
+    if (bipartite || !conflict) continue;
 
-    const componentEdges = [...edgesByKey.values()].filter(
-      (edge) =>
-        componentNodes.has(edge.groupA) && componentNodes.has(edge.groupB),
+    // Reconstruct ONE odd cycle: the conflict edge plus the two BFS-tree
+    // paths from its endpoints up to their lowest common ancestor. Both
+    // paths necessarily terminate at the same root (one BFS per component),
+    // so the first node from `node`'s path that also appears in
+    // `neighbor`'s path is their LCA.
+    const pathFromNode = pathToRoot(parent, conflict.node);
+    const pathFromNeighbor = pathToRoot(parent, conflict.neighbor);
+    const neighborAncestors = new Set(pathFromNeighbor);
+    const lcaIndex = pathFromNode.findIndex((candidate) =>
+      neighborAncestors.has(candidate),
     );
-    const sources = componentEdges.flatMap((edge) => edge.sources);
+    const lca = pathFromNode[lcaIndex];
+    if (lca === undefined) continue;
+    const sideFromNode = pathFromNode.slice(0, lcaIndex + 1); // node..lca
+    const lcaIndexInNeighborPath = pathFromNeighbor.indexOf(lca);
+    const sideFromNeighbor = pathFromNeighbor
+      .slice(0, lcaIndexInNeighborPath)
+      .toReversed(); // (lca's child)..neighbor
+    const cycleGroups = [...sideFromNode, ...sideFromNeighbor];
+
+    const cycleEdges: BooleanDifferentFromEdge[] = [];
+    for (let index = 0; index < cycleGroups.length; index++) {
+      const a = cycleGroups[index];
+      const b = cycleGroups[(index + 1) % cycleGroups.length];
+      if (a === undefined || b === undefined) continue;
+      const [lower, upper] = [a, b].toSorted();
+      const edge = edgesByKey.get(`${lower}${KEY_SEPARATOR}${upper}`);
+      if (edge) cycleEdges.push(edge);
+    }
+    const sources = cycleEdges.flatMap((edge) => edge.sources);
     const [first, ...rest] = sources;
     if (!first) continue;
-    const memberIds = [...componentNodes].flatMap(
+    const memberIds = [...new Set(cycleGroups)].flatMap(
       (group) => membersOf.get(group) ?? [],
     );
     const names = memberIds.map(

@@ -219,4 +219,109 @@ describe('ComposerFormFieldSchema', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  // Third-wave Finding 7: a DatePicker/RelativeDatePicker stage field's
+  // `parameters` must satisfy the same shape+refinement as the codebook
+  // DatePicker/RelativeDatePicker (variable.ts) — previously `parameters` was
+  // an unrestricted record here, escaping the DatePicker refinement entirely.
+  it('rejects a nodeForm DatePicker field with a bound finer than its resolution', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_date',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year', min: '2020-05-03' },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a nodeForm DatePicker field with min after max', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_date',
+            component: ComponentTypes.DatePicker,
+            parameters: { min: '2021-06-01', max: '2020-01-01' },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an edge form RelativeDatePicker field with a negative before offset', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'met_date',
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { before: -1 },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a valid nodeForm DatePicker window and a valid edge RelativeDatePicker window', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_year',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year', min: '1990', max: '2020' },
+          },
+        ],
+      },
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'met_date',
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { anchor: '2020-01-01', before: 180, after: 0 },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('leaves an unrestricted parameters record alone for non-date components', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'closeness',
+            component: ComponentTypes.VisualAnalogScale,
+            parameters: { minLabel: 'Distant', maxLabel: 'Close', extra: true },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(true);
+  });
 });

@@ -19,6 +19,15 @@ export type ProspectiveDraft = {
   variableType: string;
   /** The rule map as it would be committed. */
   validation: UnknownRecord;
+  /**
+   * Draft input control (e.g. switching a datetime variable from
+   * RelativeDatePicker to DatePicker), from form state. Without this, the
+   * prospective variable would keep the EXISTING committed component even
+   * though `parameters` reflects the draft — e.g. the analyser would still
+   * treat a draft's absolute min/max window as a RelativeDatePicker's (which
+   * contributes no static bounds) and silently miss a new contradiction.
+   */
+  component?: unknown;
   /** Draft options for ordinal/categorical variables, from form state. */
   options?: unknown;
   /** Draft component parameters (e.g. DatePicker min/max), from form state. */
@@ -30,6 +39,7 @@ export const buildProspectiveVariables = ({
   currentVariableId,
   variableType,
   validation,
+  component,
   options,
   parameters,
 }: ProspectiveDraft): UnknownRecord => {
@@ -44,6 +54,7 @@ export const buildProspectiveVariables = ({
       ...base,
       type: variableType,
       validation,
+      ...(component !== undefined ? { component } : {}),
       ...(options !== undefined ? { options } : {}),
       ...(parameters !== undefined ? { parameters } : {}),
     },
@@ -124,6 +135,7 @@ export const makeFieldEditorValidate =
       currentVariableId,
       variableType,
       validation,
+      component: values.component,
       options: values.options,
       parameters: values.parameters,
     })[0];

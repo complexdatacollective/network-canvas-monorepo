@@ -4364,6 +4364,34 @@ describe('Migration V7 to V8', () => {
       expect(variables.a).toHaveProperty('parameters.anchor', '2020-05-03');
     });
 
+    // Third-wave Finding 2: isValidCalendarDate must not fall into
+    // Date.UTC's two-digit-year coercion (a year 0-99 silently becoming
+    // 1900-1999), which would falsely reject a real four-digit year like
+    // '0099' during normalisation.
+    it('keeps a real four-digit date whose year is below 100', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'full_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '0099-12-31' },
+        },
+      });
+      expect(variables.a).toHaveProperty('parameters.min', '0099-12-31');
+    });
+
+    it('still strips an impossible calendar date with a small year', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'full_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '0099-02-30' },
+        },
+      });
+      expect(variables.a).not.toHaveProperty('parameters.min');
+    });
+
     it('strips count-valued rules below their floors and keeps legal ones', () => {
       const variables = migrateVariables({
         a: {
@@ -4382,6 +4410,107 @@ describe('Migration V7 to V8', () => {
       expect(variables.a).toHaveProperty('validation.required', true);
       expect(variables.b).toHaveProperty('validation.minLength', 0);
       expect(variables.b).toHaveProperty('validation.maxLength', 1);
+    });
+  });
+
+  describe('NetworkComposer stage DatePicker field normalisation (third-wave Finding 7)', () => {
+    const migrateStages = (stages: unknown[]) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {},
+        stages,
+      };
+      const migrated = migrationV7toV8.migrate(
+        v7Protocol as unknown as Protocol<7>,
+        { name: 'Test Protocol' },
+      ) as unknown as { stages: Record<string, unknown>[] };
+      return migrated.stages;
+    };
+
+    it('truncates a nodeForm DatePicker field bound finer than its resolution', () => {
+      const [stage] = migrateStages([
+        {
+          id: 's1',
+          type: 'NetworkComposer',
+          nodeForm: {
+            fields: [
+              {
+                variable: 'birth_date',
+                component: 'DatePicker',
+                parameters: { type: 'year', min: '2020-05-03', max: '2021' },
+              },
+            ],
+          },
+        },
+      ]);
+      const field = (
+        (stage as Record<string, unknown>).nodeForm as {
+          fields: Record<string, unknown>[];
+        }
+      ).fields[0];
+      expect(field).toHaveProperty('parameters.min', '2020');
+      expect(field).toHaveProperty('parameters.max', '2021');
+    });
+
+    it('strips both bounds of an edge form DatePicker field when min is after max', () => {
+      const [stage] = migrateStages([
+        {
+          id: 's1',
+          type: 'NetworkComposer',
+          edges: [
+            {
+              id: 'e1',
+              subject: { entity: 'edge', type: 'knows' },
+              form: {
+                fields: [
+                  {
+                    variable: 'met_date',
+                    component: 'DatePicker',
+                    parameters: { min: '2021-06-01', max: '2020-01-01' },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ]);
+      const typedStage = stage as Record<string, unknown>;
+      const edges = typedStage.edges as Record<string, unknown>[];
+      const form = edges[0]?.form as { fields: Record<string, unknown>[] };
+      const field = form.fields[0];
+      expect(field).not.toHaveProperty('parameters.min');
+      expect(field).not.toHaveProperty('parameters.max');
+    });
+
+    it('leaves a valid nodeForm DatePicker window and non-date parameters alone', () => {
+      const [stage] = migrateStages([
+        {
+          id: 's1',
+          type: 'NetworkComposer',
+          nodeForm: {
+            fields: [
+              {
+                variable: 'birth_year',
+                component: 'DatePicker',
+                parameters: { type: 'year', min: '1990', max: '2020' },
+              },
+              {
+                variable: 'closeness',
+                component: 'VisualAnalogScale',
+                parameters: { minLabel: 'Distant', maxLabel: 'Close' },
+              },
+            ],
+          },
+        },
+      ]);
+      const fields = (
+        (stage as Record<string, unknown>).nodeForm as {
+          fields: Record<string, unknown>[];
+        }
+      ).fields;
+      expect(fields[0]).toHaveProperty('parameters.min', '1990');
+      expect(fields[0]).toHaveProperty('parameters.max', '2020');
+      expect(fields[1]).toHaveProperty('parameters.minLabel', 'Distant');
     });
   });
 
@@ -4539,6 +4668,62 @@ describe('Migration V7 to V8', () => {
       expect(variables.a).toHaveProperty('validation.required', true);
       expect(variables.b).toHaveProperty('validation.required', true);
       expect(variables.c).toHaveProperty('validation.required', true);
+    });
+
+    // Third-wave Finding 1: a triangle plus a branch rule hanging off one of
+    // its members. The old whole-component strip removed d's differentFrom
+    // too; the fix reconstructs only the triangle itself.
+    it('keeps a branch differentFrom rule hanging off an odd boolean cycle', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'boolean',
+          validation: { differentFrom: 'b' },
+        },
+        b: {
+          name: 'b',
+          type: 'boolean',
+          validation: { differentFrom: 'c' },
+        },
+        c: {
+          name: 'c',
+          type: 'boolean',
+          validation: { differentFrom: 'a' },
+        },
+        d: {
+          name: 'd',
+          type: 'boolean',
+          validation: { differentFrom: 'a' },
+        },
+      });
+      expect(variables.a).not.toHaveProperty('validation.differentFrom');
+      expect(variables.b).not.toHaveProperty('validation.differentFrom');
+      expect(variables.c).not.toHaveProperty('validation.differentFrom');
+      expect(variables.d).toHaveProperty('validation.differentFrom', 'a');
+    });
+
+    // Third-wave Finding 4: A sameAs B (also stated as differentFrom, making
+    // the pair itself class-7 contradictory) plus a strict comparator inside
+    // the same sameAs group. Stripping sameAs+differentFrom alone already
+    // resolves the group; applying every contradiction's strips from the
+    // SAME pre-strip pass (the old behaviour) would additionally strip
+    // greaterThanVariable even though it is fine once the group is gone.
+    it('keeps a strict comparator that only looked group-internal in the same pre-strip pass', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: {
+            sameAs: 'b',
+            differentFrom: 'b',
+            greaterThanVariable: 'b',
+          },
+        },
+        b: { name: 'b', type: 'number' },
+      });
+      expect(variables.a).not.toHaveProperty('validation.sameAs');
+      expect(variables.a).not.toHaveProperty('validation.differentFrom');
+      expect(variables.a).toHaveProperty('validation.greaterThanVariable', 'b');
     });
   });
 });

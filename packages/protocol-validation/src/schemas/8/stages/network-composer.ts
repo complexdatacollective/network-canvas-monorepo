@@ -8,6 +8,10 @@ import {
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { ComponentTypes } from '../variables/types.ts';
+import {
+  datePickerParametersSchema,
+  relativeDatePickerParametersSchema,
+} from '../variables/variable.ts';
 import { baseStageSchema } from './base.ts';
 
 // Every input control the form system can render. Layout/location variables
@@ -34,18 +38,45 @@ const ComposerComponentSchema = z.enum([
 // this field (see interview/src/selectors/forms.ts). `label` captions the
 // field in the drawer; it is optional — the drawer falls back to the codebook
 // variable's name.
-export const ComposerFormFieldSchema = z.strictObject({
-  // Architect assigns a stable id (uuid) on creation so the editor's
-  // OrderedList / motion Reorder keying survives reorder + delete; it is
-  // persisted, so the schema must tolerate it.
-  id: z.string().optional(),
-  variable: entityAttributeReference({ subject: 'stageSubject' }),
-  component: ComposerComponentSchema,
-  parameters: z.record(z.string(), z.unknown()).optional(),
-  label: z.string().optional(),
-  hint: z.string().optional(),
-  showValidationHints: z.boolean().optional(),
-});
+export const ComposerFormFieldSchema = z
+  .strictObject({
+    // Architect assigns a stable id (uuid) on creation so the editor's
+    // OrderedList / motion Reorder keying survives reorder + delete; it is
+    // persisted, so the schema must tolerate it.
+    id: z.string().optional(),
+    variable: entityAttributeReference({ subject: 'stageSubject' }),
+    component: ComposerComponentSchema,
+    parameters: z.record(z.string(), z.unknown()).optional(),
+    label: z.string().optional(),
+    hint: z.string().optional(),
+    showValidationHints: z.boolean().optional(),
+  })
+  .superRefine((field, ctx) => {
+    // A DatePicker/RelativeDatePicker field's `parameters` must satisfy the
+    // same shape and refinement as the codebook variable's own DatePicker/
+    // RelativeDatePicker parameters (see variable.ts) — otherwise a stage
+    // field could carry an out-of-resolution or min>max window the codebook
+    // schema would reject anywhere else. Every other component's parameters
+    // keep the unrestricted record shape above: `field.parameters` there
+    // stays a loose `Record<string, unknown>` rather than narrowing per
+    // component, matching how interview's forms.ts consumes it.
+    const parametersSchema =
+      field.component === ComponentTypes.DatePicker
+        ? datePickerParametersSchema
+        : field.component === ComponentTypes.RelativeDatePicker
+          ? relativeDatePickerParametersSchema
+          : undefined;
+    if (!parametersSchema) return;
+    const result = parametersSchema.optional().safeParse(field.parameters);
+    if (result.success) return;
+    for (const issue of result.error.issues) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: issue.message,
+        path: ['parameters', ...issue.path],
+      });
+    }
+  });
 export type ComposerFormField = z.infer<typeof ComposerFormFieldSchema>;
 
 // Title-less, and (unlike TitlelessFormSchema) `fields` is optional / may be

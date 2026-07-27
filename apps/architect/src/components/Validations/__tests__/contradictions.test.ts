@@ -223,4 +223,38 @@ describe('makeFieldEditorValidate', () => {
       'can never be satisfied because their value ranges do not overlap',
     );
   });
+
+  // Third-wave Finding 6: without forwarding the draft's `component`, the
+  // prospective variable keeps the COMMITTED RelativeDatePicker component
+  // even though the draft's `parameters` describe a DatePicker's absolute
+  // window — dateWindowInterval short-circuits on RelativeDatePicker and
+  // never reads that window, silently missing the new contradiction.
+  it('flags a disjointBounds contradiction when a draft switches component from RelativeDatePicker to DatePicker', () => {
+    const dateVariables = {
+      start: {
+        name: 'start',
+        type: 'datetime',
+        component: 'RelativeDatePicker',
+        parameters: { anchor: '2020-01-01' },
+        validation: { lessThanVariable: 'end' },
+      },
+      end: {
+        name: 'end',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', max: '2019' },
+        validation: {},
+      },
+    };
+    const validate = makeFieldEditorValidate(dateVariables);
+    const errors = validate({
+      variable: 'start',
+      component: 'DatePicker',
+      validation: { lessThanVariable: 'end' },
+      parameters: { type: 'year', min: '2025' },
+    });
+    expect(errors.validation).toContain(
+      'can never be satisfied because their value ranges do not overlap',
+    );
+  });
 });
