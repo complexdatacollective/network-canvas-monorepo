@@ -11,6 +11,7 @@ import {
   type GenerationConfig,
   resolveGenerationConfig,
 } from './generateNetwork/config';
+import { collectBinOnlyVariables } from './generateNetwork/constraints/binOnlyVariables';
 import { buildEntityConstraints } from './generateNetwork/constraints/buildConstraints';
 import { SyntheticDataConstraintError } from './generateNetwork/constraints/error';
 import { analyseFeasibility } from './generateNetwork/constraints/feasibility';
@@ -99,8 +100,14 @@ export function generateNetwork(
   // Refused before anything is drawn, and before the seed is consulted: a
   // protocol whose declared rules no value can satisfy fails the same way on
   // every seed rather than only on the ones that happen to reach the
-  // contradiction.
-  const conflicts = analyseFeasibility(codebook, stages, resolvedConfig);
+  // contradiction. The roster rows go in because they bound how many people a
+  // roster stage can add, and a stage that adds none needs no values at all.
+  const conflicts = analyseFeasibility(
+    codebook,
+    stages,
+    resolvedConfig,
+    externalData,
+  );
   if (conflicts.length > 0) {
     throw new SyntheticDataConstraintError(conflicts);
   }
@@ -110,13 +117,24 @@ export function generateNetwork(
     resolvedConfig.today,
   );
 
+  // Read once and applied to both the node and the edge codebook: the same
+  // variable ids that feasibility declined to analyse must also be drawn
+  // without their rules, or the draw exhausts a value space no rule was ever
+  // going to be enforced against. No edge type can hold one (both binning
+  // stages take a node subject), so the edge map simply never matches.
+  const binOnly = collectBinOnlyVariables(stages);
+
   const constraintsByType = (
     definitions: StructuralCodebook['node'] | StructuralCodebook['edge'],
   ): Map<string, EntityConstraints> =>
     new Map(
       Object.entries(definitions ?? {}).map(([type, definition]) => [
         type,
-        buildEntityConstraints(definition.variables, resolvedConfig.today),
+        buildEntityConstraints(
+          definition.variables,
+          resolvedConfig.today,
+          binOnly.get(type),
+        ),
       ]),
     );
 

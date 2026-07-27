@@ -231,20 +231,48 @@ describe('analyseFeasibility', () => {
     expect(conflicts[0]?.reason).toContain('minLength 8 exceeds maxLength 4');
   });
 
-  it('leaves a group out where one member crosses its own bounds', () => {
+  it('reports the group as well where one member crosses its own bounds', () => {
+    // Correcting what the per-variable conflict names does not settle the
+    // group: A's own pair put right at maxLength 12 still leaves the value the
+    // two share needing to be both at least 10 and at most 4.
     const codebook = codebookWith({
       a: {
         name: 'A',
         type: 'text',
         validation: { minLength: 10, maxLength: 2, sameAs: 'b' },
       },
-      b: { name: 'B', type: 'text' },
+      b: { name: 'B', type: 'text', validation: { maxLength: 4 } },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(2);
+    expect(conflicts[0]?.variableNames).toEqual(['A']);
+    expect(conflicts[0]?.reason).toBe('minLength 10 exceeds maxLength 2');
+
+    expect(conflicts[1]?.variableNames).toEqual(['A', 'B']);
+    expect(conflicts[1]?.reason).toContain('bounds do not overlap');
+    expect(conflicts[1]?.reason).toContain(
+      'minLength 10 exceeds maxLength 2, which one of these variables already ' +
+        'declares on its own',
+    );
+  });
+
+  it('words a group conflict no member declares on its own without that clause', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'text',
+        validation: { minLength: 10, sameAs: 'b' },
+      },
+      b: { name: 'B', type: 'text', validation: { maxLength: 4 } },
     });
 
     const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
 
     expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.variableNames).toEqual(['A']);
+    expect(conflicts[0]?.reason).toContain('minLength 10 exceeds maxLength 4');
+    expect(conflicts[0]?.reason).not.toContain('already declares on its own');
   });
 
   it('accepts a group whose members bounds do overlap', () => {

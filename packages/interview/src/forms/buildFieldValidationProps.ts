@@ -1,7 +1,10 @@
 import { invariant } from 'es-toolkit';
 
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
-import type { Variable } from '@codaco/protocol-validation';
+import {
+  type Variable,
+  VARIABLE_REFERENCE_VALIDATIONS,
+} from '@codaco/protocol-validation';
 
 type ValidatedField = {
   type: Variable['type'];
@@ -32,6 +35,24 @@ function readRule<T>(
   );
   return value;
 }
+
+type ReferenceRule = (typeof VARIABLE_REFERENCE_VALIDATIONS)[number];
+
+/**
+ * `sameAs` and `differentFrom` pass the referenced variable id straight to the
+ * validator; every other reference rule compares values and needs the id
+ * wrapped with the owning variable's type. Deriving the comparison keys from
+ * the schema's canonical list means a reference rule added there cannot be
+ * silently dropped here — it arrives in this loop, and only a rule the Field
+ * catalogue also knows about typechecks.
+ */
+const isComparisonRule = (
+  rule: ReferenceRule,
+): rule is Exclude<ReferenceRule, 'sameAs' | 'differentFrom'> =>
+  rule !== 'sameAs' && rule !== 'differentFrom';
+
+const COMPARISON_RULES =
+  VARIABLE_REFERENCE_VALIDATIONS.filter(isComparisonRule);
 
 const isBoolean = (value: unknown): value is boolean =>
   typeof value === 'boolean';
@@ -84,12 +105,7 @@ export function buildFieldValidationProps(
   const sameAs = ref('sameAs');
   if (sameAs !== undefined) props.sameAs = sameAs;
 
-  for (const key of [
-    'greaterThanVariable',
-    'lessThanVariable',
-    'greaterThanOrEqualToVariable',
-    'lessThanOrEqualToVariable',
-  ] as const) {
+  for (const key of COMPARISON_RULES) {
     const attribute = ref(key);
     if (attribute !== undefined) props[key] = { attribute, type: field.type };
   }

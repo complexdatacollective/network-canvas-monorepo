@@ -3,8 +3,10 @@ import type {
   StructuralCodebook,
   Variables,
 } from '@codaco/protocol-validation';
+import type { NcNode } from '@codaco/shared-consts';
 
 import type { GenerationConfig } from '../config';
+import { collectBinOnlyVariables } from './binOnlyVariables';
 import { buildEntityConstraints } from './buildConstraints';
 import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
 import { worstCaseEntityCounts } from './entityCounts';
@@ -29,8 +31,12 @@ type EntityScope = {
   entityType?: string;
   entityTypeName?: string;
   variables: Variables | undefined;
+  /** Variables of this type whose rules nothing in the interview applies. */
+  unvalidated: ReadonlySet<string>;
   worstCaseCount: number;
 };
+
+const NO_UNVALIDATED_VARIABLES: ReadonlySet<string> = new Set();
 
 // The reference-bearing constraints that can merge two variables into one
 // group: `sameAs` directly, and a comparator as one link of a non-strict cycle.
@@ -93,7 +99,11 @@ function analyseEntity(
   scope: EntityScope,
   config: GenerationConfig,
 ): ConstraintConflict[] {
-  const entity = buildEntityConstraints(scope.variables, config.today);
+  const entity = buildEntityConstraints(
+    scope.variables,
+    config.today,
+    scope.unvalidated,
+  );
   const conflicts: ConstraintConflict[] = [];
 
   const { order, membersOf, groupOf, cycles } = resolveGenerationOrder(entity);
@@ -391,16 +401,24 @@ function solvedComponentRules(
   return [...rules];
 }
 
+/**
+ * `externalData` is the roster rows generation will draw from, keyed by stage
+ * id. Omitting it reads every roster stage as fabricating people, which counts
+ * more entities rather than fewer — see {@link worstCaseEntityCounts}.
+ */
 export function analyseFeasibility(
   codebook: StructuralCodebook,
   stages: Stage[],
   config: GenerationConfig,
+  externalData?: Record<string, NcNode[]>,
 ): ConstraintConflict[] {
-  const counts = worstCaseEntityCounts(stages, config);
+  const counts = worstCaseEntityCounts(stages, config, externalData);
+  const binOnly = collectBinOnlyVariables(stages);
   const scopes: EntityScope[] = [
     {
       entity: 'ego',
       variables: codebook.ego?.variables,
+      unvalidated: NO_UNVALIDATED_VARIABLES,
       worstCaseCount: 1,
     },
   ];
@@ -413,6 +431,7 @@ export function analyseFeasibility(
         ? { entityTypeName: definition.name }
         : {}),
       variables: definition.variables,
+      unvalidated: binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES,
       worstCaseCount: counts.node.get(type) ?? 0,
     });
   }
@@ -425,6 +444,9 @@ export function analyseFeasibility(
         ? { entityTypeName: definition.name }
         : {}),
       variables: definition.variables,
+      // Both binning stages take a node subject, so no edge variable can be
+      // bin-assigned.
+      unvalidated: NO_UNVALIDATED_VARIABLES,
       worstCaseCount: counts.edge.get(type) ?? 0,
     });
   }

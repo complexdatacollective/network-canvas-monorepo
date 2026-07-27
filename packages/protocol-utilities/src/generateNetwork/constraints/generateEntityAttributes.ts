@@ -45,7 +45,7 @@ export type EntityScopeRef =
   | { entity: 'ego' }
   | { entity: 'node' | 'edge'; type: string };
 
-function scopeKey(scope: EntityScopeRef): string {
+export function scopeKey(scope: EntityScopeRef): string {
   return scope.entity === 'ego' ? 'ego' : `${scope.entity}:${scope.type}`;
 }
 
@@ -301,8 +301,7 @@ function groupValue(
 function applyComparatorBounds(
   variable: ConstrainedVariable,
   group: string,
-  edges: readonly ComparatorEdge[],
-  membersOf: Map<string, string[]>,
+  { edges, membersOf, propagated }: Plan,
   resolved: Record<string, VariableValue>,
 ): VariableConstraints {
   const { entry, constraints } = variable;
@@ -339,6 +338,17 @@ function applyComparatorBounds(
 
     if (entry.type === 'datetime') {
       if (typeof target !== 'string' || target === '') continue;
+
+      // A value written at another resolution — or at none, being no date at
+      // all — is in units these bounds are not: it does not compare against
+      // them as a string, and a step measured here would be the wrong size for
+      // it. `propagateComparatorBounds` leaves the same comparison alone.
+      if (
+        propagated.get(otherGroup)?.constraints.dateWindow?.resolution !==
+        resolution
+      ) {
+        continue;
+      }
 
       const steps = edge.strict ? 1 : 0;
       const bound = addSteps(target, groupIsUpper ? steps : -steps, resolution);
@@ -490,9 +500,10 @@ function soleValue(
  */
 function forbiddenKeys(
   group: string,
-  { membersOf, edges, propagated, excluded }: Plan,
+  plan: Plan,
   resolved: Record<string, VariableValue>,
 ): Set<string> {
+  const { membersOf, propagated, excluded } = plan;
   const keys = new Set<string>();
 
   for (const other of excluded.get(group) ?? []) {
@@ -507,7 +518,7 @@ function forbiddenKeys(
 
     const sole = soleValue(
       variable.entry,
-      applyComparatorBounds(variable, other, edges, membersOf, resolved),
+      applyComparatorBounds(variable, other, plan, resolved),
     );
     if (sole !== undefined) keys.add(valueKey(sole));
   }
@@ -522,6 +533,27 @@ function forbiddenKeys(
  */
 function slotOf(memberIds: readonly string[]): string {
   return memberIds.toSorted().join(KEY_SEPARATOR);
+}
+
+/**
+ * The members of every group the registry issues values for, keyed by the slot
+ * they are issued from. Callers that put a value on an entity without drawing
+ * it — a roster row, a prompt's `additionalAttributes` — need this to say which
+ * slot that value belongs to.
+ */
+export function uniqueSlotMembers(
+  entity: EntityConstraints,
+): Map<string, string[]> {
+  const { membersOf } = resolveGenerationOrder(entity);
+  const groups = intersectGroupConstraints(entity, membersOf);
+  const slots = new Map<string, string[]>();
+
+  for (const [group, memberIds] of membersOf) {
+    if (groups.get(group)?.constraints.unique !== true) continue;
+    slots.set(slotOf(memberIds), memberIds);
+  }
+
+  return slots;
 }
 
 /**
@@ -838,7 +870,7 @@ function drawGroup(
   { scope, index, resolved, only, existing }: DrawState,
   solved?: VariableValue,
 ): VariableValue {
-  const { membersOf, edges } = plan;
+  const { membersOf } = plan;
   const memberIds = membersOf.get(group) ?? [group];
   const { unique } = variable.constraints;
   const registry = scopeKey(scope);
@@ -882,12 +914,13 @@ function drawGroup(
     entry: source.entry,
     constraints: withFallbackFloor(
       source.entry,
-      applyComparatorBounds(source, group, edges, membersOf, resolved),
+      applyComparatorBounds(source, group, plan, resolved),
     ),
   });
 
   const draw = (
     bounded: ConstrainedVariable,
+    avoidReserved: boolean,
   ): { value: VariableValue } | undefined => {
     for (let attempt = 0; attempt < MAX_REDRAWS; attempt++) {
       // A redraw has to land somewhere else, so failed attempts walk the
@@ -905,7 +938,12 @@ function drawGroup(
       );
       if (
         !forbidden.has(valueKey(value)) &&
-        !(unique && ctx.uniqueRegistry.isTaken(registry, slot, value))
+        !(unique && ctx.uniqueRegistry.isTaken(registry, slot, value)) &&
+        !(
+          unique &&
+          avoidReserved &&
+          ctx.uniqueRegistry.isReserved(registry, slot, value)
+        )
       ) {
         return { value };
       }
@@ -921,9 +959,18 @@ function drawGroup(
   // giving up on a value that was available all along. Only a draw that has
   // already failed reaches here, so nothing that succeeds is drawn differently.
   const unreserved = plan.propagated.get(group);
-  const drawn =
-    draw(boundsOf(variable)) ??
-    (unreserved === undefined ? undefined : draw(boundsOf(unreserved)));
+  const attempt = (
+    avoidReserved: boolean,
+  ): { value: VariableValue } | undefined =>
+    draw(boundsOf(variable), avoidReserved) ??
+    (unreserved === undefined
+      ? undefined
+      : draw(boundsOf(unreserved), avoidReserved));
+
+  // Values reserved for roster rows still to be drawn are a precaution of the
+  // same kind, and give way for the same reason: a row that is never drawn
+  // holds nothing, so a value it reserved is better taken than refused.
+  const drawn = attempt(true) ?? (unique ? attempt(false) : undefined);
 
   if (drawn === undefined) {
     const members: ConstrainedVariable[] = [];

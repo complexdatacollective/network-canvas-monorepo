@@ -1,4 +1,7 @@
-import type { Variables } from '@codaco/protocol-validation';
+import {
+  VARIABLE_REFERENCE_VALIDATIONS,
+  type Variables,
+} from '@codaco/protocol-validation';
 
 import type { VariableEntry } from '../../types';
 import { toVariableEntry } from '../attributes';
@@ -65,17 +68,36 @@ function resolveDateWindow(
       ? resolutionParameter
       : 'full';
 
-  const min = readString(parameters, 'min');
-  const max = readString(parameters, 'max');
+  const declared = {
+    min: readString(parameters, 'min'),
+    max: readString(parameters, 'max'),
+  };
+  const min =
+    declared.min !== undefined
+      ? truncateToResolution(declared.min, resolution)
+      : undefined;
+  const latestOffered = truncateToResolution(today, resolution);
+
+  // DatePicker offers no date after today when the protocol declares no maximum
+  // (its own `maxYmd` fallback), and the draw already ceilings an open window
+  // there. Closing the window here rather than at the draw is what lets
+  // `valueSpaceSize` count it: the count has to stay a pure function of the
+  // descriptor, or a seeded run would stop reproducing across midnight. A floor
+  // the protocol declares later than today is kept as the ceiling too — the
+  // draw reaches exactly that one date, and an empty range fabricated from a
+  // bound the protocol never wrote would refuse a date it generates perfectly
+  // well.
+  const max =
+    declared.max !== undefined
+      ? truncateToResolution(declared.max, resolution)
+      : min !== undefined && min > latestOffered
+        ? min
+        : latestOffered;
 
   return {
     resolution,
-    ...(min !== undefined
-      ? { min: truncateToResolution(min, resolution) }
-      : {}),
-    ...(max !== undefined
-      ? { max: truncateToResolution(max, resolution) }
-      : {}),
+    ...(min !== undefined ? { min } : {}),
+    max,
   };
 }
 
@@ -104,6 +126,26 @@ function resolveValueBounds(
   };
 }
 
+type ReferenceRule = (typeof VARIABLE_REFERENCE_VALIDATIONS)[number];
+
+/**
+ * Every rule whose value names another variable, read from the schema's own
+ * canonical list rather than from a copy of it. A reference rule added to the
+ * schema arrives here on its own, and one this descriptor has no home for is a
+ * type error rather than a rule the generator silently ignores.
+ */
+function readVariableReferences(
+  validation: Record<string, unknown> | undefined,
+): Pick<VariableConstraints, ReferenceRule> {
+  const references: Pick<VariableConstraints, ReferenceRule> = {};
+
+  for (const rule of VARIABLE_REFERENCE_VALIDATIONS) {
+    references[rule] = readString(validation, rule);
+  }
+
+  return references;
+}
+
 export function buildVariableConstraints(
   entry: VariableEntry,
   today: string,
@@ -118,25 +160,37 @@ export function buildVariableConstraints(
     ...resolveValueBounds(entry, validation),
     minSelected: readNumber(validation, 'minSelected'),
     maxSelected: readNumber(validation, 'maxSelected'),
-    sameAs: readString(validation, 'sameAs'),
-    differentFrom: readString(validation, 'differentFrom'),
-    greaterThanVariable: readString(validation, 'greaterThanVariable'),
-    lessThanVariable: readString(validation, 'lessThanVariable'),
-    greaterThanOrEqualToVariable: readString(
-      validation,
-      'greaterThanOrEqualToVariable',
-    ),
-    lessThanOrEqualToVariable: readString(
-      validation,
-      'lessThanOrEqualToVariable',
-    ),
+    ...readVariableReferences(validation),
     dateWindow: resolveDateWindow(entry, today),
   };
 }
 
+/**
+ * The same entry with its declared validation rules dropped, leaving only what
+ * the variable's type and input control imply (a scalar's unit domain, a date
+ * picker's window). Used for a variable nothing validates: the value still has
+ * to be one the type can hold, but no rule applies to it.
+ */
+function withoutValidation(entry: VariableEntry): VariableEntry {
+  const { validation: _validation, ...rest } = entry;
+  return rest;
+}
+
+/**
+ * Every variable of one entity type, paired with the constraints a generated
+ * value must satisfy.
+ *
+ * `unvalidated` names variables whose declared rules the interview never
+ * applies — see `collectBinOnlyVariables`. They stay in the map, so the
+ * generator still produces a value for each, but carry no rules: feasibility
+ * then finds nothing to conflict over, and the draw cannot exhaust a value
+ * space it was never meant to honour. Omitting the argument analyses every
+ * variable, which is the stricter reading rather than a laxer one.
+ */
 export function buildEntityConstraints(
   variables: Variables | undefined,
   today: string,
+  unvalidated: ReadonlySet<string> = new Set(),
 ): EntityConstraints {
   const result: EntityConstraints = new Map();
   if (!variables) return result;
@@ -145,7 +199,10 @@ export function buildEntityConstraints(
     const entry = toVariableEntry(varId, variable);
     result.set(varId, {
       entry,
-      constraints: buildVariableConstraints(entry, today),
+      constraints: buildVariableConstraints(
+        unvalidated.has(varId) ? withoutValidation(entry) : entry,
+        today,
+      ),
     });
   }
 

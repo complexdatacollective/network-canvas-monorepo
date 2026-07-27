@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
+
 import { buildFieldValidationProps } from '../buildFieldValidationProps';
 
 describe('buildFieldValidationProps', () => {
@@ -37,6 +39,22 @@ describe('buildFieldValidationProps', () => {
         validation: { greaterThanVariable: 'v1' },
       }),
     ).toEqual({ greaterThanVariable: { attribute: 'v1', type: 'number' } });
+  });
+
+  it('maps every variable-reference rule the schema declares', () => {
+    const validation = Object.fromEntries(
+      VARIABLE_REFERENCE_VALIDATIONS.map((rule) => [rule, 'v1']),
+    );
+
+    const props = buildFieldValidationProps({
+      type: 'number',
+      variable: 'v2',
+      validation,
+    });
+
+    expect(Object.keys(props).toSorted()).toEqual(
+      [...VARIABLE_REFERENCE_VALIDATIONS].toSorted(),
+    );
   });
 
   it('throws, naming the variable and rule, on a non-numeric bound', () => {

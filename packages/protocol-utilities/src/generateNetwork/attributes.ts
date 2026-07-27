@@ -1,10 +1,16 @@
 import type { Variable } from '@codaco/protocol-validation';
-import type { VariableValue } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcNode,
+  type VariableValue,
+} from '@codaco/shared-consts';
 
 import type { VariableEntry } from '../types';
 import {
   type EntityScopeRef,
   generateEntityAttributes,
+  scopeKey,
+  uniqueSlotMembers,
 } from './constraints/generateEntityAttributes';
 import type { EntityConstraints } from './constraints/types';
 import type { GenerationContext } from './context';
@@ -63,4 +69,79 @@ export function generateAttributesForEntity(
     index,
     options,
   );
+}
+
+function applyRosterReservations(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  rows: readonly NcNode[],
+  hold: boolean,
+): void {
+  if (rows.length === 0) return;
+  const registry = scopeKey(ref);
+
+  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
+    for (const row of rows) {
+      for (const id of memberIds) {
+        const value = row[entityAttributesProperty][id];
+        if (value === undefined) continue;
+        if (hold) ctx.uniqueRegistry.reserve(registry, slot, value);
+        else ctx.uniqueRegistry.unreserve(registry, slot, value);
+      }
+    }
+  }
+}
+
+/**
+ * Holds every `unique` value a drawable roster row carries back from generated
+ * draws. A row is a real person the run may still add, carrying values the
+ * researcher supplied rather than ones the registry issued, so a fabricated
+ * entity must not be issued a value a row is about to arrive holding.
+ */
+export function reserveRosterValues(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  rows: readonly NcNode[],
+): void {
+  applyRosterReservations(ctx, ref, rows, true);
+}
+
+/**
+ * Gives those reservations back, once the rows are no longer drawable. A row
+ * that was never drawn holds nothing, and a value reserved for it would
+ * otherwise stay unavailable to entities the rest of the run creates. A row
+ * that was drawn keeps its value through the claim made when it arrived.
+ */
+export function releaseRosterValues(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  rows: readonly NcNode[],
+): void {
+  applyRosterReservations(ctx, ref, rows, false);
+}
+
+/**
+ * Records the `unique` values an entity was given from outside the registry — a
+ * roster row's, a prompt's `additionalAttributes`.
+ *
+ * Generation is handed these as existing values and draws the rest of the
+ * entity around them, so nothing was ever issued for them to give back. What is
+ * left is to record them: they are in the network, and a later entity issued
+ * one as well would be the duplicate `unique` forbids. A group whose members
+ * were fixed to values that disagree holds every one of them, so every one is
+ * claimed.
+ */
+export function claimFixedValues(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  fixed: Record<string, VariableValue>,
+): void {
+  const registry = scopeKey(ref);
+
+  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
+    for (const id of memberIds) {
+      const value = fixed[id];
+      if (value !== undefined) ctx.uniqueRegistry.claim(registry, slot, value);
+    }
+  }
 }

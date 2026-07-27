@@ -5,9 +5,15 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateAttributesForEntity } from './attributes';
+import {
+  claimFixedValues,
+  generateAttributesForEntity,
+  releaseRosterValues,
+  reserveRosterValues,
+} from './attributes';
 import type { GenerationConfig } from './config';
 import type { GenerationContext, StageOfType } from './context';
 import { getSubjectType } from './subject';
@@ -128,13 +134,12 @@ export function createNodesForStage(
   const newNodes: NcNode[] = [];
   let drawn = 0;
 
+  const scope = { entity: 'node', type: nodeType } as const;
+  const variableIds = Object.keys(nodeTypeDef.variables ?? {});
+  reserveRosterValues(ctx, scope, pool);
+
   for (let i = 0; i < count; i++) {
     const nodeIndex = existingNodeCount + i;
-    const attrs = generateAttributesForEntity(
-      ctx,
-      { entity: 'node', type: nodeType },
-      nodeIndex,
-    );
 
     const takeFromRoster =
       drawn < pool.length &&
@@ -142,6 +147,7 @@ export function createNodesForStage(
         ctx.valueGen.randomFloat(0, 1) < ctx.config.rosterDrawRatio);
 
     let primaryKey = uuid();
+    const fixed: Record<string, VariableValue> = {};
 
     if (takeFromRoster) {
       const swapIndex = ctx.valueGen.randomInt(drawn, pool.length - 1);
@@ -157,13 +163,34 @@ export function createNodesForStage(
       // The roster interface lets the roster value win a collision with a
       // prompt attribute, while a name generator panel lets the prompt win.
       if (roster.allowFabrication) {
-        Object.assign(attrs, rosterValues, additionalAttrs);
+        Object.assign(fixed, rosterValues, additionalAttrs);
       } else {
-        Object.assign(attrs, additionalAttrs, rosterValues);
+        Object.assign(fixed, additionalAttrs, rosterValues);
       }
     } else {
-      Object.assign(attrs, additionalAttrs);
+      Object.assign(fixed, additionalAttrs);
     }
+
+    // A roster row and a prompt's `additionalAttributes` settle their variables
+    // before anything is drawn, so the rest of the node is generated around the
+    // values it actually ends up holding. Generating first and overwriting
+    // after would leave a `sameAs`, `differentFrom` or comparator spanning a
+    // fixed and a drawn variable broken on the finished node.
+    const hasFixed = Object.keys(fixed).length > 0;
+    const generated = generateAttributesForEntity(
+      ctx,
+      scope,
+      nodeIndex,
+      hasFixed
+        ? {
+            existing: fixed,
+            only: new Set(variableIds.filter((id) => !(id in fixed))),
+          }
+        : undefined,
+    );
+
+    const attrs = { ...generated, ...fixed };
+    if (hasFixed) claimFixedValues(ctx, scope, fixed);
 
     const node: NcNode = {
       [entityPrimaryKeyProperty]: primaryKey,
@@ -174,6 +201,11 @@ export function createNodesForStage(
     };
     newNodes.push(node);
   }
+
+  // Rows left in the pool are drawable by a later prompt or stage, which
+  // reserves them again; holding the reservation open past this draw would keep
+  // their values from nodes no roster row is waiting for.
+  releaseRosterValues(ctx, scope, pool);
 
   return newNodes;
 }

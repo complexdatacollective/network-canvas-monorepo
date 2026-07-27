@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
+
 import {
   buildEntityConstraints,
   buildVariableConstraints,
@@ -81,7 +83,92 @@ describe('buildVariableConstraints', () => {
       TODAY,
     );
 
-    expect(result.dateWindow).toEqual({ resolution: 'full' });
+    expect(result.dateWindow).toEqual({ resolution: 'full', max: TODAY });
+  });
+
+  // DatePicker's field offers no date after today when the protocol declares no
+  // maximum, and the draw already ceilings an open window there. Closing it
+  // here is what lets `valueSpaceSize` count the window without reading a
+  // clock of its own, which a seeded run has to reproduce across midnight.
+  it.each([
+    { type: 'year', max: '2026' },
+    { type: 'month', max: '2026-07' },
+    { type: 'full', max: TODAY },
+  ])(
+    'closes an open $type window at the last date the picker offers',
+    ({ type, max }) => {
+      const result = buildVariableConstraints(
+        {
+          id: 'v1',
+          name: 'Born',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type, min: '2000-01-01' },
+        },
+        TODAY,
+      );
+
+      expect(result.dateWindow?.max).toBe(max);
+    },
+  );
+
+  // A ceiling of today under a floor the protocol declares later than it would
+  // read as an empty range the protocol never wrote, and refuse a date the
+  // draw reaches perfectly well.
+  it('never closes a window below a floor the protocol declares', () => {
+    const result = buildVariableConstraints(
+      {
+        id: 'v1',
+        name: 'Due',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', min: '2030-01-01' },
+      },
+      TODAY,
+    );
+
+    expect(result.dateWindow).toEqual({
+      resolution: 'year',
+      min: '2030',
+      max: '2030',
+    });
+  });
+
+  it('leaves a declared maximum alone', () => {
+    const result = buildVariableConstraints(
+      {
+        id: 'v1',
+        name: 'Born',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', min: '1850-01-01', max: '1900-01-01' },
+      },
+      TODAY,
+    );
+
+    expect(result.dateWindow).toEqual({
+      resolution: 'year',
+      min: '1850',
+      max: '1900',
+    });
+  });
+
+  // Built from the schema's own list so a reference rule added there arrives in
+  // both the input and the expectation, and a rule this descriptor dropped
+  // shows up as a missing target rather than as silence.
+  it('reads every variable-reference rule the schema declares', () => {
+    const validation = Object.fromEntries(
+      VARIABLE_REFERENCE_VALIDATIONS.map((rule) => [rule, 'target']),
+    );
+
+    const result = buildVariableConstraints(
+      { id: 'v1', name: 'Age', type: 'number', validation },
+      TODAY,
+    );
+
+    for (const rule of VARIABLE_REFERENCE_VALIDATIONS) {
+      expect(result[rule]).toBe('target');
+    }
   });
 
   it('normalises RelativeDatePicker offsets against the supplied today', () => {

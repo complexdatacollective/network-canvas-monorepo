@@ -1,7 +1,7 @@
 # Synthetic data validation conformance
 
 Date: 2026-07-27
-Status: Approved design, not yet implemented
+Status: Implemented (PR #1108)
 
 ## Problem
 

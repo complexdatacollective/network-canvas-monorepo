@@ -310,6 +310,104 @@ describe('PreviewHost', () => {
     expect(shellMock).not.toHaveBeenCalled();
   });
 
+  it('names the conflicting variables and offers no retry when generation is unsatisfiable', async () => {
+    render(<PreviewHost />);
+    const protocol = {
+      name: 'T',
+      description: '',
+      schemaVersion: 8,
+      stages: [
+        {
+          id: 's1',
+          type: 'NameGenerator',
+          label: 'NG',
+          subject: { entity: 'node', type: 'node-1' },
+          prompts: [{ id: 'p1', text: 'Add people' }],
+          behaviours: { minNodes: 1, maxNodes: 1 },
+        },
+      ],
+      codebook: {
+        node: {
+          'node-1': {
+            name: 'Person',
+            variables: {
+              'var-code': {
+                name: 'Code',
+                type: 'text',
+                // minLength exceeds maxLength: no value can satisfy this rule,
+                // so generateNetwork throws SyntheticDataConstraintError.
+                validation: { minLength: 24, maxLength: 10 },
+              },
+            },
+          },
+        },
+        edge: {},
+        ego: {},
+      },
+      assetManifest: {},
+    };
+    postPayload(openerStub, makePayload({ protocol, useSyntheticData: true }));
+
+    expect(
+      await screen.findByText(/protocol can't be previewed/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Person/)).toBeInTheDocument();
+    expect(screen.getByText(/Code/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /try again/i }),
+    ).not.toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
+  });
+
+  it('clears a stale preview when a later rebuild is unsatisfiable', async () => {
+    render(<PreviewHost />);
+    postPayload(openerStub, makePayload({ useSyntheticData: false }));
+    await screen.findByTestId('shell-mounted');
+
+    const protocol = {
+      name: 'T',
+      description: '',
+      schemaVersion: 8,
+      stages: [
+        {
+          id: 's1',
+          type: 'NameGenerator',
+          label: 'NG',
+          subject: { entity: 'node', type: 'node-1' },
+          prompts: [{ id: 'p1', text: 'Add people' }],
+          behaviours: { minNodes: 1, maxNodes: 1 },
+        },
+      ],
+      codebook: {
+        node: {
+          'node-1': {
+            name: 'Person',
+            variables: {
+              'var-code': {
+                name: 'Code',
+                type: 'text',
+                validation: { minLength: 24, maxLength: 10 },
+              },
+            },
+          },
+        },
+        edge: {},
+        ego: {},
+      },
+      assetManifest: {},
+    };
+    shellMock.mockClear();
+    postPayload(openerStub, makePayload({ protocol, useSyntheticData: true }));
+
+    expect(
+      await screen.findByText(/protocol can't be previewed/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+  });
+
   it('ignores payload messages from a non-opener source', () => {
     render(<PreviewHost />);
     postPayload({}, makePayload());

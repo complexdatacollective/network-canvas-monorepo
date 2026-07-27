@@ -1,3 +1,5 @@
+import type { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
+
 import type { VariableEntry } from '../../types';
 import type { DateWindow } from './dateWindow';
 
@@ -29,14 +31,16 @@ export type EntityConstraints = Map<string, ConstrainedVariable>;
 /**
  * The comparison rules, in the order later code iterates them. Kept as a
  * literal tuple so a new comparator cannot be added to the descriptor without
- * a type error at every site that switches on the set.
+ * a type error at every site that switches on the set, and held against the
+ * schema's own list of rules whose value is another variable's id so a name
+ * renamed there cannot survive here as a rule no protocol will ever carry.
  */
 export const COMPARISON_RULES = [
   'greaterThanVariable',
   'lessThanVariable',
   'greaterThanOrEqualToVariable',
   'lessThanOrEqualToVariable',
-] as const;
+] as const satisfies readonly (typeof VARIABLE_REFERENCE_VALIDATIONS)[number][];
 
 type ComparisonRule = (typeof COMPARISON_RULES)[number];
 

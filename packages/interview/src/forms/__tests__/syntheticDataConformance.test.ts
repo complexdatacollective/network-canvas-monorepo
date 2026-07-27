@@ -175,6 +175,36 @@ function collectFormScope(stageList: Stage[]): FormScope {
 }
 
 /**
+ * Node and edge subject types the form-scope guard confirms are validated,
+ * but that produced zero entities in a generated network. Scope alone can't
+ * see this: a type nothing was generated for never reaches `checkEntity`, so
+ * it would pass the scope check while contributing nothing to the proof.
+ *
+ * Ego is not checked here — the network schema always carries exactly one
+ * ego entity, so it has no "zero generated" case to guard against.
+ */
+function emptyFixtureEntityTypes(
+  scope: FormScope,
+  network: NcNetwork,
+): string[] {
+  const empty: string[] = [];
+
+  for (const type of scope.node.keys()) {
+    if (!network.nodes.some((node) => node.type === type)) {
+      empty.push(`node(${type})`);
+    }
+  }
+
+  for (const type of scope.edge.keys()) {
+    if (!network.edges.some((edge) => edge.type === type)) {
+      empty.push(`edge(${type})`);
+    }
+  }
+
+  return empty;
+}
+
+/**
  * Every form-rendered ego, node and edge attribute in the network, validated
  * against its codebook variable. Collects the whole list rather than throwing
  * on the first failure, so one run reports every problem.
@@ -700,6 +730,20 @@ const personVariables: Variables = {
     parameters: { before: 90, after: 0 },
     validation: { required: true, unique: true },
   },
+  // No `before`/`after`: every other RelativeDatePicker fixture sets both
+  // explicitly, which never reaches buildDatePickerBoundProps's own defaults
+  // (180 days before today, 0 after). A researcher who leaves the window
+  // unconfigured gets exactly this — Architect's parameter form describes
+  // both as defaults rather than requiring them (see
+  // apps/architect/src/components/Parameters/RelativeDatePicker.tsx) — so
+  // this fixture is what most real protocols exercise.
+  personDefaultVisit: {
+    name: 'Person default visit',
+    type: 'datetime',
+    component: 'RelativeDatePicker',
+    parameters: {},
+    validation: { required: true },
+  },
   personContexts: {
     name: 'Person contexts',
     type: 'categorical',
@@ -887,10 +931,22 @@ const stages = [
     type: 'Sociogram',
     label: 'Connections',
     subject: { entity: 'node', type: 'person' },
+    // Two edge-creating prompts over the same six people: each prompt draws
+    // its own per-pair probability and rolls every pair against it, so a
+    // second pass is a second, independent chance for a pair the first pass
+    // left unconnected. One prompt alone can and does land on a single edge
+    // at some seeds (weakness 1 in the review), which leaves `unique` on an
+    // edge variable with no peer to collide with.
     prompts: [
       {
         id: 'p3',
         text: 'Connect people',
+        layout: { layoutVariable: 'personLayout' },
+        edges: { create: 'friend' },
+      },
+      {
+        id: 'p3b',
+        text: 'Connect people again',
         layout: { layoutVariable: 'personLayout' },
         edges: { create: 'friend' },
       },
@@ -910,7 +966,13 @@ describe('synthetic data conformance', () => {
   // variable that no stage's form lists would be quietly dropped from the
   // matrix rather than failing. Pinned so shrinking the coverage takes a
   // deliberate edit here.
-  it('renders every rule-bearing fixture variable in a form', () => {
+  //
+  // Scope is necessary but not sufficient: a fixture node or edge type that
+  // generated zero entities would still pass the scope check, having
+  // contributed nothing to the proof (weakness 3 in the review). The second
+  // half of this test generates a network and confirms every scoped node/edge
+  // type actually produced at least one entity.
+  it('renders every rule-bearing fixture variable in a form, and every fixture entity type is populated', async () => {
     const scope = collectFormScope(stages);
     const unchecked: string[] = [];
 
@@ -932,6 +994,15 @@ describe('synthetic data conformance', () => {
     check(friendVariables, scope.edge.get('friend'), 'friend');
 
     expect(unchecked).toEqual([]);
+
+    const { network } = generateNetwork({
+      seed: 11,
+      codebook,
+      stages,
+      config: { today },
+    });
+
+    expect(emptyFixtureEntityTypes(scope, network)).toEqual([]);
   });
 
   it('generates values that pass the real form validators for every legal rule', async () => {
@@ -948,7 +1019,11 @@ describe('synthetic data conformance', () => {
     expect(network.nodes.filter((node) => node.type === 'token')).toHaveLength(
       2,
     );
-    expect(network.edges.length).toBeGreaterThan(0);
+    // >= 2, not just > 0: a single edge leaves `unique` on an edge variable
+    // with no peer to collide with, so it would pass trivially rather than
+    // being exercised (weakness 1 in the review). The Sociogram stage above
+    // runs two edge-creating prompts specifically so this holds comfortably.
+    expect(network.edges.length).toBeGreaterThanOrEqual(2);
 
     expect(await collectFailures(codebook, network, stages)).toEqual([]);
   });

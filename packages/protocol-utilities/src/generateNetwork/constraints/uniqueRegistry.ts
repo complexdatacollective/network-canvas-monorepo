@@ -38,6 +38,7 @@ export function valueKey(value: VariableValue): string {
 
 export class UniqueRegistry {
   private readonly used = new Map<string, Set<string>>();
+  private readonly reserved = new Map<string, Set<string>>();
   private readonly sequences = new Map<string, number>();
 
   private slot(scope: string, variableId: string): string {
@@ -60,14 +61,50 @@ export class UniqueRegistry {
   /**
    * Gives a slot's value back, for an entity about to replace the one it holds.
    *
-   * No holder is recorded, because a slot only ever issues a value once: the
-   * entity that holds it is the only one that can be giving it back, and an
-   * equal value in another slot or another scope is keyed separately and left
-   * alone. Callers must release before drawing the replacement, so a redraw
-   * that lands on the same value reclaims it rather than being refused it.
+   * No holder is recorded. For a value the registry issued that is safe: a slot
+   * issues each of its values once, so the entity handing one back is the only
+   * one that was ever given it, and an equal value in another slot or another
+   * scope is keyed separately and left alone. It does not hold for values
+   * written onto an entity from outside the registry and claimed after the fact
+   * — a roster row's, a prompt's `additionalAttributes`, a binning stage's —
+   * where two entities can hold one value and releasing frees a value the other
+   * still holds. That can only propagate a duplicate the outside writer already
+   * created, never create the first one.
+   *
+   * Callers must release before drawing the replacement, so a redraw that lands
+   * on the same value reclaims it rather than being refused it.
    */
   release(scope: string, variableId: string, value: VariableValue): void {
     this.used.get(this.slot(scope, variableId))?.delete(valueKey(value));
+  }
+
+  /**
+   * Holds a value back from generated draws without issuing it, for an entity
+   * the run may still create. A roster row that can still be drawn reserves the
+   * values it carries, so no node fabricated before it is issued one of them
+   * and leaves the row's own node holding a duplicate.
+   *
+   * Softer than a claim: a draw left with nothing else takes a reserved value
+   * anyway. A row that is never drawn holds nothing, and refusing a value on
+   * account of an entity that may never exist is worse than the duplicate the
+   * reservation guards against.
+   */
+  reserve(scope: string, variableId: string, value: VariableValue): void {
+    const slot = this.slot(scope, variableId);
+    const values = this.reserved.get(slot) ?? new Set<string>();
+    values.add(valueKey(value));
+    this.reserved.set(slot, values);
+  }
+
+  unreserve(scope: string, variableId: string, value: VariableValue): void {
+    this.reserved.get(this.slot(scope, variableId))?.delete(valueKey(value));
+  }
+
+  isReserved(scope: string, variableId: string, value: VariableValue): boolean {
+    return (
+      this.reserved.get(this.slot(scope, variableId))?.has(valueKey(value)) ??
+      false
+    );
   }
 
   nextSeq(scope: string, variableId: string): number {

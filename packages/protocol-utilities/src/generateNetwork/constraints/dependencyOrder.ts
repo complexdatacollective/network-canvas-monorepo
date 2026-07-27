@@ -290,8 +290,12 @@ export function resolveGenerationOrder(
     for (const group of rest) classes.union(representative, group);
   }
 
-  // Rebuilt from codebook order so neither union-find's choice of root nor the
-  // order components were discovered in can reach the caller.
+  // Membership is rebuilt from codebook order, so the order components were
+  // discovered in does not reach the caller: the groups come out in the order
+  // their first member is declared, and each member list in declaration order.
+  // The representative keying a group is still union-find's root — for
+  // `a sameAs b` it is `b` — which is deterministic for a given codebook and
+  // always one of the group's own members, but is not the first of them.
   const groupOf = new Map<string, string>();
   const membersOf = new Map<string, string[]>();
   for (const id of ids) {

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Stage } from '@codaco/protocol-validation';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { generateNetwork } from '../generateNetwork';
 import { SyntheticDataConstraintError } from '../generateNetwork/constraints/error';
@@ -58,6 +62,22 @@ function egoProtocol(variables: Record<string, unknown>): {
         },
       } as unknown as Stage,
     ],
+  };
+}
+
+/** Two ordinals held equal, each offering only the values it is given. */
+function heldEqualOrdinals(a: number[], b: number[]): Record<string, unknown> {
+  const options = (values: number[]) =>
+    values.map((value) => ({ label: `Option ${value}`, value }));
+
+  return {
+    a: { name: 'Rating A', type: 'ordinal', options: options(a) },
+    b: {
+      name: 'Rating B',
+      type: 'ordinal',
+      options: options(b),
+      validation: { sameAs: 'a' },
+    },
   };
 }
 
@@ -129,6 +149,19 @@ describe('generateNetwork constraint conformance', () => {
         stages: [nameGeneratorStage],
       }),
     ).toThrow(SyntheticDataConstraintError);
+  });
+
+  it('throws when a sameAs pair shares no option value, naming what each offers', () => {
+    const build = () =>
+      generateNetwork({
+        seed: 3,
+        ...egoProtocol(heldEqualOrdinals([1, 2], [3, 4])),
+      });
+
+    expect(build).toThrow(SyntheticDataConstraintError);
+    expect(build).toThrow(
+      'the options offered by "Rating A" (1, 2) and by "Rating B" (3, 4) have no value in common',
+    );
   });
 
   it('throws identically regardless of seed', () => {
@@ -285,6 +318,147 @@ describe('generateNetwork constraint conformance', () => {
       const seen = String(node[entityAttributesProperty].seen);
       expect(seen >= min && seen <= today).toBe(true);
     }
+  });
+
+  it('issues no unique value a roster row also carries, over 200 seeds', () => {
+    // Five options for five nodes is exactly satisfiable, so feasibility
+    // accepts it. One roster row carries the first option, and a name generator
+    // with a roster panel draws that row at whichever node the seed lands it
+    // on: a generated node issued the same option, or the value the drawn node
+    // gave up left claimed behind it, shows up as a duplicate here.
+    const values = [1, 2, 3, 4, 5];
+    const codebook = personCodebook({
+      band: {
+        name: 'Band',
+        type: 'ordinal',
+        options: values.map((value) => ({ label: `Band ${value}`, value })),
+        validation: { unique: true },
+      },
+    });
+    const row = {
+      [entityPrimaryKeyProperty]: 'roster-1',
+      type: 'person',
+      [entityAttributesProperty]: { band: 1 },
+    } as unknown as NcNode;
+
+    const failures: string[] = [];
+    let drewTheRow = 0;
+
+    for (let seed = 1; seed <= 200; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [nameGeneratorStage],
+        externalData: { 'stage-1': [row] },
+      });
+      const bands = network.nodes.map(
+        (node) => node[entityAttributesProperty].band,
+      );
+
+      if (
+        network.nodes.some(
+          (node) => node[entityPrimaryKeyProperty] === 'roster-1',
+        )
+      ) {
+        drewTheRow += 1;
+      }
+
+      complain(
+        failures,
+        bands.length === 5,
+        () => `seed ${seed}: ${bands.length} nodes, not 5`,
+      );
+      complain(
+        failures,
+        new Set(bands).size === bands.length,
+        () => `seed ${seed}: bands ${bands.join(', ')} repeat a unique value`,
+      );
+      complain(
+        failures,
+        bands.every((band) => values.includes(Number(band))),
+        () => `seed ${seed}: bands ${bands.join(', ')} leave the option list`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+    // The row is drawn on nearly every seed; a fixture where it never was would
+    // assert nothing about the overwrite.
+    expect(drewTheRow).toBeGreaterThan(150);
+  });
+
+  it('keeps a roster row’s unique value away from a later stage, over 200 seeds', () => {
+    // A row's values are held back from draws only while the row is still
+    // drawable. Once a roster stage has taken it the hold is given up, so the
+    // value the row arrived carrying survives into the next stage only if it
+    // was recorded as claimed. Two rows and three fabricated people fill the
+    // five options exactly, which leaves a repeat nowhere to hide.
+    const values = [1, 2, 3, 4, 5];
+    const codebook = personCodebook({
+      band: {
+        name: 'Band',
+        type: 'ordinal',
+        options: values.map((value) => ({ label: `Band ${value}`, value })),
+        validation: { unique: true },
+      },
+    });
+    const rows = [1, 2].map(
+      (band, index) =>
+        ({
+          [entityPrimaryKeyProperty]: `roster-${index}`,
+          type: 'person',
+          [entityAttributesProperty]: { band },
+        }) as unknown as NcNode,
+    );
+    const stages = [
+      {
+        id: 'stage-roster',
+        type: 'NameGeneratorRoster',
+        label: 'Roster',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'p1', text: 'Pick people' }],
+        behaviours: { minNodes: 2, maxNodes: 2 },
+      } as unknown as Stage,
+      {
+        id: 'stage-fabricate',
+        type: 'NameGenerator',
+        label: 'Name generator',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'p2', text: 'Name more people' }],
+        behaviours: { minNodes: 3, maxNodes: 3 },
+      } as unknown as Stage,
+    ];
+
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= 200; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages,
+        externalData: { 'stage-roster': rows.map((row) => ({ ...row })) },
+      });
+      const bands = network.nodes.map((node) =>
+        Number(node[entityAttributesProperty].band),
+      );
+
+      complain(
+        failures,
+        bands.length === 5,
+        () => `seed ${seed}: ${bands.length} nodes, not 5`,
+      );
+      complain(
+        failures,
+        new Set(bands).size === bands.length,
+        () => `seed ${seed}: bands ${bands.join(', ')} repeat a unique value`,
+      );
+      complain(
+        failures,
+        bands.includes(1) && bands.includes(2),
+        () => `seed ${seed}: bands ${bands.join(', ')} lost a roster value`,
+      );
+    }
+
+    expect(failures).toEqual([]);
   });
 
   it('satisfies an edge comparison rule regenerated by AlterEdgeForm', () => {
@@ -487,6 +661,33 @@ describe('cross-variable rules across a seed sweep', () => {
         ego.b === ego.a,
         () => `seed ${seed}: b "${String(ego.b)}" is not a "${a}"`,
       );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`draws a sameAs pair from the options both of them offer, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    const offered = { a: [1, 2, 3], b: [2, 3, 4] };
+    const variables = heldEqualOrdinals(offered.a, offered.b);
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({ seed, ...egoProtocol(variables) });
+      const ego = network.ego?.[entityAttributesProperty] ?? {};
+
+      complain(
+        failures,
+        ego.b === ego.a,
+        () => `seed ${seed}: b ${String(ego.b)} is not a ${String(ego.a)}`,
+      );
+      for (const [id, values] of Object.entries(offered)) {
+        complain(
+          failures,
+          values.includes(Number(ego[id])),
+          () =>
+            `seed ${seed}: ${id} holds ${String(ego[id])}, which it does not offer`,
+        );
+      }
     }
 
     expect(failures).toEqual([]);
@@ -713,5 +914,153 @@ describe('cross-variable rules across a seed sweep', () => {
     }
 
     expect(failures).toEqual([]);
+  });
+});
+
+/**
+ * Two things put a value on a node without drawing it: a prompt's
+ * `additionalAttributes` and a roster row. A rule spanning one of those and a
+ * drawn variable is only satisfied if the fixed value is settled before the
+ * draw — generating the whole node and overwriting after leaves the rule
+ * broken on exactly the seeds where the draw disagreed with what arrives.
+ */
+describe('rules spanning a fixed and a drawn attribute', () => {
+  /** A name generator whose prompt pins `a` to false on every node it makes. */
+  function pinningStage(fabricates: boolean): Stage {
+    return {
+      id: 'stage-1',
+      type: fabricates ? 'NameGenerator' : 'NameGeneratorRoster',
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Name people',
+          additionalAttributes: [{ variable: 'a', value: false }],
+        },
+      ],
+      behaviours: { minNodes: 3, maxNodes: 3 },
+    } as unknown as Stage;
+  }
+
+  it(`holds a sameAs pair equal when a prompt pins one of them, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    const codebook = personCodebook({
+      a: { name: 'A', type: 'boolean' },
+      b: { name: 'B', type: 'boolean', validation: { sameAs: 'a' } },
+    });
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [pinningStage(true)],
+      });
+
+      for (const node of network.nodes) {
+        const { a, b } = node[entityAttributesProperty];
+        complain(
+          failures,
+          a === false,
+          () => `seed ${seed}: a is ${String(a)}, not the pinned false`,
+        );
+        complain(
+          failures,
+          b === a,
+          () => `seed ${seed}: b ${String(b)} is not a ${String(a)}`,
+        );
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`holds a differentFrom pair apart when a prompt pins one of them, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    const codebook = personCodebook({
+      a: { name: 'A', type: 'boolean' },
+      b: { name: 'B', type: 'boolean', validation: { differentFrom: 'a' } },
+    });
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [pinningStage(true)],
+      });
+
+      for (const node of network.nodes) {
+        const { a, b } = node[entityAttributesProperty];
+        complain(
+          failures,
+          a === false,
+          () => `seed ${seed}: a is ${String(a)}, not the pinned false`,
+        );
+        complain(
+          failures,
+          b !== a,
+          () => `seed ${seed}: b ${String(b)} equals a ${String(a)}`,
+        );
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`orders a comparator against a value the roster supplies, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    // A roster of ages spread across the range, so the drawn `retired` has to
+    // clear a different floor on every row rather than one the bounds could
+    // have been narrowed to once.
+    const codebook = personCodebook({
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 100 },
+      },
+      retired: {
+        name: 'Retired at',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 100, greaterThanVariable: 'age' },
+      },
+    });
+    const rows = Array.from(
+      { length: 12 },
+      (_, index) =>
+        ({
+          [entityPrimaryKeyProperty]: `roster-${index}`,
+          type: 'person',
+          [entityAttributesProperty]: { age: 20 + index },
+        }) as unknown as NcNode,
+    );
+
+    let drewARow = 0;
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [pinningStage(false)],
+        externalData: { 'stage-1': rows.map((row) => ({ ...row })) },
+      });
+
+      for (const node of network.nodes) {
+        const { age, retired } = node[entityAttributesProperty];
+        if (node[entityPrimaryKeyProperty].startsWith('roster-')) {
+          drewARow += 1;
+        }
+        complain(
+          failures,
+          Number(retired) > Number(age),
+          () =>
+            `seed ${seed}: retired ${String(retired)} is not above age ${String(age)}`,
+        );
+      }
+    }
+
+    expect(failures).toEqual([]);
+    // A roster stage cannot fabricate, so every node it makes is a row; a
+    // fixture where none were would assert nothing about the roster value.
+    expect(drewARow).toBe(SEEDS * 3);
   });
 });
