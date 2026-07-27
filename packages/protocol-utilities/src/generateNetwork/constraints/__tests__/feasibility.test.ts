@@ -101,6 +101,41 @@ describe('analyseFeasibility', () => {
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.rules.toSorted()).toEqual(['differentFrom', 'sameAs']);
+    expect(conflicts[0]?.reason).toBe(
+      'these variables are required to be both equal and different',
+    );
+  });
+
+  it('accepts a variable declared both at least and at most another', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: {
+          greaterThanOrEqualToVariable: 'b',
+          lessThanOrEqualToVariable: 'b',
+        },
+      },
+      b: { name: 'B', type: 'number' },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('reports a variable declared both above and below another once', () => {
+    const codebook = codebookWith({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { greaterThanVariable: 'b', lessThanVariable: 'b' },
+      },
+      b: { name: 'B', type: 'number' },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.reason).toContain('cycle');
   });
 
   it('reports a strict comparator cycle', () => {
@@ -136,6 +171,61 @@ describe('analyseFeasibility', () => {
     expect(analyseFeasibility(codebook, [nameGenerator], config)).toHaveLength(
       1,
     );
+  });
+
+  it('accepts bounds that touch across a non-strict lower comparator', () => {
+    const codebook = codebookWith({
+      high: {
+        name: 'High',
+        type: 'number',
+        validation: { maxValue: 10, greaterThanOrEqualToVariable: 'low' },
+      },
+      low: { name: 'Low', type: 'number', validation: { minValue: 10 } },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('accepts bounds that touch across a non-strict upper comparator', () => {
+    const codebook = codebookWith({
+      low: {
+        name: 'Low',
+        type: 'number',
+        validation: { minValue: 3, lessThanOrEqualToVariable: 'high' },
+      },
+      high: { name: 'High', type: 'number', validation: { maxValue: 3 } },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('accepts bounds that leave one satisfying value across a strict comparator', () => {
+    const codebook = codebookWith({
+      high: {
+        name: 'High',
+        type: 'number',
+        validation: { maxValue: 6, greaterThanVariable: 'low' },
+      },
+      low: { name: 'Low', type: 'number', validation: { minValue: 5 } },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('reports bounds that cannot reach a non-strict comparator target', () => {
+    const codebook = codebookWith({
+      high: {
+        name: 'High',
+        type: 'number',
+        validation: { maxValue: 9, greaterThanOrEqualToVariable: 'low' },
+      },
+      low: { name: 'Low', type: 'number', validation: { minValue: 10 } },
+    });
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['greaterThanOrEqualToVariable']);
   });
 
   it('reports unique against a value space smaller than the worst-case count', () => {
@@ -184,6 +274,36 @@ describe('analyseFeasibility', () => {
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.entity).toBe('ego');
+  });
+
+  it('names the entity type rather than its codebook key', () => {
+    const key = '0f6a9c14-8b1e-4c77-9c2a-1d3e5f7a9b21';
+    const codebook = {
+      node: {
+        [key]: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            age: {
+              name: 'Age',
+              type: 'number',
+              validation: { minValue: 50, maxValue: 20 },
+            },
+          },
+        },
+      },
+    } as unknown as StructuralCodebook;
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entityType).toBe(key);
+    expect(conflicts[0]?.entityTypeName).toBe('Person');
+
+    const { message } = new SyntheticDataConstraintError(conflicts);
+
+    expect(message).toContain('node "Person"');
+    expect(message).not.toContain(key);
   });
 });
 

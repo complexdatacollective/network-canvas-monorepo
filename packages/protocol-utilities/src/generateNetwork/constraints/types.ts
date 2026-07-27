@@ -38,4 +38,20 @@ export const COMPARISON_RULES = [
   'lessThanOrEqualToVariable',
 ] as const;
 
-export type ComparisonRule = (typeof COMPARISON_RULES)[number];
+type ComparisonRule = (typeof COMPARISON_RULES)[number];
+
+/**
+ * What each comparator means, as whether the declaring variable is the upper
+ * end of the pair and whether the two values may be equal. Every consumer reads
+ * strictness from here, so ordering and feasibility can never disagree about
+ * whether touching bounds satisfy a comparator.
+ */
+export const COMPARATOR_DIRECTION: Record<
+  ComparisonRule,
+  { ownerIsUpper: boolean; strict: boolean }
+> = {
+  greaterThanVariable: { ownerIsUpper: true, strict: true },
+  lessThanVariable: { ownerIsUpper: false, strict: true },
+  greaterThanOrEqualToVariable: { ownerIsUpper: true, strict: false },
+  lessThanOrEqualToVariable: { ownerIsUpper: false, strict: false },
+};

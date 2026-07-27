@@ -1,6 +1,6 @@
 import {
+  COMPARATOR_DIRECTION,
   COMPARISON_RULES,
-  type ComparisonRule,
   type EntityConstraints,
 } from './types';
 
@@ -49,16 +49,6 @@ type ComparatorGraph = Map<string, Map<string, boolean>>;
 type EqualityClasses = {
   find: (id: string) => string;
   union: (a: string, b: string) => void;
-};
-
-const COMPARATOR_DIRECTION: Record<
-  ComparisonRule,
-  { ownerIsUpper: boolean; strict: boolean }
-> = {
-  greaterThanVariable: { ownerIsUpper: true, strict: true },
-  lessThanVariable: { ownerIsUpper: false, strict: true },
-  greaterThanOrEqualToVariable: { ownerIsUpper: true, strict: false },
-  lessThanOrEqualToVariable: { ownerIsUpper: false, strict: false },
 };
 
 // Variable ids never contain a NUL, so joining on one cannot collide.

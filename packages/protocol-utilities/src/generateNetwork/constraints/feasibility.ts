@@ -8,12 +8,19 @@ import type { GenerationConfig } from '../config';
 import { buildEntityConstraints } from './buildConstraints';
 import { resolveGenerationOrder } from './dependencyOrder';
 import { worstCaseEntityCounts } from './entityCounts';
-import { COMPARISON_RULES, type EntityConstraints } from './types';
+import {
+  COMPARATOR_DIRECTION,
+  COMPARISON_RULES,
+  type EntityConstraints,
+} from './types';
 import { valueSpaceSize } from './valueSpace';
 
 export type ConstraintConflict = {
   entity: 'ego' | 'node' | 'edge';
+  /** The codebook key, which a programmatic consumer needs to locate the type. */
   entityType?: string;
+  /** The type's human-readable name, absent only when the codebook omits one. */
+  entityTypeName?: string;
   variableIds: string[];
   variableNames: string[];
   rules: string[];
@@ -28,7 +35,7 @@ export class SyntheticDataConstraintError extends Error {
       const subject =
         conflict.entity === 'ego'
           ? 'ego'
-          : `${conflict.entity} "${conflict.entityType}"`;
+          : `${conflict.entity} "${conflict.entityTypeName ?? conflict.entityType}"`;
       return `  - ${subject}, ${conflict.variableNames.map((name) => `"${name}"`).join(' and ')} (${conflict.rules.join(', ')}): ${conflict.reason}`;
     });
 
@@ -44,6 +51,7 @@ export class SyntheticDataConstraintError extends Error {
 type EntityScope = {
   entity: 'ego' | 'node' | 'edge';
   entityType?: string;
+  entityTypeName?: string;
   variables: Variables | undefined;
   worstCaseCount: number;
 };
@@ -76,6 +84,9 @@ function analyseEntity(
       entity: scope.entity,
       ...(scope.entityType !== undefined
         ? { entityType: scope.entityType }
+        : {}),
+      ...(scope.entityTypeName !== undefined
+        ? { entityTypeName: scope.entityTypeName }
         : {}),
       variableIds,
       variableNames: namesOf(entity, variableIds),
@@ -161,39 +172,32 @@ function analyseEntity(
       const target = entity.get(targetId);
       if (!target) continue;
 
-      const wantsGreater =
-        rule === 'greaterThanVariable' ||
-        rule === 'greaterThanOrEqualToVariable';
-      const opposite = wantsGreater
-        ? (constraints.lessThanVariable ??
-          constraints.lessThanOrEqualToVariable)
-        : (constraints.greaterThanVariable ??
-          constraints.greaterThanOrEqualToVariable);
+      const { ownerIsUpper, strict } = COMPARATOR_DIRECTION[rule];
 
-      if (opposite === targetId) {
-        report(
-          [id, targetId],
-          [rule, wantsGreater ? 'lessThanVariable' : 'greaterThanVariable'],
-          'cannot be both greater than and less than the same variable',
-        );
-      }
-
-      const selfBound = wantsGreater
+      const selfBound = ownerIsUpper
         ? constraints.maxValue
         : constraints.minValue;
-      const targetBound = wantsGreater
+      const targetBound = ownerIsUpper
         ? target.constraints.minValue
         : target.constraints.maxValue;
 
       if (selfBound !== undefined && targetBound !== undefined) {
-        const impossible = wantsGreater
-          ? selfBound <= targetBound
-          : selfBound >= targetBound;
+        // Bounds that merely touch satisfy a non-strict comparator, so only a
+        // strict one is contradicted by them being equal.
+        const impossible = ownerIsUpper
+          ? strict
+            ? selfBound <= targetBound
+            : selfBound < targetBound
+          : strict
+            ? selfBound >= targetBound
+            : selfBound > targetBound;
+
         if (impossible) {
+          const direction = ownerIsUpper ? 'above' : 'below';
           report(
             [id, targetId],
             [rule],
-            `its own bounds cannot reach a value ${wantsGreater ? 'above' : 'below'} "${target.entry.name}"`,
+            `its own bounds cannot reach a value ${strict ? direction : `at or ${direction}`} "${target.entry.name}"`,
           );
         }
       }
@@ -219,10 +223,19 @@ function analyseEntity(
     const rules = REFERENCE_RULES.filter((rule) =>
       cycle.some((id) => entity.get(id)?.constraints[rule] !== undefined),
     );
+    // Without a comparator the group is held together by `sameAs` alone, so the
+    // contradiction is a `differentFrom` inside it rather than a chain of
+    // mutual references.
+    const involvesComparator = COMPARISON_RULES.some((rule) =>
+      rules.includes(rule),
+    );
+
     report(
       cycle,
       rules,
-      'these variables reference each other in a cycle that no assignment can satisfy',
+      involvesComparator
+        ? 'these variables reference each other in a cycle that no assignment can satisfy'
+        : 'these variables are required to be both equal and different',
     );
   }
 
@@ -247,6 +260,9 @@ export function analyseFeasibility(
     scopes.push({
       entity: 'node',
       entityType: type,
+      ...(definition.name !== undefined
+        ? { entityTypeName: definition.name }
+        : {}),
       variables: definition.variables,
       worstCaseCount: counts.node.get(type) ?? 0,
     });
@@ -256,6 +272,9 @@ export function analyseFeasibility(
     scopes.push({
       entity: 'edge',
       entityType: type,
+      ...(definition.name !== undefined
+        ? { entityTypeName: definition.name }
+        : {}),
       variables: definition.variables,
       worstCaseCount: counts.edge.get(type) ?? 0,
     });
