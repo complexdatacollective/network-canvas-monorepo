@@ -7,8 +7,10 @@ import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import {
   deleteSessions,
   getSettings,
+  markSessionUnfinished,
   markSessionsExported,
 } from '~/lib/db/api';
+import type { StoredSessionLite } from '~/lib/db/types';
 import {
   buildExportOptions,
   type ExportProgress,
@@ -39,6 +41,9 @@ export function useSessionMutations({
   const { requireFreshUnlock } = useStepUpAuth();
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [markingUnfinishedId, setMarkingUnfinishedId] = useState<string | null>(
+    null,
+  );
   // Archive built by handleExport, awaiting a fresh user gesture to save it —
   // see handleShareReady. sessionIds are the sessions whose export generation
   // succeeded; they are marked exportedAt only once the file is saved, never
@@ -232,11 +237,50 @@ export function useSessionMutations({
     toast,
   ]);
 
+  const handleMarkUnfinished = useCallback(
+    async (session: Pick<StoredSessionLite, 'id' | 'caseId'>) => {
+      if (markingUnfinishedId !== null) return;
+      const confirmed = await dialog.openDialog({
+        type: 'choice',
+        title: `Mark ${session.caseId} as unfinished?`,
+        description:
+          'This interview will become editable and can be resumed. Its existing responses and export history will be kept.',
+        intent: 'warning',
+        actions: {
+          primary: { label: 'Mark unfinished', value: true },
+          cancel: { label: 'Cancel', value: false },
+        },
+      });
+      if (confirmed !== true) return;
+      setMarkingUnfinishedId(session.id);
+      try {
+        await markSessionUnfinished(session.id);
+        toast.add({
+          title: 'Interview marked unfinished',
+          description: `${session.caseId} can now be resumed.`,
+          variant: 'success',
+        });
+        await Promise.all([onReload(), reloadData()]);
+      } catch (cause) {
+        toast.add({
+          title: 'Could not mark interview unfinished',
+          description: cause instanceof Error ? cause.message : String(cause),
+          variant: 'destructive',
+        });
+      } finally {
+        setMarkingUnfinishedId(null);
+      }
+    },
+    [dialog, markingUnfinishedId, onReload, reloadData, toast],
+  );
+
   return {
     exporting,
     deleting,
+    markingUnfinishedId,
     handleExport,
     handleDelete,
+    handleMarkUnfinished,
     handleShareReady,
     pendingShare,
   };

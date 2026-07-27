@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useSessionMutations } from '../useSessionMutations';
 
 const markSessionsExported = vi.fn().mockResolvedValue(undefined);
+const markSessionUnfinished = vi.fn().mockResolvedValue(undefined);
 const deleteSessions = vi.fn().mockResolvedValue(undefined);
 const getSettings = vi.fn().mockResolvedValue({
   requireUnlockOnExport: false,
@@ -20,6 +21,7 @@ const toastAdd = vi.fn();
 
 vi.mock('~/lib/db/api', () => ({
   markSessionsExported: (...args: unknown[]) => markSessionsExported(...args),
+  markSessionUnfinished: (...args: unknown[]) => markSessionUnfinished(...args),
   deleteSessions: (...args: unknown[]) => deleteSessions(...args),
   getSettings: () => getSettings(),
 }));
@@ -129,5 +131,47 @@ describe('useSessionMutations — Save export marks exported from the save outco
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Export failed' }),
     );
+  });
+});
+
+describe('useSessionMutations — mark unfinished', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('changes completion state after confirmation', async () => {
+    openDialog.mockResolvedValue(true);
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleMarkUnfinished({
+        id: 's1',
+        caseId: 'case-1',
+      });
+    });
+
+    expect(openDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Mark case-1 as unfinished?',
+      }),
+    );
+    expect(markSessionUnfinished).toHaveBeenCalledWith('s1');
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Interview marked unfinished' }),
+    );
+  });
+
+  it('keeps the interview finished when confirmation is cancelled', async () => {
+    openDialog.mockResolvedValue(false);
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleMarkUnfinished({
+        id: 's1',
+        caseId: 'case-1',
+      });
+    });
+
+    expect(markSessionUnfinished).not.toHaveBeenCalled();
   });
 });

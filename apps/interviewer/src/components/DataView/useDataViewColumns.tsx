@@ -1,13 +1,18 @@
 import type { Column, ColumnDef } from '@tanstack/react-table';
-import { ArrowDown, Play } from 'lucide-react';
+import { ArrowDown, Eye, Play, RotateCcw } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useMemo } from 'react';
 import { useLocation } from 'wouter';
 
-import Button from '@codaco/fresco-ui/Button';
+import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import { updateSettings } from '~/lib/db/api';
 import type { StoredSessionLite } from '~/lib/db/types';
 
@@ -56,6 +61,8 @@ export function useDataViewColumns({
   togglePageSelected,
   allOnPageSelected,
   someOnPageSelected,
+  markingUnfinishedId,
+  onMarkUnfinished,
 }: {
   // Total interview steps (including the appended finish stage) by protocol
   // hash, for the progress column's step label.
@@ -65,6 +72,8 @@ export function useDataViewColumns({
   togglePageSelected: () => void;
   allOnPageSelected: boolean;
   someOnPageSelected: boolean;
+  markingUnfinishedId: string | null;
+  onMarkUnfinished: (session: StoredSessionLite) => void;
 }) {
   const [, navigate] = useLocation();
 
@@ -186,9 +195,42 @@ export function useDataViewColumns({
         enableSorting: false,
         enableColumnFilter: false,
         enableGlobalFilter: false,
-        header: () => <span className="sr-only">Resume</span>,
+        header: () => <span className="sr-only">Interview actions</span>,
         cell: ({ row }) => {
-          if (row.original.statusKind !== 'in-progress') return null;
+          const session = row.original;
+          if (session.statusKind === 'complete') {
+            return (
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="text"
+                  color="primary"
+                  icon={<Eye aria-hidden />}
+                  onClick={() => navigate(`/interview/${session.id}`)}
+                  data-testid="data-review"
+                >
+                  Review
+                </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <IconButton
+                        size="sm"
+                        variant="text"
+                        color="dynamic"
+                        icon={<RotateCcw aria-hidden />}
+                        aria-label={`Mark ${session.caseId} unfinished`}
+                        disabled={markingUnfinishedId !== null}
+                        onClick={() => onMarkUnfinished(session)}
+                        data-testid="data-mark-unfinished"
+                      />
+                    }
+                  />
+                  <TooltipContent>Mark unfinished</TooltipContent>
+                </Tooltip>
+              </div>
+            );
+          }
           const id = row.original.id;
           return (
             <Button
@@ -216,7 +258,9 @@ export function useDataViewColumns({
       toggleRowSelected,
       togglePageSelected,
       protocolTotalSteps,
+      markingUnfinishedId,
       navigate,
+      onMarkUnfinished,
     ],
   );
 }

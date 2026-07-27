@@ -16,6 +16,7 @@ import {
   getSessionsByIds,
   listSessions,
   markSessionFinished,
+  markSessionUnfinished,
   markSessionsExported,
   querySessions,
   updateSession,
@@ -288,6 +289,27 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
     });
     expect(result.statusCounts.complete).toBe(1);
     expect(result.statusCounts.inProgress).toBe(0);
+  });
+
+  it('marks a completed session unfinished without clearing its export history', async () => {
+    const created = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+    await markSessionFinished(created.id);
+    await markSessionsExported([created.id]);
+
+    await markSessionUnfinished(created.id);
+
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).toBeNull();
+    expect(session?.exportedAt).not.toBeNull();
+
+    const list = await listSessions();
+    expect(list[0]?.statusKind).toBe('in-progress');
+    expect(list[0]?.progressPercent).toBe(0);
   });
 });
 

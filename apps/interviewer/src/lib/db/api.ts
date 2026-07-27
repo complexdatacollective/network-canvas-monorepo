@@ -105,6 +105,10 @@ export async function markSessionFinished(id: string): Promise<void> {
   return dexieSessions.markSessionFinished(id);
 }
 
+export async function markSessionUnfinished(id: string): Promise<void> {
+  return dexieSessions.markSessionUnfinished(id);
+}
+
 export async function markSessionsExported(ids: string[]): Promise<void> {
   return dexieSessions.markSessionsExported(ids);
 }

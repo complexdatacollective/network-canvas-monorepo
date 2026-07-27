@@ -131,8 +131,10 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   const {
     exporting,
     deleting,
+    markingUnfinishedId,
     handleExport,
     handleDelete,
+    handleMarkUnfinished,
     handleShareReady,
     pendingShare,
   } = useSessionMutations({
@@ -150,6 +152,8 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
     togglePageSelected,
     allOnPageSelected,
     someOnPageSelected,
+    markingUnfinishedId,
+    onMarkUnfinished: (session) => void handleMarkUnfinished(session),
   });
 
   const table = useReactTable({

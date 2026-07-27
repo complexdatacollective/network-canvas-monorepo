@@ -338,6 +338,19 @@ export function markSessionFinished(id: string): Promise<void> {
   });
 }
 
+export function markSessionUnfinished(id: string): Promise<void> {
+  return enqueueSessionMutation(id, async () => {
+    const existing = await db.sessions.get(id);
+    if (!existing) return;
+    const now = new Date().toISOString();
+    await db.sessions.put({
+      ...existing,
+      finishedAt: null,
+      lastUpdatedAt: now,
+    });
+  });
+}
+
 export async function markSessionsExported(ids: string[]): Promise<void> {
   await Promise.all(
     ids.map((id) =>

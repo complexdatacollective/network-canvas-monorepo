@@ -24,12 +24,13 @@ const getSessionMock = vi.fn();
 const getProtocolByHashMock = vi.fn();
 const markSessionFinishedMock = vi.fn();
 const updateSessionMock = vi.fn();
+const updateSettingsMock = vi.fn();
 vi.mock('~/lib/db/api', () => ({
   getSettings: (...a: unknown[]) => getSettingsMock(...a),
   getSession: (...a: unknown[]) => getSessionMock(...a),
   getProtocolByHash: (...a: unknown[]) => getProtocolByHashMock(...a),
   updateSession: (...a: unknown[]) => updateSessionMock(...a),
-  updateSettings: vi.fn(),
+  updateSettings: (...a: unknown[]) => updateSettingsMock(...a),
   markSessionFinished: (...a: unknown[]) => markSessionFinishedMock(...a),
 }));
 
@@ -50,9 +51,14 @@ vi.mock('~/lib/installationId', () => ({
 }));
 
 type CapturedShellProps = {
+  currentStep: number;
   onExit: () => void;
   onFinish: (id: string) => Promise<void>;
   onSync: (id: string, session: SessionPayload) => Promise<void>;
+  onStepChange: (
+    step: number,
+    meta: { progress: number; totalSteps: number },
+  ) => void;
 };
 
 const { shellMock } = vi.hoisted(() => ({
@@ -88,7 +94,15 @@ function makeProtocol() {
     id: 'p1',
     hash: 'h1',
     importedAt: '2026-01-01T00:00:00.000Z',
-    protocol: { stages: [], codebook: { node: {}, edge: {}, ego: {} } },
+    protocol: {
+      stages: [
+        { id: 'stage-1' },
+        { id: 'stage-2' },
+        { id: 'stage-3' },
+        { id: 'stage-4' },
+      ],
+      codebook: { node: {}, edge: {}, ego: {} },
+    },
   };
 }
 
@@ -295,15 +309,45 @@ describe('InterviewRoute finish flow', () => {
     }
   });
 
-  it('renders the completion screen for an already-finished session', async () => {
+  it('opens an already-finished session in read-only review mode', async () => {
+    getSessionMock.mockResolvedValue(
+      makeSession({
+        currentStep: 4,
+        finishedAt: '2026-01-02T00:00:00.000Z',
+      }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(screen.getByText('Read-only review')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Changes made while reviewing this interview will not be saved.',
+      ),
+    ).toBeInTheDocument();
+    expect(lastShellProps().currentStep).toBe(3);
+    expect(screen.queryByText('Interview complete')).not.toBeInTheDocument();
+  });
+
+  it('suppresses every session write while reviewing a finished session', async () => {
     getSessionMock.mockResolvedValue(
       makeSession({ finishedAt: '2026-01-02T00:00:00.000Z' }),
     );
 
     render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const { onFinish, onStepChange, onSync } = lastShellProps();
 
-    expect(await screen.findByText('Interview complete')).toBeInTheDocument();
-    expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+    await act(async () => {
+      await onSync('s1', makeSyncPayload());
+      onStepChange(2, { progress: 75, totalSteps: 4 });
+      await onFinish('s1');
+    });
+
+    expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(markSessionFinishedMock).not.toHaveBeenCalled();
+    expect(updateSettingsMock).not.toHaveBeenCalled();
   });
 
   it('clears authorization when returning home from the missing screen', async () => {

@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  type FinishHandler,
   type InterviewPayload,
   type SessionPayload,
   Shell,
   type StepChangeHandler,
+  type SyncHandler,
 } from '@codaco/interview';
 import { InterviewComplete } from '~/components/InterviewComplete';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
@@ -51,7 +54,11 @@ type LoadState =
       kind: 'ready';
       payload: InterviewPayload;
       resolver: (id: string) => Promise<string>;
+      readOnly: boolean;
     };
+
+const discardSessionChanges: SyncHandler = () => Promise.resolve();
+const discardFinish: FinishHandler = () => Promise.resolve();
 
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
@@ -120,10 +127,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       // Entry is now authorized for the rest of the unlock session, so a
       // subsequent lock/unlock remount of this interview won't re-prompt.
       setAuthorizedInterviewId(sessionId);
-      if (session.finishedAt) {
-        if (active) setFinished(true);
-        return;
-      }
       const protocol = await getProtocolByHash(session.protocolHash);
       if (!protocol) {
         if (active) setState({ kind: 'missing' });
@@ -141,7 +144,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         },
       };
       if (!active) return;
-      const initialStep = session.currentStep ?? 0;
+      const readOnly = session.finishedAt !== null;
+      const initialStep = readOnly
+        ? Math.min(
+            session.currentStep ?? 0,
+            Math.max(0, protocol.protocol.stages.length - 1),
+          )
+        : (session.currentStep ?? 0);
       setCurrentStep(initialStep);
       currentStepRef.current = initialStep;
       setAllowStageNavigation(settings.allowStageNavigation);
@@ -149,11 +158,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         kind: 'ready',
         payload,
         resolver: makeAssetResolver(session.protocolHash, protocol.importedAt),
+        readOnly,
       });
-      void updateSettings({
-        lastActiveSessionId: session.id,
-        lastActiveProtocolHash: session.protocolHash,
-      });
+      if (session.finishedAt === null) {
+        void updateSettings({
+          lastActiveSessionId: session.id,
+          lastActiveProtocolHash: session.protocolHash,
+        });
+      }
     };
     void load();
     return () => {
@@ -168,6 +180,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   ]);
 
   const { client: posthogClient, enabled: analyticsEnabled } = useAnalytics();
+  const readOnly = state.kind === 'ready' && state.readOnly;
 
   const analytics = useMemo(
     () => ({
@@ -205,6 +218,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     (step, meta) => {
       currentStepRef.current = step;
       setCurrentStep(step);
+      if (readOnly) return;
       // Persist the participant-facing progress alongside the step so the
       // dashboard shows exactly what the participant saw, without re-deriving it
       // (and without needing to know about the engine's appended finish stage).
@@ -213,7 +227,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         progress: meta.progress,
       });
     },
-    [sessionId],
+    [readOnly, sessionId],
   );
 
   if (finished) {
@@ -264,12 +278,25 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         aria-hidden
         className="bg-background pointer-events-none fixed inset-0 z-[-1]"
       />
+      {readOnly && (
+        <Alert
+          variant="info"
+          appearance="soft"
+          density="compact"
+          className="fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 z-50 m-0! w-[min(32rem,calc(100%-2rem))] -translate-x-1/2"
+        >
+          <AlertTitle>Read-only review</AlertTitle>
+          <AlertDescription>
+            Changes made while reviewing this interview will not be saved.
+          </AlertDescription>
+        </Alert>
+      )}
       <Shell
         payload={state.payload}
         currentStep={currentStep}
         onStepChange={handleStepChange}
-        onSync={handleSync}
-        onFinish={handleFinish}
+        onSync={readOnly ? discardSessionChanges : handleSync}
+        onFinish={readOnly ? discardFinish : handleFinish}
         onRequestAsset={state.resolver}
         analytics={analytics}
         posthogClient={posthogClient ?? undefined}
