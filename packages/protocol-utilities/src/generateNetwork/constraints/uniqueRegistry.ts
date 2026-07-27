@@ -51,6 +51,21 @@ export class UniqueRegistry {
     );
   }
 
+  /**
+   * How many values a slot currently holds.
+   *
+   * Read by the draw as the allowance for walking past sequence positions a
+   * value already occupies. Within one pass of the distinct-value sequence
+   * each of the slot's values can turn a position away at most once, so this
+   * count is exactly the number of such refusals a draw can meet before the
+   * sequence has offered everything it has. It is a size rather than a
+   * traversal, so what a run draws never depends on the order values were
+   * claimed in.
+   */
+  claimedCount(scope: string, variableId: string): number {
+    return this.used.get(this.slot(scope, variableId))?.size ?? 0;
+  }
+
   claim(scope: string, variableId: string, value: VariableValue): void {
     const slot = this.slot(scope, variableId);
     const values = this.used.get(slot) ?? new Set<string>();

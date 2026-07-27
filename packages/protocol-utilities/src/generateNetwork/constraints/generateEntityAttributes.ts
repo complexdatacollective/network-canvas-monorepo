@@ -1009,7 +1009,18 @@ function drawGroup(
     bounded: ConstrainedVariable,
     avoidReserved: boolean,
   ): { value: VariableValue } | undefined => {
-    for (let attempt = 0; attempt < MAX_REDRAWS; attempt++) {
+    // Values written onto an entity from outside the registry — a roster row's,
+    // a prompt's `additionalAttributes` — are claimed without the sequence
+    // advancing past them, so a slot can arrive at its first drawn entity with
+    // a long run of its early positions already occupied. Walking those is not
+    // a search going nowhere, it is the sequence catching up with what is
+    // already in the network, so it is allowed alongside the redraw limit
+    // rather than out of it. The allowance is the slot's claim count, which is
+    // exactly what one pass of the sequence can meet: past it, every value the
+    // sequence has to offer has been offered, and the space really is full.
+    let skips = unique ? ctx.uniqueRegistry.claimedCount(registry, slot) : 0;
+
+    for (let attempt = 0, charged = 0; charged < MAX_REDRAWS; attempt++) {
       // A redraw has to land somewhere else, so failed attempts walk the
       // distinct-value sequence; only the first draw is free to be random.
       const seq = unique
@@ -1023,9 +1034,12 @@ function drawGroup(
         index,
         seq !== undefined ? { distinctSeq: seq } : {},
       );
+      const excluded = forbidden.has(valueKey(value));
+      const taken = unique && ctx.uniqueRegistry.isTaken(registry, slot, value);
+
       if (
-        !forbidden.has(valueKey(value)) &&
-        !(unique && ctx.uniqueRegistry.isTaken(registry, slot, value)) &&
+        !excluded &&
+        !taken &&
         !(
           unique &&
           avoidReserved &&
@@ -1034,6 +1048,17 @@ function drawGroup(
       ) {
         return { value };
       }
+
+      // Only a position turned away by the registry alone is free. A value the
+      // rules drawn alongside it forbid, or one held back for an entity still
+      // to come, is the search the redraw limit is there to bound.
+      if (taken && !excluded) {
+        if (skips === 0) return undefined;
+        skips -= 1;
+        continue;
+      }
+
+      charged += 1;
     }
 
     return undefined;

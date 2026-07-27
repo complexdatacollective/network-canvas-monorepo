@@ -1354,6 +1354,87 @@ describe('generateEntityAttributes', () => {
     expect(refused).toBe(true);
   });
 
+  it('draws past a run of fixed claims longer than the redraw limit', () => {
+    // A roster row's value is claimed without the sequence advancing over it,
+    // so a large roster can leave the sequence's early positions occupied for
+    // longer than the redraw limit allows. Feasibility counted the space and
+    // found room; the draw must find it too rather than reporting a conflict
+    // the protocol does not have.
+    const entity = buildEntityConstraints(
+      {
+        badge: {
+          name: 'Badge',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 99_999, unique: true },
+        },
+      },
+      TODAY,
+    );
+
+    const ctx = makeContext(5);
+    for (let value = 0; value < 20_000; value++) {
+      ctx.uniqueRegistry.claim('node:person', 'badge', value);
+    }
+
+    const attrs = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'person' },
+      0,
+    );
+
+    expect(Number(attrs.badge)).toBeGreaterThanOrEqual(20_000);
+    expect(Number(attrs.badge)).toBeLessThanOrEqual(99_999);
+  });
+
+  it('refuses a genuinely full space in work bounded by what it holds', () => {
+    // The allowance for walking past occupied positions is the slot's claim
+    // count, so a space with nothing left runs out of it instead of searching
+    // on. Counted rather than timed: a limit that grew with the sequence
+    // rather than with the claims would turn this refusal into a hang.
+    const size = 5000;
+    const entity = buildEntityConstraints(
+      {
+        badge: {
+          name: 'Badge',
+          type: 'number',
+          validation: { minValue: 0, maxValue: size - 1, unique: true },
+        },
+      },
+      TODAY,
+    );
+
+    const ctx = makeContext(5);
+    for (let value = 0; value < size; value++) {
+      ctx.uniqueRegistry.claim('node:person', 'badge', value);
+    }
+
+    // Four bounded draws — own bounds and propagated bounds, each tried once
+    // avoiding reserved values and once not — is the most `drawGroup` makes,
+    // and none of them may walk further than the slot holds. Enforced from
+    // inside the generator rather than counted afterwards, because a limit
+    // that grew with the sequence would never return for a count to be read.
+    const ceiling = 4 * (size + 1);
+    const generate = ctx.valueGen.generateConstrained.bind(ctx.valueGen);
+    let drawn = 0;
+    vi.spyOn(ctx.valueGen, 'generateConstrained').mockImplementation(
+      (...args) => {
+        drawn += 1;
+        if (drawn > ceiling) throw new Error(`searched past ${ceiling} draws`);
+        return generate(...args);
+      },
+    );
+
+    expect(() =>
+      generateEntityAttributes(
+        entity,
+        ctx,
+        { entity: 'node', type: 'person' },
+        0,
+      ),
+    ).toThrow(SyntheticDataConstraintError);
+  });
+
   it('claims a pinned value, so a later entity is not issued it again', () => {
     const options = [
       { label: 'A', value: 1 },

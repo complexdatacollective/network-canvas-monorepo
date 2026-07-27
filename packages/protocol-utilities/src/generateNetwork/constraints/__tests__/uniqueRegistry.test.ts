@@ -63,6 +63,24 @@ describe('UniqueRegistry', () => {
     expect(registry.isTaken('node:person', 'band', 2)).toBe(true);
   });
 
+  it('counts a slot’s claims, per slot, and forgets a released one', () => {
+    const registry = new UniqueRegistry();
+    registry.claim('node:person', 'band', 1);
+    registry.claim('node:person', 'band', 2);
+    registry.claim('node:person', 'band', 2);
+    registry.claim('node:person', 'rank', 1);
+    registry.claim('node:place', 'band', 1);
+    registry.reserve('node:person', 'band', 3);
+
+    expect(registry.claimedCount('node:person', 'band')).toBe(2);
+    expect(registry.claimedCount('node:person', 'rank')).toBe(1);
+    expect(registry.claimedCount('node:person', 'unclaimed')).toBe(0);
+
+    registry.release('node:person', 'band', 2);
+
+    expect(registry.claimedCount('node:person', 'band')).toBe(1);
+  });
+
   it('keeps a value reserved until every hold on it is given up', () => {
     // A prompt fixing a value holds it for the whole run while a roster stage
     // holds the same value only for its own draw. Ending the shorter hold must
