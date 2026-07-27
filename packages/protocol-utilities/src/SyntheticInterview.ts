@@ -30,8 +30,16 @@ import {
 import { resolveGenerationConfig } from './generateNetwork/config';
 import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints';
 import { todayYmd } from './generateNetwork/constraints/dateWindow';
+import { SyntheticDataConstraintError } from './generateNetwork/constraints/error';
+import {
+  scopeKey,
+  uniqueSlotMembers,
+} from './generateNetwork/constraints/generateEntityAttributes';
 import type { EntityConstraints } from './generateNetwork/constraints/types';
-import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
+import {
+  UniqueRegistry,
+  valueKey,
+} from './generateNetwork/constraints/uniqueRegistry';
 import type { GenerationContext } from './generateNetwork/context';
 import type {
   AddCategoricalBinPromptInput,
@@ -1597,13 +1605,13 @@ export class SyntheticInterview {
 
     // Recorded before any node is drawn, not as each node is reached: a
     // `unique` value written onto the last node is still one the first node's
-    // draw must not be issued.
+    // draw must not be issued. Each node is checked against what the nodes
+    // before it claimed, then claims its own, so a value two of them were
+    // given is refused rather than copied into the network twice.
     for (const nodeEntry of this.nodes) {
-      claimFixedValues(
-        ctx,
-        { entity: 'node', type: nodeEntry.type },
-        explicitOf(nodeEntry),
-      );
+      const explicit = explicitOf(nodeEntry);
+      this.refuseDuplicateFixedValues(ctx, nodeEntry.type, explicit);
+      claimFixedValues(ctx, { entity: 'node', type: nodeEntry.type }, explicit);
     }
 
     const ncNodes = this.nodes.map((nodeEntry, index) => {
@@ -1777,6 +1785,63 @@ export class SyntheticInterview {
         ),
       },
     };
+  }
+
+  /**
+   * Refuses a `unique` value the caller wrote onto two nodes.
+   *
+   * `UniqueRegistry.claim` keys a set, so claiming one value twice reports
+   * nothing, and a variable the caller set outright is excluded from the draw
+   * that would otherwise have objected — both duplicates would be copied into
+   * the network unchanged. Which is the point, as it is for a prompt fixing a
+   * `unique` value on a stage that creates two people: the values and the
+   * nodes holding them are both the caller's, so whether two of them hold one
+   * value is settled before any drawing, on every seed.
+   *
+   * Read against what earlier nodes claimed rather than per variable, because
+   * variables held equal by `sameAs` are issued from one slot: a single node
+   * setting every member of such a group to one value spends one claim between
+   * them and is no duplicate.
+   */
+  private refuseDuplicateFixedValues(
+    ctx: GenerationContext,
+    type: string,
+    fixed: Record<string, VariableValue>,
+  ): void {
+    const constraints = ctx.entityConstraints.node.get(type);
+    if (!constraints) return;
+
+    const registry = scopeKey({ entity: 'node', type });
+    const nodeType = this.nodeTypes.get(type);
+
+    for (const [slot, memberIds] of uniqueSlotMembers(constraints)) {
+      for (const id of memberIds) {
+        const value = fixed[id];
+        if (value === undefined) continue;
+        if (!ctx.uniqueRegistry.isTaken(registry, slot, value)) continue;
+
+        throw new SyntheticDataConstraintError(
+          [
+            {
+              entity: 'node',
+              entityType: type,
+              ...(nodeType ? { entityTypeName: nodeType.name } : {}),
+              variableIds: [...memberIds],
+              variableNames: memberIds.map(
+                (memberId) =>
+                  nodeType?.variables.get(memberId)?.name ?? memberId,
+              ),
+              rules: ['unique'],
+              // Reported as the key the collision was judged on rather than
+              // the value as written: it is what the registry compared, and a
+              // layout or categorical value has no useful `String()` form.
+              reason: `the caller sets ${memberIds.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${valueKey(value)} on two nodes, but unique allows one node to hold a value`,
+            },
+          ],
+          "this interview fixes values that its protocol's rules do not allow",
+        );
+      }
+    }
   }
 
   private buildCodebook() {

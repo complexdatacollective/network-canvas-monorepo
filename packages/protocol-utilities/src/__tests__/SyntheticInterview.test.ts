@@ -1523,6 +1523,119 @@ describe('validation rules on generated nodes', () => {
     }
   });
 
+  it('refuses a unique value the caller sets on two nodes', () => {
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const codeName = nt.addVariable({
+      type: 'text',
+      name: 'codeName',
+      validation: { unique: true },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 2 },
+    });
+    si.setNodeAttribute(0, codeName.id, 'Raven');
+    si.setNodeAttribute(1, codeName.id, 'Raven');
+
+    // The values are the caller's rather than drawn, so both would be copied
+    // into the network: the draw never sees them, and claiming one value twice
+    // keys the same set entry.
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+    expect(() => si.getNetwork()).toThrow(
+      /the caller sets this to "Raven" on two nodes, but unique allows one node to hold a value/,
+    );
+  });
+
+  it('refuses a unique value two manual nodes were built with', () => {
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const codeName = nt.addVariable({
+      type: 'text',
+      name: 'codeName',
+      validation: { unique: true },
+    });
+    const stage = si.addStage('Narrative', {
+      subject: { entity: 'node', type: nt.id },
+    });
+    si.addManualNode(stage.id, nt.id, 'person-1', { [codeName.id]: 'Raven' });
+    si.addManualNode(stage.id, nt.id, 'person-2', { [codeName.id]: 'Raven' });
+
+    // A manual node keeps its unset attributes neutral, but the ones it was
+    // built with are in the network verbatim — the same duplicate.
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+  });
+
+  it('reports every variable of a group the caller duplicated one value across', () => {
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const codeName = nt.addVariable({
+      type: 'text',
+      name: 'codeName',
+      validation: { unique: true },
+    });
+    nt.addVariable({
+      type: 'text',
+      name: 'alias',
+      validation: { sameAs: codeName.id },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 2 },
+    });
+    si.setNodeAttribute(0, codeName.id, 'Raven');
+    si.setNodeAttribute(1, codeName.id, 'Raven');
+
+    expect(() => si.getNetwork()).toThrow(
+      /"codeName" and "alias" \(unique\): the caller sets these variables, which are held equal, to "Raven" on two nodes/,
+    );
+  });
+
+  it('lets one node hold a unique value across every variable of its group', () => {
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const codeName = nt.addVariable({
+      type: 'text',
+      name: 'codeName',
+      validation: { unique: true },
+    });
+    const alias = nt.addVariable({
+      type: 'text',
+      name: 'alias',
+      validation: { sameAs: codeName.id },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 2 },
+    });
+    // Held equal, so they are issued from one slot: setting both spends a
+    // single claim rather than colliding with itself.
+    si.setNodeAttribute(0, codeName.id, 'Raven');
+    si.setNodeAttribute(0, alias.id, 'Raven');
+
+    const attrs = attributesOf(si.getNetwork());
+    expect(attrs[0]![codeName.id]).toBe('Raven');
+    expect(attrs[0]![alias.id]).toBe('Raven');
+    expect(attrs[1]![codeName.id]).not.toBe('Raven');
+  });
+
+  it('lets the caller repeat a value a variable does not declare unique', () => {
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const label = nt.addVariable({ type: 'text', name: 'label' });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 2 },
+    });
+    si.setNodeAttribute(0, label.id, 'Raven');
+    si.setNodeAttribute(1, label.id, 'Raven');
+
+    const issued = attributesOf(si.getNetwork()).map(
+      (attrs) => attrs[label.id],
+    );
+    expect(issued).toEqual(['Raven', 'Raven']);
+  });
+
   it('refuses a codebook whose rules leave a node no value, rather than emitting one that breaks them', () => {
     // No feasibility pass runs here — its verdict is measured against how many
     // entities a `generateNetwork` run would fabricate, and this builder's
