@@ -8,7 +8,8 @@ export type ContradictionClass =
   | 'conflictingReferencePair'
   | 'strictComparatorCycle'
   | 'sameAsGroupConflict'
-  | 'disjointBounds';
+  | 'disjointBounds'
+  | 'oddDifferentFromCycle';
 
 export type VariableRuleRef = {
   variableId: string;
@@ -785,6 +786,36 @@ function disjointBoundsContradictions(
                 strips: [first, ...rest],
               });
             }
+          } else if (onlyType === 'categorical' && !isEmptyInterval(interval)) {
+            // Non-empty but too small: the group's intersected minSelected
+            // (already computed above as `interval.min` — the group interval
+            // pass intersects every member's own minSelected) can still
+            // exceed the number of option values every member actually
+            // shares, which is equally unsatisfiable. Ordinal is excluded —
+            // it is single-select, so any non-empty shared set already
+            // suffices and is covered by the emptiness check above. Skipped
+            // when the group's own bounds are already empty — that case is
+            // reported above and resolves via the same strips.
+            const minSelected = interval?.min;
+            if (minSelected !== undefined && minSelected > intersection.size) {
+              const strips = groupEqualityStrips(
+                variables,
+                members,
+                internalNonStrictEdges,
+              );
+              const [first, ...rest] = strips;
+              if (first) {
+                const names = members.map(
+                  (member) => `"${nameOf(member, variables[member])}"`,
+                );
+                found.push({
+                  class: 'disjointBounds',
+                  message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but share only ${intersection.size} option values, fewer than minSelected (${minSelected})`,
+                  variableIds: members,
+                  strips: [first, ...rest],
+                });
+              }
+            }
           }
         }
       }
@@ -830,6 +861,126 @@ function disjointBoundsContradictions(
   return found;
 }
 
+type BooleanDifferentFromEdge = {
+  groupA: string;
+  groupB: string;
+  sources: VariableRuleRef[];
+};
+
+/**
+ * Odd cycles in the boolean-only `differentFrom` graph, at equality-group
+ * granularity (a `sameAs` group of booleans holds one shared value, so
+ * `differentFrom` edges connect groups, not individual variables).
+ *
+ * DELIBERATE LIMIT: only boolean variables are checked here. A boolean has
+ * exactly two possible values, so an odd cycle — not 2-colourable — is
+ * provably unsatisfiable regardless of which value is chosen: `A ≠ B`,
+ * `B ≠ C`, `C ≠ A` forces three pairwise-distinct values out of a two-value
+ * domain. Ordinal/categorical variables can hold more than two values, so the
+ * equivalent question is general k-colourability, which has no efficient
+ * exact check for arbitrary k — that's out of scope here and left to the
+ * interview runtime's own fill-time enforcement as a backstop.
+ */
+function oddDifferentFromCycleContradictions(
+  variables: UnknownRecord,
+): ValidationContradiction[] {
+  const edges = comparatorEdges(variables);
+  const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
+
+  const edgesByKey = new Map<string, BooleanDifferentFromEdge>();
+  const adjacency = new Map<string, Set<string>>();
+
+  for (const [id, variable] of Object.entries(variables)) {
+    if (typeOf(variable) !== 'boolean') continue;
+    // `usableReference` guarantees same-typed endpoints, so the target is
+    // necessarily boolean too.
+    const target = usableReference(variables, id, 'differentFrom');
+    if (target === undefined) continue;
+    const groupA = groupOf.get(id);
+    const groupB = groupOf.get(target);
+    // A self-reference, or a target inside the same equality group, is
+    // already reported as a class-9 sameAsGroupConflict — not a graph edge.
+    if (groupA === undefined || groupB === undefined || groupA === groupB) {
+      continue;
+    }
+    const [lower, upper] = [groupA, groupB].toSorted();
+    if (lower === undefined || upper === undefined) continue;
+    const key = `${lower}${KEY_SEPARATOR}${upper}`;
+    const existing = edgesByKey.get(key);
+    if (existing) {
+      existing.sources.push({ variableId: id, rule: 'differentFrom' });
+    } else {
+      edgesByKey.set(key, {
+        groupA: lower,
+        groupB: upper,
+        sources: [{ variableId: id, rule: 'differentFrom' }],
+      });
+    }
+    for (const [from, to] of [
+      [groupA, groupB],
+      [groupB, groupA],
+    ] as const) {
+      const neighbors = adjacency.get(from) ?? new Set<string>();
+      neighbors.add(to);
+      adjacency.set(from, neighbors);
+    }
+  }
+
+  const found: ValidationContradiction[] = [];
+  const color = new Map<string, 0 | 1>();
+  const visited = new Set<string>();
+
+  for (const start of adjacency.keys()) {
+    if (visited.has(start)) continue;
+    const componentNodes = new Set<string>();
+    const queue: string[] = [start];
+    visited.add(start);
+    color.set(start, 0);
+    let bipartite = true;
+
+    while (queue.length > 0) {
+      const node = queue.shift();
+      if (node === undefined) break;
+      componentNodes.add(node);
+      const nodeColor = color.get(node);
+      if (nodeColor === undefined) continue;
+      for (const neighbor of adjacency.get(node) ?? []) {
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          color.set(neighbor, nodeColor === 0 ? 1 : 0);
+          queue.push(neighbor);
+        } else if (color.get(neighbor) === nodeColor) {
+          bipartite = false;
+        }
+      }
+    }
+
+    if (bipartite) continue;
+
+    const componentEdges = [...edgesByKey.values()].filter(
+      (edge) =>
+        componentNodes.has(edge.groupA) && componentNodes.has(edge.groupB),
+    );
+    const sources = componentEdges.flatMap((edge) => edge.sources);
+    const [first, ...rest] = sources;
+    if (!first) continue;
+    const memberIds = [...componentNodes].flatMap(
+      (group) => membersOf.get(group) ?? [],
+    );
+    const names = memberIds.map(
+      (memberId) => `"${nameOf(memberId, variables[memberId])}"`,
+    );
+    found.push({
+      class: 'oddDifferentFromCycle',
+      message: `Variables ${names.join(', ')}: their differentFrom rules cannot all be satisfied with only two possible values`,
+      variableIds: memberIds,
+      strips: [first, ...rest],
+    });
+  }
+
+  return found;
+}
+
 export function findValidationContradictions(
   variables: UnknownRecord,
 ): ValidationContradiction[] {
@@ -837,5 +988,6 @@ export function findValidationContradictions(
     ...localContradictions(variables),
     ...referenceStructureContradictions(variables),
     ...disjointBoundsContradictions(variables),
+    ...oddDifferentFromCycleContradictions(variables),
   ];
 }

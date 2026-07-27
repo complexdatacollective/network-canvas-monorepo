@@ -56,16 +56,23 @@ const handlers = withHandlers({
       // discriminated union, and some of its members (e.g. layout) have no
       // `validation` field, which defeats isRecord's narrowing when applied
       // directly to the union type.
+      //
+      // A variable that only ever appears as the TARGET of another's
+      // sameAs/comparator has no rules of its own, so `existingVariable`
+      // legitimately has no `validation` key at all. That must not skip the
+      // check — shrinking its options can still break an incoming
+      // relationship — so an absent/non-record validation runs the analyser
+      // with an empty rule map instead.
       const existingVariable: unknown = props.allVariables[variable];
       const existingValidation =
         isRecord(existingVariable) && isRecord(existingVariable.validation)
           ? existingVariable.validation
-          : undefined;
+          : {};
       const variableType =
         isRecord(existingVariable) && typeof existingVariable.type === 'string'
           ? existingVariable.type
           : undefined;
-      if (variableType && existingValidation) {
+      if (variableType) {
         const contradiction = findDraftContradictions({
           allVariables: props.allVariables,
           currentVariableId: variable,

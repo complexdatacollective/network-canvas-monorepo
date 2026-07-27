@@ -4514,5 +4514,31 @@ describe('Migration V7 to V8', () => {
       expect(variables.a).toHaveProperty('validation.lessThanVariable', 'b');
       expect(variables.b).toHaveProperty('validation.greaterThanVariable', 'a');
     });
+
+    it('strips every differentFrom edge in an odd boolean cycle via the fixpoint loop', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'boolean',
+          validation: { differentFrom: 'b', required: true },
+        },
+        b: {
+          name: 'b',
+          type: 'boolean',
+          validation: { differentFrom: 'c', required: true },
+        },
+        c: {
+          name: 'c',
+          type: 'boolean',
+          validation: { differentFrom: 'a', required: true },
+        },
+      });
+      expect(variables.a).not.toHaveProperty('validation.differentFrom');
+      expect(variables.b).not.toHaveProperty('validation.differentFrom');
+      expect(variables.c).not.toHaveProperty('validation.differentFrom');
+      expect(variables.a).toHaveProperty('validation.required', true);
+      expect(variables.b).toHaveProperty('validation.required', true);
+      expect(variables.c).toHaveProperty('validation.required', true);
+    });
   });
 });

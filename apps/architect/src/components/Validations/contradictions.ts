@@ -94,8 +94,14 @@ export const floorIssue = (
 export const makeFieldEditorValidate =
   (allVariables: UnknownRecord) =>
   (values: Record<string, unknown>): Record<string, unknown> => {
-    const validation = values.validation;
-    if (!isRecord(validation)) return {};
+    // A variable that is only a TARGET of another's sameAs/comparator (never
+    // configuring rules of its own) can have `values.validation` absent or
+    // non-record here — that must not skip the check, since editing this
+    // variable's own options/parameters can still break an incoming
+    // relationship. `findDraftContradictions`'s involvement filter still
+    // restricts results to contradictions the edited variable participates
+    // in, so an empty validation map is safe to proceed with.
+    const validation = isRecord(values.validation) ? values.validation : {};
     const currentVariableId =
       typeof values.variable === 'string' ? values.variable : '';
     const existing = currentVariableId

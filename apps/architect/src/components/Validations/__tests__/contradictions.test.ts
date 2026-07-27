@@ -149,6 +149,48 @@ describe('makeFieldEditorValidate', () => {
     expect(errors.validation).toContain('minLength');
   });
 
+  // Finding 2 (second-wave review): a variable that is only a TARGET of
+  // another's sameAs/comparator never configures rules of its own, so
+  // `values.validation` can be absent entirely — previously that short-
+  // circuited the whole check and let an edit silently break the incoming
+  // relationship. The involvement filter in `findDraftContradictions` still
+  // restricts the result to contradictions the edited variable (b) actually
+  // participates in.
+  it('flags a contradiction on a target-only variable with no validation of its own', () => {
+    const targetOnlyVariables = {
+      a: {
+        name: 'a',
+        type: 'categorical',
+        options: [
+          { label: 'Red', value: 'red' },
+          { label: 'Blue', value: 'blue' },
+        ],
+        validation: { sameAs: 'b' },
+      },
+      b: {
+        name: 'b',
+        type: 'categorical',
+        options: [
+          { label: 'Red', value: 'red' },
+          { label: 'Blue', value: 'blue' },
+        ],
+        // No `validation` key at all: b only ever appears as a's sameAs
+        // target and has never had rules of its own configured.
+      },
+    };
+    const validate = makeFieldEditorValidate(targetOnlyVariables);
+    const errors = validate({
+      variable: 'b',
+      // No `validation` key on the dialog values either — the Validations
+      // field never rendered any rule rows for a target-only variable.
+      options: [
+        { label: 'Green', value: 'green' },
+        { label: 'Yellow', value: 'yellow' },
+      ],
+    });
+    expect(errors.validation).toContain('share no option values');
+  });
+
   // Finding C: the dialog is the only editor surface that can change
   // `parameters` (the row editor's `checkDraft` path never sees them), so it
   // must forward the draft parameters into the analyser or an edit like this

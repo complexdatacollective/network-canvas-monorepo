@@ -409,6 +409,50 @@ describe('findValidationContradictions — Finding D: sameAs option-set disjoint
   });
 });
 
+describe('findValidationContradictions — second-wave Finding 1: shared-option cardinality vs minSelected', () => {
+  const categorical = (
+    name: string,
+    optionValues: (string | number)[],
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'categorical',
+    options: optionValues.map((value) => ({ label: String(value), value })),
+    validation,
+  });
+
+  it('rejects a sameAs group whose shared option values are fewer than minSelected', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['x', 'y'], { sameAs: 'b', minSelected: 2 }),
+      b: categorical('b', ['x', 'z']),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" are joined by sameAs but share only 1 option values, fewer than minSelected (2)',
+    );
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  it('accepts a sameAs group whose minSelected does not exceed the shared value count', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['x', 'y'], { sameAs: 'b', minSelected: 1 }),
+        b: categorical('b', ['x', 'z']),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts a sameAs group whose minSelected equals the shared value count', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['x', 'y'], { sameAs: 'b', minSelected: 2 }),
+        b: categorical('b', ['x', 'y']),
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe('findValidationContradictions — Finding E: comparator-forced equality groups', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
@@ -457,6 +501,67 @@ describe('findValidationContradictions — Finding E: comparator-forced equality
       findValidationContradictions({
         c: number('c', { greaterThanOrEqualToVariable: 'd' }),
         d: number('d', { greaterThanOrEqualToVariable: 'c' }),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — second-wave Finding 4: odd boolean differentFrom cycles', () => {
+  const boolean = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'boolean',
+    validation,
+  });
+
+  it('rejects a three-variable differentFrom triangle over booleans', () => {
+    const result = findValidationContradictions({
+      a: boolean('a', { differentFrom: 'b' }),
+      b: boolean('b', { differentFrom: 'c' }),
+      c: boolean('c', { differentFrom: 'a' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b", "c": their differentFrom rules cannot all be satisfied with only two possible values',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toHaveLength(3);
+    expect(
+      result[0]?.strips.every((strip) => strip.rule === 'differentFrom'),
+    ).toBe(true);
+  });
+
+  it('accepts a mutual two-cycle (one edge, not a cycle) over booleans', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', { differentFrom: 'b' }),
+        b: boolean('b', { differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts an even four-variable differentFrom cycle over booleans', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', { differentFrom: 'b' }),
+        b: boolean('b', { differentFrom: 'c' }),
+        c: boolean('c', { differentFrom: 'd' }),
+        d: boolean('d', { differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts a differentFrom triangle over text variables (unbounded domain)', () => {
+    const text = (name: string, validation: Record<string, unknown> = {}) => ({
+      name,
+      type: 'text',
+      validation,
+    });
+    expect(
+      findValidationContradictions({
+        a: text('a', { differentFrom: 'b' }),
+        b: text('b', { differentFrom: 'c' }),
+        c: text('c', { differentFrom: 'a' }),
       }),
     ).toEqual([]);
   });
