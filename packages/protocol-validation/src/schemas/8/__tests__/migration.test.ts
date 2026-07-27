@@ -4273,4 +4273,96 @@ describe('Migration V7 to V8', () => {
       }
     });
   });
+
+  describe('DatePicker parameter and validation floor normalisation', () => {
+    const migrateVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          ego: { variables },
+        },
+        stages: [],
+      };
+      const migrated = migrationV7toV8.migrate(
+        v7Protocol as unknown as Protocol<7>,
+        { name: 'Test Protocol' },
+      ) as unknown as {
+        codebook: { ego: { variables: Record<string, unknown> } };
+      };
+      return migrated.codebook.ego.variables;
+    };
+
+    it('truncates finer-than-resolution bounds and strips coarser ones', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'year_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'year', min: '2020-05-03', max: '2021' },
+        },
+        b: {
+          name: 'full_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '2020', max: '2021-06-15' },
+        },
+      });
+      expect(variables.a).toHaveProperty('parameters.min', '2020');
+      expect(variables.a).toHaveProperty('parameters.max', '2021');
+      expect(variables.b).not.toHaveProperty('parameters.min');
+      expect(variables.b).toHaveProperty('parameters.max', '2021-06-15');
+    });
+
+    it('strips both bounds when min is after max, and malformed values', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'window',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'month', min: '2021-06', max: '2020-01' },
+        },
+        b: {
+          name: 'junk',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: 'not-a-date' },
+        },
+      });
+      expect(variables.a).not.toHaveProperty('parameters.min');
+      expect(variables.a).not.toHaveProperty('parameters.max');
+      expect(variables.b).not.toHaveProperty('parameters.min');
+    });
+
+    it('leaves RelativeDatePicker parameters alone', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'relative',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '2020-05-03', before: 180 },
+        },
+      });
+      expect(variables.a).toHaveProperty('parameters.anchor', '2020-05-03');
+    });
+
+    it('strips count-valued rules below their floors and keeps legal ones', () => {
+      const variables = migrateVariables({
+        a: {
+          name: 'first_name',
+          type: 'text',
+          validation: { maxLength: 0, minLength: -2, required: true },
+        },
+        b: {
+          name: 'last_name',
+          type: 'text',
+          validation: { minLength: 0, maxLength: 1 },
+        },
+      });
+      expect(variables.a).not.toHaveProperty('validation.maxLength');
+      expect(variables.a).not.toHaveProperty('validation.minLength');
+      expect(variables.a).toHaveProperty('validation.required', true);
+      expect(variables.b).toHaveProperty('validation.minLength', 0);
+      expect(variables.b).toHaveProperty('validation.maxLength', 1);
+    });
+  });
 });

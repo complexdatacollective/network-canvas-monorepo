@@ -25,6 +25,24 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
+const isValidCalendarDate = (
+  value: string,
+  resolution: 'full' | 'month' | 'year',
+): boolean => {
+  if (resolution === 'year') return true;
+  const month = Number(value.slice(5, 7));
+  if (month < 1 || month > 12) return false;
+  if (resolution === 'month') return true;
+  const year = Number(value.slice(0, 4));
+  const day = Number(value.slice(8, 10));
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+};
+
 const codebookVariable = (
   codebook: unknown,
   subject: unknown,
@@ -1025,6 +1043,84 @@ const migrationV7toV8 = createMigration({
 
             delete validation.minValue;
             delete validation.maxValue;
+          }
+          return variables;
+        },
+      },
+      {
+        // DatePicker `min`/`max` must be real dates written exactly at the
+        // picker's resolution with `min <= max`, and count-valued rules have
+        // absolute floors (minLength/minSelected >= 0, maxLength/maxSelected
+        // >= 1). Truncate finer-than-resolution date bounds — the extra
+        // precision is authored intent — and strip anything else invalid.
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          if (!variables || typeof variables !== 'object') return variables;
+          const resolutionLength = { full: 10, month: 7, year: 4 } as const;
+          const patterns = {
+            full: /^\d{4}-\d{2}-\d{2}$/,
+            month: /^\d{4}-\d{2}$/,
+            year: /^\d{4}$/,
+          } as const;
+          const floors = {
+            minLength: 0,
+            maxLength: 1,
+            minSelected: 0,
+            maxSelected: 1,
+          } as const;
+          for (const variable of Object.values(
+            variables as Record<string, unknown>,
+          )) {
+            const typedVariable = asRecord(variable);
+            if (!typedVariable) continue;
+
+            const validation = asRecord(typedVariable.validation);
+            if (validation) {
+              for (const [rule, floor] of Object.entries(floors)) {
+                const value = validation[rule];
+                if (typeof value === 'number' && value < floor) {
+                  delete validation[rule];
+                }
+              }
+            }
+
+            if (typedVariable.type !== 'datetime') continue;
+            if (typedVariable.component === 'RelativeDatePicker') continue;
+            const parameters = asRecord(typedVariable.parameters);
+            if (!parameters) continue;
+            const resolution =
+              parameters.type === 'month' || parameters.type === 'year'
+                ? parameters.type
+                : 'full';
+            for (const bound of ['min', 'max'] as const) {
+              const value = parameters[bound];
+              if (value === undefined) continue;
+              if (typeof value !== 'string') {
+                delete parameters[bound];
+                continue;
+              }
+              const truncated = value.slice(0, resolutionLength[resolution]);
+              if (
+                patterns[resolution].test(truncated) &&
+                isValidCalendarDate(truncated, resolution)
+              ) {
+                parameters[bound] = truncated;
+              } else {
+                delete parameters[bound];
+              }
+            }
+            if (
+              typeof parameters.min === 'string' &&
+              typeof parameters.max === 'string' &&
+              parameters.min > parameters.max
+            ) {
+              delete parameters.min;
+              delete parameters.max;
+            }
           }
           return variables;
         },
