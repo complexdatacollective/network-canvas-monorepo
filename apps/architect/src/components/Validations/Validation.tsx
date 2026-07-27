@@ -6,6 +6,7 @@ import { IconButton } from '@codaco/fresco-ui/Button';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Variable } from '@codaco/protocol-validation';
 
 import {
@@ -39,6 +40,7 @@ type ValidationProps = {
   existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
   isBeingEdited?: boolean;
   checkDraft?: (key: string, value: unknown, replacingKey?: string) => string[];
+  uniqueValueCount?: number;
 };
 
 const noop = () => {};
@@ -120,6 +122,7 @@ const Validation = ({
   existingVariables,
   isBeingEdited = false,
   checkDraft,
+  uniqueValueCount,
 }: ValidationProps) => {
   const isNewItem = itemKey === '';
   const [draftKey, setDraftKey] = useState(itemKey);
@@ -208,6 +211,13 @@ const Validation = ({
           <p className="truncate">
             {summarizeValidation(itemKey, itemValue, existingVariables)}
           </p>
+          {itemKey === 'unique' && uniqueValueCount !== undefined && (
+            <Paragraph className="text-sm text-current/70">
+              This variable has only {uniqueValueCount} possible values, so
+              &lsquo;Must be unique&rsquo; may become impossible to satisfy once
+              more than {uniqueValueCount} entities hold a value.
+            </Paragraph>
+          )}
         </div>
         <div className={MULTI_SELECT_CONTROL_CLASSES}>
           <IconButton
@@ -244,6 +254,14 @@ const Validation = ({
             autoFocus
           />
         </div>
+        {(isBeingEdited ? draftKey : itemKey) === 'unique' &&
+          uniqueValueCount !== undefined && (
+            <Paragraph className="text-sm text-current/70">
+              This variable has only {uniqueValueCount} possible values, so
+              &lsquo;Must be unique&rsquo; may become impossible to satisfy once
+              more than {uniqueValueCount} entities hold a value.
+            </Paragraph>
+          )}
         {draftKey && isValidationWithNumberValue(draftKey) && (
           <div className={MULTI_SELECT_OPTION_CLASSES}>
             <InputField

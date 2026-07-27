@@ -160,6 +160,20 @@ const Validations = ({
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const usedOptions = getKeys(value);
 
+  const uniqueValueCount = useMemo(() => {
+    if (variableType === 'boolean') return 2;
+    if (variableType !== 'ordinal') return undefined;
+    if (Array.isArray(draftOptions)) return draftOptions.length;
+    const current = allVariables?.[currentVariableId ?? ''];
+    const isRecord = (v: unknown): v is Record<string, unknown> =>
+      typeof v === 'object' && v !== null && !Array.isArray(v);
+    const options =
+      isRecord(current) && 'options' in current
+        ? (current as Record<string, unknown>).options
+        : undefined;
+    return Array.isArray(options) ? options.length : undefined;
+  }, [variableType, draftOptions, allVariables, currentVariableId]);
+
   const checkDraft = useMemo(
     () =>
       (
@@ -236,6 +250,7 @@ const Validations = ({
         onEditKey={setEditingKey}
         validate={validate}
         checkDraft={checkDraft}
+        uniqueValueCount={uniqueValueCount}
       >
         {addNew && (
           <Validation
@@ -245,6 +260,7 @@ const Validations = ({
             options={availableOptions}
             existingVariables={existingVariables}
             checkDraft={checkDraft}
+            uniqueValueCount={uniqueValueCount}
           />
         )}
       </Field>
