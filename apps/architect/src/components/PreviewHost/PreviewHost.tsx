@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -12,7 +12,11 @@ import {
   type SessionPayload,
   Shell,
 } from '@codaco/interview';
-import { generateNetwork } from '@codaco/protocol-utilities';
+import {
+  type ConstraintConflict,
+  generateNetwork,
+  SyntheticDataConstraintError,
+} from '@codaco/protocol-utilities';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
@@ -82,6 +86,9 @@ export function PreviewHost() {
   const [currentStep, setCurrentStep] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
   const [processingFailed, setProcessingFailed] = useState(false);
+  const [constraintConflicts, setConstraintConflicts] = useState<
+    ConstraintConflict[] | null
+  >(null);
   const [retryNonce, setRetryNonce] = useState(0);
   // Index of the stage receiving a one-stage preview override, or null.
   // The notice only shows while that stage is the one being viewed.
@@ -110,11 +117,19 @@ export function PreviewHost() {
         nextPayload = { protocol, session };
       } catch (error) {
         if (cancelled) return;
-        console.error('Failed to build preview payload', error);
-        setProcessingFailed(true);
+        // Clear any previously successful preview so a failed rebuild never
+        // leaves a stale network on screen with no sign that this build failed.
+        setInterviewPayload(null);
+        if (error instanceof SyntheticDataConstraintError) {
+          setConstraintConflicts(error.conflicts);
+        } else {
+          console.error('Failed to build preview payload', error);
+          setProcessingFailed(true);
+        }
         return;
       }
       setProcessingFailed(false);
+      setConstraintConflicts(null);
       setInterviewPayload(nextPayload);
       setProtocolId(previewPayload.protocolId);
       setCurrentStep(previewPayload.startStage);
@@ -198,6 +213,40 @@ export function PreviewHost() {
             Close tab
           </Button>
         </div>
+      </div>
+    );
+  }
+  if (!interviewPayload && constraintConflicts) {
+    return (
+      <div className="flex h-dvh w-full flex-col items-center gap-4 overflow-y-auto p-8 pt-16 text-center">
+        <Heading level="h1" margin="none" className="text-2xl font-semibold">
+          This protocol can't be previewed
+        </Heading>
+        <Paragraph margin="none" className="max-w-xl">
+          Synthetic data couldn't be generated because these validation rules
+          can't all be satisfied. Return to Architect, update the protocol, and
+          preview it again.
+        </Paragraph>
+        <div className="flex w-full max-w-xl flex-col gap-3 text-left">
+          {constraintConflicts.map((conflict, index) => (
+            <Alert
+              key={`${conflict.entity}-${conflict.variableIds.join(',')}-${index}`}
+              variant="destructive"
+              density="compact"
+            >
+              <AlertTitle>
+                {conflict.entity === 'ego'
+                  ? 'Ego'
+                  : (conflict.entityTypeName ?? 'This type')}
+                : {conflict.variableNames.join(', ')}
+              </AlertTitle>
+              <AlertDescription>{conflict.reason}</AlertDescription>
+            </Alert>
+          ))}
+        </div>
+        <Button color="primary" onClick={() => window.close()}>
+          Close tab
+        </Button>
       </div>
     );
   }
