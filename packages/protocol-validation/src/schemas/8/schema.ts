@@ -47,8 +47,8 @@ import {
   type Variable,
 } from './variables/index.ts';
 import {
-  dateResolutionOf,
-  findMixedResolutionSameAsGroups,
+  findValidationContradictions,
+  type ValidationContradiction,
 } from './variables/validation-contradictions.ts';
 
 // Operators that expect numeric values for comparison
@@ -217,35 +217,33 @@ const validateFormFieldVariable = (
 };
 
 /**
- * NetworkComposer stage-effective-overlay resolution check (seventh-wave
- * Finding 2, direction fix ninth-wave Finding 2). A NetworkComposer field
- * carries its OWN `component`/`parameters` independent of the codebook
- * variable (see network-composer.ts's ComposerFormFieldSchema), so a stage
- * can render a sameAs-joined datetime variable at a different resolution
- * than the codebook variable's own default — the per-subject codebook check
- * (`rejectValidationContradictions`, run per node/edge type) never sees this,
- * because it only ever looks at the codebook variables themselves. This
- * builds the STAGE-EFFECTIVE view for one subject (codebook definitions with
- * this stage's own composer fields' component/parameters overlaid on top,
- * for exactly the variables those fields write) and re-runs the narrow
- * sameAs-only mixed-resolution check (Finding 1's scoping) against it.
+ * NetworkComposer stage-effective-overlay contradiction check (seventh-wave
+ * Finding 2; direction fix ninth-wave Finding 2; widened from the narrow
+ * mixed-resolution query to the FULL analyser by tenth-wave Finding 1). A
+ * NetworkComposer field carries its OWN `component`/`parameters` independent
+ * of the codebook variable (see network-composer.ts's
+ * ComposerFormFieldSchema), so a stage can render a codebook variable with a
+ * different input control than the codebook default — a different DatePicker
+ * resolution, or a differently pinned min/max window — and the per-subject
+ * codebook check (`rejectValidationContradictions`, run per node/edge type)
+ * never sees this, because it only ever looks at the codebook variables
+ * themselves. This builds the STAGE-EFFECTIVE view for one subject (codebook
+ * definitions with this stage's own composer fields' component/parameters
+ * overlaid on top, for exactly the variables those fields write) and runs
+ * `findValidationContradictions` against it. Previously only the
+ * mixed-resolution sameAs check ran here, so overlay-induced contradictions
+ * of every other class — e.g. two sameAs-joined datetime fields pinned to
+ * disjoint fixed date windows — slipped through.
  *
- * The codebook variables a mismatched group is layered onto are themselves
- * guaranteed resolution-consistent (any sameAs group the migration has
- * already stripped, per Finding 1, or that Architect never let an author
- * create in the codebook to begin with) — so ANY mismatch here is
- * necessarily introduced by exactly one field's own override diverging from
- * ITS OWN codebook variable's resolution. `dateResolutionOf` reads the same
- * `component`/`parameters` shape a field and a variable both carry, so
- * comparing it on each side catches BOTH directions: a field coarsening a
- * full-resolution codebook default (a DatePicker with `type: 'month'` or
- * `'year'`), and a field restoring full resolution against a coarse codebook
- * default (a DatePicker with no `type` — including no `parameters` at all —
- * or a RelativeDatePicker, which is always full resolution). Only the FIRST
- * such field (in field-array order) is reported, mirroring the migration's
- * own first-offender field choice below.
+ * The codebook record must itself pass the record-level contradiction check,
+ * so any contradiction found in the overlay but NOT in the bare codebook is
+ * necessarily introduced by the field overrides. Contradictions the bare
+ * codebook already exhibits are skipped rather than double-reported — the
+ * record-level check anchors those at the codebook rule. Each remaining
+ * contradiction is anchored at the FIRST field (in field-array order) whose
+ * variable participates in it.
  */
-const validateComposerFieldResolutions = (
+const validateComposerFieldContradictions = (
   codebookVariables: Record<string, Variable>,
   fields: ComposerFormField[] | undefined,
   fieldsPath: (string | number)[],
@@ -264,24 +262,31 @@ const validateComposerFieldResolutions = (
     };
   }
 
-  for (const group of findMixedResolutionSameAsGroups(overlaid)) {
-    const fieldIndex = fields.findIndex((field) => {
-      if (!group.members.includes(field.variable)) return false;
-      const base = codebookVariables[field.variable];
-      if (!base) return false;
-      return dateResolutionOf(field) !== dateResolutionOf(base);
-    });
-    const offendingField = fieldIndex === -1 ? undefined : fields[fieldIndex];
-    if (!offendingField) continue;
-    const otherNames = group.members
-      .filter((member) => member !== offendingField.variable)
-      .map((member) => `"${codebookVariables[member]?.name ?? member}"`)
-      .join(', ');
-    const offendingName =
-      codebookVariables[offendingField.variable]?.name ??
-      offendingField.variable;
+  const keyOf = (contradiction: ValidationContradiction): string =>
+    [
+      contradiction.class,
+      [...contradiction.variableIds].toSorted().join(','),
+      contradiction.strips
+        .map((strip) => `${strip.variableId}:${strip.rule}`)
+        .toSorted()
+        .join(','),
+    ].join('|');
+
+  const baseKeys = new Set(
+    findValidationContradictions(codebookVariables).map(keyOf),
+  );
+
+  for (const contradiction of findValidationContradictions(overlaid)) {
+    if (baseKeys.has(keyOf(contradiction))) continue;
+    const fieldIndex = fields.findIndex((field) =>
+      contradiction.variableIds.includes(field.variable),
+    );
+    const anchorField = fieldIndex === -1 ? undefined : fields[fieldIndex];
+    if (!anchorField) continue;
+    const anchorName =
+      codebookVariables[anchorField.variable]?.name ?? anchorField.variable;
     addIssue({
-      message: `NetworkComposer field for "${offendingName}" renders it at a datetime resolution that no longer matches its sameAs group (${otherNames}); the interview would treat them as unequal.`,
+      message: `NetworkComposer field overrides for "${anchorName}" make its validation contradictory: ${contradiction.message}`,
       path: [...fieldsPath, fieldIndex, 'parameters'],
     });
   }
@@ -426,21 +431,22 @@ const ProtocolSchema = z
       }
 
       // 3b.ii. NetworkComposer: a stage field's own component/parameters
-      // overlay must not desynchronise a sameAs-joined datetime group's
-      // resolution (seventh-wave Finding 2) — the editor's sibling-overlay
-      // guard only runs in Architect, so an imported protocol can otherwise
-      // ship a stage that breaks at interview time. nodeForm and each edge
-      // type's form are checked independently: sameAs is scoped to a single
+      // overlay must not introduce a validation contradiction the codebook
+      // alone does not have (seventh-wave Finding 2, widened by tenth-wave
+      // Finding 1) — the editor's sibling-overlay guard only runs in
+      // Architect, so an imported protocol can otherwise ship a stage that
+      // breaks at interview time. nodeForm and each edge type's form are
+      // checked independently: validation references are scoped to a single
       // subject (R2/owningVariable), so they can never share a group.
       if (stage.type === 'NetworkComposer') {
-        validateComposerFieldResolutions(
+        validateComposerFieldContradictions(
           getVariablesForSubject(protocol.codebook, stage.subject),
           stage.nodeForm?.fields,
           ['stages', stageIndex, 'nodeForm', 'fields'],
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
         );
         stage.edges?.forEach((edge, edgeIndex) => {
-          validateComposerFieldResolutions(
+          validateComposerFieldContradictions(
             getVariablesForSubject(protocol.codebook, edge.subject),
             edge.form?.fields,
             ['stages', stageIndex, 'edges', edgeIndex, 'form', 'fields'],

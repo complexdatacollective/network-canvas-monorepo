@@ -9,6 +9,7 @@ import { findValidationContradictions } from './variables/validation-contradicti
 import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation.ts';
 import {
   DATE_RESOLUTION,
+  isIsoDate,
   isValidDateAtResolution,
 } from './variables/variable.ts';
 
@@ -105,6 +106,46 @@ const normalizeDatePickerParameters = (
   ) {
     delete parameters.min;
     delete parameters.max;
+  }
+};
+
+// The only keys `relativeDatePickerParametersSchema` (variable.ts) permits —
+// anything else fails that strictObject outright.
+const RELATIVE_DATE_PICKER_KEYS = new Set(['anchor', 'before', 'after']);
+
+/**
+ * Normalises a RelativeDatePicker `parameters` record in place, mirroring
+ * `normalizeDatePickerParameters` above: a real ISO `anchor` date (the shared
+ * `isIsoDate`) whose year is at least 1000, non-negative integer
+ * `before`/`after` offsets, and only those three keys — the schema is a
+ * strictObject, so one unrecognised key fails the whole object rather than
+ * just itself. Tenth-wave Finding 4: used by the codebook-variable datetime
+ * step below, which previously skipped RelativeDatePicker variables entirely,
+ * so a loose v7 parameters record (e.g. an anchor like '0500-01-01') migrated
+ * into a document the v8 schema rejects on import.
+ */
+const normalizeRelativeDatePickerParameters = (
+  parameters: Record<string, unknown>,
+): void => {
+  for (const key of Object.keys(parameters)) {
+    if (!RELATIVE_DATE_PICKER_KEYS.has(key)) delete parameters[key];
+  }
+  if (typeof parameters.anchor !== 'string' || !isIsoDate(parameters.anchor)) {
+    delete parameters.anchor;
+  } else if (Number(parameters.anchor.slice(0, 4)) < 1000) {
+    // Ninth-wave Finding 6: fresco-ui's runtime ymd arithmetic still
+    // two-digit-coerces a small year, so an anchor below 1000 already
+    // produced a wrong (1900s-coerced) window — deleting it reverts the
+    // picker to its interview-date default rather than keeping a value that
+    // was already broken at runtime.
+    delete parameters.anchor;
+  }
+  for (const bound of ['before', 'after'] as const) {
+    const value = parameters[bound];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+      delete parameters[bound];
+    }
   }
 };
 
@@ -219,6 +260,7 @@ const migrationV7toV8 = createMigration({
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed.
+- A datetime codebook variable's RelativeDatePicker \`anchor\` must be a real date using a four-digit year of 1000 or later — the interview's date arithmetic still coerces a smaller year, so such an anchor already produced a wrong window — and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -1171,9 +1213,14 @@ const migrationV7toV8 = createMigration({
         // DatePicker `min`/`max` must be real dates written exactly at the
         // picker's resolution with `min <= max`. Truncate finer-than-
         // resolution date bounds — the extra precision is authored intent —
-        // and strip anything else invalid. (Count-valued rule floors are
-        // stripped earlier, before the min-implies-required backfill — see
-        // that step's comment for why the order matters.)
+        // and strip anything else invalid. RelativeDatePicker variables get
+        // the equivalent treatment (tenth-wave Finding 4): a valid
+        // four-digit-year ISO `anchor`, non-negative integer offsets, and no
+        // stray keys — the v8 parameters schema is a strictObject, so a loose
+        // v7 record would otherwise fail validation after migration.
+        // (Count-valued rule floors are stripped earlier, before the
+        // min-implies-required backfill — see that step's comment for why the
+        // order matters.)
         paths: [
           'codebook.node.*.variables',
           'codebook.edge.*.variables',
@@ -1188,10 +1235,13 @@ const migrationV7toV8 = createMigration({
             if (!typedVariable) continue;
 
             if (typedVariable.type !== 'datetime') continue;
-            if (typedVariable.component === 'RelativeDatePicker') continue;
             const parameters = asRecord(typedVariable.parameters);
             if (!parameters) continue;
-            normalizeDatePickerParameters(parameters);
+            if (typedVariable.component === 'RelativeDatePicker') {
+              normalizeRelativeDatePickerParameters(parameters);
+            } else {
+              normalizeDatePickerParameters(parameters);
+            }
           }
           return variables;
         },

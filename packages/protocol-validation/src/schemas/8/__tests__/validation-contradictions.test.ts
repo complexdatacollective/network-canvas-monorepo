@@ -910,6 +910,102 @@ describe('findValidationContradictions — sixth-wave Finding 2: pinned-equal di
   });
 });
 
+describe('findValidationContradictions — tenth-wave Finding 2: pinned option-domain differentFrom', () => {
+  const categorical = (
+    name: string,
+    optionValues: (string | number)[],
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'categorical',
+    options: optionValues.map((value) => ({ label: String(value), value })),
+    validation,
+  });
+
+  const ordinal = (
+    name: string,
+    optionValues: (string | number)[],
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'ordinal',
+    options: optionValues.map((value) => ({ label: String(value), value })),
+    validation,
+  });
+
+  // minSelected at the distinct-value count forces selecting every option, so
+  // both sides are pinned to the same (multiset-compared) full set and
+  // differentFrom can never be satisfied.
+  it('rejects two all-options-forced categoricals with equal value sets joined by differentFrom', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['x', 'y'], { minSelected: 2, differentFrom: 'b' }),
+      b: categorical('b', ['x', 'y'], { minSelected: 2 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" must differ but their rules pin both to the same value',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  it('accepts the same pairing when the option value sets differ', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['x', 'y'], { minSelected: 2, differentFrom: 'b' }),
+        b: categorical('b', ['x', 'z'], { minSelected: 2 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The runtime compares categorical selections as order-insensitive
+  // multisets, so declaration order must not affect the pinned key.
+  it('rejects equal value sets declared in different orders', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['x', 'y'], { minSelected: 2, differentFrom: 'b' }),
+      b: categorical('b', ['y', 'x'], { minSelected: 2 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  it('accepts a pair whose minSelected leaves more than one possible selection', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['x', 'y'], { minSelected: 1, differentFrom: 'b' }),
+        b: categorical('b', ['x', 'y'], { minSelected: 1 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Ordinal is single-select, so one distinct option value (here via a
+  // duplicate-value entry pair, which the schema permits) pins the variable
+  // to that value outright — no minSelected involved.
+  it('rejects two single-distinct-value ordinals with the same value joined by differentFrom', () => {
+    const result = findValidationContradictions({
+      a: ordinal('a', ['x', 'x'], { differentFrom: 'b' }),
+      b: ordinal('b', ['x']),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  it('accepts single-distinct-value ordinals pinned to different values', () => {
+    expect(
+      findValidationContradictions({
+        a: ordinal('a', ['x'], { differentFrom: 'b' }),
+        b: ordinal('b', ['y']),
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe('findValidationContradictions — third-wave Finding 3: mixed-resolution datetime equality groups', () => {
   const datePicker = (
     name: string,
@@ -1010,12 +1106,12 @@ describe('findValidationContradictions — seventh-wave Finding 1: comparator-on
     );
   });
 
-  // A group containing BOTH a real sameAs edge (a-b) and a comparator-forced
-  // member (c, unioned in via a mutual >= edge with b) is still rejected: the
-  // sameAs edge alone is enough to require exact stored-string equality
-  // across the WHOLE group, regardless of which specific edge introduced the
-  // resolution mismatch.
-  it('rejects a mixed group containing both a sameAs edge and comparator-only members', () => {
+  // Tenth-wave Finding 5 supersedes the seventh-wave group scoping here: the
+  // sameAs edge only requires exact stored-string equality along its OWN
+  // connected component ({a, b}, uniformly year-resolution), while c is
+  // joined in solely by comparators, which Date-convert before comparing —
+  // so a = b = '2020', c = '2020-01-01' satisfies everything.
+  it('accepts a uniform sameAs component with comparator-joined members at another resolution', () => {
     const result = findValidationContradictions({
       a: datePicker('a', { type: 'year' }, { sameAs: 'b' }),
       b: datePicker(
@@ -1025,12 +1121,70 @@ describe('findValidationContradictions — seventh-wave Finding 1: comparator-on
       ),
       c: datePicker('c', {}, { greaterThanOrEqualToVariable: 'b' }),
     });
+    expect(result).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — tenth-wave Finding 5: resolution uniformity scopes to sameAs components', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // The hybrid counterexample: a sameAs b (both full resolution) is uniform
+  // within its sameAs component; year-resolution c is merged into the same
+  // EQUALITY group only via mutual non-strict comparators with b. The
+  // seventh-wave per-group flag rejected this, but a = b = '2020-01-01',
+  // c = '2020' satisfies the comparators under Date conversion — resolution
+  // uniformity must apply per sameAs-connected component, not per merged
+  // group.
+  it('accepts a uniform full-resolution sameAs pair with a comparator-joined year-resolution member', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', {}, { sameAs: 'b' }),
+      b: datePicker('b', {}, { greaterThanOrEqualToVariable: 'c' }),
+      c: datePicker(
+        'c',
+        { type: 'year' },
+        { greaterThanOrEqualToVariable: 'b' },
+      ),
+    });
+    expect(result).toEqual([]);
+  });
+
+  it('still rejects a direct cross-resolution sameAs edge, stripping that edge', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', {}, { sameAs: 'b' }),
+      b: datePicker('b', { type: 'year' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" are joined by sameAs but store dates at different resolutions',
+    );
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  // Only the CROSS-resolution edge is stripped: a's sameAs joins two
+  // full-resolution variables and survives. By transitivity, removing b's
+  // edge alone leaves every remaining connected piece uniform ({a, b} full;
+  // {c} year), so it is the minimal strip.
+  it('strips only the cross-resolution edge of a chain', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', {}, { sameAs: 'b' }),
+      b: datePicker('b', {}, { sameAs: 'c' }),
+      c: datePicker('c', { type: 'year' }),
+    });
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
-    expect(result[0]?.message).toContain(
-      'store dates at different resolutions',
-    );
+    expect(result[0]?.strips).toEqual([{ variableId: 'b', rule: 'sameAs' }]);
   });
 });
 

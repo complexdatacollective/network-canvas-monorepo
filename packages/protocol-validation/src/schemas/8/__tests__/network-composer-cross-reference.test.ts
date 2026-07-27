@@ -168,9 +168,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
     expect(result.success).toBe(false);
     if (result.success) return;
     const issue = result.error.issues.find((candidate) =>
-      candidate.message.includes(
-        'renders it at a datetime resolution that no longer matches',
-      ),
+      candidate.message.includes('make its validation contradictory'),
     );
     expect(issue?.path).toEqual([
       'stages',
@@ -206,9 +204,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
     expect(result.success).toBe(false);
     if (result.success) return;
     const issue = result.error.issues.find((candidate) =>
-      candidate.message.includes(
-        'renders it at a datetime resolution that no longer matches',
-      ),
+      candidate.message.includes('make its validation contradictory'),
     );
     expect(issue?.path).toEqual([
       'stages',
@@ -320,9 +316,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
     expect(result.success).toBe(false);
     if (result.success) return;
     const issue = result.error.issues.find((candidate) =>
-      candidate.message.includes(
-        'renders it at a datetime resolution that no longer matches',
-      ),
+      candidate.message.includes('make its validation contradictory'),
     );
     expect(issue?.path).toEqual([
       'stages',
@@ -352,9 +346,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
     expect(result.success).toBe(false);
     if (result.success) return;
     const issue = result.error.issues.find((candidate) =>
-      candidate.message.includes(
-        'renders it at a datetime resolution that no longer matches',
-      ),
+      candidate.message.includes('make its validation contradictory'),
     );
     expect(issue?.path).toEqual([
       'stages',
@@ -385,5 +377,141 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
       result.success,
       JSON.stringify(!result.success && result.error.issues),
     ).toBe(true);
+  });
+});
+
+describe('NetworkComposer stage-effective overlay contradictions (tenth-wave Finding 1)', () => {
+  // Same shape as composerProtocolWithDatetimes above, but with codebook
+  // variables that may carry their own DatePicker component/parameters so a
+  // test can stage a contradiction in the codebook itself.
+  const composerProtocolWith = (
+    variables: Record<string, Record<string, unknown>>,
+    stage: Record<string, unknown>,
+  ) => {
+    const base = createBaseProtocol();
+    return {
+      ...base,
+      codebook: {
+        ...base.codebook,
+        node: {
+          ...base.codebook.node,
+          person: {
+            ...base.codebook.node.person,
+            variables: {
+              ...base.codebook.node.person.variables,
+              ...variables,
+            },
+          },
+        },
+      },
+      stages: [stage],
+    };
+  };
+
+  const sameAsDatetimePair = {
+    event_a: {
+      name: 'EventA',
+      type: 'datetime',
+      validation: { sameAs: 'event_b' },
+    },
+    event_b: { name: 'EventB', type: 'datetime' },
+  };
+
+  // The old check only re-ran the mixed-resolution query on the overlay, so a
+  // same-resolution overlay contradiction of any other class slipped through:
+  // here both fields render full-resolution DatePickers, but their pinned
+  // (min = max) windows sit on different days, so the sameAs-joined pair can
+  // never actually hold equal values.
+  it('rejects fields pinning a sameAs-joined pair to disjoint fixed windows, anchored at the first field', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWith(sameAsDatetimePair, {
+        ...baseStage,
+        nodeForm: {
+          fields: [
+            {
+              variable: 'event_a',
+              component: ComponentTypes.DatePicker,
+              parameters: { min: '2020-01-01', max: '2020-01-01' },
+            },
+            {
+              variable: 'event_b',
+              component: ComponentTypes.DatePicker,
+              parameters: { min: '2020-06-01', max: '2020-06-01' },
+            },
+          ],
+        },
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('make its validation contradictory'),
+    );
+    expect(issue?.message).toContain('leave no value they can share');
+    expect(issue?.path).toEqual([
+      'stages',
+      0,
+      'nodeForm',
+      'fields',
+      0,
+      'parameters',
+    ]);
+  });
+
+  // A contradiction the bare codebook already exhibits is the record-level
+  // check's to report; the composer overlay (here replicating the codebook's
+  // own component/parameters exactly) must not add a second issue at the
+  // stage fields path.
+  it('does not double-report a contradiction that exists purely in the codebook', () => {
+    const contradictoryCodebookPair = {
+      event_a: {
+        name: 'EventA',
+        type: 'datetime',
+        component: ComponentTypes.DatePicker,
+        parameters: { min: '2020-01-01', max: '2020-01-01' },
+        validation: { sameAs: 'event_b' },
+      },
+      event_b: {
+        name: 'EventB',
+        type: 'datetime',
+        component: ComponentTypes.DatePicker,
+        parameters: { min: '2020-06-01', max: '2020-06-01' },
+      },
+    };
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWith(contradictoryCodebookPair, {
+        ...baseStage,
+        nodeForm: {
+          fields: [
+            {
+              variable: 'event_a',
+              component: ComponentTypes.DatePicker,
+              parameters: { min: '2020-01-01', max: '2020-01-01' },
+            },
+            {
+              variable: 'event_b',
+              component: ComponentTypes.DatePicker,
+              parameters: { min: '2020-06-01', max: '2020-06-01' },
+            },
+          ],
+        },
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    // The record-level path reports the codebook contradiction...
+    expect(
+      result.error.issues.some(
+        (candidate) =>
+          candidate.path.includes('codebook') &&
+          candidate.message.includes('leave no value they can share'),
+      ),
+    ).toBe(true);
+    // ...and the composer check stays silent for it.
+    expect(
+      result.error.issues.some((candidate) =>
+        candidate.path.includes('nodeForm'),
+      ),
+    ).toBe(false);
   });
 });

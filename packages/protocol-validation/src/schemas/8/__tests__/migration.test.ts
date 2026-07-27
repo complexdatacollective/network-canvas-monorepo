@@ -4418,19 +4418,80 @@ describe('Migration V7 to V8', () => {
       expect(variables?.a).toHaveProperty('parameters.min', '2020-01-01');
     });
 
-    it('leaves RelativeDatePicker parameters alone', () => {
+    // Tenth-wave Finding 4: the codebook step previously skipped
+    // RelativeDatePicker variables entirely, so a loose v7 parameters record
+    // (small-year anchor, negative or fractional offsets, stray keys)
+    // migrated into a document the v8 strictObject rejects on import.
+    it('preserves a fully valid RelativeDatePicker parameters record untouched', () => {
       const migratedRaw = migrateVariables({
         a: {
           name: 'relative',
           type: 'datetime',
           component: 'RelativeDatePicker',
-          parameters: { anchor: '2020-05-03', before: 180 },
+          parameters: { anchor: '2020-01-01', before: 30 },
         },
       });
       const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
-      expect(variables?.a).toHaveProperty('parameters.anchor', '2020-05-03');
+      expect(variables?.a).toHaveProperty('parameters.anchor', '2020-01-01');
+      expect(variables?.a).toHaveProperty('parameters.before', 30);
+    });
+
+    it('removes a RelativeDatePicker anchor whose year is below 1000', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'relative',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '0500-01-01', before: 30 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.anchor');
+      expect(variables?.a).toHaveProperty('parameters.before', 30);
+    });
+
+    it('removes negative and non-integer RelativeDatePicker offsets', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'relative_negative',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '2020-01-01', before: -5 },
+        },
+        b: {
+          name: 'relative_fractional',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '2020-01-01', after: 1.5 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.before');
+      expect(variables?.a).toHaveProperty('parameters.anchor', '2020-01-01');
+      expect(variables?.b).not.toHaveProperty('parameters.after');
+      expect(variables?.b).toHaveProperty('parameters.anchor', '2020-01-01');
+    });
+
+    it('removes a stray RelativeDatePicker parameter key', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'relative',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '2020-01-01', min: '2019-01-01' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
+      expect(variables?.a).toHaveProperty('parameters.anchor', '2020-01-01');
     });
 
     // Third-wave Finding 2: isValidCalendarDate must not fall into

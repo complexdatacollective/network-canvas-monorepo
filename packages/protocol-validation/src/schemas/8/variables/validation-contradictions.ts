@@ -68,8 +68,9 @@ const referenceRule = (
 };
 
 /**
- * A variable's distinct option values, for both the `minSelected` cardinality
- * check below and the categorical/ordinal `sameAs`-group check (Finding D).
+ * A variable's distinct option values, for the `minSelected` cardinality
+ * check below, the categorical/ordinal `sameAs`-group check (Finding D), and
+ * the ordinal/categorical arms of `pinnedValue` (tenth-wave Finding 2).
  * `undefined` — not an empty set — means "unusable for this check": raw
  * migration input may not have an `options` array at all, and that must skip
  * the check rather than be treated as zero options. `categoricalOptionsSchema`
@@ -328,36 +329,14 @@ function nonStrictComparatorComponents(edges: ComparatorEdge[]): string[][] {
   return components.filter((component) => component.length > 1);
 }
 
-/**
- * The equality groups a set of variables collapse into: the union of (a)
- * `sameAs` edges — symmetric and transitive, every chain member ends up
- * holding one value — and (b) strongly-connected components of the
- * non-strict comparator graph (Finding E), which force their members equal
- * the same way. Both sources feed one union-find so every downstream group
- * check (strict-comparator-in-group, differentFrom-in-group, interval and
- * option-set intersection) sees the combined membership.
- *
- * `hasSameAsEdgeOf` (seventh-wave Finding 1) records, per final group root,
- * whether at least one member's union into that group came from an actual
- * `sameAs` edge (as opposed to the group being formed purely from
- * comparator-forced SCCs). This distinction matters for checks that are only
- * valid for a REAL sameAs group — e.g. the mixed-resolution datetime check
- * below: sameAs compares two variables' STORED strings for exact equality,
- * so a resolution mismatch is fatal, but a comparator-forced equality group
- * is enforced by fresco-ui's compareVariables, which converts both sides to
- * `Date` before comparing — a coarser and a finer resolution CAN compare
- * equal there even though their stored strings never would.
- */
-function buildEqualityGroups(
-  variables: UnknownRecord,
-  edges: ComparatorEdge[],
-): {
-  groupOf: Map<string, string>;
-  membersOf: Map<string, string[]>;
-  hasSameAsEdgeOf: Map<string, boolean>;
-} {
+// Union-find with path compression, shared by the merged equality-group
+// builder below and the sameAs-component resolution pass (tenth-wave
+// Finding 5).
+const createUnionFind = (
+  ids: Iterable<string>,
+): { find: (id: string) => string; union: (a: string, b: string) => void } => {
   const parent = new Map<string, string>();
-  for (const id of Object.keys(variables)) parent.set(id, id);
+  for (const id of ids) parent.set(id, id);
 
   const find = (id: string): string => {
     let root = id;
@@ -382,13 +361,33 @@ function buildEqualityGroups(
     if (rootA !== rootB) parent.set(rootB, rootA);
   };
 
-  const sameAsSourceIds = new Set<string>();
+  return { find, union };
+};
+
+/**
+ * The equality groups a set of variables collapse into: the union of (a)
+ * `sameAs` edges — symmetric and transitive, every chain member ends up
+ * holding one value — and (b) strongly-connected components of the
+ * non-strict comparator graph (Finding E), which force their members equal
+ * the same way. Both sources feed one union-find so every downstream group
+ * check (strict-comparator-in-group, differentFrom-in-group, interval and
+ * option-set intersection) sees the combined membership. The datetime
+ * resolution check is the one exception: it scopes to sameAs-connected
+ * components, not these merged groups — see
+ * `mixedResolutionSameAsContradictions` (tenth-wave Finding 5).
+ */
+function buildEqualityGroups(
+  variables: UnknownRecord,
+  edges: ComparatorEdge[],
+): {
+  groupOf: Map<string, string>;
+  membersOf: Map<string, string[]>;
+} {
+  const { find, union } = createUnionFind(Object.keys(variables));
+
   for (const id of Object.keys(variables)) {
     const target = usableReference(variables, id, 'sameAs');
-    if (target !== undefined) {
-      union(target, id);
-      sameAsSourceIds.add(id);
-    }
+    if (target !== undefined) union(target, id);
   }
 
   for (const component of nonStrictComparatorComponents(edges)) {
@@ -407,15 +406,7 @@ function buildEqualityGroups(
     membersOf.set(root, members);
   }
 
-  const hasSameAsEdgeOf = new Map<string, boolean>();
-  for (const [root, members] of membersOf) {
-    hasSameAsEdgeOf.set(
-      root,
-      members.some((member) => sameAsSourceIds.has(member)),
-    );
-  }
-
-  return { groupOf, membersOf, hasSameAsEdgeOf };
+  return { groupOf, membersOf };
 }
 
 type GroupEdge = { strict: boolean; sources: VariableRuleRef[] };
@@ -763,19 +754,13 @@ type DateResolution = 'full' | 'month' | 'year';
 
 /**
  * A datetime variable's storage resolution, for the mixed-resolution
- * equality-group check (third-wave Finding 3). Only a DatePicker's own
- * `parameters.type` can coarsen it to 'month'/'year' — a RelativeDatePicker
- * always stores a full date, and a variable with no component configured yet
- * has no resolution of its own to disagree with, so both default to 'full'.
- *
- * Exported at module level ONLY (see `findMixedResolutionSameAsGroups`'s own
- * export comment below) so schema.ts's NetworkComposer stage-effective-
- * overlay check (seventh/ninth-wave Finding 2) can derive a composer FIELD's
- * own resolution the same way: `field.component`/`field.parameters` shares
- * enough shape with a variable record (both just read `.component` and
- * `.parameters`) that this function works unchanged on either.
+ * sameAs-component check (third-wave Finding 3, rescoped by tenth-wave
+ * Finding 5). Only a DatePicker's own `parameters.type` can coarsen it to
+ * 'month'/'year' — a RelativeDatePicker always stores a full date, and a
+ * variable with no component configured yet has no resolution of its own to
+ * disagree with, so both default to 'full'.
  */
-export const dateResolutionOf = (variable: unknown): DateResolution => {
+const dateResolutionOf = (variable: unknown): DateResolution => {
   const record = asRecord(variable);
   if (record?.component !== 'DatePicker') return 'full';
   const type = asRecord(record.parameters)?.type;
@@ -798,10 +783,24 @@ export const dateResolutionOf = (variable: unknown): DateResolution => {
  *     equal-looking min/max (e.g. both '2020') still leaves every day in
  *     that month/year selectable, so it is not a pinned value the way a
  *     full-resolution equal window is.
- *   - ordinal/categorical: an option SET, even a single-member one, is not
- *     pinned the same way — Finding 2 scopes this out; see the file-level
- *     option-set disjointness check (Finding D) for that family's own
- *     equality-group handling.
+ *   - ordinal (tenth-wave Finding 2): single-select, so a variable whose
+ *     options expose exactly ONE distinct value (duplicate-value entries
+ *     collapse, per `optionValues`) can only ever hold that value — and
+ *     ordinal's validation pick includes `differentFrom` (see
+ *     `ordinalValidations` in variable.ts), so the pairing is reachable. The
+ *     pinned value is the genuine primitive.
+ *   - categorical (tenth-wave Finding 2): a selection is a SET of distinct
+ *     option values, so a `minSelected` rule at or above the distinct-value
+ *     count forces selecting ALL of them — one possible answer (strictly
+ *     above the count is its own `minSelectedExceedsOptions` class, but >=
+ *     keeps this robust either way). The runtime compares categorical arrays
+ *     as order-insensitive multisets (fresco-ui's isMatchingValue), so the
+ *     pinned "value" is a canonical composite key over the distinct values,
+ *     typeof-tagged like isMatchingValue's own keying and sorted; the
+ *     'categorical:' prefix keeps it from ever colliding with another type's
+ *     pinned primitive. `maxSelected` is irrelevant here: it can only shrink
+ *     the feasible set further (a maxSelected below minSelected is its own
+ *     `invertedBounds` contradiction), never admit a second answer.
  *   - text/scalar/layout: no rule on these types ever collapses to one
  *     runtime value.
  */
@@ -824,6 +823,26 @@ const pinnedValue = (
       return window?.min !== undefined && window.min === window.max
         ? window.min
         : undefined;
+    }
+    case 'ordinal': {
+      const values = optionValues(variable);
+      return values?.size === 1 ? [...values][0] : undefined;
+    }
+    case 'categorical': {
+      const values = optionValues(variable);
+      const minSelected = numberRule(variable, 'minSelected');
+      if (
+        values === undefined ||
+        values.size === 0 ||
+        minSelected === undefined ||
+        minSelected < values.size
+      ) {
+        return undefined;
+      }
+      return `categorical:${[...values]
+        .map((value) => `${typeof value}:${String(value)}`)
+        .toSorted()
+        .join(KEY_SEPARATOR)}`;
     }
     default:
       return undefined;
@@ -921,10 +940,7 @@ function disjointBoundsContradictions(
 ): ValidationContradiction[] {
   const found: ValidationContradiction[] = [];
   const edges = comparatorEdges(variables);
-  const { groupOf, membersOf, hasSameAsEdgeOf } = buildEqualityGroups(
-    variables,
-    edges,
-  );
+  const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
 
   // Non-strict comparator edges whose both ends fall inside one equality
   // group, bucketed by that group — the rules a comparator-forced group's
@@ -1113,46 +1129,10 @@ function disjointBoundsContradictions(
       }
     }
 
-    // Third-wave Finding 3: an equality group of datetime variables whose
-    // members store dates at different resolutions can never hold equal
-    // stored strings even when their windows overlap ('2020' at year
-    // resolution can never equal '2020-05-03' at full resolution). Scoped to
-    // equality groups only — a bare comparator relationship (never unioned
-    // into a multi-member group) stays conservative, per the existing
-    // interval/option-set checks' own scoping. Seventh-wave Finding 1: ALSO
-    // scoped to groups containing an actual `sameAs` edge — sameAs compares
-    // stored strings exactly, but a comparator-only equality group is
-    // enforced by fresco-ui's compareVariables, which converts both sides to
-    // `Date` before comparing, so mismatched resolutions there can still
-    // compare equal.
-    if (members.length > 1 && hasSameAsEdgeOf.get(group)) {
-      const types = new Set(members.map((member) => typeOf(variables[member])));
-      const [onlyType] = types;
-      if (types.size === 1 && onlyType === 'datetime') {
-        const resolutions = new Set(
-          members.map((member) => dateResolutionOf(variables[member])),
-        );
-        if (resolutions.size > 1) {
-          const strips = groupEqualityStrips(
-            variables,
-            members,
-            internalNonStrictEdges,
-          );
-          const [first, ...rest] = strips;
-          if (first) {
-            const names = members.map(
-              (member) => `"${nameOf(member, variables[member])}"`,
-            );
-            found.push({
-              class: 'disjointBounds',
-              message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but store dates at different resolutions`,
-              variableIds: members,
-              strips: [first, ...rest],
-            });
-          }
-        }
-      }
-    }
+    // The datetime resolution-uniformity check deliberately does NOT run on
+    // these merged equality groups — see
+    // `mixedResolutionSameAsContradictions` (tenth-wave Finding 5) for the
+    // sameAs-component pass that replaced it.
   }
 
   for (const edge of edges) {
@@ -1195,37 +1175,87 @@ function disjointBoundsContradictions(
 }
 
 /**
- * The narrow slice of `disjointBoundsContradictions`' mixed-resolution
- * datetime check (third-wave Finding 3, scoped to sameAs-only groups by
- * seventh-wave Finding 1 above) as a standalone query: sameAs-joined datetime
- * equality groups whose members store dates at different resolutions.
+ * Third-wave Finding 3, rescoped by tenth-wave Finding 5: datetime variables
+ * required to hold the SAME STORED STRING can never do so when they store
+ * dates at different resolutions ('2020' at year resolution can never equal
+ * '2020-05-03' at full resolution). Only `sameAs` imposes stored-string
+ * equality — fresco-ui's isMatchingValue compares the two stored values
+ * exactly — so the uniformity requirement applies within sameAs-CONNECTED
+ * COMPONENTS (union-find over usable `sameAs` edges alone), NOT within the
+ * merged equality groups of `buildEqualityGroups`. A comparator-forced
+ * equality (a non-strict SCC) is enforced by compareVariables, which converts
+ * both sides to `Date` before comparing, so a coarser and a finer resolution
+ * CAN compare equal there. Seventh-wave Finding 1 had scoped the check to
+ * merged groups containing at least one `sameAs` edge, but that still
+ * over-flagged hybrids: A sameAs B (both full resolution) plus mutual
+ * non-strict comparators joining B to year-resolution C merges {A, B, C}
+ * into one group and rejected a satisfiable configuration
+ * (A = B = '2020-01-01', C = '2020' satisfies the comparators under Date
+ * conversion).
  *
- * Exported at module level ONLY — deliberately not re-exported from
- * `src/index.ts` or any barrel, since it is an internal analyser primitive,
- * not part of the package's public API. It exists so a caller can run this
- * one check against a variables record that is NOT the raw codebook, e.g.
- * schema.ts's NetworkComposer stage-effective-overlay check (seventh-wave
- * Finding 2) and its migration counterpart, both of which overlay a stage's
- * own composer-field `component`/`parameters` onto the codebook definitions
- * before checking — a stage can render a codebook variable at a different
- * resolution than the codebook variable's own default, and that stage-level
- * view is what actually reaches the interview runtime.
+ * The strips are exactly the cross-resolution `sameAs` edges (a declaring
+ * variable whose resolution differs from its target's): by transitivity,
+ * removing those leaves every remaining connected piece uniform, so this is
+ * the minimal strip — and a mismatched component always contains at least
+ * one such edge.
  */
-export function findMixedResolutionSameAsGroups(
+function mixedResolutionSameAsContradictions(
   variables: UnknownRecord,
-): { group: string; members: string[] }[] {
-  const edges = comparatorEdges(variables);
-  const { membersOf, hasSameAsEdgeOf } = buildEqualityGroups(variables, edges);
-  const found: { group: string; members: string[] }[] = [];
-  for (const [group, members] of membersOf) {
-    if (members.length < 2 || !hasSameAsEdgeOf.get(group)) continue;
+): ValidationContradiction[] {
+  const { find, union } = createUnionFind(Object.keys(variables));
+  const sameAsEdges: { source: string; target: string }[] = [];
+  for (const id of Object.keys(variables)) {
+    const target = usableReference(variables, id, 'sameAs');
+    if (target === undefined || target === id) continue;
+    sameAsEdges.push({ source: id, target });
+    union(target, id);
+  }
+
+  const membersOf = new Map<string, string[]>();
+  for (const id of Object.keys(variables)) {
+    const root = find(id);
+    const members = membersOf.get(root) ?? [];
+    members.push(id);
+    membersOf.set(root, members);
+  }
+
+  const found: ValidationContradiction[] = [];
+  for (const members of membersOf.values()) {
+    if (members.length < 2) continue;
+    // `usableReference` only ever joins same-typed variables, so the Set is
+    // defensive; one datetime member implies a datetime component.
     const types = new Set(members.map((member) => typeOf(variables[member])));
     const [onlyType] = types;
     if (types.size !== 1 || onlyType !== 'datetime') continue;
     const resolutions = new Set(
       members.map((member) => dateResolutionOf(variables[member])),
     );
-    if (resolutions.size > 1) found.push({ group, members });
+    if (resolutions.size < 2) continue;
+    const memberSet = new Set(members);
+    const strips = sameAsEdges
+      .filter(
+        (edge) =>
+          memberSet.has(edge.source) &&
+          dateResolutionOf(variables[edge.source]) !==
+            dateResolutionOf(variables[edge.target]),
+      )
+      .map(
+        (edge): VariableRuleRef => ({
+          variableId: edge.source,
+          rule: 'sameAs',
+        }),
+      );
+    const [first, ...rest] = strips;
+    if (!first) continue;
+    const names = members.map(
+      (member) => `"${nameOf(member, variables[member])}"`,
+    );
+    found.push({
+      class: 'disjointBounds',
+      message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but store dates at different resolutions`,
+      variableIds: members,
+      strips: [first, ...rest],
+    });
   }
   return found;
 }
@@ -1433,6 +1463,7 @@ export function findValidationContradictions(
     ...localContradictions(variables),
     ...referenceStructureContradictions(variables),
     ...disjointBoundsContradictions(variables),
+    ...mixedResolutionSameAsContradictions(variables),
     ...pinnedEqualContradictions,
     ...oddDifferentFromCycleContradictions(variables, claimedPairs),
   ];
