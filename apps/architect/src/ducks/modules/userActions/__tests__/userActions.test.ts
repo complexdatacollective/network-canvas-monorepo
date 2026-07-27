@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { z } from 'zod';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  ProtocolValidationError,
+} from '@codaco/protocol-validation';
 
 const capture = vi.fn();
 const setImportInProgress = vi.fn();
@@ -107,12 +109,11 @@ describe('userActions', () => {
       // A real codebook uniqueness failure embeds the raw variable record key
       // (a protocol-derived identifier) in its message.
       const secretVariableName = 'participant_hiv_status';
-      const error = new z.ZodError([
+      const error = new ProtocolValidationError([
         {
           code: 'custom',
           message: `Variable record key "${secretVariableName}" is reused across entity types`,
           path: ['codebook'],
-          input: undefined,
         },
       ]);
       validateProtocol.mockResolvedValue({ success: false, error });

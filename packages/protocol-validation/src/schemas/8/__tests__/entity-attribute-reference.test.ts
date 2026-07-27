@@ -22,7 +22,7 @@ describe('entityAttributeReference', () => {
 
   it('exposes the descriptor through an optional wrapper (meta on inner type)', () => {
     const schema = entityAttributeReference({ subject: 'ego' }).optional();
-    const inner = schema._zod.def.innerType as z.ZodType;
+    const inner = schema.unwrap();
     expect(getEntityAttributeReferenceDescriptor(inner)).toEqual({
       subject: 'ego',
     });
