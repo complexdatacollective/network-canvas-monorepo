@@ -41,7 +41,12 @@ import {
 } from './common/index.ts';
 import type { FilterRule } from './filters/index.ts';
 import { type Prompt, stageSchema } from './stages/index.ts';
-import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/index.ts';
+import type { ComposerFormField } from './stages/network-composer.ts';
+import {
+  NON_RENDERABLE_VARIABLE_TYPES,
+  type Variable,
+} from './variables/index.ts';
+import { findMixedResolutionSameAsGroups } from './variables/validation-contradictions.ts';
 
 // Operators that expect numeric values for comparison
 const NUMERIC_COMPARISON_OPERATORS = [
@@ -208,6 +213,73 @@ const validateFormFieldVariable = (
   }
 };
 
+/**
+ * NetworkComposer stage-effective-overlay resolution check (seventh-wave
+ * Finding 2). A NetworkComposer field carries its OWN `component`/
+ * `parameters` independent of the codebook variable (see
+ * network-composer.ts's ComposerFormFieldSchema), so a stage can render a
+ * sameAs-joined datetime variable at a different resolution than the
+ * codebook variable's own default — the per-subject codebook check
+ * (`rejectValidationContradictions`, run per node/edge type) never sees this,
+ * because it only ever looks at the codebook variables themselves. This
+ * builds the STAGE-EFFECTIVE view for one subject (codebook definitions with
+ * this stage's own composer fields' component/parameters overlaid on top,
+ * for exactly the variables those fields write) and re-runs the narrow
+ * sameAs-only mixed-resolution check (Finding 1's scoping) against it.
+ *
+ * Only the FIRST field (in field-array order) that both belongs to a
+ * mismatched group AND is a `DatePicker` field carrying a non-full
+ * `parameters.type` is reported — that is necessarily the field whose
+ * overlay introduced the mismatch (a `RelativeDatePicker` field is always
+ * full resolution, so it can never be the coarser outlier; and the codebook
+ * variables it is layered onto are themselves guaranteed resolution-
+ * consistent for any sameAs group the migration has already stripped, per
+ * Finding 1). This mirrors the migration's own first-offender field choice
+ * below.
+ */
+const validateComposerFieldResolutions = (
+  codebookVariables: Record<string, Variable>,
+  fields: ComposerFormField[] | undefined,
+  fieldsPath: (string | number)[],
+  addIssue: IssueReporter,
+) => {
+  if (!fields || fields.length === 0) return;
+
+  const overlaid: Record<string, unknown> = { ...codebookVariables };
+  for (const field of fields) {
+    const base = codebookVariables[field.variable];
+    if (!base) continue;
+    overlaid[field.variable] = {
+      ...base,
+      component: field.component,
+      parameters: field.parameters,
+    };
+  }
+
+  for (const group of findMixedResolutionSameAsGroups(overlaid)) {
+    const fieldIndex = fields.findIndex(
+      (field) =>
+        field.component === 'DatePicker' &&
+        group.members.includes(field.variable) &&
+        (field.parameters?.type === 'month' ||
+          field.parameters?.type === 'year'),
+    );
+    const offendingField = fieldIndex === -1 ? undefined : fields[fieldIndex];
+    if (!offendingField) continue;
+    const otherNames = group.members
+      .filter((member) => member !== offendingField.variable)
+      .map((member) => `"${codebookVariables[member]?.name ?? member}"`)
+      .join(', ');
+    const offendingName =
+      codebookVariables[offendingField.variable]?.name ??
+      offendingField.variable;
+    addIssue({
+      message: `NetworkComposer field for "${offendingName}" renders it at a datetime resolution that no longer matches its sameAs group (${otherNames}); the interview would treat them as unequal.`,
+      path: [...fieldsPath, fieldIndex, 'parameters'],
+    });
+  }
+};
+
 type CanonicalOption = { value: string; label: string };
 
 // True when a variable's options are exactly the canonical set (same members
@@ -343,6 +415,30 @@ const ProtocolSchema = z
               (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
             );
           }
+        });
+      }
+
+      // 3b.ii. NetworkComposer: a stage field's own component/parameters
+      // overlay must not desynchronise a sameAs-joined datetime group's
+      // resolution (seventh-wave Finding 2) — the editor's sibling-overlay
+      // guard only runs in Architect, so an imported protocol can otherwise
+      // ship a stage that breaks at interview time. nodeForm and each edge
+      // type's form are checked independently: sameAs is scoped to a single
+      // subject (R2/owningVariable), so they can never share a group.
+      if (stage.type === 'NetworkComposer') {
+        validateComposerFieldResolutions(
+          getVariablesForSubject(protocol.codebook, stage.subject),
+          stage.nodeForm?.fields,
+          ['stages', stageIndex, 'nodeForm', 'fields'],
+          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+        );
+        stage.edges?.forEach((edge, edgeIndex) => {
+          validateComposerFieldResolutions(
+            getVariablesForSubject(protocol.codebook, edge.subject),
+            edge.form?.fields,
+            ['stages', stageIndex, 'edges', edgeIndex, 'form', 'fields'],
+            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+          );
         });
       }
 

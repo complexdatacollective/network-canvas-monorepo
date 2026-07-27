@@ -336,6 +336,17 @@ function nonStrictComparatorComponents(edges: ComparatorEdge[]): string[][] {
  * the same way. Both sources feed one union-find so every downstream group
  * check (strict-comparator-in-group, differentFrom-in-group, interval and
  * option-set intersection) sees the combined membership.
+ *
+ * `hasSameAsEdgeOf` (seventh-wave Finding 1) records, per final group root,
+ * whether at least one member's union into that group came from an actual
+ * `sameAs` edge (as opposed to the group being formed purely from
+ * comparator-forced SCCs). This distinction matters for checks that are only
+ * valid for a REAL sameAs group — e.g. the mixed-resolution datetime check
+ * below: sameAs compares two variables' STORED strings for exact equality,
+ * so a resolution mismatch is fatal, but a comparator-forced equality group
+ * is enforced by fresco-ui's compareVariables, which converts both sides to
+ * `Date` before comparing — a coarser and a finer resolution CAN compare
+ * equal there even though their stored strings never would.
  */
 function buildEqualityGroups(
   variables: UnknownRecord,
@@ -343,6 +354,7 @@ function buildEqualityGroups(
 ): {
   groupOf: Map<string, string>;
   membersOf: Map<string, string[]>;
+  hasSameAsEdgeOf: Map<string, boolean>;
 } {
   const parent = new Map<string, string>();
   for (const id of Object.keys(variables)) parent.set(id, id);
@@ -370,9 +382,13 @@ function buildEqualityGroups(
     if (rootA !== rootB) parent.set(rootB, rootA);
   };
 
+  const sameAsSourceIds = new Set<string>();
   for (const id of Object.keys(variables)) {
     const target = usableReference(variables, id, 'sameAs');
-    if (target !== undefined) union(target, id);
+    if (target !== undefined) {
+      union(target, id);
+      sameAsSourceIds.add(id);
+    }
   }
 
   for (const component of nonStrictComparatorComponents(edges)) {
@@ -390,7 +406,16 @@ function buildEqualityGroups(
     members.push(id);
     membersOf.set(root, members);
   }
-  return { groupOf, membersOf };
+
+  const hasSameAsEdgeOf = new Map<string, boolean>();
+  for (const [root, members] of membersOf) {
+    hasSameAsEdgeOf.set(
+      root,
+      members.some((member) => sameAsSourceIds.has(member)),
+    );
+  }
+
+  return { groupOf, membersOf, hasSameAsEdgeOf };
 }
 
 type GroupEdge = { strict: boolean; sources: VariableRuleRef[] };
@@ -878,7 +903,10 @@ function disjointBoundsContradictions(
 ): ValidationContradiction[] {
   const found: ValidationContradiction[] = [];
   const edges = comparatorEdges(variables);
-  const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
+  const { groupOf, membersOf, hasSameAsEdgeOf } = buildEqualityGroups(
+    variables,
+    edges,
+  );
 
   // Non-strict comparator edges whose both ends fall inside one equality
   // group, bucketed by that group — the rules a comparator-forced group's
@@ -1021,8 +1049,13 @@ function disjointBoundsContradictions(
     // resolution can never equal '2020-05-03' at full resolution). Scoped to
     // equality groups only — a bare comparator relationship (never unioned
     // into a multi-member group) stays conservative, per the existing
-    // interval/option-set checks' own scoping.
-    if (members.length > 1) {
+    // interval/option-set checks' own scoping. Seventh-wave Finding 1: ALSO
+    // scoped to groups containing an actual `sameAs` edge — sameAs compares
+    // stored strings exactly, but a comparator-only equality group is
+    // enforced by fresco-ui's compareVariables, which converts both sides to
+    // `Date` before comparing, so mismatched resolutions there can still
+    // compare equal.
+    if (members.length > 1 && hasSameAsEdgeOf.get(group)) {
       const types = new Set(members.map((member) => typeOf(variables[member])));
       const [onlyType] = types;
       if (types.size === 1 && onlyType === 'datetime') {
@@ -1088,6 +1121,42 @@ function disjointBoundsContradictions(
     });
   }
 
+  return found;
+}
+
+/**
+ * The narrow slice of `disjointBoundsContradictions`' mixed-resolution
+ * datetime check (third-wave Finding 3, scoped to sameAs-only groups by
+ * seventh-wave Finding 1 above) as a standalone query: sameAs-joined datetime
+ * equality groups whose members store dates at different resolutions.
+ *
+ * Exported at module level ONLY — deliberately not re-exported from
+ * `src/index.ts` or any barrel, since it is an internal analyser primitive,
+ * not part of the package's public API. It exists so a caller can run this
+ * one check against a variables record that is NOT the raw codebook, e.g.
+ * schema.ts's NetworkComposer stage-effective-overlay check (seventh-wave
+ * Finding 2) and its migration counterpart, both of which overlay a stage's
+ * own composer-field `component`/`parameters` onto the codebook definitions
+ * before checking — a stage can render a codebook variable at a different
+ * resolution than the codebook variable's own default, and that stage-level
+ * view is what actually reaches the interview runtime.
+ */
+export function findMixedResolutionSameAsGroups(
+  variables: UnknownRecord,
+): { group: string; members: string[] }[] {
+  const edges = comparatorEdges(variables);
+  const { membersOf, hasSameAsEdgeOf } = buildEqualityGroups(variables, edges);
+  const found: { group: string; members: string[] }[] = [];
+  for (const [group, members] of membersOf) {
+    if (members.length < 2 || !hasSameAsEdgeOf.get(group)) continue;
+    const types = new Set(members.map((member) => typeOf(variables[member])));
+    const [onlyType] = types;
+    if (types.size !== 1 || onlyType !== 'datetime') continue;
+    const resolutions = new Set(
+      members.map((member) => dateResolutionOf(variables[member])),
+    );
+    if (resolutions.size > 1) found.push({ group, members });
+  }
   return found;
 }
 

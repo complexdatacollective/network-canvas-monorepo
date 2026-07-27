@@ -870,6 +870,78 @@ describe('findValidationContradictions — third-wave Finding 3: mixed-resolutio
   });
 });
 
+describe('findValidationContradictions — seventh-wave Finding 1: comparator-only equality groups skip the resolution check', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // RED case: a year-resolution and a full-resolution DatePicker unioned into
+  // one equality group ONLY by mutual >= comparators (no sameAs edge at all).
+  // fresco-ui's compareVariables converts both sides to Date before
+  // comparing, so this pair CAN compare equal at interview time even though
+  // their stored strings never would — the mixed-resolution check must not
+  // fire here. Explicit overlapping windows rule out the interval-emptiness
+  // check as an alternative explanation for a rejection.
+  it('accepts a year+full pair joined only by mutual comparators with overlapping windows', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2020' },
+        { greaterThanOrEqualToVariable: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2020-06-01', max: '2020-06-01' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toEqual([]);
+  });
+
+  it('still rejects the same year+full pair when joined by sameAs instead', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { sameAs: 'b' }),
+      b: datePicker('b', {}),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" are joined by sameAs but store dates at different resolutions',
+    );
+  });
+
+  // A group containing BOTH a real sameAs edge (a-b) and a comparator-forced
+  // member (c, unioned in via a mutual >= edge with b) is still rejected: the
+  // sameAs edge alone is enough to require exact stored-string equality
+  // across the WHOLE group, regardless of which specific edge introduced the
+  // resolution mismatch.
+  it('rejects a mixed group containing both a sameAs edge and comparator-only members', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { sameAs: 'b' }),
+      b: datePicker(
+        'b',
+        { type: 'year' },
+        { greaterThanOrEqualToVariable: 'c' },
+      ),
+      c: datePicker('c', {}, { greaterThanOrEqualToVariable: 'b' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.message).toContain(
+      'store dates at different resolutions',
+    );
+  });
+});
+
 describe('findValidationContradictions — fifth-wave Finding 3: fixed-anchor RelativeDatePicker windows are static', () => {
   const relativePicker = (
     name: string,

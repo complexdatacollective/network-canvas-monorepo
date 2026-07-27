@@ -5,7 +5,10 @@ import {
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
 import { ordinalColorSequence } from './common/prompts.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
-import { findValidationContradictions } from './variables/validation-contradictions.ts';
+import {
+  findMixedResolutionSameAsGroups,
+  findValidationContradictions,
+} from './variables/validation-contradictions.ts';
 import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation.ts';
 import {
   DATE_RESOLUTION,
@@ -132,27 +135,38 @@ const normalizeRelativeDatePickerParameters = (
   }
 };
 
+// Raw-JSON equivalent of validation-helpers.ts's `getVariablesForSubject`,
+// used by migration steps that run on unparsed v7 input rather than a typed
+// Codebook.
+const codebookVariablesForSubject = (
+  codebook: unknown,
+  subject: unknown,
+): Record<string, unknown> => {
+  const cb = asRecord(codebook);
+  const subj = asRecord(subject);
+  if (!cb || !subj) return {};
+  if (subj.entity === 'ego') {
+    return asRecord(asRecord(cb.ego)?.variables) ?? {};
+  }
+  if (
+    (subj.entity === 'node' || subj.entity === 'edge') &&
+    typeof subj.type === 'string'
+  ) {
+    return (
+      asRecord(asRecord(asRecord(cb[subj.entity])?.[subj.type])?.variables) ??
+      {}
+    );
+  }
+  return {};
+};
+
 const codebookVariable = (
   codebook: unknown,
   subject: unknown,
   variableId: unknown,
 ): Record<string, unknown> | null => {
   if (typeof variableId !== 'string') return null;
-  const cb = asRecord(codebook);
-  const subj = asRecord(subject);
-  if (!cb || !subj) return null;
-  let variables: Record<string, unknown> | null = null;
-  if (subj.entity === 'ego') {
-    variables = asRecord(asRecord(cb.ego)?.variables);
-  } else if (
-    (subj.entity === 'node' || subj.entity === 'edge') &&
-    typeof subj.type === 'string'
-  ) {
-    variables = asRecord(
-      asRecord(asRecord(cb[subj.entity])?.[subj.type])?.variables,
-    );
-  }
-  return variables ? asRecord(variables[variableId]) : null;
+  return asRecord(codebookVariablesForSubject(codebook, subject)[variableId]);
 };
 
 const codebookVariableName = (
@@ -232,6 +246,7 @@ const migrationV7toV8 = createMigration({
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed.
+- A NetworkComposer stage field can no longer render one of a \`sameAs\`-joined pair of datetime variables at a different date resolution than the other — the interview compares their stored values as exact strings, so a mismatched resolution can never actually satisfy \`sameAs\` even when the underlying codebook variables agree. The offending field's DatePicker resolution override is removed, reverting it to full resolution.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -1285,6 +1300,108 @@ const migrationV7toV8 = createMigration({
             }
           }
           return variables;
+        },
+      },
+      {
+        // Seventh-wave Finding 2: a NetworkComposer field's own component/
+        // parameters overlay (see network-composer.ts's ComposerFormFieldSchema)
+        // renders a codebook variable independently of the codebook
+        // variable's own rendering, so a stage can desynchronise a
+        // sameAs-joined datetime group's resolution even when the codebook
+        // variables themselves are consistent — the codebook-level strip
+        // step above only ever looks at the codebook. Must run AFTER that
+        // step (so the baseline it overlays onto is itself already
+        // resolution-consistent for any sameAs group — Finding 1 strips a
+        // codebook-only mismatch's sameAs entirely) and after the composer
+        // field DatePicker/RelativeDatePicker parameter-normalisation step
+        // above (so `parameters.type` values are already valid). nodeForm
+        // and each edge type's form are resolved independently: sameAs never
+        // crosses subjects (R2/owningVariable scoping), so a node-subject
+        // group and an edge-subject group can never mix.
+        //
+        // The field whose own DatePicker `parameters.type` is coarser than
+        // full is always the offender when a mismatch appears here (a
+        // RelativeDatePicker field is always full resolution, and the
+        // codebook baseline this overlays onto is already consistent by the
+        // time this step runs) — deleting that `type` reverts the field to
+        // full resolution, its own default. More than one field in a group
+        // can carry a diverging override, so — mirroring the codebook-level
+        // strip loop above — this re-checks and strips the first offender
+        // repeatedly to a fixpoint rather than assuming one pass suffices.
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage || typedStage.type !== 'NetworkComposer') {
+            return stage;
+          }
+
+          const resolveOverlay = (subject: unknown, fields: unknown): void => {
+            if (!Array.isArray(fields)) return;
+            const codebookVariables = codebookVariablesForSubject(
+              codebook,
+              subject,
+            );
+            const maxPasses = fields.length + 1;
+            for (let pass = 0; pass < maxPasses; pass++) {
+              const overlaid: Record<string, unknown> = {
+                ...codebookVariables,
+              };
+              for (const field of fields) {
+                const typedField = asRecord(field);
+                const variableId = typedField?.variable;
+                if (
+                  typeof variableId !== 'string' ||
+                  !(variableId in codebookVariables)
+                ) {
+                  continue;
+                }
+                overlaid[variableId] = {
+                  ...asRecord(codebookVariables[variableId]),
+                  component: typedField?.component,
+                  parameters: typedField?.parameters,
+                };
+              }
+
+              const [mismatch] = findMixedResolutionSameAsGroups(overlaid);
+              if (!mismatch) break;
+
+              const offendingField = fields.find((field) => {
+                const typedField = asRecord(field);
+                if (typedField?.component !== 'DatePicker') return false;
+                if (
+                  typeof typedField.variable !== 'string' ||
+                  !mismatch.members.includes(typedField.variable)
+                ) {
+                  return false;
+                }
+                const type = asRecord(typedField.parameters)?.type;
+                return type === 'month' || type === 'year';
+              });
+              const typedOffendingField = asRecord(offendingField);
+              const parameters = asRecord(typedOffendingField?.parameters);
+              if (!typedOffendingField || !parameters) break;
+              delete parameters.type;
+              if (Object.keys(parameters).length === 0) {
+                delete typedOffendingField.parameters;
+              }
+            }
+          };
+
+          resolveOverlay(
+            typedStage.subject,
+            asRecord(typedStage.nodeForm)?.fields,
+          );
+          if (Array.isArray(typedStage.edges)) {
+            for (const edge of typedStage.edges) {
+              const typedEdge = asRecord(edge);
+              if (!typedEdge) continue;
+              resolveOverlay(
+                typedEdge.subject,
+                asRecord(typedEdge.form)?.fields,
+              );
+            }
+          }
+          return stage;
         },
       },
       {

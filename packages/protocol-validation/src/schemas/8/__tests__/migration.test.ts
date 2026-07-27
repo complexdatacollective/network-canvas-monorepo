@@ -4721,6 +4721,197 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('NetworkComposer stage-effective overlay resolution (seventh-wave Finding 2)', () => {
+    // The codebook variables themselves are resolution-consistent (both
+    // default to full resolution — neither carries its own DatePicker
+    // `parameters`), so only a STAGE field's own overlay can desynchronise
+    // them.
+    const composerCodebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' as const },
+          variables: {
+            name: { name: 'Name', type: 'text', component: 'Text' },
+            layout_position: { name: 'LayoutPosition', type: 'layout' },
+            event_a: {
+              name: 'EventA',
+              type: 'datetime',
+              validation: { sameAs: 'event_b' },
+            },
+            event_b: { name: 'EventB', type: 'datetime' },
+          },
+        },
+      },
+      edge: {
+        knows: {
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+          variables: {
+            edge_event_a: {
+              name: 'EdgeEventA',
+              type: 'datetime',
+              validation: { sameAs: 'edge_event_b' },
+            },
+            edge_event_b: { name: 'EdgeEventB', type: 'datetime' },
+          },
+        },
+      },
+    };
+
+    const composerStage = (overrides: Record<string, unknown>) => ({
+      id: 's1',
+      label: 'Compose',
+      type: 'NetworkComposer',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'name',
+      layoutVariable: 'layout_position',
+      background: { concentricCircles: 4 },
+      ...overrides,
+    });
+
+    const migrateStages = (stages: unknown[]) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: composerCodebook,
+        stages,
+      };
+      return migrationV7toV8.migrate(v7Protocol as unknown as Protocol<7>, {
+        name: 'Test Protocol',
+      });
+    };
+
+    it('strips a nodeForm field override that desyncs a sameAs group, and the result parses', () => {
+      const migratedRaw = migrateStages([
+        composerStage({
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                component: 'DatePicker',
+                parameters: { type: 'year' },
+              },
+            ],
+          },
+        }),
+      ]);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const field = stage.nodeForm?.fields?.[0];
+      expect(field).not.toHaveProperty('parameters.type');
+    });
+
+    it('strips an edge form field override that desyncs a sameAs group, and the result parses', () => {
+      const migratedRaw = migrateStages([
+        composerStage({
+          edges: [
+            {
+              id: 'e1',
+              subject: { entity: 'edge', type: 'knows' },
+              form: {
+                fields: [
+                  {
+                    variable: 'edge_event_a',
+                    component: 'DatePicker',
+                    parameters: { type: 'month' },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      ]);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const field = stage.edges?.[0]?.form?.fields?.[0];
+      expect(field).not.toHaveProperty('parameters.type');
+    });
+
+    // Both fields diverge to a DIFFERENT non-full resolution — one strip
+    // alone would leave the pair still mismatched (year vs month), so this
+    // exercises the fixpoint loop.
+    it('strips both fields when each overrides to a different non-full resolution', () => {
+      const migratedRaw = migrateStages([
+        composerStage({
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                component: 'DatePicker',
+                parameters: { type: 'year' },
+              },
+              {
+                variable: 'event_b',
+                component: 'DatePicker',
+                parameters: { type: 'month' },
+              },
+            ],
+          },
+        }),
+      ]);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const fields = stage.nodeForm?.fields;
+      expect(fields?.[0]).not.toHaveProperty('parameters.type');
+      expect(fields?.[1]).not.toHaveProperty('parameters.type');
+    });
+
+    it('leaves a resolution-consistent overlay across both sameAs-joined fields untouched', () => {
+      const migratedRaw = migrateStages([
+        composerStage({
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                component: 'DatePicker',
+                parameters: { type: 'year' },
+              },
+              {
+                variable: 'event_b',
+                component: 'DatePicker',
+                parameters: { type: 'year' },
+              },
+            ],
+          },
+        }),
+      ]);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      if (!parsed.success) return;
+      const [stage] = parsed.data.stages;
+      expect(stage?.type).toBe('NetworkComposer');
+      if (stage?.type !== 'NetworkComposer') return;
+      const fields = stage.nodeForm?.fields;
+      expect(fields?.[0]).toHaveProperty('parameters.type', 'year');
+      expect(fields?.[1]).toHaveProperty('parameters.type', 'year');
+    });
+  });
+
   describe('contradictory validation rule removal', () => {
     const migrateVariables = (variables: Record<string, unknown>) => {
       const v7Protocol = {
