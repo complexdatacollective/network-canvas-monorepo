@@ -221,3 +221,139 @@ describe('findValidationContradictions — reference structure', () => {
     ]);
   });
 });
+
+describe('findValidationContradictions — bound disjointness', () => {
+  it('reports a comparator whose bounds are disjoint, stripping the comparator only', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'number',
+        validation: { minValue: 10, lessThanVariable: 'b' },
+      },
+      b: { name: 'b', type: 'number', validation: { maxValue: 5 } },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "a": lessThanVariable "b" can never be satisfied because their value ranges do not overlap',
+    );
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  it('treats touching bounds as infeasible for strict, feasible for non-strict', () => {
+    const strict = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'number',
+        validation: { maxValue: 5, greaterThanVariable: 'b' },
+      },
+      b: { name: 'b', type: 'number', validation: { minValue: 5 } },
+    });
+    expect(strict).toHaveLength(1);
+
+    const nonStrict = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'number',
+        validation: { maxValue: 5, greaterThanOrEqualToVariable: 'b' },
+      },
+      b: { name: 'b', type: 'number', validation: { minValue: 5 } },
+    });
+    expect(nonStrict).toEqual([]);
+  });
+
+  it('reports a sameAs group with no shared value, stripping its sameAs rules', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'number',
+        validation: { maxValue: 5, sameAs: 'b' },
+      },
+      b: { name: 'b', type: 'number', validation: { minValue: 10 } },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" are joined by sameAs but their rules leave no value they can share',
+    );
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  it('intersects text length ranges across a sameAs group', () => {
+    const result = findValidationContradictions({
+      a: { name: 'a', type: 'text', validation: { maxLength: 3, sameAs: 'b' } },
+      b: { name: 'b', type: 'text', validation: { minLength: 10 } },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  it('compares datetime windows across a comparator edge', () => {
+    const disjoint = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', max: '2020' },
+        validation: { greaterThanVariable: 'b' },
+      },
+      b: {
+        name: 'b',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', min: '2021' },
+      },
+    });
+    expect(disjoint).toHaveLength(1);
+    expect(disjoint[0]?.class).toBe('disjointBounds');
+
+    // Same year at year resolution: expands to Jan 1 vs Dec 31, so a strict
+    // comparison is conservatively considered satisfiable.
+    const overlapping = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', max: '2020' },
+        validation: { greaterThanVariable: 'b' },
+      },
+      b: {
+        name: 'b',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', min: '2020' },
+      },
+    });
+    expect(overlapping).toEqual([]);
+  });
+
+  it('does not double-report edges touching an already-empty sameAs group', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'number',
+        validation: { maxValue: 5, sameAs: 'b', lessThanVariable: 'c' },
+      },
+      b: { name: 'b', type: 'number', validation: { minValue: 10 } },
+      c: { name: 'c', type: 'number', validation: { maxValue: 0 } },
+    });
+    expect(result.map((c) => c.class)).toEqual(['disjointBounds']);
+  });
+
+  it('accepts unbounded and overlapping ranges', () => {
+    expect(
+      findValidationContradictions({
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: { minValue: 0, lessThanVariable: 'b' },
+        },
+        b: { name: 'b', type: 'number', validation: { maxValue: 100 } },
+        c: { name: 'c', type: 'scalar', validation: { lessThanVariable: 'd' } },
+        d: { name: 'd', type: 'scalar' },
+      }),
+    ).toEqual([]);
+  });
+});

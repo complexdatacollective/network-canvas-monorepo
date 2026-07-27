@@ -417,11 +417,186 @@ function referenceStructureContradictions(
   return found;
 }
 
+type Interval = { min?: number; max?: number };
+
+const DATE_PART_PATTERN = /^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/;
+
+/**
+ * A date bound as a UTC day number. A partial date expands to its earliest
+ * day for a `min` bound and its latest for a `max` bound, so coarse
+ * resolutions are compared conservatively.
+ */
+const dayNumber = (value: string, edge: 'min' | 'max'): number | undefined => {
+  const match = DATE_PART_PATTERN.exec(value);
+  if (!match?.[1]) return undefined;
+  const year = Number(match[1]);
+  const month =
+    match[2] !== undefined ? Number(match[2]) : edge === 'min' ? 1 : 12;
+  // Day 0 of the following month is the last day of `month`.
+  const day =
+    match[3] !== undefined
+      ? Number(match[3])
+      : edge === 'min'
+        ? 1
+        : new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return Date.UTC(year, month - 1, day) / 86_400_000;
+};
+
+const dateWindowInterval = (variable: unknown): Interval | undefined => {
+  const record = asRecord(variable);
+  // RelativeDatePicker windows are anchored to the interview date and
+  // contribute no static bounds.
+  if (!record || record.component === 'RelativeDatePicker') return undefined;
+  const parameters = asRecord(record.parameters);
+  if (!parameters) return undefined;
+  const min =
+    typeof parameters.min === 'string'
+      ? dayNumber(parameters.min, 'min')
+      : undefined;
+  const max =
+    typeof parameters.max === 'string'
+      ? dayNumber(parameters.max, 'max')
+      : undefined;
+  if (min === undefined && max === undefined) return undefined;
+  return { min, max };
+};
+
+const intervalOf = (variable: unknown): Interval | undefined => {
+  switch (typeOf(variable)) {
+    case 'number':
+      return {
+        min: numberRule(variable, 'minValue'),
+        max: numberRule(variable, 'maxValue'),
+      };
+    case 'text':
+      return {
+        min: numberRule(variable, 'minLength'),
+        max: numberRule(variable, 'maxLength'),
+      };
+    case 'categorical':
+      return {
+        min: numberRule(variable, 'minSelected'),
+        max: numberRule(variable, 'maxSelected'),
+      };
+    case 'datetime':
+      return dateWindowInterval(variable);
+    default:
+      return undefined;
+  }
+};
+
+const intersect = (
+  a: Interval | undefined,
+  b: Interval | undefined,
+): Interval | undefined => {
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    min:
+      a.min === undefined
+        ? b.min
+        : b.min === undefined
+          ? a.min
+          : Math.max(a.min, b.min),
+    max:
+      a.max === undefined
+        ? b.max
+        : b.max === undefined
+          ? a.max
+          : Math.min(a.max, b.max),
+  };
+};
+
+const isEmptyInterval = (interval: Interval | undefined): boolean =>
+  interval?.min !== undefined &&
+  interval.max !== undefined &&
+  interval.min > interval.max;
+
+function disjointBoundsContradictions(
+  variables: UnknownRecord,
+): ValidationContradiction[] {
+  const found: ValidationContradiction[] = [];
+  const { groupOf, membersOf } = buildSameAsGroups(variables);
+
+  const groupIntervals = new Map<string, Interval | undefined>();
+  for (const [group, members] of membersOf) {
+    let interval: Interval | undefined;
+    for (const member of members) {
+      interval = intersect(interval, intervalOf(variables[member]));
+    }
+    groupIntervals.set(group, interval);
+
+    if (members.length > 1 && isEmptyInterval(interval)) {
+      const strips = members
+        .filter(
+          (member) =>
+            usableReference(variables, member, 'sameAs') !== undefined,
+        )
+        .map(
+          (member): VariableRuleRef => ({
+            variableId: member,
+            rule: 'sameAs',
+          }),
+        );
+      const [first, ...rest] = strips;
+      if (!first) continue;
+      const names = members.map(
+        (member) => `"${nameOf(member, variables[member])}"`,
+      );
+      found.push({
+        class: 'disjointBounds',
+        message: `Variables ${names.join(', ')} are joined by sameAs but their rules leave no value they can share`,
+        variableIds: members,
+        strips: [first, ...rest],
+      });
+    }
+  }
+
+  for (const edge of comparatorEdges(variables)) {
+    const upperGroup = groupOf.get(edge.upper);
+    const lowerGroup = groupOf.get(edge.lower);
+    if (
+      upperGroup === undefined ||
+      lowerGroup === undefined ||
+      upperGroup === lowerGroup
+    ) {
+      continue;
+    }
+    const upperInterval = groupIntervals.get(upperGroup);
+    const lowerInterval = groupIntervals.get(lowerGroup);
+    // An already-empty group is reported above; its sameAs strips resolve it
+    // first, so edges touching it are not judged against nonsense bounds.
+    if (isEmptyInterval(upperInterval) || isEmptyInterval(lowerInterval)) {
+      continue;
+    }
+    if (upperInterval?.max === undefined || lowerInterval?.min === undefined) {
+      continue;
+    }
+    const infeasible = edge.strict
+      ? upperInterval.max <= lowerInterval.min
+      : upperInterval.max < lowerInterval.min;
+    if (!infeasible) continue;
+    const [first, ...rest] = edge.sources;
+    if (!first) continue;
+    const ownerName = nameOf(first.variableId, variables[first.variableId]);
+    const otherId = first.variableId === edge.upper ? edge.lower : edge.upper;
+    found.push({
+      class: 'disjointBounds',
+      message: `Variable "${ownerName}": ${first.rule} "${nameOf(otherId, variables[otherId])}" can never be satisfied because their value ranges do not overlap`,
+      variableIds: [edge.upper, edge.lower],
+      strips: [first, ...rest],
+    });
+  }
+
+  return found;
+}
+
 export function findValidationContradictions(
   variables: UnknownRecord,
 ): ValidationContradiction[] {
   return [
     ...localContradictions(variables),
     ...referenceStructureContradictions(variables),
+    ...disjointBoundsContradictions(variables),
   ];
 }
