@@ -2573,6 +2573,40 @@ describe('generateEntityAttributes', () => {
     }
   });
 
+  it('judges differentFrom on a categorical by multiset, matching the runtime', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'categorical',
+          options: [
+            { label: 'X', value: 'x' },
+            { label: 'Y', value: 'y' },
+          ],
+          validation: { minSelected: 2, maxSelected: 2 },
+        },
+        b: {
+          name: 'B',
+          type: 'categorical',
+          options: [
+            { label: 'X', value: 'x' },
+            { label: 'Y', value: 'y' },
+          ],
+          validation: { minSelected: 2, maxSelected: 2, differentFrom: 'a' },
+        },
+      },
+      TODAY,
+    );
+
+    // Both variables must select both options, so every possible value of `b`
+    // is the same multiset as `a`. There is no satisfying assignment, and the
+    // redraw bound must be reached rather than a reordered array being
+    // accepted as "different" — the runtime would reject that.
+    expect(() =>
+      generateEntityAttributes(entity, makeContext(), 'node:person', 0),
+    ).toThrow(/Could not draw a satisfying value/);
+  });
+
   it('satisfies greaterThanVariable', () => {
     const entity = buildEntityConstraints(
       {
@@ -2723,8 +2757,12 @@ import type { VariableValue } from '@codaco/shared-consts';
  * first, because the runtime's `isMatchingValue` compares categorical
  * selections as an order-insensitive multiset — two orderings of the same
  * options are the same value and must not both be issued.
+ *
+ * Exported because `differentFrom` must judge sameness by the same rule:
+ * comparing raw JSON would call ['a','b'] and ['b','a'] different, and the
+ * runtime would then reject the value the generator thought was fine.
  */
-function keyFor(value: VariableValue): string {
+export function valueKey(value: VariableValue): string {
   if (Array.isArray(value)) {
     const primitives = value.every(
       (item) =>
@@ -2753,14 +2791,14 @@ export class UniqueRegistry {
 
   isTaken(scope: string, variableId: string, value: VariableValue): boolean {
     return (
-      this.used.get(this.slot(scope, variableId))?.has(keyFor(value)) ?? false
+      this.used.get(this.slot(scope, variableId))?.has(valueKey(value)) ?? false
     );
   }
 
   claim(scope: string, variableId: string, value: VariableValue): void {
     const slot = this.slot(scope, variableId);
     const values = this.used.get(slot) ?? new Set<string>();
-    values.add(keyFor(value));
+    values.add(valueKey(value));
     this.used.set(slot, values);
   }
 
@@ -2783,6 +2821,7 @@ import type { VariableValue } from '@codaco/shared-consts';
 import type { GenerationContext } from '../context';
 import { resolveGenerationOrder } from './dependencyOrder';
 import { COMPARISON_RULES, type EntityConstraints } from './types';
+import { valueKey } from './uniqueRegistry';
 
 const DIRECTION_BY_RULE = {
   greaterThanVariable: 'greater',
@@ -2800,7 +2839,7 @@ const DIRECTION_BY_RULE = {
 const MAX_REDRAWS = 1000;
 
 function valuesMatch(a: VariableValue, b: VariableValue): boolean {
-  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  return valueKey(a) === valueKey(b);
 }
 
 export function generateEntityAttributes(
