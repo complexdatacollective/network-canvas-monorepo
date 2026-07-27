@@ -1721,3 +1721,213 @@ describe('a unique value two roster rows share', () => {
     expect(failures).toEqual([]);
   });
 });
+
+/**
+ * A FamilyPedigree stage marks exactly one of its nodes as ego — the runtime's
+ * `egoCellTransform` sets the flag true on the proband and explicitly false on
+ * everybody else — so the flag is a third value fixed for a node rather than
+ * drawn for it, alongside a roster row's and a prompt's `additionalAttributes`.
+ * A rule spanning it and a drawn variable breaks the same way if the node is
+ * generated first and the flag written over the top afterwards.
+ */
+describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
+  /** A pedigree stage marking its first node ego through `isEgo`. */
+  const pedigreeStage = {
+    id: 'stage-pedigree',
+    type: 'FamilyPedigree',
+    label: 'Family',
+    nodeConfig: {
+      type: 'person',
+      nodeLabelVariable: 'name',
+      egoVariable: 'isEgo',
+    },
+    edgeConfig: { type: 'family' },
+  } as unknown as Stage;
+
+  /** A person carrying a display name and whatever a case declares of its own. */
+  function pedigreeCodebook(variables: Record<string, unknown>): Codebook {
+    return {
+      ...personCodebook({ name: { name: 'Name', type: 'text' }, ...variables }),
+      edge: { family: { color: 'edge-color-seq-1', variables: {} } },
+    } as unknown as Codebook;
+  }
+
+  function pedigreeNodes(
+    seed: number,
+    codebook: Codebook,
+    stages: Stage[] = [pedigreeStage],
+  ): NcNode[] {
+    const { network } = generateNetwork({ seed, codebook, stages });
+    return network.nodes;
+  }
+
+  function attributesOf(nodes: NcNode[]): Record<string, unknown>[] {
+    return nodes.map((node) => node[entityAttributesProperty]);
+  }
+
+  /** One node ego and the rest not, which every case below relies on. */
+  function complainAboutTheFlag(
+    failures: string[],
+    seed: number,
+    nodes: NcNode[],
+  ): void {
+    complain(
+      failures,
+      nodes.length > 1,
+      () => `seed ${seed}: ${nodes.length} pedigree nodes, not several`,
+    );
+    attributesOf(nodes).forEach((attrs, index) => {
+      complain(
+        failures,
+        attrs.isEgo === (index === 0),
+        () =>
+          `seed ${seed}: node ${index} carries isEgo ${String(attrs.isEgo)}`,
+      );
+    });
+  }
+
+  it(`holds a sameAs pair equal to the ego flag, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    const codebook = pedigreeCodebook({
+      isEgo: { name: 'Is ego', type: 'boolean' },
+      flag: { name: 'Flag', type: 'boolean', validation: { sameAs: 'isEgo' } },
+    });
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const nodes = pedigreeNodes(seed, codebook);
+      complainAboutTheFlag(failures, seed, nodes);
+
+      attributesOf(nodes).forEach((attrs, index) => {
+        complain(
+          failures,
+          attrs.flag === attrs.isEgo,
+          () =>
+            `seed ${seed}: node ${index} flag ${String(attrs.flag)} is not isEgo ${String(attrs.isEgo)}`,
+        );
+      });
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`holds a differentFrom pair apart from the ego flag, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    const codebook = pedigreeCodebook({
+      isEgo: { name: 'Is ego', type: 'boolean' },
+      flag: {
+        name: 'Flag',
+        type: 'boolean',
+        validation: { differentFrom: 'isEgo' },
+      },
+    });
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const nodes = pedigreeNodes(seed, codebook);
+      complainAboutTheFlag(failures, seed, nodes);
+
+      attributesOf(nodes).forEach((attrs, index) => {
+        complain(
+          failures,
+          attrs.flag !== attrs.isEgo,
+          () =>
+            `seed ${seed}: node ${index} flag ${String(attrs.flag)} equals isEgo ${String(attrs.isEgo)}`,
+        );
+      });
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`orders a comparator against the ego flag, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    // A comparison rule may only name a number, datetime or scalar variable, so
+    // the shape that puts one across the flag is a pedigree whose ego marker
+    // the codebook declares as a number over 0-1. What the stage writes is
+    // still the runtime's true/false, which compares as 1 and 0 — so `rank`
+    // clears a different ceiling on the proband than on everybody else, and a
+    // rank drawn against a flag the node does not end up holding is caught.
+    const codebook = pedigreeCodebook({
+      isEgo: {
+        name: 'Ego marker',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 1 },
+      },
+      rank: {
+        name: 'Rank',
+        type: 'number',
+        validation: { minValue: -5, maxValue: 5, lessThanVariable: 'isEgo' },
+      },
+    });
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const nodes = pedigreeNodes(seed, codebook);
+      complainAboutTheFlag(failures, seed, nodes);
+
+      attributesOf(nodes).forEach((attrs, index) => {
+        complain(
+          failures,
+          Number(attrs.rank) < Number(attrs.isEgo),
+          () =>
+            `seed ${seed}: node ${index} rank ${String(attrs.rank)} is not below isEgo ${String(attrs.isEgo)}`,
+        );
+      });
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it('draws a pedigree no rule reads the flag of exactly as it always did', () => {
+    // Settling the flag before the draw takes the variable out of the draw,
+    // which moves every random number after it. A pedigree nothing resolves the
+    // flag against gains nothing from that and must keep the values it had, so
+    // it is still drawn whole and the flag written on afterwards. Held against
+    // the same protocol naming no ego variable at all — the run that never pins
+    // anything — where only the flag itself may differ.
+    const codebook = pedigreeCodebook({
+      isEgo: { name: 'Is ego', type: 'boolean' },
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 100 },
+      },
+      alive: { name: 'Alive', type: 'boolean' },
+    });
+    const unpinned = {
+      ...pedigreeStage,
+      nodeConfig: { type: 'person', nodeLabelVariable: 'name' },
+    } as unknown as Stage;
+    // A later stage as well, so a shifted random stream shows up in what the
+    // rest of the protocol draws and not only inside the pedigree.
+    const laterStage = {
+      id: 'stage-ng',
+      type: 'NameGenerator',
+      label: 'More people',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Name people' }],
+      behaviours: { minNodes: 3, maxNodes: 3 },
+    } as unknown as Stage;
+
+    const withoutFlag = (attrs: Record<string, unknown>) => {
+      const { isEgo: _isEgo, ...rest } = attrs;
+      return rest;
+    };
+
+    for (let seed = 1; seed <= 25; seed++) {
+      const pinned = pedigreeNodes(seed, codebook, [pedigreeStage, laterStage]);
+
+      expect(attributesOf(pinned).map(withoutFlag)).toEqual(
+        attributesOf(pedigreeNodes(seed, codebook, [unpinned, laterStage])).map(
+          withoutFlag,
+        ),
+      );
+
+      const fromPedigree = pinned.filter(
+        (node) => node.stageId === pedigreeStage.id,
+      );
+      expect(fromPedigree.length).toBeGreaterThan(1);
+      expect(attributesOf(fromPedigree).map((attrs) => attrs.isEgo)).toEqual(
+        fromPedigree.map((_node, index) => index === 0),
+      );
+    }
+  });
+});

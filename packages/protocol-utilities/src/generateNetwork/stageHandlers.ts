@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
+import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
@@ -9,6 +10,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateAttributesForEntity } from './attributes';
+import type { EntityConstraints } from './constraints/types';
 import type { GenerationContext, NetworkDraft, StageOfType } from './context';
 import { createEdgesForPairs } from './edges';
 import { getStageFilteredEdges, getStageFilteredNodes } from './filtering';
@@ -324,6 +326,31 @@ export function handleAlterEdgeForm(
   }
 }
 
+/**
+ * Whether any rule of `entity` resolves against `variableId` — the variable
+ * declaring a rule that names another, or another naming it as their target.
+ *
+ * A value fixed for a variable nothing resolves against changes no other
+ * variable's, so this is what separates a pin the rest of the entity has to be
+ * generated around from one that can simply be written on afterwards. Read from
+ * the schema's own list of rules whose value is a variable id, so a rule added
+ * there is accounted for here without this being updated.
+ */
+function ruleResolvesAgainst(
+  entity: EntityConstraints,
+  variableId: string,
+): boolean {
+  for (const [id, { constraints }] of entity) {
+    for (const rule of VARIABLE_REFERENCE_VALIDATIONS) {
+      const target = constraints[rule];
+      if (target === undefined) continue;
+      if (id === variableId || target === variableId) return true;
+    }
+  }
+
+  return false;
+}
+
 export function handleFamilyPedigree(
   ctx: GenerationContext,
   draft: NetworkDraft,
@@ -341,31 +368,46 @@ export function handleFamilyPedigree(
 
   if (!nodeType) return;
 
+  // Attribute generation randomises egoVariable per node like any other boolean
+  // codebook variable, but the runtime marks exactly one pedigree node as ego
+  // (FamilyPedigree's egoCellTransform sets true on the proband and explicit
+  // false on every other alter/partner/child). That flag is therefore a value
+  // fixed for the node rather than drawn for it.
+  //
+  // Where a rule resolves against it, it is settled before anything is drawn
+  // and the rest of the node generated around it — the mechanism a roster row
+  // and a prompt's `additionalAttributes` use — because a `sameAs` counterpart
+  // would otherwise keep whatever the shared draw landed on and the finished
+  // node would break the rule generation had just satisfied. Where no rule
+  // reads it, the flag is written after generation instead: nothing resolves
+  // against it, so drawing every variable as before costs the pin no RNG draws
+  // and leaves the stage's random stream where it was.
+  const nodeVariables: EntityConstraints =
+    ctx.entityConstraints.node.get(nodeType) ?? new Map();
+  const drawnVariables =
+    egoVariable && ruleResolvesAgainst(nodeVariables, egoVariable)
+      ? new Set([...nodeVariables.keys()].filter((id) => id !== egoVariable))
+      : undefined;
+
   const familyNodes: NcNode[] = [];
   for (let nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
+    const fixed = egoVariable ? { [egoVariable]: nodeIndex === 0 } : undefined;
+
     const attrs = generateAttributesForEntity(
       ctx,
       { entity: 'node', type: nodeType },
       draft.nodes.length + nodeIndex,
+      fixed && drawnVariables
+        ? { existing: fixed, only: drawnVariables }
+        : undefined,
     );
+    if (fixed) Object.assign(attrs, fixed);
 
     familyNodes.push({
       [entityPrimaryKeyProperty]: uuid(),
       type: nodeType,
       [entityAttributesProperty]: attrs,
       stageId: stage.id,
-    });
-  }
-
-  // Attribute generation randomises egoVariable per node like any other boolean
-  // codebook variable, but the runtime marks exactly one pedigree node as ego
-  // (FamilyPedigree's egoCellTransform sets true on the proband and explicit
-  // false on every other alter/partner/child). Pin that here, after
-  // generation, so overwriting the attribute costs no RNG draws and the rest
-  // of the stage's random stream is undisturbed.
-  if (egoVariable) {
-    familyNodes.forEach((node, index) => {
-      node[entityAttributesProperty][egoVariable] = index === 0;
     });
   }
 
