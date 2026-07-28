@@ -143,11 +143,15 @@ export default function DatePickerField(props: DatePickerFieldProps) {
   // calendar year, January 1 through December 31) rather than the authored
   // bound's own month/day, so a partial month/year authored bound doesn't
   // leak an arbitrary sub-year boundary onto the far, unconstrained end.
-  // When both bounds are authored, both are honoured exactly. Every consumer
-  // of the range — the year loop, the month filtering at boundary years, and
-  // the full-resolution input's min/max attributes — reads from this single
-  // derivation so they cannot disagree.
-  const { minYmd, maxYmd } = useMemo(() => {
+  // When both bounds are authored, both are honoured exactly. The year loop
+  // and the month filtering at boundary years always read this derivation,
+  // since the custom picker UI needs a finite list either way. The
+  // full-resolution native input reads it too, but only once at least one
+  // bound is authored (see `hasAuthoredBound` below) — a fully unbounded
+  // full-resolution DatePicker must stay genuinely unbounded, matching how
+  // @codaco/protocol-validation's contradiction analyser models it as
+  // contributing no interval.
+  const { minYmd, maxYmd, hasAuthoredBound } = useMemo(() => {
     const authoredMin = min ? parseYmd(min) : null;
     const authoredMax = max ? parseYmd(max) : null;
     const today = todayYmd();
@@ -168,7 +172,11 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           }
         : today);
 
-    return { minYmd: resolvedMin, maxYmd: resolvedMax };
+    return {
+      minYmd: resolvedMin,
+      maxYmd: resolvedMax,
+      hasAuthoredBound: authoredMin !== null || authoredMax !== null,
+    };
   }, [min, max]);
 
   const initialMonthParts = getMonthParts(value);
@@ -364,8 +372,15 @@ export default function DatePickerField(props: DatePickerFieldProps) {
       id={id}
       type="date"
       size={size}
-      min={formatYmd(minYmd)}
-      max={formatYmd(maxYmd)}
+      // A fully unbounded full-resolution picker (neither min nor max
+      // authored) must stay unbounded: falling back to the 1920-to-today
+      // default window here would silently block dates outside it (e.g. a
+      // pre-1920 birthdate, or any future date) that were always enterable
+      // before bounds existed. Once at least one bound is authored, both
+      // attributes come from the shared derivation above so this input
+      // can't disagree with the year/month picker's default window.
+      min={hasAuthoredBound ? formatYmd(minYmd) : undefined}
+      max={hasAuthoredBound ? formatYmd(maxYmd) : undefined}
       value={value}
       onChange={(v) => onChange?.(v === undefined || v === '' ? undefined : v)}
       name={name}

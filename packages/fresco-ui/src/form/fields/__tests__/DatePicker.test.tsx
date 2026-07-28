@@ -15,16 +15,6 @@ function optionValues(select: HTMLElement): string[] {
     .filter((value) => value !== '');
 }
 
-// Mirrors the component's local-time (not UTC) "today" formatting so
-// assertions can't drift from `toISOString()`'s UTC date near midnight.
-function todayFormatted(): string {
-  const now = new Date();
-  const year = now.getFullYear().toString().padStart(4, '0');
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  const day = now.getDate().toString().padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 // Mirrors the component's default-window span (today's year minus 1920) so
 // out-of-window extension assertions track the real default instead of a
 // hardcoded year count that drifts every January.
@@ -512,14 +502,19 @@ describe('DatePickerField — authored bound outside the default window (Twenty-
     expect(input).toHaveAttribute('max', `${3000 + span}-12-31`);
   });
 
-  it('defaults the full-resolution input min/max to 1920..today when no bounds are authored (regression guard)', () => {
+  it('leaves the full-resolution input min/max unset when no bounds are authored (regression guard)', () => {
     const { container } = render(<DatePickerField type="full" name="date" />);
     const input = container.querySelector('input[type="date"]');
     if (!(input instanceof HTMLInputElement)) {
       throw new Error('date input not rendered');
     }
-    expect(input).toHaveAttribute('min', '1920-01-01');
-    expect(input).toHaveAttribute('max', todayFormatted());
+    // A fully unbounded full-resolution picker must stay genuinely
+    // unbounded — falling back to the 1920-to-today default window (as the
+    // custom year/month picker's dropdown list does, since it needs a
+    // finite range to enumerate) would silently block previously-enterable
+    // dates like a pre-1920 birthdate or any future date.
+    expect(input).not.toHaveAttribute('min');
+    expect(input).not.toHaveAttribute('max');
   });
 
   it('honours both bounds exactly, unchanged, when both are authored outside the default window', () => {
