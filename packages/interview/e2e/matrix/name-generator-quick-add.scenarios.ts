@@ -24,15 +24,14 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           const synth = new SyntheticInterview();
           const person = synth.addNodeType({ name: 'Person' });
           // A variable distinct from the type's auto-seeded "name" (which
-          // addVariable would silently dedupe onto, dropping `component`) —
-          // quickAdd's target variable metadata is resolved through the same
-          // codebook-variable lookup a Field uses, which needs `component`
-          // present on the variable (there is no stage-level form field here
-          // to supply one instead).
+          // addVariable would silently dedupe onto, dropping this variable's
+          // own definition). No `component` — this is the state Architect's
+          // "Create New Variable" dialog produces by default (the schema
+          // permits it), and quickAdd derives validation from the codebook
+          // variable without resolving a component.
           const nameVar = person.addVariable({
             type: 'text',
             name: 'fullName',
-            component: 'Text',
           });
           nameVarId = nameVar.id;
           const stage = synth.addStage('NameGeneratorQuickAdd', {
@@ -94,10 +93,12 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
+        // No `component` — the codebook `required` rule below must still be
+        // honoured even though this is the component-less state Architect's
+        // "Create New Variable" dialog produces.
         const nameVar = person.addVariable({
           type: 'text',
           name: 'fullName',
-          component: 'Text',
           validation: { required: true },
         });
         const stage = synth.addStage('NameGeneratorQuickAdd', {

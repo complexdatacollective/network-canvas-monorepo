@@ -380,9 +380,6 @@ export const categoricalBinScenarios: InterfaceScenarios = {
               { label: 'Work', value: 2 },
             ],
           });
-          // component is required so the dialog's Field can resolve
-          // validation props through the codebook-variable metadata lookup
-          // (there is no stage-level form field here to supply one instead).
           const otherReason = personType.addVariable({
             name: 'otherReason',
             type: 'text',
@@ -520,12 +517,15 @@ export const categoricalBinScenarios: InterfaceScenarios = {
               { label: 'Work', value: 2 },
             ],
           });
-          // No `validation` block: otherReason is genuinely optional, so an
-          // empty dialog submission must be accepted (no-fallback design).
+          // No `component` and no `validation` block: this is the state
+          // Architect's "Create New Variable" dialog produces by default
+          // (the schema permits it). otherReason is genuinely optional, so
+          // an empty dialog submission must be accepted (no-fallback
+          // design) — and the writer must not require a component either,
+          // since it renders its own Field/InputField regardless.
           const otherReason = personType.addVariable({
             name: 'otherReason',
             type: 'text',
-            component: 'Text',
           });
           nameVarId = personName.id;
           categoryVarId = categoryVar.id;
@@ -612,10 +612,12 @@ export const categoricalBinScenarios: InterfaceScenarios = {
               { label: 'Work', value: 2 },
             ],
           });
+          // No `component` — the codebook `required` rule below must still
+          // be honoured by the dialog even though this is the component-less
+          // state Architect's "Create New Variable" dialog produces.
           const otherReason = personType.addVariable({
             name: 'otherReason',
             type: 'text',
-            component: 'Text',
             validation: { required: true },
           });
           nameVarId = personName.id;

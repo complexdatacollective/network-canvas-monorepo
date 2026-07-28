@@ -67,6 +67,16 @@ type FieldMetadata = Variable extends infer V
   : never;
 
 /**
+ * Look up a single codebook variable by name — the lookup both
+ * `createFieldMetadata` (which throws when it's missing) and
+ * `selectValidationMetadataForVariable` (which returns `undefined`) share.
+ */
+const getCodebookEntry = (
+  variables: Record<string, Variable>,
+  variable: string,
+): Variable | undefined => variables[variable];
+
+/**
  * Creates field metadata from form fields and codebook variables.
  * Used by useProtocolForm to convert protocol form definitions to Field components.
  *
@@ -91,11 +101,10 @@ const createFieldMetadata = (
 
   return fields.map((field) => {
     const { variable, hint, showValidationHints } = field;
-    if (!variables[variable]) {
+    const codebookEntry = getCodebookEntry(variables, variable);
+    if (!codebookEntry) {
       throw new Error(`Missing codebook entry for variable: ${variable}`);
     }
-
-    const codebookEntry = variables[variable];
 
     // Shared form fields caption with a required `prompt`; NetworkComposer
     // fields carry an optional `label` instead, falling back to the codebook
@@ -167,7 +176,7 @@ export function selectValidationMetadataForVariable(
   variables: Record<string, Variable>,
   variable: string,
 ): ValidationSource | undefined {
-  const codebookEntry = variables[variable];
+  const codebookEntry = getCodebookEntry(variables, variable);
   if (!codebookEntry) {
     return undefined;
   }

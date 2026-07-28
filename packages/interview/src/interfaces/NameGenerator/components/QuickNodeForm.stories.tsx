@@ -12,10 +12,10 @@ import {
 
 import QuickNodeForm from './QuickNodeForm';
 
-// `component` is required on the "name" variable: QuickNodeForm resolves the
-// quickAdd target's validation props through the same codebook-variable
-// metadata lookup a Field uses, which needs `component` present on the
-// variable (there is no stage-level form field here to supply one instead).
+// `component` on the "name" variable here is incidental, not required:
+// QuickNodeForm derives validation directly from the codebook variable
+// without resolving a component, so a target variable created without one
+// (e.g. via Architect's "Create New Variable" dialog) works identically.
 // `validation` is omitted so the field is a genuinely optional writer
 // (no-fallback design) — see WithRequiredVariable below for the codebook
 // `required` case.

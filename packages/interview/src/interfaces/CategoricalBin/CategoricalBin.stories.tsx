@@ -51,9 +51,10 @@ function buildInterview(args: StoryArgs) {
 
   const nodeType = interview.addNodeType({ name: 'Person' });
 
-  // component is required so the "Other" dialog's Field can resolve
-  // validation props through the codebook-variable metadata lookup (there is
-  // no stage-level form field here to supply one instead). `validation` is
+  // `component` here is incidental, not required: the "Other" dialog derives
+  // validation directly from the codebook variable without resolving a
+  // component, so an otherVariable created without one (e.g. via Architect's
+  // "Create New Variable" dialog) works identically. `validation` is
   // deliberately omitted unless `otherReasonRequired` is set: a codebook
   // variable with no validation block is a genuinely optional writer
   // (no-fallback design) and an empty dialog submission is accepted.
