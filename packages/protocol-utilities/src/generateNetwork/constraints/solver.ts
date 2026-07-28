@@ -16,7 +16,7 @@ import {
   decimalGrid,
   decimalGridValueAt,
   distinctOptionValues,
-  SCALAR_DOMAIN,
+  scalarDrawGrid,
   selectionSizeRange,
 } from './valueSpace';
 
@@ -150,22 +150,22 @@ function enumerateSubsets(
 }
 
 /**
- * The grid a scalar is drawn on, inside whatever the normalised scale and the
- * rules leave it. Read by both the size and the enumeration below, so a
- * component's tractability is judged against the values it would actually hold.
+ * The values a decimal grid holds, ascending, or undefined past `cap` — the
+ * same set `valueSpaceSize` counts and the draw walks, in the same order.
+ *
+ * An inverted or single-point range collapses to its floor, and a range whose
+ * ends the protocol left off the grid keeps them, since the draw's clamp
+ * reaches them. Both readers of a grid below go through this, so a scalar and a
+ * number whose range holds no integer are enumerated by one piece of code, as
+ * they are drawn by one.
  */
-function scalarGrid(
-  constraints: ConstrainedVariable['constraints'],
-): DecimalGrid {
-  return decimalGrid(
-    Math.max(
-      constraints.minValue ?? SCALAR_DOMAIN.minValue,
-      SCALAR_DOMAIN.minValue,
-    ),
-    Math.min(
-      constraints.maxValue ?? SCALAR_DOMAIN.maxValue,
-      SCALAR_DOMAIN.maxValue,
-    ),
+function gridValues(
+  grid: DecimalGrid,
+  cap: number,
+): VariableValue[] | undefined {
+  if (grid.size > cap) return undefined;
+  return Array.from({ length: grid.size }, (_value, index) =>
+    decimalGridValueAt(grid, index),
   );
 }
 
@@ -205,12 +205,14 @@ function domainSize(
       if (maxValue < minValue) return flat(0);
       const lo = Math.ceil(minValue);
       const hi = Math.floor(maxValue);
-      if (hi < lo) return undefined;
+      // A range holding no whole value is drawn on the decimal grid instead,
+      // and is counted on it here — the same fork `valueSpaceSize` takes.
+      if (hi < lo) return flat(decimalGrid(minValue, maxValue).size);
       return flat(hi - lo + 1);
     }
 
     case 'scalar':
-      return flat(scalarGrid(constraints).size);
+      return flat(scalarDrawGrid(constraints).size);
 
     case 'datetime': {
       const window = constraints.dateWindow;
@@ -246,19 +248,24 @@ function domainSize(
  * Every value the generator can produce for this group, or undefined where the
  * set is unbounded, larger than `cap`, or deliberately left to the greedy path.
  *
- * A number interval holding no integer is the last of those: its draws are
- * fractional, and claiming its enumeration is empty would turn a satisfiable
- * protocol into a refusal. `decimalGrid` does now describe that set exactly —
- * the count and the draw both read it — but the solver is left declining those
- * components all the same. Declining only ever sends a component to the greedy
- * draw, while admitting one puts a fresh `unsat` proof behind the whole set.
+ * A number is enumerated the way it is drawn, which is one way or the other and
+ * never both: whole values wherever its range holds one, and the decimal grid a
+ * scalar is drawn on where it holds none. Both come from the descriptors the
+ * draw and `valueSpaceSize` read, so a component mixing an integer-bounded
+ * variable with a fractional one enumerates each by its own draw's values.
  *
- * The original reason for holding back was that `comparatorSpan` stepped a
- * number in whole units, which those bounds could not honour; it now reads the
- * step from the same grid the draw walks, so that reason has gone. What is left
- * is that admitting them is a change of its own — {@link domainSize} needs a
- * branch matching this one, and a search that refuses is owed the evidence that
- * the greedy path could not have satisfied it either.
+ * That fractional half was declined here for a while, on the reasoning that
+ * declining only ever sends a component to the greedy path while admitting one
+ * puts a fresh `unsat` proof behind it. What made admitting it safe is that the
+ * proof is now taken over exactly the values the greedy path can reach: the
+ * numeric search compares the domain values themselves, so a component it
+ * exhausts is one whose whole drawable space was covered — and a `[0.001,
+ * 0.009]` chain it refuses is one whose two reachable ends the draw would have
+ * clamped into breaking the comparison rather than satisfying it.
+ *
+ * A comparison between dates at different resolutions is still left to the
+ * greedy path, for a reason of its own: this search compares date domains as
+ * strings — see {@link tractableOf}.
  */
 function enumerateDomain(
   variable: ConstrainedVariable,
@@ -282,22 +289,16 @@ function enumerateDomain(
       if (maxValue < minValue) return [];
       const lo = Math.ceil(minValue);
       const hi = Math.floor(maxValue);
-      if (hi < lo) return undefined;
+      // Narrower than one unit, so the grid holds at most
+      // `10 ** SCALAR_DECIMAL_PLACES + 1` values and the cap rarely binds — it
+      // is still spent, through the same helper the scalar domain is capped by.
+      if (hi < lo) return gridValues(decimalGrid(minValue, maxValue), cap);
       if (hi - lo + 1 > cap) return undefined;
       return integerRange(lo, hi);
     }
 
-    case 'scalar': {
-      // The same set `valueSpaceSize` counts and the draw walks, in the same
-      // ascending order: an inverted or single-point range collapses to its
-      // floor, and a range whose ends the protocol left off the grid keeps
-      // them, since the draw's clamp reaches them.
-      const grid = scalarGrid(constraints);
-      if (grid.size > cap) return undefined;
-      return Array.from({ length: grid.size }, (_value, index) =>
-        decimalGridValueAt(grid, index),
-      );
-    }
+    case 'scalar':
+      return gridValues(scalarDrawGrid(constraints), cap);
 
     case 'datetime': {
       const window = constraints.dateWindow;

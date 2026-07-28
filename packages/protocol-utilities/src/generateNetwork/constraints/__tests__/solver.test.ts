@@ -6,8 +6,13 @@ import {
 } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
 
+import { ValueGenerator } from '../../../ValueGenerator';
+import { resolveGenerationConfig } from '../../config';
+import type { GenerationContext } from '../../context';
 import { buildEntityConstraints } from '../buildConstraints';
 import { resolveGenerationOrder } from '../dependencyOrder';
+import { SyntheticDataConstraintError } from '../error';
+import { generateEntityAttributes } from '../generateEntityAttributes';
 import {
   differentFromGroups,
   groupComparatorEdges,
@@ -16,7 +21,7 @@ import {
 } from '../groupConstraints';
 import { solvableComponents, solveComponent } from '../solver';
 import type { EntityConstraints } from '../types';
-import { valueKey } from '../uniqueRegistry';
+import { UniqueRegistry, valueKey } from '../uniqueRegistry';
 import { valueSpaceSize } from '../valueSpace';
 
 const TODAY = '2026-07-27';
@@ -47,6 +52,32 @@ function componentsOf(entity: EntityConstraints) {
 
 function build(variables: Variables): EntityConstraints {
   return buildEntityConstraints(variables, TODAY);
+}
+
+/** A generation context whose whole random stream comes from one seed. */
+function contextSeeded(seed: number): GenerationContext {
+  return {
+    codebook: {},
+    valueGen: new ValueGenerator(seed, TODAY),
+    config: resolveGenerationConfig({ today: TODAY }),
+    usedRosterUids: new Set(),
+    externalData: undefined,
+    respectSkipLogicAndFiltering: false,
+    uniqueRegistry: new UniqueRegistry(),
+    entityConstraints: { ego: new Map(), node: new Map(), edge: new Map() },
+  };
+}
+
+function attributesFor(
+  entity: EntityConstraints,
+  seed: number,
+): Record<string, VariableValue> {
+  return generateEntityAttributes(
+    entity,
+    contextSeeded(seed),
+    { entity: 'node', type: 'person' },
+    0,
+  );
 }
 
 describe('solvableComponents', () => {
@@ -167,6 +198,81 @@ describe('solvableComponents', () => {
       '2020-01-02',
       '2020-01-03',
     ]);
+  });
+
+  it('enumerates a number range holding no integer on the grid its draw walks', () => {
+    // [10.5, 10.7] holds no whole value, so the draw rounds to two decimal
+    // places inside it — the same 21 values a scalar of that width would be
+    // drawn from, and the ones `valueSpaceSize` counts.
+    const bounds = { minValue: 10.5, maxValue: 10.7 };
+    const entity = build({
+      frac: {
+        name: 'Frac',
+        type: 'number',
+        validation: { ...bounds, differentFrom: ref('twin') },
+      },
+      twin: { name: 'Twin', type: 'number', validation: bounds },
+    });
+
+    const [component] = componentsOf(entity);
+    const domain = component?.tractable?.domains.get('frac');
+
+    expect(domain).toHaveLength(21);
+    expect(domain?.[0]).toBe(10.5);
+    expect(domain?.[1]).toBe(10.51);
+    expect(domain?.[20]).toBe(10.7);
+  });
+
+  it('keeps both ends of a range holding no grid point at all', () => {
+    // [0.001, 0.009] holds neither a whole value nor a two-decimal one: every
+    // draw rounds outside it and is clamped back to a bound, so those two ends
+    // are the whole domain.
+    const bounds = { minValue: 0.001, maxValue: 0.009 };
+    const entity = build({
+      tiny: {
+        name: 'Tiny',
+        type: 'number',
+        validation: { ...bounds, differentFrom: ref('twin') },
+      },
+      twin: { name: 'Twin', type: 'number', validation: bounds },
+    });
+
+    const [component] = componentsOf(entity);
+
+    expect(component?.tractable?.domains.get('tiny')).toEqual([0.001, 0.009]);
+  });
+
+  it('enumerates each end of a mixed integer and fractional component by its own draw', () => {
+    // The draw emits whole values wherever a range holds one, so the integer
+    // end must keep the integer enumeration while the fractional end takes the
+    // grid — one component, two different sets of values.
+    const entity = build({
+      frac: {
+        name: 'Frac',
+        type: 'number',
+        validation: { minValue: 0.1, maxValue: 0.9 },
+      },
+      whole: {
+        name: 'Whole',
+        type: 'number',
+        validation: {
+          minValue: 1,
+          maxValue: 3,
+          greaterThanVariable: ref('frac'),
+        },
+      },
+    });
+
+    const [component] = componentsOf(entity);
+
+    expect(component?.tractable?.domains.get('whole')).toEqual([1, 2, 3]);
+    const fractional = component?.tractable?.domains.get('frac');
+    expect(fractional).toHaveLength(81);
+    expect(fractional?.[0]).toBe(0.1);
+    expect(fractional?.at(-1)).toBe(0.9);
+    for (const value of fractional ?? []) {
+      expect(Number.isInteger(value)).toBe(false);
+    }
   });
 
   it('enumerates categorical subsets within the selection bounds', () => {
@@ -461,6 +567,38 @@ describe('solvableComponents', () => {
         validation: { lessThanVariable: ref('s2') },
       },
       s2: { name: 'S2', type: 'scalar', component: 'VisualAnalogScale' },
+      // Numbers whose ranges hold no whole value, which the draw takes on the
+      // decimal grid instead. Both shapes of that grid are here: one holding
+      // grid points, and one so narrow it holds none and is drawn as its two
+      // clamped ends alone.
+      fracLow: {
+        name: 'Frac Low',
+        type: 'number',
+        validation: {
+          minValue: 0.1,
+          maxValue: 0.9,
+          lessThanVariable: ref('fracHigh'),
+        },
+      },
+      fracHigh: {
+        name: 'Frac High',
+        type: 'number',
+        validation: { minValue: 0.1, maxValue: 0.9 },
+      },
+      narrowHi: {
+        name: 'Narrow Hi',
+        type: 'number',
+        validation: {
+          minValue: 0.001,
+          maxValue: 0.009,
+          differentFrom: ref('narrowLo'),
+        },
+      },
+      narrowLo: {
+        name: 'Narrow Lo',
+        type: 'number',
+        validation: { minValue: 0.001, maxValue: 0.009 },
+      },
       w: { name: 'W', ...window },
       x: {
         name: 'X',
@@ -518,6 +656,10 @@ describe('solvableComponents', () => {
       'b',
       'band',
       'flag',
+      'fracHigh',
+      'fracLow',
+      'narrowHi',
+      'narrowLo',
       'repeated',
       's1',
       's2',
@@ -900,6 +1042,44 @@ describe('solveComponent', () => {
     expect(verdict.assignment.get('y')).toBe('2020-01-03');
   });
 
+  it('solves a fractional chain on the same grid the draw walks', () => {
+    // Three numbers over [0.1, 0.2], which holds no whole value: the draw and
+    // the domain are both the eleven two-decimal values inside it, and a
+    // strict chain has to step three of them apart.
+    const bounds = { minValue: 0.1, maxValue: 0.2 };
+    const entity = build({
+      lo: { name: 'Lo', type: 'number', validation: bounds },
+      mid: {
+        name: 'Mid',
+        type: 'number',
+        validation: { ...bounds, greaterThanVariable: ref('lo') },
+      },
+      hi: {
+        name: 'Hi',
+        type: 'number',
+        validation: { ...bounds, greaterThanVariable: ref('mid') },
+      },
+    });
+
+    const [component] = componentsOf(entity);
+    expect(component?.tractable).toBeDefined();
+
+    const verdict = solveComponent(component!.tractable!, {});
+    expect(verdict.kind).toBe('sat');
+    if (verdict.kind !== 'sat') return;
+
+    const values = ['lo', 'mid', 'hi'].map((group) =>
+      Number(verdict.assignment.get(group)),
+    );
+    expect(values[0]).toBeLessThan(values[1]!);
+    expect(values[1]).toBeLessThan(values[2]!);
+    for (const value of values) {
+      expect(value).toBeGreaterThanOrEqual(0.1);
+      expect(value).toBeLessThanOrEqual(0.2);
+      expect(Number(value.toFixed(2))).toBe(value);
+    }
+  });
+
   it('is deterministic for a fixed value ordering', () => {
     const entity = build({
       a: {
@@ -919,5 +1099,100 @@ describe('solveComponent', () => {
     const second = solveComponent(component!.tractable!, {});
 
     expect(first).toEqual(second);
+  });
+});
+
+/**
+ * What admitting fractional number domains is worth, and what it costs.
+ *
+ * Every value below is one the draw itself can reach — the two branches read
+ * one descriptor — so a search that exhausts these domains has covered the
+ * whole space the greedy path draws from. Both halves of that are checked
+ * here: a component the search settles is generated valid whatever the seed,
+ * and the one it refuses is one the greedy path fails at just as consistently.
+ */
+describe('fractional number components in generation', () => {
+  /** A: [0.1, 0.11] differentFrom B; D: [0.09, 0.11], B <= D <= A. */
+  function cornerVariables(): Variables {
+    const pair = { minValue: 0.1, maxValue: 0.11 };
+    return {
+      b: { name: 'B', type: 'number', validation: pair },
+      d: {
+        name: 'D',
+        type: 'number',
+        validation: {
+          minValue: 0.09,
+          maxValue: 0.11,
+          greaterThanOrEqualToVariable: ref('b'),
+          lessThanOrEqualToVariable: ref('a'),
+        },
+      },
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { ...pair, differentFrom: ref('b') },
+      },
+    };
+  }
+
+  it('generates ordered values for every seed once the component is solved', () => {
+    // B and A hold two values apiece, and the only assignment satisfying all
+    // three rules is B at the bottom and A at the top. Drawing B first and
+    // greedily leaves A nothing to differ from half the time, which is what
+    // enumerating these domains is for.
+    const entity = build(cornerVariables());
+    const [component] = componentsOf(entity);
+    expect(component?.tractable).toBeDefined();
+
+    for (let seed = 1; seed <= 40; seed++) {
+      const attributes = attributesFor(entity, seed);
+      const b = Number(attributes.b);
+      const d = Number(attributes.d);
+      const a = Number(attributes.a);
+
+      expect(b).toBe(0.1);
+      expect(a).toBe(0.11);
+      expect([0.1, 0.11]).toContain(d);
+      expect(d).toBeGreaterThanOrEqual(b);
+      expect(d).toBeLessThanOrEqual(a);
+      expect(a).not.toBe(b);
+    }
+  });
+
+  it('proves a pigeonhole over two fractional values unsatisfiable', () => {
+    // [0.001, 0.009] rounds outside itself at every draw, so its two clamped
+    // ends are all three variables have; three values required to differ from
+    // each other cannot fit in two. No comparator narrows anything here, so
+    // interval propagation sees nothing wrong and the proof is the search's.
+    const bounds = { minValue: 0.001, maxValue: 0.009 };
+    const entity = build({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { ...bounds, differentFrom: ref('b') },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: { ...bounds, differentFrom: ref('c') },
+      },
+      c: {
+        name: 'C',
+        type: 'number',
+        validation: { ...bounds, differentFrom: ref('a') },
+      },
+    });
+
+    const [component] = componentsOf(entity);
+    expect(component?.tractable?.domains.get('a')).toEqual([0.001, 0.009]);
+    expect(solveComponent(component!.tractable!, {}).kind).toBe('unsat');
+
+    // And the refusal costs nothing that was available: the greedy path runs
+    // out of values on this shape for every seed, never for some of them.
+    for (let seed = 1; seed <= 12; seed++) {
+      expect(() => attributesFor(entity, seed)).toThrow(
+        SyntheticDataConstraintError,
+      );
+    }
   });
 });
