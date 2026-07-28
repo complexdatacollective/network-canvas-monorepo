@@ -1182,13 +1182,12 @@ const parseRuntimeYmd = (
  * The returned period is the STORED-INSTANT reading of the synthesized edge
  * (twentieth-wave Finding 1): the far `min` period is the extended window's
  * first January; the far `max` period is its last year at year resolution and
- * that year's December at month resolution. One-sided IN-window bounds and
- * FULL-resolution pickers return `undefined` — in-window fallbacks land on
- * the default window's own edges, which this file has never modelled for a
- * DatePicker (half-open is their strict superset), and a full-resolution
- * picker's derived bounds only feed the native input's `min`/`max`
- * attributes, whose enforcement of a TYPED date is not the closed option
- * list a dropdown is, so the accept direction keeps them unmodelled.
+ * that year's December at month resolution. One-sided IN-window bounds
+ * return `undefined` — in-window fallbacks land on the default window's own
+ * edges, which this file has never modelled for a DatePicker (half-open is
+ * their strict superset). FULL-resolution pickers return `undefined` too:
+ * their one-sided resolved bounds are modelled by
+ * `synthesizedFullResolutionResolvedBound` below (thirtieth wave), not here.
  */
 const synthesizedCoarseFarBound = (
   parameters: UnknownRecord,
@@ -1238,6 +1237,88 @@ const synthesizedCoarseFarBound = (
 /** The first day of a coarse calendar period, as a UTC day number. */
 const periodStartDayNumber = ({ year, month }: YearMonth): number =>
   utcDayNumber(year, month - 1, 1);
+
+/**
+ * Thirtieth wave (Fix 2): the RESOLVED opposite bound a one-sided
+ * full-resolution DatePicker carries at runtime. fresco-ui resolves and
+ * passes BOTH native `min`/`max` attributes whenever EITHER bound is
+ * authored (DatePicker.tsx's `hasAuthoredBound` gate over the shared
+ * `minYmd`/`maxYmd` derivation), so a picker with only `min` is capped at
+ * the resolved upper edge (today, or the extended `min.year + span` ceiling
+ * while the authored min still lies beyond today) and a picker with only
+ * `max` is floored at the resolved lower edge (1920-01-01, or the extended
+ * `max.year - span` floor when the authored max lies before it). The
+ * twenty-fifth wave declined to model these because a native input enforces
+ * a TYPED value more weakly than a closed dropdown, but the reviewer's
+ * demonstration (a required min-only picker `greaterThanVariable` a partner
+ * pinned at 9999-01-01, never reachable under the resolved today-cap) shows
+ * that accept-direction gap rejecting real defects, so the resolved bounds
+ * are modelled now, under `synthesizedCoarseFarBound`'s same no-wall-clock
+ * discipline:
+ *
+ *   - authored max at or after 1920-01-01 (the `parseYmd` month/day
+ *     defaults make that exactly `max.year >= 1920`) ⇒ modelled min at the
+ *     runtime's stable default floor, 1920-01-01 — branch condition and
+ *     result are both date-independent, so the model is exact;
+ *   - authored max before 1920-01-01 ⇒ the out-of-window extension:
+ *     modelled min at 1 January of `max.year` minus the horizon span. The
+ *     full-resolution path shares the coarse extension arithmetic but NOT
+ *     the coarse 1000-9999 clamp — that clamp exists only on the
+ *     `coarseMinYmd`/`coarseMaxYmd` pair the dropdowns read, never on the
+ *     native input's attributes. An extension reaching before year 1 falls
+ *     to the native input floor via `clampToNativeDateFloor`, which is
+ *     exactly where the control lands when its negative-year `min`
+ *     attribute fails the native grammar;
+ *   - authored min ⇒ modelled max at 31 December of
+ *     `max(horizon, min.year + span)`. The runtime's upper edge is `today`
+ *     once the authored min has passed and the full-year extension
+ *     `min.year + span(today)` while it has not; the LATER of the horizon's
+ *     December and the horizon-span extension covers both branches on every
+ *     in-horizon interview date (`today <= horizon` and
+ *     `span(today) <= span(horizon)`), so the modelled window is a superset
+ *     of every runtime window — supersets only ever accept more. A literal
+ *     horizon ceiling alone would UNDER-cover a future-dated authored min
+ *     (the runtime extends past the horizon there), inverting the modelled
+ *     window into a false rejection.
+ *
+ * Authoredness is judged by `parseRuntimeYmd` — the runtime's own grammar —
+ * exactly as `synthesizedCoarseFarBound` judges it, and the call site's
+ * `undefined` guards keep a bound the lenient `dayNumber` reads but the
+ * runtime rejects in charge of its own edge. A picker with NEITHER authored
+ * bound is untouched — the runtime passes no attributes at all there
+ * (commit-recorded twenty-sixth-wave behaviour), so its native-floor-only
+ * interval stays exactly as modelled — and a both-authored window is
+ * honoured verbatim as before.
+ */
+const synthesizedFullResolutionResolvedBound = (
+  parameters: UnknownRecord,
+): { edge: 'min' | 'max'; day: number } | undefined => {
+  const authoredMin = parseRuntimeYmd(parameters.min);
+  const authoredMax = parseRuntimeYmd(parameters.max);
+  if (authoredMax && !authoredMin) {
+    return {
+      edge: 'min',
+      day:
+        authoredMax.year < DEFAULT_DATE_WINDOW_MIN_YEAR
+          ? utcDayNumber(authoredMax.year - COARSE_SYNTHESIS_SPAN_YEARS, 0, 1)
+          : utcDayNumber(DEFAULT_DATE_WINDOW_MIN_YEAR, 0, 1),
+    };
+  }
+  if (authoredMin && !authoredMax) {
+    return {
+      edge: 'max',
+      day: utcDayNumber(
+        Math.max(
+          COARSE_SYNTHESIS_HORIZON_YEAR,
+          authoredMin.year + COARSE_SYNTHESIS_SPAN_YEARS,
+        ),
+        11,
+        31,
+      ),
+    };
+  }
+  return undefined;
+};
 
 /**
  * Twentieth-wave Finding 1: the interval a DatePicker's own min/max bounds
@@ -1335,12 +1416,10 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
   // partner pinned AT the floor has no strictly-earlier instant to offer,
   // yet was accepted) while the upper edge stays unbounded. This is a hard
   // FORMAT bound shared by every datetime control, so it holds whichever
-  // control a composer field ultimately renders. A ONE-SIDED authored window
-  // deliberately keeps its pre-existing half-open reading (no change for
-  // authored-bounds cases), and a coarse picker with no authored bounds
-  // stays unmodelled exactly as before — its default 1920-to-today dropdown
-  // window has never been modelled, and half-open is that window's strict
-  // superset.
+  // control a composer field ultimately renders. A coarse picker with no
+  // authored bounds stays unmodelled exactly as before — its default
+  // 1920-to-today dropdown window has never been modelled, and half-open is
+  // that window's strict superset.
   if (min === undefined && max === undefined) {
     return storesFullDates
       ? { min: NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER, origin: 'fixed' }
@@ -1352,11 +1431,21 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
   // option lists, so the synthesized side restricts the domain as hard as an
   // authored one. See `synthesizedCoarseFarBound` for the exact derivation,
   // the conservative handling of its "today" dependence, and why one-sided
-  // IN-window and FULL-resolution windows deliberately stay half-open. The
-  // `undefined` guards keep an authored-but-differently-parsed bound (the
-  // lenient `dayNumber` can read a string the runtime's `parseYmd` rejects)
-  // in charge of its own edge, exactly as before.
-  if (!storesFullDates) {
+  // IN-window coarse bounds deliberately stay half-open. Thirtieth wave
+  // (Fix 2): a one-sided FULL-resolution window closes its missing side at
+  // the RESOLVED bound the runtime passes to the native input whenever
+  // either bound is authored — see `synthesizedFullResolutionResolvedBound`.
+  // In both arms the `undefined` guards keep an authored-but-differently-
+  // parsed bound (the lenient `dayNumber` can read a string the runtime's
+  // `parseYmd` rejects) in charge of its own edge, exactly as before.
+  if (storesFullDates) {
+    const synthesized = synthesizedFullResolutionResolvedBound(parameters);
+    if (min === undefined && synthesized?.edge === 'min') {
+      min = synthesized.day;
+    } else if (max === undefined && synthesized?.edge === 'max') {
+      max = synthesized.day;
+    }
+  } else {
     const synthesized = synthesizedCoarseFarBound(parameters, resolution);
     if (min === undefined && synthesized?.edge === 'min') {
       min = periodStartDayNumber(synthesized.period);
