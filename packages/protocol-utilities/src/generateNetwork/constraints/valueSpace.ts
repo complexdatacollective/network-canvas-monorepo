@@ -16,7 +16,24 @@ import { valueKey } from './uniqueRegistry';
  */
 export const TEXT_ALPHABET_SIZE = 36;
 
-/** Decimal places every scalar draw is rounded to. */
+/**
+ * Decimal places every scalar draw is rounded to, and the step every part of
+ * this analysis reasons in — the draw, comparator propagation, the value-space
+ * count, and the solver's domain enumeration all read it, so they cannot
+ * disagree about what a scalar can hold.
+ *
+ * Deliberately coarser than the control: fresco-ui's `VisualAnalogScale` steps
+ * by 0.001. Nothing invalid comes of that, since every value on this grid is
+ * one the control can produce. What it costs is refusing a chain the
+ * participant could satisfy — 102 scalars linked by `greaterThanVariable` fit
+ * inside `[0, 1]` at the control's step but not at this one.
+ *
+ * Kept at 2 knowingly. Matching the control would move every generated scalar
+ * value, and with it every story fixture, visual baseline and snapshot holding
+ * one, to buy a case that needs on the order of a hundred scalars in a single
+ * strict chain. Revisit if that trade ever changes — the only correct
+ * alternative is to move all four readers together.
+ */
 export const SCALAR_DECIMAL_PLACES = 2;
 
 /**
