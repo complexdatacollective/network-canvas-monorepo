@@ -793,6 +793,162 @@ describe('findValidationContradictions — Twenty-first-wave Finding 6: comparat
   // correct if a future change feeds it a second, non-sameAs seed relation.
 });
 
+describe('findValidationContradictions — Twenty-second-wave Finding 3: comparator equality does not force identical stored dates', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // The reviewer's own counterexample: a full-resolution picker pinned to
+  // '2021-01-01' and a month-resolution picker pinned to '2021-01' both
+  // resolve to the same UTC instant under `compareVariables`' `Date`
+  // conversion, so mutual `lessThanOrEqualToVariable` rules are satisfiable
+  // (both sides Date-equal) WITHOUT the two ever holding the same stored
+  // string — `differentFrom` compares stored strings exactly, so it remains
+  // satisfiable too (e.g. '2021-01-01' vs '2021-01'). Windows are pinned to
+  // the same instant (rather than left open) so a genuinely satisfiable
+  // protocol is exercised, not merely an unconstrained one.
+  it('accepts a mixed-resolution datetime pair joined only by mutual comparators, with differentFrom', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2021-01-01', max: '2021-01-01' },
+        {
+          required: true,
+          lessThanOrEqualToVariable: 'b',
+          differentFrom: 'b',
+        },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'month', min: '2021-01', max: '2021-01' },
+        { required: true, lessThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toEqual([]);
+  });
+
+  // Same mixed-resolution pair, but joined by `sameAs` (via a third-variable
+  // relay, so class 7's same-variable sameAs+differentFrom check does not
+  // also fire) rather than mutual comparators. `sameAs` forces the stored
+  // strings themselves equal (fresco-ui's `isMatchingValue`), so this stays
+  // unsatisfiable regardless of resolution — the class-9 `sameAsGroupConflict`
+  // must still fire. The mixed resolutions ALSO trip the pre-existing,
+  // unrelated `mixedResolutionSameAsContradictions` check (a direct
+  // cross-resolution `sameAs` edge is disjointBounds on its own), so both
+  // entries are expected; only the sameAsGroupConflict one is this fix's
+  // concern.
+  it('still rejects the same mixed-resolution pair when joined by sameAs instead of comparators', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', {}, { required: true, sameAs: 'b' }),
+      b: datePicker(
+        'b',
+        { type: 'month' },
+        { required: true, differentFrom: 'a' },
+      ),
+    });
+    const groupConflict = result.find((c) => c.class === 'sameAsGroupConflict');
+    expect(groupConflict).toBeDefined();
+    expect(groupConflict?.message).toBe(
+      'Variable "b": differentFrom references "a", but sameAs already requires them to be equal',
+    );
+    expect(groupConflict?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Two datetime variables at the SAME resolution, joined only by mutual
+  // comparators: unlike the mixed-resolution case above, a forced Date-equal
+  // between two full-resolution pickers DOES imply their stored strings
+  // match too (full-resolution is a single canonical string per instant), so
+  // this must stay rejected — the guard that scopes the false-rejection fix
+  // to genuinely mismatched resolutions.
+  it('still rejects two SAME-resolution datetime variables joined only by mutual comparators, with differentFrom', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        {},
+        { required: true, lessThanOrEqualToVariable: 'b', differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        {},
+        { required: true, lessThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('sameAsGroupConflict');
+    expect(result[0]?.message).toBe(
+      'Variable "a": differentFrom references "b", but the comparison rules already require them to be equal',
+    );
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Number comparator equality DOES force identical stored values (a number
+  // has no second textual representation the way a truncated date string
+  // does), so this class of rejection must not change for number.
+  it('still rejects a number comparator-only equality group with differentFrom, unchanged', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'number',
+        validation: {
+          greaterThanOrEqualToVariable: 'b',
+          differentFrom: 'b',
+        },
+      },
+      b: {
+        name: 'b',
+        type: 'number',
+        validation: { greaterThanOrEqualToVariable: 'a' },
+      },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('sameAsGroupConflict');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Defensive/raw-input guard: the fix's datetime exception is keyed off the
+  // variable's OWN type, not merely a resolution mismatch as computed by
+  // `dateResolutionOf` — which defaults a componentless variable to 'full'
+  // and would otherwise read a stray `parameters.type` as coarse. The
+  // analyser also runs on raw, unvalidated migration input, so a `number`
+  // variable carrying a leftover DatePicker-shaped `parameters.type` field
+  // (never offered by the schema, but not excluded from raw input either)
+  // must not be read as datetime and must not gain the resolution exception.
+  it('keeps rejecting a number comparator-only pair even if raw input carries a stray datetime-shaped parameters.type', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'number',
+        parameters: { type: 'month' },
+        validation: {
+          greaterThanOrEqualToVariable: 'b',
+          differentFrom: 'b',
+        },
+      },
+      b: {
+        name: 'b',
+        type: 'number',
+        validation: { greaterThanOrEqualToVariable: 'a' },
+      },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('sameAsGroupConflict');
+  });
+});
+
 describe('findValidationContradictions — second-wave Finding 4: odd boolean differentFrom cycles', () => {
   const boolean = (name: string, validation: Record<string, unknown> = {}) => ({
     name,

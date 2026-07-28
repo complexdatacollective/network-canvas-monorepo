@@ -655,6 +655,32 @@ function buildGroupGraph(variables: UnknownRecord): GroupGraph {
   return { edges, groupOf, membersOf, dependencies, internalEdges };
 }
 
+/**
+ * Union-find over usable `sameAs` edges alone, ignoring the non-strict
+ * comparator SCCs `buildEqualityGroups` also folds into its merged equality
+ * groups. This is the same scoping `mixedResolutionSameAsContradictions`
+ * (below) already relies on to separate two different guarantees: a
+ * `sameAs` edge forces the two stored VALUES to be identical (fresco-ui's
+ * `isMatchingValue`, which `sameAs`/`differentFrom` both use, compares
+ * stored values exactly), while a non-strict comparator SCC only forces them
+ * to compare equal at runtime — and `compareVariables` converts `datetime`
+ * operands through `Date` before comparing, so two different stored strings
+ * (a full-resolution day and a coarser month/year truncation of the same
+ * instant) can satisfy it without ever matching as stored values. Extracted
+ * so the class-9 `differentFrom` check below (Twenty-second-wave Finding 3)
+ * can ask the same "is this forced by an actual sameAs edge" question
+ * without deriving a second, independent scoping mechanism.
+ */
+function sameAsOnlyUnionFind(variables: UnknownRecord) {
+  const unionFind = createUnionFind(Object.keys(variables));
+  for (const id of Object.keys(variables)) {
+    const target = usableReference(variables, id, 'sameAs');
+    if (target === undefined || target === id) continue;
+    unionFind.union(target, id);
+  }
+  return unionFind;
+}
+
 function referenceStructureContradictions(
   variables: UnknownRecord,
 ): ValidationContradiction[] {
@@ -684,6 +710,7 @@ function referenceStructureContradictions(
 
   const { groupOf, membersOf, dependencies, internalEdges } =
     buildGroupGraph(variables);
+  const { find: sameAsFind } = sameAsOnlyUnionFind(variables);
 
   // A comparator edge whose ends fall inside one group is a class-9 conflict
   // when strict.
@@ -714,6 +741,26 @@ function referenceStructureContradictions(
     const target = usableReference(variables, id, 'differentFrom');
     if (target === undefined) continue;
     if (groupOf.get(id) !== groupOf.get(target)) continue;
+    // Twenty-second-wave Finding 3: the merged equality group above can join
+    // `id` and `target` via a non-strict comparator SCC alone (no `sameAs`
+    // edge connecting them at all), and only `sameAs` forces their STORED
+    // values identical — see `sameAsOnlyUnionFind`. For `number`/`scalar` a
+    // comparator-forced equality is still exact (`Number()`-equal already IS
+    // value-equal; neither type stores more than one textual representation
+    // of the same quantity), so only `datetime` can diverge, and only when
+    // the pair's OWN resolutions differ: two datetime values at the SAME
+    // resolution are each other's canonical encoding, so a forced Date-equal
+    // already implies their stored strings match too. No explicit
+    // self-reference guard is needed: `sameAsFind(id)` called on the same id
+    // twice is always equal, so the group-of-one case never satisfies this
+    // condition and always falls through to the rejection below.
+    if (
+      sameAsFind(id) !== sameAsFind(target) &&
+      typeOf(variable) === 'datetime' &&
+      dateResolutionOf(variable) !== dateResolutionOf(variables[target])
+    ) {
+      continue;
+    }
     const ref: VariableRuleRef = { variableId: id, rule: 'differentFrom' };
     if (claimed.has(stripKey(ref))) continue;
     const group = groupOf.get(id);
