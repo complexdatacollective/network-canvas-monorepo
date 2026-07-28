@@ -4547,3 +4547,138 @@ describe('findValidationContradictions — Twenty-second-wave Finding 2: chain p
     ).toEqual([]);
   });
 });
+
+describe('findValidationContradictions — Twenty-third-wave Finding 6: relative date windows clamp at the native date floor', () => {
+  const relativePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'RelativeDatePicker',
+    parameters,
+    validation,
+  });
+
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // The reviewer's own report: a low anchor with a large enough `before`
+  // derives a BCE `min` the native date control can never emit — the
+  // runtime's own `addDays` renders it as the unpadded, invalid HTML date
+  // '-174-03-19', so the control's true floor is 0001-01-01. Before this
+  // fix, the analyser reasoned over the raw BCE day number instead, and
+  // accepted `a < b` as satisfiable even though `b` is pinned to the
+  // runtime's own floor, which nothing can ever be earlier than.
+  it('rejects a lessThanVariable a low anchor with a large `before` can never satisfy against a floor-pinned partner', () => {
+    const result = findValidationContradictions({
+      a: relativePicker(
+        'a',
+        { anchor: '0100-01-01', before: 100000, after: 0 },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '0001-01-01', max: '0001-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // The false-positive guard, and the one that matters most: an ordinary,
+  // small `before` never reaches the floor at all — the clamp must leave a
+  // window that never needed it exactly as it was.
+  it('accepts the same shape once `before` is small enough that the window never reaches the floor', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker(
+          'a',
+          { anchor: '0100-01-01', before: 100, after: 0 },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '0100-06-01', max: '0100-06-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A window genuinely clamped at the floor is still a REAL, satisfiable
+  // window: room remains between the floor and a partner pinned later than
+  // it, so the comparison stays satisfiable rather than being uniformly
+  // rejected just because clamping occurred at all.
+  it('accepts a window clamped at the floor when it still overlaps a later-pinned partner', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker(
+          'a',
+          { anchor: '0100-01-01', before: 100000, after: 0 },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '0050-01-01', max: '0050-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // No matching ceiling: a high anchor with a huge `after` derives a `max`
+  // many centuries out, but that stays a syntactically valid date string
+  // (an extra digit, never a sign) the control can still honour — nothing
+  // narrows it, so a partner pinned exactly on that derived edge still
+  // overlaps.
+  it('leaves a high anchor with a large `after` unclamped, still satisfiable against its own derived edge', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker(
+          'a',
+          { anchor: '9500-01-01', before: 0, after: 100 },
+          { sameAs: 'b' },
+        ),
+        b: datePicker('b', { min: '9500-04-11', max: '9500-04-11' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The interview-date origin must not be affected by a calendar floor: an
+  // anchorless picker's offsets are symbolic days from an unknown interview
+  // date, not calendar day numbers, so even a `before` far larger than the
+  // floor's own magnitude leaves two anchorless windows overlapping exactly
+  // as they did before this fix (both always contain offset 0 — see the
+  // fourteenth-wave Finding 1 block above).
+  it('leaves an anchorless RelativeDatePicker unaffected by the calendar floor, however large `before` is', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker('a', { before: 900000, after: 0 }, { sameAs: 'b' }),
+        b: relativePicker('b'),
+      }),
+    ).toEqual([]);
+  });
+
+  // The fixed-anchor DatePicker path shares the exposure: `min: '0000-01-01'`
+  // fails `datePickerParametersSchema` (eleventh-wave Finding 1) and so can
+  // never reach the analyser as SCHEMA-VALID input, but the analyser also
+  // runs over raw, pre-schema migration input the schema hasn't gated yet —
+  // exactly this file's own defensive-reads convention (see the top-of-file
+  // comment). A raw `min` that low needs the same floor.
+  it('rejects a raw pre-schema DatePicker min below the floor against a floor-pinned partner', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '0000-01-01', max: '0100-01-01' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '0001-01-01', max: '0001-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+});

@@ -871,6 +871,58 @@ const RELATIVE_DATE_PICKER_DEFAULT_BEFORE = 180;
 const RELATIVE_DATE_PICKER_DEFAULT_AFTER = 0;
 
 /**
+ * Twenty-third-wave Finding 6: the earliest date the native
+ * `<input type="date">` control backing both datetime pickers can ever
+ * select or emit — day 0001-01-01, the very floor `datePickerParametersSchema`
+ * already carves out for a schema-valid, full-resolution DatePicker bound
+ * (eleventh-wave Finding 1's own comment: "0000-12-31 is a real,
+ * round-tripping ISO date … but the native HTML date input's earliest
+ * selectable date is 0001-01-01"). That schema check only ever gates an
+ * author-typed `min`/`max` string, so it says nothing about a bound this file
+ * DERIVES arithmetically: a RelativeDatePicker's `anchor - before` can walk
+ * past year zero into negative (BCE) years the same way `min`/`max` could,
+ * and the interview runtime's own `addDays` (fresco-ui's `form/utils/ymd.ts`)
+ * renders a negative year via plain `String(year).padStart(4, '0')` — which
+ * does not zero-pad a sign, so the result (`-174-03-19`) fails the native
+ * control's `YYYY-MM-DD` grammar outright. The browser has nothing to fall
+ * back to but its own year-0001 floor, so the control's TRUE reachable
+ * minimum is this constant, however much further the arithmetic overshot it.
+ */
+const NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER = utcDayNumber(1, 0, 1);
+
+/**
+ * Clamps a 'fixed'-origin datetime interval's lower edge at the floor above,
+ * modelling what the control actually does with an authored/derived bound
+ * that reaches earlier than it can ever emit: it silently truncates to its
+ * own floor, rather than the variable becoming unusable. Only ever narrows —
+ * raises `min`, never lowers `max` — so every window this produces is a real,
+ * still-reachable one; it can turn a genuinely satisfiable comparison into an
+ * infeasible one (the runtime truly cannot reach far enough back), but never
+ * the reverse. Left a no-op on the `'interviewDate'` origin: those bounds are
+ * symbolic day OFFSETS from a not-yet-known interview date (fourteenth-wave
+ * Finding 1), not calendar day numbers, so comparing one against this
+ * calendar floor would be meaningless — and, by construction, an
+ * anchorless picker's offsets are never negative enough to need it anyway
+ * (`relativeDatePickerParametersSchema` requires `before`/`after` >= 0, so an
+ * anchorless window's own min is `-before`, no lower than the negative of
+ * whatever `before` an author typed, never a calendar-scale BCE number).
+ *
+ * No matching ceiling exists at the upper edge. The floor is a failure of
+ * FORMAT, not of range: `formatYmd`'s `padStart(4, '0')` only breaks on a
+ * negative year (the sign character defeats the fixed-width zero-padding);
+ * a year running past 9999 merely grows an extra digit and stays a
+ * syntactically valid `YYYY…-MM-DD` string the control can still parse.
+ * Manufacturing a ceiling here would invent a restriction neither the
+ * schema nor the runtime actually enforces.
+ */
+const clampToNativeDateFloor = (interval: Interval): Interval =>
+  interval.origin === 'fixed' &&
+  interval.min !== undefined &&
+  interval.min < NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER
+    ? { ...interval, min: NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER }
+    : interval;
+
+/**
  * A RelativeDatePicker's selectable window. An author-pinned `anchor` (a valid
  * ISO date) makes the window exactly as static as a DatePicker's own min/max:
  * `[anchor - before, anchor + after]` in days, on the fixed calendar origin
@@ -912,7 +964,14 @@ const relativeDateWindowInterval = (
   // moot — both edges resolve to the same single day.
   const anchor = dayNumber(parameters.anchor, 'min');
   if (anchor === undefined) return undefined;
-  return { min: anchor - before, max: anchor + after, origin: 'fixed' };
+  // Twenty-third-wave Finding 6: a low `anchor` with a large enough `before`
+  // derives a `min` earlier than the native date control can ever emit — see
+  // `clampToNativeDateFloor`.
+  return clampToNativeDateFloor({
+    min: anchor - before,
+    max: anchor + after,
+    origin: 'fixed',
+  });
 };
 
 const RELATIVE_DATE_PICKER_PARAMETER_KEYS = [
@@ -1053,7 +1112,11 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
       ? dayNumber(parameters.max, storesFullDates ? 'max' : 'min')
       : undefined;
   if (min === undefined && max === undefined) return undefined;
-  return { min, max, origin: 'fixed' };
+  // Twenty-third-wave Finding 6: `datePickerParametersSchema` rejects a
+  // year-0-or-earlier full-resolution bound, but that gate never runs over
+  // raw (pre-schema) migration input — the same floor `relativeDateWindowInterval`
+  // clamps to applies here too.
+  return clampToNativeDateFloor({ min, max, origin: 'fixed' });
 };
 
 const intervalOf = (variable: unknown): Interval | undefined => {
