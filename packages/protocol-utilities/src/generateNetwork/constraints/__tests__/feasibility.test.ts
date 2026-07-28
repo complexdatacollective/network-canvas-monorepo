@@ -993,8 +993,14 @@ describe('analyseFeasibility', () => {
         },
       },
     } as unknown as StructuralCodebook;
+    // The stage has to name the same key: a codebook type no stage names
+    // carries no entity, and is not analysed at all.
+    const generator = {
+      ...nameGenerator,
+      subject: { entity: 'node', type: key },
+    } as unknown as Stage;
 
-    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+    const conflicts = analyseFeasibility(codebook, [generator], config);
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.entityType).toBe(key);
@@ -1602,6 +1608,141 @@ describe('a value one prompt fixes against its own rules', () => {
         },
       ),
     ).toEqual([]);
+  });
+});
+
+/**
+ * A codebook may declare types the stage list never touches. Nothing draws a
+ * value for such a type's variables and nothing submits one, so a rule on them
+ * is never applied — and refusing the whole protocol for it blocks interviews
+ * the rules it declares are perfectly satisfiable for.
+ *
+ * The three zeroes this pass sees are not the same zero, so these cover each in
+ * turn: a node type nothing creates, an edge type whose edges exist while a
+ * variable of theirs is never filled, and ego, whose count is structural.
+ */
+describe('a codebook type no stage names', () => {
+  const contradiction = {
+    name: 'Code',
+    type: 'text',
+    validation: { minLength: 10, maxLength: 5 },
+  };
+
+  const person = {
+    name: 'Person',
+    color: 'node-color-seq-1',
+    variables: { name: { name: 'Name', type: 'text' } },
+  };
+
+  const artefact = {
+    name: 'Artefact',
+    color: 'node-color-seq-2',
+    variables: { code: contradiction },
+  };
+
+  it('accepts a contradiction on a node type no stage can create', () => {
+    const codebook = {
+      node: { person, artefact },
+    } as unknown as StructuralCodebook;
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('accepts a contradiction on an edge type no stage can create', () => {
+    const codebook = {
+      node: { person },
+      edge: {
+        kin: {
+          name: 'Kin',
+          color: 'edge-color-seq-1',
+          variables: { code: contradiction },
+        },
+      },
+    } as unknown as StructuralCodebook;
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('still refuses the same contradiction on the type its stage creates', () => {
+    const codebook = {
+      node: {
+        person: { ...person, variables: { code: contradiction } },
+        artefact,
+      },
+    } as unknown as StructuralCodebook;
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entityTypeName).toBe('Person');
+    expect(conflicts[0]?.reason).toBe('minLength 10 exceeds maxLength 5');
+  });
+
+  it('keeps a node type a stage names but no stage creates', () => {
+    // Nothing fabricates an artefact, so its worst-case count is zero — but a
+    // form renders a field for it, which is exactly where a rule is applied.
+    const alterForm = {
+      id: 'stage-af',
+      type: 'AlterForm',
+      label: 'Alter form',
+      subject: { entity: 'node', type: 'artefact' },
+      form: { fields: [{ variable: 'code', prompt: 'Code' }] },
+    } as unknown as Stage;
+
+    const codebook = {
+      node: { person, artefact },
+    } as unknown as StructuralCodebook;
+
+    const conflicts = analyseFeasibility(
+      codebook,
+      [nameGenerator, alterForm],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entityTypeName).toBe('Artefact');
+  });
+
+  it('keeps an edge type whose edges exist unfilled', () => {
+    // A pedigree edge is born with no attributes, so `code`'s per-variable
+    // count is zero while the edges themselves are created all the same.
+    const pedigree = {
+      id: 'stage-fp',
+      type: 'FamilyPedigree',
+      label: 'Pedigree',
+      nodeConfig: { type: 'person' },
+      edgeConfig: { type: 'kin' },
+      prompts: [],
+    } as unknown as Stage;
+
+    const codebook = {
+      node: { person },
+      edge: {
+        kin: {
+          name: 'Kin',
+          color: 'edge-color-seq-1',
+          variables: { code: contradiction },
+        },
+      },
+    } as unknown as StructuralCodebook;
+
+    const conflicts = analyseFeasibility(codebook, [pedigree], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entity).toBe('edge');
+    expect(conflicts[0]?.entityTypeName).toBe('Kin');
+  });
+
+  it('keeps ego, whose count no stage decides', () => {
+    const codebook = {
+      ego: { variables: { code: contradiction } },
+      node: { person },
+    } as unknown as StructuralCodebook;
+
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entity).toBe('ego');
   });
 });
 

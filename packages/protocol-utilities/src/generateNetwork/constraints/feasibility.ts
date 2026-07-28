@@ -1,7 +1,8 @@
-import type {
-  Stage,
-  StructuralCodebook,
-  Variables,
+import {
+  collectEntityTypeReferences,
+  type Stage,
+  type StructuralCodebook,
+  type Variables,
 } from '@codaco/protocol-validation';
 import type { NcNode, VariableValue } from '@codaco/shared-consts';
 
@@ -138,6 +139,31 @@ function countPedigreeFixedValues(
   }
 
   return byType;
+}
+
+/**
+ * The codebook node and edge types a protocol's stages name at all — as a
+ * subject, as a prompt's created edge, as a FamilyPedigree's node or edge
+ * config, or as a filter rule's target.
+ *
+ * Read from the schema's own `entityTypeReference` tags rather than from a
+ * hand-listed set of stage keys, as `collectBinOnlyVariables` reads the
+ * attribute tags: a stage type added to the schema later names its types
+ * through the same tags, so it counts as a use — and keeps its scope
+ * analysed — without anything here being updated.
+ */
+function collectReferencedTypes(stages: Stage[]): {
+  node: ReadonlySet<string>;
+  edge: ReadonlySet<string>;
+} {
+  const node = new Set<string>();
+  const edge = new Set<string>();
+
+  for (const hit of collectEntityTypeReferences({ stages })) {
+    (hit.entity === 'edge' ? edge : node).add(hit.typeId);
+  }
+
+  return { node, edge };
 }
 
 /**
@@ -665,6 +691,7 @@ export function analyseFeasibility(
   const promptFixed = countPromptFixedValues(stages, config, externalData);
   const pedigreeFixed = countPedigreeFixedValues(stages, config);
   const promptAssignments = collectPromptFixedAssignments(stages, externalData);
+  const referenced = collectReferencedTypes(stages);
   const scopes: EntityScope[] = [
     {
       entity: 'ego',
@@ -680,7 +707,36 @@ export function analyseFeasibility(
     },
   ];
 
+  // A codebook type the stage list never names carries no entity: no stage
+  // creates one, and nothing writes onto one. No value of its variables is ever
+  // drawn or submitted, so a rule declared on them is never applied, and
+  // analysing it refuses a protocol over a variable the run never reaches — a
+  // Person-only interview blocked by an unused type's `minLength` above its
+  // `maxLength`. Whole scopes are dropped rather than individual variables:
+  // every stage that creates an entity generates its type's whole attribute
+  // set, so a type with any carrier has no unpopulated variable to exempt.
+  //
+  // Asked of the type rather than of the counts, because the zeroes reaching
+  // this pass do not all mean the same thing. An edge type's per-variable count
+  // is zero for every variable no form fills, while its edges exist all the
+  // same — a pedigree edge is born empty — so reading that zero as "unused"
+  // would drop a contradiction on a type the run really does create. And ego
+  // has no stage-derived count at all: it is a singleton the network always
+  // carries, so its scope is never one of these.
+  //
+  // Both readers have to agree the type is absent. The schema's tags and
+  // `worstCaseEntityCounts`' own field reads see the same stage list
+  // independently, so neither a tag dropped from the schema nor a creating
+  // stage the counter does not model can on its own delete a refusal.
+  const carriesNothing = (
+    entity: 'node' | 'edge',
+    type: string,
+    counted: boolean,
+  ): boolean => !referenced[entity].has(type) && !counted;
+
   for (const [type, definition] of Object.entries(codebook.node ?? {})) {
+    if (carriesNothing('node', type, counts.node.has(type))) continue;
+
     scopes.push({
       entity: 'node',
       entityType: type,
@@ -702,6 +758,10 @@ export function analyseFeasibility(
   }
 
   for (const [type, definition] of Object.entries(codebook.edge ?? {})) {
+    const counted =
+      counts.edge.base.has(type) || counts.edge.pedigree.has(type);
+    if (carriesNothing('edge', type, counted)) continue;
+
     scopes.push({
       entity: 'edge',
       entityType: type,
