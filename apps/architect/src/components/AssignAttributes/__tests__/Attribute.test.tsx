@@ -111,7 +111,15 @@ describe('Attribute', () => {
   });
 
   it('uses indexed paths for creation and the boolean value field', () => {
-    const store = configureStore({ reducer: { form: formReducer } });
+    // Attribute's cross-class gate subscribes to protocol-derived selectors
+    // (role map + subject variables), so the store needs the slice they read.
+    const store = configureStore({
+      reducer: {
+        form: formReducer,
+        activeProtocol: (state = { present: { codebook: {}, stages: [] } }) =>
+          state,
+      },
+    });
 
     render(
       <Provider store={store}>

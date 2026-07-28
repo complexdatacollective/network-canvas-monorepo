@@ -74,6 +74,7 @@ const CODEBOOK_WITH_TARGET_ONLY_VARIABLE = {
 type HandleChangePrompt = (value: {
   variable: string;
   variableOptions: unknown;
+  otherVariable?: string;
 }) => Promise<unknown>;
 
 type OwnProps = { form: string; entity: 'node' | 'edge' | 'ego'; type: string };
@@ -346,5 +347,104 @@ describe('CategoricalBinPrompts withPromptChangeHandler cross-class gate', () =>
       ],
     });
     expect(result).toMatchObject({ variable: 'cat' });
+  });
+});
+
+// Final-review fix: `otherVariable` is a VALIDATED writer (its follow-up
+// input honours the referenced variable's codebook validation), so it carries
+// the MIRROR gate: reject a pick a bin/highlight/census/etc. elsewhere
+// already writes without validation. `other` is a text variable written
+// without validation by a FamilyPedigree nodeLabelVariable (stage s2) — and,
+// in the same-class control, collected by an AlterForm field (stage s3)
+// instead.
+const OTHER_VARIABLE_CODEBOOK = {
+  node: {
+    person: {
+      name: 'Person',
+      color: 'c',
+      variables: {
+        cat: {
+          name: 'Cat',
+          type: 'categorical',
+          options: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+        },
+        other: { name: 'Other', type: 'text' },
+      },
+    },
+  },
+};
+
+const OTHER_UNVALIDATED_STAGE = {
+  id: 's2',
+  type: 'FamilyPedigree',
+  label: 'P',
+  nodeConfig: { type: 'person', nodeLabelVariable: 'other' },
+};
+
+const OTHER_VALIDATED_STAGE = {
+  id: 's3',
+  type: 'AlterForm',
+  label: 'F',
+  subject: { entity: 'node', type: 'person' },
+  introductionPanel: { title: 'T', text: 'X' },
+  form: { fields: [{ variable: 'other', prompt: 'P' }] },
+};
+
+const otherVariableProtocol = (stages: unknown[]) => ({
+  schemaVersion: 8,
+  codebook: OTHER_VARIABLE_CODEBOOK,
+  stages,
+});
+
+const OTHER_PROMPT_VALUE = {
+  variable: 'cat',
+  variableOptions: [
+    { label: 'A', value: 'a' },
+    { label: 'B', value: 'b' },
+  ],
+  otherVariable: 'other',
+};
+
+describe('CategoricalBinPrompts withPromptChangeHandler otherVariable mirror gate', () => {
+  it('throws a SubmissionError keyed at otherVariable with the mirror message', async () => {
+    const handleChangePrompt = captureHandleChangePrompt(
+      undefined,
+      otherVariableProtocol([OTHER_UNVALIDATED_STAGE]),
+    );
+    let thrown: unknown;
+    try {
+      await handleChangePrompt(OTHER_PROMPT_VALUE);
+    } catch (error) {
+      thrown = error;
+    }
+    if (!(thrown instanceof SubmissionError)) {
+      throw new Error('handleChangePrompt did not block the save');
+    }
+    expect(thrown.errors).toEqual({
+      otherVariable:
+        '"Other" is written without validation by another stage, so it cannot be used as a form field',
+    });
+  });
+
+  it('escapes when the pick equals the prompt’s original committed otherVariable (editing without changing)', async () => {
+    const handleChangePrompt = captureHandleChangePrompt(
+      undefined,
+      otherVariableProtocol([OTHER_UNVALIDATED_STAGE]),
+      { otherVariable: 'other' },
+    );
+    const result = await handleChangePrompt(OTHER_PROMPT_VALUE);
+    expect(result).toMatchObject({ otherVariable: 'other' });
+  });
+
+  it('allows a pick only a form elsewhere already validates (same class)', async () => {
+    const handleChangePrompt = captureHandleChangePrompt(
+      undefined,
+      otherVariableProtocol([OTHER_VALIDATED_STAGE]),
+    );
+    const result = await handleChangePrompt(OTHER_PROMPT_VALUE);
+    expect(result).toMatchObject({ otherVariable: 'other' });
   });
 });

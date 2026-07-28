@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { getAdditionalAttributesOptionsForSubject } from '~/components/AssignAttributes/AssignAttributes';
 import {
   getComposerQuickAddOptionsForSubject,
   getConvexHullOptionsForSubject,
@@ -232,6 +233,43 @@ describe('getComposerQuickAddOptionsForSubject (NetworkComposer quickAdd picker,
     );
 
     expect(result.map((o) => o.value)).toContain('qa');
+  });
+});
+
+// Final-review sweep: additionalAttributes stamps (NameGenerator,
+// NameGeneratorQuickAdd, NameGeneratorRoster prompt editors) are UNVALIDATED
+// writers, so their shared row pool excludes in the OPPOSITE direction to the
+// quickAdd blocks below — and its escape is the multi-row committed set, not
+// a single currentValue.
+describe('getAdditionalAttributesOptionsForSubject (AssignAttributes pool, UNVALIDATED writer)', () => {
+  it('drops a variable a form elsewhere already validates', () => {
+    const result = getAdditionalAttributesOptionsForSubject(
+      stateWith(validatedOnly),
+      subject,
+    );
+
+    expect(result.map((o) => o.value)).not.toContain('qa');
+    expect(result.map((o) => o.value)).not.toContain('cat');
+  });
+
+  it('keeps a variable only an unvalidated writer elsewhere already claims', () => {
+    const result = getAdditionalAttributesOptionsForSubject(
+      stateWith(qaUnvalidatedOnly),
+      subject,
+    );
+
+    expect(result.map((o) => o.value)).toContain('qa');
+  });
+
+  it('keeps every committed row value offered while still dropping other conflicted options', () => {
+    const result = getAdditionalAttributesOptionsForSubject(
+      stateWith(validatedOnly),
+      subject,
+      ['qa'],
+    );
+
+    expect(result.map((o) => o.value)).toContain('qa');
+    expect(result.map((o) => o.value)).not.toContain('cat');
   });
 });
 

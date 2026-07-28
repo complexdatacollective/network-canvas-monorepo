@@ -1,7 +1,13 @@
+import { get } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
-import type { ComponentType, KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useMemo,
+  type ComponentType,
+  type KeyboardEvent,
+} from 'react';
 import { useSelector } from 'react-redux';
-import { formValueSelector } from 'redux-form';
+import { formValueSelector, getFormInitialValues } from 'redux-form';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
@@ -9,7 +15,13 @@ import type { VariableType } from '@codaco/protocol-validation';
 import type { FrescoReduxArrayFieldItemProps } from '~/components/Form/FrescoReduxArrayField';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
+import {
+  crossClassPickIssue,
+  validatedElsewhereMessage,
+} from '~/components/Validations/contradictions';
 import type { RootState } from '~/ducks/modules/root';
+import { getVariablesForSubject } from '~/selectors/codebook';
+import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 
 import withCreateVariableHandler from '../enhancers/withCreateVariableHandler';
 import VariablePicker from '../Form/Fields/VariablePicker/VariablePicker';
@@ -33,7 +45,7 @@ export type AttributeValue = {
 
 type AttributeOwnProps = FrescoReduxArrayFieldItemProps<AttributeValue> & {
   variableOptions: VariableOption[];
-  entity: string;
+  entity: 'node' | 'edge' | 'ego';
   type: string;
 };
 
@@ -66,6 +78,42 @@ const Attribute = ({
         | string
         | undefined,
   );
+  // Save-time cross-class gate (the same field-level `crossClassPick` shape
+  // as NetworkComposer's quickAdd): this stamp is an UNVALIDATED writer, so
+  // its variable may not be one a form elsewhere already collects. Sync field
+  // validation blocks the prompt dialog's save, backstopping the pool
+  // exclusion in AssignAttributes.tsx for a stale draft. Checks the SAVED
+  // document's role map only — an unsaved sibling draft (e.g. this same
+  // NameGenerator stage's own form fields, still uncommitted) is out of its
+  // reach.
+  const subject = useMemo(() => ({ entity, type }), [entity, type]);
+  const roleMap = useSelector(getVariableRoleMap);
+  const allVariables = useSelector((state: RootState) =>
+    getVariablesForSubject(state, subject),
+  );
+  // The row's PRE-EDIT committed pick, for the gate's unchanged-pick escape.
+  const committedVariable = useSelector((state: RootState) => {
+    const committed: unknown = get(
+      getFormInitialValues(form)(state),
+      `${fieldName}.variable`,
+    );
+    return typeof committed === 'string' ? committed : '';
+  });
+  const crossClassValidate = useCallback(
+    (value: unknown): string | undefined => {
+      const variableId = typeof value === 'string' ? value : '';
+      if (!variableId) return undefined;
+      return crossClassPickIssue({
+        variableId,
+        originalVariableId: committedVariable,
+        hasConflictingUse: (id) =>
+          (roleMap[roleMapKey(subject, id)]?.validated ?? 0) > 0,
+        allVariables,
+        message: validatedElsewhereMessage,
+      });
+    },
+    [committedVariable, roleMap, subject, allVariables],
+  );
 
   return (
     <div className="my-5 flex rounded p-5">
@@ -74,7 +122,7 @@ const Attribute = ({
           <ValidatedField
             name={`${fieldName}.variable`}
             component={VariablePicker}
-            validation={{ required: true }}
+            validation={{ required: true, crossClassPick: crossClassValidate }}
             componentProps={{
               options: variableOptions,
               onCreateOption: (value: string) =>

@@ -1,7 +1,7 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import { change, formValueSelector, getFormInitialValues } from 'redux-form';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableOptions } from '@codaco/protocol-validation';
@@ -19,9 +19,19 @@ import NewVariableWindow, {
 } from '~/components/NewVariableWindow';
 import EntitySelectField from '~/components/sections/fields/EntitySelectField/EntitySelectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  crossClassPickIssue,
+  validatedElsewhereMessage,
+} from '~/components/Validations/contradictions';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
-import { getVariableOptionsForSubject } from '~/selectors/codebook';
+import {
+  EMPTY_VARIABLES,
+  getVariableOptionsForSubject,
+  getVariablesForSubjectSelector,
+} from '~/selectors/codebook';
+import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import { excludeValidatedUses } from '~/selectors/roleFilters';
 import { optionsMatch } from '~/utils/variables';
 const edgeEntity: Entity = 'edge';
 // Variable pickers that reference the selected edge type's variables; they must
@@ -33,6 +43,8 @@ const EDGE_DEPENDENT_VARIABLE_FIELDS = [
   'edgeConfig.isGestationalCarrierVariable',
   'edgeConfig.gameteRoleVariable',
 ];
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 type VariableWindowInitialProps = {
   entity: Entity;
   type: string;
@@ -53,6 +65,12 @@ type VariableRowProps = {
   }[];
   onCreateOption: (name: string) => void;
   edgeType: string;
+  /**
+   * Save-time cross-class gate for this slot (an UNVALIDATED writer): a sync
+   * field validator, so an invalid pick blocks the stage editor's save — the
+   * same field-level `crossClassPick` shape NetworkComposer's quickAdd uses.
+   */
+  crossClassPick: (value: unknown) => string | undefined;
 };
 const VariableRow = ({
   name,
@@ -61,6 +79,7 @@ const VariableRow = ({
   options,
   onCreateOption,
   edgeType,
+  crossClassPick,
 }: VariableRowProps) => (
   <div className="flex items-start gap-5">
     <div className="flex flex-1 basis-0 flex-col gap-1 pt-2.5">
@@ -75,7 +94,7 @@ const VariableRow = ({
       <ValidatedField
         name={name}
         component={VariablePicker}
-        validation={{ required: true }}
+        validation={{ required: true, crossClassPick }}
         componentProps={{
           entity: 'edge',
           type: edgeType,
@@ -112,6 +131,73 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
       ? getVariableOptionsForSubject(state, { entity: 'edge', type: edgeType })
       : [],
   );
+  // Memoized on edgeType so the subject object identity is stable across
+  // renders, matching getVariablesForSubjectSelector's reselect memoization
+  // instead of defeating it every render.
+  const edgeVariablesSubject = useMemo(
+    () => (edgeType ? { entity: 'edge' as const, type: edgeType } : null),
+    [edgeType],
+  );
+  const allVariables = useSelector((state: RootState) =>
+    edgeVariablesSubject
+      ? getVariablesForSubjectSelector(state, edgeVariablesSubject)
+      : EMPTY_VARIABLES,
+  );
+  const roleMap = useSelector(getVariableRoleMap);
+  const stageInitialValues = useSelector((state: RootState) =>
+    getFormInitialValues(form)(state),
+  );
+  const relationshipTypeDraft = useSelector((state: RootState) => {
+    const value: unknown = formSelector(
+      state,
+      'edgeConfig.relationshipTypeVariable',
+    );
+    return typeof value === 'string' ? value : undefined;
+  });
+  const isActiveDraft = useSelector((state: RootState) => {
+    const value: unknown = formSelector(state, 'edgeConfig.isActiveVariable');
+    return typeof value === 'string' ? value : undefined;
+  });
+  const isGestationalCarrierDraft = useSelector((state: RootState) => {
+    const value: unknown = formSelector(
+      state,
+      'edgeConfig.isGestationalCarrierVariable',
+    );
+    return typeof value === 'string' ? value : undefined;
+  });
+  const gameteRoleDraft = useSelector((state: RootState) => {
+    const value: unknown = formSelector(state, 'edgeConfig.gameteRoleVariable');
+    return typeof value === 'string' ? value : undefined;
+  });
+  // Save-time cross-class gate for an edgeConfig slot (an UNVALIDATED
+  // writer): rejects a pick a form elsewhere in the saved document already
+  // collects, escaping the slot's own committed value so a pre-existing
+  // conflict (e.g. an imported protocol) stays saveable — the timeline alert
+  // handles it non-destructively. Unlike NodeConfiguration's slots there is
+  // no intra-draft sibling to check: FamilyPedigree has no validated writer
+  // on its edge type.
+  const makeSlotValidator =
+    (slotField: string) =>
+    (value: unknown): string | undefined => {
+      if (!edgeVariablesSubject) return undefined;
+      const variableId = typeof value === 'string' ? value : '';
+      if (!variableId) return undefined;
+      const committedConfig: unknown = isRecord(stageInitialValues)
+        ? stageInitialValues.edgeConfig
+        : undefined;
+      const committedRaw: unknown = isRecord(committedConfig)
+        ? committedConfig[slotField]
+        : undefined;
+      const committed = typeof committedRaw === 'string' ? committedRaw : '';
+      return crossClassPickIssue({
+        variableId,
+        originalVariableId: committed,
+        hasConflictingUse: (id) =>
+          (roleMap[roleMapKey(edgeVariablesSubject, id)]?.validated ?? 0) > 0,
+        allVariables,
+        message: validatedElsewhereMessage,
+      });
+    };
   const relationshipTypeCompatible = edgeVariableOptions.filter(
     (v) =>
       v.type === 'categorical' &&
@@ -128,6 +214,50 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
   const gameteRoleCompatible = edgeVariableOptions.filter(
     (v) =>
       v.type === 'categorical' && optionsMatch(v.options, GAMETE_ROLE_OPTIONS),
+  );
+  // Each slot is an UNVALIDATED writer: drop options a form elsewhere already
+  // validates, keeping the slot's own current pick offered (the usual
+  // currentValue escape). Per-slot pools because two slots share a type pool
+  // but each escapes only its own value.
+  const relationshipTypeVariableOptions = useSelector((state: RootState) =>
+    edgeVariablesSubject
+      ? excludeValidatedUses(
+          state,
+          edgeVariablesSubject,
+          relationshipTypeCompatible,
+          relationshipTypeDraft,
+        )
+      : [],
+  );
+  const isActiveVariableOptions = useSelector((state: RootState) =>
+    edgeVariablesSubject
+      ? excludeValidatedUses(
+          state,
+          edgeVariablesSubject,
+          booleanEdgeVariables,
+          isActiveDraft,
+        )
+      : [],
+  );
+  const isGestationalCarrierVariableOptions = useSelector((state: RootState) =>
+    edgeVariablesSubject
+      ? excludeValidatedUses(
+          state,
+          edgeVariablesSubject,
+          booleanEdgeVariables,
+          isGestationalCarrierDraft,
+        )
+      : [],
+  );
+  const gameteRoleVariableOptions = useSelector((state: RootState) =>
+    edgeVariablesSubject
+      ? excludeValidatedUses(
+          state,
+          edgeVariablesSubject,
+          gameteRoleCompatible,
+          gameteRoleDraft,
+        )
+      : [],
   );
   const handleCreatedVariable = (...args: unknown[]) => {
     const [id, params] = args as [
@@ -217,32 +347,36 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
               label="Relationship Type"
               description="Stores the type of relationship between family members (e.g. biological, social, donor, surrogate, adoptive, or partner)."
               edgeType={edgeType}
-              options={relationshipTypeCompatible}
+              options={relationshipTypeVariableOptions}
               onCreateOption={handleNewRelationshipTypeVariable}
+              crossClassPick={makeSlotValidator('relationshipTypeVariable')}
             />
             <VariableRow
               name="edgeConfig.isActiveVariable"
               label="Is Active"
               description="Stores whether the relationship is currently active."
               edgeType={edgeType}
-              options={booleanEdgeVariables}
+              options={isActiveVariableOptions}
               onCreateOption={handleNewIsActiveVariable}
+              crossClassPick={makeSlotValidator('isActiveVariable')}
             />
             <VariableRow
               name="edgeConfig.isGestationalCarrierVariable"
               label="Gestational Carrier"
               description="Stores whether a parent is a gestational carrier (parent edges only)."
               edgeType={edgeType}
-              options={booleanEdgeVariables}
+              options={isGestationalCarrierVariableOptions}
               onCreateOption={handleNewGestationalCarrierVariable}
+              crossClassPick={makeSlotValidator('isGestationalCarrierVariable')}
             />
             <VariableRow
               name="edgeConfig.gameteRoleVariable"
               label="Gamete Role"
               description="Stores which reproductive cell (gamete) a parent contributed to a child: the egg or the sperm. The interface uses this to trace the biological route of inheritance along each parent relationship. This variable uses a fixed set of values (egg/sperm) that cannot be edited."
               edgeType={edgeType}
-              options={gameteRoleCompatible}
+              options={gameteRoleVariableOptions}
               onCreateOption={handleNewGameteRoleVariable}
+              crossClassPick={makeSlotValidator('gameteRoleVariable')}
             />
           </div>
         )}

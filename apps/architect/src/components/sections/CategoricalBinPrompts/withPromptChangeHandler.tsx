@@ -7,10 +7,12 @@ import { change, getFormInitialValues, SubmissionError } from 'redux-form';
 import { updateVariableAsync } from '../../../ducks/modules/protocol/codebook';
 import type { RootState } from '../../../ducks/modules/root';
 import { getVariablesForSubjectSelector } from '../../../selectors/codebook';
+import { getVariableRoleMap, roleMapKey } from '../../../selectors/indexes';
 import { hasValidatedUse } from '../../../selectors/roleFilters';
 import {
   crossClassPickIssue,
   findDraftContradictions,
+  unvalidatedElsewhereMessage,
   validatedElsewhereMessage,
 } from '../../Validations/contradictions';
 
@@ -54,12 +56,27 @@ const makeMapStateToProps = () => {
       // be one a form elsewhere already collects.
       hasValidatedUse: (variableId: string) =>
         hasValidatedUse(state, subject, variableId),
+      // The mirror check for `otherVariable`, a VALIDATED writer (its
+      // follow-up input honours the referenced variable's codebook
+      // validation): it may not be one a bin/highlight/census/etc. elsewhere
+      // already writes without validation. Inlined here rather than added to
+      // roleFilters.ts — see hasValidatedUse's doc comment there.
+      hasUnvalidatedUse: (variableId: string) =>
+        (getVariableRoleMap(state)[roleMapKey(subject, variableId)]
+          ?.unvalidated ?? 0) > 0,
       // The row's PRE-EDIT committed variable, for the gate's unchanged-pick
       // escape (only one editor dialog is ever open at a time, so the shared
       // row-editor form's initial values are this prompt's own).
       originalVariable:
         isRecord(initialValues) && typeof initialValues.variable === 'string'
           ? initialValues.variable
+          : '',
+      // The row's PRE-EDIT committed otherVariable, for the mirror gate's
+      // unchanged-pick escape.
+      originalOtherVariable:
+        isRecord(initialValues) &&
+        typeof initialValues.otherVariable === 'string'
+          ? initialValues.otherVariable
           : '',
     };
   };
@@ -149,6 +166,25 @@ const handlers = withHandlers({
       });
       if (crossClassIssue) {
         throw new SubmissionError({ variable: crossClassIssue });
+      }
+
+      // The mirror gate for CategoricalBin's `otherVariable`, a VALIDATED
+      // writer: reject a pick a bin/highlight/census/etc. elsewhere already
+      // writes without validation. `otherVariable` is a plain field on the
+      // prompt form (PromptFields.tsx's ValidatedField name="otherVariable"),
+      // so — like `variable` above — a STRING value keyed at that name
+      // renders correctly. Absent on OrdinalBin prompts (which share this
+      // HOC), where the empty variableId makes the check a no-op.
+      const otherVariable = rest.otherVariable;
+      const otherVariableIssue = crossClassPickIssue({
+        variableId: typeof otherVariable === 'string' ? otherVariable : '',
+        originalVariableId: props.originalOtherVariable,
+        hasConflictingUse: props.hasUnvalidatedUse,
+        allVariables: props.allVariables,
+        message: unvalidatedElsewhereMessage,
+      });
+      if (otherVariableIssue) {
+        throw new SubmissionError({ otherVariable: otherVariableIssue });
       }
 
       props.changeForm(props.form, '_modified', Date.now()); // TODO: can we avoid this?
