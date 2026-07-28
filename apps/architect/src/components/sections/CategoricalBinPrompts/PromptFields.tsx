@@ -34,6 +34,7 @@ type PromptFieldsProps = {
   optionsForVariableDraft?: Array<Record<string, unknown>>;
   otherVariable?: string;
   otherVariableOptions?: VariableOption[];
+  sortVariableOptions?: VariableOption[];
   type: string;
   variable?: string;
   variableOptions?: VariableOption[];
@@ -46,6 +47,7 @@ const PromptFields = ({
   optionsForVariableDraft = [],
   otherVariable,
   otherVariableOptions = [],
+  sortVariableOptions = [],
   type,
   variable,
   variableOptions = [],
@@ -91,7 +93,10 @@ const PromptFields = ({
   const otherVariableTextOptions = otherVariableOptions.filter(
     ({ type: variableType }) => variableType === 'text',
   );
-  const getOptions = getSortOrderOptionGetter(variableOptions);
+  // Sort keys are read-only references outside the writer-exclusivity rule:
+  // they draw from the HOC's RAW pool so a bin can still be bucket/bin-sorted
+  // by a form-collected variable the (role-filtered) writer pool above drops.
+  const getOptions = getSortOrderOptionGetter(sortVariableOptions);
   const sortMaxItems = getOptions('property', undefined, []).length;
   const totalOptionsLength =
     optionsForVariableDraft &&

@@ -23,10 +23,17 @@ type SelectOption = {
 };
 type PromptFieldsProps = {
   form: string;
-  variableOptions?: SelectOption[];
+  sortVariableOptions?: SelectOption[];
 };
-const PromptFields = ({ form, variableOptions = [] }: PromptFieldsProps) => {
-  const getOptions = getSortOrderOptionGetter(variableOptions);
+const PromptFields = ({
+  form,
+  sortVariableOptions = [],
+}: PromptFieldsProps) => {
+  // This stage writes no attribute at all — it consumes the shared HOC purely
+  // for sort options, and sort keys are read-only references outside the
+  // writer-exclusivity rule, so they draw from the RAW pool (never the
+  // role-filtered writer pool).
+  const getOptions = getSortOrderOptionGetter(sortVariableOptions);
   const sortMaxItems = getOptions('property', undefined, []).length;
   const getFormValue = formValueSelector(form);
   const edgeVariable = useSelector(

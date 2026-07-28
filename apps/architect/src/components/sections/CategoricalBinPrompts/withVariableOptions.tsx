@@ -58,6 +58,12 @@ const mapStateToProps = (
     otherVariable,
     variableOptions,
     otherVariableOptions,
+    // Sort keys (bucket/bin sortOrder `property`) are untagged read-only
+    // REFERENCES, deliberately outside the writer-exclusivity rule — a bin
+    // may still be sorted by a variable a form collects — so
+    // getSortOrderOptionGetter consumers must draw from this RAW pool, never
+    // the role-filtered writer pools above.
+    sortVariableOptions: rawVariableOptions,
     optionsForVariable,
     optionsForVariableDraft,
   };
