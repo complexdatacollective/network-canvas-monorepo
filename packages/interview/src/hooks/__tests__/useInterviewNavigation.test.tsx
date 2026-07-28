@@ -229,6 +229,24 @@ describe('useInterviewNavigation step-change meta', () => {
 
     expect(onStepChange).not.toHaveBeenCalled();
   });
+
+  it('allows stage-local navigation on the final authored review stage', async () => {
+    const { result, onStepChange } = renderNavigation(2, 1, true);
+    const beforeNext = vi.fn(() => false);
+
+    act(() => {
+      result.current.registerBeforeNext(beforeNext);
+    });
+
+    expect(result.current.disableMoveForward).toBe(false);
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(beforeNext).toHaveBeenCalledWith('forwards', 'step');
+    expect(onStepChange).not.toHaveBeenCalled();
+  });
 });
 
 describe('useInterviewNavigation targeted skip routes', () => {

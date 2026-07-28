@@ -99,6 +99,14 @@ const noActiveAuthoredStagePayload = {
   },
 } satisfies InterviewPayload;
 
+const emptyProtocolPayload = {
+  ...payload,
+  protocol: {
+    ...payload.protocol,
+    stages: [],
+  },
+} satisfies InterviewPayload;
+
 function ControlledShell() {
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -145,6 +153,24 @@ function ControlledNoActiveStageReviewShell() {
   return (
     <Shell
       payload={noActiveAuthoredStagePayload}
+      currentStep={currentStep}
+      onStepChange={setCurrentStep}
+      onSync={() => Promise.resolve()}
+      onFinish={() => Promise.resolve()}
+      onRequestAsset={() => Promise.resolve('')}
+      analytics={{ installationId: 'test', hostApp: 'test' }}
+      reviewMode
+      hideNavigation
+    />
+  );
+}
+
+function ControlledEmptyReviewShell() {
+  const [currentStep, setCurrentStep] = useState(0);
+
+  return (
+    <Shell
+      payload={emptyProtocolPayload}
       currentStep={currentStep}
       onStepChange={setCurrentStep}
       onSync={() => Promise.resolve()}
@@ -229,5 +255,19 @@ describe('Shell render gating', () => {
         '[data-stage-interface="route-controlling-stage"]',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('shows an empty review state when the protocol has no authored stages', () => {
+    const view = render(<ControlledEmptyReviewShell />);
+
+    expect(
+      view.getByRole('heading', { name: 'Nothing to review' }),
+    ).toBeInTheDocument();
+    expect(
+      view.getByText('This interview has no screens to review.'),
+    ).toBeInTheDocument();
+    expect(
+      view.container.querySelector('[data-stage-interface]'),
+    ).not.toBeInTheDocument();
   });
 });

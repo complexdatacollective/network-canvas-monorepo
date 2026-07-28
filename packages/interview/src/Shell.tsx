@@ -10,7 +10,10 @@ import { Provider } from 'react-redux';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { AnalyticsProvider } from './analytics/AnalyticsProvider';
@@ -57,6 +60,17 @@ const variants = {
   exit: { opacity: 0 },
 };
 
+function EmptyReview() {
+  return (
+    <div className="interface">
+      <Surface className="w-full max-w-2xl" noContainer>
+        <Heading level="h1">Nothing to review</Heading>
+        <Paragraph>This interview has no screens to review.</Paragraph>
+      </Surface>
+    </div>
+  );
+}
+
 /**
  * Orientation of the interview Navigation. `horizontal` renders the nav as a
  * bar along the bottom (with the stage above it); `vertical` renders it as a
@@ -76,6 +90,7 @@ function Interview({
   allowStageNavigation,
   initialStageOverrideIndex,
   reviewMode,
+  emptyReview,
 }: {
   onExit?: () => void;
   hideNavigation?: boolean;
@@ -84,6 +99,7 @@ function Interview({
   allowStageNavigation?: boolean;
   initialStageOverrideIndex?: number;
   reviewMode?: boolean;
+  emptyReview?: boolean;
 }) {
   const {
     stage,
@@ -106,7 +122,7 @@ function Interview({
   useStageNavigationAnalytics({
     stage_index: displayedStep,
     stage_type: stage?.type,
-    enabled: canRenderStage,
+    enabled: canRenderStage && !emptyReview,
   });
 
   const forwardButtonRef = useRef<HTMLButtonElement>(null);
@@ -154,41 +170,50 @@ function Interview({
               backButtonRef={backButtonRef}
               orientation={navigationOrientation}
             >
-              <AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
-                {showStage && stage && (
-                  <motion.div
-                    key={displayedStep}
-                    data-stage-step={displayedStep}
-                    className="flex min-h-0 min-w-0 flex-1"
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    variants={variants}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <div
-                      className="relative flex size-full flex-col items-center justify-center"
-                      id="stage"
-                      key={stage.id}
+              {emptyReview ? (
+                <div className="relative flex size-full flex-col items-center justify-center">
+                  <EmptyReview />
+                </div>
+              ) : (
+                <AnimatePresence
+                  mode="wait"
+                  onExitComplete={handleExitComplete}
+                >
+                  {showStage && stage && (
+                    <motion.div
+                      key={displayedStep}
+                      data-stage-step={displayedStep}
+                      className="flex min-h-0 min-w-0 flex-1"
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      variants={variants}
+                      transition={{ duration: 0.5 }}
                     >
-                      {canRenderStage && (
-                        <GeospatialOfflineIndicator
-                          active={stage.type === 'Geospatial'}
-                        />
-                      )}
-                      <StageErrorBoundary>
-                        {canRenderStage && CurrentInterface && (
-                          <CurrentInterface
-                            key={stage.id}
-                            stage={stage}
-                            getNavigationHelpers={getNavigationHelpers}
+                      <div
+                        className="relative flex size-full flex-col items-center justify-center"
+                        id="stage"
+                        key={stage.id}
+                      >
+                        {canRenderStage && (
+                          <GeospatialOfflineIndicator
+                            active={stage.type === 'Geospatial'}
                           />
                         )}
-                      </StageErrorBoundary>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                        <StageErrorBoundary>
+                          {canRenderStage && CurrentInterface && (
+                            <CurrentInterface
+                              key={stage.id}
+                              stage={stage}
+                              getNavigationHelpers={getNavigationHelpers}
+                            />
+                          )}
+                        </StageErrorBoundary>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              )}
             </InterviewToastProvider>
           </StageMetadataProvider>
           {!hideNavigation && (
@@ -196,7 +221,7 @@ function Interview({
               moveBackward={moveBackward}
               moveForward={moveForward}
               goToStage={goToStage}
-              allowStageNavigation={allowStageNavigation}
+              allowStageNavigation={allowStageNavigation && !emptyReview}
               disableMoveForward={disableMoveForward}
               disableMoveBackward={disableMoveBackward}
               pulseNext={pulseNext}
@@ -353,6 +378,9 @@ const Shell = ({
     trackerRef.current = next;
   }, []);
 
+  const emptyReview =
+    reviewMode === true && payload.protocol.stages.length === 0;
+
   const reviewEntry = useMemo(() => {
     if (
       reviewMode !== true ||
@@ -416,6 +444,7 @@ const Shell = ({
               }
               initialStageOverrideIndex={reviewEntry.initialStageOverrideIndex}
               reviewMode={reviewMode}
+              emptyReview={emptyReview}
             />
           </CurrentStepProvider>
         </ContractProvider>
