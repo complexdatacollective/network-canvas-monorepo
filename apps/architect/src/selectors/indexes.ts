@@ -96,8 +96,10 @@ const getNodeIndex = createSelector(getProtocol, (protocol) =>
   collectTypeIndex(protocol, 'node'),
 );
 
-// Shared by getVariableIndex and getVariableRoleMap so both consume one walk
-// of the protocol instead of separately re-collecting entity-attribute hits.
+// Memoises getVariableIndex's entity-attribute walk so re-deriving the index
+// doesn't re-collect hits unless the protocol changes. (getVariableRoleMap
+// below has its own grouping needs and calls collectVariableRoleHits directly
+// rather than consuming this.)
 const getEntityAttributeHits = createSelector(getProtocol, (protocol) =>
   protocol ? collectEntityAttributeReferences(protocol) : [],
 );
