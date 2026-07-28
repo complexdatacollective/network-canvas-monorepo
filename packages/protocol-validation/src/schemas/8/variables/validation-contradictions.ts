@@ -1463,6 +1463,185 @@ const sharedBooleanDomain = (
   return intersection;
 };
 
+/**
+ * Twenty-first-wave Finding 2: the maximum number of periods a coarse
+ * (month/year) DatePicker's declared window may enumerate before
+ * `discreteInstantsEmpty` gives up on exact reasoning and falls back to the
+ * convex-interval check above for the whole group. `datePickerParametersSchema`
+ * floors a coarse year at 1000 but sets no ceiling, and a month picker
+ * multiplies every year in its span by 12, so enumerating an unbounded window
+ * is a real denial-of-service surface on protocol import — exactly the class
+ * of defect the twenty-first-wave star-regression fix (the BFS queue in
+ * `oddDifferentFromCycleContradictions`) closed for the odd-cycle graph. 1,000
+ * periods comfortably covers any legitimate window an interview would ever
+ * declare (a full millennium at year resolution, or 83-plus years at month
+ * resolution) while bounding the worst case to a small, constant amount of
+ * work per equality group.
+ */
+const COARSE_INSTANT_ENUMERATION_CAP = 1000;
+
+type YearMonth = { year: number; month: number };
+
+/**
+ * A coarse DatePicker bound string, read strictly according to the picker's
+ * OWN declared resolution rather than the string's shape — a defensive
+ * reading appropriate for raw (pre-schema) migration input, matching the rest
+ * of this file. `undefined` means the bound cannot be read at that
+ * resolution at all (no year, or a month picker missing its month part).
+ */
+const parseCoarseBound = (
+  value: string,
+  resolution: 'month' | 'year',
+): YearMonth | undefined => {
+  const match = DATE_PART_PATTERN.exec(value);
+  if (!match?.[1]) return undefined;
+  const year = Number(match[1]);
+  if (resolution === 'year') return { year, month: 1 };
+  if (match[2] === undefined) return undefined;
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) return undefined;
+  return { year, month };
+};
+
+// A single linear index over calendar periods at the given resolution, so two
+// bounds can be counted and enumerated between without re-deriving day
+// numbers at every step.
+const coarsePeriodIndex = (
+  { year, month }: YearMonth,
+  resolution: 'month' | 'year',
+): number => (resolution === 'year' ? year : year * 12 + (month - 1));
+
+/**
+ * The exact set of UTC day numbers a bounded coarse (month/year) DatePicker
+ * can ever emit — one entry per period in its declared window, each at that
+ * period's first day (the value `compareVariables` derives from the stored
+ * truncated string; see `dayNumber`'s `'min'` edge). This is the set
+ * `dateWindowInterval`'s convex `[min, max]` day-number range only
+ * APPROXIMATES: a year picker spanning 2020-2021 emits just
+ * {2020-01-01, 2021-01-01}, not every day between them.
+ *
+ * `undefined` means the variable is not a coarse DatePicker at all (full
+ * resolution, whose OWN convex interval is already exact — see
+ * `dateWindowInterval`'s docstring). `'unenumerable'` means it IS coarse but
+ * its window cannot be safely enumerated — an open bound (no min or max to
+ * enumerate between) or a window wider than
+ * `COARSE_INSTANT_ENUMERATION_CAP` — and the caller must fall back to the
+ * convex-interval reasoning for the whole group rather than reasoning from a
+ * partial, arbitrarily-truncated set.
+ */
+const coarseInstantsOf = (
+  variable: unknown,
+): Set<number> | 'unenumerable' | undefined => {
+  const resolution = dateResolutionOf(variable);
+  if (resolution === 'full') return undefined;
+  const parameters = asRecord(asRecord(variable)?.parameters);
+  const min = parameters?.min;
+  const max = parameters?.max;
+  if (typeof min !== 'string' || typeof max !== 'string') {
+    return 'unenumerable';
+  }
+  const minPeriod = parseCoarseBound(min, resolution);
+  const maxPeriod = parseCoarseBound(max, resolution);
+  if (!minPeriod || !maxPeriod) return 'unenumerable';
+  const minIndex = coarsePeriodIndex(minPeriod, resolution);
+  const maxIndex = coarsePeriodIndex(maxPeriod, resolution);
+  const count = maxIndex - minIndex + 1;
+  if (count <= 0 || count > COARSE_INSTANT_ENUMERATION_CAP) {
+    return 'unenumerable';
+  }
+  const instants = new Set<number>();
+  for (let index = minIndex; index <= maxIndex; index++) {
+    const year = resolution === 'year' ? index : Math.floor(index / 12);
+    const monthIndex = resolution === 'year' ? 0 : index % 12;
+    instants.add(utcDayNumber(year, monthIndex, 1));
+  }
+  return instants;
+};
+
+const intersectInstantSets = (a: Set<number>, b: Set<number>): Set<number> => {
+  const [smaller, larger] = a.size <= b.size ? [a, b] : [b, a];
+  const result = new Set<number>();
+  for (const value of smaller) {
+    if (larger.has(value)) result.add(value);
+  }
+  return result;
+};
+
+/**
+ * Twenty-first-wave Finding 2: whether a subset of a datetime equality group
+ * can never actually share ONE value once each coarse member's discrete
+ * emission set — not its convex day-number interval — is modelled exactly.
+ * `intervalsEmpty` (in `disjointBoundsContradictions` below) already treats a
+ * month/year picker's window as `[period start of min, period start of max]`
+ * (twentieth-wave Finding 1 fixed the interval's MAX edge to use this same
+ * period-start reading); that interval is still a SUPERSET of what the picker
+ * can truly emit whenever the window spans more than one period. A year
+ * picker spanning 2020-2021 and a month picker spanning 2020-02–2020-12 have
+ * overlapping convex intervals (the month's nests entirely inside the
+ * year's), so mutual non-strict comparators between them look satisfiable —
+ * but the year picker can only ever emit {2020-01-01, 2021-01-01} and the
+ * month picker only {2020-02-01, ..., 2020-12-01}, which share nothing.
+ *
+ * Only applies within the 'fixed' origin: coarse resolution only ever arises
+ * on a DatePicker, whose window is always 'fixed' (`dateWindowInterval`), so
+ * an 'interviewDate'-origin member (an anchorless RelativeDatePicker) simply
+ * contributes no filter here, the same way `addToGroupIntervals` keeps the
+ * two origins from ever being compared to each other. Scoped to
+ * datetime-typed groups; a merged equality group is always uniformly typed
+ * (every union edge requires `usableReference`'s same-type check), so testing
+ * the first member would suffice, but every member is checked defensively as
+ * the rest of the file does.
+ *
+ * Deliberately conservative: an inability to enumerate a coarse member's
+ * window exactly (an open bound, or a window wider than
+ * `COARSE_INSTANT_ENUMERATION_CAP`), or the absence of ANY coarse member at
+ * all, makes this return `false` — never "empty" — so it can only ever ADD a
+ * detection the interval check above missed, never invent a false rejection
+ * of its own. The caller only ever consults this once the interval check has
+ * already found the group non-empty, so a group this DOES flag is reported
+ * exactly once.
+ */
+const discreteInstantsEmpty = (
+  variables: UnknownRecord,
+  subset: string[],
+): boolean => {
+  if (subset.length < 2) return false;
+  const types = new Set(subset.map((member) => typeOf(variables[member])));
+  const [onlyType] = types;
+  if (types.size !== 1 || onlyType !== 'datetime') return false;
+
+  let candidates: Set<number> | undefined;
+  const fixedIntervals: Interval[] = [];
+  for (const member of subset) {
+    const variable = variables[member];
+    const coarse = coarseInstantsOf(variable);
+    if (coarse === 'unenumerable') return false;
+    if (coarse === undefined) {
+      const interval = dateWindowInterval(variable);
+      if (interval?.origin === 'fixed') fixedIntervals.push(interval);
+      continue;
+    }
+    candidates =
+      candidates === undefined
+        ? coarse
+        : intersectInstantSets(candidates, coarse);
+  }
+  // No coarse member: the interval check above is already exact for a group
+  // with no coarse resolution in play, so there is nothing further to detect.
+  if (candidates === undefined) return false;
+
+  for (const interval of fixedIntervals) {
+    candidates = new Set(
+      [...candidates].filter(
+        (day) =>
+          (interval.min === undefined || day >= interval.min) &&
+          (interval.max === undefined || day <= interval.max),
+      ),
+    );
+  }
+  return candidates.size === 0;
+};
+
 const INTERVAL_ORIGINS = [
   'fixed',
   'interviewDate',
@@ -1956,6 +2135,21 @@ function disjointBoundsContradictions(
 
     if (intervalsEmpty(members)) {
       report('but their rules leave no value they can share', intervalsEmpty);
+    } else {
+      // Twenty-first-wave Finding 2: the interval intersection above can be
+      // non-empty while the coarse (month/year) members' actual discrete
+      // emission sets share nothing — see `discreteInstantsEmpty`. Skipped
+      // whenever the interval check already fired: a discrete set is always a
+      // subset of its member's own interval, so an already-empty interval
+      // intersection would trivially re-report the same conflict.
+      const discreteEmptyFor = (subset: string[]): boolean =>
+        discreteInstantsEmpty(variables, subset);
+      if (discreteEmptyFor(members)) {
+        report(
+          'but the exact dates their pickers can ever emit share no instant',
+          discreteEmptyFor,
+        );
+      }
     }
 
     // Finding D: a sameAs-joined categorical/ordinal group whose members'

@@ -2583,6 +2583,250 @@ describe('findValidationContradictions — twentieth-wave Finding 1: coarse date
   });
 });
 
+describe('findValidationContradictions — twenty-first-wave Finding 2: coarse pickers model their discrete emission set, not just their interval', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: a year picker spanning 2020-2021 emits only
+  // {2020-01-01, 2021-01-01}; a month picker spanning 2020-02–2020-12 emits
+  // only the first of each of those months. Their convex day-number
+  // intervals overlap (the month's nests inside the year's), so the interval
+  // check alone accepts mutual >=, but no value the two controls can
+  // actually emit is ever shared.
+  it('rejects a year picker mutually >= a month picker whose ranges overlap but share no instant', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanOrEqualToVariable: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'month', min: '2020-02', max: '2020-12' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'the exact dates their pickers can ever emit share no instant',
+    );
+    expect(
+      result[0]?.strips.toSorted((a, b) =>
+        a.variableId.localeCompare(b.variableId),
+      ),
+    ).toEqual([
+      { variableId: 'a', rule: 'greaterThanOrEqualToVariable' },
+      { variableId: 'b', rule: 'greaterThanOrEqualToVariable' },
+    ]);
+  });
+
+  // The false-positive guard, and the one that matters most: shrinking the
+  // month picker's window to include January still leaves a genuinely shared
+  // instant (2020-01-01), so this must stay accepted.
+  it('accepts a year picker and a month picker whose emittable sets do share an instant', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2021' },
+          { greaterThanOrEqualToVariable: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { type: 'month', min: '2020-01', max: '2020-06' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Two coarse pickers at the SAME resolution never trigger a false
+  // rejection: their discrete sets and their convex day-number intervals
+  // agree exactly (both step in whole years), so an overlapping pair is
+  // genuinely satisfiable — both January-1sts of the shared years.
+  it('accepts two year pickers with overlapping ranges', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2022' },
+          { greaterThanOrEqualToVariable: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { type: 'year', min: '2021', max: '2023' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // The general form of the reviewer's report: it is not specific to
+  // coarse-vs-coarse. A wide-ranging year picker forced equal to a FULL
+  // picker pinned to a day the year picker can never actually emit is the
+  // same shape of false accept, and the same discrete-set reasoning closes
+  // it — filtered here through the full picker's own (exact) interval rather
+  // than a second coarse set.
+  it('rejects a ranged year picker mutually >= a full picker pinned off every year-start day', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanOrEqualToVariable: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2020-06-01', max: '2020-06-01' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  // Cap boundary, exercised deliberately from both sides. A year window of
+  // exactly 1,000 periods (1000-1999) still enumerates exactly — the month
+  // picker below never touches January of any year, so this is a genuine,
+  // detectable contradiction.
+  it('still enumerates and rejects a coarse window sized exactly at the cap', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '1000', max: '1999' },
+        { greaterThanOrEqualToVariable: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'month', min: '1500-02', max: '1500-03' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  // One period past the cap (1000-2000 is 1,001 years) falls back to the
+  // plain convex-interval check for the whole group instead of enumerating —
+  // the same genuinely-empty pair as the previous test, widened by one year,
+  // is silently accepted rather than reported. This is the deliberate
+  // DoS-avoidance trade-off: a false rejection is worse than a missed one,
+  // and the runtime plus the feasibility analyser remain as backstops.
+  it('falls back to interval-only reasoning once a coarse window exceeds the cap', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '1000', max: '2000' },
+          { greaterThanOrEqualToVariable: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { type: 'month', min: '1500-02', max: '1500-03' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // The fallback is scoped to the WHOLE GROUP, not just the unenumerable
+  // member: b and c alone are the reviewer's own genuinely-empty pair (a year
+  // picker vs. a month picker sharing no instant), but a's unbounded window
+  // makes the group unenumerable, so nothing is reported — not even the
+  // real conflict between b and c. A version that merely skipped the
+  // unenumerable member while still reasoning about the rest would
+  // (incorrectly, per this fix's design) go on to catch b-vs-c anyway; this
+  // pins the coarser, whole-group fallback the task calls for.
+  it('gives up on the whole group, not just the unenumerable member', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '1000', max: '3000' },
+        { greaterThanOrEqualToVariable: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanOrEqualToVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { type: 'month', min: '2020-02', max: '2020-12' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toEqual([]);
+  });
+
+  // Mixed-origin guard: an anchorless RelativeDatePicker's window is
+  // symbolic day OFFSETS from the (unknown) interview date, on the
+  // 'interviewDate' origin — never comparable to a DatePicker's calendar
+  // 'fixed' origin. A coarse member's discrete set must not be filtered
+  // against a different-origin member's interval; this pair stays exactly as
+  // conservatively unjudged as it was before this change.
+  it('leaves a coarse picker mutually >= an anchorless RelativeDatePicker unjudged (different origins)', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2020' },
+          { greaterThanOrEqualToVariable: 'b' },
+        ),
+        b: {
+          name: 'b',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: {},
+          validation: {
+            required: true,
+            greaterThanOrEqualToVariable: 'a',
+          },
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  // Type-uniformity guard, exercised on RAW (pre-schema) migration input: a
+  // merged equality group is always uniformly typed in a schema-valid
+  // protocol (every union edge requires `usableReference`'s same-type
+  // check), but this analyser also runs before the schema has rejected
+  // anything. A categorical pair stray `component`/`parameters` keys happen
+  // to shape like a coarse DatePicker window is a real (if unusual) raw
+  // shape, and reasoning over those keys would falsely reject a pair whose
+  // actual equality only ever concerns their shared option value.
+  it('does not read DatePicker-shaped parameters off a non-datetime type', () => {
+    const staleDatePickerShaped = (
+      name: string,
+      month: string,
+      validation: Record<string, unknown> = {},
+    ) => ({
+      name,
+      type: 'categorical',
+      options: [{ label: 'X', value: 'x' }],
+      // Stray fields a prior schema revision or hand-edited fixture could
+      // still carry; a categorical variable never reads these.
+      component: 'DatePicker',
+      parameters: { type: 'month', min: month, max: month },
+      validation,
+    });
+    expect(
+      findValidationContradictions({
+        a: staleDatePickerShaped('a', '2020-02', { sameAs: 'b' }),
+        b: staleDatePickerShaped('b', '2020-03'),
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe('findValidationContradictions — twentieth-wave Finding 2: hybrid group repairs target the causing constraints', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
