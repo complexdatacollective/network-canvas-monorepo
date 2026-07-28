@@ -3,9 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { buildComposerFieldOverlay } from '../../sections/Form/composerHelpers';
 import {
   buildProspectiveVariables,
+  crossClassPickIssue,
   draftVariableId,
   findDraftContradictions,
   makeFieldEditorValidate,
+  unvalidatedElsewhereMessage,
+  validatedElsewhereMessage,
+  variableDisplayName,
 } from '../contradictions';
 
 const numberVariable = (
@@ -571,5 +575,162 @@ describe('makeFieldEditorValidate', () => {
       });
       expect(errors.validation).toContain('different resolutions');
     });
+  });
+
+  // Task 9: the save-time cross-class gate. `hasUnvalidatedUse` is the
+  // closure Form.tsx/NodeConfiguration.tsx/EditableAttributesList.tsx build
+  // from the role map (Task 7) at each mount — here stubbed directly so the
+  // gate's own logic (message, key, escape) is pinned independent of that
+  // wiring.
+  describe('save-time cross-class gate', () => {
+    const colorsVariables = {
+      colors: {
+        name: 'Colors',
+        type: 'categorical',
+        options: [
+          { label: 'Red', value: 'red' },
+          { label: 'Blue', value: 'blue' },
+        ],
+        validation: {},
+      },
+    };
+
+    it('rejects a pick a bin/highlight/census elsewhere already writes without validation', () => {
+      const validate = makeFieldEditorValidate(
+        colorsVariables,
+        undefined,
+        (variableId) => variableId === 'colors',
+      );
+      const errors = validate({ variable: 'colors', validation: {} });
+      expect(errors.variable).toBe(unvalidatedElsewhereMessage('Colors'));
+    });
+
+    it('accepts a pick with no unvalidated use elsewhere', () => {
+      const validate = makeFieldEditorValidate(
+        colorsVariables,
+        undefined,
+        () => false,
+      );
+      expect(validate({ variable: 'colors', validation: {} })).toEqual({});
+    });
+
+    it('escapes when the pick equals the field’s original committed variable (editing without changing)', () => {
+      const validate = makeFieldEditorValidate(
+        colorsVariables,
+        undefined,
+        (variableId) => variableId === 'colors',
+      );
+      const errors = validate(
+        { variable: 'colors', validation: {} },
+        { initialValues: { variable: 'colors' } },
+      );
+      expect(errors).toEqual({});
+    });
+
+    it('still rejects when the pick changes to a conflicting variable, even with a different original value', () => {
+      const validate = makeFieldEditorValidate(
+        colorsVariables,
+        undefined,
+        (variableId) => variableId === 'colors',
+      );
+      const errors = validate(
+        { variable: 'colors', validation: {} },
+        { initialValues: { variable: 'other' } },
+      );
+      expect(errors.variable).toBe(unvalidatedElsewhereMessage('Colors'));
+    });
+
+    it('never runs the gate when hasUnvalidatedUse is not supplied (composer/non-gated callers)', () => {
+      const validate = makeFieldEditorValidate(colorsVariables);
+      expect(validate({ variable: 'colors', validation: {} })).toEqual({});
+    });
+
+    it('does not shadow a genuine contradiction with the cross-class message', () => {
+      // colors has minSelected: 3 committed elsewhere in this describe's
+      // sibling suite; here the draft itself contradicts its OWN options —
+      // the earlier findDraftContradictions check must still win.
+      const validate = makeFieldEditorValidate(
+        {
+          colors: {
+            ...colorsVariables.colors,
+            validation: { minSelected: 3 },
+          },
+        },
+        undefined,
+        (variableId) => variableId === 'colors',
+      );
+      const errors = validate({
+        variable: 'colors',
+        validation: { minSelected: 3 },
+        options: [{ label: 'Red', value: 'red' }],
+      });
+      expect(errors.validation).toContain('minSelected');
+      expect(errors.variable).toBeUndefined();
+    });
+  });
+});
+
+describe('variableDisplayName', () => {
+  it('resolves the codebook name', () => {
+    expect(
+      variableDisplayName({ a: { name: 'Age', type: 'number' } }, 'a'),
+    ).toBe('Age');
+  });
+
+  it('falls back to the id when the variable or its name is absent', () => {
+    expect(variableDisplayName({}, 'missing')).toBe('missing');
+    expect(variableDisplayName({ a: { type: 'number' } }, 'a')).toBe('a');
+  });
+});
+
+describe('crossClassPickIssue', () => {
+  const allVariables = { x: { name: 'X Var', type: 'text' } };
+
+  it('returns undefined when there is no conflicting use', () => {
+    expect(
+      crossClassPickIssue({
+        variableId: 'x',
+        originalVariableId: '',
+        hasConflictingUse: () => false,
+        allVariables,
+        message: validatedElsewhereMessage,
+      }),
+    ).toBeUndefined();
+  });
+
+  it('returns the bound message with the resolved variable name when conflicting', () => {
+    expect(
+      crossClassPickIssue({
+        variableId: 'x',
+        originalVariableId: '',
+        hasConflictingUse: () => true,
+        allVariables,
+        message: validatedElsewhereMessage,
+      }),
+    ).toBe(validatedElsewhereMessage('X Var'));
+  });
+
+  it('escapes when variableId equals originalVariableId', () => {
+    expect(
+      crossClassPickIssue({
+        variableId: 'x',
+        originalVariableId: 'x',
+        hasConflictingUse: () => true,
+        allVariables,
+        message: validatedElsewhereMessage,
+      }),
+    ).toBeUndefined();
+  });
+
+  it('returns undefined for an empty variableId', () => {
+    expect(
+      crossClassPickIssue({
+        variableId: '',
+        originalVariableId: '',
+        hasConflictingUse: () => true,
+        allVariables,
+        message: validatedElsewhereMessage,
+      }),
+    ).toBeUndefined();
   });
 });

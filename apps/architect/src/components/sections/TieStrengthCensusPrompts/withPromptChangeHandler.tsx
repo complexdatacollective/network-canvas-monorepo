@@ -1,13 +1,23 @@
 import type { Dispatch } from '@reduxjs/toolkit';
 import { compose, withHandlers } from 'react-recompose';
 import { connect } from 'react-redux';
-import { change, SubmissionError } from 'redux-form';
+import { change, getFormInitialValues, SubmissionError } from 'redux-form';
 
 import type { RootState } from '~/ducks/store';
 import { getVariablesForSubject } from '~/selectors/codebook';
+import { hasValidatedUse } from '~/selectors/roleFilters';
 
 import { updateVariableAsync } from '../../../ducks/modules/protocol/codebook';
-import { findDraftContradictions } from '../../Validations/contradictions';
+import {
+  crossClassPickIssue,
+  findDraftContradictions,
+  validatedElsewhereMessage,
+} from '../../Validations/contradictions';
+
+// The shared row-editor form name every DialogArrayField editor requests
+// (see TieStrengthCensusPrompts.tsx's `requestedEditFormName`) — only one
+// editor dialog is ever open at a time, so this is safe to read unqualified.
+const EDIT_FORM_NAME = 'editable-list-form';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -27,6 +37,13 @@ type StateProps = {
   // up dynamically by type at call time rather than through a static
   // OwnProps subject (contrast CategoricalBinPrompts's withPromptChangeHandler).
   getEdgeVariables: (type: string) => UnknownRecord;
+  // Backs the save-time cross-class gate: this prompt's edgeVariable may not
+  // be one a form elsewhere already collects (also resolved dynamically by
+  // the edge type chosen in THIS prompt).
+  hasValidatedUse: (type: string, variableId: string) => boolean;
+  // The row's PRE-EDIT committed edgeVariable, for the gate's unchanged-pick
+  // escape.
+  originalEdgeVariable: string;
 };
 
 type DispatchProps = {
@@ -43,10 +60,19 @@ type PromptData = {
   [key: string]: unknown;
 };
 
-const mapStateToProps = (state: RootState): StateProps => ({
-  getEdgeVariables: (type: string) =>
-    getVariablesForSubject(state, { entity: 'edge', type }),
-});
+const mapStateToProps = (state: RootState): StateProps => {
+  const initialValues = getFormInitialValues(EDIT_FORM_NAME)(state);
+  return {
+    getEdgeVariables: (type: string) =>
+      getVariablesForSubject(state, { entity: 'edge', type }),
+    hasValidatedUse: (type: string, variableId: string) =>
+      hasValidatedUse(state, { entity: 'edge', type }, variableId),
+    originalEdgeVariable:
+      isRecord(initialValues) && typeof initialValues.edgeVariable === 'string'
+        ? initialValues.edgeVariable
+        : '',
+  };
+};
 
 const store = connect(mapStateToProps, {
   updateVariable: updateVariableAsync,
@@ -62,7 +88,14 @@ const handlers = withHandlers<
   }
 >({
   handleChangePrompt:
-    ({ updateVariable, changeForm, form, getEdgeVariables }: HandlerProps) =>
+    ({
+      updateVariable,
+      changeForm,
+      form,
+      getEdgeVariables,
+      hasValidatedUse: checkValidatedUse,
+      originalEdgeVariable,
+    }: HandlerProps) =>
     async ({
       createEdge,
       edgeVariable,
@@ -107,6 +140,23 @@ const handlers = withHandlers<
             variableOptions: { _error: contradiction.message },
           });
         }
+      }
+
+      // Cross-class exclusivity gate: this census prompt is an UNVALIDATED
+      // writer, so it may not save an edgeVariable a form elsewhere already
+      // collects (the save-time backstop for a stale draft that bypassed the
+      // picker exclusion). `edgeVariable` is a plain field on the prompt
+      // form, so a STRING value renders correctly.
+      const crossClassIssue = crossClassPickIssue({
+        variableId: edgeVariable,
+        originalVariableId: originalEdgeVariable,
+        hasConflictingUse: (variableId) =>
+          checkValidatedUse(createEdge, variableId),
+        allVariables,
+        message: validatedElsewhereMessage,
+      });
+      if (crossClassIssue) {
+        throw new SubmissionError({ edgeVariable: crossClassIssue });
       }
 
       changeForm(form, '_modified', Date.now()); // TODO: can we avoid this?

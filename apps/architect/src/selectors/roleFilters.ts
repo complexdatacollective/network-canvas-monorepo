@@ -34,3 +34,20 @@ export const excludeValidatedUses = <T extends Option>(
       (map[roleMapKey(subject, option.value)]?.validated ?? 0) === 0,
   );
 };
+
+/**
+ * Whether a subject-scoped variable already has a VALIDATED (form) use —
+ * backs the save-time gate an UNVALIDATED writer (bin/highlight/census/etc.)
+ * applies to the variable it is about to pick. The mirror check (an
+ * UNVALIDATED use, for the form-field gate) is inlined at each hook-based
+ * mount instead (Form.tsx, NodeConfiguration.tsx, EditableAttributesList.tsx)
+ * — those already hold a subscribed `getVariableRoleMap` reference via
+ * `useSelector`, so a second state-taking helper here would have no callers.
+ */
+export const hasValidatedUse = (
+  state: RootState,
+  subject: Subject,
+  variableId: string,
+): boolean =>
+  (getVariableRoleMap(state)[roleMapKey(subject, variableId)]?.validated ?? 0) >
+  0;

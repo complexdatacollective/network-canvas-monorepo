@@ -78,6 +78,18 @@ vi.mock('~/selectors/codebook', () => ({
   getVariablesForSubject: () => codebookVariables,
 }));
 
+// The Task 9 cross-class gate's hasUnvalidatedUse closure reads
+// getVariableRoleMap; a conflict-free stub keeps this file's contradiction-
+// gate coverage unaffected (the gate itself is covered in
+// contradictions.test.ts and EditableAttributesList.test.tsx's own
+// cross-class-specific tests). Partially mocked — `~/ducks/modules/protocol/
+// codebook` (imported transitively) also needs this module's real
+// `getVariableIndex`.
+vi.mock('~/selectors/indexes', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('~/selectors/indexes')>();
+  return { ...actual, getVariableRoleMap: () => ({}) };
+});
+
 vi.mock('~/components/EditorLayout', () => ({
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,

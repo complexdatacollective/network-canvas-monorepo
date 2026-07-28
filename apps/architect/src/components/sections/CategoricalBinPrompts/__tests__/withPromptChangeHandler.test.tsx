@@ -82,9 +82,16 @@ type OwnProps = { form: string; entity: 'node' | 'edge' | 'ego'; type: string };
 // codebook, and captures its handleChangePrompt prop for direct invocation —
 // the same capture-a-handler-prop idiom
 // FamilyPedigree/__tests__/NodeConfigurationHandlers.test.tsx uses for this
-// app's other withHandlers-based submit handlers.
+// app's other withHandlers-based submit handlers. `protocol` and
+// `editFormInitial` seed the fuller state the Task 9 cross-class gate reads
+// (a WHOLE protocol with `stages`, for the role map; the shared row-editor
+// form's `initial` values, for the gate's unchanged-pick escape) — defaulting
+// to a codebook-only protocol and no in-progress edit, matching every
+// pre-Task-9 call site.
 const captureHandleChangePrompt = (
   codebook: unknown = CODEBOOK,
+  protocol?: unknown,
+  editFormInitial?: Record<string, unknown>,
 ): HandleChangePrompt => {
   let captured: HandleChangePrompt | undefined;
   const Capture = (props: { handleChangePrompt: HandleChangePrompt }) => {
@@ -100,7 +107,12 @@ const captureHandleChangePrompt = (
   )(Capture);
   const store = configureStore({
     reducer: {
-      activeProtocol: (state = { present: { codebook } }) => state,
+      activeProtocol: (state = { present: protocol ?? { codebook } }) => state,
+      form: (
+        state = editFormInitial
+          ? { 'editable-list-form': { initial: editFormInitial } }
+          : {},
+      ) => state,
     },
   });
 
@@ -230,5 +242,109 @@ describe('CategoricalBinPrompts withPromptChangeHandler options contradiction', 
         _error: expect.stringContaining('share no option values'),
       },
     });
+  });
+});
+
+// Task 9: the save-time cross-class gate — this bin (an UNVALIDATED writer)
+// may not save a variable a form elsewhere already collects. `cat` is
+// written both by an AlterForm field (validated, stage s1) and by this very
+// CategoricalBin prompt (unvalidated, stage s2) — the same fixture shape
+// pickerExclusions.test.ts uses for the Task 8 picker exclusions.
+const PROTOCOL_WITH_FORM_CONFLICT = {
+  schemaVersion: 8,
+  codebook: {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'c',
+        variables: {
+          cat: {
+            name: 'Cat',
+            type: 'categorical',
+            options: [
+              { label: 'A', value: 'a' },
+              { label: 'B', value: 'b' },
+            ],
+          },
+        },
+      },
+    },
+  },
+  stages: [
+    {
+      id: 's1',
+      type: 'AlterForm',
+      label: 'F',
+      subject: { entity: 'node', type: 'person' },
+      introductionPanel: { title: 'T', text: 'X' },
+      form: { fields: [{ variable: 'cat', prompt: 'P' }] },
+    },
+    {
+      id: 's2',
+      type: 'CategoricalBin',
+      label: 'B',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'T', variable: 'cat' }],
+    },
+  ],
+};
+
+describe('CategoricalBinPrompts withPromptChangeHandler cross-class gate', () => {
+  it('throws a SubmissionError keyed at variable with the mirror message', async () => {
+    const handleChangePrompt = captureHandleChangePrompt(
+      undefined,
+      PROTOCOL_WITH_FORM_CONFLICT,
+    );
+    let thrown: unknown;
+    try {
+      await handleChangePrompt({
+        variable: 'cat',
+        variableOptions: [
+          { label: 'A', value: 'a' },
+          { label: 'B', value: 'b' },
+        ],
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    if (!(thrown instanceof SubmissionError)) {
+      throw new Error('handleChangePrompt did not block the save');
+    }
+    expect(thrown.errors).toEqual({
+      variable:
+        '"Cat" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+    });
+  });
+
+  it('escapes when the pick equals the prompt’s original committed variable (editing without changing)', async () => {
+    const handleChangePrompt = captureHandleChangePrompt(
+      undefined,
+      PROTOCOL_WITH_FORM_CONFLICT,
+      { variable: 'cat' },
+    );
+    const result = await handleChangePrompt({
+      variable: 'cat',
+      variableOptions: [
+        { label: 'A', value: 'a' },
+        { label: 'B', value: 'b' },
+      ],
+    });
+    expect(result).toMatchObject({ variable: 'cat' });
+  });
+
+  it('allows a save with no cross-class conflict', async () => {
+    const formOnly = {
+      ...PROTOCOL_WITH_FORM_CONFLICT,
+      stages: [PROTOCOL_WITH_FORM_CONFLICT.stages[1]],
+    };
+    const handleChangePrompt = captureHandleChangePrompt(undefined, formOnly);
+    const result = await handleChangePrompt({
+      variable: 'cat',
+      variableOptions: [
+        { label: 'A', value: 'a' },
+        { label: 'B', value: 'b' },
+      ],
+    });
+    expect(result).toMatchObject({ variable: 'cat' });
   });
 });

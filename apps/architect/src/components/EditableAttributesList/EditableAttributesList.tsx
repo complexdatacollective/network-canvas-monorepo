@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { formValueSelector } from 'redux-form';
 
@@ -6,6 +6,7 @@ import DialogArrayField from '~/components/Form/DialogArrayField';
 import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubjectSelector } from '~/selectors/codebook';
+import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 
 import ComposerFieldPreview from '../sections/Form/ComposerFieldPreview';
 import {
@@ -57,6 +58,15 @@ const EditableAttributesList = ({
   const composerFields = useSelector((state: RootState) =>
     formValueSelector(form)(state, fieldName),
   );
+  const roleMap = useSelector(getVariableRoleMap);
+  // Backs makeFieldEditorValidate's save-time gate: a composer attribute may
+  // not pick a variable some bin/highlight/census/etc. elsewhere already
+  // writes.
+  const hasUnvalidatedUse = useCallback(
+    (variableId: string) =>
+      (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0,
+    [roleMap, subject],
+  );
   // Eleventh-wave Finding 4: the overlay is built per validate call so the
   // edited row itself — identified by the array index DialogArrayField
   // surfaces as validate's `editIndex` prop — can be excluded at
@@ -68,7 +78,7 @@ const EditableAttributesList = ({
     () =>
       (
         values: Record<string, unknown>,
-        props?: { editIndex?: number },
+        props?: { editIndex?: number; initialValues?: unknown },
       ): Record<string, unknown> => {
         const variable =
           typeof values.variable === 'string' ? values.variable : '';
@@ -101,12 +111,13 @@ const EditableAttributesList = ({
         const { validation, ...rest } = makeFieldEditorValidate(
           allVariables,
           buildComposerFieldOverlay(composerFields, props?.editIndex),
-        )(composerDraftValues(values));
+          hasUnvalidatedUse,
+        )(composerDraftValues(values), props);
         return typeof validation === 'string'
           ? { ...rest, [COMPOSER_CONTRADICTION_FIELD]: validation }
           : rest;
       },
-    [allVariables, composerFields],
+    [allVariables, composerFields, hasUnvalidatedUse],
   );
 
   return (
