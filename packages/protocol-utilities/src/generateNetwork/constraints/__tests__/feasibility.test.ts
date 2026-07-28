@@ -1684,6 +1684,266 @@ describe('a value one prompt fixes against its own rules', () => {
 });
 
 /**
+ * A prompt fixing one end of a rule leaves the other end to the draw, and the
+ * draw can be left nothing to satisfy it with: `applyComparatorBounds` keeps a
+ * value inside its own bounds when a fixed counterpart pushes it past them, so
+ * the stage emits an entity holding a pair the rule rejects rather than failing.
+ *
+ * Refused rather than skipped, which is where this parts company with a roster
+ * row: a row is one candidate among many the draw passes over, while a prompt's
+ * values are stated by the protocol and every entity the stage creates carries
+ * them. And refused only where the complete search proves no completion exists,
+ * since a false refusal here blocks a protocol nothing is wrong with.
+ */
+describe('a value one prompt fixes that the draw cannot complete', () => {
+  function pinning(
+    values: Record<string, boolean>[],
+    type = 'NameGenerator',
+  ): Stage {
+    return {
+      id: 'stage-pin',
+      type,
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: values.map((set, index) => ({
+        id: `p${index + 1}`,
+        text: 'Name people',
+        additionalAttributes: Object.entries(set).map(([variable, value]) => ({
+          variable,
+          value,
+        })),
+      })),
+      behaviours: { minNodes: 2, maxNodes: 2 },
+    } as unknown as Stage;
+  }
+
+  /** `age` and `retired` on [0, ceiling], with `retired` strictly above `age`. */
+  function agePair(ceiling: number): StructuralCodebook {
+    return codebookWith({
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 0, maxValue: ceiling },
+      },
+      retired: {
+        name: 'Retired',
+        type: 'number',
+        validation: {
+          minValue: 0,
+          maxValue: ceiling,
+          greaterThanVariable: 'age',
+        },
+      },
+    });
+  }
+
+  it('reports a fixed value that leaves its comparator nothing to satisfy it', () => {
+    // `true` reads as 1, which is inside `age`'s own bounds — so nothing about
+    // the value on its own is wrong. What no seed can supply is a `retired`
+    // above it that is still at or under 1.
+    const conflicts = analyseFeasibility(
+      agePair(1),
+      [pinning([{ age: true }])],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['Age', 'Retired']);
+    expect(conflicts[0]?.rules).toContain('greaterThanVariable');
+    expect(conflicts[0]?.rules).toContain('additionalAttributes');
+    expect(conflicts[0]?.reason).toBe(
+      'a prompt fixes "Age" to true, and no combination of values these rules allow can complete the rest around it',
+    );
+  });
+
+  it('names the variable the protocol fixed rather than its codebook key', () => {
+    // An Architect-authored protocol keys its variables by UUID, so a message
+    // built from the key names nothing its author would recognise.
+    const uuidKey = '5e2ba0a2-4e15-4b3b-8a3f-0a4a7a4e0b6f';
+    const codebook = codebookWith({
+      [uuidKey]: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 1 },
+      },
+      retired: {
+        name: 'Retired',
+        type: 'number',
+        validation: {
+          minValue: 0,
+          maxValue: 1,
+          greaterThanVariable: uuidKey,
+        },
+      },
+    });
+
+    const conflicts = analyseFeasibility(
+      codebook,
+      [pinning([{ [uuidKey]: true }])],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.reason).toContain('"Age"');
+    expect(conflicts[0]?.reason).not.toContain(uuidKey);
+    expect(conflicts[0]?.variableNames).toEqual(['Age', 'Retired']);
+  });
+
+  it('accepts a fixed value the rest of the entity can be drawn around', () => {
+    // The same shape with room above the fixed value: `retired` has 2 to 5 to
+    // draw from, so the protocol generates and must not be refused.
+    expect(
+      analyseFeasibility(agePair(5), [pinning([{ age: true }])], config),
+    ).toEqual([]);
+  });
+
+  it('accepts a component the search declines to analyse', () => {
+    // `age` declares no floor, so its domain cannot be enumerated and the
+    // component is never handed to the search. The pin does make the pair
+    // unsatisfiable — `retired` must be above 1 and at or under 0 — but only a
+    // proven `unsat` refuses, and this one is never proven.
+    const codebook = codebookWith({
+      age: { name: 'Age', type: 'number' },
+      retired: {
+        name: 'Retired',
+        type: 'number',
+        validation: { maxValue: 0, greaterThanVariable: 'age' },
+      },
+    });
+
+    expect(
+      analyseFeasibility(codebook, [pinning([{ age: true }])], config),
+    ).toEqual([]);
+  });
+
+  it('judges each prompt of a stage on its own', () => {
+    // `createNodesForStage` writes one prompt's `additionalAttributes` onto the
+    // nodes that prompt creates and no others, so two prompts' values never meet
+    // on one entity. Each of these is completable alone — the node carrying
+    // `a` draws `b` false, and the node carrying `b` draws `a` false — and
+    // reading them as one assignment would refuse a protocol that generates.
+    const codebook = codebookWith({
+      a: { name: 'A', type: 'boolean' },
+      b: { name: 'B', type: 'boolean', validation: { differentFrom: 'a' } },
+    });
+
+    expect(
+      analyseFeasibility(
+        codebook,
+        [pinning([{ a: true }, { b: true }])],
+        config,
+      ),
+    ).toEqual([]);
+  });
+
+  it('still reports the one prompt of a stage whose own values cannot be completed', () => {
+    // The first prompt is fine — `retired` at 1 leaves `age` 0 to draw — and the
+    // second is the reviewer's case, so every prompt has to be judged, not just
+    // the first.
+    const conflicts = analyseFeasibility(
+      agePair(1),
+      [pinning([{ retired: true }, { age: true }])],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.reason).toContain('a prompt fixes "Age" to true');
+  });
+
+  it('leaves a roster stage holding rows to the draw', () => {
+    // A row's own value wins over the prompt's, so whether the prompt's value
+    // reaches a node depends on the row. The draw passes over the rows it
+    // cannot complete instead.
+    expect(
+      analyseFeasibility(
+        agePair(1),
+        [pinning([{ age: true }], 'NameGeneratorRoster')],
+        config,
+        {
+          'stage-pin': [
+            {
+              [entityPrimaryKeyProperty]: 'r1',
+              type: 'person',
+              [entityAttributesProperty]: { age: 0 },
+            } as unknown as NcNode,
+          ],
+        },
+      ),
+    ).toEqual([]);
+  });
+
+  it('accepts the same comparator pair on an edge type', () => {
+    // Nothing fixes an edge value. `additionalAttributes` belongs to a
+    // name-generator prompt, whose subject is always a node, and a census
+    // prompt's `edgeVariable` names an edge variable without supplying a value
+    // for it — `handleDyadCensus` draws it like any other attribute. So the
+    // edge scope has nothing to complete around, and the pair that is refused
+    // on a node stands here.
+    const census = {
+      id: 'stage-ts',
+      type: 'TieStrengthCensus',
+      label: 'Tie strength',
+      subject: { entity: 'node', type: 'person' },
+      createEdge: 'friend',
+      prompts: [
+        {
+          id: 'p1',
+          text: 'How close?',
+          createEdge: 'friend',
+          edgeVariable: 'closeness',
+          negativeLabel: 'Not close',
+        },
+      ],
+      introductionPanel: { title: 'Tie strength', text: 'How close?' },
+    } as unknown as Stage;
+
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: { name: { name: 'Name', type: 'text' } },
+        },
+      },
+      edge: {
+        friend: {
+          name: 'Friend',
+          color: 'edge-color-seq-1',
+          variables: {
+            closeness: {
+              name: 'Closeness',
+              type: 'ordinal',
+              options: [
+                { label: 'Low', value: 1 },
+                { label: 'High', value: 2 },
+              ],
+            },
+            since: {
+              name: 'Since',
+              type: 'number',
+              validation: { minValue: 0, maxValue: 1 },
+            },
+            until: {
+              name: 'Until',
+              type: 'number',
+              validation: {
+                minValue: 0,
+                maxValue: 1,
+                greaterThanVariable: 'since',
+              },
+            },
+          },
+        },
+      },
+    } as unknown as StructuralCodebook;
+
+    expect(
+      analyseFeasibility(codebook, [nameGenerator, census], config),
+    ).toEqual([]);
+  });
+});
+
+/**
  * A codebook may declare scopes the stage list never touches. Nothing draws a
  * value for such a scope's variables and nothing submits one, so a rule on them
  * is never applied — and refusing the whole protocol for it blocks interviews

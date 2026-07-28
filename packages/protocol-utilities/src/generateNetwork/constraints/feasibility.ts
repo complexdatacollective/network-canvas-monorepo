@@ -292,6 +292,14 @@ function analyseEntity(
   foldFixedValues(scope.fixedValues, 'prompt');
   foldFixedValues(scope.pedigreeFixedValues, 'pedigree');
 
+  /** Every declared variable belonging to one of these groups, in codebook order. */
+  const idsInGroups = (representatives: readonly string[]): string[] => {
+    const members = new Set(representatives);
+    return [...entity.keys()].filter((id) =>
+      members.has(groupOf.get(id) ?? id),
+    );
+  };
+
   const report = (
     variableIds: string[],
     rules: string[],
@@ -592,10 +600,7 @@ function analyseEntity(
     // bounds crossing over is that same contradiction counted twice.
     if (component.some((group) => cyclicGroups.has(group))) continue;
 
-    const members = new Set(component);
-    const ids = [...entity.keys()].filter((id) =>
-      members.has(groupOf.get(id) ?? id),
-    );
+    const ids = idsInGroups(component);
     const rules = COMPARISON_RULES.filter((rule) =>
       ids.some((id) => {
         const target = entity.get(id)?.constraints[rule];
@@ -653,15 +658,78 @@ function analyseEntity(
     if (component.groups.some((group) => implicated.has(group))) continue;
     if (solveComponent(component.tractable).kind !== 'unsat') continue;
 
-    const members = new Set(component.groups);
-    const ids = [...entity.keys()].filter((id) =>
-      members.has(groupOf.get(id) ?? id),
-    );
+    const ids = idsInGroups(component.groups);
     report(
       ids,
       solvedComponentRules(entity, ids),
       'no combination of values these rules allow can satisfy all of them at once',
     );
+  }
+
+  // The same search, run again around the values a prompt states.
+  //
+  // A prompt's `additionalAttributes` settle their own variables and nothing
+  // else: the draw is asked only for the variables they leave over, and a rule
+  // spanning a fixed value and one of those is met by whichever value that draw
+  // produces — or by none of them. `applyComparatorBounds` keeps the draw inside
+  // its own bounds when a fixed value pushes it past them, so what the stage
+  // emits is an entity holding a pair the rule rejects rather than a draw that
+  // fails.
+  //
+  // Refused here rather than passed over, which is where this parts company with
+  // the identical check a roster row gets. A row is one candidate among many, so
+  // the draw moves on to the next one; a prompt's values are stated by the
+  // protocol, every entity the stage creates carries them, and there is no next
+  // candidate for any seed to reach.
+  //
+  // Judged by the same `solveComponent` the loop above and the roster check
+  // call, over the same components, pinned the way `completionCheckFor` pins
+  // them — so the three cannot come to different conclusions about one set of
+  // rules. Only a proven `unsat` refuses: an oversized component, an
+  // unenumerable domain and an exhausted budget all leave the protocol accepted,
+  // exactly as they leave the draw to its greedy path.
+  for (const assignment of scope.fixedAssignments) {
+    const pins = new Map<string, VariableValue>();
+    for (const [id, value] of Object.entries(assignment)) {
+      if (!entity.has(id)) continue;
+      // A null binds no comparator and collides with no drawn value, so it
+      // settles nothing here either — the reading the draw gives a null
+      // counterpart.
+      if (value === null || value === undefined) continue;
+      pins.set(groupOf.get(id) ?? id, value);
+    }
+    if (pins.size === 0) continue;
+
+    for (const component of components) {
+      const { tractable } = component;
+      if (tractable === undefined) continue;
+      if (component.groups.some((group) => implicated.has(group))) continue;
+      if (!component.groups.some((group) => pins.has(group))) continue;
+      // A component the fixed values settle entirely leaves nothing to complete.
+      // Whether those values may stand together is what `ruleBrokenByFixedValues`
+      // above already answered, and answering it twice could only disagree.
+      if (component.groups.every((group) => pins.has(group))) continue;
+      if (solveComponent(tractable, { pins }).kind !== 'unsat') continue;
+
+      const ids = idsInGroups(component.groups);
+      // Named from the codebook entry rather than keyed by it: an
+      // Architect-authored protocol keys its variables by UUID, and a message
+      // built from those keys names nothing its author would recognise.
+      const componentGroups = new Set(component.groups);
+      const stated: string[] = [];
+      for (const [id, variable] of entity) {
+        const value = assignment[id];
+        if (value === null || value === undefined) continue;
+        if (!componentGroups.has(groupOf.get(id) ?? id)) continue;
+        stated.push(`"${variable.entry.name}" to ${String(value)}`);
+      }
+
+      report(
+        ids,
+        [...solvedComponentRules(entity, ids), 'additionalAttributes'],
+        `a prompt fixes ${stated.join(' and ')}, and no combination of values these rules allow can complete the rest around ${stated.length > 1 ? 'them' : 'it'}`,
+      );
+    }
   }
 
   return conflicts;
@@ -825,8 +893,14 @@ export function analyseFeasibility(
       unvalidated: NO_UNVALIDATED_VARIABLES,
       worstCaseCountFor: (variableIds) =>
         edgeCountFor(counts.edge, type, variableIds),
-      // `additionalAttributes` writes onto the nodes a prompt creates, never
-      // onto an edge.
+      // Nothing writes a value onto an edge that the draw did not choose.
+      // `additionalAttributes` belongs to a name-generator prompt, whose subject
+      // is always a node; a census prompt's `edgeVariable` names an edge
+      // variable but supplies no value for it, and `handleDyadCensus` fills it
+      // through `generateEntityAttributes` like any other drawn attribute. So an
+      // edge has no fixed value for a rule to be broken by, and none for the
+      // draw to have to complete around — its rules are settled by the unpinned
+      // analysis alone.
       fixedValues: NO_FIXED_VALUES,
       pedigreeFixedValues: NO_FIXED_VALUES,
       fixedAssignments: NO_FIXED_ASSIGNMENTS,
