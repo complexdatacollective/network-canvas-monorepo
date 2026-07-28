@@ -126,10 +126,12 @@ export const networkComposerStage = baseStageSchema.extend({
   type: z.literal('NetworkComposer'),
   subject: NodeStageSubjectSchema,
   // The text variable populated by the inline quick-add name field when a node
-  // is added from the tool palette.
+  // is added from the tool palette. The quick-add field now runs the variable's
+  // codebook validation (see interview's AddNodeInput), so it is a validated
+  // writer like any other form field.
   quickAdd: entityAttributeReference({
     subject: 'stageSubject',
-    usage: 'unvalidatedAttribute',
+    usage: 'validatedAttribute',
   }),
   // The layout variable that stores each node's { x, y } position.
   layoutVariable: entityAttributeReference({
@@ -141,10 +143,12 @@ export const networkComposerStage = baseStageSchema.extend({
   // The categorical variable whose values are drawn as convex hulls.
   // Participants toggle a node's group membership (a value of this variable)
   // via the Groups tool or by lasso-selecting nodes; membership also drives
-  // the automatic layout's group-cohesion force.
+  // the automatic layout's group-cohesion force. A grouping/display slot, not
+  // an attribute writer — deliberately untagged so it never restricts the
+  // variable's use elsewhere (same treatment as Narrative's groupVariable and
+  // highlight presets).
   convexHullVariable: entityAttributeReference({
     subject: 'stageSubject',
-    usage: 'unvalidatedAttribute',
   }).optional(),
   background: imageOrCirclesBackgroundSchema,
   behaviours: z

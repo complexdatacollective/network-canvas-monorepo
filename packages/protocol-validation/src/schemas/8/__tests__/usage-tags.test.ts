@@ -70,4 +70,65 @@ describe('attribute-writer usage tags', () => {
       expect(hit.usage).toBeUndefined();
     }
   });
+
+  it('tags NetworkComposer quickAdd as validatedAttribute and leaves convexHullVariable untagged', () => {
+    const protocol = {
+      ...createBaseProtocol(),
+      stages: [
+        {
+          id: 'nc1',
+          type: 'NetworkComposer',
+          label: 'Composer',
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          layoutVariable: 'layoutPosition',
+          convexHullVariable: 'category',
+        },
+      ],
+    };
+    const hits = hitsFor(protocol);
+    const quickAddHit = hits.find(
+      (hit) => hit.path[hit.path.length - 1] === 'quickAdd',
+    );
+    const hullHit = hits.find(
+      (hit) => hit.path[hit.path.length - 1] === 'convexHullVariable',
+    );
+    expect(quickAddHit?.usage).toBe('validatedAttribute');
+    // A grouping/display slot, not an attribute writer — must never restrict
+    // the variable's use elsewhere.
+    expect(hullHit?.usage).toBeUndefined();
+  });
+
+  it('leaves Narrative preset groupVariable and highlight references untagged (grouping/display slots never restrict a variable elsewhere)', () => {
+    const protocol = {
+      ...createBaseProtocol(),
+      stages: [
+        {
+          id: 'nar1',
+          type: 'Narrative',
+          label: 'Narrative',
+          subject: { entity: 'node', type: 'person' },
+          presets: [
+            {
+              id: 'preset-1',
+              label: 'Preset',
+              layoutVariable: 'layoutPosition',
+              groupVariable: 'category',
+              highlight: ['strength'],
+            },
+          ],
+        },
+      ],
+    };
+    const hits = hitsFor(protocol);
+    const groupHit = hits.find(
+      (hit) => hit.path[hit.path.length - 1] === 'groupVariable',
+    );
+    const highlightHits = hits.filter((hit) => hit.path.includes('highlight'));
+    expect(groupHit?.usage).toBeUndefined();
+    expect(highlightHits.length).toBeGreaterThan(0);
+    for (const hit of highlightHits) {
+      expect(hit.usage).toBeUndefined();
+    }
+  });
 });
