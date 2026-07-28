@@ -322,6 +322,17 @@ export type ReferenceTargetLegalityInput = {
  * third variable whose OWN rule already targets it — the strict-cycle case
  * covered in Validations.behaviour.test.tsx) keep a one-call-per-candidate
  * path, pruned to just the relevant component so it stays cheap.
+ *
+ * Twenty-eighth-wave finding: the batched clone's own synthetic id is a
+ * poor stand-in for the edited variable whenever some OTHER, already-fixed
+ * variable references it — that third party's edge would need to resolve
+ * against every candidate's clone simultaneously, which one shared literal
+ * id cannot do (see `editedVariableHasExternalReferences` below). Batching
+ * is therefore only offered while the edited variable's OWN pre-existing
+ * component is just itself; the moment it already has a fixed neighbour,
+ * every candidate — not only the ones that would introduce a NEW shared
+ * component — is routed through the individual, fully-pruned path so that
+ * neighbour's constraint is never silently dropped.
  */
 export const findLegalReferenceTargets = ({
   allVariables,
@@ -387,6 +398,26 @@ export const findLegalReferenceTargets = ({
   }
 
   const idRoot = unionFind.find(id);
+  // Twenty-eighth-wave Finding: a batched clone (below) represents `id`
+  // ONLY by its own baseline validation, keyed under a synthetic
+  // `${id}::${candidateId}` id — it never carries any OTHER variable's
+  // FIXED rule that targets `id` itself (e.g. a third variable `x` with
+  // `x.lessThanVariable = id`). The batched record deletes `id`'s own
+  // literal entry outright before adding those clones, so a third party's
+  // edge into `id` resolves to nothing once that happens, silently
+  // dropping `x`'s constraint from every batched candidate's judgement —
+  // `x < id < candidate` can read as satisfiable even when it is not. The
+  // individual path below has no such gap: it prunes to `id`'s FULL
+  // pre-existing component (`componentMembers.get(idRoot)`) verbatim, so
+  // `x` stays present and addressable under `id`'s own, unrenamed key.
+  // Whenever `id` already has such a component (more than just itself),
+  // every candidate that would otherwise share the batched clone is routed
+  // through that correct, per-candidate path instead — batching stays
+  // limited to the (typical) case where the edited variable carries no
+  // OTHER fixed reference relationship yet, which is exactly when nothing
+  // outside `id` needs to keep addressing it by its own literal id.
+  const editedVariableHasExternalReferences =
+    (componentMembers.get(idRoot) ?? [id]).length > 1;
   const usedRoots = new Set<string>();
   const batched: string[] = [];
   const individual: string[] = [];
@@ -401,7 +432,11 @@ export const findLegalReferenceTargets = ({
     // component would let the two hypothetical choices interact with each
     // other, which never happens when `id` can only hold one candidate at a
     // time.
-    if (root === idRoot || usedRoots.has(root)) {
+    if (
+      root === idRoot ||
+      usedRoots.has(root) ||
+      editedVariableHasExternalReferences
+    ) {
       individual.push(candidateId);
       continue;
     }
