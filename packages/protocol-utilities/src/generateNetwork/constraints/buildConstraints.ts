@@ -58,6 +58,9 @@ const RESOLUTION_SHAPE = {
 
 const RESOLUTIONS: readonly DateResolution[] = ['year', 'month', 'full'];
 
+/** Which end of a window a declared bound closes. */
+type BoundEnd = 'floor' | 'ceiling';
+
 /**
  * The earliest year each picker can offer, read from the one table that states
  * it. A bound the protocol *declares* is refused below this year; a floor the
@@ -94,46 +97,32 @@ function boundResolution(value: string): DateResolution | undefined {
 }
 
 /**
- * A picker parameter that names a real date, written no coarser than the date
- * the picker collects.
+ * A picker parameter that names a real date the picker can offer, and the
+ * resolution it was written at.
  *
- * The variable schema accepts an arbitrary string here, so an imported protocol
- * can carry `max: "not-a-date"` or a day no month holds. Such a bound reaches
+ * The variable schema accepts an arbitrary string here — `min: z.string()
+ * .optional()` on `dateTimeDatePickerSchema`, with no refinement over it and no
+ * migration that touches the parameter — so an imported protocol can carry
+ * `max: "not-a-date"` or a day no month holds. Such a bound reaches
  * `stepsBetween` as `NaN`, and neither half of the machinery notices: the count
  * reports `NaN` values, which every feasibility comparison reads as satisfied,
- * and the draw then writes `0NaN-NaN-NaN` into the network.
+ * and the draw then writes `0NaN-NaN-NaN` into the network. Refused here by
+ * variable name, because a bound the generator cannot read is one it cannot
+ * guess the intent of either.
  *
- * A bound that is a real date but coarser than the picker's own resolution —
- * `min: "2020"` on a full-date picker — fails the same way one step later. The
- * window keeps it verbatim (`truncateToResolution` only ever slices, so it has
- * nothing to add), and the draw's arithmetic reads it through `split('-')`:
- * `addDays` finds no month or day to advance and hands the incomplete string
- * straight back, so every offset in the window draws the literal `"2020"` — a
- * value the native full-date input cannot display and no participant could
- * have entered.
- *
- * Both are refused here by variable name rather than repaired. Completing a
- * coarse bound would invent precision nobody wrote, and the two ends would have
- * to invent it in opposite directions (a floor to January 1st, a ceiling to
- * December 31st). The protocol schema is where that judgement belongs: it
- * rejects a bound coarser than its picker, and its migration deletes one rather
- * than filling it in, so a coarse bound arriving here is one no validated
- * protocol carries.
- *
- * The year is held to what the picker can offer for the same reason, at the
- * floor that picker's own control sets. A full date in a low year is one the
- * native input renders and the arithmetic here builds literally, so
- * `0099-01-01` is kept and only year zero — earlier than any date that input
- * accepts — is refused. The `<select>` the other two resolutions render lists
- * its years unpadded, so anything below year 1000 names an option nobody can
- * pick.
+ * The year is held to what the picker can offer, at the floor that picker's own
+ * control sets. A full date in a low year is one the native input renders and
+ * the arithmetic here builds literally, so `0099-01-01` is kept and only year
+ * zero — earlier than any date that input accepts — is refused. The `<select>`
+ * the other two resolutions render lists its years unpadded, so anything below
+ * year 1000 names an option nobody can pick.
  */
 function requireCalendarBound(
   entry: VariableEntry,
   parameter: string,
   value: string,
   resolution: DateResolution,
-): string {
+): DateResolution {
   const written = boundResolution(value);
 
   if (written === undefined) {
@@ -143,29 +132,111 @@ function requireCalendarBound(
     );
   }
 
-  // Only a bound coarser than its own picker is refused. One written at the
-  // picker's own resolution is kept verbatim on purpose: `DatePickerField`
-  // parses `YYYY`, `YYYY-MM` and `YYYY-MM-DD` alike (its `ymdPattern` defaults
-  // the missing components to 1), and its `<select>` stringifies each year and
-  // month from the parsed parts, so `min: "2030"` on a year picker really does
-  // offer 2030 and `min: "2030-05"` on a month picker really does offer May
-  // (fresco-ui's DatePicker tests, "year mode — partial YYYY bounds" and
-  // "month mode — partial YYYY-MM bounds"). Protocols in the wild carry these:
-  // `transnational-networks` declares `min: "1940"` on a year picker. Refusing
-  // them would turn a field that works today into a protocol generation cannot
-  // preview.
-  if (RESOLUTION_SHAPE[written].length < RESOLUTION_SHAPE[resolution].length) {
-    throw new Error(
-      `Date variable "${entry.name}" (${entry.id}) declares ${parameter} "${value}", which is coarser than the date its picker collects. ` +
-        `Synthetic data generation needs a bound written as ${RESOLUTION_SHAPE[resolution]}.`,
-    );
-  }
-
   const earliest = earliestOfferedYear(resolution);
   if (Number(value.slice(0, 4)) < earliest) {
     throw new Error(
       `Date variable "${entry.name}" (${entry.id}) declares ${parameter} "${value}", whose year is earlier than its picker can offer. ` +
         `Synthetic data generation needs a year of ${String(earliest).padStart(4, '0')} or later.`,
+    );
+  }
+
+  return written;
+}
+
+/** The last day the calendar gives a month, with the year read literally. */
+function lastDayOfMonth(year: number, month: number): number {
+  return utcDate(year, month + 1, 0).getUTCDate();
+}
+
+/**
+ * A bound written coarser than the date its picker collects — `min: "2020"` on
+ * a full-date picker — completed to that picker's resolution.
+ *
+ * Nothing here is invented: both the control and the validator already read a
+ * coarse bound, and this is what they read it as.
+ *
+ * A full-resolution field is a native `<input type="date">` handed the bound
+ * verbatim, which ignores a `min`/`max` attribute it cannot parse as a date, so
+ * the gate on such a field is the interview's own validator. That validator
+ * compares at the coarser of the two resolutions — fresco-ui's
+ * `compareDateStrings` truncates both sides to `Math.min(a.length, b.length)`
+ * before comparing, "so that a year value overlapping a YYYY-MM-DD bound is
+ * considered in-range". Under it `min: "2020"` admits every date from
+ * 2020-01-01 and `max: "2020"` every date up to 2020-12-31. The two ends do
+ * complete in opposite directions, but truncation is what makes them do so; the
+ * window here only has to say the same thing.
+ *
+ * The month and year resolutions render a `<select>` instead, whose options
+ * `DatePickerField` builds by running each bound through `ymdPattern` and
+ * defaulting every missing component to 1 — at both ends, so a coarse ceiling
+ * caps that year's month list at January. A value past it would validate and
+ * still be one the control never offered, so those resolutions take the
+ * control's reading rather than the validator's. (Only a month picker can reach
+ * this: nothing is written coarser than a year.)
+ */
+function completeToResolution(
+  value: string,
+  resolution: DateResolution,
+  end: BoundEnd,
+): string {
+  if (resolution === 'month') return `${value}-01`;
+
+  if (end === 'floor') {
+    return value.length === 4 ? `${value}-01-01` : `${value}-01`;
+  }
+
+  const year = value.slice(0, 4);
+  const month = value.length === 4 ? 12 : Number(value.slice(5, 7));
+  const day = lastDayOfMonth(Number(year), month);
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/**
+ * One end of a DatePicker's declared window, at the picker's own resolution.
+ *
+ * A bound written finer than the picker is sliced back to it, which is again
+ * what the runtime validator's truncating comparison does with one. A bound
+ * written at the picker's own resolution is kept verbatim: `DatePickerField`
+ * parses `YYYY`, `YYYY-MM` and `YYYY-MM-DD` alike, and its `<select>`
+ * stringifies each year and month from the parsed parts, so `min: "2030"` on a
+ * year picker really does offer 2030 and `min: "2030-05"` on a month picker
+ * really does offer May (fresco-ui's DatePicker tests, "year mode — partial
+ * YYYY bounds" and "month mode — partial YYYY-MM bounds"). Protocols in the
+ * wild carry these: `transnational-networks` declares `min: "1940"` on a year
+ * picker.
+ */
+function resolveDeclaredBound(
+  entry: VariableEntry,
+  parameter: string,
+  value: string,
+  resolution: DateResolution,
+  end: BoundEnd,
+): string {
+  const written = requireCalendarBound(entry, parameter, value, resolution);
+
+  return RESOLUTION_SHAPE[written].length < RESOLUTION_SHAPE[resolution].length
+    ? completeToResolution(value, resolution, end)
+    : truncateToResolution(value, resolution);
+}
+
+/**
+ * A RelativeDatePicker's anchor, which is the one date parameter that has to be
+ * a full one.
+ *
+ * Its window is counted in days either side of the anchor, so a coarser anchor
+ * leaves `addDays` nothing to advance and collapses the window onto itself.
+ * Unlike a DatePicker bound this is refused rather than completed, because the
+ * schema refuses it too: `dateTimeRelativeDatePickerSchema` carries a
+ * `superRefine` that rejects any anchor failing `isIsoDate`, whose regex is
+ * `/^(\d{4})-(\d{2})-(\d{2})$/` — "RelativeDatePicker anchor must be a valid
+ * ISO date (YYYY-MM-DD)". A coarse anchor arriving here is one no validated
+ * protocol carries, so there is no reading of it to match.
+ */
+function requireAnchorDate(entry: VariableEntry, value: string): string {
+  if (requireCalendarBound(entry, 'anchor', value, 'full') !== 'full') {
+    throw new Error(
+      `Date variable "${entry.name}" (${entry.id}) declares anchor "${value}", which is coarser than the date its picker collects. ` +
+        `Synthetic data generation needs a bound written as ${RESOLUTION_SHAPE.full}.`,
     );
   }
 
@@ -183,13 +254,11 @@ function resolveDateWindow(
   if (entry.component === 'RelativeDatePicker') {
     // The field's own defaults, which useProtocolForm turns into hard min/max
     // validators: a generated value outside this window fails validation even
-    // though the protocol declares no explicit bound. Its offsets are counted
-    // in days from the anchor, so only a full date anchors it — a coarser one
-    // leaves `addDays` nothing to advance and collapses the window onto itself.
+    // though the protocol declares no explicit bound.
     const declaredAnchor = readString(parameters, 'anchor');
     const anchor =
       declaredAnchor !== undefined
-        ? requireCalendarBound(entry, 'anchor', declaredAnchor, 'full')
+        ? requireAnchorDate(entry, declaredAnchor)
         : today;
     const before =
       readNumber(parameters, 'before') ?? RELATIVE_DATE_PICKER_DEFAULT_BEFORE;
@@ -230,10 +299,7 @@ function resolveDateWindow(
   };
   const min =
     declared.min !== undefined
-      ? truncateToResolution(
-          requireCalendarBound(entry, 'min', declared.min, resolution),
-          resolution,
-        )
+      ? resolveDeclaredBound(entry, 'min', declared.min, resolution, 'floor')
       : undefined;
   // DatePicker offers no date after today when the protocol declares no maximum
   // (its own `maxYmd` fallback), and the draw already ceilings an open window
@@ -271,10 +337,7 @@ function resolveDateWindow(
 
   const max =
     declared.max !== undefined
-      ? truncateToResolution(
-          requireCalendarBound(entry, 'max', declared.max, resolution),
-          resolution,
-        )
+      ? resolveDeclaredBound(entry, 'max', declared.max, resolution, 'ceiling')
       : openCeiling;
 
   return {

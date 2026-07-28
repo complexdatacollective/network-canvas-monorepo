@@ -19,6 +19,7 @@ import {
   stepsBetween,
 } from '../dateWindow';
 import { analyseFeasibility } from '../feasibility';
+import { valueSpaceSize } from '../valueSpace';
 
 const TODAY = '2026-07-27';
 
@@ -218,40 +219,133 @@ describe('buildVariableConstraints', () => {
     ).toThrow('declares anchor "not-a-date"');
   });
 
-  // A bound coarser than its picker is a real date, so it survives the calendar
-  // check, and `truncateToResolution` only ever slices — it has nothing to add.
-  // Left in a full-resolution window it reaches the draw as an incomplete
-  // string, where `addDays` finds no day to advance and hands it straight back:
-  // every offset in the window draws the literal `"2020"`, which the native
-  // full-date input cannot display.
+  // The variable schema puts no shape on these parameters at all
+  // (`min: z.string().optional()`, no refinement over it and no migration that
+  // touches it), so a schema-valid protocol can write one coarser than the date
+  // its picker collects. The interview enforces such a bound by truncating both
+  // sides to the shorter of the two before comparing (fresco-ui's
+  // `compareDateStrings`), which makes a coarse floor the first date it admits
+  // and a coarse ceiling the last. Completed to those rather than refused: the
+  // field collects dates perfectly well today.
   it.each([
-    { parameter: 'min', value: '2020', type: 'full', written: 'YYYY-MM-DD' },
-    { parameter: 'max', value: '2020', type: 'full', written: 'YYYY-MM-DD' },
-    { parameter: 'min', value: '2020-06', type: 'full', written: 'YYYY-MM-DD' },
-    { parameter: 'max', value: '2020', type: 'month', written: 'YYYY-MM' },
+    { parameter: 'min', value: '2020', expected: '2020-01-01' },
+    { parameter: 'max', value: '2020', expected: '2020-12-31' },
+    { parameter: 'min', value: '2020-06', expected: '2020-06-01' },
+    { parameter: 'max', value: '2020-06', expected: '2020-06-30' },
+    // The ceiling takes the day the calendar gives that month, not a fixed 31.
+    { parameter: 'max', value: '2020-02', expected: '2020-02-29' },
+    { parameter: 'max', value: '2021-02', expected: '2021-02-28' },
   ])(
-    'refuses a $parameter of "$value" on a $type picker',
-    ({ parameter, value, type, written }) => {
-      expect(() =>
-        buildVariableConstraints(
-          {
-            id: 'v1',
-            name: 'Born',
-            type: 'datetime',
-            component: 'DatePicker',
-            parameters: { type, [parameter]: value },
-          },
-          TODAY,
-        ),
-      ).toThrow(
-        `Date variable "Born" (v1) declares ${parameter} "${value}", which is coarser than the date its picker collects. ` +
-          `Synthetic data generation needs a bound written as ${written}.`,
+    'completes a full-picker $parameter of "$value" to $expected',
+    ({ parameter, value, expected }) => {
+      const result = buildVariableConstraints(
+        {
+          id: 'v1',
+          name: 'Born',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'full', [parameter]: value },
+        },
+        TODAY,
+      );
+
+      expect(result.dateWindow?.[parameter === 'min' ? 'min' : 'max']).toBe(
+        expected,
       );
     },
   );
 
+  // A month picker is a `<select>` whose options `DatePickerField` builds by
+  // running each bound through `ymdPattern`, which defaults every missing
+  // component to 1 at both ends — so a coarse ceiling caps that year's month
+  // list at January. A later month would validate and still be one the control
+  // never offered, so this resolution takes the control's reading.
+  it.each([
+    { parameter: 'min', value: '2020', expected: '2020-01' },
+    { parameter: 'max', value: '2020', expected: '2020-01' },
+  ])(
+    'completes a month-picker $parameter of "$value" to $expected',
+    ({ parameter, value, expected }) => {
+      const result = buildVariableConstraints(
+        {
+          id: 'v1',
+          name: 'Born',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'month', [parameter]: value },
+        },
+        TODAY,
+      );
+
+      expect(result.dateWindow?.[parameter === 'min' ? 'min' : 'max']).toBe(
+        expected,
+      );
+    },
+  );
+
+  // The two ends are completed independently, so a protocol may write them at
+  // different resolutions from each other as well as from the picker.
+  it('completes a min and a max written at different resolutions', () => {
+    const result = buildVariableConstraints(
+      {
+        id: 'v1',
+        name: 'Born',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'full', min: '2020', max: '2022-06' },
+      },
+      TODAY,
+    );
+
+    expect(result.dateWindow).toEqual({
+      resolution: 'full',
+      min: '2020-01-01',
+      max: '2022-06-30',
+    });
+  });
+
+  // The count and the draw both read this one descriptor, so completing the
+  // window is what keeps them describing the same thing. Left incomplete, the
+  // draw's `addDays` found no day to advance and handed the literal `"2020"`
+  // back for every offset in the window, while the count reported the days it
+  // was never going to walk.
+  it('counts and draws the same completed window', () => {
+    const entry = {
+      id: 'v1',
+      name: 'Born',
+      type: 'datetime' as const,
+      component: 'DatePicker' as const,
+      parameters: { type: 'full', min: '2020', max: '2020-02' },
+    };
+    const constraints = buildVariableConstraints(entry, TODAY);
+    const window = constraints.dateWindow;
+
+    // 2020-01-01 to 2020-02-29 inclusive.
+    expect(valueSpaceSize({ entry, constraints }, 1000)).toBe(60);
+
+    const generator = new ValueGenerator(1, TODAY);
+    const drawn = new Set<string>();
+    for (let index = 0; index < 60; index++) {
+      const value = generator.generateConstrained(
+        { entry, constraints },
+        index,
+      );
+      expect(typeof value).toBe('string');
+      if (typeof value === 'string') drawn.add(value);
+    }
+
+    for (const value of drawn) {
+      expect(value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(value >= (window?.min ?? '')).toBe(true);
+      expect(value <= (window?.max ?? '')).toBe(true);
+    }
+  });
+
   // Its offsets are counted in days from the anchor, so a coarser one leaves
   // `addDays` nothing to advance and collapses the window onto the anchor.
+  // Refused rather than completed, because this is the one date parameter the
+  // schema also refuses: `dateTimeRelativeDatePickerSchema`'s `superRefine`
+  // holds the anchor to `isIsoDate`, whose regex admits only `YYYY-MM-DD`.
   it('refuses a RelativeDatePicker anchor coarser than a full date', () => {
     expect(() =>
       buildVariableConstraints(
