@@ -165,6 +165,21 @@ export default function useProtocolForm({
     [numberFieldNames],
   );
 
+  // Audit sweep: the input control each field actually renders with, keyed by
+  // variable and resolved exactly as the rendered Field resolves it (stage
+  // field first, then codebook variable). Analytics needs the real control
+  // name, and the shared `FormFieldSchema` is a strictObject with no
+  // `component` key — only NetworkComposer fields carry their own — so the
+  // form interfaces' `'component' in field` test recorded 'unknown' for every
+  // field of every non-composer form.
+  const componentByVariable = useMemo(
+    () =>
+      Object.fromEntries(
+        fieldsMetadata.map((field) => [field.variable, field.component]),
+      ),
+    [fieldsMetadata],
+  );
+
   const fieldsWithMetadata = fieldsMetadata.map((field, index) => {
     const fieldName = field.variable;
 
@@ -342,5 +357,5 @@ export default function useProtocolForm({
     renderedFields
   );
 
-  return { fieldComponents, coerceValues };
+  return { fieldComponents, coerceValues, componentByVariable };
 }
