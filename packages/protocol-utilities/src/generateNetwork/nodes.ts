@@ -108,6 +108,28 @@ function isPromptedNodeStage(stage: Stage): stage is PromptedNodeStage {
 }
 
 /**
+ * Whether the prompt a stage lists at `index` can create a node on any seed.
+ *
+ * `createNodesForStage` counts every prompt of a stage against one `maxNodes`
+ * and draws at least `minNodes` of whatever that ceiling still leaves, so by
+ * the time the prompt at `index` is reached the stage has already spent at
+ * least `min(index * minNodes, maxNodes)`. Where that is the whole ceiling the
+ * prompt returns before it draws — on every seed, not only on the ones where
+ * the prompts before it drew generously — and its `additionalAttributes` reach
+ * no node at all.
+ *
+ * A prompt that can draw on some seed is not judged by this: a value it fixes
+ * lands on those seeds, and a fixed value nothing can satisfy is exactly the
+ * seed-dependent failure the analysis exists to refuse ahead of time.
+ */
+function promptCanDraw(
+  index: number,
+  { minNodes, maxNodes }: { minNodes: number; maxNodes: number },
+): boolean {
+  return index * minNodes < maxNodes;
+}
+
+/**
  * How many nodes of each type a prompt's `additionalAttributes` can write each
  * of its values onto, keyed by node type.
  *
@@ -121,8 +143,10 @@ function isPromptedNodeStage(stage: Stage): stage is PromptedNodeStage {
  * `createNodesForStage` counts every prompt of a stage against the same
  * `maxNodes`, so a stage allowed one node creates one node however many of its
  * prompts fix the value, and summing each prompt's independent maximum would
- * refuse a protocol that generates perfectly well. Stages are summed against
- * each other, because a `unique` value is claimed once for the whole run.
+ * refuse a protocol that generates perfectly well. That capacity is spent in
+ * prompt order, so the prompts past the point where it runs out spend nothing
+ * at all — see {@link promptCanDraw}. Stages are summed against each other,
+ * because a `unique` value is claimed once for the whole run.
  *
  * A roster stage is the one place a prompt's value can fail to land: the row's
  * own value for the variable wins there (see `createNodesForStage`), so only
@@ -141,7 +165,8 @@ export function countPromptFixedValues(
     const nodeType = getSubjectType(stage.subject, 'node');
     if (nodeType === undefined) continue;
 
-    const { maxNodes } = getNodeCountBounds(stage, config);
+    const bounds = getNodeCountBounds(stage, config);
+    const { maxNodes } = bounds;
     const pool =
       stage.type === 'NameGeneratorRoster'
         ? externalData?.[stage.id]
@@ -149,7 +174,11 @@ export function countPromptFixedValues(
 
     const forStage: PromptFixedValues = new Map();
 
-    for (const prompt of stage.prompts) {
+    for (const [index, prompt] of stage.prompts.entries()) {
+      // The capacity a prompt is left runs out for good, so the first prompt
+      // that cannot draw ends the stage's list rather than being stepped over.
+      if (!promptCanDraw(index, bounds)) break;
+
       for (const { variable, value } of prompt.additionalAttributes ?? []) {
         const carriers = pool
           ? Math.min(
@@ -212,9 +241,14 @@ export function countPromptFixedValues(
  * row drawn — data rather than protocol, settled at the draw by passing the row
  * over. A roster stage with no rows fabricates every node it makes, so its
  * prompt's values all land and it is counted here like any other.
+ *
+ * A prompt the stage's node ceiling leaves nothing for is left out too. Its
+ * values are written onto no node on any seed, so nothing the protocol says
+ * about them can be broken — see {@link promptCanDraw}.
  */
 export function collectPromptFixedAssignments(
   stages: Stage[],
+  config: GenerationConfig,
   externalData: Record<string, NcNode[]> | undefined,
 ): Map<string, Record<string, VariableValue>[]> {
   const byType = new Map<string, Record<string, VariableValue>[]>();
@@ -231,7 +265,11 @@ export function collectPromptFixedAssignments(
     const nodeType = getSubjectType(stage.subject, 'node');
     if (nodeType === undefined) continue;
 
-    for (const prompt of stage.prompts) {
+    const bounds = getNodeCountBounds(stage, config);
+
+    for (const [index, prompt] of stage.prompts.entries()) {
+      if (!promptCanDraw(index, bounds)) break;
+
       const additional = prompt.additionalAttributes ?? [];
       if (additional.length === 0) continue;
 
@@ -541,6 +579,79 @@ export function crossRuleBrokenByFixedValues(
 }
 
 /**
+ * Applies one hold to every `unique` value the rows of a stage's external data
+ * carry, if the stage draws people from external data at all.
+ */
+function applyStageRosterHold(
+  ctx: GenerationContext,
+  stage: Stage,
+  apply: (
+    ctx: GenerationContext,
+    ref: EntityScopeRef,
+    rows: readonly NcNode[],
+  ) => void,
+): void {
+  if (!isPromptedNodeStage(stage)) return;
+
+  const rows = ctx.externalData?.[stage.id];
+  if (rows === undefined || rows.length === 0) return;
+
+  const nodeType = getSubjectType(stage.subject, 'node');
+  if (nodeType === undefined) return;
+
+  apply(ctx, { entity: 'node', type: nodeType }, rows);
+}
+
+/**
+ * Holds back every `unique` value a roster row carries, for every stage that
+ * draws people from external data and before any stage draws.
+ *
+ * A row is a real person the run may still add, carrying values the researcher
+ * supplied rather than ones the registry issued. Held only while the row's own
+ * stage was drawing, that guards nothing against the stages before it: a
+ * fabricated node takes the value first, the row is then a duplicate of what
+ * the network already holds, and `rosterRowIsDrawable` passes it over for good
+ * — so the roster the protocol was written around loses a person that a
+ * different draw would have left room for. The rows are data the run is given
+ * up front, exactly as a prompt's `additionalAttributes` are protocol given up
+ * front, so they are kept out of the earlier draws' way the same way.
+ *
+ * Reserved rather than claimed for the reason `reservePromptFixedValues` gives:
+ * a row the draw never reaches holds nothing, and a draw left with nowhere else
+ * to go takes a reserved value anyway.
+ */
+export function reserveExternalRosterValues(
+  ctx: GenerationContext,
+  stages: Stage[],
+): void {
+  for (const stage of stages) {
+    applyStageRosterHold(ctx, stage, reserveRosterValues);
+  }
+}
+
+/**
+ * Gives a stage's roster hold back, once the stage has had its chance to draw.
+ *
+ * Rows are drawn per stage — `externalData` is keyed by stage id — so once a
+ * stage is behind the run its undrawn rows are people nobody is waiting for,
+ * and holding their values any longer would narrow every draw that follows for
+ * nothing. A row that was drawn keeps its value through the claim made when it
+ * arrived, so it needs no hold either. Each stage holds separately, so a stage
+ * still to come that lists the same row keeps its own.
+ *
+ * A stage the run never reaches — skipped over by a skip-logic destination, or
+ * past the point a simulated drop-out ended the interview — keeps its hold, as
+ * a prompt whose stage is never reached keeps the one `reservePromptFixedValues`
+ * took. Neither refuses a draw anything: a reservation only redirects.
+ */
+export function releaseExternalRosterValues(
+  ctx: GenerationContext,
+  stage: Stage,
+): void {
+  applyStageRosterHold(ctx, stage, releaseRosterValues);
+}
+
+/**
  * Takes a roster row the run can use from the drawable window `pool[from..]`,
  * swapping it into `pool[from]` so drawn rows stay behind the window.
  *
@@ -694,8 +805,6 @@ export function createNodesForStage(
     return verdict;
   };
 
-  reserveRosterValues(ctx, scope, pool);
-
   for (let i = 0; i < count; i++) {
     const nodeIndex = existingNodeCount + i;
 
@@ -754,11 +863,6 @@ export function createNodesForStage(
     };
     newNodes.push(node);
   }
-
-  // Rows left in the pool are drawable by a later prompt or stage, which
-  // reserves them again; holding the reservation open past this draw would keep
-  // their values from nodes no roster row is waiting for.
-  releaseRosterValues(ctx, scope, pool);
 
   return newNodes;
 }

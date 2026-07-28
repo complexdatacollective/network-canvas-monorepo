@@ -815,7 +815,11 @@ export function analyseFeasibility(
   const binOnly = collectBinOnlyVariables(stages);
   const promptFixed = countPromptFixedValues(stages, config, externalData);
   const pedigreeFixed = countPedigreeFixedValues(stages, config);
-  const promptAssignments = collectPromptFixedAssignments(stages, externalData);
+  const promptAssignments = collectPromptFixedAssignments(
+    stages,
+    config,
+    externalData,
+  );
   const referenced = collectReferencedScopes(stages);
   const scopes: EntityScope[] = [];
 

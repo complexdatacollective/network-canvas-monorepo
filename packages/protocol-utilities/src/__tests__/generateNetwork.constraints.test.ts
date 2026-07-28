@@ -3279,3 +3279,349 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
     }
   });
 });
+
+/**
+ * A stage's prompts share one node ceiling and spend it in order, so a stage
+ * whose first prompts fill it reaches the rest with nothing left: they return
+ * before drawing, on every seed, and the values they fix are written onto
+ * nobody. A refusal over those values would fail a protocol that generates
+ * perfectly well, while a prompt that can still draw on some seed keeps every
+ * refusal it had — a value only that seed reaches is exactly the failure
+ * deciding this up front exists to prevent.
+ */
+describe('a prompt the stage node ceiling leaves nothing for', () => {
+  const differentFromPair = personCodebook({
+    a: { name: 'A', type: 'boolean' },
+    b: { name: 'B', type: 'boolean', validation: { differentFrom: 'a' } },
+  });
+  const plainPair = personCodebook({
+    a: { name: 'A', type: 'boolean' },
+    b: { name: 'B', type: 'boolean' },
+  });
+
+  /** A name generator whose second prompt pins `a` and `b` to one value. */
+  function pinningSecondPrompt(minNodes: number, maxNodes: number): Stage {
+    return {
+      id: 'stage-1',
+      type: 'NameGenerator',
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        { id: 'p1', text: 'Name people' },
+        {
+          id: 'p2',
+          text: 'Name more people',
+          additionalAttributes: [
+            { variable: 'a', value: true },
+            { variable: 'b', value: true },
+          ],
+        },
+      ],
+      behaviours: { minNodes, maxNodes },
+    } as unknown as Stage;
+  }
+
+  /** How many of `SEEDS` runs give the second prompt a node of its own. */
+  function seedsReachingTheSecondPrompt(
+    minNodes: number,
+    maxNodes: number,
+  ): number {
+    let reached = 0;
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: plainPair,
+        stages: [pinningSecondPrompt(minNodes, maxNodes)],
+      });
+      if (network.nodes.some((node) => node.promptIDs?.includes('p2'))) {
+        reached += 1;
+      }
+    }
+    return reached;
+  }
+
+  it('never reaches a second prompt on a stage allowed one person', () => {
+    // The premise the acceptance below rests on: at a floor equal to the
+    // ceiling the first prompt spends the stage whole, so this is not a prompt
+    // some other seed would have reached.
+    expect(seedsReachingTheSecondPrompt(1, 1)).toBe(0);
+  });
+
+  it(`generates a stage whose unreachable prompt fixes a pair no rule allows, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      let nodes: NcNode[] = [];
+      try {
+        nodes = generateNetwork({
+          seed,
+          codebook: differentFromPair,
+          stages: [pinningSecondPrompt(1, 1)],
+        }).network.nodes;
+      } catch (error) {
+        failures.push(`seed ${seed}: refused with ${String(error)}`);
+        continue;
+      }
+
+      complain(
+        failures,
+        nodes.length === 1,
+        () => `seed ${seed}: ${nodes.length} nodes, not 1`,
+      );
+      for (const node of nodes) {
+        const { a, b } = node[entityAttributesProperty];
+        complain(
+          failures,
+          a !== b,
+          () => `seed ${seed}: a and b are both ${JSON.stringify(a)}`,
+        );
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it('still refuses the same pin where the prompt can be reached', () => {
+    // A floor below the ceiling leaves the first prompt able to stop short, so
+    // the second draws on some seeds — and a value only those seeds reach is
+    // still a value no seed may reach.
+    expect(seedsReachingTheSecondPrompt(1, 2)).toBeGreaterThan(0);
+
+    const build = () =>
+      generateNetwork({
+        seed: 3,
+        codebook: differentFromPair,
+        stages: [pinningSecondPrompt(1, 2)],
+      });
+
+    expect(build).toThrow(SyntheticDataConstraintError);
+    expect(build).toThrow(
+      'a prompt fixes these variables to true and true, which differentFrom cannot hold',
+    );
+  });
+
+  it('refuses regardless of seed where the prompt can be reached', () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      expect(() =>
+        generateNetwork({
+          seed,
+          codebook: differentFromPair,
+          stages: [pinningSecondPrompt(1, 2)],
+        }),
+      ).toThrow(SyntheticDataConstraintError);
+    }
+  });
+
+  it('reaches the third prompt only while the ceiling still allows it', () => {
+    // Two people each at minimum spend a ceiling of three, so a third prompt
+    // is out of reach at a floor of two and inside it at a floor of one.
+    const reach = (minNodes: number, promptId: string): number => {
+      const stage = {
+        id: 'stage-1',
+        type: 'NameGenerator',
+        label: 'Name generator',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          { id: 'p1', text: 'One' },
+          { id: 'p2', text: 'Two' },
+          { id: 'p3', text: 'Three' },
+        ],
+        behaviours: { minNodes, maxNodes: 3 },
+      } as unknown as Stage;
+
+      let reached = 0;
+      for (let seed = 1; seed <= SEEDS; seed++) {
+        const { network } = generateNetwork({
+          seed,
+          codebook: plainPair,
+          stages: [stage],
+        });
+        if (network.nodes.some((node) => node.promptIDs?.includes(promptId))) {
+          reached += 1;
+        }
+      }
+      return reached;
+    };
+
+    expect(reach(2, 'p2')).toBeGreaterThan(0);
+    expect(reach(2, 'p3')).toBe(0);
+    expect(reach(1, 'p3')).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Roster rows are values the run is handed before it starts, so the draws that
+ * come before their stage are steered off them exactly as they are steered off
+ * a value a prompt fixes. Held only while the row's own stage drew, a
+ * fabricated person took the value first and the row became a duplicate of what
+ * the network already held — passed over for good, so the roster lost a person
+ * a different draw would have left room for.
+ *
+ * The hold is given back once the row's stage has had its chance to draw: rows
+ * are keyed by stage, so a row that stage did not take is one nobody is waiting
+ * for, and holding its value any longer would narrow every draw that follows.
+ */
+describe('roster values held against an earlier stage', () => {
+  const uniqueFlag = personCodebook({
+    flag: { name: 'Flag', type: 'boolean', validation: { unique: true } },
+  });
+
+  function fabricatingStage(id: string): Stage {
+    return {
+      id,
+      type: 'NameGenerator',
+      label: 'Name someone',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: `${id}-p1`, text: 'Name someone' }],
+      behaviours: { minNodes: 1, maxNodes: 1 },
+    } as unknown as Stage;
+  }
+
+  function rosterStage(id: string): Stage {
+    return {
+      id,
+      type: 'NameGeneratorRoster',
+      label: 'Pick someone',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: `${id}-p1`, text: 'Pick someone' }],
+      behaviours: { minNodes: 1, maxNodes: 1 },
+    } as unknown as Stage;
+  }
+
+  /** Rows under their own id prefix: one person is never in two rosters. */
+  function rowsOf(
+    attributes: Record<string, unknown>[],
+    prefix = 'roster',
+  ): NcNode[] {
+    return attributes.map(
+      (values, index) =>
+        ({
+          [entityPrimaryKeyProperty]: `${prefix}-${index}`,
+          type: 'person',
+          [entityAttributesProperty]: values,
+        }) as unknown as NcNode,
+    );
+  }
+
+  it(`leaves a later roster row the unique value it carries, over ${SEEDS} seeds`, () => {
+    // One fabricated person and a one-row roster carrying `true`. Reserving the
+    // row's value up front sends the fabricated draw to `false`, so both people
+    // are made; taking the reservation only once the roster stage began left
+    // the row a duplicate and the network one person short.
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: uniqueFlag,
+        stages: [fabricatingStage('stage-fab'), rosterStage('stage-roster')],
+        externalData: { 'stage-roster': rowsOf([{ flag: true }]) },
+      });
+
+      const shape = network.nodes.map((node) => ({
+        stage: node.stageId,
+        flag: node[entityAttributesProperty].flag,
+      }));
+
+      complain(
+        failures,
+        shape.length === 2 &&
+          shape[0]?.stage === 'stage-fab' &&
+          shape[0].flag === false &&
+          shape[1]?.stage === 'stage-roster' &&
+          shape[1].flag === true,
+        () => `seed ${seed}: ${JSON.stringify(shape)}`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`gives the hold back once the row's stage has drawn, over ${SEEDS} seeds`, () => {
+    // The roster's only row breaks its own `maxLength`, so no draw can build a
+    // person from it and the roster stage adds nobody. The value it was holding
+    // has to come back: a later person is free to be issued `true`, and a hold
+    // nothing is waiting for would push every draw after it somewhere else.
+    const codebook = personCodebook({
+      flag: { name: 'Flag', type: 'boolean', validation: { unique: true } },
+      code: {
+        name: 'Code',
+        type: 'text',
+        validation: { minLength: 2, maxLength: 4 },
+      },
+    });
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [rosterStage('stage-roster'), fabricatingStage('stage-fab')],
+        externalData: {
+          'stage-roster': rowsOf([{ flag: true, code: 'far too long' }]),
+        },
+      });
+
+      const shape = network.nodes.map((node) => ({
+        stage: node.stageId,
+        flag: node[entityAttributesProperty].flag,
+      }));
+
+      complain(
+        failures,
+        shape.length === 1 &&
+          shape[0]?.stage === 'stage-fab' &&
+          shape[0].flag === true,
+        () => `seed ${seed}: ${JSON.stringify(shape)}`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`keeps a later stage's rows held while an earlier roster draws, over ${SEEDS} seeds`, () => {
+    // Each stage holds its own rows, so giving the first stage's hold back must
+    // leave the second's alone. Three ranks and three people, with the last
+    // roster carrying the rank the fabricated draw would otherwise reach for:
+    // only a hold that survives the stage before it sends that draw to the rank
+    // nobody is waiting for.
+    const codebook = personCodebook({
+      rank: {
+        name: 'Rank',
+        type: 'ordinal',
+        options: [1, 2, 3].map((value) => ({ label: `Rank ${value}`, value })),
+        validation: { unique: true },
+      },
+    });
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [
+          rosterStage('stage-roster-a'),
+          fabricatingStage('stage-fab'),
+          rosterStage('stage-roster-b'),
+        ],
+        externalData: {
+          'stage-roster-a': rowsOf([{ rank: 1 }], 'roster-a'),
+          'stage-roster-b': rowsOf([{ rank: 2 }], 'roster-b'),
+        },
+      });
+
+      const shape = network.nodes.map(
+        (node) =>
+          `${String(node.stageId)}:${JSON.stringify(node[entityAttributesProperty].rank)}`,
+      );
+
+      complain(
+        failures,
+        shape.join('|') === 'stage-roster-a:1|stage-fab:3|stage-roster-b:2',
+        () => `seed ${seed}: ${JSON.stringify(shape)}`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+});

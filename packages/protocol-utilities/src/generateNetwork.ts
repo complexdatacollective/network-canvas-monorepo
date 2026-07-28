@@ -24,7 +24,11 @@ import type {
 } from './generateNetwork/context';
 import { buildCurrentNetwork } from './generateNetwork/filtering';
 import { markStageInProgress } from './generateNetwork/inProgress';
-import { countPromptFixedValues } from './generateNetwork/nodes';
+import {
+  countPromptFixedValues,
+  releaseExternalRosterValues,
+  reserveExternalRosterValues,
+} from './generateNetwork/nodes';
 import {
   handleAlterEdgeForm,
   handleAlterForm,
@@ -170,6 +174,10 @@ export function generateNetwork(
   // A pedigree's ego flag is fixed by its stage rather than by a prompt, and is
   // held back here for the same reason.
   reserveFamilyPedigreeEgoValues(ctx, stages);
+  // Roster rows are values the run is handed rather than ones it issues, so the
+  // draws that come before their stage are steered off them here too. Each
+  // stage's hold is given back once the stage has run.
+  reserveExternalRosterValues(ctx, stages);
 
   const draft: NetworkDraft = {
     egoUid: uuid(),
@@ -192,6 +200,9 @@ export function generateNetwork(
     if (respectSkipLogicAndFiltering && stage.skipLogic) {
       const { skipLogic } = stage;
       if (isStageSkipped(skipLogic, buildCurrentNetwork(draft))) {
+        // A stage that is skipped draws nobody, so the people its roster held
+        // back are people nobody is waiting for.
+        releaseExternalRosterValues(ctx, stage);
         const { destination } = skipLogic;
         if (destination) {
           const destinationIndex = resolveSkipLogicDestinationIndex(
@@ -269,6 +280,8 @@ export function generateNetwork(
             'Synthetic data generation does not yet support this stage type.',
         );
     }
+
+    releaseExternalRosterValues(ctx, stage);
   }
 
   // Applied as a post-pass: node creation populates every codebook variable, and
