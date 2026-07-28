@@ -1,6 +1,6 @@
 # Reconciling the two contradiction analysers
 
-Date: 2026-07-27
+Date: 2026-07-27 (revised 2026-07-28 against #1107's post-review shape)
 Status: Planned — blocked on PR #1107
 
 ## Trigger and ordering
@@ -9,17 +9,16 @@ Status: Planned — blocked on PR #1107
 `claude/synthetic-data-validation-2b18a2` at `254123bfc`, and its conflicts were resolved there — see
 that commit for what the merge collided on, including a real solver defect it surfaced.
 
-**The one remaining trigger is PR #1107** (`feat: make contradictory validation rules unexpressible`)
-merging to `main`. When it does, merge `main` into the working branch and start.
+**The plan changed on 2026-07-28: #1107 no longer merges to `main` first.** The current sequence is:
+the attribute-writer exclusivity work merges into #1107's branch; #1107 then re-targets and merges
+into this branch (`claude/synthetic-data-validation-2b18a2`); and this task runs here as the next
+work item, before #1108 targets `main`. If that plan reverts to #1107-into-main, the original
+contingency stands: run this on #1108 if it is still open, else branch fresh from `main`.
 
-_Where_ to run it depends on the state of PR #1108 at that moment:
-
-- **#1108 still open** — run it there, as originally planned.
-- **#1108 already merged** — branch fresh from `main`. Everything this task depends on is then in
-  `main` anyway, and the work is unchanged.
-
-If #1107 is abandoned or substantially rescoped, this whole task is void — re-read its final shape
-before starting.
+If #1107 is abandoned or substantially rescoped again, re-read its final shape before starting. Its
+spec (`docs/superpowers/specs/2026-07-27-protocol-validation-contradictions-design.md`) was
+truth-fixed on 2026-07-28 and is the authoritative catalogue; this document's snapshots of #1107 are
+summaries, and where they disagree with that spec, that spec wins.
 
 ## Why
 
@@ -44,13 +43,25 @@ inspection.
 They were established on 2026-07-27 against `origin/claude/protocol-validation-contradictions-fdfd2f`
 and may have moved:
 
-- The two branches had **zero file overlap** (42 files vs 55). `protocol-utilities` and `interview`
-  were untouched by #1107; `protocol-validation` was untouched by #1108.
+- The zero-file-overlap premise (42 files vs 55, `protocol-utilities`/`interview` untouched by
+  #1107) is **no longer true**: #1107's review waves reached into `packages/interview`
+  (`src/forms/useProtocolForm.tsx`, a date-window test file, two changesets) and `packages/fresco-ui`
+  (`DatePicker.tsx`, its tests, a changeset). Diff both sides before the merge and expect small
+  conflicts there.
 - `VARIABLE_REFERENCE_VALIDATIONS` was unchanged by #1107 and is now consumed as the canonical rule
   list by both — three call sites in this branch, plus #1107's `validateEntityAttributeReferences.ts`.
-  Keep it that way.
-- `findValidationContradictions(variables)` takes **one entity's variables record** and returns
-  `{ class, variableIds, rules, message, path }[]`.
+  Keep it that way (re-verify at merge time).
+- `findValidationContradictions(variables, options?)` takes **one entity's variables record** and
+  returns `{ class, message, variableIds, strips }[]` — the `{ rules, path }` shape this document
+  previously cited was stale. `strips` names the rule instances the migration would remove;
+  `variableIds` is the participant set the strips anchor on.
+- The options argument matters to the delegation adapter: `stageEffectiveComponents?: boolean`
+  (default false) controls whether options-derived **boolean** domains are judged. Record-level
+  callers pass false, because a codebook Boolean may be overridden to Toggle by every composer
+  occurrence; callers whose variables records carry **resolved** renderings pass true.
+  `analyseFeasibility` reasons over `EntityConstraints` with the rendering already folded in, so the
+  adapter should pass `true` — and a test must pin that choice against the Toggle-override shape in
+  both directions.
 
 **The delegation surface grew after this spec was written.** Several more per-variable checks landed in
 `feasibility.ts` during PR #1108's review cycles, and each is a delegation candidate to re-assess
@@ -72,26 +83,35 @@ against #1107's final catalogue rather than assumed to be ours:
 Have `analyseFeasibility` call `findValidationContradictions` for the classes #1107 owns, instead of
 computing them again.
 
-**Delegate** (#1107's catalogue, classes 1–4 and 7–10): `minLength > maxLength`; `minValue > maxValue`;
+**Delegate** — #1107's final catalogue is far larger than the classes-1–4/7–10 snapshot this section
+was written against. Beyond the original list (`minLength > maxLength`; `minValue > maxValue`;
 `minSelected > maxSelected`; `minSelected > options.length`; `sameAs` and `differentFrom` naming the
-same target; any comparator cycle containing a strict edge; a strict comparator or `differentFrom`
-between members of one `sameAs` group; single-edge bound disjointness; and an equality group whose
-members' bounds have an empty intersection.
-
-**Check before delegating class 10**: this branch's `d31b010bb` added option-domain intersection for
-equality groups, and #1107's commits `c1c2dcf84` / `afb8cbb39` mention option-set disjointness and
-shared-option cardinality. Establish whether their class 10 covers option sets or only numeric and
-length ranges. If it covers them, delegate; if not, keep ours and say so.
+same target; strict-edge comparator cycles; strict/`differentFrom` conflicts inside one `sameAs`
+group; single-edge bound disjointness; empty equality-group intersections) it now also decides: full
+transitive bound propagation across comparator chains (sameAs-contracted, per-origin, with
+propagated pins); equality-group option-set intersection and shared-option cardinality (the old
+"check before delegating class 10" question is answered: yes, delegable); pinned-value conflicts
+(number `min===max`, ordinal/categorical singleton distinct domains, `minSelected` at the
+distinct-option count, sameAs-group-derived pins, comparator-propagated pins including coarse
+stored-string pins); boolean parity over odd `differentFrom` cycles; discrete coarse-date domain
+emptiness (1,000-period enumeration cap); disequality pruning over exactly-enumerable date domains;
+and DatePicker/RelativeDatePicker window modelling including default windows, the native
+`0001-01-01` floor, and synthesized out-of-window coarse far bounds (see the kept table — the date
+split moved). Re-derive the delegation list from #1107's spec at merge time rather than from this
+paragraph.
 
 **Keep in `protocol-utilities`** — their analyser cannot decide these, by design or by input:
 
-| kept                                                                                 | why                                                                                                    |
-| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `unique` value space vs worst-case entity count                                      | depends on how many entities a stage generates — a runtime property #1107's design explicitly declines |
-| transitive bound propagation across comparator chains                                | #1107 is _deliberately_ single-edge: "not a transitive interval solver"                                |
-| RelativeDatePicker windows resolved against `today`                                  | #1107 treats them as contributing no static bounds                                                     |
-| date windows with an absent bound filled from `today`, and the 1920 DatePicker floor | needs the injected `today`; a generation-time input                                                    |
-| bin-only scoping (`binOnlyVariables.ts`)                                             | decides which variables are validated at all, which is a stage-graph question                          |
+| kept                                               | why                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unique` value space vs worst-case entity count    | depends on how many entities a stage generates — a runtime property #1107's design explicitly declines                                                                                                                                                                                                                                                                                                                                 |
+| a rule whose two ends are both fixed by one prompt | needs prompt information #1107's analyser does not receive                                                                                                                                                                                                                                                                                                                                                                             |
+| bin-only scoping (`binOnlyVariables.ts`)           | decides which variables are validated at all, which is a stage-graph question                                                                                                                                                                                                                                                                                                                                                          |
+| exact-`today` date reasoning                       | #1107 now models RelativeDatePicker windows (fixed-anchor, interview-date-origin, and the absent-parameters default window), default DatePicker windows, floors, and synthesized coarse bounds — but it has no wall clock, so today-dependence is modelled at a fixed 2120 horizon as a **superset** that only ever errs toward acceptance. This branch resolves against the real injected `today` and stays the stricter, exact layer |
+
+Two rows from the original table are gone because their premises fell during #1107's review waves:
+transitive propagation and RelativeDatePicker windows are now #1107 capabilities, not exclusions.
+The correct date relationship is containment, not partition — see work item 3.
 
 **Adapters, and the two ways this goes wrong:**
 
@@ -106,19 +126,35 @@ length ranges. If it covers them, delegate; if not, keep ours and say so.
   regress it. If their messages cannot carry names, map their structured output onto our existing
   wording rather than adopting their strings.
 
-## Work item 2 — the one-way conformance guard
+## Work item 2 — the conformance harness (drift guard + solver witness search)
 
 Add this **whether or not delegation ends up complete**, because partial delegation leaves exactly the
-drift this task exists to remove.
+drift this task exists to remove. It has grown a second, more important half since first drafted:
+#1107's review ran to ~110 findings, and the dominant class was model-vs-runtime fidelity —
+hand-constructed configurations where the analyser's model of control semantics disagreed with the
+real runtime. #1109's solver is the machine that constructs those counterexamples automatically.
 
-Invariant: _anything `findValidationContradictions` rejects, `analyseFeasibility` also refuses._
+**Invariant A (drift guard)**: _anything `findValidationContradictions` rejects, `analyseFeasibility`
+also refuses._ Not the converse — ours is intentionally stricter on the kept classes above. Assert
+one direction only; a bidirectional test will fail correctly and be "fixed" by weakening ours.
 
-Not the converse — ours is intentionally stricter on the five kept classes above. Assert one direction
-only; a bidirectional test will fail correctly and be "fixed" by weakening ours.
+**Invariant B (witness search)**: _for every record `findValidationContradictions` rejects, #1109's
+finite-domain solver finds **no** satisfying assignment._ A witness found is a machine-proven false
+positive in `protocol-validation` — its highest-consequence failure, because its rejections drive
+the destructive v7→v8 migration strips. Treat any witness as a release-blocking bug there, never as
+a reason to weaken the solver. (This consumes #1109's solver read-only; the no-changes-to-#1109
+non-goal stands.)
 
-Home: `packages/protocol-utilities`, which already depends on `protocol-validation`. Drive it from a
-corpus of entity variable records covering both branches' fixtures, and verify the guard is real by
-breaking one analyser and confirming it goes red.
+Home: `packages/protocol-utilities`, which already depends on `protocol-validation`. Drive both
+invariants from one corpus: both branches' fixtures, the shapes exercised by #1107's ~1,100-test
+analyser suite, and seeded random records (deterministic seeds; no wall-clock, no unseeded
+randomness). Verify the harness is real by mutation: break each analyser in turn and confirm the
+relevant invariant goes red.
+
+The class-2 counterpart already landed on #1107's side: a seeded v7 migration fuzz
+(`migration-fuzz.test.ts` in `protocol-validation`) asserting fuzzed v7 protocols always migrate to
+schema-valid v8. It is in-package and unaffected by delegation — noted here only so nobody re-plans
+it.
 
 ## Work item 3 — differences that close cheaply
 
@@ -136,20 +172,22 @@ breaking one analyser and confirming it goes red.
    **Do not delete any of it.** `generateNetwork` is called with hand-built codebooks by
    `SyntheticInterview`, by tests, and by external hosts such as Fresco, none of which are guaranteed
    to have passed the schema.
-3. **Pin the RelativeDatePicker split.** #1107 contributes no static bounds for it; we resolve it
-   against `today`. Add a test on each side asserting its half, so neither drifts into the other's
-   territory.
+3. **Pin the date-window containment.** The old split ("#1107 contributes no static bounds for
+   RelativeDatePicker") is gone — #1107 now models RelativeDatePicker and default DatePicker windows
+   at a fixed 2120 horizon, a deliberate superset of any real-`today` window. Add a test on each
+   side asserting the containment direction: #1107's modelled window ⊇ this branch's real-`today`
+   window, on any date through 2120. If that test ever fails, #1107 has become stricter than the
+   runtime somewhere — a false-rejection bug there, not a tolerance to add here.
 
 ## Non-goals
 
-- Making `protocol-validation` transitive. That was #1107's deliberate choice and reopening it is a
-  design conversation, not cleanup.
 - Moving our analyser wholesale into `protocol-validation`. It needs worst-case entity counts and an
   injected `today` — both generation-time inputs that package has no business taking.
-- Any change to #1109's solver.
-- The Architect editor accepting transitively-conflicting bounds that preview then refuses. It is a
-  real UX seam, but closing it means porting transitive propagation into the schema — see the first
-  non-goal. Document it; do not fix it here.
+- Any change to #1109's solver (work item 2's witness search consumes it read-only).
+
+Two former non-goals are deleted because #1107 made them moot rather than out-of-scope: it _is_
+transitive now (chain propagation shipped during its review waves), and the Architect editor _does_
+reject transitively-conflicting bounds. Nothing here needs to reopen either.
 
 ## Verification
 
