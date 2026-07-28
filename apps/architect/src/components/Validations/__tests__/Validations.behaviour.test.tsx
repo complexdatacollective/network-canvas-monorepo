@@ -187,6 +187,40 @@ describe('Validations behaviour', () => {
     expect(lessThanOption).toBeDisabled();
   });
 
+  // Twenty-seventh-wave Finding 1: the rule-type gating switched from one
+  // `checkDraft` call per candidate per rule to `findLegalReferenceTargets`
+  // (batched per rule, over every candidate at once). This must keep
+  // deciding each reference rule INDEPENDENTLY of the others: the same
+  // candidate ("a") is a legal target for "Greater than" (b > a is exactly
+  // what a's own "a < b" already says) but an illegal one for "Less than"
+  // (b < a would close a < b < a, an impossible cycle) — so the two options
+  // must land on opposite enabled/disabled outcomes in the very same render.
+  it('gates every reference rule independently in the same render', () => {
+    setup({
+      variableType: 'number',
+      entity: 'node',
+      currentVariableId: 'b',
+      allVariables: {
+        a: { name: 'A', type: 'number', validation: { lessThanVariable: 'b' } },
+        b: { name: 'B', type: 'number', validation: {} },
+      },
+      existingVariables: {
+        a: { name: 'A', type: 'number' },
+      },
+      validation: {},
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+
+    const ruleSelect = screen.getByRole('combobox');
+    expect(
+      within(ruleSelect).getByRole('option', { name: 'Less than' }),
+    ).toBeDisabled();
+    expect(
+      within(ruleSelect).getByRole('option', { name: 'Greater than' }),
+    ).not.toBeDisabled();
+  });
+
   it('shows the unique-count hint on a boolean variable’s unique row', () => {
     setup({
       variableType: 'boolean',

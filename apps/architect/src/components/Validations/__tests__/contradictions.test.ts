@@ -668,6 +668,169 @@ describe('makeFieldEditorValidate', () => {
       expect(errors.variable).toBeUndefined();
     });
   });
+
+  // protocol-validation commit 8900da73b gated options-derived boolean
+  // domains on a new `stageEffectiveComponents` analyser option: an explicit
+  // `component: 'Boolean'` with singleton `options` only pins the variable's
+  // value when the caller has RESOLVED every variable's stage-effective
+  // rendering, because a NetworkComposer field is free to override even an
+  // explicit codebook `component: 'Boolean'` to `Toggle` (which ignores
+  // `options` and is unconditionally two-valued). The record-level schema
+  // check and the migration call the analyser without the flag; only
+  // schema.ts's `validateComposerFieldContradictions` overlay — which knows
+  // every field's own resolved component — passes it. These tests confirm
+  // the composer field editor's `makeFieldEditorValidate` overlay call
+  // matches that overlay's verdict, and that the plain codebook dialog
+  // (no overlay) still matches the record-level acceptance.
+  describe('explicit Boolean singleton differentFrom pairs', () => {
+    const singletonBooleans = {
+      boolA: {
+        name: 'boolA',
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+        validation: { differentFrom: 'boolB' },
+      },
+      boolB: {
+        name: 'boolB',
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+        validation: {},
+      },
+    };
+
+    it('flags the pair in the composer editor when both sibling fields still render Boolean', () => {
+      const composerFields = [
+        { variable: 'boolA', component: 'Boolean' },
+        { variable: 'boolB', component: 'Boolean' },
+      ];
+      const validate = makeFieldEditorValidate(
+        singletonBooleans,
+        buildComposerFieldOverlay(composerFields, 0),
+      );
+      const errors = validate({
+        variable: 'boolA',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+        validation: { differentFrom: 'boolB' },
+      });
+      expect(errors.validation).toContain('must differ');
+    });
+
+    it('does not flag the same pair in a plain codebook dialog with no stage overlay', () => {
+      const validate = makeFieldEditorValidate(singletonBooleans);
+      const errors = validate({
+        variable: 'boolA',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+        validation: { differentFrom: 'boolB' },
+      });
+      expect(errors).toEqual({});
+    });
+
+    it('does not flag the pair once every composer occurrence overrides to Toggle', () => {
+      const composerFields = [
+        { variable: 'boolA', component: 'Toggle' },
+        { variable: 'boolB', component: 'Toggle' },
+      ];
+      const validate = makeFieldEditorValidate(
+        singletonBooleans,
+        buildComposerFieldOverlay(composerFields, 0),
+      );
+      const errors = validate({
+        variable: 'boolA',
+        component: 'Toggle',
+        options: [{ label: 'Yes', value: true }],
+        validation: { differentFrom: 'boolB' },
+      });
+      expect(errors).toEqual({});
+    });
+  });
+
+  // Twenty-seventh-wave Finding 2: a draft can make a contradiction
+  // infeasible between TWO OTHER variables it never appears in itself. A is
+  // required and `sameAs` B; B declares `B.lessThanVariable = C`; required C
+  // has `maxValue: 10`. Widening A's `minValue` to 10 propagates that bound
+  // into B's range through the sameAs equality group, and B's own comparator
+  // to C becomes unsatisfiable against C's committed `maxValue` — a
+  // `disjointBounds` contradiction between B and C, neither of which is A.
+  // A pure membership filter on the edited variable's id missed this
+  // entirely, letting the dialog save an edit protocol-level validation then
+  // rejected.
+  describe('group-mediated contradictions the draft causes without appearing in them', () => {
+    const groupMediatedVariables = {
+      a: {
+        name: 'a',
+        type: 'number',
+        validation: { required: true, sameAs: 'b' },
+      },
+      b: {
+        name: 'b',
+        type: 'number',
+        validation: { lessThanVariable: 'c' },
+      },
+      c: {
+        name: 'c',
+        type: 'number',
+        validation: { required: true, maxValue: 10 },
+      },
+    };
+
+    it("blocks the save and surfaces b/c's message when editing a alone breaks their comparator", () => {
+      const validate = makeFieldEditorValidate(groupMediatedVariables);
+      const errors = validate({
+        variable: 'a',
+        validation: { required: true, sameAs: 'b', minValue: 10 },
+      });
+      expect(errors.validation).toContain(
+        'can never be satisfied because their value ranges do not overlap',
+      );
+    });
+
+    // The reviewer scenario's counterpart: a's OWN edit must not sweep in a
+    // contradiction that was already there before the dialog opened and that
+    // this particular edit does nothing to change — existing behaviour
+    // (findDraftContradictions ignoring pre-existing conflicts between other
+    // variables) is preserved by the fix, not narrowed by it.
+    it('does not attribute a baseline-present contradiction between other variables to an unrelated edit', () => {
+      const unrelatedContradictionVariables = {
+        a: { name: 'a', type: 'number', validation: {} },
+        b: {
+          name: 'b',
+          type: 'number',
+          validation: { minValue: 10, maxValue: 2 },
+        },
+      };
+      const validate = makeFieldEditorValidate(unrelatedContradictionVariables);
+      const errors = validate({
+        variable: 'a',
+        validation: { required: true },
+      });
+      expect(errors).toEqual({});
+    });
+
+    // A brand new variable (no `currentVariableId`) still only reports
+    // contradictions ITS OWN draft causes — a pre-existing, unrelated
+    // contradiction elsewhere in the codebook must not leak into its report
+    // just because the analyser now runs over the whole record twice.
+    it('reports only its own contradictions for a new variable, ignoring an unrelated pre-existing one', () => {
+      const newVariableSiblings = {
+        x: {
+          name: 'x',
+          type: 'number',
+          validation: { minValue: 5, maxValue: 1 },
+        },
+        y: { name: 'y', type: 'number', validation: {} },
+      };
+      const validate = makeFieldEditorValidate(newVariableSiblings);
+      const errors = validate({
+        component: 'Number',
+        validation: { sameAs: 'y' },
+      });
+      expect(errors).toEqual({});
+    });
+  });
 });
 
 describe('variableDisplayName', () => {

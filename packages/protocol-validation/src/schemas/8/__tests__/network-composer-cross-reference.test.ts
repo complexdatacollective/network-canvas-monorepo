@@ -775,6 +775,52 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
     ).toBe(true);
   });
 
+  // Twenty-eighth-wave Finding 1: `options: []` on a componentless boolean
+  // now passes the record-level shape rule (variable.ts), since a
+  // componentless variable's rendering is decided by the composer field, not
+  // the codebook. That means the genuinely broken pairing — a field that
+  // actually RENDERS the variable through `Boolean` (which fresco-ui's
+  // BooleanField renders with no buttons at all over an empty array) — has to
+  // be caught here, where the field's own component is known.
+  it('rejects a componentless boolean with empty options rendered as Boolean, anchored at the field', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        { is_close: { name: 'IsClose', type: 'boolean', options: [] } },
+        nodeFormOnly([
+          { variable: 'is_close', component: ComponentTypes.Boolean },
+        ]),
+      ),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('no choice to offer'),
+    );
+    expect(issue?.path).toEqual([
+      'stages',
+      0,
+      'nodeForm',
+      'fields',
+      0,
+      'component',
+    ]);
+  });
+
+  it('accepts a componentless boolean with empty options rendered as Toggle', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        { is_close: { name: 'IsClose', type: 'boolean', options: [] } },
+        nodeFormOnly([
+          { variable: 'is_close', component: ComponentTypes.Toggle },
+        ]),
+      ),
+    );
+    expect(
+      result.success,
+      JSON.stringify(!result.success && result.error.issues),
+    ).toBe(true);
+  });
+
   it('accepts a scalar variable rendered as a VisualAnalogScale', () => {
     const result = ProtocolSchemaV8.safeParse(
       composerProtocolWithPersonVariables(
@@ -1019,5 +1065,219 @@ describe('NetworkComposer overlay baseline tracks the visible subset', () => {
         candidate.message.includes('make its validation contradictory'),
       ),
     ).toEqual([]);
+  });
+});
+
+// Thirtieth-wave Finding 1: an override can break a pair it never names. A
+// field pinning EventA's floor propagates through EventA's `sameAs` group
+// into EventB, making EventB's own comparator against the pinned EventC
+// infeasible — the analyser reports participants [EventB, EventC] only, so
+// the participant-membership anchor found no field and dropped the
+// contradiction, silently accepting a stage whose form is unusable.
+describe('NetworkComposer overlay contradictions among non-overridden variables (thirtieth-wave Finding 1)', () => {
+  const composerProtocolWith = (
+    variables: Record<string, Record<string, unknown>>,
+    stage: Record<string, unknown>,
+  ) => {
+    const base = createBaseProtocol();
+    return {
+      ...base,
+      codebook: {
+        ...base.codebook,
+        node: {
+          ...base.codebook.node,
+          person: {
+            ...base.codebook.node.person,
+            variables: {
+              ...base.codebook.node.person.variables,
+              ...variables,
+            },
+          },
+        },
+      },
+      stages: [stage],
+    };
+  };
+
+  // EventA sameAs EventB; EventB < EventC; EventC pinned to one day. The
+  // codebook alone is satisfiable (EventA/EventB carry no bounds of their
+  // own) — only a field's floor override on EventA can break EventB < EventC.
+  const propagationTrio = {
+    event_a: {
+      name: 'EventA',
+      type: 'datetime',
+      validation: { sameAs: 'event_b' },
+    },
+    event_b: {
+      name: 'EventB',
+      type: 'datetime',
+      validation: { lessThanVariable: 'event_c' },
+    },
+    event_c: {
+      name: 'EventC',
+      type: 'datetime',
+      component: ComponentTypes.DatePicker,
+      parameters: { min: '2020-01-01', max: '2020-01-01' },
+    },
+  };
+
+  const floorField = {
+    variable: 'event_a',
+    component: ComponentTypes.DatePicker,
+    parameters: { min: '2020-01-01' },
+  };
+
+  it('rejects an override whose floor breaks a comparator between two non-overridden variables, anchored at the causing field', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWith(propagationTrio, {
+        ...baseStage,
+        nodeForm: { fields: [floorField] },
+        edges: [],
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const composerIssues = result.error.issues.filter((candidate) =>
+      candidate.message.includes('NetworkComposer field overrides'),
+    );
+    expect(composerIssues).toHaveLength(1);
+    const [issue] = composerIssues;
+    // The wrapper names the causing field's variable; the analyser's message
+    // names the broken pair.
+    expect(issue?.message).toContain('"EventA"');
+    expect(issue?.message).toContain('EventB');
+    expect(issue?.message).toContain('EventC');
+    expect(issue?.path).toEqual([
+      'stages',
+      0,
+      'nodeForm',
+      'fields',
+      0,
+      'parameters',
+    ]);
+  });
+
+  it('anchors at the first reference-connected field, skipping unrelated fields', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWith(propagationTrio, {
+        ...baseStage,
+        nodeForm: {
+          fields: [
+            { variable: 'age', component: ComponentTypes.Number },
+            floorField,
+          ],
+        },
+        edges: [],
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('NetworkComposer field overrides'),
+    );
+    expect(issue?.path).toEqual([
+      'stages',
+      0,
+      'nodeForm',
+      'fields',
+      1,
+      'parameters',
+    ]);
+  });
+
+  it('accepts the same codebook when the field carries no floor override', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWith(propagationTrio, {
+        ...baseStage,
+        nodeForm: {
+          fields: [
+            { variable: 'event_a', component: ComponentTypes.DatePicker },
+          ],
+        },
+        edges: [],
+      }),
+    );
+    expect(
+      result.success,
+      JSON.stringify(!result.success && result.error.issues),
+    ).toBe(true);
+  });
+
+  // When the CODEBOOK itself already breaks EventB < EventC (EventB's floor
+  // comes from its own codebook parameters), the record-level check owns the
+  // report and the stage must stay silent even though no participant is a
+  // field here either.
+  it('does not re-report a baseline-present contradiction between non-overridden variables at the stage', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWith(
+        {
+          ...propagationTrio,
+          event_b: {
+            ...propagationTrio.event_b,
+            component: ComponentTypes.DatePicker,
+            parameters: { min: '2020-01-01' },
+          },
+        },
+        {
+          ...baseStage,
+          nodeForm: { fields: [floorField] },
+          edges: [],
+        },
+      ),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(
+      result.error.issues.some(
+        (candidate) =>
+          candidate.path.includes('codebook') &&
+          candidate.message.includes('can never be satisfied'),
+      ),
+    ).toBe(true);
+    expect(
+      result.error.issues.filter((candidate) =>
+        candidate.message.includes('NetworkComposer field overrides'),
+      ),
+    ).toEqual([]);
+  });
+
+  // A pair only provable in stage-effective mode (two singleton-domain
+  // Booleans joined by differentFrom) that no composer field anywhere
+  // overrides and this form never renders is latent codebook state, not this
+  // overlay's introduction: it appears identically in the stage-effective
+  // baseline and must not be reported at the stage (and record-level mode
+  // never judges it either, so the protocol stays accepted).
+  it('accepts a latent stage-effective-only pair this form never renders', () => {
+    const trueOnly = [{ label: 'Yes', value: true }];
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWith(
+        {
+          flag_a: {
+            name: 'FlagA',
+            type: 'boolean',
+            component: ComponentTypes.Boolean,
+            options: trueOnly,
+            validation: { differentFrom: 'flag_b' },
+          },
+          flag_b: {
+            name: 'FlagB',
+            type: 'boolean',
+            component: ComponentTypes.Boolean,
+            options: trueOnly,
+          },
+        },
+        {
+          ...baseStage,
+          nodeForm: {
+            fields: [{ variable: 'age', component: ComponentTypes.Number }],
+          },
+          edges: [],
+        },
+      ),
+    );
+    expect(
+      result.success,
+      JSON.stringify(!result.success && result.error.issues),
+    ).toBe(true);
   });
 });

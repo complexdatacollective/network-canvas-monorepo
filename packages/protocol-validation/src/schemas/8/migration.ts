@@ -16,6 +16,8 @@ import {
   DATE_RESOLUTION,
   isIsoDate,
   isValidDateAtResolution,
+  VARIABLE_TYPE_COMPONENTS,
+  VARIABLE_TYPE_VALIDATIONS,
 } from './variables/variable.ts';
 
 // Operators whose operand is a categorical option value (as opposed to a count,
@@ -36,6 +38,35 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null
     ? (value as Record<string, unknown>)
     : null;
+
+// String-keyed views of the per-type rule and control records, so migration
+// steps (which read raw, untyped v7 JSON) can index them with a plain string
+// without asserting the variable's `type` is a known member first.
+const VALIDATION_RULES_BY_TYPE: Record<
+  string,
+  Partial<Record<string, true>>
+> = VARIABLE_TYPE_VALIDATIONS;
+const COMPONENTS_BY_TYPE: Record<string, readonly string[]> =
+  VARIABLE_TYPE_COMPONENTS;
+
+// The value kind each v8 validation rule requires. Together these cover every
+// key of the v8 `validations` record; anything else is an unknown rule.
+const BOOLEAN_VALUED_VALIDATIONS = new Set([
+  'required',
+  'requiredAcceptsNull',
+  'unique',
+]);
+const NUMBER_VALUED_VALIDATIONS = new Set([
+  'minLength',
+  'maxLength',
+  'minValue',
+  'maxValue',
+  'minSelected',
+  'maxSelected',
+]);
+const REFERENCE_VALUED_VALIDATIONS = new Set<string>(
+  VARIABLE_REFERENCE_VALIDATIONS,
+);
 
 // `ValidationContradiction.variableIds` is documented as "every variable
 // participating in the contradiction", which is exactly the property batching
@@ -372,6 +403,10 @@ const migrationV7toV8 = createMigration({
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed. Any parameter key other than \`type\`, \`min\`, or \`max\` — e.g. a RelativeDatePicker \`anchor\` left over from a component switch — is also removed.
 - A datetime codebook variable's RelativeDatePicker \`anchor\` must be a real date using a year of 0100 or later — the interview's date arithmetic (\`Date.UTC\`) maps a two-digit year (0-99) onto 1900-1999, so such an anchor already produced a wrong window, while years 0100-0999 round-trip correctly — and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
+- A datetime variable's \`parameters\` must be a plain object; a wrong-typed value (a string, number, list, or null) is removed, reverting the picker to its defaults.
+- Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the variable's type (e.g. \`minValue\` on a text variable, or \`requiredAcceptsNull\` anywhere). A removed \`minValue\`/\`minLength\`/\`minSelected\` still marks the variable required, preserving the old implied-required behaviour. Layout variables take no validation at all; theirs is removed.
+- A variable's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout variables, which have no control, have it removed.
+- Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean variable's option entry that is not a labelled true/false choice is removed; if no entries remain the variable falls back to the standard Yes/No choices.
 - The CategoricalBin "other" input and the NameGenerator quick-add field now honour the referenced variable's configured validation instead of a hard-coded requirement. To preserve the effective behaviour of existing protocols, every variable referenced as an \`otherVariable\` or \`quickAdd\` target is marked \`required\`.
 `,
   migrate: (doc, deps) => {
@@ -416,6 +451,26 @@ const migrationV7toV8 = createMigration({
             if (typeof variable === 'object' && variable !== null) {
               const typedVariable = variable as Record<string, unknown>;
               if (typedVariable.type !== 'boolean') continue;
+              // A malformed entry (non-boolean value, non-string label, or a
+              // wrong-typed `negative` flag) fails v8's boolean options
+              // schema and has no faithful per-entry repair — the value IS
+              // the datum stored — so the entry is dropped. An options array
+              // this leaves empty falls through to the empty-array deletion
+              // below, restoring the runtime's Yes/No default.
+              if (Array.isArray(typedVariable.options)) {
+                typedVariable.options = typedVariable.options.filter(
+                  (option) => {
+                    const typedOption = asRecord(option);
+                    return (
+                      typedOption !== null &&
+                      typeof typedOption.label === 'string' &&
+                      typeof typedOption.value === 'boolean' &&
+                      (typedOption.negative === undefined ||
+                        typeof typedOption.negative === 'boolean')
+                    );
+                  },
+                );
+              }
               if (
                 typedVariable.component === 'Toggle' ||
                 (Array.isArray(typedVariable.options) &&
@@ -443,6 +498,105 @@ const migrationV7toV8 = createMigration({
             if (typeof validation === 'object' && validation !== null) {
               delete (validation as Record<string, unknown>).unique;
             }
+          }
+          return variables;
+        },
+      },
+      {
+        // V7's loose validation object admits shapes v8's `validations`
+        // record cannot express at all: rule keys v8 has never defined (e.g.
+        // a hand-added `pattern` or `minWords`) and known rules whose value
+        // is the wrong primitive type (a string `minLength`, a numeric
+        // `required`, a numeric reference target). Either fails the v8
+        // strictObject outright, blocking the import. Delete them here —
+        // BEFORE any step that infers meaning from a rule's mere presence
+        // (the ordinal minSelected strip and the min-implies-required
+        // backfill), so a garbage value never fabricates requiredness.
+        // Layout and location variables take no validation at all in v8
+        // (their rule set is empty), so their whole `validation` object is
+        // removed.
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          const typedVariables = asRecord(variables);
+          if (!typedVariables) return variables;
+          for (const variable of Object.values(typedVariables)) {
+            const typedVariable = asRecord(variable);
+            if (!typedVariable) continue;
+            const validation = asRecord(typedVariable.validation);
+            if (!validation) continue;
+            const type = typedVariable.type;
+            const rules =
+              typeof type === 'string'
+                ? VALIDATION_RULES_BY_TYPE[type]
+                : undefined;
+            if (rules && Object.keys(rules).length === 0) {
+              delete typedVariable.validation;
+              continue;
+            }
+            for (const [rule, value] of Object.entries(validation)) {
+              if (BOOLEAN_VALUED_VALIDATIONS.has(rule)) {
+                if (typeof value !== 'boolean') delete validation[rule];
+              } else if (NUMBER_VALUED_VALIDATIONS.has(rule)) {
+                if (typeof value !== 'number') delete validation[rule];
+              } else if (REFERENCE_VALUED_VALIDATIONS.has(rule)) {
+                if (typeof value !== 'string') delete validation[rule];
+              } else {
+                delete validation[rule];
+              }
+            }
+          }
+          return variables;
+        },
+      },
+      {
+        // A variable's `component` (input control) must be one its own type
+        // can render — the v8 variable union has no member pairing e.g.
+        // `text` with `Number`, so a hand-edited or legacy pairing fails
+        // every union member and blocks the import. Replace an unrecognised
+        // or mismatched control with the type's standard one (the first
+        // `VARIABLE_TYPE_COMPONENTS` entry; for datetime, chosen by the
+        // parameters shape so the DatePicker/RelativeDatePicker routing
+        // below sees a consistent pairing). Layout and location variables
+        // have no participant-facing control at all, so theirs is removed.
+        // Replacing rather than deleting matters for form-referenced
+        // variables: a componentless variable in a form field is rejected by
+        // the pre-existing form-field component check.
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          const typedVariables = asRecord(variables);
+          if (!typedVariables) return variables;
+          for (const variable of Object.values(typedVariables)) {
+            const typedVariable = asRecord(variable);
+            if (!typedVariable || !('component' in typedVariable)) continue;
+            const type = typedVariable.type;
+            if (typeof type !== 'string') continue;
+            const legal = COMPONENTS_BY_TYPE[type];
+            if (!legal) continue;
+            const component = typedVariable.component;
+            if (typeof component === 'string' && legal.includes(component)) {
+              continue;
+            }
+            if (legal.length === 0) {
+              delete typedVariable.component;
+              continue;
+            }
+            if (type === 'datetime') {
+              const parameters = asRecord(typedVariable.parameters);
+              typedVariable.component =
+                parameters && isRelativeDatePickerShape(parameters)
+                  ? 'RelativeDatePicker'
+                  : 'DatePicker';
+              continue;
+            }
+            typedVariable.component = legal[0];
           }
           return variables;
         },
@@ -513,6 +667,19 @@ const migrationV7toV8 = createMigration({
               const typedOption = option as Record<string, unknown>;
               if (typeof typedOption.value === 'boolean') {
                 typedOption.value = typedOption.value ? 'true' : 'false';
+              } else if (
+                typeof typedOption.value === 'number' &&
+                !Number.isInteger(typedOption.value)
+              ) {
+                // V8 option values are strings or integers. A v7-legal
+                // fractional value (e.g. a 0.5-step Likert option) is
+                // coerced to its string form, exactly as booleans are above.
+                typedOption.value = String(typedOption.value);
+              }
+              if (typeof typedOption.label === 'number') {
+                // Labels are display strings in v8; a numeric label keeps
+                // its rendered text.
+                typedOption.label = String(typedOption.label);
               }
             }
           }
@@ -1319,6 +1486,40 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
+        // V8 admits each validation rule only on the variable types whose
+        // rule set (`VARIABLE_TYPE_VALIDATIONS`) lists it, via a strict
+        // per-type pick — so a v7 rule parked on the wrong type (`minValue`
+        // on text, `sameAs` on scalar, `requiredAcceptsNull` anywhere)
+        // failed the pick and blocked the import. Remove every rule outside
+        // the type's own set. Runs AFTER the min-implies-required backfill
+        // so a min* rule that conferred requiredness in v7 keeps it,
+        // matching the dedicated ordinal-minSelected and scalar-bound
+        // strips; and BEFORE the contradiction fixpoint below, so the
+        // analyser never reasons over rules v8 would reject wholesale.
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          const typedVariables = asRecord(variables);
+          if (!typedVariables) return variables;
+          for (const variable of Object.values(typedVariables)) {
+            const typedVariable = asRecord(variable);
+            const validation = asRecord(typedVariable?.validation);
+            if (!typedVariable || !validation) continue;
+            const type = typedVariable.type;
+            if (typeof type !== 'string') continue;
+            const rules = VALIDATION_RULES_BY_TYPE[type];
+            if (!rules) continue;
+            for (const rule of Object.keys(validation)) {
+              if (rules[rule] !== true) delete validation[rule];
+            }
+          }
+          return variables;
+        },
+      },
+      {
         // A scalar records a normalised 0-1 value, so V8 drops `minValue` and
         // `maxValue` from it entirely. This runs after the min-implies-required
         // backfill above, so a scalar that relied on that coupling keeps its
@@ -1372,6 +1573,19 @@ const migrationV7toV8 = createMigration({
             if (!typedVariable) continue;
 
             if (typedVariable.type !== 'datetime') continue;
+            // A `parameters` value that is not a plain record (a string,
+            // number, array, or null from a hand-edit) fails both v8
+            // parameters strictObjects outright; delete it so the picker
+            // falls back to its defaults. `asRecord` alone is not enough —
+            // it admits arrays.
+            if (
+              'parameters' in typedVariable &&
+              (Array.isArray(typedVariable.parameters) ||
+                asRecord(typedVariable.parameters) === null)
+            ) {
+              delete typedVariable.parameters;
+              continue;
+            }
             const parameters = asRecord(typedVariable.parameters);
             if (!parameters) continue;
             // Nineteenth-wave Finding 1: `component` is OPTIONAL on both

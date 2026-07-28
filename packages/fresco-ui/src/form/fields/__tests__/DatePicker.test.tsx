@@ -531,6 +531,93 @@ describe('DatePickerField — authored bound outside the default window (Twenty-
   });
 });
 
+describe('DatePickerField — clamping the synthesized coarse year to the four-digit range (Twenty-sixth-wave)', () => {
+  // The reviewer's report: an authored max right at the four-digit floor
+  // synthesizes a lower bound (1000 - span) that undershoots it, and the
+  // unpadded `y.toString()` the year Select stores would offer a three-digit
+  // "894" — a value the schema's exactly-YYYY coarse resolution can never
+  // hold. Clamped, the synthesized side can go no lower than the authored
+  // max itself, so this collapses to the single selectable year 1000 rather
+  // than inverting past it.
+  it('clamps the synthesized lower year to 1000 when only an authored max sits at the four-digit floor', () => {
+    render(<DatePickerField type="year" name="date" max="1000" />);
+    const yearSelect = screen.getByRole('combobox');
+    const years = optionValues(yearSelect);
+    expect(years).toEqual(['1000']);
+    for (const year of years) {
+      expect(year).toHaveLength(4);
+    }
+  });
+
+  // The mirror direction: an authored min at the four-digit ceiling
+  // synthesizes an upper bound (min + span) that overshoots it into a
+  // five-digit year. Clamped, the synthesized side can go no higher than the
+  // authored min itself.
+  it('clamps the synthesized upper year to 9999 when only an authored min sits at the four-digit ceiling', () => {
+    render(<DatePickerField type="year" name="date" min="9999" />);
+    const yearSelect = screen.getByRole('combobox');
+    const years = optionValues(yearSelect);
+    expect(years).toEqual(['9999']);
+    for (const year of years) {
+      expect(year).toHaveLength(4);
+    }
+  });
+
+  // Regression guard: a synthesized span that never crosses the four-digit
+  // range (1800 - span stays comfortably above 1000) must resolve exactly as
+  // it did before this clamp existed.
+  it('leaves a mid-range synthesized span untouched when it never crosses the four-digit range', () => {
+    render(<DatePickerField type="year" name="date" max="1800" />);
+    const yearSelect = screen.getByRole('combobox');
+    const years = optionValues(yearSelect);
+    const span = defaultWindowSpanYears();
+    expect(years[0]).toBe('1800');
+    expect(years[years.length - 1]).toBe((1800 - span).toString());
+    expect(years).toHaveLength(span + 1);
+  });
+
+  // Month resolution synthesizes the same way and must clamp identically: the
+  // year Select collapses to the single boundary year, and that year's month
+  // list is still bounded by the AUTHORED max's own month (June), not by the
+  // synthesized lower edge's January.
+  it('clamps a month-resolution picker the same way for an out-of-window max at the four-digit floor', () => {
+    render(<DatePickerField type="month" name="date" max="1000-06" />);
+    const [yearSelect, monthSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect || !monthSelect) throw new Error('selects not rendered');
+
+    expect(optionValues(yearSelect)).toEqual(['1000']);
+
+    fireEvent.change(yearSelect, { target: { value: '1000' } });
+    expect(optionValues(monthSelect)).toEqual([
+      '01',
+      '02',
+      '03',
+      '04',
+      '05',
+      '06',
+    ]);
+  });
+
+  // The full-resolution native input is deliberately NOT clamped: it stores
+  // (and its min/max attrs express) zero-padded four-digit years via
+  // `formatYmd` regardless of magnitude, so a synthesized year like 894 is
+  // still schema-valid there ("0894-01-01") — only the unpadded coarse
+  // dropdown value can fall outside the schema's representable range.
+  it('leaves the full-resolution native input min/max unclamped past the four-digit range', () => {
+    const { container } = render(
+      <DatePickerField type="full" name="date" max="1000-01-01" />,
+    );
+    const input = container.querySelector('input[type="date"]');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('date input not rendered');
+    }
+    const span = defaultWindowSpanYears();
+    const extendedYear = (1000 - span).toString().padStart(4, '0');
+    expect(input).toHaveAttribute('min', `${extendedYear}-01-01`);
+    expect(input).toHaveAttribute('max', '1000-01-01');
+  });
+});
+
 describe('DatePickerField within Field — min/max validation', () => {
   async function flushMicrotasks() {
     await Promise.resolve();

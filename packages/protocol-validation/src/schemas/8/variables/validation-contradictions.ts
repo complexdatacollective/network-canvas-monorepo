@@ -1062,6 +1062,276 @@ const dateResolutionOf = (variable: unknown): DateResolution => {
 };
 
 /**
+ * The lower edge of the runtime's default DatePicker window — fresco-ui
+ * DatePicker.tsx's `DEFAULT_MIN`, 1920-01-01. Only the YEAR is needed below:
+ * the runtime constant's month and day are both 1, and a parsed authored
+ * bound's missing month/day also default to 1, so the runtime's
+ * `compareYmd(authoredMax, DEFAULT_MIN) < 0` test is exactly `year < 1920`.
+ */
+const DEFAULT_DATE_WINDOW_MIN_YEAR = 1920;
+
+/**
+ * Twenty-fifth wave: the latest plausible interview date the synthesized
+ * coarse-window model below promises to cover. The runtime's synthesized far
+ * bound is "today"-dependent (its span is `today.year - 1920`, so it widens
+ * as the wall clock advances), while this file deliberately contains no wall
+ * clock at all — protocol validity must not depend on when validation runs.
+ * The model therefore uses the span AT THIS HORIZON (200 years), the widest
+ * span any interview run on or before 31 December 2120 can experience, which
+ * makes every modelled window a superset of every window the runtime can
+ * actually offer within the horizon. A superset can only ever ACCEPT more
+ * (the safe direction for the migration's rule-stripping); the sole error
+ * mode is a stripped rule that would have been satisfiable only in an
+ * interview conducted after 2120 — almost a century past any plausible
+ * lifetime of a schema-8 protocol.
+ */
+const COARSE_SYNTHESIS_HORIZON_YEAR = 2120;
+
+/**
+ * The runtime's `defaultWindowSpanYears` (`today.year - DEFAULT_MIN.year`)
+ * evaluated at the horizon — the widest span the model must cover.
+ */
+const COARSE_SYNTHESIS_SPAN_YEARS =
+  COARSE_SYNTHESIS_HORIZON_YEAR - DEFAULT_DATE_WINDOW_MIN_YEAR;
+
+/**
+ * Twenty-sixth-wave Finding 3: the years a coarse (month/year) control can
+ * validly EMIT — the four-digit-year grammar the truncated stored string
+ * shares with `datePickerParametersSchema`'s own coarse-bound floor
+ * (variable.ts rejects a coarse bound before year 1000). fresco-ui's
+ * DatePicker clamps its SYNTHESIZED far bound to this range (the authored
+ * side is honoured verbatim), so the model's synthesized side clamps
+ * identically — see `synthesizedCoarseMissingSideBound`. The analyser's previously
+ * unclamped synthesis was a safe superset of the clamped runtime window (a
+ * superset can only accept more), so this is a precision improvement, not a
+ * soundness fix.
+ */
+const COARSE_SYNTHESIS_MIN_YEAR = 1000;
+const COARSE_SYNTHESIS_MAX_YEAR = 9999;
+
+/**
+ * Mirrors fresco-ui DatePicker.tsx's `parseYmd` exactly — grammar
+ * (`YYYY[-MM[-DD]]`) and range checks included — because "is this bound
+ * authored?" must be decided the way the runtime decides it. A string
+ * `parseYmd` rejects is an ABSENT bound to the runtime (its `??` fallbacks
+ * apply), so it must count as absent here too; conversely a string it
+ * accepts suppresses the runtime's synthesis, and treating such a bound as
+ * absent would synthesize a hard edge the runtime never imposes. Deviations
+ * from the runtime grammar therefore matter in BOTH directions, unlike the
+ * deliberately-defensive `parseCoarseBound` (which, e.g., requires a month
+ * picker's bound to carry its month part — a reading that is safely
+ * conservative for enumeration but wrong for this authored-ness test).
+ */
+const RUNTIME_YMD_PATTERN = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
+
+const parseRuntimeYmd = (
+  value: unknown,
+): { year: number; month: number; day: number } | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const match = RUNTIME_YMD_PATTERN.exec(value);
+  if (!match?.[1]) return undefined;
+  const year = Number(match[1]);
+  const month = match[2] === undefined ? 1 : Number(match[2]);
+  const day = match[3] === undefined ? 1 : Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return undefined;
+  return { year, month, day };
+};
+
+/**
+ * Twenty-fifth wave, widened by the thirtieth (Fix 4): the bound a coarse
+ * (month/year) DatePicker's MISSING side actually resolves to at runtime.
+ * The runtime's combined derivation (DatePicker.tsx's `minYmd`/`maxYmd`
+ * useMemo, read through its coarse pair) is:
+ *
+ *   - an absent (or `parseYmd`-unparseable) `min` falls back to 1920-01-01,
+ *     UNLESS the authored `max` is earlier than that default — then the lower
+ *     bound extends BELOW it by the default window's own span
+ *     (`today.year - 1920`): `{ year: max.year - span, month: 1, day: 1 }`;
+ *   - an absent `max` falls back to today, UNLESS the authored `min` is later
+ *     than today — then `{ year: min.year + span, month: 12, day: 31 }`;
+ *   - the extended side always covers full calendar years (January through
+ *     December), never the authored bound's own sub-year month/day;
+ *   - the synthesized (never the authored) side is clamped to the years a
+ *     coarse control can validly emit — 1000 below, 9999 above
+ *     (twenty-sixth-wave Finding 3; see `COARSE_SYNTHESIS_MIN_YEAR` /
+ *     `COARSE_SYNTHESIS_MAX_YEAR`);
+ *   - both-authored windows are honoured exactly, and a picker with neither
+ *     bound gets the plain default window.
+ *
+ * For a coarse picker those resolved bounds are as hard as authored ones —
+ * the year/month dropdowns offer nothing beyond them — so a one-sided
+ * out-of-window coarse picker must NOT be modelled as half-open (a required
+ * year picker with only `max: '1800'` offers roughly [1800 - span, 1800];
+ * nothing below that is ever selectable), and — thirtieth-wave Fix 4 — the
+ * DEFAULT edges are exactly as hard: an unbounded year picker offers nothing
+ * below 1920 whatever the interview date, so a `lessThanVariable` partner
+ * pinned at 1900 can never be exceeded from below. Wave 25 recorded
+ * "neither-authored coarse derives no interval" as a safe superset; the
+ * reviewer's demonstration shows the miss rejecting a real defect.
+ *
+ * "Today" is modelled conservatively (see `COARSE_SYNTHESIS_HORIZON_YEAR`):
+ *
+ *   - The MIN side is date-INdependent throughout: the runtime's dropdown
+ *     floor is the constant 1920-01-01 whenever no authored min is in play
+ *     and the authored max (if any) is at or after it, so the default edge
+ *     is modelled EXACTLY — `{ year: 1920, month: 1 }`, January at month
+ *     resolution. The `max.year < 1920` branch condition is equally
+ *     date-independent and mirrored exactly; its extended lower edge uses
+ *     the HORIZON span, at or below the runtime's `max.year - span(today)`
+ *     for every in-horizon interview date (the span only grows toward the
+ *     horizon).
+ *   - The MAX side is date-dependent both ways, so it stays conservative:
+ *     the default today-edge is NOT modelled (half-open is the superset of
+ *     every current-year cap through the horizon), and the `min > today`
+ *     extension is synthesized only when `min.year > horizon` — the
+ *     condition holding on EVERY in-horizon interview date, with the
+ *     horizon-span ceiling at or above the runtime's `min.year + span(today)`.
+ *     A one-sided `min` between today and the horizon stays half-open: on a
+ *     later in-horizon interview date the runtime's branch flips to the
+ *     default today-edge, so no single synthesized ceiling is right for
+ *     every plausible date, and half-open is the superset of both branches.
+ *
+ * The returned period is the STORED-INSTANT reading of the modelled edge
+ * (twentieth-wave Finding 1). At most one edge is ever returned — the
+ * missing side that can be modelled without a wall clock — and both-authored
+ * windows return `undefined`. FULL-resolution pickers return `undefined`
+ * too: their one-sided resolved bounds are modelled by
+ * `synthesizedFullResolutionResolvedBound` below (thirtieth-wave Fix 2), not
+ * here.
+ */
+const synthesizedCoarseMissingSideBound = (
+  parameters: UnknownRecord,
+  resolution: 'month' | 'year',
+): { edge: 'min' | 'max'; period: YearMonth } | undefined => {
+  const authoredMin = parseRuntimeYmd(parameters.min);
+  const authoredMax = parseRuntimeYmd(parameters.max);
+  if (!authoredMin) {
+    // Twenty-sixth-wave Finding 3: the SYNTHESIZED side is clamped to the
+    // years a coarse control can validly emit (the runtime applies the same
+    // clamp to its own synthesized bound; the authored side stays untouched)
+    // — see `COARSE_SYNTHESIS_MIN_YEAR`/`COARSE_SYNTHESIS_MAX_YEAR`.
+    if (authoredMax && authoredMax.year < DEFAULT_DATE_WINDOW_MIN_YEAR) {
+      return {
+        edge: 'min',
+        period: {
+          year: Math.max(
+            COARSE_SYNTHESIS_MIN_YEAR,
+            authoredMax.year - COARSE_SYNTHESIS_SPAN_YEARS,
+          ),
+          month: 1,
+        },
+      };
+    }
+    // Thirtieth wave (Fix 4): no authored min, and any authored max sits at
+    // or after the default floor — the dropdown's lower edge is the STABLE
+    // default 1920, modelled exactly.
+    return {
+      edge: 'min',
+      period: { year: DEFAULT_DATE_WINDOW_MIN_YEAR, month: 1 },
+    };
+  }
+  if (!authoredMax && authoredMin.year > COARSE_SYNTHESIS_HORIZON_YEAR) {
+    return {
+      edge: 'max',
+      period: {
+        year: Math.min(
+          COARSE_SYNTHESIS_MAX_YEAR,
+          authoredMin.year + COARSE_SYNTHESIS_SPAN_YEARS,
+        ),
+        month: resolution === 'year' ? 1 : 12,
+      },
+    };
+  }
+  return undefined;
+};
+
+/** The first day of a coarse calendar period, as a UTC day number. */
+const periodStartDayNumber = ({ year, month }: YearMonth): number =>
+  utcDayNumber(year, month - 1, 1);
+
+/**
+ * Thirtieth wave (Fix 2): the RESOLVED opposite bound a one-sided
+ * full-resolution DatePicker carries at runtime. fresco-ui resolves and
+ * passes BOTH native `min`/`max` attributes whenever EITHER bound is
+ * authored (DatePicker.tsx's `hasAuthoredBound` gate over the shared
+ * `minYmd`/`maxYmd` derivation), so a picker with only `min` is capped at
+ * the resolved upper edge (today, or the extended `min.year + span` ceiling
+ * while the authored min still lies beyond today) and a picker with only
+ * `max` is floored at the resolved lower edge (1920-01-01, or the extended
+ * `max.year - span` floor when the authored max lies before it). The
+ * twenty-fifth wave declined to model these because a native input enforces
+ * a TYPED value more weakly than a closed dropdown, but the reviewer's
+ * demonstration (a required min-only picker `greaterThanVariable` a partner
+ * pinned at 9999-01-01, never reachable under the resolved today-cap) shows
+ * that accept-direction gap rejecting real defects, so the resolved bounds
+ * are modelled now, under `synthesizedCoarseMissingSideBound`'s same no-wall-clock
+ * discipline:
+ *
+ *   - authored max at or after 1920-01-01 (the `parseYmd` month/day
+ *     defaults make that exactly `max.year >= 1920`) ⇒ modelled min at the
+ *     runtime's stable default floor, 1920-01-01 — branch condition and
+ *     result are both date-independent, so the model is exact;
+ *   - authored max before 1920-01-01 ⇒ the out-of-window extension:
+ *     modelled min at 1 January of `max.year` minus the horizon span. The
+ *     full-resolution path shares the coarse extension arithmetic but NOT
+ *     the coarse 1000-9999 clamp — that clamp exists only on the
+ *     `coarseMinYmd`/`coarseMaxYmd` pair the dropdowns read, never on the
+ *     native input's attributes. An extension reaching before year 1 falls
+ *     to the native input floor via `clampToNativeDateFloor`, which is
+ *     exactly where the control lands when its negative-year `min`
+ *     attribute fails the native grammar;
+ *   - authored min ⇒ modelled max at 31 December of
+ *     `max(horizon, min.year + span)`. The runtime's upper edge is `today`
+ *     once the authored min has passed and the full-year extension
+ *     `min.year + span(today)` while it has not; the LATER of the horizon's
+ *     December and the horizon-span extension covers both branches on every
+ *     in-horizon interview date (`today <= horizon` and
+ *     `span(today) <= span(horizon)`), so the modelled window is a superset
+ *     of every runtime window — supersets only ever accept more. A literal
+ *     horizon ceiling alone would UNDER-cover a future-dated authored min
+ *     (the runtime extends past the horizon there), inverting the modelled
+ *     window into a false rejection.
+ *
+ * Authoredness is judged by `parseRuntimeYmd` — the runtime's own grammar —
+ * exactly as `synthesizedCoarseMissingSideBound` judges it, and the call site's
+ * `undefined` guards keep a bound the lenient `dayNumber` reads but the
+ * runtime rejects in charge of its own edge. A picker with NEITHER authored
+ * bound is untouched — the runtime passes no attributes at all there
+ * (commit-recorded twenty-sixth-wave behaviour), so its native-floor-only
+ * interval stays exactly as modelled — and a both-authored window is
+ * honoured verbatim as before.
+ */
+const synthesizedFullResolutionResolvedBound = (
+  parameters: UnknownRecord,
+): { edge: 'min' | 'max'; day: number } | undefined => {
+  const authoredMin = parseRuntimeYmd(parameters.min);
+  const authoredMax = parseRuntimeYmd(parameters.max);
+  if (authoredMax && !authoredMin) {
+    return {
+      edge: 'min',
+      day:
+        authoredMax.year < DEFAULT_DATE_WINDOW_MIN_YEAR
+          ? utcDayNumber(authoredMax.year - COARSE_SYNTHESIS_SPAN_YEARS, 0, 1)
+          : utcDayNumber(DEFAULT_DATE_WINDOW_MIN_YEAR, 0, 1),
+    };
+  }
+  if (authoredMin && !authoredMax) {
+    return {
+      edge: 'max',
+      day: utcDayNumber(
+        Math.max(
+          COARSE_SYNTHESIS_HORIZON_YEAR,
+          authoredMin.year + COARSE_SYNTHESIS_SPAN_YEARS,
+        ),
+        11,
+        31,
+      ),
+    };
+  }
+  return undefined;
+};
+
+/**
  * Twentieth-wave Finding 1: the interval a DatePicker's own min/max bounds
  * describe, as the convex hull of the INSTANTS `compareVariables` derives from
  * the values the control can store — not of the days the control can display.
@@ -1089,6 +1359,11 @@ const dateResolutionOf = (variable: unknown): DateResolution => {
  *
  * The min edge is the period start at every resolution, which is already both
  * the earliest emittable day and the coarse stored instant.
+ *
+ * Twenty-fifth wave: a COARSE picker with exactly one authored bound outside
+ * the default 1920-to-today window additionally closes its missing side at
+ * the runtime-synthesized far bound — see `synthesizedCoarseMissingSideBound` and the
+ * inline comment below.
  */
 const dateWindowInterval = (variable: unknown): Interval | undefined => {
   const record = asRecord(variable);
@@ -1116,27 +1391,93 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
   if (record.component === 'RelativeDatePicker') {
     return relativeDateWindowInterval(parameters ?? {});
   }
-  if (!parameters) return undefined;
+  // Twenty-sixth-wave Finding 2: an explicit DatePicker with no parameters
+  // record at all is a full-resolution picker with no authored bounds — the
+  // same native-floor window the no-authored-bounds branch below models. A
+  // COMPONENTLESS variable with no parameters stays unjudged: with neither a
+  // component nor a parameter shape, no control can be identified at all.
+  if (!parameters) {
+    return record.component === 'DatePicker'
+      ? { min: NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER, origin: 'fixed' }
+      : undefined;
+  }
   // Audit sweep: a null `component` is an absent one (see `dateResolutionOf`),
   // and testing `=== undefined` here dropped the shape inference entirely,
   // losing the relative window rather than merely mis-reading it.
   if (record.component == null && isRelativeDatePickerShape(parameters)) {
     return relativeDateWindowInterval(parameters);
   }
-  const min =
+  const resolution = dateResolutionOf(variable);
+  const storesFullDates = resolution === 'full';
+  let min =
     typeof parameters.min === 'string'
       ? dayNumber(parameters.min, 'min')
       : undefined;
-  const storesFullDates = dateResolutionOf(variable) === 'full';
-  const max =
+  let max =
     typeof parameters.max === 'string'
       ? dayNumber(parameters.max, storesFullDates ? 'max' : 'min')
       : undefined;
+  // Twenty-sixth-wave Finding 2: a FULL-resolution picker with no authored
+  // bound on either side is still not unbounded below — the native
+  // `<input type="date">` grammar has no year 0000 or negative years, so
+  // nothing before 0001-01-01 can ever be typed or selected whatever the
+  // control's `min`/`max` attributes say (see
+  // `NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER`). Contributing the floor closes the
+  // reviewer's repro (a bound-less required DatePicker `lessThanVariable` a
+  // partner pinned AT the floor has no strictly-earlier instant to offer,
+  // yet was accepted) while the upper edge stays unbounded. This is a hard
+  // FORMAT bound shared by every datetime control, so it holds whichever
+  // control a composer field ultimately renders. A COARSE picker with no
+  // authored bounds falls through instead: thirtieth-wave Fix 4 models its
+  // dropdown's stable default floor below.
+  if (min === undefined && max === undefined && storesFullDates) {
+    return { min: NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER, origin: 'fixed' };
+  }
+  // Twenty-fifth wave: a COARSE picker with exactly one authored bound
+  // outside the default window is not half-open at runtime — fresco-ui
+  // synthesizes the missing side, and the year/month dropdowns are closed
+  // option lists, so the synthesized side restricts the domain as hard as an
+  // authored one. Thirtieth-wave Fix 4 extends the same reasoning to the
+  // dropdowns' DEFAULT lower edge: an unbounded or in-window-max-only coarse
+  // window is floored at the stable 1920 default exactly as the runtime
+  // floors it, while the date-dependent today side stays unbounded. See
+  // `synthesizedCoarseMissingSideBound` for the exact derivation and the
+  // conservative handling of its "today" dependence. Thirtieth wave (Fix 2):
+  // a one-sided FULL-resolution window closes its missing side at the
+  // RESOLVED bound the runtime passes to the native input whenever either
+  // bound is authored — see `synthesizedFullResolutionResolvedBound`. In
+  // both arms the `undefined` guards keep an authored-but-differently-parsed
+  // bound (the lenient `dayNumber` can read a string the runtime's `parseYmd`
+  // rejects) in charge of its own edge, exactly as before.
+  if (storesFullDates) {
+    const synthesized = synthesizedFullResolutionResolvedBound(parameters);
+    if (min === undefined && synthesized?.edge === 'min') {
+      min = synthesized.day;
+    } else if (max === undefined && synthesized?.edge === 'max') {
+      max = synthesized.day;
+    }
+  } else {
+    const synthesized = synthesizedCoarseMissingSideBound(
+      parameters,
+      resolution,
+    );
+    if (min === undefined && synthesized?.edge === 'min') {
+      min = periodStartDayNumber(synthesized.period);
+    } else if (max === undefined && synthesized?.edge === 'max') {
+      max = periodStartDayNumber(synthesized.period);
+    }
+  }
+  // Defensive only: every coarse shape either read or modelled at least one
+  // edge above, so an all-undefined interval is unreachable — but a raw
+  // migration record that somehow defeats both readings must stay unjudged
+  // rather than contribute an unbounded-but-present interval.
   if (min === undefined && max === undefined) return undefined;
   // Twenty-third-wave Finding 6: `datePickerParametersSchema` rejects a
   // year-0-or-earlier full-resolution bound, but that gate never runs over
   // raw (pre-schema) migration input — the same floor `relativeDateWindowInterval`
-  // clamps to applies here too.
+  // clamps to applies here too (and a synthesized lower edge derived from a
+  // very early coarse `max` can walk past year zero the same way a
+  // RelativeDatePicker's `anchor - before` can).
   return clampToNativeDateFloor({ min, max, origin: 'fixed' });
 };
 
@@ -1224,10 +1565,13 @@ const hasEmptyOrigin = (group: GroupIntervals): boolean =>
 
 /**
  * A boolean variable's effective domain, for the singleton-domain
- * `differentFrom` check (fifth-wave Finding 5). Only reached when the
- * variable's `component` is explicitly `'Boolean'` — see Twenty-first-wave
- * Finding 1 below for why every other case (Toggle, or no declared component
- * at all) short-circuits to the unrestricted two-value domain.
+ * `differentFrom` check (fifth-wave Finding 5). `options` are only ever read
+ * when the caller vouches that each variable's `component` IS its
+ * stage-effective rendering (`stageEffectiveComponents`) AND that component
+ * is explicitly `'Boolean'` — see Twenty-first-wave Finding 1 and
+ * Twenty-sixth-wave Finding 1 below for why every other case (Toggle, no
+ * declared component, or a codebook-level read where no stage is in scope)
+ * short-circuits to the unrestricted two-value domain.
  *
  * Within that `'Boolean'` case, `booleanOptionsSchema` (variable.ts) permits
  * an `options` array exposing only one of {true, false} — unlike
@@ -1280,23 +1624,37 @@ const hasEmptyOrigin = (group: GroupIntervals): boolean =>
  * variables.<id>.validation.differentFrom` even though `ToggleField`
  * (fresco-ui) takes no `options` prop and is unconditionally two-valued.
  *
- * An EXPLICIT `component: 'Boolean'` stays on the options-reading path: the
- * codebook has committed to the choice control, which DOES honour `options`,
- * so pinning from them is a rendering the codebook actually determines. A
- * NetworkComposer field is still free to override that to `Toggle`, but that
- * override is exactly what schema.ts's `validateComposerFieldContradictions`
- * stage-effective overlay exists to catch: it re-runs this analyser with the
- * composer field's own `component` overlaid on the codebook variable, and
- * with the codebook-level report now gone the overlay's own contradiction is
- * no longer suppressed as a duplicate of the (nonexistent) baseline one. So a
- * genuine Toggle-less singleton-boolean `differentFrom` pair (one whose only
- * renderer keeps `component: 'Boolean'`, explicitly or by inheriting the
- * codebook default) is still reported — just anchored at the field, not the
- * codebook rule, and only once a stage exists to supply the missing context.
- * A componentless pair used by no composer field at all renders nowhere, so
- * nothing is contradictory.
+ * Twenty-sixth-wave Finding 1 extends that same reasoning to an EXPLICIT
+ * `component: 'Boolean'` read at the record level. The codebook's declared
+ * component is a DEFAULT, not the rendering: `ComposerFormFieldSchema`'s
+ * `component` is required and drawn from `VARIABLE_TYPE_COMPONENTS['boolean']`
+ * regardless of what the codebook declares, and the interview runtime
+ * resolves every composer field as `fieldComponent ?? codebookComponent`
+ * (interview's selectors/forms.ts) while keeping the codebook `options` it
+ * never renders — so a protocol whose every occurrence of an explicit-Boolean
+ * variable overrides the rendering to `Toggle` (unconditionally two-valued)
+ * is runtime-satisfiable, yet the record-level pin rejected it, and the
+ * v7→v8 migration turned that false rejection into silently stripped rules.
+ * The record refinement (`rejectValidationContradictions`, chained onto the
+ * variables records) can never see the stages that would settle the question,
+ * so options-derived pinning is gated on `stageEffectiveComponents`: only a
+ * caller that has already RESOLVED each variable's stage-effective rendering
+ * (schema.ts's `validateComposerFieldContradictions` overlay, which writes
+ * the winning `component` onto every variable it judges) may pass it, and the
+ * record-level check and the migration run with the default and never pin
+ * from `options`. A genuine Boolean-rendered singleton `differentFrom` pair
+ * is therefore still reported wherever a composer form actually renders it —
+ * anchored at the field, once a stage supplies the missing context — while a
+ * pair whose only renderers are shared form fields (EgoForm and the other
+ * `FormFieldSchema` surfaces, which render the codebook component verbatim
+ * but have no stage-effective contradiction pass) is a known accept-direction
+ * gap, deliberately preferred over the false rejection.
  */
-const booleanDomain = (variable: unknown): Set<boolean> => {
+const booleanDomain = (
+  variable: unknown,
+  stageEffectiveComponents: boolean,
+): Set<boolean> => {
+  if (!stageEffectiveComponents) return new Set([true, false]);
   const record = asRecord(variable);
   if (record?.component !== 'Boolean') return new Set([true, false]);
   const options = record.options;
@@ -1308,6 +1666,23 @@ const booleanDomain = (variable: unknown): Set<boolean> => {
     if (typeof value === 'boolean') domain.add(value);
   }
   return domain.size > 0 ? domain : new Set([true, false]);
+};
+
+/**
+ * The canonical composite key for a categorical selection SET — the
+ * order-insensitive, typeof-tagged, JSON-framed encoding `pinnedValue`'s
+ * categorical arm introduced (seventeenth-wave Finding 3: JSON escapes both
+ * `KEY_SEPARATOR` and its own delimiters, so no option value can forge
+ * another set's key, keeping the encoding injective). Extracted in the
+ * thirtieth wave so `sameAsGroupDerivedPin`'s categorical arm produces
+ * byte-identical keys — the pinned-equal comparison only ever fires on exact
+ * key equality, so the encoding must never be re-derived independently.
+ */
+const categoricalSetPinKey = (values: Set<string | number>): string => {
+  const tokens = [...values]
+    .map((value) => JSON.stringify([typeof value, String(value)]))
+    .toSorted();
+  return `categorical:${JSON.stringify(tokens)}`;
 };
 
 /**
@@ -1384,6 +1759,7 @@ const booleanDomain = (variable: unknown): Set<boolean> => {
  */
 const pinnedValue = (
   variable: unknown,
+  stageEffectiveComponents: boolean,
 ): string | number | boolean | undefined => {
   switch (typeOf(variable)) {
     case 'number': {
@@ -1392,7 +1768,7 @@ const pinnedValue = (
       return min !== undefined && min === max ? min : undefined;
     }
     case 'boolean': {
-      const domain = booleanDomain(variable);
+      const domain = booleanDomain(variable, stageEffectiveComponents);
       return domain.size === 1 ? [...domain][0] : undefined;
     }
     case 'datetime': {
@@ -1440,23 +1816,190 @@ const pinnedValue = (
       if (!pinned) {
         return undefined;
       }
-      // Seventeenth-wave Finding 3: JSON-encode each type-tagged pair and the
-      // sorted token list, rather than joining the raw tokens on
-      // KEY_SEPARATOR. Categorical option values are unrestricted strings
-      // (`categoricalOptionsSchema`), so a value carrying the separator plus a
-      // token prefix made two genuinely different sets encode identically —
-      // e.g. {'x', 'y'} and the singleton {'x<SEP>string:y'} — and the pair was
-      // falsely reported even though their runtime arrays differ in length.
-      // JSON escapes both the separator and its own delimiters, so the
-      // encoding is injective.
-      const tokens = [...values]
-        .map((value) => JSON.stringify([typeof value, String(value)]))
-        .toSorted();
-      return `categorical:${JSON.stringify(tokens)}`;
+      // Seventeenth-wave Finding 3: the canonical JSON-framed set key —
+      // extracted to `categoricalSetPinKey` so the thirtieth wave's group-pin
+      // arm shares the exact encoding rather than re-deriving it.
+      return categoricalSetPinKey(values);
     }
     default:
       return undefined;
   }
+};
+
+const intervalsOfMembers = (
+  variables: UnknownRecord,
+  members: string[],
+): GroupIntervals => {
+  const intervals: GroupIntervals = new Map();
+  for (const member of members) {
+    addToGroupIntervals(intervals, intervalOf(variables[member]));
+  }
+  return intervals;
+};
+
+/**
+ * The option values EVERY member of a member list offers, with the single type
+ * they share. `undefined` means the list is unusable for the option-set checks:
+ * mixed types, a type without option semantics, or a member carrying no
+ * `options` array at all (`optionValues` treats absent options as unusable
+ * rather than empty).
+ */
+const sharedOptionValues = (
+  variables: UnknownRecord,
+  members: string[],
+):
+  | { type: 'categorical' | 'ordinal'; values: Set<string | number> }
+  | undefined => {
+  const types = new Set(members.map((member) => typeOf(variables[member])));
+  const [onlyType] = types;
+  if (types.size !== 1) return undefined;
+  if (onlyType !== 'categorical' && onlyType !== 'ordinal') return undefined;
+  let intersection: Set<string | number> | undefined;
+  for (const member of members) {
+    const values = optionValues(variables[member]);
+    if (values === undefined) return undefined;
+    intersection =
+      intersection === undefined
+        ? values
+        : new Set([...intersection].filter((value) => values.has(value)));
+  }
+  if (intersection === undefined) return undefined;
+  return { type: onlyType, values: intersection };
+};
+
+/**
+ * Twenty-seventh-wave Finding 1: the single value a sameAs component's
+ * members are COLLECTIVELY forced to hold when no member's own rules pin it
+ * alone. `A [0,1] sameAs D [1,3]` forces both to exactly 1 — the group's
+ * intersected window collapses to one point — yet neither member's own
+ * `pinnedValue` fires, so `sameAsInheritedPins` below had nothing to inherit
+ * and the pin was invisible to the pinned-equal `differentFrom` check. The
+ * derivation mirrors `pinnedValue`'s own per-type encodings exactly, and
+ * every uncertainty returns `undefined` (accept):
+ *
+ *   - number: the intersected minValue/maxValue window collapsing to one
+ *     point pins that number — the same numeric key `pinnedValue` returns.
+ *   - datetime: only when every member window lives on ONE origin and the
+ *     members share FULL resolution. A full-resolution collapse point is a
+ *     day number inside every member's own window (it is their
+ *     intersection), so the origin-tagged `datetime:${origin}:${day}` key is
+ *     exactly the key `pinnedValue` derives when a single member's window
+ *     collapses. A pin is never synthesized across origins — a two-origin
+ *     group has no single collapsed window to read, and its members'
+ *     `pinnedValue` keys would not even share a tag. Twenty-ninth wave: a
+ *     uniformly COARSE (all-year or all-month) fixed-origin group pins too,
+ *     when the intersection of its members' exact emission sets
+ *     (`coarseInstantsOf`, enumeration cap included) contains exactly ONE
+ *     instant with a canonical stored form — required year pickers spanning
+ *     2020-2021 and 2021-2022 can each only emit '2021', a collapse the
+ *     day-number window maths above cannot see as a STORED-STRING key. The
+ *     key is `pinnedValue`'s own coarse encoding, via `storedPinKeyAtDay`
+ *     (which reuses `coarseStoredValueAtDay` rather than re-deriving the
+ *     encoding), so it compares exactly against a coarse partner's own pin.
+ *     Everything else still derives nothing: an unenumerable or over-cap
+ *     window, an instant with no canonical stored form (unpadded year), zero
+ *     surviving instants (at one resolution that means the convex windows
+ *     are already disjoint, so the group-emptiness machinery reports it —
+ *     never doubled here) or more than one — and mixed resolutions never
+ *     reach here at all, the caller defers them to the mixed-resolution
+ *     machinery.
+ *   - ordinal: the intersection of every member's distinct option values
+ *     collapsing to one value pins it — single-select, so that value is the
+ *     only one every member can store, keyed as the genuine primitive
+ *     exactly like `pinnedValue`'s ordinal arm.
+ *   - categorical (thirtieth wave): every member's stored selection is a
+ *     subset of the members' shared distinct-value intersection (a value not
+ *     every member offers can never be the group's shared answer), and the
+ *     group's merged `minSelected` floor — the fixed-origin interval's `min`,
+ *     the max across members, exactly the read `optionShortfall` documents —
+ *     forces at least that many selections. When the floor reaches the
+ *     intersection's size, the only selection left is the WHOLE shared set,
+ *     keyed via `categoricalSetPinKey` — `pinnedValue`'s own encoding, never
+ *     re-derived. A floor below the intersection size derives nothing (two
+ *     different selections remain), an empty intersection is the
+ *     group-emptiness machinery's (`optionsDisjoint` reports it and poisons
+ *     the group before this derivation ever runs), and a merged
+ *     `maxSelected` ceiling below the floor empties the merged interval —
+ *     also the emptiness machinery's, and additionally guarded here by
+ *     declining to pin from a group whose own merged interval is empty.
+ *   - text and every other type derive nothing: a text length-window
+ *     collapse does not pin a VALUE at all.
+ */
+const sameAsGroupDerivedPin = (
+  variables: UnknownRecord,
+  members: string[],
+  type: string,
+): string | number | undefined => {
+  if (type === 'number' || type === 'datetime') {
+    const intervals = intervalsOfMembers(variables, members);
+    if (intervals.size !== 1) return undefined;
+    const [entry] = intervals;
+    if (entry === undefined) return undefined;
+    const [origin, interval] = entry;
+    if (type === 'datetime') {
+      const resolutions = new Set(
+        members.map((member) => dateResolutionOf(variables[member])),
+      );
+      const [resolution] = resolutions;
+      if (resolutions.size !== 1) return undefined;
+      if (resolution === 'month' || resolution === 'year') {
+        // Twenty-ninth wave: a uniformly coarse group pins when the
+        // intersection of its members' exact emission sets holds exactly one
+        // instant with a canonical stored form (see the doc comment above).
+        // Coarse resolution structurally implies a fixed-origin DatePicker
+        // window, so the origin check is defensive, matching the file's
+        // treatment of raw migration input.
+        if (origin !== 'fixed') return undefined;
+        let instants: Set<number> | undefined;
+        for (const member of members) {
+          const coarse = coarseInstantsOf(variables[member]);
+          if (coarse === 'unenumerable' || coarse === undefined) {
+            return undefined;
+          }
+          instants =
+            instants === undefined
+              ? coarse
+              : intersectInstantSets(instants, coarse);
+        }
+        if (instants === undefined || instants.size !== 1) return undefined;
+        const [day] = instants;
+        if (day === undefined) return undefined;
+        return storedPinKeyAtDay(day, resolution);
+      }
+      if (resolution !== 'full') return undefined;
+    }
+    if (interval.min === undefined || interval.min !== interval.max) {
+      return undefined;
+    }
+    if (type === 'number') return interval.min;
+    return `datetime:${origin}:${interval.min}`;
+  }
+  if (type === 'ordinal') {
+    const shared = sharedOptionValues(variables, members);
+    if (shared?.type !== 'ordinal' || shared.values.size !== 1) {
+      return undefined;
+    }
+    const [value] = shared.values;
+    return value;
+  }
+  if (type === 'categorical') {
+    const shared = sharedOptionValues(variables, members);
+    if (shared?.type !== 'categorical' || shared.values.size === 0) {
+      return undefined;
+    }
+    const intervals = intervalsOfMembers(variables, members);
+    // An empty merged cardinality window (a member's maxSelected under
+    // another's minSelected) is the group-emptiness machinery's to report;
+    // its repair strips the grouping edges, so no pin may be derived from it
+    // meanwhile. Normally unreachable — such a group is already in
+    // `unsatisfiableGroupMemberIds` and the caller skips it — but guarded
+    // here so this derivation never depends on that ordering.
+    if (hasEmptyOrigin(intervals)) return undefined;
+    const floor = intervals.get('fixed')?.min;
+    if (floor === undefined || floor < shared.values.size) return undefined;
+    return categoricalSetPinKey(shared.values);
+  }
+  return undefined;
 };
 
 /**
@@ -1498,11 +2041,18 @@ const pinnedValue = (
  *     already reads pins at merged-group granularity via
  *     `sharedBooleanDomain`, so inheriting here would only re-class its
  *     reports.
+ *
+ * Twenty-seventh-wave Finding 1: a component NONE of whose members carries an
+ * own pin can still be pinned collectively — its intersected window (or
+ * shared option domain) collapsing to a single value forces every member to
+ * that value just as hard as a member pin does. `sameAsGroupDerivedPin`
+ * derives that group pin, under this function's same guards.
  */
 function sameAsInheritedPins(
   variables: UnknownRecord,
   sameAsFind: (id: string) => string,
   unsatisfiableGroupMemberIds: ReadonlySet<string>,
+  stageEffectiveComponents: boolean,
 ): Map<string, string | number | boolean> {
   const membersOf = new Map<string, string[]>();
   for (const id of Object.keys(variables)) {
@@ -1546,7 +2096,7 @@ function sameAsInheritedPins(
     let disagreement = false;
     const unpinned: string[] = [];
     for (const member of members) {
-      const own = pinnedValue(variables[member]);
+      const own = pinnedValue(variables[member], stageEffectiveComponents);
       if (own === undefined) {
         unpinned.push(member);
       } else if (pin === undefined) {
@@ -1555,7 +2105,13 @@ function sameAsInheritedPins(
         disagreement = true;
       }
     }
-    if (pin === undefined || disagreement) continue;
+    if (disagreement) continue;
+    // Twenty-seventh-wave Finding 1: with no member pinned by its own rules,
+    // the group's INTERSECTED constraints can still collapse to one value —
+    // that value is the group's pin, inherited by every member exactly as a
+    // member's own pin is.
+    pin ??= sameAsGroupDerivedPin(variables, members, onlyType);
+    if (pin === undefined) continue;
     for (const member of unpinned) inherited.set(member, pin);
   }
   return inherited;
@@ -1597,6 +2153,7 @@ function pinnedEqualDifferentFromContradictions(
   variables: UnknownRecord,
   propagatedPins: Map<string, string | number>,
   unsatisfiableGroupMemberIds: ReadonlySet<string>,
+  stageEffectiveComponents: boolean,
 ): {
   contradictions: ValidationContradiction[];
   claimedPairs: Set<string>;
@@ -1606,6 +2163,7 @@ function pinnedEqualDifferentFromContradictions(
     variables,
     sameAsFind,
     unsatisfiableGroupMemberIds,
+    stageEffectiveComponents,
   );
   const conflicts = new Map<string, VariableRuleRef[]>();
 
@@ -1614,11 +2172,11 @@ function pinnedEqualDifferentFromContradictions(
     if (target === undefined || target === id) continue;
     const crossComponent = sameAsFind(id) !== sameAsFind(target);
     const valueA =
-      pinnedValue(variable) ??
+      pinnedValue(variable, stageEffectiveComponents) ??
       (crossComponent ? inheritedPins.get(id) : undefined) ??
       propagatedPins.get(id);
     const valueB =
-      pinnedValue(variables[target]) ??
+      pinnedValue(variables[target], stageEffectiveComponents) ??
       (crossComponent ? inheritedPins.get(target) : undefined) ??
       propagatedPins.get(target);
     if (valueA === undefined || valueB === undefined || valueA !== valueB) {
@@ -1734,47 +2292,6 @@ const groupEqualityStrips = (
   return [...sameAsStrips, ...comparatorStrips];
 };
 
-const intervalsOfMembers = (
-  variables: UnknownRecord,
-  members: string[],
-): GroupIntervals => {
-  const intervals: GroupIntervals = new Map();
-  for (const member of members) {
-    addToGroupIntervals(intervals, intervalOf(variables[member]));
-  }
-  return intervals;
-};
-
-/**
- * The option values EVERY member of a member list offers, with the single type
- * they share. `undefined` means the list is unusable for the option-set checks:
- * mixed types, a type without option semantics, or a member carrying no
- * `options` array at all (`optionValues` treats absent options as unusable
- * rather than empty).
- */
-const sharedOptionValues = (
-  variables: UnknownRecord,
-  members: string[],
-):
-  | { type: 'categorical' | 'ordinal'; values: Set<string | number> }
-  | undefined => {
-  const types = new Set(members.map((member) => typeOf(variables[member])));
-  const [onlyType] = types;
-  if (types.size !== 1) return undefined;
-  if (onlyType !== 'categorical' && onlyType !== 'ordinal') return undefined;
-  let intersection: Set<string | number> | undefined;
-  for (const member of members) {
-    const values = optionValues(variables[member]);
-    if (values === undefined) return undefined;
-    intersection =
-      intersection === undefined
-        ? values
-        : new Set([...intersection].filter((value) => values.has(value)));
-  }
-  if (intersection === undefined) return undefined;
-  return { type: onlyType, values: intersection };
-};
-
 /**
  * The available boolean values every member of an all-boolean member list
  * offers; `undefined` when the list is not uniformly boolean.
@@ -1782,13 +2299,14 @@ const sharedOptionValues = (
 const sharedBooleanDomain = (
   variables: UnknownRecord,
   members: string[],
+  stageEffectiveComponents: boolean,
 ): Set<boolean> | undefined => {
   const types = new Set(members.map((member) => typeOf(variables[member])));
   const [onlyType] = types;
   if (types.size !== 1 || onlyType !== 'boolean') return undefined;
   let intersection: Set<boolean> | undefined;
   for (const member of members) {
-    const domain = booleanDomain(variables[member]);
+    const domain = booleanDomain(variables[member], stageEffectiveComponents);
     intersection =
       intersection === undefined
         ? domain
@@ -1846,6 +2364,43 @@ const coarsePeriodIndex = (
 ): number => (resolution === 'year' ? year : year * 12 + (month - 1));
 
 /**
+ * Twenty-seventh-wave Finding 2: the canonical stored string a coarse
+ * (month/year) DatePicker holds when the instant `compareVariables` reads
+ * back from it is exactly `day` — the inverse of `dayNumber`'s 'min'-edge
+ * reading (a bare year parses to 1 January, a bare month to the 1st).
+ * `undefined` whenever `day` is not exactly one representable coarse
+ * emission: a fractional or mid-period day number (no stored string parses
+ * to it), or a year outside 1000-9999. That year bracket is the unpadded-year
+ * caveat: the coarse year dropdown stores `y.toString()` with NO zero-padding
+ * (fresco-ui DatePicker.tsx's own COARSE_MIN_YEAR/COARSE_MAX_YEAR carve out
+ * the same range), so only a year whose unpadded form already satisfies the
+ * schema's four-digit YYYY grammar round-trips as a stored value — a smaller
+ * or larger year has no canonical encoding to pin. The month part is
+ * zero-padded ('01'-'12'), matching both the runtime's month option values
+ * and the YYYY-MM bound grammar, so the returned string is byte-identical to
+ * the authored bound `pinnedValue`'s coarse branch keys a pinned partner by.
+ */
+const coarseStoredValueAtDay = (
+  day: number,
+  resolution: 'month' | 'year',
+): string | undefined => {
+  if (!Number.isInteger(day)) return undefined;
+  const date = new Date(day * 86_400_000);
+  const year = date.getUTCFullYear();
+  if (
+    date.getUTCDate() !== 1 ||
+    (resolution === 'year' && date.getUTCMonth() !== 0) ||
+    year < COARSE_SYNTHESIS_MIN_YEAR ||
+    year > COARSE_SYNTHESIS_MAX_YEAR
+  ) {
+    return undefined;
+  }
+  return resolution === 'year'
+    ? String(year)
+    : `${String(year)}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+};
+
+/**
  * The exact set of UTC day numbers a bounded coarse (month/year) DatePicker
  * can ever emit — one entry per period in its declared window, each at that
  * period's first day (the value `compareVariables` derives from the stored
@@ -1857,8 +2412,11 @@ const coarsePeriodIndex = (
  * `undefined` means the variable is not a coarse DatePicker at all (full
  * resolution, whose OWN convex interval is already exact — see
  * `dateWindowInterval`'s docstring). `'unenumerable'` means it IS coarse but
- * its window cannot be safely enumerated — an open bound (no min or max to
- * enumerate between) or a window wider than
+ * its window cannot be safely enumerated — an open bound (no authored min or
+ * max on that side and no modelled bound either — see
+ * `synthesizedCoarseMissingSideBound`; since thirtieth-wave Fix 4 the MIN
+ * side is always modelled when unauthored, so in practice this is the
+ * date-dependent today side) or a window wider than
  * `COARSE_INSTANT_ENUMERATION_CAP` — and the caller must fall back to the
  * convex-interval reasoning for the whole group rather than reasoning from a
  * partial, arbitrarily-truncated set.
@@ -1869,13 +2427,33 @@ const coarseInstantsOf = (
   const resolution = dateResolutionOf(variable);
   if (resolution === 'full') return undefined;
   const parameters = asRecord(asRecord(variable)?.parameters);
-  const min = parameters?.min;
-  const max = parameters?.max;
-  if (typeof min !== 'string' || typeof max !== 'string') {
-    return 'unenumerable';
-  }
-  const minPeriod = parseCoarseBound(min, resolution);
-  const maxPeriod = parseCoarseBound(max, resolution);
+  if (!parameters) return 'unenumerable';
+  // Twenty-fifth wave: the bound the runtime resolves for a coarse window's
+  // missing side closes that window as hard as an authored bound does (the
+  // dropdowns offer nothing beyond it), so it bounds this enumeration too —
+  // including, since thirtieth-wave Fix 4, the stable 1920 default floor of
+  // an unauthored min side. The modelled periods are a SUPERSET of what the
+  // runtime offers on any in-horizon interview date (the default floor is
+  // exact; see `synthesizedCoarseMissingSideBound`), which is the safe
+  // direction for both consumers: `discreteInstantsEmpty` only reports once
+  // even the superset intersection is empty, and `roundToCoarseEmission`
+  // rounding against extra periods can only land a LOOSER bound than the
+  // runtime-exact one. An out-of-window synthesized window only fits
+  // `COARSE_INSTANT_ENUMERATION_CAP` at YEAR resolution (a month one spans
+  // ~2,400 periods); over-cap cases stay 'unenumerable' via the cap below,
+  // falling back to the convex interval that `dateWindowInterval` also
+  // closes.
+  const synthesized = synthesizedCoarseMissingSideBound(parameters, resolution);
+  const minPeriod =
+    (typeof parameters.min === 'string'
+      ? parseCoarseBound(parameters.min, resolution)
+      : undefined) ??
+    (synthesized?.edge === 'min' ? synthesized.period : undefined);
+  const maxPeriod =
+    (typeof parameters.max === 'string'
+      ? parseCoarseBound(parameters.max, resolution)
+      : undefined) ??
+    (synthesized?.edge === 'max' ? synthesized.period : undefined);
   if (!minPeriod || !maxPeriod) return 'unenumerable';
   const minIndex = coarsePeriodIndex(minPeriod, resolution);
   const maxIndex = coarsePeriodIndex(maxPeriod, resolution);
@@ -1929,30 +2507,44 @@ const intersectInstantSets = (a: Set<number>, b: Set<number>): Set<number> => {
  * Deliberately conservative: an inability to enumerate a coarse member's
  * window exactly (an open bound, or a window wider than
  * `COARSE_INSTANT_ENUMERATION_CAP`), or the absence of ANY coarse member at
- * all, makes this return `false` — never "empty" — so it can only ever ADD a
- * detection the interval check above missed, never invent a false rejection
- * of its own. The caller only ever consults this once the interval check has
- * already found the group non-empty, so a group this DOES flag is reported
- * exactly once.
+ * all, makes this return `undefined` — never "empty" — so its emptiness
+ * consumer can only ever ADD a detection the interval check missed, never
+ * invent a false rejection of its own.
+ *
+ * Twenty-seventh-wave Finding 3 extracted this SET computation from
+ * `discreteInstantsEmpty` (below) so the comparator-feasibility passes can
+ * consume the surviving set itself — its hull is the group's true reachable
+ * range — rather than only its emptiness. The `exact` flag serves that new
+ * consumer: a member whose window lives on the symbolic 'interviewDate'
+ * origin, or that identifies no window at all, contributes NO fixed-calendar
+ * filter here, which is sound for the emptiness consumer (fewer filters only
+ * ever ACCEPT more) but the hull consumer TIGHTENS intervals with the
+ * result, so under `exact` any such unrepresented member makes the whole set
+ * unusable (`undefined`) instead — the convex interval stays in charge.
  */
-const discreteInstantsEmpty = (
+const survivingDiscreteInstants = (
   variables: UnknownRecord,
   subset: string[],
-): boolean => {
-  if (subset.length < 2) return false;
+  exact: boolean,
+): Set<number> | undefined => {
+  if (subset.length < 2) return undefined;
   const types = new Set(subset.map((member) => typeOf(variables[member])));
   const [onlyType] = types;
-  if (types.size !== 1 || onlyType !== 'datetime') return false;
+  if (types.size !== 1 || onlyType !== 'datetime') return undefined;
 
   let candidates: Set<number> | undefined;
   const fixedIntervals: Interval[] = [];
   for (const member of subset) {
     const variable = variables[member];
     const coarse = coarseInstantsOf(variable);
-    if (coarse === 'unenumerable') return false;
+    if (coarse === 'unenumerable') return undefined;
     if (coarse === undefined) {
       const interval = dateWindowInterval(variable);
-      if (interval?.origin === 'fixed') fixedIntervals.push(interval);
+      if (interval?.origin === 'fixed') {
+        fixedIntervals.push(interval);
+      } else if (exact) {
+        return undefined;
+      }
       continue;
     }
     candidates =
@@ -1960,9 +2552,9 @@ const discreteInstantsEmpty = (
         ? coarse
         : intersectInstantSets(candidates, coarse);
   }
-  // No coarse member: the interval check above is already exact for a group
-  // with no coarse resolution in play, so there is nothing further to detect.
-  if (candidates === undefined) return false;
+  // No coarse member: the interval check is already exact for a group with
+  // no coarse resolution in play, so there is nothing further to model.
+  if (candidates === undefined) return undefined;
 
   for (const interval of fixedIntervals) {
     candidates = new Set(
@@ -1973,7 +2565,393 @@ const discreteInstantsEmpty = (
       ),
     );
   }
-  return candidates.size === 0;
+  return candidates;
+};
+
+/**
+ * Whether a subset's surviving discrete instant set is computable and EMPTY —
+ * the group-level emptiness consumer of `survivingDiscreteInstants` above.
+ * The caller only ever consults this once the interval check has already
+ * found the group non-empty, so a group this DOES flag is reported exactly
+ * once.
+ */
+const discreteInstantsEmpty = (
+  variables: UnknownRecord,
+  subset: string[],
+): boolean => survivingDiscreteInstants(variables, subset, false)?.size === 0;
+
+/**
+ * Whether a member list contains a cross-resolution `sameAs` edge. Such a
+ * group is the mixed-resolution machinery's to report — its repair strips
+ * exactly those edges, after which the members separate — so neither the
+ * surviving-instant hull nor the pinned-disequality pruning (twenty-eighth
+ * wave) may judge comparators against the joint domain meanwhile. Extracted
+ * from `tightenToSurvivingInstantHull` so both tightenings share one guard.
+ */
+const hasCrossResolutionSameAsEdge = (
+  variables: UnknownRecord,
+  members: string[],
+): boolean =>
+  members.some((member) => {
+    const target = usableReference(variables, member, 'sameAs');
+    return (
+      target !== undefined &&
+      dateResolutionOf(variables[member]) !==
+        dateResolutionOf(variables[target])
+    );
+  });
+
+/**
+ * Twenty-seventh-wave Finding 3: tightens an equality group's fixed-origin
+ * interval to the hull of its surviving discrete instants, so the comparator
+ * feasibility checks — the per-edge check and the chained propagation, which
+ * both read these intervals — judge the group by the range it can ACTUALLY
+ * reach rather than by its convex approximation. A year picker spanning
+ * 2020-2021 held equal (mutual non-strict comparators) to a full picker
+ * spanning 2020-01-01–2020-01-02 can only ever share 2020-01-01, yet the
+ * convex intersection retained 2020-01-02 as its maximum — so a year picker
+ * B with `B < (that node)` looked satisfiable although no year instant lies
+ * below 2020-01-01. The hull is a superset of the group's feasible shared
+ * values (every member's modelled emission set is itself a superset of its
+ * runtime emissions), so a comparator found infeasible against it is
+ * genuinely infeasible.
+ *
+ * Every uncertainty keeps the convex interval as-is (accept):
+ *   - a surviving set that cannot be computed EXACTLY — an over-cap or open
+ *     coarse window, an interview-date-origin or windowless member, no
+ *     coarse member at all (see `survivingDiscreteInstants`'s `exact` mode);
+ *   - an EMPTY surviving set — that group is already reported by the
+ *     group-level `discreteInstantsEmpty` check, whose repair strips the
+ *     grouping edges themselves; there is no hull to represent, and the
+ *     per-edge check's "never judge against an already-empty group"
+ *     precedent applies;
+ *   - a group containing a cross-resolution `sameAs` edge — the
+ *     mixed-resolution machinery reports that, and its repair strips exactly
+ *     those edges, after which the members separate and the hull no longer
+ *     binds them; judging comparators against it meanwhile could strip a
+ *     rule the mixed-resolution repair was about to rescue.
+ */
+const tightenToSurvivingInstantHull = (
+  variables: UnknownRecord,
+  members: string[],
+  intervals: GroupIntervals,
+): void => {
+  if (hasCrossResolutionSameAsEdge(variables, members)) return;
+  const surviving = survivingDiscreteInstants(variables, members, true);
+  if (surviving === undefined || surviving.size === 0) return;
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const instant of surviving) {
+    if (instant < min) min = instant;
+    if (instant > max) max = instant;
+  }
+  addToGroupIntervals(intervals, { min, max, origin: 'fixed' });
+};
+
+/**
+ * Twenty-eighth wave: the pin key (`pinnedValue`'s own encoding) a datetime
+ * variable at `resolution` holds when the fixed-calendar instant
+ * `compareVariables` reads back from its stored value is exactly `day`, or
+ * `undefined` when no stored value at that resolution reads back to `day`.
+ * Full resolution stores the canonical YYYY-MM-DD of the day, keyed on the
+ * 'fixed' origin exactly as `pinnedValue`'s full-resolution arm keys a
+ * collapsed calendar window; a coarse resolution stores the canonical
+ * truncated string `coarseStoredValueAtDay` derives (or nothing, when `day`
+ * is not one of its representable emissions). Comparing a counterpart's pin
+ * key against these member-side keys is what keeps the pruning below
+ * resolution- and origin-honest: a coarse pin can never match a full
+ * member's key, and a symbolic interview-date pin
+ * (`datetime:interviewDate:…`) matches no fixed-domain key at all.
+ */
+const storedPinKeyAtDay = (
+  day: number,
+  resolution: DateResolution,
+): string | undefined => {
+  if (resolution === 'full') return `datetime:fixed:${day}`;
+  const stored = coarseStoredValueAtDay(day, resolution);
+  return stored === undefined ? undefined : `datetime:${resolution}:${stored}`;
+};
+
+/**
+ * Twenty-eighth wave: the exact, bounded set of fixed-origin day-number
+ * instants an equality group's shared value can take, or `undefined` when it
+ * cannot be enumerated safely (accept). Coarse members contribute their
+ * discrete emission sets (`coarseInstantsOf`, cap included); a group with no
+ * coarse member enumerates the integer days of its already-tightened fixed
+ * interval, capped at the same `COARSE_INSTANT_ENUMERATION_CAP`. Any member
+ * that cannot be represented on the fixed calendar — an unenumerable coarse
+ * window, or a full-resolution member without a fixed-origin window (a
+ * windowless variable, or an anchorless RelativeDatePicker on the symbolic
+ * interview-date origin) — makes the whole domain unenumerable, the same
+ * `exact`-mode discipline `survivingDiscreteInstants` applies for its hull
+ * consumer. The result is a SUPERSET of the group's feasible shared values
+ * (each member's modelled emission set is itself a superset of its runtime
+ * emissions), which is the only property both consumers below need.
+ */
+const enumerableFixedDomain = (
+  variables: UnknownRecord,
+  members: string[],
+  fixedInterval: Interval | undefined,
+): Set<number> | undefined => {
+  let candidates: Set<number> | undefined;
+  for (const member of members) {
+    const coarse = coarseInstantsOf(variables[member]);
+    if (coarse === 'unenumerable') return undefined;
+    if (coarse === undefined) {
+      if (dateWindowInterval(variables[member])?.origin !== 'fixed') {
+        return undefined;
+      }
+      continue;
+    }
+    candidates =
+      candidates === undefined
+        ? coarse
+        : intersectInstantSets(candidates, coarse);
+  }
+  if (candidates !== undefined) {
+    if (fixedInterval === undefined) return candidates;
+    return new Set(
+      [...candidates].filter(
+        (day) =>
+          (fixedInterval.min === undefined || day >= fixedInterval.min) &&
+          (fixedInterval.max === undefined || day <= fixedInterval.max),
+      ),
+    );
+  }
+  if (
+    fixedInterval?.min === undefined ||
+    fixedInterval.max === undefined ||
+    !Number.isInteger(fixedInterval.min) ||
+    !Number.isInteger(fixedInterval.max)
+  ) {
+    return undefined;
+  }
+  const count = fixedInterval.max - fixedInterval.min + 1;
+  if (count <= 0 || count > COARSE_INSTANT_ENUMERATION_CAP) return undefined;
+  const domain = new Set<number>();
+  for (let day = fixedInterval.min; day <= fixedInterval.max; day++) {
+    domain.add(day);
+  }
+  return domain;
+};
+
+/**
+ * A `differentFrom` rule instance seen from one equality group's side: the
+ * group member whose stored value the rule constrains, and the counterpart
+ * outside the group whose pin (if any) that member can therefore never hold.
+ */
+type PinnedDisequalityEdge = {
+  member: string;
+  counterpart: string;
+  source: VariableRuleRef;
+};
+
+/**
+ * Twenty-eighth wave: every usable datetime `differentFrom` edge, bucketed by
+ * BOTH endpoints' equality groups (each side is the constrained member from
+ * its own group's perspective). Same-group pairs are excluded — those are
+ * class 9's territory (`sameAsGroupConflict`, or its deliberate
+ * divergent-resolution carve-out) — as is a rule whose owner also names the
+ * same target with `sameAs`: that pair is class 7's
+ * (`conflictingReferencePair`), whose repair strips this very rule, so it
+ * must not prune meanwhile.
+ *
+ * A pair whose two groups are ALSO joined by a comparator edge is excluded
+ * too: the counterpart's pin already reaches the member's group as an
+ * interval bound through that edge, so the chain propagation collapses the
+ * group onto the pin and `pinnedEqualDifferentFromContradictions` reports
+ * the pair via its propagated-pin fallback, stripping the `differentFrom`
+ * itself (twenty-seventh-wave Finding 2's established behaviour). Pruning
+ * the same pin would preempt that collapse and re-class the report onto the
+ * comparator — a worse strip for the same conflict. The disequality pruning
+ * therefore handles exactly the pins the comparator graph cannot see.
+ */
+const datetimeDisequalitiesByGroup = (
+  variables: UnknownRecord,
+  groupOf: Map<string, string>,
+  dependencies: Map<string, Map<string, GroupEdge>>,
+): Map<string, PinnedDisequalityEdge[]> => {
+  const byGroup = new Map<string, PinnedDisequalityEdge[]>();
+  const add = (group: string, edge: PinnedDisequalityEdge): void => {
+    const bucket = byGroup.get(group) ?? [];
+    bucket.push(edge);
+    byGroup.set(group, bucket);
+  };
+  for (const [id, variable] of Object.entries(variables)) {
+    if (typeOf(variable) !== 'datetime') continue;
+    const target = usableReference(variables, id, 'differentFrom');
+    if (target === undefined || target === id) continue;
+    if (referenceRule(variable, 'sameAs') === target) continue;
+    const groupA = groupOf.get(id);
+    const groupB = groupOf.get(target);
+    if (groupA === undefined || groupB === undefined || groupA === groupB) {
+      continue;
+    }
+    if (
+      dependencies.get(groupA)?.has(groupB) === true ||
+      dependencies.get(groupB)?.has(groupA) === true
+    ) {
+      continue;
+    }
+    const source: VariableRuleRef = { variableId: id, rule: 'differentFrom' };
+    add(groupA, { member: id, counterpart: target, source });
+    add(groupB, { member: target, counterpart: id, source });
+  }
+  return byGroup;
+};
+
+/**
+ * Twenty-eighth wave: propagates pinned disequalities into an equality
+ * group's finite fixed-calendar domain. A `differentFrom` edge to a PINNED
+ * counterpart removes exactly one instant from the group's enumerable domain
+ * — the one whose member-side stored value (`storedPinKeyAtDay`, judged at
+ * the constrained member's own resolution) matches the counterpart's pin key
+ * — and the group's fixed interval then tightens to the pruned domain's
+ * hull, exactly where `tightenToSurvivingInstantHull` already slots its own
+ * tightening. The per-edge feasibility check and the chain propagation both
+ * re-read that interval, which is what closes the reviewer's repro: `A`
+ * pinned to Jan 1 with `A differentFrom B`, `B` and `C` each spanning
+ * Jan 1-3, `B < C`, and `D` pinned to Jan 3 with `C differentFrom D` prunes
+ * `B` to [Jan 2, Jan 3] and `C` to [Jan 1, Jan 2], so the strict edge's
+ * `max(C) <= min(B)` test finally fires — no pairwise pin comparison ever
+ * could, because neither `B` nor `C` is pinned. The hull stays a superset of
+ * the group's feasible shared values (the domain is a superset and only
+ * provably-unholdable instants are removed), so every infeasibility judged
+ * against it is genuine.
+ *
+ * A domain pruned EMPTY is its own contradiction — the members have no
+ * selectable date left — reported here (class `disjointBounds`, whose
+ * repair-batching entry already covers reports that depend on unlisted
+ * pin provenance) with the edge endpoints as participants and, following the
+ * odd-cycle single-edge precedent, a minimal strip: every rule instance
+ * excluding ONE deterministically-chosen value (the smallest), whose removal
+ * provably restores that value. A single-value domain emptied by a single
+ * exclusion is deliberately NOT reported here: the member is then pinned
+ * (own window collapse, a group-derived inherited pin, or a propagated
+ * collapse), which is `pinnedEqualDifferentFrom`'s territory, and reporting
+ * both would double-strip one conflict.
+ *
+ * Everything uncertain declines to prune (accept):
+ *   - non-datetime or unenumerable/over-cap domains, and groups touching a
+ *     member the group-level emptiness checks already reported
+ *     (`unsatisfiableGroupMemberIds` — the "never judge against an
+ *     already-empty group" precedent), or containing a cross-resolution
+ *     `sameAs` edge (the mixed-resolution repair separates those members);
+ *   - counterparts inside `unsatisfiableGroupMemberIds` (their repair may
+ *     rearrange the very grouping their pin travelled);
+ *   - counterparts pinned on another origin or resolution — the key-space
+ *     comparison makes a mismatch structurally impossible to misapply;
+ *   - counterparts with no own or sameAs-inherited pin. Propagated pins are
+ *     NOT consulted: they are the chain pass's own output, and the pruned
+ *     hulls feed that pass, so consulting them would need a second analyser
+ *     iteration — excluded by design (no fixpoint).
+ */
+const pruneToPinnedDisequalityHull = (
+  variables: UnknownRecord,
+  members: string[],
+  intervals: GroupIntervals,
+  disequalities: PinnedDisequalityEdge[] | undefined,
+  pinOf: (id: string) => string | number | boolean | undefined,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
+): ValidationContradiction | undefined => {
+  if (!disequalities || disequalities.length === 0) return undefined;
+  const types = new Set(members.map((member) => typeOf(variables[member])));
+  const [onlyType] = types;
+  if (types.size !== 1 || onlyType !== 'datetime') return undefined;
+  if (members.some((member) => unsatisfiableGroupMemberIds.has(member))) {
+    return undefined;
+  }
+  if (hasCrossResolutionSameAsEdge(variables, members)) return undefined;
+  const domain = enumerableFixedDomain(
+    variables,
+    members,
+    intervals.get('fixed'),
+  );
+  if (domain === undefined || domain.size === 0) return undefined;
+
+  const exclusions = new Map<
+    number,
+    { sources: VariableRuleRef[]; counterparts: string[] }
+  >();
+  for (const edge of disequalities) {
+    if (unsatisfiableGroupMemberIds.has(edge.counterpart)) continue;
+    const pin = pinOf(edge.counterpart);
+    // Datetime pins are always string keys, so any other pin shape (or none)
+    // excludes nothing.
+    if (typeof pin !== 'string') continue;
+    const resolution = dateResolutionOf(variables[edge.member]);
+    for (const day of domain) {
+      if (storedPinKeyAtDay(day, resolution) !== pin) continue;
+      const exclusion = exclusions.get(day) ?? {
+        sources: [],
+        counterparts: [],
+      };
+      if (
+        !exclusion.sources.some(
+          (existing) => stripKey(existing) === stripKey(edge.source),
+        )
+      ) {
+        exclusion.sources.push(edge.source);
+      }
+      if (!exclusion.counterparts.includes(edge.counterpart)) {
+        exclusion.counterparts.push(edge.counterpart);
+      }
+      exclusions.set(day, exclusion);
+      // Stored keys are injective per day at one resolution, so one rule
+      // instance removes at most this single instant.
+      break;
+    }
+  }
+  if (exclusions.size === 0) return undefined;
+
+  const surviving = [...domain].filter((day) => !exclusions.has(day));
+  if (surviving.length > 0) {
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    for (const day of surviving) {
+      if (day < min) min = day;
+      if (day > max) max = day;
+    }
+    addToGroupIntervals(intervals, { min, max, origin: 'fixed' });
+    return undefined;
+  }
+
+  // Emptied. A single excluded value means a single-value domain — the
+  // pinned-equal machinery's territory (see the doc comment above).
+  if (exclusions.size < 2) return undefined;
+  const orderedDays = [...exclusions.keys()].toSorted(
+    (dayA, dayB) => dayA - dayB,
+  );
+  const [smallestDay] = orderedDays;
+  const chosen =
+    smallestDay === undefined ? undefined : exclusions.get(smallestDay);
+  const [first, ...rest] = chosen?.sources ?? [];
+  if (!first) return undefined;
+  const counterparts: string[] = [];
+  for (const day of orderedDays) {
+    for (const counterpart of exclusions.get(day)?.counterparts ?? []) {
+      if (!counterparts.includes(counterpart)) counterparts.push(counterpart);
+    }
+  }
+  const memberNames = members.map(
+    (member) => `"${nameOf(member, variables[member])}"`,
+  );
+  const counterpartNames = counterparts.map(
+    (counterpart) => `"${nameOf(counterpart, variables[counterpart])}"`,
+  );
+  const subject =
+    members.length === 1
+      ? `Variable ${memberNames[0]}`
+      : `Variables ${memberNames.join(', ')}`;
+  return {
+    class: 'disjointBounds',
+    message: `${subject}: differentFrom rules against pinned variables ${counterpartNames.join(', ')} leave no selectable date`,
+    variableIds: [
+      ...members,
+      ...counterparts.filter((counterpart) => !members.includes(counterpart)),
+    ],
+    strips: [first, ...rest],
+  };
 };
 
 const INTERVAL_ORIGINS = [
@@ -2040,10 +3018,13 @@ type ChainedBoundResult = {
   /**
    * Twenty-second-wave Finding 1: every variable a propagated bound pins to
    * one exact value, keyed by variable id, encoded exactly like
-   * `pinnedValue`'s own return value (a raw number for `number`, or
+   * `pinnedValue`'s own return value (a raw number for `number`,
    * `pinnedValue`'s `datetime:${origin}:${value}` tag for a full-resolution
-   * datetime) so the two are directly comparable. Consulted only as a
-   * FALLBACK by `pinnedEqualDifferentFromContradictions` — a variable's own
+   * datetime, or — twenty-seventh-wave Finding 2 — its
+   * `datetime:${resolution}:${stored}` tag for a coarse picker whose
+   * collapse lands exactly on a representable coarse emission) so the two
+   * are directly comparable. Consulted only as a FALLBACK by
+   * `pinnedEqualDifferentFromContradictions` — a variable's own
    * `pinnedValue` always wins when it applies. Populated below, once per
    * origin, from nodes whose propagated min and max collapse to one CLOSED
    * point.
@@ -2253,6 +3234,7 @@ const roundToCoarseEmission = (
 function chainedBoundContradictions(
   variables: UnknownRecord,
   graph: GroupGraph,
+  tightenedGroupIntervals: ReadonlyMap<string, GroupIntervals>,
 ): ChainedBoundResult {
   // Group-level adjacency in the propagation direction, lower → upper.
   const groupAdjacency = new Map<string, string[]>();
@@ -2292,7 +3274,26 @@ function chainedBoundContradictions(
     const variableIds = component.flatMap(
       (group) => graph.membersOf.get(group) ?? [],
     );
-    const intervals = intervalsOfMembers(variables, variableIds);
+    // Twenty-seventh-wave Finding 3 seeds propagation from the node's true
+    // reachable range, not its convex approximation; the twenty-eighth wave
+    // reuses the caller's per-group tightened intervals outright so the
+    // pinned-disequality pruned hull seeds this pass too. Every
+    // all-non-strict group cycle was already contracted by
+    // `buildEqualityGroups`, so in practice each surviving component IS one
+    // equality group; the defensive multi-group path recomputes the merged
+    // surviving-instant hull as before (without pruning — accept).
+    const [soleGroup] = component;
+    const precomputed =
+      component.length === 1 && soleGroup !== undefined
+        ? tightenedGroupIntervals.get(soleGroup)
+        : undefined;
+    let intervals: GroupIntervals;
+    if (precomputed) {
+      intervals = precomputed;
+    } else {
+      intervals = intervalsOfMembers(variables, variableIds);
+      tightenToSurvivingInstantHull(variables, variableIds, intervals);
+    }
     const nodeIndex = nodes.length;
     for (const group of component) nodeOf.set(group, nodeIndex);
     nodes.push({
@@ -2437,14 +3438,21 @@ function chainedBoundContradictions(
       // collapse to one CLOSED point pins every member to that value, even
       // when neither bound is the node's own — `pinnedEqualDifferentFromContradictions`
       // reads this map as a fallback once a variable's own rules don't
-      // already pin it. Scoped to `number` and full-resolution `datetime`:
-      // those are the only types a comparator edge ever connects (see
-      // `requireType` on the four comparator rules) whose bound also
-      // identifies the runtime VALUE rather than a length or count — a
-      // coarse picker's day-number window shares that same encoding, but a
-      // raw day number does not identify a coarse picker's STORED string the
-      // way `pinnedValue`'s own coarse branch keys it, so that case is left
-      // alone here. `!min.open && !max.open` is the fractional-domain guard:
+      // already pin it. Scoped to `number` and `datetime`: those are the
+      // only types a comparator edge ever connects (see `requireType` on
+      // the four comparator rules) whose bound also identifies the runtime
+      // VALUE rather than a length or count. A full-resolution datetime
+      // records the same origin-tagged day-number key `pinnedValue` derives;
+      // a COARSE (month/year) member additionally records its pin
+      // (twenty-seventh-wave Finding 2) whenever the collapsed day is
+      // exactly one representable coarse emission — encoded through
+      // `coarseStoredValueAtDay` into the same canonical stored-string key
+      // `pinnedValue`'s coarse branch uses — and only on the 'fixed' origin,
+      // the only one a coarse stored string exists on (a coarse pin key is
+      // resolution-tagged, never origin-tagged). A collapse landing between
+      // coarse instants, on a fractional day, or on a year with no
+      // canonical four-digit stored form records nothing (accept).
+      // `!min.open && !max.open` is the fractional-domain guard:
       // a strict hop only ever leaves a bound open when its quantity is not
       // known to be whole-numbered (`stepChainBound`), so an open collapse
       // means the node's true window excludes its one candidate point (a
@@ -2456,11 +3464,19 @@ function chainedBoundContradictions(
           const type = typeOf(variables[variableId]);
           if (type === 'number') {
             propagatedPins.set(variableId, min.value);
-          } else if (
-            type === 'datetime' &&
-            dateResolutionOf(variables[variableId]) === 'full'
-          ) {
-            propagatedPins.set(variableId, `datetime:${origin}:${min.value}`);
+          } else if (type === 'datetime') {
+            const resolution = dateResolutionOf(variables[variableId]);
+            if (resolution === 'full') {
+              propagatedPins.set(variableId, `datetime:${origin}:${min.value}`);
+            } else if (origin === 'fixed') {
+              const stored = coarseStoredValueAtDay(min.value, resolution);
+              if (stored !== undefined) {
+                propagatedPins.set(
+                  variableId,
+                  `datetime:${resolution}:${stored}`,
+                );
+              }
+            }
           }
         }
       }
@@ -2532,10 +3548,30 @@ type DisjointBoundsResult = ChainedBoundResult & {
    * only ever strip comparator rules, which a `sameAs`-forced pin survives.
    */
   unsatisfiableGroupMemberIds: Set<string>;
+  /**
+   * Thirty-first wave: each variable's equality group's tightened intervals
+   * — the exact per-group maps the per-edge and chain checks judge against
+   * (post-`tightenToSurvivingInstantHull`,
+   * post-`pruneToPinnedDisequalityHull`), keyed by MEMBER id so the parity
+   * pass can look them up from its own equality-group construction without
+   * coupling to this pass's group-root labels. Every member of one group
+   * shares one `GroupIntervals` reference.
+   */
+  groupIntervalsByMember: Map<string, GroupIntervals>;
+  /**
+   * Thirty-first wave: every member of an equality group whose enumerable
+   * fixed domain `pruneToPinnedDisequalityHull` emptied outright (the
+   * multi-exclusion report). The datetime parity check bails any component
+   * touching one of these — the emptiness report's strip may remove the very
+   * `differentFrom` edges the parity graph is built from, and a second
+   * report would double-strip one conflict.
+   */
+  disequalityEmptiedMemberIds: Set<string>;
 };
 
 function disjointBoundsContradictions(
   variables: UnknownRecord,
+  stageEffectiveComponents: boolean,
 ): DisjointBoundsResult {
   const found: ValidationContradiction[] = [];
   const unsatisfiableGroupMemberIds = new Set<string>();
@@ -2589,13 +3625,14 @@ function disjointBoundsContradictions(
     optionShortfall(subset) !== undefined;
 
   const booleanDomainsDisjoint = (subset: string[]): boolean =>
-    subset.length > 1 && sharedBooleanDomain(variables, subset)?.size === 0;
+    subset.length > 1 &&
+    sharedBooleanDomain(variables, subset, stageEffectiveComponents)?.size ===
+      0;
 
-  const groupIntervals = new Map<string, GroupIntervals>();
+  // Group-level emptiness checks first. Their verdicts
+  // (`unsatisfiableGroupMemberIds`) must be complete before the second pass
+  // below derives pin sources and tightened intervals from them.
   for (const [group, members] of membersOf) {
-    const intervals = intervalsOfMembers(variables, members);
-    groupIntervals.set(group, intervals);
-
     const internalNonStrictEdges =
       internalNonStrictEdgesByGroup.get(group) ?? [];
 
@@ -2696,6 +3733,58 @@ function disjointBoundsContradictions(
     // sameAs-component pass that replaced it.
   }
 
+  // Twenty-eighth wave: pin sources for the disequality pruning below —
+  // computed only once the group-level verdicts above are final, so a pin is
+  // never inherited across a sameAs edge an emptiness repair may strip.
+  // (`pinnedEqualDifferentFromContradictions` later derives the identical map
+  // from the same inputs: nothing after this point adds to
+  // `unsatisfiableGroupMemberIds`.) Propagated pins are deliberately absent —
+  // see `pruneToPinnedDisequalityHull`.
+  const { find: sameAsFind } = sameAsOnlyUnionFind(variables);
+  const inheritedPins = sameAsInheritedPins(
+    variables,
+    sameAsFind,
+    unsatisfiableGroupMemberIds,
+    stageEffectiveComponents,
+  );
+  const pinOf = (id: string): string | number | boolean | undefined =>
+    pinnedValue(variables[id], stageEffectiveComponents) ??
+    inheritedPins.get(id);
+  const disequalitiesByGroup = datetimeDisequalitiesByGroup(
+    variables,
+    groupOf,
+    graph.dependencies,
+  );
+
+  // Twenty-seventh-wave Finding 3 / twenty-eighth wave: the per-edge
+  // feasibility check below (and, through `chainedBoundContradictions`, the
+  // chain propagation) judges each comparator against the group's TRUE
+  // reachable range — its surviving-instant hull, further pruned by pinned
+  // disequalities. The group-level emptiness checks above recompute their own
+  // untightened intervals and are unaffected. A domain the pruning empties
+  // outright is reported here instead of tightening.
+  const groupIntervals = new Map<string, GroupIntervals>();
+  const groupIntervalsByMember = new Map<string, GroupIntervals>();
+  const disequalityEmptiedMemberIds = new Set<string>();
+  for (const [group, members] of membersOf) {
+    const intervals = intervalsOfMembers(variables, members);
+    tightenToSurvivingInstantHull(variables, members, intervals);
+    const emptiedDomain = pruneToPinnedDisequalityHull(
+      variables,
+      members,
+      intervals,
+      disequalitiesByGroup.get(group),
+      pinOf,
+      unsatisfiableGroupMemberIds,
+    );
+    if (emptiedDomain) {
+      found.push(emptiedDomain);
+      for (const member of members) disequalityEmptiedMemberIds.add(member);
+    }
+    groupIntervals.set(group, intervals);
+    for (const member of members) groupIntervalsByMember.set(member, intervals);
+  }
+
   for (const edge of edges) {
     const upperGroup = groupOf.get(edge.upper);
     const lowerGroup = groupOf.get(edge.lower);
@@ -2742,13 +3831,15 @@ function disjointBoundsContradictions(
     });
   }
 
-  const chained = chainedBoundContradictions(variables, graph);
+  const chained = chainedBoundContradictions(variables, graph, groupIntervals);
   found.push(...chained.contradictions);
 
   return {
     contradictions: found,
     propagatedPins: chained.propagatedPins,
     unsatisfiableGroupMemberIds,
+    groupIntervalsByMember,
+    disequalityEmptiedMemberIds,
   };
 }
 
@@ -2971,11 +4062,240 @@ const matchesReferenceAssignment = (pin: SingletonPin): boolean =>
   pin.value === (pin.color === 0);
 
 /**
- * Contradictions in the boolean-only `differentFrom` graph, at
- * equality-group granularity (a `sameAs` group of booleans holds one shared
- * value, so `differentFrom` edges connect groups, not individual
- * variables). Two independent structural sources are checked per connected
- * component of that graph:
+ * Thirtieth wave (Fix 3): the shared two-value option domain of an ordinal
+ * `differentFrom` component, with every group's singleton pin BOOLEAN-IZED
+ * against it, or `undefined` whenever the component is not uniformly
+ * two-valued (accept). The general k-colourability limitation the parity
+ * machinery documents does not apply when every effective domain in the
+ * component is exactly the same two-value set: the component is then
+ * satisfiable iff it is two-colourable, which is precisely what the
+ * existing linear boolean bipartite check decides — so an ordinal component
+ * qualifying here is fed through that machinery verbatim, its two domain
+ * values standing in for true/false.
+ *
+ * The mapping is deterministic: the domain pair is sorted by its typeof-
+ * tagged JSON token (the same tagging `pinnedValue`'s categorical keys use)
+ * and the FIRST value is the reference — a singleton pin becomes the
+ * boolean "is the reference value", so `SingletonPin` and
+ * `matchesReferenceAssignment` are reused rather than duplicated, exactly
+ * as boolean pins interact with parity. Every uncertainty bails the WHOLE
+ * component to accept:
+ *
+ *   - a member with no usable `options` array, an empty set, or more than
+ *     two distinct values (the k-colourability limit stands there);
+ *   - two-value domains that differ between members ({1,2} beside {2,3} —
+ *     even though group-intersection reasoning could sometimes pin, the
+ *     conservative accept is deliberate);
+ *   - a singleton value outside the shared pair (its differentFrom edges
+ *     are trivially satisfiable, so treating it as a pin would be wrong);
+ *   - two disagreeing singleton members inside ONE group — that group's own
+ *     option-set emptiness conflict (`optionsDisjoint`), whose repair may
+ *     strip the very grouping edges in play;
+ *   - no two-valued member at all: all-singleton components are either the
+ *     pinned-equal machinery's (equal pins, already claimed) or trivially
+ *     satisfiable, and there is no shared domain to force a colouring
+ *     against.
+ *
+ * Categorical variables are deliberately NOT routed through this model even
+ * when rendered as a single-select control: the runtime stores a
+ * categorical value as an ARRAY and `differentFrom` compares those arrays
+ * as order-insensitive multisets (fresco-ui's `isMatchingValue` — the same
+ * reading `pinnedValue`'s composite set keys encode), so even a two-option
+ * categorical has four possible stored selections, never a comparable
+ * two-value scalar domain.
+ */
+type ComponentTwoValueDomain = {
+  /** Group id → whether the group's pinned value is the reference value. */
+  pins: Map<string, boolean>;
+};
+
+const ordinalDomainToken = (value: string | number): string =>
+  JSON.stringify([typeof value, String(value)]);
+
+const ordinalComponentTwoValueDomain = (
+  variables: UnknownRecord,
+  groups: string[],
+  membersOf: Map<string, string[]>,
+): ComponentTwoValueDomain | undefined => {
+  let reference: string | number | undefined;
+  let other: string | number | undefined;
+  const memberValues = new Map<string, Set<string | number>>();
+  for (const group of groups) {
+    for (const member of membersOf.get(group) ?? [group]) {
+      const values = optionValues(variables[member]);
+      if (values === undefined || values.size === 0 || values.size > 2) {
+        return undefined;
+      }
+      memberValues.set(member, values);
+      if (values.size !== 2) continue;
+      const [first, second] = [...values].toSorted((a, b) => {
+        const tokenA = ordinalDomainToken(a);
+        const tokenB = ordinalDomainToken(b);
+        return tokenA < tokenB ? -1 : tokenA > tokenB ? 1 : 0;
+      });
+      if (first === undefined || second === undefined) return undefined;
+      if (reference === undefined) {
+        reference = first;
+        other = second;
+      } else if (reference !== first || other !== second) {
+        return undefined;
+      }
+    }
+  }
+  if (reference === undefined || other === undefined) return undefined;
+  const pins = new Map<string, boolean>();
+  for (const group of groups) {
+    let pinned: string | number | undefined;
+    for (const member of membersOf.get(group) ?? [group]) {
+      const values = memberValues.get(member);
+      if (values?.size !== 1) continue;
+      const [value] = values;
+      if (value === undefined || (value !== reference && value !== other)) {
+        return undefined;
+      }
+      if (pinned === undefined) {
+        pinned = value;
+      } else if (pinned !== value) {
+        return undefined;
+      }
+    }
+    if (pinned !== undefined) pins.set(group, pinned === reference);
+  }
+  return { pins };
+};
+
+/**
+ * Thirty-first wave: the datetime analogue of
+ * `ordinalComponentTwoValueDomain` above — the shared two-instant domain of
+ * a datetime `differentFrom` component, with every group's singleton pin
+ * BOOLEAN-IZED against it, or `undefined` whenever the component is not
+ * uniformly two-instant (accept). Three required full-resolution pickers
+ * each windowed to exactly `2020-01-01`–`2020-01-02` in an odd
+ * `differentFrom` triangle demand three pairwise-different stored values
+ * from two enumerable instants, which is exactly the two-colourability
+ * question the boolean bipartite machinery already decides.
+ *
+ * Domain enumeration reuses the twenty-eighth wave's exact seam
+ * (`enumerableFixedDomain`: coarse emission sets via `coarseInstantsOf`,
+ * integer-day enumeration otherwise, `COARSE_INSTANT_ENUMERATION_CAP`
+ * included) against the group's TIGHTENED fixed interval — the same
+ * post-`tightenToSurvivingInstantHull`, post-`pruneToPinnedDisequalityHull`
+ * interval every downstream feasibility consumer reads, so synthesized
+ * bounds, default floors, group-derived pins, and pruned pinned
+ * disequalities have all already been applied. That makes the pruning
+ * ordering the file's established one, not a second convention: a domain
+ * whose ENDPOINT the pruning removed re-enumerates two-valued here (its
+ * tightened hull moved), while an interior exclusion is invisible to the
+ * hull and leaves the modelled domain a SUPERSET — the safe direction, since
+ * a superset can only widen a group past two values (bail, accept) or hide a
+ * pin (fewer parity conflicts, accept), never invent one.
+ *
+ * "Same two-value set" is judged in STORED-value space at the members' own
+ * resolution: the component must be uniformly ONE resolution (a mixed
+ * component bails — cross-resolution stored strings never compare equal
+ * under `isMatchingValue`, and cross-resolution equality is the
+ * mixed-resolution machinery's territory, so no cross-resolution set can
+ * ever qualify as "the same"), and every enumerated instant must have a
+ * canonical stored encoding at that resolution (`storedPinKeyAtDay`). Under
+ * one shared resolution the day-number sets and the stored-string sets are
+ * in bijection, so a uniformly coarse component (say, two year pickers
+ * spanning exactly 2020–2021) participates exactly as a full-resolution one
+ * does — its stored-string pair {'2020', '2021'} is compared through the
+ * same period-start day numbers `coarseInstantsOf` emits.
+ *
+ * Beyond `ordinalComponentTwoValueDomain`'s bail conditions (unenumerable
+ * or over-two-instant domains, differing pairs, out-of-set singletons, no
+ * two-instant member), every uncertainty specific to datetime also bails
+ * the WHOLE component to accept:
+ *
+ *   - any member of a group one of the group-level emptiness checks already
+ *     reported (`unsatisfiableGroupMemberIds`) — the "never judge against an
+ *     already-empty group" precedent;
+ *   - any member of a group whose domain `pruneToPinnedDisequalityHull`
+ *     emptied outright (`disequalityEmptiedMemberIds`) — that conflict is
+ *     the pruning pass's own report, whose strip may remove the very
+ *     `differentFrom` edges in play here, and reporting both would
+ *     double-strip one conflict;
+ *   - an interview-date-origin or windowless member, which
+ *     `enumerableFixedDomain` already refuses to place on the fixed
+ *     calendar (fixed-origin instants are the only enumerable ones).
+ */
+const datetimeComponentTwoInstantDomain = (
+  variables: UnknownRecord,
+  groups: string[],
+  membersOf: Map<string, string[]>,
+  groupIntervalsByMember: ReadonlyMap<string, GroupIntervals>,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
+  disequalityEmptiedMemberIds: ReadonlySet<string>,
+): ComponentTwoValueDomain | undefined => {
+  let resolution: DateResolution | undefined;
+  for (const group of groups) {
+    for (const member of membersOf.get(group) ?? [group]) {
+      if (
+        unsatisfiableGroupMemberIds.has(member) ||
+        disequalityEmptiedMemberIds.has(member)
+      ) {
+        return undefined;
+      }
+      const memberResolution = dateResolutionOf(variables[member]);
+      resolution ??= memberResolution;
+      if (memberResolution !== resolution) return undefined;
+    }
+  }
+  if (resolution === undefined) return undefined;
+
+  let reference: number | undefined;
+  let other: number | undefined;
+  const groupDomains = new Map<string, Set<number>>();
+  for (const group of groups) {
+    const members = membersOf.get(group) ?? [group];
+    const [anyMember] = members;
+    const intervals =
+      anyMember === undefined
+        ? undefined
+        : groupIntervalsByMember.get(anyMember);
+    const domain = enumerableFixedDomain(
+      variables,
+      members,
+      intervals?.get('fixed'),
+    );
+    if (domain === undefined || domain.size === 0 || domain.size > 2) {
+      return undefined;
+    }
+    for (const day of domain) {
+      if (storedPinKeyAtDay(day, resolution) === undefined) return undefined;
+    }
+    groupDomains.set(group, domain);
+    if (domain.size !== 2) continue;
+    const [first, second] = [...domain].toSorted((dayA, dayB) => dayA - dayB);
+    if (first === undefined || second === undefined) return undefined;
+    if (reference === undefined) {
+      reference = first;
+      other = second;
+    } else if (reference !== first || other !== second) {
+      return undefined;
+    }
+  }
+  if (reference === undefined || other === undefined) return undefined;
+  const pins = new Map<string, boolean>();
+  for (const group of groups) {
+    const domain = groupDomains.get(group);
+    if (domain?.size !== 1) continue;
+    const [day] = domain;
+    if (day === undefined || (day !== reference && day !== other)) {
+      return undefined;
+    }
+    pins.set(group, day === reference);
+  }
+  return { pins };
+};
+
+/**
+ * Contradictions in the boolean, two-valued-ordinal, and two-instant-datetime
+ * `differentFrom` graph, at equality-group granularity (a `sameAs` group
+ * holds one shared value, so `differentFrom` edges connect groups, not
+ * individual variables). Two independent structural sources are checked per
+ * connected component of that graph:
  *
  *   - An ODD CYCLE (not 2-colourable) is provably unsatisfiable regardless
  *     of which value is chosen: `A ≠ B`, `B ≠ C`, `C ≠ A` forces three
@@ -2987,12 +4307,19 @@ const matchesReferenceAssignment = (pin: SingletonPin): boolean =>
  *     between them — see the dedicated comment further down, where the
  *     colouring is checked against those pins.
  *
- * DELIBERATE LIMIT: only boolean variables are checked here. Ordinal/
- * categorical variables can hold more than two values, so the equivalent
- * question is general k-colourability (for cycles) or arbitrary domain
- * propagation (for pins), neither of which has an efficient exact check for
- * an arbitrary domain — that's out of scope here and left to the interview
- * runtime's own fill-time enforcement as a backstop.
+ * DELIBERATE LIMIT: boolean variables are always checked here; ordinal
+ * variables — thirtieth wave (Fix 3) — exactly when their whole component
+ * shares one two-value option domain (see `ordinalComponentTwoValueDomain`,
+ * including why categorical stays out: its stored value is an array, never a
+ * comparable scalar); and datetime variables — thirty-first wave — exactly
+ * when their whole component shares one exactly-enumerable two-instant
+ * stored-value domain at one resolution (see
+ * `datetimeComponentTwoInstantDomain`). Larger or non-uniform domains still
+ * bail to accept: the equivalent question there is general k-colourability
+ * (for cycles) or arbitrary domain propagation (for pins), neither of which
+ * has an efficient exact check for an arbitrary domain — that remains out of
+ * scope and left to the interview runtime's own fill-time enforcement as a
+ * backstop.
  *
  * `claimedPairs` (sorted `id\0id` keys) comes from
  * `pinnedEqualDifferentFromContradictions`, run once by the caller over ALL
@@ -3004,6 +4331,10 @@ const matchesReferenceAssignment = (pin: SingletonPin): boolean =>
 function oddDifferentFromCycleContradictions(
   variables: UnknownRecord,
   claimedPairs: Set<string>,
+  stageEffectiveComponents: boolean,
+  groupIntervalsByMember: ReadonlyMap<string, GroupIntervals>,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
+  disequalityEmptiedMemberIds: ReadonlySet<string>,
 ): ValidationContradiction[] {
   const edges = comparatorEdges(variables);
   const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
@@ -3014,9 +4345,12 @@ function oddDifferentFromCycleContradictions(
   const adjacency = new Map<string, Set<string>>();
 
   for (const [id, variable] of Object.entries(variables)) {
-    if (typeOf(variable) !== 'boolean') continue;
-    // `usableReference` guarantees same-typed endpoints, so the target is
-    // necessarily boolean too.
+    const type = typeOf(variable);
+    if (type !== 'boolean' && type !== 'ordinal' && type !== 'datetime') {
+      continue;
+    }
+    // `usableReference` guarantees same-typed endpoints, so the target
+    // shares this variable's type — a component is never mixed-typed.
     const target = usableReference(variables, id, 'differentFrom');
     if (target === undefined) continue;
     const groupA = groupOf.get(id);
@@ -3107,6 +4441,45 @@ function oddDifferentFromCycleContradictions(
       }
     }
 
+    // Thirtieth wave (Fix 3): a component is uniformly typed (every edge and
+    // every equality-group union joins same-typed variables), so its first
+    // member's type decides which domain model applies — the Set is
+    // defensive, matching the rest of the file. An ordinal component is
+    // judged ONLY when `ordinalComponentTwoValueDomain` validates it as one
+    // shared two-value set, and — thirty-first wave — a datetime component
+    // ONLY when `datetimeComponentTwoInstantDomain` validates it as one
+    // shared exactly-enumerable two-instant set; any member with a
+    // different, larger, or unenumerable domain bails the whole component to
+    // accept BEFORE either structural check below runs, keeping the
+    // documented k-colourability limit for genuinely larger domains.
+    const componentTypes = new Set(
+      queue.flatMap((group) =>
+        (membersOf.get(group) ?? [group]).map((member) =>
+          typeOf(variables[member]),
+        ),
+      ),
+    );
+    const [componentType] = componentTypes;
+    if (componentTypes.size !== 1 || componentType === undefined) continue;
+    const ordinalDomain =
+      componentType === 'ordinal'
+        ? ordinalComponentTwoValueDomain(variables, queue, membersOf)
+        : undefined;
+    if (componentType === 'ordinal' && ordinalDomain === undefined) continue;
+    const datetimeDomain =
+      componentType === 'datetime'
+        ? datetimeComponentTwoInstantDomain(
+            variables,
+            queue,
+            membersOf,
+            groupIntervalsByMember,
+            unsatisfiableGroupMemberIds,
+            disequalityEmptiedMemberIds,
+          )
+        : undefined;
+    if (componentType === 'datetime' && datetimeDomain === undefined) continue;
+    const twoValueDomain = ordinalDomain ?? datetimeDomain;
+
     if (!bipartite) {
       if (!conflict) continue; // Type-narrowing only: bipartite is only ever
       // set false alongside `conflict ??= {...}` above, so this never fires.
@@ -3153,18 +4526,29 @@ function oddDifferentFromCycleContradictions(
     // sit an EVEN number of hops apart (2, via B), so any single assignment
     // gives them the same value, yet they are pinned to opposite ones.
     //
-    // Reads every group's domain through `sharedBooleanDomain` (itself built
-    // on `booleanDomain`), never `options` directly, so a Toggle-rendered
-    // boolean (or one with no declared component) stays unconditionally
-    // two-valued here exactly as it does everywhere else in this file.
+    // Reads every boolean group's domain through `sharedBooleanDomain`
+    // (itself built on `booleanDomain`), never `options` directly, so a
+    // Toggle-rendered boolean (or one with no declared component) stays
+    // unconditionally two-valued here exactly as it does everywhere else in
+    // this file. An ordinal or datetime component's pins were already
+    // boolean-ized against its shared domain's reference value
+    // (`ordinalComponentTwoValueDomain` /
+    // `datetimeComponentTwoInstantDomain`), so singleton-domain ordinal and
+    // datetime members interact with parity through exactly this same
+    // machinery.
     const singletonPins: SingletonPin[] = [];
     for (const group of queue) {
-      const domain = sharedBooleanDomain(
-        variables,
-        membersOf.get(group) ?? [group],
-      );
-      if (domain?.size !== 1) continue;
-      const [value] = domain;
+      let value: boolean | undefined;
+      if (twoValueDomain) {
+        value = twoValueDomain.pins.get(group);
+      } else {
+        const domain = sharedBooleanDomain(
+          variables,
+          membersOf.get(group) ?? [group],
+          stageEffectiveComponents,
+        );
+        if (domain?.size === 1) [value] = domain;
+      }
       const groupColor = color.get(group);
       if (value === undefined || groupColor === undefined) continue;
       singletonPins.push({ group, value, color: groupColor });
@@ -3208,9 +4592,26 @@ function oddDifferentFromCycleContradictions(
   return found;
 }
 
+type FindValidationContradictionsOptions = {
+  /**
+   * Twenty-sixth-wave Finding 1: the caller vouches that every variable's
+   * `component` is its RESOLVED stage-effective rendering rather than a
+   * codebook default a stage may still override. Only then may an explicit
+   * `component: 'Boolean'` read its `options` as the participant-facing
+   * domain (see `booleanDomain`). The record-level check
+   * (`rejectValidationContradictions` in variable.ts) and the v7→v8
+   * migration run with the default `false`; schema.ts's
+   * `validateComposerFieldContradictions` passes `true` for the overlaid
+   * stage-effective view it builds.
+   */
+  stageEffectiveComponents?: boolean;
+};
+
 export function findValidationContradictions(
   variables: UnknownRecord,
+  options: FindValidationContradictionsOptions = {},
 ): ValidationContradiction[] {
+  const stageEffectiveComponents = options.stageEffectiveComponents ?? false;
   // Twenty-second-wave Finding 1: computed first so its `propagatedPins`
   // closure can feed `pinnedEqualDifferentFromContradictions` below — the
   // array position of its own contradictions is unaffected, only the order
@@ -3220,12 +4621,15 @@ export function findValidationContradictions(
     contradictions: disjointBoundsResults,
     propagatedPins,
     unsatisfiableGroupMemberIds,
-  } = disjointBoundsContradictions(variables);
+    groupIntervalsByMember,
+    disequalityEmptiedMemberIds,
+  } = disjointBoundsContradictions(variables, stageEffectiveComponents);
   const { contradictions: pinnedEqualContradictions, claimedPairs } =
     pinnedEqualDifferentFromContradictions(
       variables,
       propagatedPins,
       unsatisfiableGroupMemberIds,
+      stageEffectiveComponents,
     );
   return [
     ...localContradictions(variables),
@@ -3233,6 +4637,13 @@ export function findValidationContradictions(
     ...disjointBoundsResults,
     ...mixedResolutionSameAsContradictions(variables),
     ...pinnedEqualContradictions,
-    ...oddDifferentFromCycleContradictions(variables, claimedPairs),
+    ...oddDifferentFromCycleContradictions(
+      variables,
+      claimedPairs,
+      stageEffectiveComponents,
+      groupIntervalsByMember,
+      unsatisfiableGroupMemberIds,
+      disequalityEmptiedMemberIds,
+    ),
   ];
 }

@@ -52,6 +52,22 @@ export type ProspectiveDraft = {
   options?: unknown;
   /** Draft component parameters (e.g. DatePicker min/max), from form state. */
   parameters?: unknown;
+  /**
+   * Threaded straight through to `findValidationContradictions`'
+   * `stageEffectiveComponents` option (see @codaco/protocol-validation's
+   * `booleanDomain`): vouches that every variable's `component` in
+   * `allVariables` is its RESOLVED stage-effective rendering, not a
+   * codebook default a NetworkComposer field elsewhere is still free to
+   * override (e.g. to `Toggle`, which ignores `options` and always offers
+   * both values). Only then may an explicit `component: 'Boolean'` read its
+   * `options` as a pinned domain for the singleton-domain `differentFrom`
+   * check. Only a caller holding a stage-scoped overlay (the composer field
+   * editor's `buildComposerFieldOverlay`) can make that guarantee; a plain
+   * codebook dialog has no stage in scope and must leave this at its
+   * default `false`, matching protocol-validation's own record-level check
+   * and the v7→v8 migration.
+   */
+  stageEffectiveComponents?: boolean;
 };
 
 export const buildProspectiveVariables = ({
@@ -82,18 +98,132 @@ export const buildProspectiveVariables = ({
 };
 
 /**
- * Contradictions a draft would introduce, restricted to those the edited
- * variable participates in — pre-existing conflicts between other variables
- * are not this editor's to report.
+ * `class` + sorted `variableIds` + sorted `variableId:rule` strips: stable
+ * across which analyser run produced a contradiction, and never depends on
+ * variable NAMES (the draft placeholder invents one for a brand new
+ * variable). Mirrors schema.ts's `validateComposerFieldContradictions`
+ * `keyOf`, used there for the identical purpose — telling a contradiction
+ * present in one run apart from an identically-shaped one in another.
+ */
+const contradictionKey = (contradiction: ValidationContradiction): string =>
+  [
+    contradiction.class,
+    [...contradiction.variableIds].toSorted().join(','),
+    contradiction.strips
+      .map((strip) => `${strip.variableId}:${strip.rule}`)
+      .toSorted()
+      .join(','),
+  ].join('|');
+
+/**
+ * Per-`allVariables`-reference cache of the DRAFT-FREE analyser run, keyed
+ * further by `stageEffectiveComponents` (the only other input that changes
+ * its result — see `findDraftContradictions` for why the baseline always
+ * matches the WITH-draft run's own flag rather than a fixed default).
+ * `allVariables` stays the same object reference for as long as a
+ * field-editor dialog is open — react-redux/reselect only hand the caller a
+ * new one once the underlying codebook actually changes, which the dialog's
+ * own local draft never does — so this turns what would otherwise be a
+ * second full analyser pass on every keystroke (`findDraftContradictions`
+ * runs once for the row-level check and once more in the form-level
+ * validate, both re-invoked on every value change) into one pass per dialog
+ * session. A WeakMap needs no explicit invalidation: once the dialog closes
+ * and its `allVariables` snapshot is no longer referenced anywhere, the
+ * cache entry is collected with it.
+ */
+const baselineCache = new WeakMap<
+  UnknownRecord,
+  Map<boolean, ValidationContradiction[]>
+>();
+
+const getBaselineContradictions = (
+  allVariables: UnknownRecord,
+  stageEffectiveComponents: boolean,
+): ValidationContradiction[] => {
+  let byFlag = baselineCache.get(allVariables);
+  if (!byFlag) {
+    byFlag = new Map();
+    baselineCache.set(allVariables, byFlag);
+  }
+  let contradictions = byFlag.get(stageEffectiveComponents);
+  if (!contradictions) {
+    contradictions = findValidationContradictions(allVariables, {
+      stageEffectiveComponents,
+    });
+    byFlag.set(stageEffectiveComponents, contradictions);
+  }
+  return contradictions;
+};
+
+/**
+ * Contradictions a draft would introduce: every contradiction the WITH-draft
+ * analyser run reports where EITHER the edited variable is directly named in
+ * `variableIds` (the original membership check) OR the contradiction's
+ * identity (`contradictionKey`) is absent from a WITHOUT-draft baseline run
+ * over the same `allVariables`.
+ *
+ * Twenty-seventh-wave Finding 2: a draft can make a contradiction infeasible
+ * between TWO OTHER variables it never appears in itself. E.g. required A
+ * declares `A.sameAs = B`; B declares `B.lessThanVariable = C`; required C
+ * has `maxValue: 10`. Widening A's `minValue` to 10 propagates that bound
+ * into B's range through the sameAs equality group, and B's OWN comparator
+ * to C then becomes unsatisfiable against C's committed `maxValue`. The
+ * analyser correctly reports that as a `disjointBounds` contradiction
+ * between B and C — the two ends of the broken comparator — since A
+ * contributed the bound but is not one of its `variableIds`. A PURE
+ * membership filter on the edited variable's id therefore let the dialog
+ * save an edit that protocol-level validation then rejected. Diffing the
+ * WITH-draft run against a WITHOUT-draft baseline catches this: B/C's
+ * contradiction is absent from the baseline (A's old, looser bound left
+ * B < C satisfiable) and so reports as caused by the draft, regardless of
+ * which variables it names.
+ *
+ * The baseline is NOT pure diffing alone, though — it runs WITH the exact
+ * same `stageEffectiveComponents` reading as the WITH-draft run, and the
+ * result is the UNION with the original membership check, not a
+ * replacement for it. Both choices exist to avoid a false positive the
+ * naive "always record-level baseline, diff only" version produces: a
+ * stage-scoped overlay caller (`makeFieldEditorValidate`'s `overlay`
+ * argument) can pass `stageEffectiveComponents: true` on EVERY validate
+ * call regardless of which field is being edited, and `allVariables` (the
+ * whole subject's codebook) can hold a contradiction between two OTHER,
+ * completely unrelated variables that is only provable in that stage-scoped
+ * mode (e.g. two Boolean singletons the CURRENT stage's sibling fields both
+ * still render as `Boolean`). Diffing that pair against a record-level
+ * (`false`) baseline would report it as "new" on every keystroke of an
+ * unrelated field's dialog, since record-level mode can never see it either
+ * way. Matching the baseline's flag to the WITH-draft run's keeps such an
+ * unrelated, already-latent pair OUT of the diff (it is identically present
+ * in both runs), while the ORIGINAL membership check still catches it on
+ * the rare occasion the edited variable IS one of that pair (see the
+ * `stage-effective boolean domains` tests) — matching this function's
+ * pre-existing, still-correct behaviour for that case.
+ *
+ * `draft.allVariables` IS already the correct baseline in both draft shapes
+ * `buildProspectiveVariables` handles: editing an EXISTING variable leaves
+ * its COMMITTED definition in place there (the draft only replaces it in
+ * the WITH-draft copy `buildProspectiveVariables` returns), and a NEW
+ * variable is simply absent from it altogether — no separate baseline
+ * construction is needed.
  */
 export const findDraftContradictions = (
   draft: ProspectiveDraft,
 ): ValidationContradiction[] => {
-  // Same `allVariables` as `buildProspectiveVariables` receives below, so both
-  // derive an identical id for this draft.
   const id = draft.currentVariableId || draftVariableId(draft.allVariables);
-  return findValidationContradictions(buildProspectiveVariables(draft)).filter(
-    (contradiction) => contradiction.variableIds.includes(id),
+  const stageEffectiveComponents = draft.stageEffectiveComponents ?? false;
+  const withDraft = findValidationContradictions(
+    buildProspectiveVariables(draft),
+    { stageEffectiveComponents },
+  );
+  const baselineKeys = new Set(
+    getBaselineContradictions(draft.allVariables, stageEffectiveComponents).map(
+      contradictionKey,
+    ),
+  );
+  return withDraft.filter(
+    (contradiction) =>
+      contradiction.variableIds.includes(id) ||
+      !baselineKeys.has(contradictionKey(contradiction)),
   );
 };
 
@@ -161,6 +291,16 @@ export type ReferenceTargetLegalityInput = {
   component?: unknown;
   options?: unknown;
   parameters?: unknown;
+  /**
+   * See `ProspectiveDraft.stageEffectiveComponents` — threaded through
+   * unchanged to every `findValidationContradictions` call this makes.
+   * `Validations.tsx` is the only caller today, and it only ever backs the
+   * plain codebook `ValidationSection` (never a stage-scoped overlay), so it
+   * leaves this at its default `false`; a future stage-scoped
+   * reference-target picker would need to pass `true` to stay consistent
+   * with the validate path it feeds.
+   */
+  stageEffectiveComponents?: boolean;
 };
 
 /**
@@ -182,6 +322,55 @@ export type ReferenceTargetLegalityInput = {
  * third variable whose OWN rule already targets it — the strict-cycle case
  * covered in Validations.behaviour.test.tsx) keep a one-call-per-candidate
  * path, pruned to just the relevant component so it stays cheap.
+ *
+ * Twenty-eighth-wave finding: the batched clone's own synthetic id is a
+ * poor stand-in for the edited variable whenever some OTHER, already-fixed
+ * variable references it — that third party's edge would need to resolve
+ * against every candidate's clone simultaneously, which one shared literal
+ * id cannot do (see `editedVariableHasExternalReferences` below). Batching
+ * is therefore only offered while the edited variable's OWN pre-existing
+ * component is just itself; the moment it already has a fixed neighbour,
+ * every candidate — not only the ones that would introduce a NEW shared
+ * component — is routed through the individual, fully-pruned path so that
+ * neighbour's constraint is never silently dropped.
+ *
+ * Thirtieth-wave Finding 2: a candidate's legality used to be decided by
+ * whether ITS OWN id (or, in the batched path, its disposable clone id) was
+ * among a contradiction's `variableIds` — the same membership-only mistake
+ * `findDraftContradictions` (twenty-seventh-wave Finding 2) and
+ * `validateComposerFieldContradictions` (thirtieth-wave Finding 1) made and
+ * fixed the same way. A draft's OTHER, already-committed rule can propagate
+ * through the chosen candidate into a completely different pair: editing
+ * `A` with a draft `minValue: 10`, testing candidate `B` for `A.sameAs`,
+ * where `B.lessThanVariable = C` and `C`'s `maxValue` is `10` — choosing `B`
+ * makes B's OWN comparator against C infeasible, reported with
+ * `variableIds: [B, C]`. Neither `B` nor a batched clone of `A` is named,
+ * so the membership check waved the candidate through; Architect then
+ * offered a target whose selection immediately produced an unsavable
+ * inline error.
+ *
+ * Legality is now a set-difference, computed once for every candidate of
+ * this call: a BASELINE analyser run over `graph` (the edited variable's
+ * row exactly as committed/drafted, with the rule under test absent — the
+ * question is "does ADDING this reference introduce a contradiction", so
+ * the baseline must already carry every OTHER draft change) against each
+ * candidate's WITH-candidate run. A contradiction is candidate-caused, and
+ * makes that candidate illegal, when its `contradictionKey` is absent from
+ * the baseline — regardless of whether the candidate's id, its clone, or
+ * neither appears in `variableIds`. The baseline intentionally differs from
+ * `findDraftContradictions`'s (which diffs against the fully UNDRAFTED
+ * record): a contradiction the OTHER draft edits alone already cause,
+ * independent of which target this rule picks, must not disqualify every
+ * candidate in the picker, so it stays baselined in rather than diffed out.
+ * The baseline record — and therefore its analyser run — does not depend on
+ * the candidate at all, so it is computed exactly once per invocation, not
+ * once per candidate; both the batched and individual loops below diff
+ * against the same `baselineContradictionKeys`. In the batched run, a new
+ * contradiction is attributed to whichever candidate's pre-existing
+ * component (or clone id) it names — always exactly one, since batched
+ * candidates' components are pairwise disjoint from each other and from
+ * `id`'s own by construction (see `usedRoots` and
+ * `editedVariableHasExternalReferences` above).
  */
 export const findLegalReferenceTargets = ({
   allVariables,
@@ -194,6 +383,7 @@ export const findLegalReferenceTargets = ({
   component,
   options,
   parameters,
+  stageEffectiveComponents = false,
 }: ReferenceTargetLegalityInput): Set<string> => {
   const id = currentVariableId || draftVariableId(allVariables);
 
@@ -245,7 +435,38 @@ export const findLegalReferenceTargets = ({
     }
   }
 
+  // The candidate-free baseline (Thirtieth-wave Finding 2 — see the function
+  // comment): `graph` already carries `id`'s row exactly as committed/drafted
+  // with the rule under test absent, so one analyser pass over it, run here
+  // ONCE regardless of how many candidates follow, is every candidate's
+  // "before" state to diff against.
+  const baselineContradictionKeys = new Set(
+    findValidationContradictions(graph, { stageEffectiveComponents }).map(
+      contradictionKey,
+    ),
+  );
+
   const idRoot = unionFind.find(id);
+  // Twenty-eighth-wave Finding: a batched clone (below) represents `id`
+  // ONLY by its own baseline validation, keyed under a synthetic
+  // `${id}::${candidateId}` id — it never carries any OTHER variable's
+  // FIXED rule that targets `id` itself (e.g. a third variable `x` with
+  // `x.lessThanVariable = id`). The batched record deletes `id`'s own
+  // literal entry outright before adding those clones, so a third party's
+  // edge into `id` resolves to nothing once that happens, silently
+  // dropping `x`'s constraint from every batched candidate's judgement —
+  // `x < id < candidate` can read as satisfiable even when it is not. The
+  // individual path below has no such gap: it prunes to `id`'s FULL
+  // pre-existing component (`componentMembers.get(idRoot)`) verbatim, so
+  // `x` stays present and addressable under `id`'s own, unrenamed key.
+  // Whenever `id` already has such a component (more than just itself),
+  // every candidate that would otherwise share the batched clone is routed
+  // through that correct, per-candidate path instead — batching stays
+  // limited to the (typical) case where the edited variable carries no
+  // OTHER fixed reference relationship yet, which is exactly when nothing
+  // outside `id` needs to keep addressing it by its own literal id.
+  const editedVariableHasExternalReferences =
+    (componentMembers.get(idRoot) ?? [id]).length > 1;
   const usedRoots = new Set<string>();
   const batched: string[] = [];
   const individual: string[] = [];
@@ -260,7 +481,11 @@ export const findLegalReferenceTargets = ({
     // component would let the two hypothetical choices interact with each
     // other, which never happens when `id` can only hold one candidate at a
     // time.
-    if (root === idRoot || usedRoots.has(root)) {
+    if (
+      root === idRoot ||
+      usedRoots.has(root) ||
+      editedVariableHasExternalReferences
+    ) {
       individual.push(candidateId);
       continue;
     }
@@ -275,24 +500,46 @@ export const findLegalReferenceTargets = ({
     if (currentVariableId) {
       delete batchRecord[currentVariableId];
     }
-    const clones: { candidateId: string; cloneId: string }[] = [];
+    const clones: { candidateId: string; cloneId: string; root: string }[] = [];
     for (const candidateId of batched) {
       let cloneId = `${id}::${candidateId}`;
       while (Object.hasOwn(batchRecord, cloneId)) {
         cloneId = `${cloneId}:`;
       }
-      clones.push({ candidateId, cloneId });
+      const candidateRoot =
+        candidateId in graph ? unionFind.find(candidateId) : candidateId;
+      clones.push({ candidateId, cloneId, root: candidateRoot });
       batchRecord[cloneId] = draftEntry({
         ...baseline,
         [ruleKey]: candidateId,
       });
     }
-    const contradictions = findValidationContradictions(batchRecord);
-    for (const { candidateId, cloneId } of clones) {
-      const hasContradiction = contradictions.some((contradiction) =>
-        contradiction.variableIds.includes(cloneId),
+    const contradictions = findValidationContradictions(batchRecord, {
+      stageEffectiveComponents,
+    });
+    // Contradictions absent from the candidate-free baseline are introduced
+    // by ADDING one of this call's candidate rules — never by anything
+    // already present without them — so every one of them is attributable
+    // to exactly one candidate: batched candidates' pre-existing components
+    // are pairwise disjoint from each other (`usedRoots`, above), and the
+    // only new edge each clone adds runs from that clone into its own
+    // candidate's component, never into another candidate's.
+    const introducedContradictions = contradictions.filter(
+      (contradiction) =>
+        !baselineContradictionKeys.has(contradictionKey(contradiction)),
+    );
+    for (const { candidateId, cloneId, root } of clones) {
+      const candidateScope = new Set(
+        componentMembers.get(root) ?? [candidateId],
       );
-      if (!hasContradiction) {
+      candidateScope.add(cloneId);
+      const hasIntroducedContradiction = introducedContradictions.some(
+        (contradiction) =>
+          contradiction.variableIds.some((variableId) =>
+            candidateScope.has(variableId),
+          ),
+      );
+      if (!hasIntroducedContradiction) {
         legal.add(candidateId);
       }
     }
@@ -313,11 +560,19 @@ export const findLegalReferenceTargets = ({
       }
     }
     pruned[id] = draftEntry({ ...baseline, [ruleKey]: candidateId });
-    const contradictions = findValidationContradictions(pruned);
-    const hasContradiction = contradictions.some((contradiction) =>
-      contradiction.variableIds.includes(id),
+    const contradictions = findValidationContradictions(pruned, {
+      stageEffectiveComponents,
+    });
+    // Every contradiction `pruned` can produce is already scoped to `id`'s
+    // and this candidate's components, so — unlike the batched run above,
+    // which shares one baseline across many disjoint candidates — anything
+    // here absent from the baseline is this candidate's doing without
+    // needing a separate attribution check.
+    const hasIntroducedContradiction = contradictions.some(
+      (contradiction) =>
+        !baselineContradictionKeys.has(contradictionKey(contradiction)),
     );
-    if (!hasContradiction) {
+    if (!hasIntroducedContradiction) {
       legal.add(candidateId);
     }
   }
@@ -476,13 +731,21 @@ export const crossClassPickIssue = ({
  * values, read here to implement `crossClassPickIssue`'s unchanged-pick
  * escape.
  */
-export const makeFieldEditorValidate =
-  (
-    allVariables: UnknownRecord,
-    overlay?: VariableOverlay,
-    hasUnvalidatedUse?: (variableId: string) => boolean,
-  ) =>
-  (
+export const makeFieldEditorValidate = (
+  allVariables: UnknownRecord,
+  overlay?: VariableOverlay,
+  hasUnvalidatedUse?: (variableId: string) => boolean,
+) => {
+  // Computed once per dialog session, not on every keystroke: `allVariables`
+  // and `overlay` are fixed for the returned validator's whole lifetime, so
+  // recomputing `withOverlay` on every call (as before) only ever produced
+  // an equal-but-freshly-spread object. Hoisting it here gives
+  // `overlaidVariables` a STABLE identity across repeated validate calls,
+  // which is what lets `findDraftContradictions`'s baseline cache (keyed by
+  // that same reference — see `getBaselineContradictions`) actually hit
+  // instead of missing on every keystroke.
+  const overlaidVariables = withOverlay(allVariables, overlay);
+  return (
     values: Record<string, unknown>,
     props?: { initialValues?: unknown },
   ): Record<string, unknown> => {
@@ -490,23 +753,23 @@ export const makeFieldEditorValidate =
     // configuring rules of its own) can have `values.validation` absent or
     // non-record here — that must not skip the check, since editing this
     // variable's own options/parameters can still break an incoming
-    // relationship. `findDraftContradictions`'s involvement filter still
-    // restricts results to contradictions the edited variable participates
-    // in, so an empty validation map is safe to proceed with.
+    // relationship. `findDraftContradictions` reports contradictions the
+    // draft causes regardless of whether the edited variable is directly
+    // named in one, so an empty validation map is safe to proceed with.
     const validation = isRecord(values.validation) ? values.validation : {};
-    // Nineteenth-wave Finding 2: creating a variable writes the typed DISPLAY
-    // NAME into `variable` as well as `_createNewVariable` (see
+    // Nineteenth-wave Finding 2: creating a variable writes the typed
+    // DISPLAY NAME into `variable` as well as `_createNewVariable` (see
     // withFieldsHandlers' `handleNewVariable`), so a non-empty
-    // `values.variable` is not necessarily a committed codebook id. Reading it
-    // as one bypassed `buildProspectiveVariables`'s collision-free sentinel:
-    // a typed name matching a real codebook id injected the draft OVER that
-    // variable, so the draft's rules against it read as self-references
-    // (a `sameAs` to oneself is vacuously satisfiable and reports nothing) —
-    // then creation assigned a fresh uuid and left a genuinely contradictory
-    // pair for protocol validation to reject.
-    // Truthiness, not mere presence: `handleChangeVariable` resets the flag to
-    // `null` when an existing variable is picked, and both commit handlers
-    // (`withFormHandlers`/`withComposerFormHandlers`) branch on
+    // `values.variable` is not necessarily a committed codebook id. Reading
+    // it as one bypassed `buildProspectiveVariables`'s collision-free
+    // sentinel: a typed name matching a real codebook id injected the draft
+    // OVER that variable, so the draft's rules against it read as
+    // self-references (a `sameAs` to oneself is vacuously satisfiable and
+    // reports nothing) — then creation assigned a fresh uuid and left a
+    // genuinely contradictory pair for protocol validation to reject.
+    // Truthiness, not mere presence: `handleChangeVariable` resets the flag
+    // to `null` when an existing variable is picked, and both commit
+    // handlers (`withFormHandlers`/`withComposerFormHandlers`) branch on
     // `if (!_createNewVariable)`, so a blank flag commits as an EXISTING
     // variable and must be read as one here too.
     const isCreatingVariable =
@@ -516,7 +779,6 @@ export const makeFieldEditorValidate =
       !isCreatingVariable && typeof values.variable === 'string'
         ? values.variable
         : '';
-    const overlaidVariables = withOverlay(allVariables, overlay);
     const existing = currentVariableId
       ? overlaidVariables[currentVariableId]
       : undefined;
@@ -540,6 +802,16 @@ export const makeFieldEditorValidate =
       component: values.component,
       options: values.options,
       parameters: values.parameters,
+      // An `overlay` is only ever built from a stage's OWN composer fields
+      // (`buildComposerFieldOverlay`), so its presence IS the
+      // stage-effective signal: every variable it names carries that
+      // field's own RESOLVED component, and this dialog's own draft
+      // component (above) is the edited field's resolved component too.
+      // An overlay-less caller (the shared FieldFields dialog,
+      // FamilyPedigree's NodeConfiguration) has no stage in scope to
+      // resolve any OTHER variable's rendering, so it must stay in the
+      // default, unresolved mode.
+      stageEffectiveComponents: overlay !== undefined,
     })[0];
     if (first) return { validation: first.message };
     if (hasUnvalidatedUse) {
@@ -561,3 +833,4 @@ export const makeFieldEditorValidate =
     }
     return {};
   };
+};

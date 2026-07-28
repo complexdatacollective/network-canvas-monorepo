@@ -492,17 +492,20 @@ describe('findValidationContradictions — eighth-wave Finding 1: boolean domain
   const trueOnly = [{ label: 'Yes', value: true }];
   const falseOnly = [{ label: 'No', value: false }];
 
-  // Twenty-first-wave Finding 1: singleton `options` only pin a boolean's
-  // domain when the codebook declares `component: 'Boolean'` — the codebook
-  // alone cannot otherwise know which control renders it. These fixtures
-  // declare it explicitly so they keep exercising the group-level domain
-  // check this block targets, rather than the (now-unpinned) componentless
-  // case.
+  // Twenty-first-wave Finding 1 scoped options-derived domains to an explicit
+  // `component: 'Boolean'`; twenty-sixth-wave Finding 1 further gates them on
+  // `stageEffectiveComponents` — a codebook-level read can never know whether
+  // a NetworkComposer field overrides even an explicit component, so these
+  // fixtures run in stage-effective mode to keep exercising the group-level
+  // domain check this block targets.
   it('rejects a true-only boolean sameAs a false-only boolean', () => {
-    const result = findValidationContradictions({
-      a: { ...boolean('a', { sameAs: 'b' }, trueOnly), component: 'Boolean' },
-      b: { ...boolean('b', {}, falseOnly), component: 'Boolean' },
-    });
+    const result = findValidationContradictions(
+      {
+        a: { ...boolean('a', { sameAs: 'b' }, trueOnly), component: 'Boolean' },
+        b: { ...boolean('b', {}, falseOnly), component: 'Boolean' },
+      },
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
@@ -543,16 +546,19 @@ describe('findValidationContradictions — eighth-wave Finding 1: boolean domain
   // no comparator rules), but the analyser also runs on raw, unvalidated
   // migration input, so this exercises that defensive path directly.
   it('rejects a comparator-only true-only vs false-only boolean pair', () => {
-    const result = findValidationContradictions({
-      a: {
-        ...boolean('a', { greaterThanOrEqualToVariable: 'b' }, trueOnly),
-        component: 'Boolean',
+    const result = findValidationContradictions(
+      {
+        a: {
+          ...boolean('a', { greaterThanOrEqualToVariable: 'b' }, trueOnly),
+          component: 'Boolean',
+        },
+        b: {
+          ...boolean('b', { greaterThanOrEqualToVariable: 'a' }, falseOnly),
+          component: 'Boolean',
+        },
       },
-      b: {
-        ...boolean('b', { greaterThanOrEqualToVariable: 'a' }, falseOnly),
-        component: 'Boolean',
-      },
-    });
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
@@ -1160,6 +1166,16 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
     ...(options !== undefined ? { options } : {}),
   });
 
+  // Twenty-sixth-wave Finding 1: options-derived boolean pins only exist in
+  // stage-effective mode (a codebook-level read cannot know whether a
+  // NetworkComposer field overrides even an explicit `component: 'Boolean'`),
+  // so this whole block — whose subject is exactly those pins against the
+  // differentFrom graph — runs the analyser in that mode.
+  const analyse = (variables: Record<string, unknown>) =>
+    findValidationContradictions(variables, {
+      stageEffectiveComponents: true,
+    });
+
   const trueOnly = [{ label: 'Yes', value: true }];
   const falseOnly = [{ label: 'No', value: false }];
   const bothValues = [
@@ -1182,7 +1198,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
     for (const strip of strips) {
       delete repaired[strip.variableId]?.validation[strip.rule];
     }
-    return findValidationContradictions(repaired);
+    return analyse(repaired);
   };
 
   it("reports the reviewer's A={true}, B={true,false}, C={false} chain as unsatisfiable", () => {
@@ -1195,7 +1211,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
       b: pinnedBoolean('b', { required: true, differentFrom: 'c' }),
       c: pinnedBoolean('c', { required: true }, falseOnly),
     };
-    const result = findValidationContradictions(variables);
+    const result = analyse(variables);
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedDifferentFromParity');
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
@@ -1210,7 +1226,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
 
   it('accepts the same chain once C also admits both values', () => {
     expect(
-      findValidationContradictions({
+      analyse({
         a: pinnedBoolean('a', { required: true, differentFrom: 'b' }, trueOnly),
         b: pinnedBoolean('b', { required: true, differentFrom: 'c' }),
         c: pinnedBoolean('c', { required: true }, bothValues),
@@ -1222,7 +1238,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
   // never be flagged, regardless of the graph's shape.
   it('accepts a chain with no singleton domains at all', () => {
     expect(
-      findValidationContradictions({
+      analyse({
         a: pinnedBoolean('a', { differentFrom: 'b' }),
         b: pinnedBoolean('b', { differentFrom: 'c' }),
         c: pinnedBoolean('c', {}),
@@ -1235,7 +1251,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
   // exactly what satisfies that, and must stay accepted.
   it('accepts two singletons at even distance pinned to agreeing values', () => {
     expect(
-      findValidationContradictions({
+      analyse({
         a: pinnedBoolean('a', { differentFrom: 'b' }, trueOnly),
         b: pinnedBoolean('b', { differentFrom: 'c' }),
         c: pinnedBoolean('c', {}, trueOnly),
@@ -1255,7 +1271,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
       c: pinnedBoolean('c', { differentFrom: 'd' }),
       d: pinnedBoolean('d', {}, trueOnly),
     };
-    const result = findValidationContradictions(variables);
+    const result = analyse(variables);
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedDifferentFromParity');
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c', 'd']);
@@ -1273,7 +1289,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
   // but rendered by Toggle must NOT be flagged.
   it('treats a Toggle-rendered singleton-options boolean as a full domain', () => {
     expect(
-      findValidationContradictions({
+      analyse({
         a: pinnedBoolean(
           'a',
           { required: true, differentFrom: 'b' },
@@ -1314,17 +1330,22 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
   // domain when the codebook declares `component: 'Boolean'` — a
   // componentless boolean's rendering is undetermined at the codebook layer
   // (it is renderable only by a NetworkComposer field, which supplies its
-  // own component). These fixtures declare it explicitly so the pair still
-  // expresses a rendering the codebook actually determines, preserving the
-  // genuine singleton-domain detection this block targets.
+  // own component). Twenty-sixth-wave Finding 1 goes one step further: even
+  // an explicit component is only the RENDERED control in a stage-effective
+  // view (a composer field can override it to Toggle), so these fixtures run
+  // in stage-effective mode, preserving the genuine singleton-domain
+  // detection this block targets.
   it('rejects two true-only booleans joined by differentFrom', () => {
-    const result = findValidationContradictions({
-      a: {
-        ...boolean('a', { differentFrom: 'b' }, trueOnly),
-        component: 'Boolean',
+    const result = findValidationContradictions(
+      {
+        a: {
+          ...boolean('a', { differentFrom: 'b' }, trueOnly),
+          component: 'Boolean',
+        },
+        b: { ...boolean('b', {}, trueOnly), component: 'Boolean' },
       },
-      b: { ...boolean('b', {}, trueOnly), component: 'Boolean' },
-    });
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
     expect(result[0]?.message).toBe(
@@ -1395,17 +1416,21 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
     ).toEqual([]);
   });
 
-  // Twenty-first-wave Finding 1: as above, an explicit `component: 'Boolean'`
-  // is what makes the singleton `options` array a rendering the codebook
-  // actually determines.
+  // Twenty-first / twenty-sixth-wave Finding 1: as above, an explicit
+  // `component: 'Boolean'` in a stage-effective view is what makes the
+  // singleton `options` array a rendering that actually reaches a
+  // participant.
   it('still treats a singleton options array as a pinned value', () => {
-    const result = findValidationContradictions({
-      a: {
-        ...boolean('a', { differentFrom: 'b' }, trueOnly),
-        component: 'Boolean',
+    const result = findValidationContradictions(
+      {
+        a: {
+          ...boolean('a', { differentFrom: 'b' }, trueOnly),
+          component: 'Boolean',
+        },
+        b: { ...boolean('b', {}, trueOnly), component: 'Boolean' },
       },
-      b: { ...boolean('b', {}, trueOnly), component: 'Boolean' },
-    });
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
   });
@@ -2671,12 +2696,16 @@ describe('record schema conformance — contradiction refinement', () => {
     expect(result.success).toBe(true);
   });
 
-  // Twenty-third-wave Finding 2: the schema-level refinement is generic over
-  // every contradiction class, but this confirms the new
-  // `pinnedDifferentFromParity` class actually reaches it end-to-end — the
-  // reviewer's report was that the SCHEMA accepted this shape, not just that
-  // the analyser missed it.
-  it('rejects a node variables record with pinned booleans whose differentFrom parity is unsatisfiable', () => {
+  // Twenty-sixth-wave Finding 1 reverses the twenty-third-wave expectation
+  // here: options-derived boolean pins no longer exist at the RECORD level,
+  // because the record refinement cannot see whether every NetworkComposer
+  // occurrence overrides even an explicit `component: 'Boolean'` to Toggle
+  // (which renders no options and offers both values) — rejecting here made
+  // the v7→v8 migration strip rules from runtime-satisfiable protocols. The
+  // parity class now surfaces only through schema.ts's stage-effective
+  // composer overlay (exercised end-to-end in the twenty-first-wave protocol
+  // block below); the record schema must ACCEPT this shape.
+  it('accepts a node variables record whose boolean differentFrom parity would only be unsatisfiable under codebook-declared renderings', () => {
     const result = VariablesSchema.safeParse({
       a: {
         name: 'a',
@@ -2699,13 +2728,7 @@ describe('record schema conformance — contradiction refinement', () => {
         validation: {},
       },
     });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((candidate) =>
-        candidate.message.includes('pinned values and differentFrom rules'),
-      );
-      expect(issue).toBeDefined();
-    }
+    expect(result.success).toBe(true);
   });
 });
 
@@ -3761,13 +3784,33 @@ describe('findValidationContradictions — Audit sweep: a boolean domain follows
     ).toEqual([]);
   });
 
+  // Twenty-sixth-wave Finding 1: "rendered by" is a stage-effective claim —
+  // only a caller that has resolved each variable's actual rendering may let
+  // an explicit `component: 'Boolean'` read its options, so the pinning
+  // cases below run in that mode.
   it('still pins a singleton-options boolean rendered by the Boolean choice control', () => {
-    const result = findValidationContradictions({
-      a: boolean('a', 'Boolean', trueOnly, { differentFrom: 'b' }),
-      b: boolean('b', 'Boolean', trueOnly),
-    });
+    const result = findValidationContradictions(
+      {
+        a: boolean('a', 'Boolean', trueOnly, { differentFrom: 'b' }),
+        b: boolean('b', 'Boolean', trueOnly),
+      },
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  // The record-level (default-mode) counterpart: the same pair is ACCEPTED,
+  // because the codebook alone cannot know that no composer field overrides
+  // the rendering to Toggle — the false rejection the migration would have
+  // converted into silently stripped rules (twenty-sixth-wave Finding 1).
+  it('does not pin an explicit-Boolean singleton pair at the record level', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', 'Boolean', trueOnly, { differentFrom: 'b' }),
+        b: boolean('b', 'Boolean', trueOnly),
+      }),
+    ).toEqual([]);
   });
 
   // Twenty-first-wave Finding 1 supersedes this block's earlier assumption
@@ -3807,12 +3850,24 @@ describe('findValidationContradictions — Audit sweep: a boolean domain follows
   });
 
   it('still rejects a sameAs group of Boolean-rendered booleans with disjoint options', () => {
-    const result = findValidationContradictions({
-      a: boolean('a', 'Boolean', trueOnly, { sameAs: 'b' }),
-      b: boolean('b', 'Boolean', [{ label: 'No', value: false }]),
-    });
+    const result = findValidationContradictions(
+      {
+        a: boolean('a', 'Boolean', trueOnly, { sameAs: 'b' }),
+        b: boolean('b', 'Boolean', [{ label: 'No', value: false }]),
+      },
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  it('accepts the same disjoint-options sameAs group at the record level', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', 'Boolean', trueOnly, { sameAs: 'b' }),
+        b: boolean('b', 'Boolean', [{ label: 'No', value: false }]),
+      }),
+    ).toEqual([]);
   });
 });
 
@@ -4425,11 +4480,31 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
     expect(result.success).toBe(true);
   });
 
-  // An explicit `component: 'Boolean'` pair: the codebook itself commits to
-  // the choice control, so this stays rejected at the codebook layer exactly
-  // as before this wave — unchanged behaviour, confirmed end-to-end.
-  it('still rejects an explicit component: Boolean singleton pair at the codebook layer, unchanged', () => {
-    const protocol = protocolWithBooleanPair('Boolean', undefined);
+  // Twenty-sixth-wave Finding 1, the reviewer's exact report: an EXPLICIT
+  // `component: 'Boolean'` pair whose every occurrence overrides the
+  // rendering to Toggle. ToggleField takes no `options` prop and is
+  // unconditionally two-valued, so this is runtime-satisfiable — the old
+  // codebook-layer rejection was a false positive the migration converted
+  // into silently stripped rules, and it must now be accepted.
+  it('accepts an explicit component: Boolean singleton pair rendered exclusively as Toggle by NetworkComposer fields', () => {
+    const protocol = protocolWithBooleanPair('Boolean', [
+      networkComposerStage('Toggle'),
+    ]);
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+
+    expect(result.success).toBe(true);
+  });
+
+  // The detection has not vanished — it has moved to where the rendering is
+  // actually known: composer fields keeping the Boolean choice control make
+  // the same pair genuinely contradictory, reported by the stage-effective
+  // overlay (which alone runs the analyser with `stageEffectiveComponents`)
+  // and anchored at the field.
+  it('still rejects the explicit pair when the NetworkComposer fields keep the Boolean choice control', () => {
+    const protocol = protocolWithBooleanPair('Boolean', [
+      networkComposerStage('Boolean'),
+    ]);
 
     const result = ProtocolSchemaV8.safeParse(protocol);
 
@@ -4439,7 +4514,93 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
         candidate.message.includes('must differ but their rules pin both'),
       );
       expect(issue).toBeDefined();
-      expect(issue?.path.slice(0, 2)).toEqual(['codebook', 'node']);
+      expect(issue?.path.slice(0, 2)).toEqual(['stages', 0]);
+    }
+  });
+
+  // With no stage rendering the pair at all, the record level may no longer
+  // reject it (it cannot rule out a Toggle-only rendering), and no
+  // stage-effective check has a form to anchor at. NOTE the residual
+  // accept-direction gap this documents: a pair rendered ONLY by shared
+  // (`FormFieldSchema`) form fields — EgoForm, AlterForm, NameGenerator
+  // forms, FamilyPedigree's nodeConfig.form — uses the codebook component
+  // verbatim, but those surfaces have no stage-effective contradiction pass,
+  // so a genuine Boolean-rendered contradiction there goes unreported. The
+  // cardinal rule prefers that miss over the false rejection.
+  it('accepts an explicit component: Boolean singleton pair with no composer stage at all', () => {
+    const protocol = protocolWithBooleanPair('Boolean', undefined);
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+
+    expect(result.success).toBe(true);
+  });
+
+  // Twenty-sixth-wave Finding 1 also relocates `pinnedDifferentFromParity`
+  // end-to-end coverage here: options-derived pins only exist in the
+  // stage-effective mode, so the class can no longer fire from the record
+  // schema (the record-conformance block above asserts that acceptance) and
+  // must surface through the composer overlay instead.
+  it('rejects a pinned-parity boolean chain through the stage-effective overlay', () => {
+    const base = structuredClone(createBaseProtocol()) as BaseProtocol;
+    const protocol = {
+      ...base,
+      codebook: {
+        ...base.codebook,
+        node: {
+          ...base.codebook.node,
+          person: {
+            ...base.codebook.node.person,
+            variables: {
+              ...base.codebook.node.person.variables,
+              boolA: {
+                ...booleanVariable('BoolA', 'Boolean'),
+                validation: { differentFrom: 'boolB' },
+              },
+              boolB: {
+                name: 'BoolB',
+                type: 'boolean',
+                component: 'Boolean',
+                validation: { differentFrom: 'boolC' },
+              },
+              boolC: {
+                name: 'BoolC',
+                type: 'boolean',
+                component: 'Boolean',
+                options: [{ label: 'No', value: false }],
+              },
+            },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 'nc1',
+          label: 'Build the network',
+          type: 'NetworkComposer',
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          layoutVariable: 'layoutPosition',
+          background: { concentricCircles: 4 },
+          nodeForm: {
+            fields: [
+              { variable: 'boolA', component: 'Boolean', label: 'A?' },
+              { variable: 'boolB', component: 'Boolean', label: 'B?' },
+              { variable: 'boolC', component: 'Boolean', label: 'C?' },
+            ],
+          },
+        },
+      ],
+    };
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((candidate) =>
+        candidate.message.includes('pinned values and differentFrom rules'),
+      );
+      expect(issue).toBeDefined();
+      expect(issue?.path.slice(0, 2)).toEqual(['stages', 0]);
     }
   });
 });
@@ -5117,6 +5278,2443 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 2: an abse
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.strips).toEqual([
       { variableId: 'a', rule: 'lessThanOrEqualToVariable' },
+    ]);
+  });
+});
+
+describe('findValidationContradictions — Twenty-fifth wave: one-sided out-of-window coarse windows model the runtime-synthesized far bound', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: a year picker with only `max: '1800'` is not
+  // half-open at runtime — fresco-ui's DatePicker synthesizes the missing
+  // lower bound a full default-window span below the authored max (roughly
+  // 1694 on a 2026 interview date; 1600 at the model's 2120 horizon), and the
+  // year dropdown offers nothing below it. No offered year is ever strictly
+  // less than a partner pinned to 1600-01-01.
+  it('rejects lessThanVariable from a year picker with only an out-of-window max against a partner pinned below the synthesized window', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1800' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '1600-01-01', max: '1600-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // The mirror direction: a far-future one-sided `min` gets a synthesized
+  // ceiling (min.year + span, through December), so a strict comparator
+  // demanding a value above that ceiling can never be satisfied.
+  it('rejects greaterThanVariable from a year picker with only a far-future min against a partner pinned above the synthesized ceiling', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '3000' },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '3500-01-01', max: '3500-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+  });
+
+  // The false-positive guard that matters most: the synthesized window still
+  // reaches below the partner (1600 < 1750 in the model; 1694 < 1750 even on
+  // a present-day interview), so the comparison is genuinely satisfiable.
+  it('accepts a one-sided out-of-window max whose synthesized window still reaches below the partner', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1800' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '1750-01-01', max: '1750-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Thirtieth wave (Fix 4) consciously closed the accept-direction gap this
+  // block used to record: the runtime's dropdown floor for an unauthored
+  // coarse min side is the STABLE default 1920 (date-independent), so it is
+  // modelled exactly — the year picker below offers nothing under 1920 and
+  // can never lie strictly below a partner pinned at 1900.
+  it('floors a one-sided in-window coarse bound at the stable default window minimum', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '2000' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '1900-01-01', max: '1900-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // A coarse picker with NEITHER bound authored now carries the same stable
+  // default floor (thirtieth-wave Fix 4); its today side stays unbounded.
+  it('floors a coarse picker with no authored bounds at the stable default window minimum', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: '1800-01-01', max: '1800-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // Thirtieth wave (Fix 2) consciously revised this recorded stance: the
+  // runtime's derivation emits the resolved native `min`/`max` attributes for
+  // a one-sided FULL-resolution window too, so the missing side is now
+  // modelled at the resolved bound (here the extension floor 1600-01-01 —
+  // the shared arithmetic without the coarse 1000-clamp). No instant lies
+  // strictly below a partner pinned exactly on that floor.
+  it('models a full-resolution one-sided out-of-window bound at its resolved floor', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { max: '1800-06-15' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: '1600-01-01', max: '1600-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // Month resolution synthesizes too, and its ceiling runs through DECEMBER
+  // of the extended year (the runtime's `month: 12, day: 31` far edge, read
+  // at its stored instant): 3000-05 + the 200-year horizon span ends at the
+  // period '3200-12', stored instant 3200-12-01. A partner pinned there is
+  // unreachable under a strict comparator; one pinned a day earlier is not.
+  it('rejects a month picker with only a far-future min against a partner pinned at its synthesized December ceiling', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'month', min: '3000-05' },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '3200-12-01', max: '3200-12-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'month', min: '3000-05' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '3200-11-30', max: '3200-11-30' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The out-of-window gate on the max side is date-independent and mirrored
+  // exactly: the runtime synthesizes the deep extension floor only when the
+  // authored max is strictly earlier than 1920-01-01, so '1919' extends the
+  // window down to 1719 (the horizon span) while '1920' keeps the stable
+  // default 1920 floor (thirtieth-wave Fix 4 — this arm used to record the
+  // half-open accept-direction gap). A partner pinned BETWEEN the two floors
+  // separates the branches.
+  it('brackets the lower-edge synthesis gate at exactly the default window minimum', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1919' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '1719-01-01', max: '1719-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+
+    // '1919' extends: 1800 lies inside the extended window, so a value
+    // strictly below the partner exists ...
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1919' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '1800-01-01', max: '1800-01-01' }),
+      }),
+    ).toEqual([]);
+
+    // ... while '1920' does not extend — its floor is the stable default
+    // edge, above that same partner.
+    const atGate = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1920' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '1800-01-01', max: '1800-01-01' }),
+    });
+    expect(atGate).toHaveLength(1);
+    expect(atGate[0]?.class).toBe('disjointBounds');
+  });
+
+  // The min side's gate is date-DEPENDENT at runtime (`authoredMin > today`),
+  // so the model synthesizes only when the condition holds on every
+  // in-horizon interview date: a min in 2121 is later than any plausible
+  // "today" and synthesizes, while a min at the 2120 horizon itself could
+  // still flip to the runtime's default today-edge branch on a late-enough
+  // interview date, so it stays half-open — an accept-direction gap forced by
+  // the today-dependence, not an oversight.
+  it('brackets the upper-edge synthesis gate at the plausibility horizon', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2121' },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '2500-01-01', max: '2500-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2120' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '2500-01-01', max: '2500-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The synthesized side flows into the discrete emission-set machinery too:
+  // with only `max: '1800'` the year picker's window used to be unenumerable
+  // (an open bound), silently skipping the exact-instant check for its whole
+  // group. Closed at the synthesized 1600 lower edge it enumerates to the
+  // 1600-1800 January instants, which overlap the month picker's convex
+  // interval while sharing no instant with its February-November emissions.
+  it('rejects a comparator-forced equality whose synthesized year window shares no instant with a month picker', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1800' },
+        { greaterThanOrEqualToVariable: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'month', min: '1700-02', max: '1700-11' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'the exact dates their pickers can ever emit share no instant',
+    );
+    expect(
+      result[0]?.strips.toSorted((a, b) =>
+        a.variableId.localeCompare(b.variableId),
+      ),
+    ).toEqual([
+      { variableId: 'a', rule: 'greaterThanOrEqualToVariable' },
+      { variableId: 'b', rule: 'greaterThanOrEqualToVariable' },
+    ]);
+
+    // Widening the month window to include a January restores a genuinely
+    // shared instant (1700-01-01) inside the synthesized year window.
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1800' },
+          { greaterThanOrEqualToVariable: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { type: 'month', min: '1700-01', max: '1700-06' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — Twenty-fifth wave: derivation fidelity against fresco-ui DatePicker.tsx', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // A line-for-line mirror of the combined min/max derivation in fresco-ui's
+  // DatePicker.tsx (`parseYmd`, `compareYmd`, `DEFAULT_MIN`, and the
+  // `defaultWindowSpanYears = today.year - DEFAULT_MIN.year` synthesis inside
+  // its `minYmd`/`maxYmd` useMemo). The analyser models the runtime's
+  // "today" at its conservative 2120 horizon, so running THIS mirror with
+  // today pinned there must land on exactly the bounds the analyser uses —
+  // the probes below bracket the analyser's modelled edges to the day. If
+  // fresco-ui's arithmetic ever changes shape (span, rounding, branch
+  // conditions), this mirror and `synthesizedCoarseMissingSideBound` must change
+  // together.
+  type MirrorYmd = { year: number; month: number; day: number };
+
+  const mirrorParseYmd = (value: string): MirrorYmd | null => {
+    const match = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(value);
+    if (!match?.[1]) return null;
+    const year = Number(match[1]);
+    const month = match[2] ? Number(match[2]) : 1;
+    const day = match[3] ? Number(match[3]) : 1;
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
+      return null;
+    }
+    return { year, month, day };
+  };
+
+  const mirrorCompareYmd = (a: MirrorYmd, b: MirrorYmd): number => {
+    if (a.year !== b.year) return a.year - b.year;
+    if (a.month !== b.month) return a.month - b.month;
+    return a.day - b.day;
+  };
+
+  const MIRROR_DEFAULT_MIN: MirrorYmd = { year: 1920, month: 1, day: 1 };
+
+  const mirrorRuntimeWindow = (
+    bounds: { min?: string; max?: string },
+    today: MirrorYmd,
+  ): { min: MirrorYmd; max: MirrorYmd } => {
+    const authoredMin = bounds.min ? mirrorParseYmd(bounds.min) : null;
+    const authoredMax = bounds.max ? mirrorParseYmd(bounds.max) : null;
+    const defaultWindowSpanYears = today.year - MIRROR_DEFAULT_MIN.year;
+    // Twenty-sixth-wave Finding 3: the runtime clamps its SYNTHESIZED far
+    // bound to the years a coarse control can validly emit (1000 below, 9999
+    // above); the authored side is honoured verbatim.
+    const resolvedMin =
+      authoredMin ??
+      (authoredMax && mirrorCompareYmd(authoredMax, MIRROR_DEFAULT_MIN) < 0
+        ? {
+            year: Math.max(1000, authoredMax.year - defaultWindowSpanYears),
+            month: 1,
+            day: 1,
+          }
+        : MIRROR_DEFAULT_MIN);
+    const resolvedMax =
+      authoredMax ??
+      (authoredMin && mirrorCompareYmd(authoredMin, today) > 0
+        ? {
+            year: Math.min(9999, authoredMin.year + defaultWindowSpanYears),
+            month: 12,
+            day: 31,
+          }
+        : today);
+    return { min: resolvedMin, max: resolvedMax };
+  };
+
+  const mirrorFormatYmd = ({ year, month, day }: MirrorYmd): string =>
+    `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  // The latest in-horizon interview date. No wall clock: the fixture is a
+  // constant, and the analyser's own model is date-independent by design.
+  const HORIZON_TODAY: MirrorYmd = { year: 2120, month: 12, day: 31 };
+
+  it('synthesizes exactly the runtime lower bound at the horizon span', () => {
+    const window = mirrorRuntimeWindow({ max: '1800' }, HORIZON_TODAY);
+    expect(window.min).toEqual({ year: 1600, month: 1, day: 1 });
+
+    // Bracket the analyser's modelled lower edge at exactly that day: a
+    // strict lessThanVariable against a partner pinned ON it is infeasible
+    // (no offered instant lies strictly below the window's own floor) ...
+    const pinnedAtSynthesizedMin = mirrorFormatYmd(window.min);
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1800' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', {
+          min: pinnedAtSynthesizedMin,
+          max: pinnedAtSynthesizedMin,
+        }),
+      }),
+    ).toHaveLength(1);
+
+    // ... while one day above it is satisfiable: the synthesized floor's own
+    // stored instant lies strictly below the partner.
+    const pinnedJustAbove = mirrorFormatYmd({ ...window.min, day: 2 });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1800' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: pinnedJustAbove, max: pinnedJustAbove }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('synthesizes exactly the runtime upper bound at the horizon span', () => {
+    const window = mirrorRuntimeWindow({ min: '3000' }, HORIZON_TODAY);
+    expect(window.max).toEqual({ year: 3200, month: 12, day: 31 });
+
+    // A YEAR picker's latest STORED instant inside that window is 1 January
+    // of the ceiling year (twentieth-wave Finding 1's stored-instant
+    // reading of the displayed range): a strict greaterThanVariable against
+    // a partner pinned there is infeasible ...
+    const ceilingStoredInstant = mirrorFormatYmd({
+      year: window.max.year,
+      month: 1,
+      day: 1,
+    });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '3000' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', {
+          min: ceilingStoredInstant,
+          max: ceilingStoredInstant,
+        }),
+      }),
+    ).toHaveLength(1);
+
+    // ... while a partner one day below it is exceeded by that very instant.
+    const pinnedJustBelow = mirrorFormatYmd({
+      year: window.max.year - 1,
+      month: 12,
+      day: 31,
+    });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '3000' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: pinnedJustBelow, max: pinnedJustBelow }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Twenty-sixth-wave Finding 3: the runtime clamps the synthesized side to
+  // the years a coarse control can validly emit, and the model tracks that
+  // clamp exactly. An authored max of 1100 would extend 200 years below to
+  // 900 unclamped; the control floors at year 1000 instead.
+  it('clamps the synthesized lower bound at the coarse control floor', () => {
+    const window = mirrorRuntimeWindow({ max: '1100' }, HORIZON_TODAY);
+    expect(window.min).toEqual({ year: 1000, month: 1, day: 1 });
+
+    // Bracket the clamped edge to the day: a strict lessThanVariable against
+    // a partner pinned ON the clamped floor is infeasible (the unclamped
+    // model, reaching down to 900, would have accepted it) ...
+    const pinnedAtClampedMin = mirrorFormatYmd(window.min);
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1100' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', {
+          min: pinnedAtClampedMin,
+          max: pinnedAtClampedMin,
+        }),
+      }),
+    ).toHaveLength(1);
+
+    // ... while one day above it is satisfiable via the floor year's own
+    // stored instant.
+    const pinnedJustAbove = mirrorFormatYmd({ ...window.min, day: 2 });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1100' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: pinnedJustAbove, max: pinnedJustAbove }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('clamps the synthesized upper bound at the coarse control ceiling', () => {
+    const window = mirrorRuntimeWindow({ min: '9900' }, HORIZON_TODAY);
+    expect(window.max).toEqual({ year: 9999, month: 12, day: 31 });
+
+    // A year picker's latest STORED instant inside the clamped window is
+    // 1 January of 9999 (the unclamped model's 10100 ceiling would have
+    // accepted this pairing).
+    const ceilingStoredInstant = mirrorFormatYmd({
+      year: window.max.year,
+      month: 1,
+      day: 1,
+    });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '9900' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', {
+          min: ceilingStoredInstant,
+          max: ceilingStoredInstant,
+        }),
+      }),
+    ).toHaveLength(1);
+
+    const pinnedJustBelowCeiling = mirrorFormatYmd({
+      year: window.max.year - 1,
+      month: 12,
+      day: 31,
+    });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '9900' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', {
+          min: pinnedJustBelowCeiling,
+          max: pinnedJustBelowCeiling,
+        }),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — Twenty-sixth-wave Finding 2: unbounded full-resolution DatePickers floor at the native date input minimum', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> | undefined,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    ...(parameters !== undefined ? { parameters } : {}),
+    validation: { required: true, ...validation },
+  });
+
+  // The earliest value the native `<input type="date">` grammar can express:
+  // there is no year 0000 and no negative year, whatever the control's
+  // min/max attributes say.
+  const NATIVE_FLOOR = '0001-01-01';
+
+  // The reviewer's repro: a required full-resolution DatePicker with no
+  // authored bounds contributed NO interval, so a strict lessThanVariable
+  // against a partner pinned AT the native floor was accepted although no
+  // enterable date lies strictly before 0001-01-01.
+  it('rejects a bound-less full DatePicker strictly below a partner pinned at the native floor', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', {}, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // Same picker with the `parameters` record absent altogether — the control
+  // rendered is identical, so the floor applies the same way.
+  it('rejects the same shape when the picker has no parameters record at all', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', undefined, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  // The upper edge stays unbounded: strictly ABOVE the floor-pinned partner
+  // is satisfiable by any later date.
+  it('accepts the mirror direction against the unbounded upper edge', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', {}, { greaterThanVariable: 'b' }),
+        b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A componentless variable with no parameters identifies no control at all
+  // and stays unjudged — the floor is scoped to windows the existing routing
+  // already reads as a full-resolution DatePicker.
+  it('leaves a componentless datetime with no parameters unjudged', () => {
+    expect(
+      findValidationContradictions({
+        a: {
+          name: 'a',
+          type: 'datetime',
+          validation: { required: true, lessThanVariable: 'b' },
+        },
+        b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A componentless variable whose parameter shape already routes to the
+  // full-resolution DatePicker reading gets the same floor.
+  it('floors a componentless datetime whose parameter shape routes to the full-resolution reading', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'datetime',
+        parameters: {},
+        validation: { required: true, lessThanVariable: 'b' },
+      },
+      b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  // Thirtieth wave (Fix 2) consciously revised the one-sided stance this
+  // block used to record: the resolved lower bound is modelled now, and for
+  // an authored max this far out of window the extension arithmetic reaches
+  // past year 1 and lands on the same native floor — so no instant lies
+  // strictly below a partner pinned there.
+  it('floors a one-sided authored full-resolution window at its resolved lower edge', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { max: '0001-06-01' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // Thirtieth wave (Fix 4): a bound-less coarse picker is no longer unjudged
+  // — its dropdown floors at the stable 1920 default edge, far above a
+  // partner pinned at the native floor, so the strict comparison can never
+  // be satisfied.
+  it('floors a bound-less coarse picker at the default dropdown edge', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+});
+
+describe('findValidationContradictions — Twenty-seventh-wave Finding 1: sameAs group intersections derive an inheritable pin', () => {
+  const number = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'number',
+    validation,
+  });
+
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // The reviewer's own report: neither `a` [0, 1] nor `d` [1, 3] is pinned by
+  // its OWN rules, but their sameAs group's intersected window is exactly
+  // [1, 1] — both are forced to 1, the same value `c`'s own window pins — so
+  // `a.differentFrom = c` can never be satisfied. `sameAsInheritedPins` only
+  // ever propagated a MEMBER'S own pin, so the collectively-forced value was
+  // invisible.
+  it('rejects a differentFrom against a group whose intersected window collapses to the partner pin', () => {
+    const result = findValidationContradictions({
+      a: number('a', {
+        required: true,
+        minValue: 0,
+        maxValue: 1,
+        sameAs: 'd',
+        differentFrom: 'c',
+      }),
+      c: number('c', { required: true, minValue: 1, maxValue: 1 }),
+      d: number('d', { required: true, minValue: 1, maxValue: 3 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror: the differentFrom is declared from the pinned partner's side
+  // instead, against a member of the collectively-pinned group.
+  it('rejects when the pinned partner declares the differentFrom against a group member', () => {
+    const result = findValidationContradictions({
+      a: number('a', { minValue: 0, maxValue: 1, sameAs: 'd' }),
+      c: number('c', { minValue: 1, maxValue: 1, differentFrom: 'a' }),
+      d: number('d', { minValue: 1, maxValue: 3 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'c', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The accept guard immediately outside the boundary: an intersection
+  // spanning TWO values ([1, 2]) pins nothing, so the differentFrom stays
+  // satisfiable (a = 2, c = 1) and must stay accepted.
+  it('accepts when the group intersection still spans more than one value', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', {
+          minValue: 0,
+          maxValue: 2,
+          sameAs: 'd',
+          differentFrom: 'c',
+        }),
+        c: number('c', { minValue: 1, maxValue: 1 }),
+        d: number('d', { minValue: 1, maxValue: 3 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Full-resolution datetime: the group's intersected fixed-origin window
+  // collapses to 2020-01-05, the same origin-tagged day-number key `d`'s own
+  // window pins — the derived key must travel `pinnedValue`'s own encoding.
+  it('rejects a full-resolution datetime pair pinned by the group window intersection', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2020-01-01', max: '2020-01-05' },
+        { sameAs: 'e', differentFrom: 'd' },
+      ),
+      d: datePicker('d', { min: '2020-01-05', max: '2020-01-05' }),
+      e: datePicker('e', { min: '2020-01-05', max: '2020-01-10' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Never across origins: the group ALSO contains an anchorless
+  // RelativeDatePicker, whose window lives on the symbolic interview-date
+  // origin. Even though the fixed-origin intersection collapses, a two-origin
+  // group derives no pin — a singleton must be single WITHIN one origin.
+  it('derives no pin from a group whose windows span two origins', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-05', max: '2020-01-10' },
+          { sameAs: 'e', differentFrom: 'd' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-05' },
+          {
+            sameAs: 'e',
+          },
+        ),
+        d: datePicker('d', { min: '2020-01-05', max: '2020-01-05' }),
+        e: {
+          name: 'e',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { before: 5, after: 0 },
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  // Ordinal: the members' option sets intersect to the single value {2} —
+  // the only value every member can store — which is `d`'s whole domain.
+  it('rejects an ordinal differentFrom whose group option intersection is a singleton', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'ordinal',
+        options: [
+          { label: 'One', value: 1 },
+          { label: 'Two', value: 2 },
+        ],
+        validation: { sameAs: 'e', differentFrom: 'd' },
+      },
+      d: {
+        name: 'd',
+        type: 'ordinal',
+        options: [{ label: 'Two', value: 2 }],
+      },
+      e: {
+        name: 'e',
+        type: 'ordinal',
+        options: [
+          { label: 'Two', value: 2 },
+          { label: 'Three', value: 3 },
+        ],
+      },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Formerly a recorded restriction: a uniformly COARSE datetime group used
+  // to derive no pin even when its members' emission sets intersect to one
+  // stored value. The twenty-ninth wave lifted that restriction (see its own
+  // describe block below), so this genuinely-contradictory shape now
+  // rejects: `a` and `e` can only both store '2020', which is `d`'s whole
+  // domain.
+  it('derives a coarse pin from a uniformly coarse datetime group (twenty-ninth wave)', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { sameAs: 'e', differentFrom: 'd' },
+      ),
+      d: datePicker('d', { type: 'year', min: '2020', max: '2020' }),
+      e: datePicker('e', { type: 'year', min: '2019', max: '2020' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+});
+
+describe('findValidationContradictions — Twenty-seventh-wave Finding 2: propagated pins record coarse stored strings', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: `b <= c` against `c`'s pinned '2020-02'
+  // collapses `b`'s reachable window to February 2020 (rounded to `b`'s own
+  // coarse emissions), so `b` is forced to store exactly the string `c`
+  // stores — but the propagated-pin recording handled only numbers and
+  // full-resolution dates, so `b differentFrom c` went unreported.
+  it('rejects a differentFrom whose coarse owner is pinned by chain propagation', () => {
+    const result = findValidationContradictions({
+      b: datePicker(
+        'b',
+        { type: 'month', min: '2020-02', max: '2021-01' },
+        { lessThanOrEqualToVariable: 'c', differentFrom: 'c' },
+      ),
+      c: datePicker('c', { type: 'month', min: '2020-02', max: '2020-02' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror direction at year resolution: `b >= c` against a partner
+  // pinned at `b`'s own upper edge collapses `b` upward onto '2021'.
+  it('rejects the mirror direction for a year picker pinned upward by propagation', () => {
+    const result = findValidationContradictions({
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanOrEqualToVariable: 'c', differentFrom: 'c' },
+      ),
+      c: datePicker('c', { type: 'year', min: '2021', max: '2021' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The accept guard at the boundary: `d <= b <= c` with both full-resolution
+  // neighbours pinned to 2020-02-15 collapses `b`'s propagated window to a
+  // day BETWEEN `b`'s coarse emissions (`b`'s one-sided in-window bound keeps
+  // it unenumerable, so nothing rounds the bound onto a period start). No
+  // stored month string parses to that instant, so nothing may be recorded —
+  // `b differentFrom e` stays accepted even though `e` is pinned to the
+  // month containing it. (The chain itself is an accept-direction gap of the
+  // unenumerable fallback, deliberately preferred over a false rejection.)
+  it('records nothing when the propagated collapse lands between coarse instants', () => {
+    expect(
+      findValidationContradictions({
+        b: datePicker(
+          'b',
+          { type: 'month', min: '2020-01' },
+          { lessThanOrEqualToVariable: 'c', differentFrom: 'e' },
+        ),
+        c: datePicker('c', { min: '2020-02-15', max: '2020-02-15' }),
+        d: datePicker(
+          'd',
+          { min: '2020-02-15', max: '2020-02-15' },
+          { lessThanOrEqualToVariable: 'b' },
+        ),
+        e: datePicker('e', { type: 'month', min: '2020-02', max: '2020-02' }),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — Twenty-seventh-wave Finding 3: mixed-resolution equality nodes carry their surviving instants', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: mutual >= makes {a, c} an equality node whose
+  // surviving instants are exactly {2020-01-01} (the year picker emits only
+  // January 1sts; the full picker's window keeps just one of them) — yet the
+  // node retained its convex maximum 2020-01-02, so `b < c` looked
+  // satisfiable although no year instant lies below 2020-01-01.
+  it('rejects a strict comparator against a node whose surviving instants pin its maximum', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanOrEqualToVariable: 'c' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2021' },
+        { lessThanVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // The mirror: the surviving instant sits at the TOP of the node's convex
+  // window instead, so a strictly-greater partner has nowhere to go.
+  it('rejects the mirror direction against a surviving instant at the window top', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanOrEqualToVariable: 'c' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2020-12-31', max: '2021-01-01' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'greaterThanVariable' },
+    ]);
+  });
+
+  // The accept guard immediately outside the boundary: TWO surviving
+  // instants whose hull still satisfies the downstream comparator
+  // (b = 2020 < c = 2021-01-01 with a = 2021) must stay accepted.
+  it('accepts a node with two surviving instants whose hull satisfies the comparator', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2021' },
+          { greaterThanOrEqualToVariable: 'c' },
+        ),
+        b: datePicker(
+          'b',
+          { type: 'year', min: '2020', max: '2021' },
+          { lessThanVariable: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2021-01-01' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Conservatism: an over-cap coarse window makes the surviving set
+  // uncomputable, so the node keeps its convex interval and the reviewer's
+  // shape stays accepted rather than judged against a partial set.
+  it('keeps the convex interval when the coarse window exceeds the enumeration cap', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '1000', max: '3000' },
+          { greaterThanOrEqualToVariable: 'c' },
+        ),
+        b: datePicker(
+          'b',
+          { type: 'year', min: '2020', max: '2021' },
+          { lessThanVariable: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Conservatism: a group joined by a CROSS-RESOLUTION sameAs edge is the
+  // mixed-resolution machinery's to report — its repair strips that edge,
+  // after which the members separate — so the hull must not additionally
+  // judge `b`'s comparator against it. Exactly the one mixed-resolution
+  // report is expected.
+  it('does not judge comparators against a group the mixed-resolution repair will separate', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { sameAs: 'c' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2021' },
+        { lessThanVariable: 'c' },
+      ),
+      c: datePicker('c', { min: '2020-01-01', max: '2020-01-02' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain('different resolutions');
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+});
+
+describe('findValidationContradictions — Twenty-eighth wave: pinned disequalities prune finite date domains', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: `a` pinned to Jan 1 with `a differentFrom b`,
+  // `b` and `c` each spanning Jan 1-3, `b < c`, `d` pinned to Jan 3 with
+  // `c differentFrom d`. Neither `b` nor `c` is pinned, so the pairwise
+  // pinned-differentFrom check sees nothing — but pruning Jan 1 out of `b`'s
+  // domain and Jan 3 out of `c`'s leaves b in {2, 3} and c in {1, 2}, and
+  // `b < c` has no solution left.
+  it('rejects the reviewer repro: disequality-pruned domains starve a strict comparator', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2024-01-01', max: '2024-01-01' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2024-01-01', max: '2024-01-03' },
+        { lessThanVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2024-01-01', max: '2024-01-03' },
+        { differentFrom: 'd' },
+      ),
+      d: datePicker('d', { min: '2024-01-03', max: '2024-01-03' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // The one-slack mirror: with `b` and `c` spanning Jan 1-4, the pruned
+  // domains are b in {2, 3, 4} and c in {1, 2, 4}, and b = 3 < c = 4
+  // satisfies everything — so this must stay accepted.
+  it('accepts the one-slack mirror whose pruned domains still admit a solution', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2024-01-01', max: '2024-01-01' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2024-01-01', max: '2024-01-04' },
+          { lessThanVariable: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2024-01-01', max: '2024-01-04' },
+          { differentFrom: 'd' },
+        ),
+        d: datePicker('d', { min: '2024-01-03', max: '2024-01-03' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Pruned to empty: `b`'s two-day window loses Jan 1 to `a`'s pin and Jan 2
+  // to `e`'s, leaving no selectable date at all — a conflict no pairwise
+  // check can see, since `b` itself is never pinned. The strip restores the
+  // smallest excluded day (Jan 1), so it names `a`'s rule.
+  it('rejects a variable whose pruned domain is emptied by two pinned partners', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2024-01-01', max: '2024-01-01' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2024-01-01', max: '2024-01-02' },
+        { differentFrom: 'e' },
+      ),
+      e: datePicker('e', { min: '2024-01-02', max: '2024-01-02' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "b": differentFrom rules against pinned variables "a", "e" leave no selectable date',
+    );
+    expect(result[0]?.variableIds).toEqual(['b', 'a', 'e']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Domains beyond the enumeration cap are never pruned (and at this width a
+  // one-instant exclusion cannot starve the comparator anyway) — the shape
+  // stays accepted, with bounded work.
+  it('leaves a domain beyond the enumeration cap unpruned and accepted', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-01' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2022-12-31' },
+          { lessThanVariable: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2022-12-31' },
+          { differentFrom: 'd' },
+        ),
+        d: datePicker('d', { min: '2022-12-31', max: '2022-12-31' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Mixed origins never prune: an anchorless RelativeDatePicker pinned to
+  // interview-date offset 0 must not remove UTC day number 0 (1970-01-01)
+  // from a fixed-calendar domain, however the raw numbers coincide. Only
+  // `e`'s fixed pin excludes a day, so `b` keeps 1970-01-01 and everything
+  // stays satisfiable.
+  it('never applies a symbolic interview-date pin to a fixed-calendar domain', () => {
+    expect(
+      findValidationContradictions({
+        b: datePicker(
+          'b',
+          { min: '1970-01-01', max: '1970-01-02' },
+          { differentFrom: 'e' },
+        ),
+        e: datePicker('e', { min: '1970-01-02', max: '1970-01-02' }),
+        r: {
+          name: 'r',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { before: 0, after: 0 },
+          validation: { differentFrom: 'b' },
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  // The coarse analogue of the reviewer repro: year pickers are enumerable
+  // too, and a coarse pin excludes exactly the member's matching stored
+  // string. Pruning 2020 out of `b` and 2022 out of `c` leaves `b < c`
+  // without a solution.
+  it('rejects the coarse-resolution analogue at year resolution', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2020' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2022' },
+        { lessThanVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { type: 'year', min: '2020', max: '2022' },
+        { differentFrom: 'd' },
+      ),
+      d: datePicker('d', { type: 'year', min: '2022', max: '2022' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // A pin inherited through a sameAs component prunes exactly like an own
+  // pin: `a2` carries no collapsed window of its own, but `sameAs a1` forces
+  // it to `a1`'s pinned Jan 1, and its `differentFrom b` therefore excludes
+  // Jan 1 from `b`'s domain the same way the reviewer repro's own pin does.
+  it('prunes with a sameAs-inherited pin as the exclusion source', () => {
+    const result = findValidationContradictions({
+      a1: datePicker('a1', { min: '2024-01-01', max: '2024-01-01' }),
+      a2: datePicker(
+        'a2',
+        { min: '2023-12-01', max: '2024-06-01' },
+        { sameAs: 'a1', differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2024-01-01', max: '2024-01-03' },
+        { lessThanVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2024-01-01', max: '2024-01-03' },
+        { differentFrom: 'd' },
+      ),
+      d: datePicker('d', { min: '2024-01-03', max: '2024-01-03' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'lessThanVariable' },
+    ]);
+  });
+});
+
+describe('findValidationContradictions — Twenty-ninth wave: uniformly coarse sameAs groups derive a pin from singleton emission intersections', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // The reviewer's own report: required year pickers `a` spanning 2020-2021
+  // and `b` spanning 2021-2022 with `a.sameAs = b` — neither is pinned by
+  // its own rules and the group's convex window collapse was deliberately
+  // not connected to a coarse STORED-STRING key (the twenty-seventh wave's
+  // recorded restriction), yet the members' emission sets intersect to
+  // exactly one emission, '2021', so both must store it. With `c` pinned to
+  // that same year, `a.differentFrom = c` can never be satisfied.
+  it('rejects the reviewer repro: a year group forced onto a single emission equals the partner pin', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { required: true, sameAs: 'b', differentFrom: 'c' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2021', max: '2022' },
+        { required: true },
+      ),
+      c: datePicker(
+        'c',
+        { type: 'year', min: '2021', max: '2021' },
+        { required: true },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The month-resolution analogue: overlapping three-month windows share
+  // only the emission '2021-01', which is the partner's whole domain.
+  it('rejects the month-resolution analogue', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'month', min: '2020-11', max: '2021-01' },
+        { sameAs: 'b', differentFrom: 'c' },
+      ),
+      b: datePicker('b', { type: 'month', min: '2021-01', max: '2021-03' }),
+      c: datePicker('c', { type: 'month', min: '2021-01', max: '2021-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The accept guard immediately outside the boundary: the intersection
+  // holds TWO emissions (2020 and 2021), so nothing is pinned and the
+  // differentFrom stays satisfiable (the group stores 2020, `c` stores
+  // 2021).
+  it('derives nothing when the emission intersection holds two instants', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2022' },
+          { sameAs: 'b', differentFrom: 'c' },
+        ),
+        b: datePicker('b', { type: 'year', min: '2019', max: '2021' }),
+        c: datePicker('c', { type: 'year', min: '2021', max: '2021' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Mixed resolutions within the group never reach the coarse derivation:
+  // the cross-resolution sameAs edge is the mixed-resolution machinery's to
+  // report (and its repair strips exactly that edge, freeing the members),
+  // so no pin may be derived meanwhile even though the members' emission
+  // sets intersect to the single instant 2021-01-01. `a.differentFrom = d`
+  // therefore stays unjudged — the only report is the resolution one.
+  it('derives nothing from a mixed-resolution group', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { sameAs: 'e', differentFrom: 'd' },
+      ),
+      d: datePicker('d', { type: 'year', min: '2021', max: '2021' }),
+      e: datePicker('e', { type: 'month', min: '2020-12', max: '2021-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'but store dates at different resolutions',
+    );
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  // An interview-date-origin member keeps the group off the coarse
+  // derivation. Coarse resolution structurally implies a fixed-origin
+  // DatePicker window, so an anchorless RelativeDatePicker joining the
+  // group necessarily makes it mixed-resolution (full vs year) and
+  // two-origin at once — the resolution machinery owns the shape, and the
+  // fixed-side singleton intersection (2021) must not pin `a` against `c`.
+  it('derives nothing from a group containing an interview-date-origin member', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { sameAs: 'b', differentFrom: 'c' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2021', max: '2022' },
+        { sameAs: 'r' },
+      ),
+      c: datePicker('c', { type: 'year', min: '2021', max: '2021' }),
+      r: {
+        name: 'r',
+        type: 'datetime',
+        component: 'RelativeDatePicker',
+        parameters: { before: 5, after: 0 },
+      },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'but store dates at different resolutions',
+    );
+    expect(result[0]?.strips).toEqual([{ variableId: 'b', rule: 'sameAs' }]);
+  });
+
+  // Zero surviving instants: at ONE resolution an empty emission
+  // intersection always comes with already-disjoint convex windows (every
+  // bound is a period start), so the group-level emptiness check reports it
+  // — and the derivation contributes no SECOND report through the
+  // differentFrom against pinned `c`.
+  it('reports a zero-instant intersection via the existing group-emptiness class only', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2019', max: '2020' },
+        { sameAs: 'b', differentFrom: 'c' },
+      ),
+      b: datePicker('b', { type: 'year', min: '2021', max: '2022' }),
+      c: datePicker('c', { type: 'year', min: '2020', max: '2020' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'but their rules leave no value they can share',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  // Composition with the twenty-eighth wave's disequality pruning: the
+  // derived group pin ('2021', inherited by `g1`) is a prune source exactly
+  // like an own pin, and `f`'s own pin removes the other emission — `e`'s
+  // two-emission domain is emptied, which the pruning pass reports ONCE.
+  // The pinned-equal machinery adds nothing (`e` itself is never pinned),
+  // and the single-exclusion carve-out keeps the two classes from ever
+  // double-reporting one conflict.
+  it('composes with disequality pruning without double-reporting', () => {
+    const result = findValidationContradictions({
+      e: datePicker(
+        'e',
+        { type: 'year', min: '2020', max: '2021' },
+        { differentFrom: 'g1' },
+      ),
+      f: datePicker(
+        'f',
+        { type: 'year', min: '2020', max: '2020' },
+        { differentFrom: 'e' },
+      ),
+      g1: datePicker(
+        'g1',
+        { type: 'year', min: '2020', max: '2021' },
+        { sameAs: 'g2' },
+      ),
+      g2: datePicker('g2', { type: 'year', min: '2021', max: '2022' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "e": differentFrom rules against pinned variables "f", "g1" leave no selectable date',
+    );
+    expect(result[0]?.variableIds).toEqual(['e', 'f', 'g1']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'f', rule: 'differentFrom' },
+    ]);
+  });
+});
+
+describe('findValidationContradictions — Thirtieth wave Fix 1: categorical sameAs groups pin to their forced full shared selection', () => {
+  const categorical = (
+    name: string,
+    values: string[],
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'categorical',
+    options: values.map((value) => ({ label: value.toUpperCase(), value })),
+    validation,
+  });
+
+  // The reviewer's own report: `a` {red, green, blue} and `b` {green, blue,
+  // yellow} are sameAs-joined with minSelected 2 each — neither is pinned by
+  // its own rules, but the group's shared distinct-value intersection is
+  // {green, blue} (size 2) and its merged minSelected floor is 2, so the only
+  // selection every member can share is exactly the whole shared set. `c`
+  // {green, blue} with minSelected 2 is pinned to that same set by the
+  // existing single-variable cardinality rule, so `a.differentFrom = c` can
+  // never be satisfied.
+  it('rejects the reviewer repro: a group forced onto its whole shared set equals the partner pin', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['red', 'green', 'blue'], {
+        required: true,
+        minSelected: 2,
+        sameAs: 'b',
+        differentFrom: 'c',
+      }),
+      b: categorical('b', ['green', 'blue', 'yellow'], {
+        required: true,
+        minSelected: 2,
+      }),
+      c: categorical('c', ['green', 'blue'], {
+        required: true,
+        minSelected: 2,
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror direction: the differentFrom declared from the own-pinned
+  // partner's side reaches the same group-derived pin.
+  it('rejects the mirror repro declared from the pinned partner', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['red', 'green', 'blue'], {
+        minSelected: 2,
+        sameAs: 'b',
+      }),
+      b: categorical('b', ['green', 'blue', 'yellow'], { minSelected: 2 }),
+      c: categorical('c', ['green', 'blue'], {
+        minSelected: 2,
+        differentFrom: 'a',
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'c', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The accept guard immediately outside the boundary: a shared intersection
+  // LARGER than the merged floor leaves more than one valid selection, so
+  // nothing is pinned (the group can select {green, blue} while `c` holds
+  // {green, blue, purple}'s forced whole set — they differ).
+  it('derives nothing when the shared set is larger than the merged floor', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['red', 'green', 'blue', 'purple'], {
+          minSelected: 2,
+          sameAs: 'b',
+          differentFrom: 'c',
+        }),
+        b: categorical('b', ['green', 'blue', 'purple', 'yellow'], {
+          minSelected: 2,
+        }),
+        c: categorical('c', ['green', 'blue', 'purple'], { minSelected: 3 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // An EMPTY shared intersection stays with the existing group-emptiness
+  // class: `optionsDisjoint` reports it once and poisons the group, so the
+  // pinned partner's differentFrom is left unjudged rather than doubled.
+  it('reports an empty shared intersection via the existing group class only', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['red', 'green'], {
+        sameAs: 'b',
+        differentFrom: 'c',
+      }),
+      b: categorical('b', ['blue', 'yellow']),
+      c: categorical('c', ['red', 'green'], { minSelected: 2 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain('but share no option values');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  // A merged maxSelected ceiling below the floor is the group-emptiness
+  // machinery's business: the interval check reports it once, the group is
+  // poisoned, and no pin is derived from it — never a double report.
+  it('reports a ceiling-below-floor group via the existing emptiness class only', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['red', 'green', 'blue'], {
+        minSelected: 2,
+        sameAs: 'b',
+        differentFrom: 'c',
+      }),
+      b: categorical('b', ['green', 'blue', 'yellow'], { maxSelected: 1 }),
+      c: categorical('c', ['green', 'blue'], { minSelected: 2 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'but their rules leave no value they can share',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  // A member pinned by its own rules keeps the existing inheritance path in
+  // charge: the group derivation only ever runs when NO member pin exists,
+  // so a disagreeing own-pin pair still contributes nothing (that conflict
+  // is the group machinery's own).
+  it('defers to a member own-pin when one exists', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['green', 'blue'], {
+        minSelected: 2,
+        sameAs: 'b',
+      }),
+      b: categorical('b', ['red', 'green', 'blue'], {
+        differentFrom: 'c',
+      }),
+      c: categorical('c', ['green', 'blue'], { minSelected: 2 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+});
+
+describe('findValidationContradictions — Thirtieth wave Fix 2: one-sided full-resolution windows model the resolved opposite bound', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: a required full-resolution picker with only
+  // `min: '2000-01-01'` is not half-open at runtime — fresco-ui resolves and
+  // passes BOTH native bounds whenever either is authored, capping the input
+  // at today (or, before the authored min has passed, at the extended
+  // ceiling). The modelled ceiling is 31 December of
+  // max(horizon, min.year + span) = 2200, far below a partner pinned at
+  // 9999-01-01, so the strict comparison can never be satisfied.
+  it('rejects greaterThanVariable from a min-only full picker against a partner pinned beyond the resolved ceiling', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { min: '2000-01-01' }, { greaterThanVariable: 'b' }),
+      b: datePicker('b', { min: '9999-01-01', max: '9999-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+  });
+
+  // The mirror direction: an in-window max-only picker is floored at the
+  // runtime's stable default lower edge 1920-01-01 (both the branch
+  // condition and the resolved value are date-independent, so the model is
+  // exact) — no instant lies strictly below a partner pinned on the floor,
+  // while one pinned a single day above it is still exceeded from below.
+  it('floors a max-only full picker at the stable default lower edge', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { max: '2100-01-01' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: '1920-01-01', max: '1920-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '2100-01-01' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { min: '1920-01-02', max: '1920-01-02' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A future-dated authored min extends PAST the horizon exactly as the
+  // runtime does (`min.year + span`, December 31): a literal 2120 ceiling
+  // would have inverted this window and falsely rejected the satisfiable
+  // pairing below. The bracket's reject side sits exactly on the extended
+  // ceiling.
+  it('brackets the extended ceiling of a future-dated authored min', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { min: '2100-01-01' }, { greaterThanVariable: 'b' }),
+        b: datePicker('b', { min: '2299-12-31', max: '2299-12-31' }),
+      }),
+    ).toEqual([]);
+
+    const result = findValidationContradictions({
+      a: datePicker('a', { min: '2100-01-01' }, { greaterThanVariable: 'b' }),
+      b: datePicker('b', { min: '2300-12-31', max: '2300-12-31' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  // The modelled ceiling for a past authored min is a SUPERSET of every
+  // in-horizon today-cap (Dec 31 of min.year + span here, above the horizon
+  // itself), so a partner just inside it stays accepted — the deliberate
+  // accept direction of the no-wall-clock model.
+  it('accepts a partner inside the superset ceiling of a past authored min', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { min: '2000-01-01' }, { greaterThanVariable: 'b' }),
+        b: datePicker('b', { min: '2200-12-30', max: '2200-12-30' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The coarse 1000-9999 clamp does NOT apply at full resolution: the clamp
+  // exists only on the dropdowns' coarse pair, so an out-of-window authored
+  // max of 1100 resolves a floor of 0900-01-01 here (a coarse year picker
+  // with the same max floors at 1000 — see the twenty-sixth-wave fidelity
+  // block).
+  it('extends a full-resolution out-of-window floor without the coarse clamp', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { max: '1100-06-15' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: '0900-01-01', max: '0900-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '1100-06-15' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { min: '0900-01-02', max: '0900-01-02' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A picker with NEITHER authored bound is untouched: the runtime passes no
+  // native attributes at all there, so the upper edge stays genuinely
+  // unbounded and the twenty-sixth wave's floor-only interval stands.
+  it('keeps a neither-authored full picker unbounded above', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', {}, { greaterThanVariable: 'b' }),
+        b: datePicker('b', { min: '9999-01-01', max: '9999-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordinal differentFrom components use the parity machinery', () => {
+  const ordinal = (
+    name: string,
+    values: (string | number)[],
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'ordinal',
+    options: values.map((value) => ({ label: String(value), value })),
+    validation,
+  });
+
+  // The reviewer's own report: three required ordinals sharing the SAME two
+  // distinct option values in an odd differentFrom cycle. The general
+  // k-colourability limitation the parity machinery cites does not apply
+  // here — with every effective domain exactly the same two-value set the
+  // component is satisfiable iff it is two-colourable, and an odd cycle is
+  // not. The strip follows the established single-smallest-keyed-edge
+  // policy.
+  it('rejects the reviewer repro: an odd cycle over one shared two-value domain', () => {
+    const result = findValidationContradictions({
+      a: ordinal('a', [1, 2], { required: true, differentFrom: 'b' }),
+      b: ordinal('b', [1, 2], { required: true, differentFrom: 'c' }),
+      c: ordinal('c', [1, 2], { required: true, differentFrom: 'a' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror direction: the same triangle declared the other way around
+  // still strips exactly one declaration of the smallest-keyed edge.
+  it('rejects the mirror cycle declared in the opposite direction', () => {
+    const result = findValidationContradictions({
+      a: ordinal('a', ['low', 'high'], { differentFrom: 'c' }),
+      b: ordinal('b', ['low', 'high'], { differentFrom: 'a' }),
+      c: ordinal('c', ['low', 'high'], { differentFrom: 'b' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Accept guard: one member holding a THIRD option value bails the whole
+  // component — the assignment a=1, b=2, c=3 satisfies every rule.
+  it('accepts the same cycle when one member offers a third value', () => {
+    expect(
+      findValidationContradictions({
+        a: ordinal('a', [1, 2], { required: true, differentFrom: 'b' }),
+        b: ordinal('b', [1, 2], { required: true, differentFrom: 'c' }),
+        c: ordinal('c', [1, 2, 3], { required: true, differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: two-value domains that DIFFER between members bail too —
+  // a=1, b=2, c=3 satisfies the cycle, so {1,2} beside {2,3} must never be
+  // treated as one two-colourable domain.
+  it('accepts the cycle when two-value domains differ between members', () => {
+    expect(
+      findValidationContradictions({
+        a: ordinal('a', [1, 2], { required: true, differentFrom: 'b' }),
+        b: ordinal('b', [1, 2], { required: true, differentFrom: 'c' }),
+        c: ordinal('c', [2, 3], { required: true, differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: an even cycle is two-colourable — alternating the two
+  // values around it satisfies every rule.
+  it('accepts an even cycle over one shared two-value domain', () => {
+    expect(
+      findValidationContradictions({
+        a: ordinal('a', [1, 2], { differentFrom: 'b' }),
+        b: ordinal('b', [1, 2], { differentFrom: 'c' }),
+        c: ordinal('c', [1, 2], { differentFrom: 'd' }),
+        d: ordinal('d', [1, 2], { differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Singleton-domain members interact with parity exactly as boolean pins
+  // do: `a` (only 1) and `c` (only 2) sit an even number of hops apart, so
+  // any two-colouring of the shared {1,2} domain gives them the SAME value,
+  // yet their domains pin them to opposite ones.
+  it('rejects disagreeing singleton pins across an even-hop path', () => {
+    const result = findValidationContradictions({
+      a: ordinal('a', [1], { required: true, differentFrom: 'b' }),
+      b: ordinal('b', [1, 2], { required: true }),
+      c: ordinal('c', [2], { required: true, differentFrom: 'b' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedDifferentFromParity');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The agreeing-parity mirror stays satisfiable: both singletons pin the
+  // same value an even number of hops apart (a = c = 'yes', b = 'no').
+  it('accepts agreeing singleton pins across an even-hop path', () => {
+    expect(
+      findValidationContradictions({
+        a: ordinal('a', ['yes'], { required: true, differentFrom: 'b' }),
+        b: ordinal('b', ['yes', 'no'], { required: true }),
+        c: ordinal('c', ['yes'], { required: true, differentFrom: 'b' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Categorical variables never enter this machinery, even with exactly two
+  // options: the runtime stores a categorical selection as an ARRAY compared
+  // as an order-insensitive multiset, so a two-option categorical has four
+  // possible stored selections — the odd cycle below is genuinely
+  // satisfiable (e.g. {x}, {y}, {x,y}).
+  it('leaves an odd cycle of two-option categoricals alone', () => {
+    expect(
+      findValidationContradictions({
+        x: {
+          name: 'x',
+          type: 'categorical',
+          options: [
+            { label: 'X', value: 'x' },
+            { label: 'Y', value: 'y' },
+          ],
+          validation: { differentFrom: 'y' },
+        },
+        y: {
+          name: 'y',
+          type: 'categorical',
+          options: [
+            { label: 'X', value: 'x' },
+            { label: 'Y', value: 'y' },
+          ],
+          validation: { differentFrom: 'z' },
+        },
+        z: {
+          name: 'z',
+          type: 'categorical',
+          options: [
+            { label: 'X', value: 'x' },
+            { label: 'Y', value: 'y' },
+          ],
+          validation: { differentFrom: 'x' },
+        },
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — Thirtieth wave Fix 4: coarse DatePickers model the stable default window floor', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: a required year picker with no bounds at all
+  // always starts its dropdown at 1920 — the runtime's DEFAULT_MIN, a stable
+  // date-independent constant — so it can never lie strictly below a partner
+  // pinned to 1900.
+  it('rejects the reviewer repro: an unbounded year picker strictly below a partner pinned at 1900', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { type: 'year', min: '1900', max: '1900' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // Bracketing the floor to the year: a partner pinned AT the floor is still
+  // unreachable from strictly below (the floor's own emission is not below
+  // itself), while one pinned a single year above it is.
+  it('brackets the default floor at exactly 1920', () => {
+    const atFloor = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { type: 'year', min: '1920', max: '1920' }),
+    });
+    expect(atFloor).toHaveLength(1);
+    expect(atFloor[0]?.class).toBe('disjointBounds');
+
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { type: 'year', min: '1921', max: '1921' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A one-sided IN-window authored max gets the same default floor on its
+  // missing side — the runtime's fallback there is the identical stable
+  // edge.
+  it('floors an in-window max-only month picker at the default edge', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'month', max: '1980-06' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { type: 'month', min: '1920-01', max: '1920-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'month', max: '1980-06' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { type: 'month', min: '1920-02', max: '1920-02' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The today side stays unbounded: an in-horizon min-only picker's upper
+  // edge is date-dependent (it caps at the interview date), so no ceiling is
+  // modelled and a far-future partner stays accepted — the deliberate
+  // superset direction.
+  it('keeps the date-dependent today side unbounded', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2000' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '9000-01-01', max: '9000-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The floor flows into the discrete emission-set machinery exactly as an
+  // authored bound does: with only `max: '1925'` the year picker's window
+  // used to be open below (unenumerable), silently skipping the
+  // exact-instant check. Floored at 1920 it enumerates to the 1920-1925
+  // January instants, which overlap the month picker's convex interval while
+  // sharing no instant with its February-December emissions.
+  it('rejects a comparator-forced equality whose floored year window shares no instant with a month picker', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1925' },
+        { greaterThanOrEqualToVariable: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'month', min: '1920-02', max: '1920-12' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'the exact dates their pickers can ever emit share no instant',
+    );
+
+    // Widening the month window to include a January restores a genuinely
+    // shared instant (1920-01-01) inside the floored year window.
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1925' },
+          { greaterThanOrEqualToVariable: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { type: 'month', min: '1920-01', max: '1920-06' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // The floor seeds the chained bound propagation exactly as an authored
+  // bound does: the unbounded year picker's 1920 floor travels two strict
+  // hops up to `c`, whose pinned 1900 window lies below every value the
+  // chain admits — infeasible although each single hop looks fine.
+  it('seeds comparator chains from the default floor', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', {}, { lessThanVariable: 'c' }),
+      c: datePicker('c', { min: '1900-01-01', max: '1900-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain('form a comparison chain');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', {}, { lessThanVariable: 'c' }),
+        c: datePicker('c', { min: '1925-01-01', max: '1925-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The floor reaches the twenty-ninth wave's group-pin derivation through
+  // `coarseInstantsOf`: with only `max: '1921'`, `a`'s emission set is the
+  // floored {1920, 1921}, whose intersection with `b`'s {1921, 1922} is the
+  // single emission '1921' — the very value `c` is pinned to.
+  it('derives a group pin from a floored emission-set intersection', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1921' },
+        { sameAs: 'b', differentFrom: 'c' },
+      ),
+      b: datePicker('b', { type: 'year', min: '1921', max: '1922' }),
+      c: datePicker('c', { type: 'year', min: '1921', max: '1921' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+});
+
+describe('findValidationContradictions — Thirty-first wave: two-instant datetime differentFrom components use the parity machinery', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: three required full-resolution pickers each
+  // windowed to exactly two enumerable instants — the SAME two — in an odd
+  // differentFrom triangle. Three pairwise-different stored values cannot be
+  // drawn from two dates; with every effective domain exactly the same
+  // two-instant set the component is satisfiable iff it is two-colourable,
+  // and an odd cycle is not. The strip follows the established
+  // single-smallest-keyed-edge policy.
+  it('rejects the reviewer repro: an odd cycle over one shared two-instant window', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // A uniformly coarse component participates the same way: two year
+  // dropdowns are two enumerable stored strings ('2020'/'2021'), compared
+  // through the same period-start instants `coarseInstantsOf` emits.
+  it('rejects an odd cycle of year pickers spanning exactly two years', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2021' },
+        { differentFrom: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { type: 'year', min: '2020', max: '2021' },
+        { differentFrom: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Accept guard: an even cycle is two-colourable — alternating the two
+  // instants around it satisfies every rule.
+  it('accepts an even cycle over one shared two-instant window', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'd' },
+        ),
+        d: datePicker(
+          'd',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: one member enumerating a THIRD instant bails the whole
+  // component — a = Jan 1, b = Jan 2, c = Jan 3 satisfies every rule.
+  it('accepts the same cycle when one member enumerates a third instant', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2020-01-03' },
+          { differentFrom: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: two-instant windows that DIFFER between members bail too —
+  // a = Jan 1, b = Jan 2, c = Jan 3 satisfies the cycle, so {Jan 1, Jan 2}
+  // beside {Jan 2, Jan 3} must never be treated as one two-colourable
+  // domain.
+  it('accepts the cycle when two-instant windows differ between members', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-02', max: '2020-01-03' },
+          { differentFrom: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: a mixed-resolution component bails. Cross-resolution
+  // stored strings never compare equal ('2021' is not '2020-01-01'), so no
+  // cross-resolution set can qualify as "the same" — that equality question
+  // belongs to the mixed-resolution machinery, and the cycle here is
+  // genuinely satisfiable (a = Jan 1, b = Jan 2, c = '2021').
+  it('accepts the cycle when one member stores at a coarser resolution', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { type: 'year', min: '2020', max: '2021' },
+          { differentFrom: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: a member whose window lives on the symbolic interview-date
+  // origin has no enumerable fixed-calendar instants at all, so the
+  // component bails — fixed-origin windows are the only ones the domain
+  // model may enumerate.
+  it('accepts the cycle when one member is an anchorless relative picker', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        c: {
+          name: 'c',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          validation: { required: true, differentFrom: 'a' },
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  // Singleton-domain members interact with parity exactly as boolean and
+  // ordinal pins do — including singletons the disequality PRUNING derives:
+  // `b` loses Jan 1 to `a`'s pin and `d` loses Jan 2 to `e`'s, so `d` is
+  // forced to Jan 1 while the path parity through `c` forces it to Jan 2.
+  it('rejects disagreeing pins that the pruned two-instant chain forces together', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { min: '2020-01-01', max: '2020-01-01' }),
+      b: datePicker(
+        'b',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'a' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'b' },
+      ),
+      d: datePicker(
+        'd',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'c' },
+      ),
+      e: datePicker(
+        'e',
+        { min: '2020-01-02', max: '2020-01-02' },
+        { differentFrom: 'd' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedDifferentFromParity');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The agreeing-parity mirror stays satisfiable: with `e` pinned to Jan 1
+  // instead, alternating Jan 1 / Jan 2 down the chain satisfies every rule
+  // (a = Jan 1, b = Jan 2, c = Jan 1, d = Jan 2, e = Jan 1).
+  it('accepts the same chain when the pruned pins agree with the path parity', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { min: '2020-01-01', max: '2020-01-01' }),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'a' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        d: datePicker(
+          'd',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        e: datePicker(
+          'e',
+          { min: '2020-01-01', max: '2020-01-01' },
+          { differentFrom: 'd' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Pruning-interplay guard: a two-instant domain the disequality pruning
+  // empties outright is that pass's own report (twenty-eighth wave), whose
+  // strip removes one of the very differentFrom edges in play here — the
+  // parity check must bail rather than fold the SAME conflict into a second
+  // report and double-strip it.
+  it('reports a pruning-emptied domain exactly once', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2020-01-01', max: '2020-01-01' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'e' },
+      ),
+      e: datePicker('e', { min: '2020-01-02', max: '2020-01-02' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "b": differentFrom rules against pinned variables "a", "e" leave no selectable date',
+    );
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
     ]);
   });
 });

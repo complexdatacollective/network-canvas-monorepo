@@ -104,23 +104,24 @@ describe('findLegalReferenceTargets: analyser invocation count', () => {
       candidateIds,
     });
 
-    expect(analyser.calls).toBe(1);
+    // One baseline call (Thirtieth-wave Finding 2's candidate-free run,
+    // computed once per invocation) plus one shared batched call.
+    expect(analyser.calls).toBe(2);
     expect(legal.size).toBe(candidateIds.length);
   });
 
-  it('keeps the analyser call count bounded (not growing with candidate count) when a few candidates are reference-connected to the edited variable or to each other', () => {
-    // `linked` already targets `b` (the edited variable) with its own fixed
-    // rule, so it must be checked individually. `pairA`/`pairB` are mutually
-    // `sameAs` (their own fixed rule) but disjoint from `b` — only the first
-    // one iterated can share the batched call; the other still needs its own
-    // pruned call. Every other candidate has no reference rules at all.
+  it('keeps the analyser call count bounded (not growing with candidate count) when a few candidates are reference-connected to each other but not to the edited variable', () => {
+    // `pairA`/`pairB` are mutually `sameAs` (their own fixed rule) but
+    // disjoint from `b` — only the first one iterated can share the batched
+    // call; the other still needs its own pruned call. Every other candidate
+    // has no reference rules at all, and `b` itself starts with no external
+    // reference of its own, so the batched path stays available.
     const allVariables: Record<string, unknown> = {
       b: numberVariable('B'),
-      linked: numberVariable('linked', { lessThanVariable: 'b' }),
       pairA: numberVariable('pairA', { sameAs: 'pairB' }),
       pairB: numberVariable('pairB'),
     };
-    const candidateIds = ['linked', 'pairA', 'pairB'];
+    const candidateIds = ['pairA', 'pairB'];
     for (let index = 0; index < 50; index++) {
       const id = `v${index}`;
       allVariables[id] = numberVariable(id);
@@ -136,12 +137,158 @@ describe('findLegalReferenceTargets: analyser invocation count', () => {
       candidateIds,
     });
 
-    // One shared batch call for every disjoint, unclaimed component (the 50
-    // isolated candidates plus whichever of pairA/pairB claims the batch
-    // first) plus one individual call each for `linked` and the pair member
-    // that lost the race — never one call per candidate (53).
+    // One baseline call (Thirtieth-wave Finding 2), plus one shared batch
+    // call for every disjoint, unclaimed component (the 50 isolated
+    // candidates plus whichever of pairA/pairB claims the batch first),
+    // plus one individual call for the pair member that lost the race —
+    // never one call per candidate (52).
     expect(analyser.calls).toBeLessThanOrEqual(3);
     expect(analyser.calls).toBeLessThan(candidateIds.length);
+  });
+
+  it('falls back to one call per candidate once the edited variable already has an external fixed reference of its own', () => {
+    // Twenty-eighth-wave finding: `linked` already targets `b` (the edited
+    // variable) with its own fixed rule, which puts `b` in a non-trivial
+    // component BEFORE any candidate is chosen. A batched clone can only
+    // represent `b` under one synthetic id per candidate, so it cannot also
+    // carry `linked`'s edge into `b` — sharing the batch here would silently
+    // drop that edge from every OTHER candidate's judgement too (see
+    // `findLegalReferenceTargets: batched clone must retain the edited
+    // variable's incoming references` below for the resulting wrong
+    // answer). Once `b` has ANY external reference, batching is unavailable
+    // for every candidate, not only `linked` itself, so the call count
+    // degrades to one per candidate.
+    const allVariables: Record<string, unknown> = {
+      b: numberVariable('B'),
+      linked: numberVariable('linked', { lessThanVariable: 'b' }),
+    };
+    const candidateIds = ['linked'];
+    for (let index = 0; index < 50; index++) {
+      const id = `v${index}`;
+      allVariables[id] = numberVariable(id);
+      candidateIds.push(id);
+    }
+
+    findLegalReferenceTargets({
+      allVariables,
+      currentVariableId: 'b',
+      variableType: 'number',
+      validation: {},
+      ruleKey: 'lessThanVariable',
+      candidateIds,
+    });
+
+    // Plus one baseline call (Thirtieth-wave Finding 2), computed once
+    // regardless of how many candidates fall back to the individual path.
+    expect(analyser.calls).toBe(candidateIds.length + 1);
+  });
+});
+
+describe("findLegalReferenceTargets: batched clone must retain the edited variable's incoming references", () => {
+  beforeEach(() => {
+    analyser.calls = 0;
+  });
+
+  it("excludes a candidate that only becomes infeasible through a THIRD variable's fixed incoming edge into the edited variable", () => {
+    // x already requires x < a (a fixed rule of x's own, not under test) and
+    // is pinned to exactly 10, so a must be > 10. Candidate `farBelow` is
+    // pinned to exactly 5 and belongs to its own, otherwise-disjoint
+    // component before the rule under test is added — the batched path's
+    // eligibility check (candidate's own root vs `a`'s root) would normally
+    // wave it through. Choosing it as a's lessThanVariable target requires
+    // a < 5 as well as a > 10 (from x), which is infeasible — the FULL
+    // one-candidate draft analyser (`legalTargetsOneCallPerCandidate`,
+    // exercised via `findDraftContradictions`) correctly excludes it. A
+    // batched clone that drops x's `x < a` edge (because it deletes `a`'s
+    // own entry outright instead of keeping it addressable) would miss the
+    // chain and wrongly call it legal.
+    const allVariables: Record<string, unknown> = {
+      x: numberVariable('x', {
+        minValue: 10,
+        maxValue: 10,
+        lessThanVariable: 'a',
+      }),
+      a: numberVariable('a'),
+      farBelow: numberVariable('farBelow', { minValue: 5, maxValue: 5 }),
+      farAbove: numberVariable('farAbove', { minValue: 100, maxValue: 100 }),
+    };
+    const candidateIds = ['farBelow', 'farAbove'];
+    const input: ReferenceTargetLegalityInput = {
+      allVariables,
+      currentVariableId: 'a',
+      variableType: 'number',
+      validation: {},
+      ruleKey: 'lessThanVariable',
+      candidateIds,
+    };
+
+    const expected = legalTargetsOneCallPerCandidate(input);
+    const actual = findLegalReferenceTargets(input);
+
+    // Confirms the fixture exercises both an illegal candidate (the chain
+    // through x) and a legal one (10 < a < 100 is satisfiable).
+    expect(expected).toEqual(new Set(['farAbove']));
+    expect(actual).toEqual(expected);
+  });
+});
+
+describe('findLegalReferenceTargets: candidate legality via baseline-diff, not clone-ID membership', () => {
+  beforeEach(() => {
+    analyser.calls = 0;
+  });
+
+  // Thirtieth-wave Finding 2 / reviewer's demonstration: editing `a` with a
+  // draft `minValue: 10` while choosing a target for `a`'s `sameAs` rule.
+  // Candidate `b` carries no bound of its own on `a`'s side of the picture —
+  // the contradiction choosing it introduces lands entirely on `b`'s OWN
+  // pre-existing `lessThanVariable: 'c'` comparator (a `disjointBounds`
+  // contradiction between `b` and `c`, once `a`'s minValue propagates onto
+  // `b` through the candidate `sameAs` edge), never naming `b` itself, its
+  // batched clone (`a::b`), or `a`. The prior clone-ID-membership check
+  // therefore waved `b` through, and Architect offered a target whose
+  // selection immediately produced an unsavable inline error. `d` is a
+  // genuinely legal candidate — unconnected to anything — batched into the
+  // very same shared analyser call as `b`, to confirm the fix attributes the
+  // introduced contradiction to the right candidate rather than
+  // disqualifying every candidate the batch happens to contain.
+  it("excludes a candidate whose OWN pre-existing comparator breaks once the draft's bound propagates through it, while a genuinely legal candidate in the same batch stays offered", () => {
+    const allVariables: Record<string, unknown> = {
+      a: { name: 'a', type: 'number', validation: {} },
+      b: { name: 'b', type: 'number', validation: { lessThanVariable: 'c' } },
+      c: {
+        name: 'c',
+        type: 'number',
+        validation: { required: true, maxValue: 10 },
+      },
+      d: { name: 'd', type: 'number', validation: {} },
+    };
+    const candidateIds = ['b', 'd'];
+    const input: ReferenceTargetLegalityInput = {
+      allVariables,
+      currentVariableId: 'a',
+      variableType: 'number',
+      validation: { required: true, minValue: 10 },
+      ruleKey: 'sameAs',
+      candidateIds,
+    };
+
+    const expected = legalTargetsOneCallPerCandidate(input);
+    // Reset before the call under test: the oracle above makes its own
+    // analyser calls (one `findDraftContradictions` pass per candidate),
+    // which must not be counted against `findLegalReferenceTargets`'s own
+    // budget below.
+    analyser.calls = 0;
+    const actual = findLegalReferenceTargets(input);
+
+    // Confirms the fixture exercises both the illegal candidate (b, via its
+    // own comparator to c) and a genuinely legal one (d) in the same call.
+    expect(expected).toEqual(new Set(['d']));
+    expect(actual).toEqual(expected);
+    // One baseline call (computed once per invocation, not once per
+    // candidate) plus one shared batched call covering both b and d, which
+    // are disjoint from `a` and from each other — never a fallback to one
+    // call per candidate just to get this right.
+    expect(analyser.calls).toBe(2);
   });
 });
 

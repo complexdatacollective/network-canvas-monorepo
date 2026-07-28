@@ -361,6 +361,51 @@ describe('Migration V7 to V8', () => {
       ).toHaveProperty('validation.required', true);
     });
 
+    // Twenty-eighth-wave Finding 1: the v8 shape rule now accepts
+    // `options: []` on a componentless boolean directly (variable.ts), so
+    // this strip is no longer the only thing standing between a v7 import and
+    // rejection here — but it still runs ahead of the v8 parse, so a
+    // componentless v7 boolean with an empty options array was never
+    // import-blocked in the first place, and keeps migrating to the Yes/No
+    // default (rather than surfacing as a value-less `options: []` a v8
+    // Boolean-rendered NetworkComposer field could still choke on).
+    it('removes an explicitly empty options array from a componentless boolean variable too', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                hasChildren: {
+                  name: 'HasChildren',
+                  type: 'boolean',
+                  options: [],
+                  validation: { required: true },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as unknown as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      expect(
+        parsed.data?.codebook.node?.person?.variables?.hasChildren,
+      ).not.toHaveProperty('options');
+      expect(
+        parsed.data?.codebook.node?.person?.variables?.hasChildren,
+      ).toHaveProperty('validation.required', true);
+    });
+
     it('does not affect non-boolean variables', () => {
       const v7Protocol = {
         schemaVersion: 7 as const,
@@ -5627,6 +5672,323 @@ describe('Migration V7 to V8', () => {
         'validation.required',
         true,
       );
+    });
+  });
+
+  // Fuzz finding (migration-fuzz.test.ts): v7's loose validation object
+  // admits rule keys v8 has never defined, wrong-typed rule values, and
+  // rules parked on a variable type whose v8 rule set does not list them.
+  // All of them failed the v8 strict per-type pick and blocked the import.
+  describe('validation-rule shape strips', () => {
+    const migrateEgoVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: { variables } },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables ?? {};
+    };
+
+    it('strips a wrong-typed rule value without fabricating requiredness', () => {
+      const variables = migrateEgoVariables({
+        nickname: {
+          name: 'nickname',
+          type: 'text',
+          component: 'Text',
+          validation: { minLength: '3' },
+        },
+      });
+      expect(variables.nickname).not.toHaveProperty('validation.minLength');
+      expect(variables.nickname).not.toHaveProperty('validation.required');
+    });
+
+    it('strips unknown rule keys, keeping the known siblings', () => {
+      const variables = migrateEgoVariables({
+        nickname: {
+          name: 'nickname',
+          type: 'text',
+          component: 'Text',
+          validation: { pattern: '^a', minWords: 2, maxLength: 12 },
+        },
+      });
+      expect(variables.nickname).not.toHaveProperty('validation.pattern');
+      expect(variables.nickname).not.toHaveProperty('validation.minWords');
+      expect(variables.nickname).toHaveProperty('validation.maxLength', 12);
+    });
+
+    it('strips a wrong-typed reference target', () => {
+      const variables = migrateEgoVariables({
+        age: {
+          name: 'age',
+          type: 'number',
+          component: 'Number',
+          validation: { sameAs: 7 },
+        },
+      });
+      expect(variables.age).not.toHaveProperty('validation.sameAs');
+    });
+
+    it('strips a rule parked on a type v8 does not allow it on, preserving the implied requiredness', () => {
+      const variables = migrateEgoVariables({
+        nickname: {
+          name: 'nickname',
+          type: 'text',
+          component: 'Text',
+          validation: { minValue: 5 },
+        },
+      });
+      expect(variables.nickname).not.toHaveProperty('validation.minValue');
+      // v7 treated any min* validator as implying the field was required.
+      expect(variables.nickname).toHaveProperty('validation.required', true);
+    });
+
+    it('strips requiredAcceptsNull (no v8 variable type accepts it)', () => {
+      const variables = migrateEgoVariables({
+        age: {
+          name: 'age',
+          type: 'number',
+          component: 'Number',
+          validation: { requiredAcceptsNull: true, required: true },
+        },
+      });
+      expect(variables.age).not.toHaveProperty(
+        'validation.requiredAcceptsNull',
+      );
+      expect(variables.age).toHaveProperty('validation.required', true);
+    });
+
+    it('removes validation from a layout variable entirely', () => {
+      const variables = migrateEgoVariables({
+        pos: {
+          name: 'pos',
+          type: 'layout',
+          validation: { required: true },
+        },
+      });
+      expect(variables.pos).not.toHaveProperty('validation');
+    });
+  });
+
+  // Fuzz finding (migration-fuzz.test.ts): the v8 variable union has no
+  // member pairing a variable type with a control it cannot render, so a
+  // hand-edited or legacy pairing (or an unrecognised control name) failed
+  // every union member and blocked the import.
+  describe('component normalisation', () => {
+    const migrateEgoVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: { variables } },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables ?? {};
+    };
+
+    it("replaces a component that cannot render the variable's type with the type's standard control", () => {
+      const variables = migrateEgoVariables({
+        nickname: { name: 'nickname', type: 'text', component: 'Number' },
+      });
+      expect(variables.nickname).toHaveProperty('component', 'Text');
+    });
+
+    it("routes a datetime replacement by its parameters' shape", () => {
+      const variables = migrateEgoVariables({
+        lastSeen: {
+          name: 'lastSeen',
+          type: 'datetime',
+          component: 'Text',
+          parameters: { anchor: '2024-06-01', before: 180, after: 0 },
+        },
+        dob: {
+          name: 'dob',
+          type: 'datetime',
+          component: 'Toggle',
+          parameters: { type: 'year', min: '1950', max: '2026' },
+        },
+      });
+      expect(variables.lastSeen).toHaveProperty(
+        'component',
+        'RelativeDatePicker',
+      );
+      expect(variables.dob).toHaveProperty('component', 'DatePicker');
+    });
+
+    it('replaces a non-string component', () => {
+      const variables = migrateEgoVariables({
+        age: { name: 'age', type: 'number', component: 5 },
+      });
+      expect(variables.age).toHaveProperty('component', 'Number');
+    });
+
+    it('removes a component from a layout variable', () => {
+      const variables = migrateEgoVariables({
+        pos: { name: 'pos', type: 'layout', component: 'Text' },
+      });
+      expect(variables.pos).not.toHaveProperty('component');
+    });
+  });
+
+  // Fuzz finding (migration-fuzz.test.ts): v8 option values are strings or
+  // whole numbers with string labels, and boolean options are labelled
+  // true/false choices; v7-legal fractional values, numeric labels, and
+  // wrong-typed boolean entries all blocked the import.
+  describe('option entry normalisation', () => {
+    const migrateEgoVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: { variables } },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables ?? {};
+    };
+
+    it('coerces a fractional numeric option value to its string form', () => {
+      const variables = migrateEgoVariables({
+        rating: {
+          name: 'rating',
+          type: 'ordinal',
+          component: 'RadioGroup',
+          options: [
+            { label: 'Half', value: 0.5 },
+            { label: 'One', value: 1 },
+          ],
+        },
+      });
+      const rating = variables.rating;
+      if (!rating || !('options' in rating)) {
+        throw new Error('expected rating options');
+      }
+      expect(rating.options).toEqual([
+        { label: 'Half', value: '0.5' },
+        { label: 'One', value: 1 },
+      ]);
+    });
+
+    it('coerces a numeric option label to its display string', () => {
+      const variables = migrateEgoVariables({
+        rating: {
+          name: 'rating',
+          type: 'categorical',
+          component: 'CheckboxGroup',
+          options: [
+            { label: 7, value: 'seven' },
+            { label: 'Eight', value: 'eight' },
+          ],
+        },
+      });
+      const rating = variables.rating;
+      if (!rating || !('options' in rating)) {
+        throw new Error('expected rating options');
+      }
+      expect(rating.options).toEqual([
+        { label: '7', value: 'seven' },
+        { label: 'Eight', value: 'eight' },
+      ]);
+    });
+
+    it('drops a malformed boolean option entry, keeping the well-formed one', () => {
+      const variables = migrateEgoVariables({
+        employed: {
+          name: 'employed',
+          type: 'boolean',
+          component: 'Boolean',
+          options: [
+            { label: 'Yes', value: 'true' },
+            { label: 'No', value: false },
+          ],
+        },
+      });
+      const employed = variables.employed;
+      if (!employed || !('options' in employed)) {
+        throw new Error('expected employed options');
+      }
+      expect(employed.options).toEqual([{ label: 'No', value: false }]);
+    });
+
+    it('removes boolean options entirely when no well-formed entry remains', () => {
+      const variables = migrateEgoVariables({
+        employed: {
+          name: 'employed',
+          type: 'boolean',
+          component: 'Boolean',
+          options: [
+            { label: 'Yes', value: 1 },
+            { label: 2, value: false },
+          ],
+        },
+      });
+      // Falls back to the runtime's standard Yes/No choices.
+      expect(variables.employed).not.toHaveProperty('options');
+    });
+  });
+
+  // Fuzz finding (migration-fuzz.test.ts): a datetime `parameters` that is
+  // not a plain object (a hand-edited string, list, or null) fails both v8
+  // parameters strictObjects and blocked the import.
+  describe('wrong-typed datetime parameters record', () => {
+    const migrateDatetime = (parameters: unknown) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: {},
+          ego: {
+            variables: {
+              dob: {
+                name: 'dob',
+                type: 'datetime',
+                component: 'DatePicker',
+                parameters,
+              },
+            },
+          },
+        },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables?.dob;
+    };
+
+    it('removes a string parameters record', () => {
+      expect(migrateDatetime('full')).not.toHaveProperty('parameters');
+    });
+
+    it('removes an array parameters record', () => {
+      expect(migrateDatetime([])).not.toHaveProperty('parameters');
+    });
+
+    it('removes a null parameters record', () => {
+      expect(migrateDatetime(null)).not.toHaveProperty('parameters');
     });
   });
 });
