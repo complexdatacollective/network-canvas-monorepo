@@ -1046,12 +1046,17 @@ const hasEmptyOrigin = (group: GroupIntervals): boolean =>
 
 /**
  * A boolean variable's effective domain, for the singleton-domain
- * `differentFrom` check (fifth-wave Finding 5). `booleanOptionsSchema`
- * (variable.ts) permits an `options` array exposing only one of {true,
- * false} — unlike `optionValues` above, ABSENT options data falls back to the
- * full two-value domain rather than being treated as unusable: an
- * options-less boolean renders fresco-ui's BooleanField Yes/No default, so
- * the unrestricted domain is the correct model.
+ * `differentFrom` check (fifth-wave Finding 5). Only reached when the
+ * variable's `component` is explicitly `'Boolean'` — see Twenty-first-wave
+ * Finding 1 below for why every other case (Toggle, or no declared component
+ * at all) short-circuits to the unrestricted two-value domain.
+ *
+ * Within that `'Boolean'` case, `booleanOptionsSchema` (variable.ts) permits
+ * an `options` array exposing only one of {true, false} — unlike
+ * `optionValues` above, ABSENT options data falls back to the full two-value
+ * domain rather than being treated as unusable: an options-less choice
+ * control renders fresco-ui's BooleanField Yes/No default, so the
+ * unrestricted domain is the correct model.
  *
  * Thirteenth-wave Finding 2: an EXPLICITLY EMPTY array is different, and no
  * longer shares that fallback. BooleanField defaults its options only when
@@ -1070,72 +1075,53 @@ const hasEmptyOrigin = (group: GroupIntervals): boolean =>
  * override `component` while keeping the codebook `options`, so a
  * Toggle-rendered boolean reaches here carrying an options list it never
  * renders. Reading it pinned that variable to a single value and made a
- * satisfiable `differentFrom` look unsatisfiable. An ABSENT (or null, per this
- * same sweep) component still reads `options`: with no override, the codebook
- * default IS the rendering, and BooleanField is the choice control.
+ * satisfiable `differentFrom` look unsatisfiable.
  *
- * Twenty-first-wave investigation: the audit sweep above fixes every call
- * site that can supply an EFFECTIVE component — schema.ts's
- * `validateComposerFieldContradictions` overlay always sets `component:
- * field.component` for a variable a NetworkComposer field writes, so that
- * check already treats a Toggle-rendered singleton-boolean pair as
- * unpinned. It does NOT fix `rejectValidationContradictions`
- * (variable.ts), chained directly onto `VariablesSchema` /
- * `EdgeVariablesSchema` / `EgoVariablesSchema` and run while parsing the
- * CODEBOOK alone, with no `stages` in scope. Confirmed by construction: (1)
- * fresco-ui's ToggleField (packages/fresco-ui/src/form/fields/ToggleField.tsx)
- * takes no `options` prop at all — a Toggle is unconditionally two-valued;
- * (2) every non-NetworkComposer field path (`AlterForm`, `AlterEdgeForm`,
- * `EgoForm`, `NameGenerator`'s form, `FamilyPedigree`'s `nodeConfig.form` —
- * all built on the shared `FormFieldSchema`) resolves through schema.ts's
- * `validateFormFieldVariable`, which REJECTS a variable used there unless
- * the CODEBOOK itself declares an explicit `component` — so a componentless
- * boolean is renderable ONLY by a NetworkComposer field, never by a shared
- * form field; (3) `ComposerFormFieldSchema.component` is required and drawn
- * from every control `VARIABLE_TYPE_COMPONENTS['boolean']` lists (`Boolean`
- * and `Toggle`), independent of what the codebook variable declares, so a
- * composer field can override an EXPLICIT codebook `component: 'Boolean'`
- * to `Toggle` too. A protocol reproducing the reviewer's exact report —
- * two singleton-`true` boolean node variables, `differentFrom` between
- * them, both rendered by NetworkComposer fields with `component: 'Toggle'`
- * — was confirmed (via `ProtocolSchemaV8.safeParse`) to still be rejected at
- * HEAD, anchored at `codebook.node.person.variables.<id>.validation.
- * differentFrom`, i.e. at the codebook layer, not the overlay.
+ * Twenty-first-wave Finding 1 extends that same reasoning to the case the
+ * audit sweep left standing: an ABSENT (or null) `component`, read at the
+ * CODEBOOK layer, does NOT mean "the codebook default IS the rendering".
+ * `rejectValidationContradictions` (variable.ts), chained directly onto
+ * `VariablesSchema` / `EdgeVariablesSchema` / `EgoVariablesSchema`, runs
+ * while parsing the codebook alone, with no `stages` in scope — so for a
+ * componentless boolean it can never learn which control actually renders
+ * it. And the control is NOT determined by the codebook: schema.ts's
+ * `validateFormFieldVariable` rejects a variable used by any shared form
+ * field (`AlterForm`, `AlterEdgeForm`, `EgoForm`, `NameGenerator`'s form,
+ * `FamilyPedigree`'s `nodeConfig.form` — all built on `FormFieldSchema`)
+ * unless the codebook itself declares an explicit `component`, so a
+ * componentless boolean is renderable ONLY by a NetworkComposer field — and
+ * `ComposerFormFieldSchema.component` is required and drawn from every
+ * control `VARIABLE_TYPE_COMPONENTS['boolean']` lists (`Boolean` and
+ * `Toggle`), independent of what the codebook declares, so the field's own
+ * choice, not the codebook's `options`, is what a participant actually sees.
+ * Pinning from `options` for a componentless variable therefore pinned a
+ * domain the codebook cannot know: a protocol reproducing the reviewer's
+ * report — two componentless singleton-`true` boolean node variables,
+ * `differentFrom` between them, both rendered by NetworkComposer fields with
+ * `component: 'Toggle'` — was confirmed rejected at `codebook.node.person.
+ * variables.<id>.validation.differentFrom` even though `ToggleField`
+ * (fresco-ui) takes no `options` prop and is unconditionally two-valued.
  *
- * This function cannot close that gap: `rejectValidationContradictions`
- * calls `findValidationContradictions` with the bare codebook variables,
- * so a componentless (or explicit-`'Boolean'`) singleton-boolean pair
- * reaches `booleanDomain` in EXACTLY the shape the fifth-wave Finding 5
- * tests below use (no `component` key at all) — there is no signal on the
- * object itself to tell "this pair will only ever render via a
- * NetworkComposer Toggle override" apart from "this pair might render via
- * a form field that honours `options` exactly as declared", which the
- * fifth-wave tests deliberately hold onto as a genuine detection. Making
- * `booleanDomain` stop trusting `options` for a null/undefined (or
- * explicit `'Boolean'`) component would flip the fifth-wave "rejects two
- * true-only booleans joined by differentFrom" / "still treats a singleton
- * options array as a pinned value" tests from reject to accept, and doing
- * that without deliberate sign-off is exactly the "STOP and report, don't
- * silently edit" case: those tests encode a real, still-reachable detection
- * (a componentless/`'Boolean'` singleton-boolean pair used nowhere but a
- * shared form field, or a NetworkComposer field that keeps `component:
- * 'Boolean'`) that this function cannot distinguish from the reviewer's
- * false-rejection case without protocol context — and threading that
- * context into a record-level schema is exactly what this wave was told
- * to avoid. No code changed here as a result: this residual false
- * rejection — a codebook-only componentless (or `'Boolean'`-declared)
- * singleton-boolean `differentFrom` pair intended for EXCLUSIVE
- * NetworkComposer Toggle rendering — is a documented, deliberate
- * limitation of the record-level check, pinned by the tests immediately
- * below.
+ * An EXPLICIT `component: 'Boolean'` stays on the options-reading path: the
+ * codebook has committed to the choice control, which DOES honour `options`,
+ * so pinning from them is a rendering the codebook actually determines. A
+ * NetworkComposer field is still free to override that to `Toggle`, but that
+ * override is exactly what schema.ts's `validateComposerFieldContradictions`
+ * stage-effective overlay exists to catch: it re-runs this analyser with the
+ * composer field's own `component` overlaid on the codebook variable, and
+ * with the codebook-level report now gone the overlay's own contradiction is
+ * no longer suppressed as a duplicate of the (nonexistent) baseline one. So a
+ * genuine Toggle-less singleton-boolean `differentFrom` pair (one whose only
+ * renderer keeps `component: 'Boolean'`, explicitly or by inheriting the
+ * codebook default) is still reported — just anchored at the field, not the
+ * codebook rule, and only once a stage exists to supply the missing context.
+ * A componentless pair used by no composer field at all renders nowhere, so
+ * nothing is contradictory.
  */
 const booleanDomain = (variable: unknown): Set<boolean> => {
   const record = asRecord(variable);
-  const component = record?.component;
-  if (component != null && component !== 'Boolean') {
-    return new Set([true, false]);
-  }
-  const options = record?.options;
+  if (record?.component !== 'Boolean') return new Set([true, false]);
+  const options = record.options;
   if (!Array.isArray(options)) return new Set([true, false]);
   if (options.length === 0) return new Set();
   const domain = new Set<boolean>();

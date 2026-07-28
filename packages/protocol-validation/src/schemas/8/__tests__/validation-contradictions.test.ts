@@ -492,10 +492,16 @@ describe('findValidationContradictions — eighth-wave Finding 1: boolean domain
   const trueOnly = [{ label: 'Yes', value: true }];
   const falseOnly = [{ label: 'No', value: false }];
 
+  // Twenty-first-wave Finding 1: singleton `options` only pin a boolean's
+  // domain when the codebook declares `component: 'Boolean'` — the codebook
+  // alone cannot otherwise know which control renders it. These fixtures
+  // declare it explicitly so they keep exercising the group-level domain
+  // check this block targets, rather than the (now-unpinned) componentless
+  // case.
   it('rejects a true-only boolean sameAs a false-only boolean', () => {
     const result = findValidationContradictions({
-      a: boolean('a', { sameAs: 'b' }, trueOnly),
-      b: boolean('b', {}, falseOnly),
+      a: { ...boolean('a', { sameAs: 'b' }, trueOnly), component: 'Boolean' },
+      b: { ...boolean('b', {}, falseOnly), component: 'Boolean' },
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
@@ -538,8 +544,14 @@ describe('findValidationContradictions — eighth-wave Finding 1: boolean domain
   // migration input, so this exercises that defensive path directly.
   it('rejects a comparator-only true-only vs false-only boolean pair', () => {
     const result = findValidationContradictions({
-      a: boolean('a', { greaterThanOrEqualToVariable: 'b' }, trueOnly),
-      b: boolean('b', { greaterThanOrEqualToVariable: 'a' }, falseOnly),
+      a: {
+        ...boolean('a', { greaterThanOrEqualToVariable: 'b' }, trueOnly),
+        component: 'Boolean',
+      },
+      b: {
+        ...boolean('b', { greaterThanOrEqualToVariable: 'a' }, falseOnly),
+        component: 'Boolean',
+      },
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
@@ -788,10 +800,21 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
   // Sixth-wave Finding 2 renamed this class from 'singletonBooleanDomain' to
   // 'pinnedEqualDifferentFrom' and generalised the message when the boolean
   // check was folded into the type-agnostic pinned-value check.
+  //
+  // Twenty-first-wave Finding 1: singleton `options` only pin a boolean's
+  // domain when the codebook declares `component: 'Boolean'` — a
+  // componentless boolean's rendering is undetermined at the codebook layer
+  // (it is renderable only by a NetworkComposer field, which supplies its
+  // own component). These fixtures declare it explicitly so the pair still
+  // expresses a rendering the codebook actually determines, preserving the
+  // genuine singleton-domain detection this block targets.
   it('rejects two true-only booleans joined by differentFrom', () => {
     const result = findValidationContradictions({
-      a: boolean('a', { differentFrom: 'b' }, trueOnly),
-      b: boolean('b', {}, trueOnly),
+      a: {
+        ...boolean('a', { differentFrom: 'b' }, trueOnly),
+        component: 'Boolean',
+      },
+      b: { ...boolean('b', {}, trueOnly), component: 'Boolean' },
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
@@ -863,10 +886,16 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
     ).toEqual([]);
   });
 
+  // Twenty-first-wave Finding 1: as above, an explicit `component: 'Boolean'`
+  // is what makes the singleton `options` array a rendering the codebook
+  // actually determines.
   it('still treats a singleton options array as a pinned value', () => {
     const result = findValidationContradictions({
-      a: boolean('a', { differentFrom: 'b' }, trueOnly),
-      b: boolean('b', {}, trueOnly),
+      a: {
+        ...boolean('a', { differentFrom: 'b' }, trueOnly),
+        component: 'Boolean',
+      },
+      b: { ...boolean('b', {}, trueOnly), component: 'Boolean' },
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
@@ -2844,22 +2873,29 @@ describe('findValidationContradictions — Audit sweep: a boolean domain follows
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
   });
 
-  it('still pins a singleton-options boolean with no component', () => {
-    const result = findValidationContradictions({
-      a: boolean('a', undefined, trueOnly, { differentFrom: 'b' }),
-      b: boolean('b', undefined, trueOnly),
-    });
-    expect(result).toHaveLength(1);
-    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  // Twenty-first-wave Finding 1 supersedes this block's earlier assumption
+  // that an absent/null `component` still reads `options` because "with no
+  // override, the codebook default IS the rendering". At the codebook layer
+  // there is no stage in scope, so a componentless boolean's rendering is
+  // genuinely unknown — it is renderable only by a NetworkComposer field,
+  // which always supplies its own `component` and may pick `Toggle` — so
+  // this no longer pins, mirroring the Toggle case above.
+  it('does not pin a singleton-options boolean with no component', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', undefined, trueOnly, { differentFrom: 'b' }),
+        b: boolean('b', undefined, trueOnly),
+      }),
+    ).toEqual([]);
   });
 
-  it('still pins a singleton-options boolean whose component is null', () => {
-    const result = findValidationContradictions({
-      a: boolean('a', null, trueOnly, { differentFrom: 'b' }),
-      b: boolean('b', null, trueOnly),
-    });
-    expect(result).toHaveLength(1);
-    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  it('does not pin a singleton-options boolean whose component is null', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', null, trueOnly, { differentFrom: 'b' }),
+        b: boolean('b', null, trueOnly),
+      }),
+    ).toEqual([]);
   });
 
   // A Toggle offers both values, so disjoint singleton options can no longer
@@ -3344,40 +3380,60 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: large ch
   });
 });
 
-// Twenty-first-wave investigation (reviewer finding on booleanDomain): the
-// audit sweep above already makes the STAGE-EFFECTIVE overlay check
+// Twenty-first-wave Finding 1 (reviewer finding on booleanDomain, resolved):
+// the audit sweep above already made the STAGE-EFFECTIVE overlay check
 // (schema.ts's `validateComposerFieldContradictions`) correctly unpin a
 // Toggle-rendered singleton-boolean pair — see "does not pin a
 // singleton-options boolean rendered by a Toggle" above. The reviewer's
-// report is that `rejectValidationContradictions` (variable.ts), chained
+// report was that `rejectValidationContradictions` (variable.ts), chained
 // directly onto the codebook's `VariablesSchema`, runs BEFORE any stage
 // exists and therefore never sees a composer field's `component` override at
-// all: it only ever sees the bare codebook variable, which — because a
+// all: it only ever saw the bare codebook variable, which — because a
 // componentless boolean is renderable ONLY by a NetworkComposer field
 // (confirmed: every shared-form-field path routes through schema.ts's
 // `validateFormFieldVariable`, which rejects a componentless variable
 // outright) — carries no reliable signal either way.
 //
-// This is reproduced below at the full protocol level to confirm it is a
-// real, current gap rather than a hypothetical one. Closing it would
-// require `booleanDomain` to stop trusting `options` for a null/undefined
-// (or explicit `'Boolean'`) `component`, which is EXACTLY the input shape
-// the fifth-wave Finding 5 tests above use for a still-genuine detection
-// (a singleton-boolean pair that is never composer-Toggle-rendered) — so
-// making that change here would silently flip those tests from reject to
-// accept. Per instruction, that decision is surfaced rather than made
-// silently: no behaviour changed, and this test documents the current,
-// known limitation rather than a desired outcome.
-describe('findValidationContradictions — Twenty-first-wave investigation: codebook-level check has no stage context', () => {
-  it('documents a known false rejection: a componentless singleton-true boolean pair rendered exclusively as Toggle by NetworkComposer fields is still rejected at the codebook layer', () => {
-    const base = structuredClone(createBaseProtocol()) as ReturnType<
-      typeof createBaseProtocol
-    > & {
-      codebook: {
-        node: { person: { variables: Record<string, unknown> } };
-      };
+// The resolution: `booleanDomain` now only pins from `options` when the
+// codebook declares `component: 'Boolean'` explicitly; an absent/null
+// component reads as an unknowable (two-value) domain instead of trusting
+// the codebook's `options`, closing the false rejection. This does not
+// erase the genuine detection — it moves it to the stage-effective overlay,
+// which now sees a `pinnedEqualDifferentFrom` contradiction the (silent)
+// codebook-level baseline no longer reports, so the overlay's own dedup
+// against that baseline no longer suppresses it (see the `baseKeys` diff in
+// `validateComposerFieldContradictions`). The four cases below confirm the
+// full shape at the protocol level: the reviewer's Toggle case now accepts,
+// the same pair rendered with `component: 'Boolean'` is still caught (by the
+// overlay instead of the codebook), a componentless pair with no composer
+// stage at all has nothing to contradict, and an explicit `component:
+// 'Boolean'` pair is still caught at the codebook layer exactly as before.
+describe('findValidationContradictions — Twenty-first-wave Finding 1: componentless boolean domain follows the rendering stage, not the codebook', () => {
+  type BaseProtocol = ReturnType<typeof createBaseProtocol> & {
+    codebook: {
+      node: { person: { variables: Record<string, unknown> } };
     };
-    const protocol = {
+  };
+
+  const booleanVariable = (name: string, component: 'Boolean' | undefined) => ({
+    name,
+    type: 'boolean',
+    ...(component !== undefined ? { component } : {}),
+    options: [{ label: 'Yes', value: true }],
+  });
+
+  /**
+   * A base protocol carrying a `differentFrom`-joined singleton-`true`
+   * boolean pair (`boolA`/`boolB`) on the `person` node, with the codebook
+   * variables' own `component` and the protocol's `stages` array both
+   * caller-controlled — the two axes these tests vary independently.
+   */
+  const protocolWithBooleanPair = (
+    variableComponent: 'Boolean' | undefined,
+    stages: unknown[] | undefined,
+  ) => {
+    const base = structuredClone(createBaseProtocol()) as BaseProtocol;
+    return {
       ...base,
       codebook: {
         ...base.codebook,
@@ -3388,55 +3444,104 @@ describe('findValidationContradictions — Twenty-first-wave investigation: code
             variables: {
               ...base.codebook.node.person.variables,
               boolA: {
-                name: 'BoolA',
-                type: 'boolean',
-                options: [{ label: 'Yes', value: true }],
+                ...booleanVariable('BoolA', variableComponent),
                 validation: { differentFrom: 'boolB' },
               },
-              boolB: {
-                name: 'BoolB',
-                type: 'boolean',
-                options: [{ label: 'Yes', value: true }],
-              },
+              boolB: booleanVariable('BoolB', variableComponent),
             },
           },
         },
       },
-      stages: [
-        {
-          id: 'nc1',
-          label: 'Build the network',
-          type: 'NetworkComposer',
-          subject: { entity: 'node', type: 'person' },
-          quickAdd: 'name',
-          layoutVariable: 'layoutPosition',
-          background: { concentricCircles: 4 },
-          nodeForm: {
-            fields: [
-              { variable: 'boolA', component: 'Toggle', label: 'A?' },
-              { variable: 'boolB', component: 'Toggle', label: 'B?' },
-            ],
-          },
-        },
-      ],
+      ...(stages !== undefined ? { stages } : {}),
     };
+  };
+
+  const networkComposerStage = (component: 'Toggle' | 'Boolean') => ({
+    id: 'nc1',
+    label: 'Build the network',
+    type: 'NetworkComposer',
+    subject: { entity: 'node', type: 'person' },
+    quickAdd: 'name',
+    layoutVariable: 'layoutPosition',
+    background: { concentricCircles: 4 },
+    nodeForm: {
+      fields: [
+        { variable: 'boolA', component, label: 'A?' },
+        { variable: 'boolB', component, label: 'B?' },
+      ],
+    },
+  });
+
+  // The reviewer's exact report: componentless codebook variables, rendered
+  // exclusively by NetworkComposer fields with `component: 'Toggle'`.
+  // ToggleField takes no `options` prop and is unconditionally two-valued,
+  // so this is genuinely satisfiable and must be accepted.
+  it('accepts a componentless singleton-true boolean pair rendered exclusively as Toggle by NetworkComposer fields', () => {
+    const protocol = protocolWithBooleanPair(undefined, [
+      networkComposerStage('Toggle'),
+    ]);
 
     const result = ProtocolSchemaV8.safeParse(protocol);
 
-    // Still rejected today: this is the documented limitation, not the
-    // desired end state. If this ever starts passing, the codebook-level
-    // gap has been closed elsewhere and this test (and its surrounding
-    // comment, and the JSDoc "Twenty-first-wave investigation" paragraph on
-    // `booleanDomain`) should be revisited rather than left stale.
+    expect(result.success).toBe(true);
+  });
+
+  // The important counterpart: the SAME componentless codebook pair, but the
+  // NetworkComposer fields render the `Boolean` choice control instead — a
+  // genuine contradiction, since Boolean honours `options` and both fields
+  // are pinned to `true`. This proves detection moved to the stage-effective
+  // overlay rather than vanishing: the codebook-level check no longer
+  // reports anything (componentless, so `booleanDomain` treats it as
+  // two-valued), so the rejection can only come from
+  // `validateComposerFieldContradictions` overlaying `component: 'Boolean'`
+  // from the fields onto the codebook variables and re-running the analyser.
+  it('still rejects the same pair when the NetworkComposer fields render Boolean choice controls', () => {
+    const protocol = protocolWithBooleanPair(undefined, [
+      networkComposerStage('Boolean'),
+    ]);
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+
     expect(result.success).toBe(false);
     if (!result.success) {
       const issue = result.error.issues.find((candidate) =>
         candidate.message.includes('must differ but their rules pin both'),
       );
       expect(issue).toBeDefined();
-      // Anchored at the codebook variable, not at the NetworkComposer field
-      // — confirming the rejection comes from the protocol-context-free
-      // record-level check, not the (already-correct) stage overlay.
+      // Anchored at the NetworkComposer field, not the codebook variable —
+      // confirming this rejection comes from the stage-effective overlay,
+      // not a (nonexistent) codebook-level report.
+      expect(issue?.path.slice(0, 2)).toEqual(['stages', 0]);
+    }
+  });
+
+  // A componentless pair that no composer field (or any other stage)
+  // renders at all: nothing determines its runtime control, so nothing is
+  // contradictory. The base protocol's own default stages (a NameGenerator
+  // using unrelated variables) are left in place to confirm an unrelated
+  // stage does not itself trigger a report.
+  it('accepts a componentless singleton-true boolean pair with no composer stage at all', () => {
+    const protocol = protocolWithBooleanPair(undefined, undefined);
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+
+    expect(result.success).toBe(true);
+  });
+
+  // An explicit `component: 'Boolean'` pair: the codebook itself commits to
+  // the choice control, so this stays rejected at the codebook layer exactly
+  // as before this wave — unchanged behaviour, confirmed end-to-end.
+  it('still rejects an explicit component: Boolean singleton pair at the codebook layer, unchanged', () => {
+    const protocol = protocolWithBooleanPair('Boolean', undefined);
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((candidate) =>
+        candidate.message.includes('must differ but their rules pin both'),
+      );
+      expect(issue).toBeDefined();
       expect(issue?.path.slice(0, 2)).toEqual(['codebook', 'node']);
     }
   });
