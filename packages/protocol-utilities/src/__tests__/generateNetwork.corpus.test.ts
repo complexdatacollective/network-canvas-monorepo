@@ -25,12 +25,37 @@ import { analyseFeasibility } from '../generateNetwork/constraints/feasibility';
  * 2. Every accepted shape generates on every seed, with every emitted value
  *    satisfying every rule.
  *
+ * Every shape carries an edge type as well as a node type: a name generator of
+ * a fixed size, a DyadCensus over its people, and sometimes a
+ * TieStrengthCensus answering the same edge type again. The edge type's
+ * variables come from the same rule grammar the node families use, plus at
+ * most one `unique` variable — which is what puts the entity COUNT inside the
+ * oracle's reach. Without a `unique` rule nothing measures a variable's value
+ * space against how many entities the run builds, so a census pair count could
+ * be narrowed unsoundly and every assertion here would still pass.
+ *
+ * Nothing here fixes a value: no prompt carries `additionalAttributes` and no
+ * roster is supplied, so the interaction between a fixed value and a `unique`
+ * slot is out of this corpus' reach by construction rather than by oversight.
+ * An edge could not reach it in any case — `analyseFeasibility` gives every
+ * edge scope no fixed values at all, because nothing writes onto an edge that
+ * the draw did not choose.
+ *
  * Scale is environment-driven so CI stays fast while the same file provides
  * the full evidence run: CORPUS_SHAPES (total shapes), CORPUS_SEEDS (seeds
  * per accepted shape), CORPUS_SHARD ("i/n" to split a large run across
  * processes), CORPUS_REPORT=1 to print the distribution summary.
  */
 const TODAY = '2026-07-27';
+
+/**
+ * A per-pair probability every pair clears, so the worst-case pair count the
+ * analysis reasons about is also the count the run really builds — which is
+ * what lets the generation half assert an exact edge count rather than a
+ * bound. `createEdgesForPairs` draws `randomFloat(0, 1)`, whose faker stream
+ * is half-open at the top, so `< 1` holds for every pair.
+ */
+const ALWAYS_PAIRED = { min: 1, max: 1 };
 
 /**
  * A malformed scale variable must fail loudly: `Number('abc')` is NaN, and a
@@ -61,7 +86,10 @@ if (
   throw new Error(`Invalid CORPUS_SHARD "${SHARD}", expected "i/n"`);
 }
 
-const config = resolveGenerationConfig({ today: TODAY });
+const config = resolveGenerationConfig({
+  today: TODAY,
+  censusEdgeProbability: ALWAYS_PAIRED,
+});
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -93,12 +121,26 @@ type CorpusVariable = {
   dateMax?: string;
   options?: number[];
   rules: CorpusRule[];
+  /** Declared `unique: true`. Only ever set on an isolated edge variable. */
+  unique?: true;
 };
 
 type CorpusShape = {
   index: number;
   family: 'chain' | 'pinned' | 'sameAs' | 'scalarPair' | 'mixed';
   variables: CorpusVariable[];
+  /** The name generator's fixed node count, which decides the pair count. */
+  nodeCount: number;
+  /** How many prompts of the census name the edge type, each reusing the last's edges. */
+  censusPrompts: number;
+  edgeVariables: CorpusVariable[];
+  /** The edge variable declared `unique`, where the shape has one. */
+  uniqueEdgeId?: string;
+  /**
+   * The edge variable a following TieStrengthCensus rewrites over the edges the
+   * DyadCensus left, where the shape has one.
+   */
+  tieStrengthEdgeId?: string;
 };
 
 const COMPARATORS: RuleKind[] = [
@@ -178,7 +220,10 @@ function variableOf(
   return { id, type, rules: [] };
 }
 
-function chainShape(index: number, rand: Rand): CorpusShape {
+/** One family's variables, before the shape's edge half is drawn around them. */
+type NodeFamily = Pick<CorpusShape, 'family' | 'variables'>;
+
+function chainShape(rand: Rand): NodeFamily {
   const edgeCount = rand.int(3, 5);
   const kind = rand.pick(['number', 'datetime'] as const);
   const variables: CorpusVariable[] = [];
@@ -207,10 +252,10 @@ function chainShape(index: number, rand: Rand): CorpusShape {
     });
   }
 
-  return { index, family: 'chain', variables };
+  return { family: 'chain', variables };
 }
 
-function pinnedShape(index: number, rand: Rand): CorpusShape {
+function pinnedShape(rand: Rand): NodeFamily {
   const count = rand.int(2, 3);
   const variables: CorpusVariable[] = [];
   for (let i = 0; i < count; i++) {
@@ -233,10 +278,10 @@ function pinnedShape(index: number, rand: Rand): CorpusShape {
     });
   }
 
-  return { index, family: 'pinned', variables };
+  return { family: 'pinned', variables };
 }
 
-function sameAsShape(index: number, rand: Rand): CorpusShape {
+function sameAsShape(rand: Rand): NodeFamily {
   const type = rand.pick(['number', 'ordinal', 'boolean', 'datetime'] as const);
   const first = variableOf('v0', type, rand);
   const second = variableOf('v1', type, rand);
@@ -259,7 +304,7 @@ function sameAsShape(index: number, rand: Rand): CorpusShape {
     variables.push(third);
   }
 
-  return { index, family: 'sameAs', variables };
+  return { family: 'sameAs', variables };
 }
 
 /**
@@ -268,7 +313,7 @@ function sameAsShape(index: number, rand: Rand): CorpusShape {
  * 101-value grid multiplies fast: two grids and one more small variable is
  * the widest shape that stays inside the tractability limits.
  */
-function scalarPairShape(index: number, rand: Rand): CorpusShape {
+function scalarPairShape(rand: Rand): NodeFamily {
   const first: CorpusVariable = { id: 'v0', type: 'scalar', rules: [] };
   const second: CorpusVariable = {
     id: 'v1',
@@ -286,11 +331,19 @@ function scalarPairShape(index: number, rand: Rand): CorpusShape {
     variables.push(third);
   }
 
-  return { index, family: 'scalarPair', variables };
+  return { family: 'scalarPair', variables };
 }
 
-function mixedShape(index: number, rand: Rand): CorpusShape {
-  const count = rand.int(2, 4);
+/**
+ * A run of variables of mixed types, none of them yet carrying a rule. Shared
+ * by the node `mixed` family and the edge type, so the edge half is drawn from
+ * the same grammar rather than from a second, quietly diverging one.
+ */
+function mixedVariables(
+  prefix: string,
+  count: number,
+  rand: Rand,
+): CorpusVariable[] {
   let scalarUsed = false;
   const variables: CorpusVariable[] = [];
   for (let i = 0; i < count; i++) {
@@ -304,9 +357,14 @@ function mixedShape(index: number, rand: Rand): CorpusShape {
     ];
     const type = rand.pick(candidates);
     if (type === 'scalar') scalarUsed = true;
-    variables.push(variableOf(`v${i}`, type, rand));
+    variables.push(variableOf(`${prefix}${i}`, type, rand));
   }
+  return variables;
+}
 
+/** Wires each variable to one or two rules against the ones declared before it. */
+function wireMixedRules(variables: CorpusVariable[], rand: Rand): void {
+  const count = variables.length;
   for (let i = 1; i < count; i++) {
     const variable = variables[i]!;
     const ruleCount = rand.next() < 0.85 ? rand.int(1, 2) : 0;
@@ -337,18 +395,99 @@ function mixedShape(index: number, rand: Rand): CorpusShape {
       variable.rules.push({ kind, target: target.id });
     }
   }
+}
 
-  return { index, family: 'mixed', variables };
+function mixedShape(rand: Rand): NodeFamily {
+  const variables = mixedVariables('v', rand.int(2, 4), rand);
+  wireMixedRules(variables, rand);
+  return { family: 'mixed', variables };
+}
+
+/**
+ * The variables of the shape's edge type: the same mixed grammar the node
+ * `mixed` family uses, and at most one `unique` variable declared after it.
+ *
+ * The `unique` variable is deliberately isolated — it carries no rule of its
+ * own, and nothing references it, because it is appended after the rules are
+ * wired and every rule points backwards. So the values a run can reach for it
+ * are exactly its own domain, whatever the rest of the type says, and
+ * {@link oracleUniqueRoom} can count them without a search. That keeps this
+ * half of the oracle a statement about how many EDGES the run builds, which is
+ * the thing nothing else here measures; how narrow propagation leaves a value
+ * space is what the node families already cover.
+ *
+ * Scalars are left out of the `unique` draw: the schema does not permit
+ * `unique` on the type, and its 101-point grid is wider than any pair count
+ * this corpus reaches, so it could never separate a sound count from an
+ * unsound one.
+ */
+function edgeVariablesFor(
+  rand: Rand,
+): Pick<CorpusShape, 'edgeVariables' | 'uniqueEdgeId' | 'tieStrengthEdgeId'> {
+  const edgeVariables = mixedVariables('e', rand.int(1, 3), rand);
+  wireMixedRules(edgeVariables, rand);
+
+  let uniqueEdgeId: string | undefined;
+  if (rand.next() < 0.6) {
+    const unique = variableOf(
+      'u',
+      rand.pick(['boolean', 'ordinal', 'number', 'datetime'] as const),
+      rand,
+    );
+    unique.unique = true;
+    edgeVariables.push(unique);
+    uniqueEdgeId = unique.id;
+  }
+
+  // A TieStrengthCensus rewrites one variable over the edges the DyadCensus
+  // left, which is a partial regeneration around values the edge already holds.
+  // Never the `unique` one: allocating a shared slot across a redraw of every
+  // edge at once is its own question, and pinning it here would make this
+  // family's verdict depend on it.
+  const rewritable = edgeVariables.filter((variable) => !variable.unique);
+  const tieStrengthEdgeId =
+    rewritable.length > 0 && rand.next() < 0.5
+      ? rand.pick(rewritable).id
+      : undefined;
+
+  return {
+    edgeVariables,
+    ...(uniqueEdgeId !== undefined ? { uniqueEdgeId } : {}),
+    ...(tieStrengthEdgeId !== undefined ? { tieStrengthEdgeId } : {}),
+  };
 }
 
 function generateShape(index: number): CorpusShape {
   const rand = randFor((index + 1) * 0x9e3779b1);
   const family = rand.next();
-  if (family < 0.25) return chainShape(index, rand);
-  if (family < 0.45) return pinnedShape(index, rand);
-  if (family < 0.6) return sameAsShape(index, rand);
-  if (family < 0.7) return scalarPairShape(index, rand);
-  return mixedShape(index, rand);
+  // Drawn before the edge half, so a change to the edge grammar leaves every
+  // node family's shapes exactly as they were.
+  const nodes =
+    family < 0.25
+      ? chainShape(rand)
+      : family < 0.45
+        ? pinnedShape(rand)
+        : family < 0.6
+          ? sameAsShape(rand)
+          : family < 0.7
+            ? scalarPairShape(rand)
+            : mixedShape(rand);
+
+  // Two, three or four people, so the census reaches one, three or six pairs.
+  // Weighted towards the small end: the pair count is what a `unique` edge
+  // variable is measured against, and six pairs is already past the widest
+  // domain the draw below offers.
+  const nodeCount = rand.next() < 0.4 ? 2 : rand.next() < 0.7 ? 3 : 4;
+
+  return {
+    index,
+    ...nodes,
+    nodeCount,
+    // A second prompt naming the same edge type reuses every edge the first
+    // one left, so it must add nothing to the count.
+    censusPrompts: rand.next() < 0.5 ? 2 : 1,
+    ...edgeVariablesFor(rand),
+  };
 }
 
 /** The generator-reachable values for one variable, oracle-side. */
@@ -390,10 +529,10 @@ function oracleKey(value: VariableValue): string {
  * independent of the solver.
  */
 function satisfiesRules(
-  shape: CorpusShape,
+  variables: readonly CorpusVariable[],
   valueOf: (id: string) => VariableValue,
 ): boolean {
-  for (const variable of shape.variables) {
+  for (const variable of variables) {
     const own = valueOf(variable.id);
     for (const rule of variable.rules) {
       const other = valueOf(rule.target);
@@ -429,8 +568,11 @@ function satisfiesRules(
 }
 
 /** Exhaustive cartesian search for any satisfying assignment. */
-function oracleSatisfiable(shape: CorpusShape): boolean {
-  const domains = shape.variables.map(oracleDomain);
+function oracleSatisfiable(
+  variables: readonly CorpusVariable[],
+  label: string,
+): boolean {
+  const domains = variables.map(oracleDomain);
   if (domains.some((domain) => domain.length === 0)) return false;
 
   // The shape families are written to keep this space small (the widest is
@@ -440,7 +582,7 @@ function oracleSatisfiable(shape: CorpusShape): boolean {
   const product = domains.reduce((total, domain) => total * domain.length, 1);
   if (product > 1_000_000) {
     throw new Error(
-      `Shape ${shape.index} (${shape.family}) spans ${product} combinations; keep corpus families below the solver's tractability limits`,
+      `${label} spans ${product} combinations; keep corpus families below the solver's tractability limits`,
     );
   }
 
@@ -449,10 +591,10 @@ function oracleSatisfiable(shape: CorpusShape): boolean {
   const valueOf = (id: string): VariableValue => assignment.get(id) ?? null;
 
   for (;;) {
-    shape.variables.forEach((variable, at) => {
+    variables.forEach((variable, at) => {
       assignment.set(variable.id, domains[at]![indices[at]!]!);
     });
-    if (satisfiesRules(shape, valueOf)) return true;
+    if (satisfiesRules(variables, valueOf)) return true;
 
     let cursor = domains.length - 1;
     while (cursor >= 0) {
@@ -465,14 +607,76 @@ function oracleSatisfiable(shape: CorpusShape): boolean {
   }
 }
 
+/**
+ * The unordered pairs a census walks over `count` people, which is the number
+ * of edges of one type the whole run can hold.
+ *
+ * Every part of that sentence is a committed behaviour rather than a reading of
+ * the analysis:
+ *
+ * - The population is the name generator's own ceiling, and a stage declaring
+ *   `maxNodes` is held to it — entityCounts.test.ts, "uses the stage maxNodes
+ *   when declared".
+ * - A census bounds its edge type by the pairs over that population —
+ *   entityCounts.test.ts, "bounds an edge type by the pair count over its node
+ *   type" (four people, C(4, 2) = 6).
+ * - One edge per unordered pair, however many prompts and stages ask about it,
+ *   because `createEdgesForPairs` looks the pair up before drawing —
+ *   entityCounts.test.ts, "counts one census pair set however many prompts and
+ *   stages ask for it", and edgeReuse.test.ts, "leaves one edge per pair when
+ *   two census stages share an edge type". A TieStrengthCensus meeting an edge
+ *   it did not create writes onto it rather than adding one — edgeReuse.test.ts,
+ *   "writes its edge variable onto the reused edge instead of drawing another".
+ *
+ * The corpus pins `censusEdgeProbability` to 1, so this bound is also the exact
+ * count: nothing here has to reason about the pairs a lower probability leaves
+ * unjoined.
+ */
+function pairCount(nodeCount: number): number {
+  return (nodeCount * (nodeCount - 1)) / 2;
+}
+
+/**
+ * Whether the edge type's `unique` variable has a value for every edge the run
+ * builds.
+ *
+ * A `unique` rule is the only thing that makes an entity COUNT part of
+ * satisfiability, and it makes it part of it by pigeonhole alone: every edge a
+ * census creates is born holding a value for every variable its type declares
+ * (entityCounts.test.ts, "counts an unnamed variable on edges another stage
+ * creates"), so N edges hold N values of the variable, and no two of them may
+ * be equal. Fewer than N reachable values therefore has no satisfying run —
+ * a fact about the draw, not about how the analysis counts, which is what makes
+ * disagreement here a report about the analysis rather than about this checker.
+ *
+ * That the generator really does refuse exactly this is pinned by
+ * entityCounts.test.ts, "still refuses when the composer own people do exhaust
+ * it" and "refuses it anyway, counting the pairs the filter is not read to
+ * exclude" — a three-person DyadCensus against a `unique` boolean, refused for
+ * "up to 3 edges of this type can be generated".
+ *
+ * The reachable values are the variable's own domain because
+ * {@link edgeVariablesFor} declares it isolated; see the note there.
+ */
+function oracleUniqueRoom(shape: CorpusShape): boolean {
+  const unique = shape.edgeVariables.find(
+    (variable) => variable.id === shape.uniqueEdgeId,
+  );
+  if (unique === undefined) return true;
+  return oracleDomain(unique).length >= pairCount(shape.nodeCount);
+}
+
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 
-function codebookFor(shape: CorpusShape): Codebook {
+function codebookVariables(
+  declared: readonly CorpusVariable[],
+): Record<string, unknown> {
   const variables: Record<string, unknown> = {};
 
-  for (const variable of shape.variables) {
+  for (const variable of declared) {
     const validation: Record<string, unknown> = {};
     for (const rule of variable.rules) validation[rule.kind] = rule.target;
+    if (variable.unique) validation.unique = true;
 
     if (variable.type === 'number') {
       validation.minValue = variable.minValue;
@@ -520,21 +724,80 @@ function codebookFor(shape: CorpusShape): Codebook {
     }
   }
 
+  return variables;
+}
+
+function codebookFor(shape: CorpusShape): Codebook {
   return {
     node: {
-      person: { color: 'node-color-seq-1', variables },
+      person: {
+        color: 'node-color-seq-1',
+        variables: codebookVariables(shape.variables),
+      },
+    },
+    edge: {
+      link: {
+        name: 'Link',
+        color: 'edge-color-seq-1',
+        variables: codebookVariables(shape.edgeVariables),
+      },
     },
   } as unknown as Codebook;
 }
 
-const nameGeneratorStage = {
-  id: 'stage-1',
-  type: 'NameGenerator',
-  label: 'Name generator',
-  subject: { entity: 'node', type: 'person' },
-  prompts: [{ id: 'p1', text: 'Name people' }],
-  behaviours: { minNodes: 2, maxNodes: 2 },
-} as unknown as Stage;
+/**
+ * The shape's stages, in the order `generateNetwork` runs them: a name
+ * generator of a fixed size, a DyadCensus pairing everyone it built, and
+ * sometimes a TieStrengthCensus answering the same edge type over the very
+ * edges the census left.
+ *
+ * Both censuses take the whole population — the pair set a stage reaches is the
+ * people standing when it runs, so putting them after the name generator is
+ * what makes `pairCount(nodeCount)` the right number.
+ */
+function stagesFor(shape: CorpusShape): Stage[] {
+  const stages: Stage[] = [
+    {
+      id: 'stage-1',
+      type: 'NameGenerator',
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Name people' }],
+      behaviours: { minNodes: shape.nodeCount, maxNodes: shape.nodeCount },
+    } as unknown as Stage,
+    {
+      id: 'stage-2',
+      type: 'DyadCensus',
+      label: 'Census',
+      subject: { entity: 'node', type: 'person' },
+      prompts: Array.from({ length: shape.censusPrompts }, (_prompt, at) => ({
+        id: `c${at + 1}`,
+        text: 'Do they know each other?',
+        createEdge: 'link',
+      })),
+    } as unknown as Stage,
+  ];
+
+  if (shape.tieStrengthEdgeId !== undefined) {
+    stages.push({
+      id: 'stage-3',
+      type: 'TieStrengthCensus',
+      label: 'How close?',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 't1',
+          text: 'How close are they?',
+          createEdge: 'link',
+          edgeVariable: shape.tieStrengthEdgeId,
+          negativeLabel: 'Not at all',
+        },
+      ],
+    } as unknown as Stage);
+  }
+
+  return stages;
+}
 
 type CorpusEntry = {
   shape: CorpusShape;
@@ -552,13 +815,26 @@ function corpus(): CorpusEntry[] {
     const shape = generateShape(index);
     const conflicts = analyseFeasibility(
       codebookFor(shape),
-      [nameGeneratorStage],
+      stagesFor(shape),
       config,
     );
     entries.push({
       shape,
       feasible: conflicts.length === 0,
-      satisfiable: oracleSatisfiable(shape),
+      // Two scopes and one count. Node and edge rules are per-entity and
+      // independent of each other, so each is satisfiable on its own terms;
+      // what spans entities is the `unique` slot, which is the only place the
+      // pair count can be read off.
+      satisfiable:
+        oracleSatisfiable(
+          shape.variables,
+          `Shape ${index} (${shape.family})`,
+        ) &&
+        oracleSatisfiable(
+          shape.edgeVariables,
+          `Shape ${index} (${shape.family}) edges`,
+        ) &&
+        oracleUniqueRoom(shape),
       conflictCount: conflicts.length,
     });
   }
@@ -576,11 +852,24 @@ function corpus(): CorpusEntry[] {
       byFamily.set(entry.shape.family, bucket);
     }
     const typeCounts = new Map<string, number>();
+    const edgeTypeCounts = new Map<string, number>();
+    const pairCounts = new Map<number, number>();
     for (const entry of entries) {
       for (const variable of entry.shape.variables) {
         typeCounts.set(variable.type, (typeCounts.get(variable.type) ?? 0) + 1);
       }
+      for (const variable of entry.shape.edgeVariables) {
+        edgeTypeCounts.set(
+          variable.type,
+          (edgeTypeCounts.get(variable.type) ?? 0) + 1,
+        );
+      }
+      const pairs = pairCount(entry.shape.nodeCount);
+      pairCounts.set(pairs, (pairCounts.get(pairs) ?? 0) + 1);
     }
+    const withUnique = entries.filter(
+      (entry) => entry.shape.uniqueEdgeId !== undefined,
+    );
     // eslint-disable-next-line no-console
     console.log(
       JSON.stringify({
@@ -589,6 +878,15 @@ function corpus(): CorpusEntry[] {
         accepted: entries.filter((entry) => entry.feasible).length,
         families: Object.fromEntries(byFamily),
         variableTypes: Object.fromEntries(typeCounts),
+        edgeVariableTypes: Object.fromEntries(edgeTypeCounts),
+        pairsPerShape: Object.fromEntries(pairCounts),
+        uniqueEdgeShapes: withUnique.length,
+        uniqueEdgeRefused: withUnique.filter(
+          (entry) => !oracleUniqueRoom(entry.shape),
+        ).length,
+        tieStrengthShapes: entries.filter(
+          (entry) => entry.shape.tieStrengthEdgeId !== undefined,
+        ).length,
       }),
     );
   }
@@ -608,7 +906,10 @@ describe(`solver acceptance corpus (${SHAPES} shapes, shard ${SHARD})`, () => {
           family: entry.shape.family,
           feasible: entry.feasible,
           satisfiable: entry.satisfiable,
+          nodeCount: entry.shape.nodeCount,
+          pairs: pairCount(entry.shape.nodeCount),
           variables: entry.shape.variables,
+          edgeVariables: entry.shape.edgeVariables,
         }));
 
       expect(mismatches).toEqual([]);
@@ -630,55 +931,98 @@ describe(`solver acceptance corpus (${SHAPES} shapes, shard ${SHARD})`, () => {
 
       for (const entry of corpus()) {
         if (!entry.feasible) continue;
-        const codebook = codebookFor(entry.shape);
+        const { shape } = entry;
+        const codebook = codebookFor(shape);
+        const stages = stagesFor(shape);
+        const expectedEdges = pairCount(shape.nodeCount);
+
+        /** Every entity of one scope, checked against that scope's rules. */
+        const checkEntities = (
+          entities: {
+            [entityAttributesProperty]: Record<string, VariableValue>;
+          }[],
+          declared: readonly CorpusVariable[],
+          seed: number,
+          scope: string,
+        ): void => {
+          for (const held of entities) {
+            const attributes = held[entityAttributesProperty];
+            const missing = declared
+              .filter((variable) => attributes[variable.id] === undefined)
+              .map((variable) => variable.id);
+            if (missing.length > 0) {
+              failures.push({
+                index: shape.index,
+                seed,
+                problem: `${scope} missing attributes: ${missing.join(', ')}`,
+              });
+              continue;
+            }
+            const valueOf = (id: string): VariableValue => attributes[id]!;
+            if (!satisfiesRules(declared, valueOf)) {
+              failures.push({
+                index: shape.index,
+                seed,
+                problem: `${scope} violates rules: ${JSON.stringify(attributes)} for ${JSON.stringify(declared)}`,
+              });
+            }
+          }
+        };
 
         for (let seed = 0; seed < SEEDS; seed++) {
           try {
             const startedAt = performance.now();
             const { network } = generateNetwork({
               codebook,
-              stages: [nameGeneratorStage],
+              stages,
               seed,
-              config: { today: TODAY },
+              config: { today: TODAY, censusEdgeProbability: ALWAYS_PAIRED },
             });
             const elapsed = performance.now() - startedAt;
             runs += 1;
             if (elapsed > slowestMs) {
               slowestMs = elapsed;
-              slowestShape = entry.shape.index;
+              slowestShape = shape.index;
             }
-            if (network.nodes.length === 0) {
+            if (network.nodes.length !== shape.nodeCount) {
               failures.push({
-                index: entry.shape.index,
+                index: shape.index,
                 seed,
-                problem: 'generated no nodes',
+                problem: `generated ${network.nodes.length} nodes, expected ${shape.nodeCount}`,
               });
             }
-            for (const node of network.nodes) {
-              const attributes = node[entityAttributesProperty];
-              const missing = entry.shape.variables
-                .filter((variable) => attributes[variable.id] === undefined)
-                .map((variable) => variable.id);
-              if (missing.length > 0) {
+            // The reuse assertion. Every pair is joined once, whatever the
+            // number of prompts and census stages asking about it, so a lost
+            // dedup shows up here as a doubled count rather than only as a
+            // `unique` slot running dry.
+            if (network.edges.length !== expectedEdges) {
+              failures.push({
+                index: shape.index,
+                seed,
+                problem: `generated ${network.edges.length} edges over ${shape.nodeCount} nodes, expected ${expectedEdges}`,
+              });
+            }
+            checkEntities(network.nodes, shape.variables, seed, 'node');
+            checkEntities(network.edges, shape.edgeVariables, seed, 'edge');
+
+            if (shape.uniqueEdgeId !== undefined) {
+              const uniqueId = shape.uniqueEdgeId;
+              const held = network.edges.map((edge) =>
+                JSON.stringify(
+                  edge[entityAttributesProperty][uniqueId] ?? null,
+                ),
+              );
+              if (new Set(held).size !== held.length) {
                 failures.push({
-                  index: entry.shape.index,
+                  index: shape.index,
                   seed,
-                  problem: `missing attributes: ${missing.join(', ')}`,
-                });
-                continue;
-              }
-              const valueOf = (id: string): VariableValue => attributes[id]!;
-              if (!satisfiesRules(entry.shape, valueOf)) {
-                failures.push({
-                  index: entry.shape.index,
-                  seed,
-                  problem: `violates rules: ${JSON.stringify(attributes)} for ${JSON.stringify(entry.shape.variables)}`,
+                  problem: `unique edge variable ${uniqueId} repeats a value: ${held.join(', ')}`,
                 });
               }
             }
           } catch (error) {
             failures.push({
-              index: entry.shape.index,
+              index: shape.index,
               seed,
               problem: `threw: ${error instanceof Error ? error.message.slice(0, 200) : String(error)}`,
             });
