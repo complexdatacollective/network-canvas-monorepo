@@ -1,11 +1,8 @@
 {
-  "extends": "../tsconfig.json",
+  "extends": "@codaco/tsconfig/dev.json",
   "compilerOptions": {
-    "types": ["node"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "noEmit": true,
-    "allowImportingTsExtensions": true
+    "strict": true,
+    "noEmit": true
   },
   "include": ["**/*.ts"]
 }

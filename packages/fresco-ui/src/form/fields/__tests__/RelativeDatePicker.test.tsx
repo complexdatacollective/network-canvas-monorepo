@@ -1,6 +1,7 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import UnconnectedField from '../../Field/UnconnectedField';
 import RelativeDatePickerField from '../RelativeDatePicker';
 
 function dateInput(container: HTMLElement): HTMLInputElement {
@@ -101,5 +102,36 @@ describe('RelativeDatePickerField', () => {
 
     expect(input.min).toBe(min);
     expect(input.max).toBe(max);
+  });
+});
+
+describe('RelativeDatePickerField accessibility', () => {
+  it('renders the native date input with the given id', () => {
+    const { container } = render(
+      <RelativeDatePickerField
+        name="date"
+        id="relative-date-id"
+        value=""
+        onChange={() => undefined}
+      />,
+    );
+
+    expect(dateInput(container)).toHaveAttribute('id', 'relative-date-id');
+  });
+
+  it('associates the visible label and error description', () => {
+    render(
+      <UnconnectedField
+        name="date"
+        label="Interview date"
+        hint="Choose carefully"
+        component={RelativeDatePickerField}
+        value=""
+        onChange={() => undefined}
+      />,
+    );
+
+    const control = screen.getByLabelText('Interview date');
+    expect(control).toHaveAccessibleDescription('Choose carefully');
   });
 });

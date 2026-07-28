@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 
 import {
   type Codebook,
+  CURRENT_SCHEMA_VERSION,
   type CurrentProtocol,
   CurrentProtocolSchema,
   extractProtocol,
@@ -45,7 +46,12 @@ async function main(): Promise<void> {
   await fs.rm(protocolAssetDir, { recursive: true, force: true });
   await fs.mkdir(protocolAssetDir, { recursive: true });
 
-  const manifest = protocolJson.assetManifest ?? {};
+  // Only the v8 schema models assetManifest; a pre-v8 protocol would fail the
+  // CurrentProtocolSchema.parse below anyway, so skipping its assets is moot.
+  const manifest: Record<string, unknown> =
+    protocolJson.schemaVersion === CURRENT_SCHEMA_VERSION
+      ? (protocolJson.assetManifest ?? {})
+      : {};
   for (const asset of extractedAssets) {
     const entry = manifest[asset.id];
     if (!entry || typeof entry !== 'object' || !('type' in entry)) continue;

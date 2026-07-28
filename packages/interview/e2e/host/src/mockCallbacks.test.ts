@@ -12,7 +12,6 @@ function makeSession(): SessionPayload {
     exportTime: null,
     lastUpdated: new Date().toISOString(),
     network: createInitialNetwork(),
-    currentStep: 0,
   };
 }
 

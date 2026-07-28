@@ -18,7 +18,7 @@ All commands run from this directory unless noted. The monorepo-wide `pnpm lint`
 pnpm dev              # Vite dev server (workspace deps consumed as raw src, no build step)
 pnpm build            # production build + PWA integrity check (node scripts/build.mjs)
 pnpm preview           # preview the production build locally
-pnpm typecheck         # tsc --build --noEmit
+pnpm typecheck         # tsc --build --noEmit, plus the e2e suite via e2e/tsconfig.json
 pnpm test              # vitest run --project=unit
 pnpm test:watch        # vitest --project=unit, watch mode
 pnpm test:storybook    # vitest run --project=storybook

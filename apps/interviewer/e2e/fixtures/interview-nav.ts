@@ -6,7 +6,11 @@ import { expect } from '@playwright/test';
 // step param — so next() reads the [data-stage-step] DOM attribute and waits for
 // it to change.
 export class InterviewNav {
-  constructor(private page: Page) {}
+  private page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private get stage() {
     return this.page.locator('[data-stage-step]');

@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 import {
   entityAttributesProperty,
@@ -16,6 +17,7 @@ import {
   getSessionsByIds,
   listSessions,
   markSessionFinished,
+  markSessionUnfinished,
   markSessionsExported,
   querySessions,
   updateSession,
@@ -39,6 +41,56 @@ const initialNetwork: NcNetwork = {
   ],
   edges: [],
 };
+
+type InformationStage = Extract<
+  NonNullable<CurrentProtocol['stages'][number]>,
+  { type: 'Information' }
+>;
+
+function informationStage(id: string): InformationStage {
+  return {
+    id,
+    type: 'Information',
+    label: id,
+    title: id,
+    items: [],
+  };
+}
+
+const authoredStages: CurrentProtocol['stages'] = [
+  informationStage('stage-0'),
+  informationStage('stage-1'),
+  informationStage('stage-2'),
+  informationStage('stage-3'),
+];
+
+const stagesWithFinishRoute: CurrentProtocol['stages'] = [
+  informationStage('stage-0'),
+  {
+    ...informationStage('stage-1'),
+    skipLogic: {
+      action: 'SKIP',
+      filter: { join: 'AND', rules: [] },
+      destination: { type: 'finish' },
+    },
+  },
+  informationStage('stage-2'),
+  informationStage('stage-3'),
+];
+
+const stagesWithNoActiveAuthoredStage: CurrentProtocol['stages'] = [
+  {
+    ...informationStage('stage-0'),
+    skipLogic: {
+      action: 'SKIP',
+      filter: { join: 'AND', rules: [] },
+      destination: { type: 'finish' },
+    },
+  },
+  informationStage('stage-1'),
+  informationStage('stage-2'),
+  informationStage('stage-3'),
+];
 
 describe('sessions repo — encryption at boundary', () => {
   beforeEach(async () => {
@@ -288,6 +340,85 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
     });
     expect(result.statusCounts.complete).toBe(1);
     expect(result.statusCounts.inProgress).toBe(0);
+  });
+
+  it('marks a completed session unfinished without clearing its export history', async () => {
+    const created = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+    await updateSession(created.id, { currentStep: 4, progress: 100 });
+    await markSessionFinished(created.id);
+    await markSessionsExported([created.id]);
+
+    await markSessionUnfinished(created.id, authoredStages);
+
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).toBeNull();
+    expect(session?.exportedAt).not.toBeNull();
+    expect(session?.currentStep).toBe(3);
+    expect(session?.progress).toBe(80);
+    expect(session?.resumeStageOverrideIndex).toBeUndefined();
+
+    const list = await listSessions();
+    expect(list[0]?.statusKind).toBe('in-progress');
+    expect(list[0]?.progressPercent).toBe(80);
+  });
+
+  it('resumes before stages bypassed by a targeted route to finish', async () => {
+    const created = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+    await updateSession(created.id, { currentStep: 4, progress: 100 });
+    await markSessionFinished(created.id);
+
+    await markSessionUnfinished(created.id, stagesWithFinishRoute);
+
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).toBeNull();
+    expect(session?.currentStep).toBe(0);
+    expect(session?.progress).toBe(20);
+    expect(session?.resumeStageOverrideIndex).toBeUndefined();
+  });
+
+  it('resumes at the route-controlling stage when no authored stage is active', async () => {
+    const created = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+    await updateSession(created.id, { currentStep: 4, progress: 100 });
+    await markSessionFinished(created.id);
+
+    await markSessionUnfinished(created.id, stagesWithNoActiveAuthoredStage);
+
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).toBeNull();
+    expect(session?.currentStep).toBe(0);
+    expect(session?.progress).toBe(20);
+    expect(session?.resumeStageOverrideIndex).toBe(0);
+  });
+
+  it('does not reset an interview that is already unfinished', async () => {
+    const created = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+    await updateSession(created.id, { currentStep: 2, progress: 60 });
+
+    await markSessionUnfinished(created.id, authoredStages);
+
+    const session = await getSession(created.id);
+    expect(session?.currentStep).toBe(2);
+    expect(session?.progress).toBe(60);
   });
 });
 

@@ -33,6 +33,7 @@ import type {
 } from './contract/types';
 import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
+import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 import { store, type RootState } from './store/store';
 import {
   InterviewToastProvider,
@@ -74,6 +75,7 @@ function Interview({
   navigationClassnames,
   allowStageNavigation,
   initialStageOverrideIndex,
+  reviewMode,
 }: {
   onExit?: () => void;
   hideNavigation?: boolean;
@@ -81,6 +83,7 @@ function Interview({
   navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
   initialStageOverrideIndex?: number;
+  reviewMode?: boolean;
 }) {
   const {
     stage,
@@ -98,7 +101,7 @@ function Interview({
     disableMoveBackward,
     pulseNext,
     progress,
-  } = useInterviewNavigation(initialStageOverrideIndex);
+  } = useInterviewNavigation(initialStageOverrideIndex, reviewMode);
 
   useStageNavigationAnalytics({
     stage_index: displayedStep,
@@ -203,6 +206,7 @@ function Interview({
               forwardButtonRef={forwardButtonRef}
               backButtonRef={backButtonRef}
               onExit={onExit}
+              reviewMode={reviewMode}
             />
           )}
           {/*
@@ -240,7 +244,18 @@ type ShellProps = {
   analytics: InterviewAnalyticsMetadata;
   posthogClient?: PostHog;
   disableAnalytics?: boolean;
+  /**
+   * Host-specific explanation shown in the finish confirmation dialog.
+   */
+  finishConfirmationDescription?: string;
   onExit?: () => void;
+  /**
+   * Adapt the Shell for reviewing an existing interview: stop at the final
+   * authored stage, use review-specific exit messaging, and suppress interview
+   * analytics. The host remains responsible for supplying non-persisting sync
+   * and finish handlers.
+   */
+  reviewMode?: boolean;
   /**
    * Render the interview without the Navigation rail/bar so the stage fills
    * the viewport. Used by screenshot-capture stories; not intended for
@@ -276,7 +291,9 @@ const Shell = ({
   analytics,
   posthogClient,
   disableAnalytics = false,
+  finishConfirmationDescription,
   onExit,
+  reviewMode,
   hideNavigation,
   navigationOrientation,
   navigationClassnames,
@@ -336,11 +353,44 @@ const Shell = ({
     trackerRef.current = next;
   }, []);
 
+  const reviewEntry = useMemo(() => {
+    if (
+      reviewMode !== true ||
+      currentStep === undefined ||
+      currentStep < payload.protocol.stages.length
+    ) {
+      return {
+        currentStep,
+        initialStageOverrideIndex,
+      };
+    }
+
+    const lastAvailableStage = getLastAvailableAuthoredStageIndex(
+      payload.protocol.stages,
+      payload.session.network,
+    );
+    const hasAuthoredStage = payload.protocol.stages.length > 0;
+
+    return {
+      currentStep: lastAvailableStage ?? 0,
+      initialStageOverrideIndex:
+        lastAvailableStage === undefined && hasAuthoredStage
+          ? 0
+          : initialStageOverrideIndex,
+    };
+  }, [
+    currentStep,
+    initialStageOverrideIndex,
+    payload.protocol.stages,
+    payload.session.network,
+    reviewMode,
+  ]);
+
   return (
     <AnalyticsProvider
       analytics={analytics}
       posthogClient={posthogClient}
-      disableAnalytics={disableAnalytics}
+      disableAnalytics={disableAnalytics || reviewMode === true}
       payload={payload}
       onTrackerChange={onTrackerChange}
     >
@@ -349,9 +399,10 @@ const Shell = ({
           onFinish={onFinish}
           onRequestAsset={onRequestAsset}
           flags={flags}
+          finishConfirmationDescription={finishConfirmationDescription}
         >
           <CurrentStepProvider
-            currentStep={currentStep}
+            currentStep={reviewEntry.currentStep}
             onStepChange={onStepChange}
           >
             <Interview
@@ -363,7 +414,8 @@ const Shell = ({
                 allowStageNavigation &&
                 (currentStep === undefined || onStepChange !== undefined)
               }
-              initialStageOverrideIndex={initialStageOverrideIndex}
+              initialStageOverrideIndex={reviewEntry.initialStageOverrideIndex}
+              reviewMode={reviewMode}
             />
           </CurrentStepProvider>
         </ContractProvider>

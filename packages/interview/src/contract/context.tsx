@@ -23,6 +23,7 @@ type ContractHandlers = {
 type ContractValue = {
   handlers: ContractHandlers;
   flags: Required<InterviewerFlags>;
+  finishConfirmationDescription: string;
 };
 
 const ContractContext = createContext<ContractValue | null>(null);
@@ -31,6 +32,7 @@ type ContractProviderProps = {
   onFinish: FinishHandler;
   onRequestAsset: AssetRequestHandler;
   flags?: InterviewerFlags;
+  finishConfirmationDescription?: string;
   children: ReactNode;
 };
 
@@ -38,6 +40,7 @@ export function ContractProvider({
   onFinish,
   onRequestAsset,
   flags,
+  finishConfirmationDescription,
   children,
 }: ContractProviderProps) {
   // Anchor the latest handler refs so the returned callbacks are stable.
@@ -67,8 +70,17 @@ export function ContractProvider({
         isE2E: flags?.isE2E ?? false,
         isDevelopment: flags?.isDevelopment ?? false,
       },
+      finishConfirmationDescription:
+        finishConfirmationDescription ??
+        'Finish this interview only when you are satisfied with your responses.',
     }),
-    [stableOnFinish, stableOnRequestAsset, flags?.isE2E, flags?.isDevelopment],
+    [
+      stableOnFinish,
+      stableOnRequestAsset,
+      flags?.isE2E,
+      flags?.isDevelopment,
+      finishConfirmationDescription,
+    ],
   );
 
   return (
@@ -82,7 +94,7 @@ function useContract(): ContractValue {
   const value = useContext(ContractContext);
   if (!value) {
     throw new Error(
-      'useContractHandlers / useContractFlags must be used within a ContractProvider',
+      'Interview contract hooks must be used within a ContractProvider',
     );
   }
   return value;
@@ -94,4 +106,8 @@ export function useContractHandlers(): ContractHandlers {
 
 export function useContractFlags(): Required<InterviewerFlags> {
   return useContract().flags;
+}
+
+export function useFinishConfirmationDescription(): string {
+  return useContract().finishConfirmationDescription;
 }

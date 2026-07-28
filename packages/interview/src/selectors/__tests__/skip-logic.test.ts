@@ -7,7 +7,11 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
-import { buildStageAvailabilityMap, resolveRecoveryStep } from '../skip-logic';
+import {
+  buildStageAvailabilityMap,
+  getLastAvailableAuthoredStageIndex,
+  resolveRecoveryStep,
+} from '../skip-logic';
 
 const network: NcNetwork = {
   ego: {
@@ -184,6 +188,44 @@ describe('buildStageAvailabilityMap', () => {
 
     expect(availability[1]?.kind).toBe('local-skip');
     expect(availability[2]).toEqual({ kind: 'available' });
+  });
+});
+
+describe('getLastAvailableAuthoredStageIndex', () => {
+  it('returns the final authored stage on a route without skips', () => {
+    expect(
+      getLastAvailableAuthoredStageIndex(
+        [stage('s0'), stage('s1'), stage('s2')],
+        network,
+      ),
+    ).toBe(2);
+  });
+
+  it('returns the last active stage before a targeted jump to finish', () => {
+    expect(
+      getLastAvailableAuthoredStageIndex(
+        [
+          stage('s0'),
+          stage('s1', alwaysSkipped({ type: 'finish' })),
+          stage('s2'),
+          stage('s3'),
+        ],
+        network,
+      ),
+    ).toBe(0);
+  });
+
+  it('returns undefined when the active route has no authored stage', () => {
+    expect(
+      getLastAvailableAuthoredStageIndex(
+        [
+          stage('s0', alwaysSkipped({ type: 'finish' })),
+          stage('s1'),
+          stage('s2'),
+        ],
+        network,
+      ),
+    ).toBeUndefined();
   });
 });
 

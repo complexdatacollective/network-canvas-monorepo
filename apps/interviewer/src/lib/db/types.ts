@@ -45,6 +45,9 @@ export type StoredSession = {
   // session is next advanced. The interview engine owns this value (it accounts
   // for the appended finish stage); the host must not re-derive it.
   progress?: number;
+  // A one-visit override set when marking an interview unfinished cannot find
+  // an authored stage that is currently available. Navigation clears it.
+  resumeStageOverrideIndex?: number;
   network: NcNetwork;
   stageMetadata?: Record<string, unknown>;
   // Optional so pre-existing rows (undefined) read as not synthetic.

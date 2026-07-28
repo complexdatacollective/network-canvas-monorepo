@@ -44,6 +44,7 @@ export default function RelativeDatePickerField(
     size = 'md',
     placeholder,
     className,
+    id,
     disabled,
     readOnly,
     ...rest
@@ -60,6 +61,7 @@ export default function RelativeDatePickerField(
 
   return (
     <InputField
+      id={id}
       type="date"
       size={size}
       min={minYmd}
