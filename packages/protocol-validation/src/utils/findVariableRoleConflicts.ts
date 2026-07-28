@@ -20,6 +20,13 @@ export type VariableRoleConflict = {
   unvalidated: VariableRoleHit[];
 };
 
+export type VariableRoleGroup = {
+  subject: { entity: 'node' | 'edge' | 'ego'; type?: string };
+  variableId: string;
+  validated: VariableRoleHit[];
+  unvalidated: VariableRoleHit[];
+};
+
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -79,21 +86,13 @@ const variableNameFor = (
   return typeof name === 'string' ? name : variableId;
 };
 
-export function findVariableRoleConflicts(
+export function collectVariableRoleHits(
   protocol: unknown,
-): VariableRoleConflict[] {
+): VariableRoleGroup[] {
   const protocolRecord = asRecord(protocol);
   if (!protocolRecord) return [];
 
-  const groups = new Map<
-    string,
-    {
-      subject: { entity: 'node' | 'edge' | 'ego'; type?: string };
-      variableId: string;
-      validated: VariableRoleHit[];
-      unvalidated: VariableRoleHit[];
-    }
-  >();
+  const groups = new Map<string, VariableRoleGroup>();
 
   for (const hit of collectEntityAttributeReferences(protocolRecord)) {
     if (hit.usage === undefined) continue;
@@ -121,8 +120,17 @@ export function findVariableRoleConflicts(
     ).push(roleHit);
   }
 
+  return [...groups.values()];
+}
+
+export function findVariableRoleConflicts(
+  protocol: unknown,
+): VariableRoleConflict[] {
+  const protocolRecord = asRecord(protocol);
+  if (!protocolRecord) return [];
+
   const conflicts: VariableRoleConflict[] = [];
-  for (const group of groups.values()) {
+  for (const group of collectVariableRoleHits(protocolRecord)) {
     if (group.validated.length === 0 || group.unvalidated.length === 0)
       continue;
     conflicts.push({
