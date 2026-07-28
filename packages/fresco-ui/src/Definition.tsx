@@ -20,6 +20,8 @@ export type DefinitionProps = Omit<
   definition: React.ReactNode;
   /** Render the term as an `abbr` element when it is an abbreviation. */
   asAbbreviation?: boolean;
+  /** Replace the term element, typically with a router link. */
+  render?: React.ReactElement<React.RefAttributes<HTMLElement>>;
   side?: TooltipContentProps['side'];
   align?: TooltipContentProps['align'];
   sideOffset?: TooltipContentProps['sideOffset'];
@@ -32,6 +34,7 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
       children,
       definition,
       asAbbreviation = false,
+      render,
       side,
       align,
       sideOffset,
@@ -54,26 +57,25 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
     return (
       <Tooltip handle={tooltipHandle}>
         <TooltipTrigger
-          closeOnClick={false}
+          closeOnClick={Boolean(render)}
           handle={tooltipHandle}
           id={triggerId}
+          className={cx(
+            'text-link focusable inline-block rounded-sm underline decoration-dashed decoration-2 underline-offset-3',
+            render ? 'cursor-pointer' : 'cursor-help',
+            className,
+          )}
+          {...props}
+          aria-describedby={ariaDescribedBy}
+          onClick={(event) => {
+            onClick?.(event);
+            if (!render && !event.defaultPrevented) {
+              tooltipHandle.open(triggerId);
+            }
+          }}
+          tabIndex={render ? undefined : 0}
           render={
-            <Element
-              ref={ref}
-              className={cx(
-                'text-link focusable inline-block cursor-help rounded-sm underline decoration-dashed decoration-2 underline-offset-3',
-                className,
-              )}
-              {...props}
-              aria-describedby={ariaDescribedBy}
-              onClick={(event) => {
-                onClick?.(event);
-                if (!event.defaultPrevented) {
-                  tooltipHandle.open(triggerId);
-                }
-              }}
-              tabIndex={0}
-            />
+            render ? React.cloneElement(render, { ref }) : <Element ref={ref} />
           }
         >
           {children}

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import type * as React from 'react';
+import { describe, expect, it, vi } from 'vitest';
 
 import Definition from './Definition';
 
@@ -68,6 +69,38 @@ describe('Definition', () => {
     expect(abbreviation).toHaveAccessibleDescription(
       'Computer-assisted personal interviewing',
     );
+  });
+
+  it('keeps a replaced term reachable and activatable by keyboard', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn((event: React.MouseEvent) =>
+      event.preventDefault(),
+    );
+
+    render(
+      <Definition
+        definition="The original downloadable desktop app."
+        // oxlint-disable-next-line jsx-a11y/anchor-has-content, jsx-a11y/control-has-associated-label
+        render={<a href="/install" onClick={onNavigate} />}
+      >
+        Architect Classic
+      </Definition>,
+    );
+
+    const term = screen.getByRole('link', { name: 'Architect Classic' });
+
+    expect(term).toHaveAttribute('href', '/install');
+    expect(term).not.toHaveAttribute('tabindex');
+    expect(term).toHaveClass('cursor-pointer', 'decoration-dashed');
+    expect(term).toHaveAccessibleDescription(
+      'The original downloadable desktop app.',
+    );
+
+    await user.tab();
+    expect(term).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+    expect(onNavigate).toHaveBeenCalledTimes(1);
   });
 
   it('opens when pressed without receiving focus', async () => {

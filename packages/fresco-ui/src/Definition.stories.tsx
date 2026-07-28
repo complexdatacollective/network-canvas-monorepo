@@ -25,10 +25,22 @@ import Definition from '@codaco/fresco-ui/Definition';
 </Definition>
 \`\`\`
 
+The tooltip popup is \`aria-hidden\` and \`definition\` reaches assistive technology as flattened description text, so a link or button placed inside \`definition\` is unreachable by keyboard and screen reader. When a term should lead somewhere, use \`render\` to make the term itself the link:
+
+\`\`\`tsx
+<Definition
+  definition="The original downloadable desktop app."
+  render={<NextLink href="/install" />}
+>
+  Architect Classic
+</Definition>
+\`\`\`
+
 Props:
 - \`children\`: the visible term or phrase.
 - \`definition\`: non-interactive content shown in the tooltip.
 - \`asAbbreviation\`: renders the term as \`abbr\` instead of \`span\`.
+- \`render\`: replaces the term element, typically with a router link.
 - \`side\`, \`align\`, and \`sideOffset\`: control tooltip placement.
 - \`showArrow\`: shows or hides the tooltip arrow.`,
       },
@@ -125,6 +137,28 @@ export const KeyboardFocus: Story = {
     await waitFor(() => expect(term).toHaveAttribute('data-popup-open'));
     await expect(term).toHaveAccessibleDescription(
       'The people an individual knows and the relationships among them.',
+    );
+  },
+};
+
+export const AsLink: Story = {
+  args: {
+    children: 'Architect Classic',
+    definition:
+      'The original downloadable desktop app for designing schema 7 protocols. It is fully supported, but is in maintenance mode and will not receive new features.',
+    // oxlint-disable-next-line jsx-a11y/anchor-has-content, jsx-a11y/control-has-associated-label
+    render: <a href="#install" />,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const term = canvas.getByRole('link', { name: 'Architect Classic' });
+
+    term.focus();
+    await expect(term).toHaveFocus();
+    await expect(term).toHaveAttribute('href', '#install');
+    await waitFor(() => expect(term).toHaveAttribute('data-popup-open'));
+    await expect(term).toHaveAccessibleDescription(
+      'The original downloadable desktop app for designing schema 7 protocols. It is fully supported, but is in maintenance mode and will not receive new features.',
     );
   },
 };
