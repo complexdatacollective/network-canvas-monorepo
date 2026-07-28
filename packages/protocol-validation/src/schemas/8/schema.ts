@@ -363,10 +363,22 @@ const validateComposerFieldContradictions = (
     ].join('|');
 
   // The baseline runs over the SAME visible subset so its contradiction keys
-  // (which carry group membership) are comparable with the overlay's.
+  // (which carry group membership) are comparable with the overlay's — and in
+  // the same RECORD-LEVEL mode as `rejectValidationContradictions`, so its
+  // keys are exactly the contradictions the codebook layer already anchors.
+  // Only the overlaid run passes `stageEffectiveComponents` (twenty-sixth-wave
+  // Finding 1): there every judged variable's `component` is its resolved
+  // rendering — the field's own for written variables, the codebook default
+  // for variables no composer field anywhere overrides — so an explicit
+  // `component: 'Boolean'` may read its `options` as the participant-facing
+  // domain here, which the record level (with no stages in scope) never may.
+  // A contradiction that needs that reading is by construction absent from
+  // the baseline keys, so it reports here, anchored at a participating field.
   const baseKeys = new Set(findValidationContradictions(visible).map(keyOf));
 
-  for (const contradiction of findValidationContradictions(overlaid)) {
+  for (const contradiction of findValidationContradictions(overlaid, {
+    stageEffectiveComponents: true,
+  })) {
     if (baseKeys.has(keyOf(contradiction))) continue;
     const fieldIndex = fields.findIndex((field) =>
       contradiction.variableIds.includes(field.variable),

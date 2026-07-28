@@ -1399,10 +1399,13 @@ const hasEmptyOrigin = (group: GroupIntervals): boolean =>
 
 /**
  * A boolean variable's effective domain, for the singleton-domain
- * `differentFrom` check (fifth-wave Finding 5). Only reached when the
- * variable's `component` is explicitly `'Boolean'` — see Twenty-first-wave
- * Finding 1 below for why every other case (Toggle, or no declared component
- * at all) short-circuits to the unrestricted two-value domain.
+ * `differentFrom` check (fifth-wave Finding 5). `options` are only ever read
+ * when the caller vouches that each variable's `component` IS its
+ * stage-effective rendering (`stageEffectiveComponents`) AND that component
+ * is explicitly `'Boolean'` — see Twenty-first-wave Finding 1 and
+ * Twenty-sixth-wave Finding 1 below for why every other case (Toggle, no
+ * declared component, or a codebook-level read where no stage is in scope)
+ * short-circuits to the unrestricted two-value domain.
  *
  * Within that `'Boolean'` case, `booleanOptionsSchema` (variable.ts) permits
  * an `options` array exposing only one of {true, false} — unlike
@@ -1455,23 +1458,37 @@ const hasEmptyOrigin = (group: GroupIntervals): boolean =>
  * variables.<id>.validation.differentFrom` even though `ToggleField`
  * (fresco-ui) takes no `options` prop and is unconditionally two-valued.
  *
- * An EXPLICIT `component: 'Boolean'` stays on the options-reading path: the
- * codebook has committed to the choice control, which DOES honour `options`,
- * so pinning from them is a rendering the codebook actually determines. A
- * NetworkComposer field is still free to override that to `Toggle`, but that
- * override is exactly what schema.ts's `validateComposerFieldContradictions`
- * stage-effective overlay exists to catch: it re-runs this analyser with the
- * composer field's own `component` overlaid on the codebook variable, and
- * with the codebook-level report now gone the overlay's own contradiction is
- * no longer suppressed as a duplicate of the (nonexistent) baseline one. So a
- * genuine Toggle-less singleton-boolean `differentFrom` pair (one whose only
- * renderer keeps `component: 'Boolean'`, explicitly or by inheriting the
- * codebook default) is still reported — just anchored at the field, not the
- * codebook rule, and only once a stage exists to supply the missing context.
- * A componentless pair used by no composer field at all renders nowhere, so
- * nothing is contradictory.
+ * Twenty-sixth-wave Finding 1 extends that same reasoning to an EXPLICIT
+ * `component: 'Boolean'` read at the record level. The codebook's declared
+ * component is a DEFAULT, not the rendering: `ComposerFormFieldSchema`'s
+ * `component` is required and drawn from `VARIABLE_TYPE_COMPONENTS['boolean']`
+ * regardless of what the codebook declares, and the interview runtime
+ * resolves every composer field as `fieldComponent ?? codebookComponent`
+ * (interview's selectors/forms.ts) while keeping the codebook `options` it
+ * never renders — so a protocol whose every occurrence of an explicit-Boolean
+ * variable overrides the rendering to `Toggle` (unconditionally two-valued)
+ * is runtime-satisfiable, yet the record-level pin rejected it, and the
+ * v7→v8 migration turned that false rejection into silently stripped rules.
+ * The record refinement (`rejectValidationContradictions`, chained onto the
+ * variables records) can never see the stages that would settle the question,
+ * so options-derived pinning is gated on `stageEffectiveComponents`: only a
+ * caller that has already RESOLVED each variable's stage-effective rendering
+ * (schema.ts's `validateComposerFieldContradictions` overlay, which writes
+ * the winning `component` onto every variable it judges) may pass it, and the
+ * record-level check and the migration run with the default and never pin
+ * from `options`. A genuine Boolean-rendered singleton `differentFrom` pair
+ * is therefore still reported wherever a composer form actually renders it —
+ * anchored at the field, once a stage supplies the missing context — while a
+ * pair whose only renderers are shared form fields (EgoForm and the other
+ * `FormFieldSchema` surfaces, which render the codebook component verbatim
+ * but have no stage-effective contradiction pass) is a known accept-direction
+ * gap, deliberately preferred over the false rejection.
  */
-const booleanDomain = (variable: unknown): Set<boolean> => {
+const booleanDomain = (
+  variable: unknown,
+  stageEffectiveComponents: boolean,
+): Set<boolean> => {
+  if (!stageEffectiveComponents) return new Set([true, false]);
   const record = asRecord(variable);
   if (record?.component !== 'Boolean') return new Set([true, false]);
   const options = record.options;
@@ -1559,6 +1576,7 @@ const booleanDomain = (variable: unknown): Set<boolean> => {
  */
 const pinnedValue = (
   variable: unknown,
+  stageEffectiveComponents: boolean,
 ): string | number | boolean | undefined => {
   switch (typeOf(variable)) {
     case 'number': {
@@ -1567,7 +1585,7 @@ const pinnedValue = (
       return min !== undefined && min === max ? min : undefined;
     }
     case 'boolean': {
-      const domain = booleanDomain(variable);
+      const domain = booleanDomain(variable, stageEffectiveComponents);
       return domain.size === 1 ? [...domain][0] : undefined;
     }
     case 'datetime': {
@@ -1678,6 +1696,7 @@ function sameAsInheritedPins(
   variables: UnknownRecord,
   sameAsFind: (id: string) => string,
   unsatisfiableGroupMemberIds: ReadonlySet<string>,
+  stageEffectiveComponents: boolean,
 ): Map<string, string | number | boolean> {
   const membersOf = new Map<string, string[]>();
   for (const id of Object.keys(variables)) {
@@ -1721,7 +1740,7 @@ function sameAsInheritedPins(
     let disagreement = false;
     const unpinned: string[] = [];
     for (const member of members) {
-      const own = pinnedValue(variables[member]);
+      const own = pinnedValue(variables[member], stageEffectiveComponents);
       if (own === undefined) {
         unpinned.push(member);
       } else if (pin === undefined) {
@@ -1772,6 +1791,7 @@ function pinnedEqualDifferentFromContradictions(
   variables: UnknownRecord,
   propagatedPins: Map<string, string | number>,
   unsatisfiableGroupMemberIds: ReadonlySet<string>,
+  stageEffectiveComponents: boolean,
 ): {
   contradictions: ValidationContradiction[];
   claimedPairs: Set<string>;
@@ -1781,6 +1801,7 @@ function pinnedEqualDifferentFromContradictions(
     variables,
     sameAsFind,
     unsatisfiableGroupMemberIds,
+    stageEffectiveComponents,
   );
   const conflicts = new Map<string, VariableRuleRef[]>();
 
@@ -1789,11 +1810,11 @@ function pinnedEqualDifferentFromContradictions(
     if (target === undefined || target === id) continue;
     const crossComponent = sameAsFind(id) !== sameAsFind(target);
     const valueA =
-      pinnedValue(variable) ??
+      pinnedValue(variable, stageEffectiveComponents) ??
       (crossComponent ? inheritedPins.get(id) : undefined) ??
       propagatedPins.get(id);
     const valueB =
-      pinnedValue(variables[target]) ??
+      pinnedValue(variables[target], stageEffectiveComponents) ??
       (crossComponent ? inheritedPins.get(target) : undefined) ??
       propagatedPins.get(target);
     if (valueA === undefined || valueB === undefined || valueA !== valueB) {
@@ -1957,13 +1978,14 @@ const sharedOptionValues = (
 const sharedBooleanDomain = (
   variables: UnknownRecord,
   members: string[],
+  stageEffectiveComponents: boolean,
 ): Set<boolean> | undefined => {
   const types = new Set(members.map((member) => typeOf(variables[member])));
   const [onlyType] = types;
   if (types.size !== 1 || onlyType !== 'boolean') return undefined;
   let intersection: Set<boolean> | undefined;
   for (const member of members) {
-    const domain = booleanDomain(variables[member]);
+    const domain = booleanDomain(variables[member], stageEffectiveComponents);
     intersection =
       intersection === undefined
         ? domain
@@ -2730,6 +2752,7 @@ type DisjointBoundsResult = ChainedBoundResult & {
 
 function disjointBoundsContradictions(
   variables: UnknownRecord,
+  stageEffectiveComponents: boolean,
 ): DisjointBoundsResult {
   const found: ValidationContradiction[] = [];
   const unsatisfiableGroupMemberIds = new Set<string>();
@@ -2783,7 +2806,9 @@ function disjointBoundsContradictions(
     optionShortfall(subset) !== undefined;
 
   const booleanDomainsDisjoint = (subset: string[]): boolean =>
-    subset.length > 1 && sharedBooleanDomain(variables, subset)?.size === 0;
+    subset.length > 1 &&
+    sharedBooleanDomain(variables, subset, stageEffectiveComponents)?.size ===
+      0;
 
   const groupIntervals = new Map<string, GroupIntervals>();
   for (const [group, members] of membersOf) {
@@ -3198,6 +3223,7 @@ const matchesReferenceAssignment = (pin: SingletonPin): boolean =>
 function oddDifferentFromCycleContradictions(
   variables: UnknownRecord,
   claimedPairs: Set<string>,
+  stageEffectiveComponents: boolean,
 ): ValidationContradiction[] {
   const edges = comparatorEdges(variables);
   const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
@@ -3356,6 +3382,7 @@ function oddDifferentFromCycleContradictions(
       const domain = sharedBooleanDomain(
         variables,
         membersOf.get(group) ?? [group],
+        stageEffectiveComponents,
       );
       if (domain?.size !== 1) continue;
       const [value] = domain;
@@ -3402,9 +3429,26 @@ function oddDifferentFromCycleContradictions(
   return found;
 }
 
+type FindValidationContradictionsOptions = {
+  /**
+   * Twenty-sixth-wave Finding 1: the caller vouches that every variable's
+   * `component` is its RESOLVED stage-effective rendering rather than a
+   * codebook default a stage may still override. Only then may an explicit
+   * `component: 'Boolean'` read its `options` as the participant-facing
+   * domain (see `booleanDomain`). The record-level check
+   * (`rejectValidationContradictions` in variable.ts) and the v7→v8
+   * migration run with the default `false`; schema.ts's
+   * `validateComposerFieldContradictions` passes `true` for the overlaid
+   * stage-effective view it builds.
+   */
+  stageEffectiveComponents?: boolean;
+};
+
 export function findValidationContradictions(
   variables: UnknownRecord,
+  options: FindValidationContradictionsOptions = {},
 ): ValidationContradiction[] {
+  const stageEffectiveComponents = options.stageEffectiveComponents ?? false;
   // Twenty-second-wave Finding 1: computed first so its `propagatedPins`
   // closure can feed `pinnedEqualDifferentFromContradictions` below — the
   // array position of its own contradictions is unaffected, only the order
@@ -3414,12 +3458,13 @@ export function findValidationContradictions(
     contradictions: disjointBoundsResults,
     propagatedPins,
     unsatisfiableGroupMemberIds,
-  } = disjointBoundsContradictions(variables);
+  } = disjointBoundsContradictions(variables, stageEffectiveComponents);
   const { contradictions: pinnedEqualContradictions, claimedPairs } =
     pinnedEqualDifferentFromContradictions(
       variables,
       propagatedPins,
       unsatisfiableGroupMemberIds,
+      stageEffectiveComponents,
     );
   return [
     ...localContradictions(variables),
@@ -3427,6 +3472,10 @@ export function findValidationContradictions(
     ...disjointBoundsResults,
     ...mixedResolutionSameAsContradictions(variables),
     ...pinnedEqualContradictions,
-    ...oddDifferentFromCycleContradictions(variables, claimedPairs),
+    ...oddDifferentFromCycleContradictions(
+      variables,
+      claimedPairs,
+      stageEffectiveComponents,
+    ),
   ];
 }

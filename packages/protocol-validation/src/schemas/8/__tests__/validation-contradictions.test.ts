@@ -492,17 +492,20 @@ describe('findValidationContradictions — eighth-wave Finding 1: boolean domain
   const trueOnly = [{ label: 'Yes', value: true }];
   const falseOnly = [{ label: 'No', value: false }];
 
-  // Twenty-first-wave Finding 1: singleton `options` only pin a boolean's
-  // domain when the codebook declares `component: 'Boolean'` — the codebook
-  // alone cannot otherwise know which control renders it. These fixtures
-  // declare it explicitly so they keep exercising the group-level domain
-  // check this block targets, rather than the (now-unpinned) componentless
-  // case.
+  // Twenty-first-wave Finding 1 scoped options-derived domains to an explicit
+  // `component: 'Boolean'`; twenty-sixth-wave Finding 1 further gates them on
+  // `stageEffectiveComponents` — a codebook-level read can never know whether
+  // a NetworkComposer field overrides even an explicit component, so these
+  // fixtures run in stage-effective mode to keep exercising the group-level
+  // domain check this block targets.
   it('rejects a true-only boolean sameAs a false-only boolean', () => {
-    const result = findValidationContradictions({
-      a: { ...boolean('a', { sameAs: 'b' }, trueOnly), component: 'Boolean' },
-      b: { ...boolean('b', {}, falseOnly), component: 'Boolean' },
-    });
+    const result = findValidationContradictions(
+      {
+        a: { ...boolean('a', { sameAs: 'b' }, trueOnly), component: 'Boolean' },
+        b: { ...boolean('b', {}, falseOnly), component: 'Boolean' },
+      },
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
@@ -543,16 +546,19 @@ describe('findValidationContradictions — eighth-wave Finding 1: boolean domain
   // no comparator rules), but the analyser also runs on raw, unvalidated
   // migration input, so this exercises that defensive path directly.
   it('rejects a comparator-only true-only vs false-only boolean pair', () => {
-    const result = findValidationContradictions({
-      a: {
-        ...boolean('a', { greaterThanOrEqualToVariable: 'b' }, trueOnly),
-        component: 'Boolean',
+    const result = findValidationContradictions(
+      {
+        a: {
+          ...boolean('a', { greaterThanOrEqualToVariable: 'b' }, trueOnly),
+          component: 'Boolean',
+        },
+        b: {
+          ...boolean('b', { greaterThanOrEqualToVariable: 'a' }, falseOnly),
+          component: 'Boolean',
+        },
       },
-      b: {
-        ...boolean('b', { greaterThanOrEqualToVariable: 'a' }, falseOnly),
-        component: 'Boolean',
-      },
-    });
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
@@ -1160,6 +1166,16 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
     ...(options !== undefined ? { options } : {}),
   });
 
+  // Twenty-sixth-wave Finding 1: options-derived boolean pins only exist in
+  // stage-effective mode (a codebook-level read cannot know whether a
+  // NetworkComposer field overrides even an explicit `component: 'Boolean'`),
+  // so this whole block — whose subject is exactly those pins against the
+  // differentFrom graph — runs the analyser in that mode.
+  const analyse = (variables: Record<string, unknown>) =>
+    findValidationContradictions(variables, {
+      stageEffectiveComponents: true,
+    });
+
   const trueOnly = [{ label: 'Yes', value: true }];
   const falseOnly = [{ label: 'No', value: false }];
   const bothValues = [
@@ -1182,7 +1198,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
     for (const strip of strips) {
       delete repaired[strip.variableId]?.validation[strip.rule];
     }
-    return findValidationContradictions(repaired);
+    return analyse(repaired);
   };
 
   it("reports the reviewer's A={true}, B={true,false}, C={false} chain as unsatisfiable", () => {
@@ -1195,7 +1211,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
       b: pinnedBoolean('b', { required: true, differentFrom: 'c' }),
       c: pinnedBoolean('c', { required: true }, falseOnly),
     };
-    const result = findValidationContradictions(variables);
+    const result = analyse(variables);
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedDifferentFromParity');
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
@@ -1210,7 +1226,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
 
   it('accepts the same chain once C also admits both values', () => {
     expect(
-      findValidationContradictions({
+      analyse({
         a: pinnedBoolean('a', { required: true, differentFrom: 'b' }, trueOnly),
         b: pinnedBoolean('b', { required: true, differentFrom: 'c' }),
         c: pinnedBoolean('c', { required: true }, bothValues),
@@ -1222,7 +1238,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
   // never be flagged, regardless of the graph's shape.
   it('accepts a chain with no singleton domains at all', () => {
     expect(
-      findValidationContradictions({
+      analyse({
         a: pinnedBoolean('a', { differentFrom: 'b' }),
         b: pinnedBoolean('b', { differentFrom: 'c' }),
         c: pinnedBoolean('c', {}),
@@ -1235,7 +1251,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
   // exactly what satisfies that, and must stay accepted.
   it('accepts two singletons at even distance pinned to agreeing values', () => {
     expect(
-      findValidationContradictions({
+      analyse({
         a: pinnedBoolean('a', { differentFrom: 'b' }, trueOnly),
         b: pinnedBoolean('b', { differentFrom: 'c' }),
         c: pinnedBoolean('c', {}, trueOnly),
@@ -1255,7 +1271,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
       c: pinnedBoolean('c', { differentFrom: 'd' }),
       d: pinnedBoolean('d', {}, trueOnly),
     };
-    const result = findValidationContradictions(variables);
+    const result = analyse(variables);
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedDifferentFromParity');
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c', 'd']);
@@ -1273,7 +1289,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
   // but rendered by Toggle must NOT be flagged.
   it('treats a Toggle-rendered singleton-options boolean as a full domain', () => {
     expect(
-      findValidationContradictions({
+      analyse({
         a: pinnedBoolean(
           'a',
           { required: true, differentFrom: 'b' },
@@ -1314,17 +1330,22 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
   // domain when the codebook declares `component: 'Boolean'` — a
   // componentless boolean's rendering is undetermined at the codebook layer
   // (it is renderable only by a NetworkComposer field, which supplies its
-  // own component). These fixtures declare it explicitly so the pair still
-  // expresses a rendering the codebook actually determines, preserving the
-  // genuine singleton-domain detection this block targets.
+  // own component). Twenty-sixth-wave Finding 1 goes one step further: even
+  // an explicit component is only the RENDERED control in a stage-effective
+  // view (a composer field can override it to Toggle), so these fixtures run
+  // in stage-effective mode, preserving the genuine singleton-domain
+  // detection this block targets.
   it('rejects two true-only booleans joined by differentFrom', () => {
-    const result = findValidationContradictions({
-      a: {
-        ...boolean('a', { differentFrom: 'b' }, trueOnly),
-        component: 'Boolean',
+    const result = findValidationContradictions(
+      {
+        a: {
+          ...boolean('a', { differentFrom: 'b' }, trueOnly),
+          component: 'Boolean',
+        },
+        b: { ...boolean('b', {}, trueOnly), component: 'Boolean' },
       },
-      b: { ...boolean('b', {}, trueOnly), component: 'Boolean' },
-    });
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
     expect(result[0]?.message).toBe(
@@ -1395,17 +1416,21 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
     ).toEqual([]);
   });
 
-  // Twenty-first-wave Finding 1: as above, an explicit `component: 'Boolean'`
-  // is what makes the singleton `options` array a rendering the codebook
-  // actually determines.
+  // Twenty-first / twenty-sixth-wave Finding 1: as above, an explicit
+  // `component: 'Boolean'` in a stage-effective view is what makes the
+  // singleton `options` array a rendering that actually reaches a
+  // participant.
   it('still treats a singleton options array as a pinned value', () => {
-    const result = findValidationContradictions({
-      a: {
-        ...boolean('a', { differentFrom: 'b' }, trueOnly),
-        component: 'Boolean',
+    const result = findValidationContradictions(
+      {
+        a: {
+          ...boolean('a', { differentFrom: 'b' }, trueOnly),
+          component: 'Boolean',
+        },
+        b: { ...boolean('b', {}, trueOnly), component: 'Boolean' },
       },
-      b: { ...boolean('b', {}, trueOnly), component: 'Boolean' },
-    });
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
   });
@@ -2671,12 +2696,16 @@ describe('record schema conformance — contradiction refinement', () => {
     expect(result.success).toBe(true);
   });
 
-  // Twenty-third-wave Finding 2: the schema-level refinement is generic over
-  // every contradiction class, but this confirms the new
-  // `pinnedDifferentFromParity` class actually reaches it end-to-end — the
-  // reviewer's report was that the SCHEMA accepted this shape, not just that
-  // the analyser missed it.
-  it('rejects a node variables record with pinned booleans whose differentFrom parity is unsatisfiable', () => {
+  // Twenty-sixth-wave Finding 1 reverses the twenty-third-wave expectation
+  // here: options-derived boolean pins no longer exist at the RECORD level,
+  // because the record refinement cannot see whether every NetworkComposer
+  // occurrence overrides even an explicit `component: 'Boolean'` to Toggle
+  // (which renders no options and offers both values) — rejecting here made
+  // the v7→v8 migration strip rules from runtime-satisfiable protocols. The
+  // parity class now surfaces only through schema.ts's stage-effective
+  // composer overlay (exercised end-to-end in the twenty-first-wave protocol
+  // block below); the record schema must ACCEPT this shape.
+  it('accepts a node variables record whose boolean differentFrom parity would only be unsatisfiable under codebook-declared renderings', () => {
     const result = VariablesSchema.safeParse({
       a: {
         name: 'a',
@@ -2699,13 +2728,7 @@ describe('record schema conformance — contradiction refinement', () => {
         validation: {},
       },
     });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((candidate) =>
-        candidate.message.includes('pinned values and differentFrom rules'),
-      );
-      expect(issue).toBeDefined();
-    }
+    expect(result.success).toBe(true);
   });
 });
 
@@ -3761,13 +3784,33 @@ describe('findValidationContradictions — Audit sweep: a boolean domain follows
     ).toEqual([]);
   });
 
+  // Twenty-sixth-wave Finding 1: "rendered by" is a stage-effective claim —
+  // only a caller that has resolved each variable's actual rendering may let
+  // an explicit `component: 'Boolean'` read its options, so the pinning
+  // cases below run in that mode.
   it('still pins a singleton-options boolean rendered by the Boolean choice control', () => {
-    const result = findValidationContradictions({
-      a: boolean('a', 'Boolean', trueOnly, { differentFrom: 'b' }),
-      b: boolean('b', 'Boolean', trueOnly),
-    });
+    const result = findValidationContradictions(
+      {
+        a: boolean('a', 'Boolean', trueOnly, { differentFrom: 'b' }),
+        b: boolean('b', 'Boolean', trueOnly),
+      },
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  // The record-level (default-mode) counterpart: the same pair is ACCEPTED,
+  // because the codebook alone cannot know that no composer field overrides
+  // the rendering to Toggle — the false rejection the migration would have
+  // converted into silently stripped rules (twenty-sixth-wave Finding 1).
+  it('does not pin an explicit-Boolean singleton pair at the record level', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', 'Boolean', trueOnly, { differentFrom: 'b' }),
+        b: boolean('b', 'Boolean', trueOnly),
+      }),
+    ).toEqual([]);
   });
 
   // Twenty-first-wave Finding 1 supersedes this block's earlier assumption
@@ -3807,12 +3850,24 @@ describe('findValidationContradictions — Audit sweep: a boolean domain follows
   });
 
   it('still rejects a sameAs group of Boolean-rendered booleans with disjoint options', () => {
-    const result = findValidationContradictions({
-      a: boolean('a', 'Boolean', trueOnly, { sameAs: 'b' }),
-      b: boolean('b', 'Boolean', [{ label: 'No', value: false }]),
-    });
+    const result = findValidationContradictions(
+      {
+        a: boolean('a', 'Boolean', trueOnly, { sameAs: 'b' }),
+        b: boolean('b', 'Boolean', [{ label: 'No', value: false }]),
+      },
+      { stageEffectiveComponents: true },
+    );
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  it('accepts the same disjoint-options sameAs group at the record level', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', 'Boolean', trueOnly, { sameAs: 'b' }),
+        b: boolean('b', 'Boolean', [{ label: 'No', value: false }]),
+      }),
+    ).toEqual([]);
   });
 });
 
@@ -4425,11 +4480,31 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
     expect(result.success).toBe(true);
   });
 
-  // An explicit `component: 'Boolean'` pair: the codebook itself commits to
-  // the choice control, so this stays rejected at the codebook layer exactly
-  // as before this wave — unchanged behaviour, confirmed end-to-end.
-  it('still rejects an explicit component: Boolean singleton pair at the codebook layer, unchanged', () => {
-    const protocol = protocolWithBooleanPair('Boolean', undefined);
+  // Twenty-sixth-wave Finding 1, the reviewer's exact report: an EXPLICIT
+  // `component: 'Boolean'` pair whose every occurrence overrides the
+  // rendering to Toggle. ToggleField takes no `options` prop and is
+  // unconditionally two-valued, so this is runtime-satisfiable — the old
+  // codebook-layer rejection was a false positive the migration converted
+  // into silently stripped rules, and it must now be accepted.
+  it('accepts an explicit component: Boolean singleton pair rendered exclusively as Toggle by NetworkComposer fields', () => {
+    const protocol = protocolWithBooleanPair('Boolean', [
+      networkComposerStage('Toggle'),
+    ]);
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+
+    expect(result.success).toBe(true);
+  });
+
+  // The detection has not vanished — it has moved to where the rendering is
+  // actually known: composer fields keeping the Boolean choice control make
+  // the same pair genuinely contradictory, reported by the stage-effective
+  // overlay (which alone runs the analyser with `stageEffectiveComponents`)
+  // and anchored at the field.
+  it('still rejects the explicit pair when the NetworkComposer fields keep the Boolean choice control', () => {
+    const protocol = protocolWithBooleanPair('Boolean', [
+      networkComposerStage('Boolean'),
+    ]);
 
     const result = ProtocolSchemaV8.safeParse(protocol);
 
@@ -4439,7 +4514,93 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
         candidate.message.includes('must differ but their rules pin both'),
       );
       expect(issue).toBeDefined();
-      expect(issue?.path.slice(0, 2)).toEqual(['codebook', 'node']);
+      expect(issue?.path.slice(0, 2)).toEqual(['stages', 0]);
+    }
+  });
+
+  // With no stage rendering the pair at all, the record level may no longer
+  // reject it (it cannot rule out a Toggle-only rendering), and no
+  // stage-effective check has a form to anchor at. NOTE the residual
+  // accept-direction gap this documents: a pair rendered ONLY by shared
+  // (`FormFieldSchema`) form fields — EgoForm, AlterForm, NameGenerator
+  // forms, FamilyPedigree's nodeConfig.form — uses the codebook component
+  // verbatim, but those surfaces have no stage-effective contradiction pass,
+  // so a genuine Boolean-rendered contradiction there goes unreported. The
+  // cardinal rule prefers that miss over the false rejection.
+  it('accepts an explicit component: Boolean singleton pair with no composer stage at all', () => {
+    const protocol = protocolWithBooleanPair('Boolean', undefined);
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+
+    expect(result.success).toBe(true);
+  });
+
+  // Twenty-sixth-wave Finding 1 also relocates `pinnedDifferentFromParity`
+  // end-to-end coverage here: options-derived pins only exist in the
+  // stage-effective mode, so the class can no longer fire from the record
+  // schema (the record-conformance block above asserts that acceptance) and
+  // must surface through the composer overlay instead.
+  it('rejects a pinned-parity boolean chain through the stage-effective overlay', () => {
+    const base = structuredClone(createBaseProtocol()) as BaseProtocol;
+    const protocol = {
+      ...base,
+      codebook: {
+        ...base.codebook,
+        node: {
+          ...base.codebook.node,
+          person: {
+            ...base.codebook.node.person,
+            variables: {
+              ...base.codebook.node.person.variables,
+              boolA: {
+                ...booleanVariable('BoolA', 'Boolean'),
+                validation: { differentFrom: 'boolB' },
+              },
+              boolB: {
+                name: 'BoolB',
+                type: 'boolean',
+                component: 'Boolean',
+                validation: { differentFrom: 'boolC' },
+              },
+              boolC: {
+                name: 'BoolC',
+                type: 'boolean',
+                component: 'Boolean',
+                options: [{ label: 'No', value: false }],
+              },
+            },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 'nc1',
+          label: 'Build the network',
+          type: 'NetworkComposer',
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          layoutVariable: 'layoutPosition',
+          background: { concentricCircles: 4 },
+          nodeForm: {
+            fields: [
+              { variable: 'boolA', component: 'Boolean', label: 'A?' },
+              { variable: 'boolB', component: 'Boolean', label: 'B?' },
+              { variable: 'boolC', component: 'Boolean', label: 'C?' },
+            ],
+          },
+        },
+      ],
+    };
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((candidate) =>
+        candidate.message.includes('pinned values and differentFrom rules'),
+      );
+      expect(issue).toBeDefined();
+      expect(issue?.path.slice(0, 2)).toEqual(['stages', 0]);
     }
   });
 });
