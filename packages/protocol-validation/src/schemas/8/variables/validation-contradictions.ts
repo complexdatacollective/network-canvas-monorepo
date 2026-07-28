@@ -2393,6 +2393,27 @@ const discreteInstantsEmpty = (
 ): boolean => survivingDiscreteInstants(variables, subset, false)?.size === 0;
 
 /**
+ * Whether a member list contains a cross-resolution `sameAs` edge. Such a
+ * group is the mixed-resolution machinery's to report — its repair strips
+ * exactly those edges, after which the members separate — so neither the
+ * surviving-instant hull nor the pinned-disequality pruning (twenty-eighth
+ * wave) may judge comparators against the joint domain meanwhile. Extracted
+ * from `tightenToSurvivingInstantHull` so both tightenings share one guard.
+ */
+const hasCrossResolutionSameAsEdge = (
+  variables: UnknownRecord,
+  members: string[],
+): boolean =>
+  members.some((member) => {
+    const target = usableReference(variables, member, 'sameAs');
+    return (
+      target !== undefined &&
+      dateResolutionOf(variables[member]) !==
+        dateResolutionOf(variables[target])
+    );
+  });
+
+/**
  * Twenty-seventh-wave Finding 3: tightens an equality group's fixed-origin
  * interval to the hull of its surviving discrete instants, so the comparator
  * feasibility checks — the per-edge check and the chained propagation, which
@@ -2427,18 +2448,7 @@ const tightenToSurvivingInstantHull = (
   members: string[],
   intervals: GroupIntervals,
 ): void => {
-  if (
-    members.some((member) => {
-      const target = usableReference(variables, member, 'sameAs');
-      return (
-        target !== undefined &&
-        dateResolutionOf(variables[member]) !==
-          dateResolutionOf(variables[target])
-      );
-    })
-  ) {
-    return;
-  }
+  if (hasCrossResolutionSameAsEdge(variables, members)) return;
   const surviving = survivingDiscreteInstants(variables, members, true);
   if (surviving === undefined || surviving.size === 0) return;
   let min = Number.POSITIVE_INFINITY;
@@ -2448,6 +2458,312 @@ const tightenToSurvivingInstantHull = (
     if (instant > max) max = instant;
   }
   addToGroupIntervals(intervals, { min, max, origin: 'fixed' });
+};
+
+/**
+ * Twenty-eighth wave: the pin key (`pinnedValue`'s own encoding) a datetime
+ * variable at `resolution` holds when the fixed-calendar instant
+ * `compareVariables` reads back from its stored value is exactly `day`, or
+ * `undefined` when no stored value at that resolution reads back to `day`.
+ * Full resolution stores the canonical YYYY-MM-DD of the day, keyed on the
+ * 'fixed' origin exactly as `pinnedValue`'s full-resolution arm keys a
+ * collapsed calendar window; a coarse resolution stores the canonical
+ * truncated string `coarseStoredValueAtDay` derives (or nothing, when `day`
+ * is not one of its representable emissions). Comparing a counterpart's pin
+ * key against these member-side keys is what keeps the pruning below
+ * resolution- and origin-honest: a coarse pin can never match a full
+ * member's key, and a symbolic interview-date pin
+ * (`datetime:interviewDate:…`) matches no fixed-domain key at all.
+ */
+const storedPinKeyAtDay = (
+  day: number,
+  resolution: DateResolution,
+): string | undefined => {
+  if (resolution === 'full') return `datetime:fixed:${day}`;
+  const stored = coarseStoredValueAtDay(day, resolution);
+  return stored === undefined ? undefined : `datetime:${resolution}:${stored}`;
+};
+
+/**
+ * Twenty-eighth wave: the exact, bounded set of fixed-origin day-number
+ * instants an equality group's shared value can take, or `undefined` when it
+ * cannot be enumerated safely (accept). Coarse members contribute their
+ * discrete emission sets (`coarseInstantsOf`, cap included); a group with no
+ * coarse member enumerates the integer days of its already-tightened fixed
+ * interval, capped at the same `COARSE_INSTANT_ENUMERATION_CAP`. Any member
+ * that cannot be represented on the fixed calendar — an unenumerable coarse
+ * window, or a full-resolution member without a fixed-origin window (a
+ * windowless variable, or an anchorless RelativeDatePicker on the symbolic
+ * interview-date origin) — makes the whole domain unenumerable, the same
+ * `exact`-mode discipline `survivingDiscreteInstants` applies for its hull
+ * consumer. The result is a SUPERSET of the group's feasible shared values
+ * (each member's modelled emission set is itself a superset of its runtime
+ * emissions), which is the only property both consumers below need.
+ */
+const enumerableFixedDomain = (
+  variables: UnknownRecord,
+  members: string[],
+  fixedInterval: Interval | undefined,
+): Set<number> | undefined => {
+  let candidates: Set<number> | undefined;
+  for (const member of members) {
+    const coarse = coarseInstantsOf(variables[member]);
+    if (coarse === 'unenumerable') return undefined;
+    if (coarse === undefined) {
+      if (dateWindowInterval(variables[member])?.origin !== 'fixed') {
+        return undefined;
+      }
+      continue;
+    }
+    candidates =
+      candidates === undefined
+        ? coarse
+        : intersectInstantSets(candidates, coarse);
+  }
+  if (candidates !== undefined) {
+    if (fixedInterval === undefined) return candidates;
+    return new Set(
+      [...candidates].filter(
+        (day) =>
+          (fixedInterval.min === undefined || day >= fixedInterval.min) &&
+          (fixedInterval.max === undefined || day <= fixedInterval.max),
+      ),
+    );
+  }
+  if (
+    fixedInterval?.min === undefined ||
+    fixedInterval.max === undefined ||
+    !Number.isInteger(fixedInterval.min) ||
+    !Number.isInteger(fixedInterval.max)
+  ) {
+    return undefined;
+  }
+  const count = fixedInterval.max - fixedInterval.min + 1;
+  if (count <= 0 || count > COARSE_INSTANT_ENUMERATION_CAP) return undefined;
+  const domain = new Set<number>();
+  for (let day = fixedInterval.min; day <= fixedInterval.max; day++) {
+    domain.add(day);
+  }
+  return domain;
+};
+
+/**
+ * A `differentFrom` rule instance seen from one equality group's side: the
+ * group member whose stored value the rule constrains, and the counterpart
+ * outside the group whose pin (if any) that member can therefore never hold.
+ */
+type PinnedDisequalityEdge = {
+  member: string;
+  counterpart: string;
+  source: VariableRuleRef;
+};
+
+/**
+ * Twenty-eighth wave: every usable datetime `differentFrom` edge, bucketed by
+ * BOTH endpoints' equality groups (each side is the constrained member from
+ * its own group's perspective). Same-group pairs are excluded — those are
+ * class 9's territory (`sameAsGroupConflict`, or its deliberate
+ * divergent-resolution carve-out) — as is a rule whose owner also names the
+ * same target with `sameAs`: that pair is class 7's
+ * (`conflictingReferencePair`), whose repair strips this very rule, so it
+ * must not prune meanwhile.
+ *
+ * A pair whose two groups are ALSO joined by a comparator edge is excluded
+ * too: the counterpart's pin already reaches the member's group as an
+ * interval bound through that edge, so the chain propagation collapses the
+ * group onto the pin and `pinnedEqualDifferentFromContradictions` reports
+ * the pair via its propagated-pin fallback, stripping the `differentFrom`
+ * itself (twenty-seventh-wave Finding 2's established behaviour). Pruning
+ * the same pin would preempt that collapse and re-class the report onto the
+ * comparator — a worse strip for the same conflict. The disequality pruning
+ * therefore handles exactly the pins the comparator graph cannot see.
+ */
+const datetimeDisequalitiesByGroup = (
+  variables: UnknownRecord,
+  groupOf: Map<string, string>,
+  dependencies: Map<string, Map<string, GroupEdge>>,
+): Map<string, PinnedDisequalityEdge[]> => {
+  const byGroup = new Map<string, PinnedDisequalityEdge[]>();
+  const add = (group: string, edge: PinnedDisequalityEdge): void => {
+    const bucket = byGroup.get(group) ?? [];
+    bucket.push(edge);
+    byGroup.set(group, bucket);
+  };
+  for (const [id, variable] of Object.entries(variables)) {
+    if (typeOf(variable) !== 'datetime') continue;
+    const target = usableReference(variables, id, 'differentFrom');
+    if (target === undefined || target === id) continue;
+    if (referenceRule(variable, 'sameAs') === target) continue;
+    const groupA = groupOf.get(id);
+    const groupB = groupOf.get(target);
+    if (groupA === undefined || groupB === undefined || groupA === groupB) {
+      continue;
+    }
+    if (
+      dependencies.get(groupA)?.has(groupB) === true ||
+      dependencies.get(groupB)?.has(groupA) === true
+    ) {
+      continue;
+    }
+    const source: VariableRuleRef = { variableId: id, rule: 'differentFrom' };
+    add(groupA, { member: id, counterpart: target, source });
+    add(groupB, { member: target, counterpart: id, source });
+  }
+  return byGroup;
+};
+
+/**
+ * Twenty-eighth wave: propagates pinned disequalities into an equality
+ * group's finite fixed-calendar domain. A `differentFrom` edge to a PINNED
+ * counterpart removes exactly one instant from the group's enumerable domain
+ * — the one whose member-side stored value (`storedPinKeyAtDay`, judged at
+ * the constrained member's own resolution) matches the counterpart's pin key
+ * — and the group's fixed interval then tightens to the pruned domain's
+ * hull, exactly where `tightenToSurvivingInstantHull` already slots its own
+ * tightening. The per-edge feasibility check and the chain propagation both
+ * re-read that interval, which is what closes the reviewer's repro: `A`
+ * pinned to Jan 1 with `A differentFrom B`, `B` and `C` each spanning
+ * Jan 1-3, `B < C`, and `D` pinned to Jan 3 with `C differentFrom D` prunes
+ * `B` to [Jan 2, Jan 3] and `C` to [Jan 1, Jan 2], so the strict edge's
+ * `max(C) <= min(B)` test finally fires — no pairwise pin comparison ever
+ * could, because neither `B` nor `C` is pinned. The hull stays a superset of
+ * the group's feasible shared values (the domain is a superset and only
+ * provably-unholdable instants are removed), so every infeasibility judged
+ * against it is genuine.
+ *
+ * A domain pruned EMPTY is its own contradiction — the members have no
+ * selectable date left — reported here (class `disjointBounds`, whose
+ * repair-batching entry already covers reports that depend on unlisted
+ * pin provenance) with the edge endpoints as participants and, following the
+ * odd-cycle single-edge precedent, a minimal strip: every rule instance
+ * excluding ONE deterministically-chosen value (the smallest), whose removal
+ * provably restores that value. A single-value domain emptied by a single
+ * exclusion is deliberately NOT reported here: the member is then pinned
+ * (own window collapse, a group-derived inherited pin, or a propagated
+ * collapse), which is `pinnedEqualDifferentFrom`'s territory, and reporting
+ * both would double-strip one conflict.
+ *
+ * Everything uncertain declines to prune (accept):
+ *   - non-datetime or unenumerable/over-cap domains, and groups touching a
+ *     member the group-level emptiness checks already reported
+ *     (`unsatisfiableGroupMemberIds` — the "never judge against an
+ *     already-empty group" precedent), or containing a cross-resolution
+ *     `sameAs` edge (the mixed-resolution repair separates those members);
+ *   - counterparts inside `unsatisfiableGroupMemberIds` (their repair may
+ *     rearrange the very grouping their pin travelled);
+ *   - counterparts pinned on another origin or resolution — the key-space
+ *     comparison makes a mismatch structurally impossible to misapply;
+ *   - counterparts with no own or sameAs-inherited pin. Propagated pins are
+ *     NOT consulted: they are the chain pass's own output, and the pruned
+ *     hulls feed that pass, so consulting them would need a second analyser
+ *     iteration — excluded by design (no fixpoint).
+ */
+const pruneToPinnedDisequalityHull = (
+  variables: UnknownRecord,
+  members: string[],
+  intervals: GroupIntervals,
+  disequalities: PinnedDisequalityEdge[] | undefined,
+  pinOf: (id: string) => string | number | boolean | undefined,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
+): ValidationContradiction | undefined => {
+  if (!disequalities || disequalities.length === 0) return undefined;
+  const types = new Set(members.map((member) => typeOf(variables[member])));
+  const [onlyType] = types;
+  if (types.size !== 1 || onlyType !== 'datetime') return undefined;
+  if (members.some((member) => unsatisfiableGroupMemberIds.has(member))) {
+    return undefined;
+  }
+  if (hasCrossResolutionSameAsEdge(variables, members)) return undefined;
+  const domain = enumerableFixedDomain(
+    variables,
+    members,
+    intervals.get('fixed'),
+  );
+  if (domain === undefined || domain.size === 0) return undefined;
+
+  const exclusions = new Map<
+    number,
+    { sources: VariableRuleRef[]; counterparts: string[] }
+  >();
+  for (const edge of disequalities) {
+    if (unsatisfiableGroupMemberIds.has(edge.counterpart)) continue;
+    const pin = pinOf(edge.counterpart);
+    // Datetime pins are always string keys, so any other pin shape (or none)
+    // excludes nothing.
+    if (typeof pin !== 'string') continue;
+    const resolution = dateResolutionOf(variables[edge.member]);
+    for (const day of domain) {
+      if (storedPinKeyAtDay(day, resolution) !== pin) continue;
+      const exclusion = exclusions.get(day) ?? {
+        sources: [],
+        counterparts: [],
+      };
+      if (
+        !exclusion.sources.some(
+          (existing) => stripKey(existing) === stripKey(edge.source),
+        )
+      ) {
+        exclusion.sources.push(edge.source);
+      }
+      if (!exclusion.counterparts.includes(edge.counterpart)) {
+        exclusion.counterparts.push(edge.counterpart);
+      }
+      exclusions.set(day, exclusion);
+      // Stored keys are injective per day at one resolution, so one rule
+      // instance removes at most this single instant.
+      break;
+    }
+  }
+  if (exclusions.size === 0) return undefined;
+
+  const surviving = [...domain].filter((day) => !exclusions.has(day));
+  if (surviving.length > 0) {
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    for (const day of surviving) {
+      if (day < min) min = day;
+      if (day > max) max = day;
+    }
+    addToGroupIntervals(intervals, { min, max, origin: 'fixed' });
+    return undefined;
+  }
+
+  // Emptied. A single excluded value means a single-value domain — the
+  // pinned-equal machinery's territory (see the doc comment above).
+  if (exclusions.size < 2) return undefined;
+  const orderedDays = [...exclusions.keys()].toSorted(
+    (dayA, dayB) => dayA - dayB,
+  );
+  const [smallestDay] = orderedDays;
+  const chosen =
+    smallestDay === undefined ? undefined : exclusions.get(smallestDay);
+  const [first, ...rest] = chosen?.sources ?? [];
+  if (!first) return undefined;
+  const counterparts: string[] = [];
+  for (const day of orderedDays) {
+    for (const counterpart of exclusions.get(day)?.counterparts ?? []) {
+      if (!counterparts.includes(counterpart)) counterparts.push(counterpart);
+    }
+  }
+  const memberNames = members.map(
+    (member) => `"${nameOf(member, variables[member])}"`,
+  );
+  const counterpartNames = counterparts.map(
+    (counterpart) => `"${nameOf(counterpart, variables[counterpart])}"`,
+  );
+  const subject =
+    members.length === 1
+      ? `Variable ${memberNames[0]}`
+      : `Variables ${memberNames.join(', ')}`;
+  return {
+    class: 'disjointBounds',
+    message: `${subject}: differentFrom rules against pinned variables ${counterpartNames.join(', ')} leave no selectable date`,
+    variableIds: [
+      ...members,
+      ...counterparts.filter((counterpart) => !members.includes(counterpart)),
+    ],
+    strips: [first, ...rest],
+  };
 };
 
 const INTERVAL_ORIGINS = [
@@ -2730,6 +3046,7 @@ const roundToCoarseEmission = (
 function chainedBoundContradictions(
   variables: UnknownRecord,
   graph: GroupGraph,
+  tightenedGroupIntervals: ReadonlyMap<string, GroupIntervals>,
 ): ChainedBoundResult {
   // Group-level adjacency in the propagation direction, lower → upper.
   const groupAdjacency = new Map<string, string[]>();
@@ -2769,10 +3086,26 @@ function chainedBoundContradictions(
     const variableIds = component.flatMap(
       (group) => graph.membersOf.get(group) ?? [],
     );
-    const intervals = intervalsOfMembers(variables, variableIds);
-    // Twenty-seventh-wave Finding 3: seed propagation from the node's true
-    // reachable range, not its convex approximation.
-    tightenToSurvivingInstantHull(variables, variableIds, intervals);
+    // Twenty-seventh-wave Finding 3 seeds propagation from the node's true
+    // reachable range, not its convex approximation; the twenty-eighth wave
+    // reuses the caller's per-group tightened intervals outright so the
+    // pinned-disequality pruned hull seeds this pass too. Every
+    // all-non-strict group cycle was already contracted by
+    // `buildEqualityGroups`, so in practice each surviving component IS one
+    // equality group; the defensive multi-group path recomputes the merged
+    // surviving-instant hull as before (without pruning — accept).
+    const [soleGroup] = component;
+    const precomputed =
+      component.length === 1 && soleGroup !== undefined
+        ? tightenedGroupIntervals.get(soleGroup)
+        : undefined;
+    let intervals: GroupIntervals;
+    if (precomputed) {
+      intervals = precomputed;
+    } else {
+      intervals = intervalsOfMembers(variables, variableIds);
+      tightenToSurvivingInstantHull(variables, variableIds, intervals);
+    }
     const nodeIndex = nodes.length;
     for (const group of component) nodeOf.set(group, nodeIndex);
     nodes.push({
@@ -3089,16 +3422,10 @@ function disjointBoundsContradictions(
     sharedBooleanDomain(variables, subset, stageEffectiveComponents)?.size ===
       0;
 
-  const groupIntervals = new Map<string, GroupIntervals>();
+  // Group-level emptiness checks first. Their verdicts
+  // (`unsatisfiableGroupMemberIds`) must be complete before the second pass
+  // below derives pin sources and tightened intervals from them.
   for (const [group, members] of membersOf) {
-    const intervals = intervalsOfMembers(variables, members);
-    // Twenty-seventh-wave Finding 3: the per-edge feasibility check below
-    // judges each comparator against the group's TRUE reachable range. The
-    // group-level emptiness checks in this loop recompute their own
-    // untightened intervals and are unaffected.
-    tightenToSurvivingInstantHull(variables, members, intervals);
-    groupIntervals.set(group, intervals);
-
     const internalNonStrictEdges =
       internalNonStrictEdgesByGroup.get(group) ?? [];
 
@@ -3199,6 +3526,52 @@ function disjointBoundsContradictions(
     // sameAs-component pass that replaced it.
   }
 
+  // Twenty-eighth wave: pin sources for the disequality pruning below —
+  // computed only once the group-level verdicts above are final, so a pin is
+  // never inherited across a sameAs edge an emptiness repair may strip.
+  // (`pinnedEqualDifferentFromContradictions` later derives the identical map
+  // from the same inputs: nothing after this point adds to
+  // `unsatisfiableGroupMemberIds`.) Propagated pins are deliberately absent —
+  // see `pruneToPinnedDisequalityHull`.
+  const { find: sameAsFind } = sameAsOnlyUnionFind(variables);
+  const inheritedPins = sameAsInheritedPins(
+    variables,
+    sameAsFind,
+    unsatisfiableGroupMemberIds,
+    stageEffectiveComponents,
+  );
+  const pinOf = (id: string): string | number | boolean | undefined =>
+    pinnedValue(variables[id], stageEffectiveComponents) ??
+    inheritedPins.get(id);
+  const disequalitiesByGroup = datetimeDisequalitiesByGroup(
+    variables,
+    groupOf,
+    graph.dependencies,
+  );
+
+  // Twenty-seventh-wave Finding 3 / twenty-eighth wave: the per-edge
+  // feasibility check below (and, through `chainedBoundContradictions`, the
+  // chain propagation) judges each comparator against the group's TRUE
+  // reachable range — its surviving-instant hull, further pruned by pinned
+  // disequalities. The group-level emptiness checks above recompute their own
+  // untightened intervals and are unaffected. A domain the pruning empties
+  // outright is reported here instead of tightening.
+  const groupIntervals = new Map<string, GroupIntervals>();
+  for (const [group, members] of membersOf) {
+    const intervals = intervalsOfMembers(variables, members);
+    tightenToSurvivingInstantHull(variables, members, intervals);
+    const emptiedDomain = pruneToPinnedDisequalityHull(
+      variables,
+      members,
+      intervals,
+      disequalitiesByGroup.get(group),
+      pinOf,
+      unsatisfiableGroupMemberIds,
+    );
+    if (emptiedDomain) found.push(emptiedDomain);
+    groupIntervals.set(group, intervals);
+  }
+
   for (const edge of edges) {
     const upperGroup = groupOf.get(edge.upper);
     const lowerGroup = groupOf.get(edge.lower);
@@ -3245,7 +3618,7 @@ function disjointBoundsContradictions(
     });
   }
 
-  const chained = chainedBoundContradictions(variables, graph);
+  const chained = chainedBoundContradictions(variables, graph, groupIntervals);
   found.push(...chained.contradictions);
 
   return {

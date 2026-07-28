@@ -6325,3 +6325,228 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 3: mixed-
     expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
   });
 });
+
+describe('findValidationContradictions — Twenty-eighth wave: pinned disequalities prune finite date domains', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: `a` pinned to Jan 1 with `a differentFrom b`,
+  // `b` and `c` each spanning Jan 1-3, `b < c`, `d` pinned to Jan 3 with
+  // `c differentFrom d`. Neither `b` nor `c` is pinned, so the pairwise
+  // pinned-differentFrom check sees nothing — but pruning Jan 1 out of `b`'s
+  // domain and Jan 3 out of `c`'s leaves b in {2, 3} and c in {1, 2}, and
+  // `b < c` has no solution left.
+  it('rejects the reviewer repro: disequality-pruned domains starve a strict comparator', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2024-01-01', max: '2024-01-01' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2024-01-01', max: '2024-01-03' },
+        { lessThanVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2024-01-01', max: '2024-01-03' },
+        { differentFrom: 'd' },
+      ),
+      d: datePicker('d', { min: '2024-01-03', max: '2024-01-03' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // The one-slack mirror: with `b` and `c` spanning Jan 1-4, the pruned
+  // domains are b in {2, 3, 4} and c in {1, 2, 4}, and b = 3 < c = 4
+  // satisfies everything — so this must stay accepted.
+  it('accepts the one-slack mirror whose pruned domains still admit a solution', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2024-01-01', max: '2024-01-01' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2024-01-01', max: '2024-01-04' },
+          { lessThanVariable: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2024-01-01', max: '2024-01-04' },
+          { differentFrom: 'd' },
+        ),
+        d: datePicker('d', { min: '2024-01-03', max: '2024-01-03' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Pruned to empty: `b`'s two-day window loses Jan 1 to `a`'s pin and Jan 2
+  // to `e`'s, leaving no selectable date at all — a conflict no pairwise
+  // check can see, since `b` itself is never pinned. The strip restores the
+  // smallest excluded day (Jan 1), so it names `a`'s rule.
+  it('rejects a variable whose pruned domain is emptied by two pinned partners', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2024-01-01', max: '2024-01-01' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2024-01-01', max: '2024-01-02' },
+        { differentFrom: 'e' },
+      ),
+      e: datePicker('e', { min: '2024-01-02', max: '2024-01-02' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "b": differentFrom rules against pinned variables "a", "e" leave no selectable date',
+    );
+    expect(result[0]?.variableIds).toEqual(['b', 'a', 'e']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Domains beyond the enumeration cap are never pruned (and at this width a
+  // one-instant exclusion cannot starve the comparator anyway) — the shape
+  // stays accepted, with bounded work.
+  it('leaves a domain beyond the enumeration cap unpruned and accepted', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-01' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2022-12-31' },
+          { lessThanVariable: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2022-12-31' },
+          { differentFrom: 'd' },
+        ),
+        d: datePicker('d', { min: '2022-12-31', max: '2022-12-31' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Mixed origins never prune: an anchorless RelativeDatePicker pinned to
+  // interview-date offset 0 must not remove UTC day number 0 (1970-01-01)
+  // from a fixed-calendar domain, however the raw numbers coincide. Only
+  // `e`'s fixed pin excludes a day, so `b` keeps 1970-01-01 and everything
+  // stays satisfiable.
+  it('never applies a symbolic interview-date pin to a fixed-calendar domain', () => {
+    expect(
+      findValidationContradictions({
+        b: datePicker(
+          'b',
+          { min: '1970-01-01', max: '1970-01-02' },
+          { differentFrom: 'e' },
+        ),
+        e: datePicker('e', { min: '1970-01-02', max: '1970-01-02' }),
+        r: {
+          name: 'r',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { before: 0, after: 0 },
+          validation: { differentFrom: 'b' },
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  // The coarse analogue of the reviewer repro: year pickers are enumerable
+  // too, and a coarse pin excludes exactly the member's matching stored
+  // string. Pruning 2020 out of `b` and 2022 out of `c` leaves `b < c`
+  // without a solution.
+  it('rejects the coarse-resolution analogue at year resolution', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2020' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2022' },
+        { lessThanVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { type: 'year', min: '2020', max: '2022' },
+        { differentFrom: 'd' },
+      ),
+      d: datePicker('d', { type: 'year', min: '2022', max: '2022' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // A pin inherited through a sameAs component prunes exactly like an own
+  // pin: `a2` carries no collapsed window of its own, but `sameAs a1` forces
+  // it to `a1`'s pinned Jan 1, and its `differentFrom b` therefore excludes
+  // Jan 1 from `b`'s domain the same way the reviewer repro's own pin does.
+  it('prunes with a sameAs-inherited pin as the exclusion source', () => {
+    const result = findValidationContradictions({
+      a1: datePicker('a1', { min: '2024-01-01', max: '2024-01-01' }),
+      a2: datePicker(
+        'a2',
+        { min: '2023-12-01', max: '2024-06-01' },
+        { sameAs: 'a1', differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2024-01-01', max: '2024-01-03' },
+        { lessThanVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2024-01-01', max: '2024-01-03' },
+        { differentFrom: 'd' },
+      ),
+      d: datePicker('d', { min: '2024-01-03', max: '2024-01-03' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'lessThanVariable' },
+    ]);
+  });
+});
