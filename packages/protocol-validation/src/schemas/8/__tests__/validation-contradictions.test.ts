@@ -8286,3 +8286,178 @@ describe('findValidationContradictions — Thirty-second wave Fix 3: the synthes
     expect(result[0]?.class).toBe('disjointBounds');
   });
 });
+
+// Thirty-third wave: the scalar control's implicit finite domain. A scalar is
+// only ever rendered by fresco-ui's VisualAnalogScaleField — the sole entry
+// in VARIABLE_TYPE_COMPONENTS['scalar'], required verbatim by shared form
+// fields and the only override a NetworkComposer field may pick — whose
+// range and step no protocol configuration can alter (min = 0, max = 1,
+// step = 0.001; the interview forwards only minLabel/maxLabel). base-ui's
+// Slider quantises every emission path to the step, so the 1001 grid values
+// k/1000 are the entire domain: scalars contribute a fixed [0, 1] interval,
+// and scalar-only chain nodes tighten strict edges by exactly 0.001 — a
+// strict comparator chain of MORE than 1001 scalars is infeasible, while one
+// of exactly 1001 is satisfiable only by the full grid walk 1.000 > 0.999 >
+// ... > 0.000. See `intervalOf`'s scalar case and `SCALAR_CHAIN_QUANTUM`.
+describe("findValidationContradictions — Thirty-third wave: scalar chains respect the visual analog scale's finite step domain", () => {
+  const scalarChainOf = (
+    count: number,
+    rule: string,
+    options: { component?: boolean } = {},
+  ): Record<string, unknown> => {
+    const variables: Record<string, unknown> = {};
+    for (let i = 0; i < count; i++) {
+      variables[`v${i}`] = {
+        name: `v${i}`,
+        type: 'scalar',
+        ...(options.component ? { component: 'VisualAnalogScale' } : {}),
+        validation: {
+          required: true,
+          ...(i < count - 1 ? { [rule]: `v${i + 1}` } : {}),
+        },
+      };
+    }
+    return variables;
+  };
+
+  // The reviewer's demonstration, verbatim shape: 1,002 componentless
+  // required scalars in a strictly-decreasing chain. Only 1001 distinct
+  // values exist, so no strictly-decreasing assignment of 1,002 exists.
+  // Componentless is the load-bearing variant: scalar has exactly one legal
+  // control, so the record-level check may model the domain without a stage
+  // in scope (unlike boolean, where a composer override can swap the
+  // control).
+  it("rejects the reviewer's 1,002-variable strict scalar chain, exactly once", () => {
+    const result = findValidationContradictions(
+      scalarChainOf(1_002, 'greaterThanVariable'),
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain('comparison chain');
+    expect(result[0]?.variableIds).toHaveLength(1_002);
+    expect(result[0]?.strips).toHaveLength(1_001);
+  });
+
+  // The explicit-component spelling and the mirrored comparator direction
+  // reach the same verdict.
+  it('rejects the explicit-component chain declared with lessThanVariable', () => {
+    const result = findValidationContradictions(
+      scalarChainOf(1_002, 'lessThanVariable', { component: true }),
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds).toHaveLength(1_002);
+  });
+
+  // Boundary: 1001 strictly-ordered scalars are EXACTLY satisfiable — the
+  // full grid walk 1.000 > 0.999 > ... > 0.000 — and every propagated
+  // min/max collapses to a closed point, so the pass must read the collapse
+  // as feasible, not as a conflict.
+  it('accepts a 1,001-variable strict chain (the exact grid walk)', () => {
+    expect(
+      findValidationContradictions(scalarChainOf(1_001, 'greaterThanVariable')),
+    ).toEqual([]);
+  });
+
+  it('accepts short strict chains', () => {
+    expect(
+      findValidationContradictions(scalarChainOf(3, 'greaterThanVariable')),
+    ).toEqual([]);
+  });
+
+  // Non-strict hops consume no step, whatever the chain's length.
+  it('accepts a 1,002-variable non-strict chain', () => {
+    expect(
+      findValidationContradictions(
+        scalarChainOf(1_002, 'lessThanOrEqualToVariable'),
+      ),
+    ).toEqual([]);
+  });
+
+  // One non-strict edge refunds exactly one step: 1,002 variables over 1,000
+  // strict hops land on 1.000 precisely — the accept side of the same
+  // boundary the reviewer's chain crosses.
+  it('accepts the 1,002-variable chain once a single edge is non-strict', () => {
+    const variables = scalarChainOf(1_002, 'greaterThanVariable');
+    const midpoint = variables.v500;
+    if (midpoint && typeof midpoint === 'object') {
+      Object.assign(midpoint, {
+        validation: { required: true, greaterThanOrEqualToVariable: 'v501' },
+      });
+    }
+    expect(findValidationContradictions(variables)).toEqual([]);
+  });
+
+  // Regression guard: a strict two-cycle stays the cycle rule's report — the
+  // new interval must not double-report it (strict SCCs are dropped from
+  // chain propagation), and [0, 1] against [0, 1] never trips the per-edge
+  // disjointness check.
+  it('reports a scalar strict two-cycle as strictComparatorCycle alone', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'scalar',
+        validation: { greaterThanVariable: 'b' },
+      },
+      b: {
+        name: 'b',
+        type: 'scalar',
+        validation: { greaterThanVariable: 'a' },
+      },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('strictComparatorCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+  });
+
+  // A mutual-non-strict pair inside the chain merges into one multi-member
+  // scalar node; `chainNodeQuantum` must still grant the merged node the
+  // scalar grid, so the chain's infeasibility survives the condensation.
+  it('rejects the 1,002-variable chain through a comparator-forced equality group', () => {
+    const variables = scalarChainOf(1_002, 'greaterThanVariable');
+    variables.twin = {
+      name: 'twin',
+      type: 'scalar',
+      validation: {
+        required: true,
+        greaterThanOrEqualToVariable: 'v500',
+        lessThanOrEqualToVariable: 'v500',
+      },
+    };
+    const result = findValidationContradictions(variables);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain('comparison chain');
+  });
+
+  // The deliberate divergence: an unbounded NUMBER chain of the same length
+  // stays accepted — number values are neither range-bounded nor quantised
+  // (the runtime coerces with a bare Number()), so nothing is provable.
+  it('accepts a 1,002-variable unbounded strict number chain', () => {
+    const variables: Record<string, unknown> = {};
+    for (let i = 0; i < 1_002; i++) {
+      variables[`v${i}`] = {
+        name: `v${i}`,
+        type: 'number',
+        validation: i < 1_001 ? { greaterThanVariable: `v${i + 1}` } : {},
+      };
+    }
+    expect(findValidationContradictions(variables)).toEqual([]);
+  });
+
+  // Record-level integration: the codebook variables schema rejects the
+  // reviewer's chain at parse time, before any stage exists — the
+  // single-legal-control proof is exactly what licenses judging it there.
+  it('rejects the chain at the VariablesSchema layer', () => {
+    const result = VariablesSchema.safeParse(
+      scalarChainOf(1_002, 'greaterThanVariable'),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((candidate) =>
+        candidate.message.includes('comparison chain'),
+      );
+      expect(issue).toBeDefined();
+    }
+  });
+});

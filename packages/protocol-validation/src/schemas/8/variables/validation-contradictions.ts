@@ -1523,6 +1523,27 @@ const intervalOf = (variable: unknown): Interval | undefined => {
       };
     case 'datetime':
       return dateWindowInterval(variable);
+    // Thirty-third wave: a scalar response always lives on the visual analog
+    // scale's fixed normalised range. Unlike boolean — where Boolean and
+    // Toggle render different domains, so `booleanDomain` must gate on the
+    // stage-effective component — the scalar rendering is DETERMINED at every
+    // layer, which is what licenses a record-level interval:
+    // `VARIABLE_TYPE_COMPONENTS['scalar']` lists exactly ONE legal control
+    // (`VisualAnalogScale`, variable.ts), the scalar schema's own `component`
+    // enum admits only that control, a shared form field requires the
+    // codebook component outright (schema.ts's `validateFormFieldVariable`),
+    // and a NetworkComposer field's override is drawn from the same
+    // single-entry list (`validateComposerFieldComponents`) — so no override
+    // can ever change the rendered control, and a componentless scalar is as
+    // determined as an explicit one. The control's range is equally fixed:
+    // fresco-ui's VisualAnalogScaleField defaults `min = 0, max = 1`, the
+    // interview forwards only `minLabel`/`maxLabel` from `parameters`
+    // (useProtocolForm.tsx), and the scalar `parameters` schema can author
+    // nothing else — no protocol configuration reaches `min`/`max`/`step`.
+    // The step quantisation this range carries is modelled separately, in
+    // the chain pass — see `SCALAR_CHAIN_QUANTUM`.
+    case 'scalar':
+      return { min: 0, max: 1, origin: 'fixed' };
     default:
       return undefined;
   }
@@ -2983,13 +3004,61 @@ const INTERVAL_ORIGINS = [
  * Variable types whose interval is measured in whole numbers: datetime bounds
  * are UTC day numbers (and, on the symbolic origin, integer day offsets — see
  * `relativeDateWindowInterval`), text bounds are string lengths, categorical
- * bounds are selection counts. `number` and `scalar` are DELIBERATELY absent:
- * their bounds are integers (`z.number().int()` in validation.ts) but the
- * VALUES are not — the interview runtime coerces a number field with a bare
- * `Number()` (`coerceFormValues`), so 1.5 is a legal answer. See
- * `stepChainBound`, which is the only reader.
+ * bounds are selection counts. `number` is DELIBERATELY absent: its bounds
+ * are integers (`z.number().int()` in validation.ts) but the VALUES are not —
+ * the interview runtime coerces a number field with a bare `Number()`
+ * (`coerceFormValues`), so 1.5 is a legal answer. `scalar` is absent for a
+ * different reason: its values ARE quantised, but on the visual analog
+ * scale's 0.001 grid rather than the integer one — see
+ * `SCALAR_CHAIN_QUANTUM`. Read only by `chainNodeQuantum`.
  */
 const INTEGER_QUANTITY_TYPES = new Set(['datetime', 'text', 'categorical']);
+
+/**
+ * A provably quantised chain-node value domain: every value the node's
+ * variables can hold is a multiple of `step`. `decimals` is `step`'s exact
+ * decimal precision, so grid arithmetic can be normalised through `toFixed` —
+ * repeated binary-float addition of 0.001 would drift off the grid within a
+ * few hops, and both the grid-membership test and the strict-hop step must
+ * stay exact for the strict-edge tightening to be sound. The integer grid
+ * keeps its `Number.isInteger`/plain-addition fast path, byte-identical to
+ * the behaviour it had when `ChainNode` carried a boolean `integral` flag.
+ */
+type ChainQuantum = { step: number; decimals: number };
+
+const INTEGER_CHAIN_QUANTUM: ChainQuantum = { step: 1, decimals: 0 };
+
+/**
+ * Thirty-third wave: the visual analog scale's quantisation.
+ * `VisualAnalogScaleField` (fresco-ui) renders base-ui's Slider with
+ * `min = 0, max = 1, step = 0.001`, and every path a value can leave the
+ * control by is step-aligned: a pointer drag rounds through base-ui's
+ * `roundValueToStep` (SliderControl) and clamps to the range, a keyboard move
+ * first rounds the current value to the step and then adds ±step/±largeStep
+ * with decimal-exact `toFixed` arithmetic (SliderThumb; Home/End emit the
+ * endpoints themselves), and the untouched-commit fallback writes the
+ * midpoint 0.5. A scalar can therefore only ever store one of the 1001 grid
+ * values k/1000 — which is exactly what makes a strict comparator chain of
+ * more than 1001 scalars infeasible: consecutive strictly-ordered grid values
+ * differ by at least the step. See `intervalOf`'s scalar case for why the
+ * control (and with it this grid) is determined for every scalar variable,
+ * explicit-component and componentless alike.
+ */
+const SCALAR_CHAIN_QUANTUM: ChainQuantum = { step: 0.001, decimals: 3 };
+
+const isOnQuantumGrid = (value: number, quantum: ChainQuantum): boolean =>
+  quantum.decimals === 0
+    ? Number.isInteger(value)
+    : Number(value.toFixed(quantum.decimals)) === value;
+
+const stepAlongQuantumGrid = (
+  value: number,
+  quantum: ChainQuantum,
+  direction: 1 | -1,
+): number =>
+  quantum.decimals === 0
+    ? value + direction
+    : Number((value + direction * quantum.step).toFixed(quantum.decimals));
 
 /**
  * One end of a propagated range, carried with enough provenance to name the
@@ -3000,7 +3069,7 @@ type ChainBound = {
   /**
    * The bound is EXCLUSIVE: the node's value has to lie strictly beyond
    * `value`. Produced by a strict comparator step over a quantity that is not
-   * known to be whole-numbered.
+   * provably quantised.
    */
   open: boolean;
   /** Index of the propagation node whose OWN declared bound seeded this. */
@@ -3013,7 +3082,8 @@ type ChainBound = {
 type ChainNode = {
   variableIds: string[];
   intervals: GroupIntervals;
-  integral: boolean;
+  /** The node's provably quantised value grid, when it has one. */
+  quantum: ChainQuantum | undefined;
   /**
    * The node's own bounds are usable as a seed. A node whose merged interval
    * is already empty is reported by the group check above (or, for a group of
@@ -3081,22 +3151,28 @@ const isTighterMax = (
  * bound up the chain, -1 while pushing an upper bound down it).
  *
  * A non-strict hop passes the bound through unchanged. A strict hop needs the
- * next value to lie strictly beyond it, which is an exact `±1` on a
- * whole-numbered quantity and an open bound otherwise — the distinction that
+ * next value to lie strictly beyond it, which is an exact `±step` when the
+ * target's domain is a provably quantised grid the bound itself sits on
+ * (integer quantities step by 1, scalars by the visual analog scale's 0.001 —
+ * see `ChainQuantum`) and an open bound otherwise — the distinction that
  * makes `A >= B >= C` with `A.max = C.min` stay satisfiable while
  * `A > B > C` with the same bounds does not.
  */
 const stepChainBound = (
   bound: ChainBound,
   strict: boolean,
-  integral: boolean,
+  quantum: ChainQuantum | undefined,
   direction: 1 | -1,
   from: number,
 ): ChainBound => {
   const carried = { root: bound.root, via: from, hops: bound.hops + 1 };
   if (!strict) return { ...carried, value: bound.value, open: bound.open };
-  if (integral && Number.isInteger(bound.value)) {
-    return { ...carried, value: bound.value + direction, open: false };
+  if (quantum !== undefined && isOnQuantumGrid(bound.value, quantum)) {
+    return {
+      ...carried,
+      value: stepAlongQuantumGrid(bound.value, quantum, direction),
+      open: false,
+    };
   }
   return { ...carried, value: bound.value, open: true };
 };
@@ -3104,6 +3180,27 @@ const stepChainBound = (
 const isIntegerQuantity = (variable: unknown): boolean => {
   const type = typeOf(variable);
   return type !== undefined && INTEGER_QUANTITY_TYPES.has(type);
+};
+
+/**
+ * The quantised grid a condensation node's values provably live on, if any.
+ * A node mixing grids gets none: an equality group can only mix types through
+ * raw migration input (`usableReference` joins same-typed variables), and a
+ * mixed node's domain is not provably any single grid — `undefined` falls
+ * back to the open-bound (accept-direction) strict hop exactly as before.
+ */
+const chainNodeQuantum = (
+  variables: UnknownRecord,
+  variableIds: string[],
+): ChainQuantum | undefined => {
+  if (variableIds.length === 0) return undefined;
+  if (variableIds.every((id) => isIntegerQuantity(variables[id]))) {
+    return INTEGER_CHAIN_QUANTUM;
+  }
+  if (variableIds.every((id) => typeOf(variables[id]) === 'scalar')) {
+    return SCALAR_CHAIN_QUANTUM;
+  }
+  return undefined;
 };
 
 /** A node's own declared bound, as the start of a propagation path. */
@@ -3319,9 +3416,7 @@ function chainedBoundContradictions(
     nodes.push({
       variableIds,
       intervals,
-      integral:
-        variableIds.length > 0 &&
-        variableIds.every((id) => isIntegerQuantity(variables[id])),
+      quantum: chainNodeQuantum(variables, variableIds),
       seedable: !hasEmptyOrigin(intervals),
       outgoing: [],
       incoming: [],
@@ -3398,7 +3493,7 @@ function chainedBoundContradictions(
         const stepped = stepChainBound(
           bound,
           edge.strict,
-          target.integral,
+          target.quantum,
           1,
           index,
         );
@@ -3433,7 +3528,7 @@ function chainedBoundContradictions(
         const stepped = stepChainBound(
           bound,
           edge.strict,
-          target.integral,
+          target.quantum,
           -1,
           index,
         );
@@ -3458,10 +3553,13 @@ function chainedBoundContradictions(
       // collapse to one CLOSED point pins every member to that value, even
       // when neither bound is the node's own — `pinnedEqualDifferentFromContradictions`
       // reads this map as a fallback once a variable's own rules don't
-      // already pin it. Scoped to `number` and `datetime`: those are the
-      // only types a comparator edge ever connects (see `requireType` on
-      // the four comparator rules) whose bound also identifies the runtime
-      // VALUE rather than a length or count. A full-resolution datetime
+      // already pin it. Scoped to `number` and `datetime`: text/categorical
+      // bounds are lengths and counts rather than values, and a SCALAR
+      // collapse (thirty-third wave) deliberately records nothing — scalar's
+      // validation pick carries no `differentFrom`/`sameAs` (variable.ts),
+      // and the pinned-equal check is this map's only reader, so a scalar
+      // pin could never be consumed; raw migration input carrying such a
+      // rule stays accept-direction. A full-resolution datetime
       // records the same origin-tagged day-number key `pinnedValue` derives;
       // a COARSE (month/year) member additionally records its pin
       // (twenty-seventh-wave Finding 2) whenever the collapsed day is
@@ -3474,7 +3572,7 @@ function chainedBoundContradictions(
       // canonical four-digit stored form records nothing (accept).
       // `!min.open && !max.open` is the fractional-domain guard:
       // a strict hop only ever leaves a bound open when its quantity is not
-      // known to be whole-numbered (`stepChainBound`), so an open collapse
+      // provably quantised (`stepChainBound`), so an open collapse
       // means the node's true window excludes its one candidate point (a
       // provably EMPTY domain, always caught elsewhere as an infeasibility)
       // rather than a pinned one.
