@@ -20,6 +20,12 @@ function utcDate(year: number, month: number, day: number): Date {
   return date;
 }
 
+// Left published rather than deleted now that RelativeDatePickerField derives
+// its window through `dateWithinPickerRange` instead: this is a subpath export
+// of the design system, so a host outside this repo may be counting days with
+// it, and @codaco/interview holds it to the generator's own copy
+// (src/forms/__tests__/ymdParity.test.ts) — which is what keeps the two UTC
+// implementations, and so the dates either side derives, from drifting apart.
 export function addDays(ymd: string, days: number): string {
   const parts = ymd.split('-').map(Number);
   const [year, month, day] = parts;

@@ -3,6 +3,7 @@ import {
   type Variables,
 } from '@codaco/protocol-validation';
 import {
+  dateWithinPickerRange,
   RELATIVE_DATE_PICKER_DEFAULT_AFTER,
   RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
 } from '@codaco/shared-consts';
@@ -13,7 +14,6 @@ import {
   type DateResolution,
   type DateWindow,
   EARLIEST_OFFERED_DATE,
-  offsetWithinOfferedDates,
   truncateToResolution,
   utcDate,
 } from './dateWindow';
@@ -205,21 +205,16 @@ function resolveDateWindow(
     // anchor derived `0000-07-05` — or `00-1-11-28`, which is not a date at all
     // and which `stepsBetween` reparses as year zero.
     //
-    // Deliberately not fixed here: the interview derives this same window twice
-    // more — `buildDatePickerBoundProps` and `RelativeDatePickerField` — and
-    // neither clamps, so a protocol anchored at the last date the calendar
-    // offers still validates submissions against a `10000-01-01` maximum that
-    // `matchesDatePattern` does not recognise as a date and whose lexical
-    // fallback then rejects every four-digit year, typed or generated. Those
-    // two cannot import this clamp (the interview holds this package as a
-    // devDependency only, and fresco-ui not at all), so the field's own copies
-    // have to state it, the way both packages already keep their own `ymd`
-    // arithmetic. Clamping here is still what keeps a five-digit date out of a
-    // generated network, which is the half this package owns.
+    // The interview derives this same window twice more, in
+    // `buildDatePickerBoundProps` and in `RelativeDatePickerField`, and a
+    // generated value has to satisfy what those two validate. All three read the
+    // clamp from shared-consts so the three windows cannot disagree; the parity
+    // is held in @codaco/interview, the one package that can see all of them
+    // (src/forms/__tests__/relativeDateWindowParity.test.ts).
     return {
       resolution: 'full',
-      min: offsetWithinOfferedDates(anchor, -before, 'full'),
-      max: offsetWithinOfferedDates(anchor, after, 'full'),
+      min: dateWithinPickerRange(anchor, -before),
+      max: dateWithinPickerRange(anchor, after),
     };
   }
 

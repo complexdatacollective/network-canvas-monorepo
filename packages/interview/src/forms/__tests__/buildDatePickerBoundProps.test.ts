@@ -34,6 +34,47 @@ describe('buildDatePickerBoundProps', () => {
     ).toEqual({ min: '2020-06-05', max: '2020-06-20' });
   });
 
+  // Both ends of a relative window are derived, and both can leave the calendar
+  // from parameters the schema accepts. A five-digit year is not merely out of
+  // range: `matchesDatePattern` does not read `10000-01-01` as a date, so this
+  // max reaches the validator as a plain string and is compared lexically —
+  // where a leading `1` sorts below every four-digit year, and the field then
+  // rejects every value it can hold, including whatever a participant types.
+  it.each([
+    {
+      end: 'ceiling',
+      parameters: { anchor: '9999-12-31', before: 0, after: 1 },
+      bounds: { min: '9999-12-31', max: '9999-12-31' },
+    },
+    {
+      end: 'ceiling reached from further back',
+      parameters: { anchor: '9998-12-31', before: 0, after: 400 },
+      bounds: { min: '9998-12-31', max: '9999-12-31' },
+    },
+    {
+      end: 'floor',
+      parameters: { anchor: '0001-01-01', before: 180, after: 0 },
+      bounds: { min: '0001-01-01', max: '0001-01-01' },
+    },
+    {
+      // `before: 400` from year 1 derives `00-1-11-28`, which is not a date at
+      // all rather than merely an early one.
+      end: 'floor past year zero',
+      parameters: { anchor: '0001-01-01', before: 400, after: 30 },
+      bounds: { min: '0001-01-01', max: '0001-01-31' },
+    },
+  ])(
+    'holds a relative window inside the calendar at the $end',
+    ({ parameters, bounds }) => {
+      expect(
+        buildDatePickerBoundProps({
+          component: 'RelativeDatePicker',
+          parameters,
+        }),
+      ).toEqual(bounds);
+    },
+  );
+
   describe('RelativeDatePicker defaults', () => {
     // RelativeDatePicker's default anchor is today, so freeze the system
     // clock rather than asserting against a live `new Date()` read — the

@@ -1,7 +1,8 @@
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
-import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
+import { todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import type { ComponentType } from '@codaco/protocol-validation';
 import {
+  dateWithinPickerRange,
   RELATIVE_DATE_PICKER_DEFAULT_AFTER,
   RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
 } from '@codaco/shared-consts';
@@ -21,8 +22,9 @@ type BoundedField = {
  * - DatePicker forwards `parameters.min`/`parameters.max` verbatim.
  * - RelativeDatePicker pre-computes absolute bounds from
  *   `parameters.anchor`/`before`/`after`, defaulting to today and the shared
- *   before/after span — the same constants RelativeDatePickerField applies to
- *   its own native min/max attributes.
+ *   before/after span — the same constants, and the same clamp onto the dates a
+ *   picker can represent, that RelativeDatePickerField applies to its own native
+ *   min/max attributes.
  *
  * Returns `{}` for any other component, or when the field has no
  * `parameters` object at all (matching DatePickerField/RelativeDatePickerField,
@@ -51,8 +53,8 @@ export function buildDatePickerBoundProps(
     const afterDays =
       typeof after === 'number' ? after : RELATIVE_DATE_PICKER_DEFAULT_AFTER;
     return {
-      min: addDays(anchorYmd, -beforeDays),
-      max: addDays(anchorYmd, afterDays),
+      min: dateWithinPickerRange(anchorYmd, -beforeDays),
+      max: dateWithinPickerRange(anchorYmd, afterDays),
     };
   }
 

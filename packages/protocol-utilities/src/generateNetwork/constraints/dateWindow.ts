@@ -1,4 +1,9 @@
-import { DATE_PICKER_DEFAULT_MIN } from '@codaco/shared-consts';
+import {
+  DATE_PICKER_DEFAULT_MIN,
+  DATE_PICKER_EARLIEST_DATE,
+  DATE_PICKER_LATEST_DATE,
+  dateWithinPickerRange,
+} from '@codaco/shared-consts';
 
 export type DateResolution = 'full' | 'month' | 'year';
 
@@ -6,9 +11,11 @@ export type DateResolution = 'full' | 'month' | 'year';
  * The earliest date each resolution's own control can represent.
  *
  * A full-resolution field is a native `<input type="date">`, whose dates start
- * at year 0001. The other two resolutions render a `<select>` listing their
- * years unpadded, so anything below year 1000 names an option that no
- * zero-padded bound can ever match.
+ * at year 0001 — the same fact the interview's own fields read, so it is stated
+ * once in shared-consts rather than here. The other two resolutions render a
+ * `<select>` listing their years unpadded, so anything below year 1000 names an
+ * option that no zero-padded bound can ever match; no field outside this package
+ * derives a bound at those resolutions, so those two ends stay here.
  *
  * `buildConstraints` holds a bound the protocol *declares* to the same years.
  * This is where a floor the generator *derives* stops, which is a separate
@@ -17,7 +24,7 @@ export type DateResolution = 'full' | 'month' | 'year';
  * comparison, count or draw can read.
  */
 export const EARLIEST_OFFERED_DATE = {
-  full: '0001-01-01',
+  full: DATE_PICKER_EARLIEST_DATE,
   month: '1000-01',
   year: '1000',
 } as const satisfies Record<DateResolution, string>;
@@ -39,7 +46,7 @@ export const EARLIEST_OFFERED_DATE = {
  * it contains, generated or typed.
  */
 export const LATEST_OFFERED_DATE = {
-  full: '9999-12-31',
+  full: DATE_PICKER_LATEST_DATE,
   month: '9999-12',
   year: '9999',
 } as const satisfies Record<DateResolution, string>;
@@ -61,9 +68,10 @@ export type DateWindow = {
 // drift would produce off-by-one-day failures near DST boundaries. The
 // duplication is verified rather than trusted: @codaco/interview depends on
 // both packages and holds the two implementations to the same results
-// (src/forms/__tests__/ymdParity.test.ts). Constants shared with those fields
-// are not duplicated at all — they live in @codaco/shared-consts, which this
-// package already depends on.
+// (src/forms/__tests__/ymdParity.test.ts). What those fields and this package
+// have to *agree* on is not duplicated at all — the constants they share and
+// the clamp that holds a derived bound inside the calendar live in
+// @codaco/shared-consts, which this package already depends on.
 function formatYmd(year: number, month: number, day: number): string {
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
@@ -177,12 +185,20 @@ export function stepsBetween(
  * silently reparses as some other date. Clamping in step space needs neither
  * shape to be recognised, and `stepsBetween` is exact for an anchor that is
  * itself a date the control offers.
+ *
+ * At full resolution this is the same clamp the interview's own date fields
+ * apply, so it is not stated twice: `dateWithinPickerRange` is where all three
+ * derivations of a relative-date window read it from. The month and year
+ * resolutions are generator-only — nothing outside this package steps a window
+ * in months or years — so they are generalised here.
  */
 export function offsetWithinOfferedDates(
   anchor: string,
   steps: number,
   resolution: DateResolution,
 ): string {
+  if (resolution === 'full') return dateWithinPickerRange(anchor, steps);
+
   const earliest = stepsBetween(
     anchor,
     EARLIEST_OFFERED_DATE[resolution],

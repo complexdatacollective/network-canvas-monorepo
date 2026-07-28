@@ -1,11 +1,12 @@
 import {
+  dateWithinPickerRange,
   RELATIVE_DATE_PICKER_DEFAULT_AFTER,
   RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
 } from '@codaco/shared-consts';
 
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
-import { addDays, todayYmd } from '../utils/ymd';
+import { todayYmd } from '../utils/ymd';
 import InputField from './InputField';
 
 type RelativeDatePickerFieldProps = CreateFormFieldProps<
@@ -49,8 +50,13 @@ export default function RelativeDatePickerField(
   } = props;
 
   const anchorYmd = anchor && typeof anchor === 'string' ? anchor : todayYmd();
-  const minYmd = addDays(anchorYmd, -before);
-  const maxYmd = addDays(anchorYmd, after);
+  // Held inside the calendar the input can offer: an anchor late enough that
+  // `after` steps past year 9999 derives `10000-01-01`, which this input cannot
+  // display and the form's max validator does not read as a date at all — it
+  // compares lexically instead, where a leading `1` sorts below every
+  // four-digit year and the field rejects every value it can hold.
+  const minYmd = dateWithinPickerRange(anchorYmd, -before);
+  const maxYmd = dateWithinPickerRange(anchorYmd, after);
 
   return (
     <InputField
