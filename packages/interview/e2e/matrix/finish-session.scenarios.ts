@@ -100,7 +100,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
         ).toBeVisible();
         await expect(
           dialog.getByText(
-            'Your responses cannot be changed after you finish the interview.',
+            'Finish this interview only when you are satisfied with your responses.',
           ),
         ).toBeVisible();
 
@@ -121,6 +121,21 @@ export const finishSessionScenarios: InterfaceScenarios = {
         // block a repeat open.
         await page.getByRole('button', { name: 'Finish' }).click();
         await expect(page.getByRole('dialog')).toBeVisible();
+        await dialog.evaluate(async (element) => {
+          const animations = [
+            element,
+            ...element.querySelectorAll('*'),
+          ].flatMap((node) => node.getAnimations());
+          await Promise.all(
+            animations.map((animation) =>
+              animation.finished.catch(() => undefined),
+            ),
+          );
+        });
+        await expect(cancel).toHaveText('Cancel');
+        await expect(
+          dialog.getByRole('button', { name: 'Close' }),
+        ).toBeVisible();
       },
     },
 

@@ -126,6 +126,7 @@ type NavigationProps = {
   forwardButtonRef?: Ref<HTMLButtonElement>;
   backButtonRef?: Ref<HTMLButtonElement>;
   onExit?: () => void;
+  reviewMode?: boolean;
   allowStageNavigation?: boolean;
   className?: string;
   goToStage?: (
@@ -145,6 +146,7 @@ const Navigation = ({
   forwardButtonRef,
   backButtonRef,
   onExit,
+  reviewMode,
   allowStageNavigation,
   className,
   goToStage,
@@ -187,10 +189,11 @@ const Navigation = ({
   const handleExit = useCallback(async () => {
     if (!onExit) return;
     const confirmed = await confirm({
-      title: 'Exit this interview?',
-      description:
-        'Your answers so far will be saved and you can continue later.',
-      confirmLabel: 'Exit interview',
+      title: reviewMode ? 'Exit this review?' : 'Exit this interview?',
+      description: reviewMode
+        ? 'Changes made during this review will not be saved.'
+        : 'Your answers so far will be saved and you can continue later.',
+      confirmLabel: reviewMode ? 'Exit review' : 'Exit interview',
       cancelLabel: 'Cancel',
       intent: 'warning',
       onConfirm: () => {},
@@ -198,7 +201,7 @@ const Navigation = ({
     if (confirmed === true) {
       onExit();
     }
-  }, [confirm, onExit]);
+  }, [confirm, onExit, reviewMode]);
 
   const closeMenu = useCallback(
     (immediate: boolean) => {
@@ -244,7 +247,7 @@ const Navigation = ({
             wrapperClassName={
               orientation === 'horizontal' ? 'order-1' : undefined
             }
-            aria-label="Exit interview"
+            aria-label={reviewMode ? 'Exit review' : 'Exit interview'}
             data-testid="exit-button"
           />
         )}

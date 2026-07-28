@@ -5,6 +5,7 @@ import {
   ContractProvider,
   useContractFlags,
   useContractHandlers,
+  useFinishConfirmationDescription,
 } from '../context';
 import type {
   AssetRequestHandler,
@@ -16,6 +17,7 @@ const wrap = (value: {
   onFinish: FinishHandler;
   onRequestAsset: AssetRequestHandler;
   flags?: InterviewerFlags;
+  finishConfirmationDescription?: string;
 }) =>
   function Wrapper({ children }: { children: React.ReactNode }) {
     return <ContractProvider {...value}>{children}</ContractProvider>;
@@ -62,6 +64,29 @@ describe('ContractProvider', () => {
     expect(result.current.isDevelopment).toBe(true);
   });
 
+  it('provides neutral default finish confirmation copy', () => {
+    const { result } = renderHook(() => useFinishConfirmationDescription(), {
+      wrapper: wrap({ onFinish: vi.fn(), onRequestAsset: vi.fn() }),
+    });
+
+    expect(result.current).toBe(
+      'Finish this interview only when you are satisfied with your responses.',
+    );
+  });
+
+  it('honours host-specific finish confirmation copy', () => {
+    const { result } = renderHook(() => useFinishConfirmationDescription(), {
+      wrapper: wrap({
+        onFinish: vi.fn(),
+        onRequestAsset: vi.fn(),
+        finishConfirmationDescription:
+          'A researcher can reopen this interview.',
+      }),
+    });
+
+    expect(result.current).toBe('A researcher can reopen this interview.');
+  });
+
   it('useContractHandlers throws outside provider', () => {
     expect(() => renderHook(() => useContractHandlers())).toThrow(
       /ContractProvider/,
@@ -70,6 +95,12 @@ describe('ContractProvider', () => {
 
   it('useContractFlags throws outside provider', () => {
     expect(() => renderHook(() => useContractFlags())).toThrow(
+      /ContractProvider/,
+    );
+  });
+
+  it('useFinishConfirmationDescription throws outside provider', () => {
+    expect(() => renderHook(() => useFinishConfirmationDescription())).toThrow(
       /ContractProvider/,
     );
   });

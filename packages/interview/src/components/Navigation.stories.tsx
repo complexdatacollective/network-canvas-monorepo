@@ -238,3 +238,39 @@ export const HorizontalExitConfirmation: Story = {
     await exitAndAssertConfirmation(canvasElement);
   },
 };
+
+export const ReviewMode: Story = {
+  name: 'Read-only review',
+  render: ({ stageCount }) => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getRawPayload(stageCount)}
+        initialStep={stageCount - 1}
+        navigationOrientation="vertical"
+        allowStageNavigation
+        reviewMode
+        onExit={() => {
+          console.log('Exited the review.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      await canvas.findByRole('button', { name: /next step/i }),
+    ).toBeDisabled();
+
+    await userEvent.click(canvas.getByRole('button', { name: /exit review/i }));
+
+    const dialog = await canvas.findByRole('dialog', {
+      name: /exit this review/i,
+    });
+    const scoped = within(dialog);
+    await expect(
+      scoped.getByText(/changes made during this review will not be saved/i),
+    ).toBeInTheDocument();
+    await userEvent.click(scoped.getByRole('button', { name: /cancel/i }));
+  },
+};
