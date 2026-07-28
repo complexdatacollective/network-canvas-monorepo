@@ -929,18 +929,234 @@ describe('findValidationContradictions — sixth-wave Finding 2: pinned-equal di
     ).toEqual([]);
   });
 
-  // A month/year-resolution DatePicker's equal-looking min/max window still
-  // leaves every day within that coarser unit selectable — it is not pinned
-  // to one runtime value the way a full-resolution equal window is.
-  it('does not treat a month-resolution equal window as pinned', () => {
+  // Seventeenth-wave Finding 1 corrects this case. The sixth wave read a
+  // month-resolution equal window as "every day in that month is still
+  // selectable" and left it unpinned; the runtime stores the truncated
+  // 'YYYY-MM' string, so the window really does pin one value. See the
+  // seventeenth-wave block below.
+  it('treats a month-resolution equal window as pinned', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'month', min: '2020-05', max: '2020-05' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker('b', { type: 'month', min: '2020-05', max: '2020-05' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+  });
+});
+
+describe('findValidationContradictions — seventeenth-wave Finding 1: coarse DatePickers with an equal window are pinned', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // A year-resolution DatePicker renders a single Select whose options run
+  // from max down to min (fresco-ui's DatePicker `years` loop), and stores the
+  // chosen year as the bare 'YYYY' string. min === max therefore offers
+  // exactly one option and one storable value.
+  it('rejects two year-resolution DatePickers pinned to the same year', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2020' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker('b', { type: 'year', min: '2020', max: '2020' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  it('rejects two month-resolution DatePickers pinned to the same month', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'month', min: '2020-05', max: '2020-05' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker('b', { type: 'month', min: '2020-05', max: '2020-05' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  // The false-positive guard. A year picker stores '2020' and a full picker
+  // stores '2020-01-01'; the runtime's differentFrom compares the stored
+  // strings exactly (fresco-ui's isMatchingValue), so those two can always
+  // differ and the pair must NOT be reported.
+  it('accepts a year-resolution and a full-resolution DatePicker pinned to the same calendar point', () => {
     expect(
       findValidationContradictions({
         a: datePicker(
           'a',
-          { type: 'month', min: '2020-05', max: '2020-05' },
+          { type: 'year', min: '2020', max: '2020' },
           { differentFrom: 'b' },
         ),
-        b: datePicker('b', { type: 'month', min: '2020-05', max: '2020-05' }),
+        b: datePicker('b', { min: '2020-01-01', max: '2020-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts month-resolution DatePickers whose windows span more than one month', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'month', min: '2020-05', max: '2020-06' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker('b', { type: 'month', min: '2020-05', max: '2020-06' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Being pinned to the SAME value is what sameAs asks for, so an identically
+  // pinned coarse pair stays satisfiable.
+  it('accepts sameAs between two identically pinned year-resolution DatePickers', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2020' },
+          { sameAs: 'b' },
+        ),
+        b: datePicker('b', { type: 'year', min: '2020', max: '2020' }),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — seventeenth-wave Finding 2: componentless datetime variables keep their declared resolution', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  const componentless = (
+    name: string,
+    parameters: Record<string, unknown> | undefined,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    ...(parameters === undefined ? {} : { parameters }),
+    validation,
+  });
+
+  // `component` is optional on the DatePicker datetime member, so this
+  // variable is schema-valid and its `{ type: 'year' }` parameters are
+  // unambiguously DatePicker's (RelativeDatePicker's parameters are a
+  // strictObject of anchor/before/after).
+  it('accepts a componentless year-parameterised datetime sameAs an explicit year picker', () => {
+    expect(
+      findValidationContradictions({
+        a: componentless('a', { type: 'year' }, { sameAs: 'b' }),
+        b: datePicker('b', { type: 'year' }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('still rejects a componentless year-parameterised datetime sameAs a month picker', () => {
+    const result = findValidationContradictions({
+      a: componentless('a', { type: 'year' }, { sameAs: 'b' }),
+      b: datePicker('b', { type: 'month' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" are joined by sameAs but store dates at different resolutions',
+    );
+  });
+
+  it('treats a componentless datetime with no parameters as full resolution', () => {
+    const result = findValidationContradictions({
+      a: componentless('a', undefined, { sameAs: 'b' }),
+      b: datePicker('b', { type: 'year' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  it('treats componentless datetime parameters with no recognised type as full resolution', () => {
+    expect(
+      findValidationContradictions({
+        a: componentless('a', { min: '2020-01-01' }, { sameAs: 'b' }),
+        b: datePicker('b', {}),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — seventeenth-wave Finding 3: pinned categorical sets encode without collision', () => {
+  // Authored via fromCharCode so no literal NUL escape enters this file.
+  const SEPARATOR = String.fromCharCode(0);
+
+  const categorical = (
+    name: string,
+    optionValues: (string | number)[],
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'categorical',
+    options: optionValues.map((value) => ({ label: String(value), value })),
+    validation,
+  });
+
+  // Under the old `${typeof}:${value}` tokens joined on the separator, the
+  // two-value set ['x', 'y'] and the singleton ['x<SEP>string:y'] produced the
+  // identical key — but their runtime arrays differ in length, so
+  // isMatchingValue can never call them equal.
+  it('accepts a pair whose old-encoding keys collided', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['x', 'y'], { minSelected: 2, differentFrom: 'b' }),
+        b: categorical('b', [`x${SEPARATOR}string:y`], { minSelected: 1 }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('still rejects genuinely equal sets whose values contain the separator', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', [`x${SEPARATOR}string:y`], {
+        minSelected: 1,
+        differentFrom: 'b',
+      }),
+      b: categorical('b', [`x${SEPARATOR}string:y`], { minSelected: 1 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  // Type tagging must survive the new encoding: 5 and '5' are different
+  // runtime values to isMatchingValue's own keying.
+  it('accepts a numeric-valued and a string-valued singleton that stringify alike', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', [5], { minSelected: 1, differentFrom: 'b' }),
+        b: categorical('b', ['5'], { minSelected: 1 }),
       }),
     ).toEqual([]);
   });

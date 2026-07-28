@@ -1,5 +1,5 @@
 import type { ValidationName } from './validation.ts';
-import { isIsoDate } from './variable.ts';
+import { isIsoDate, isValidDateAtResolution } from './variable.ts';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -136,7 +136,10 @@ function localContradictions(
   return found;
 }
 
-// Variable ids never contain a NUL, so joining on one cannot collide.
+// Only ever used to join VARIABLE IDS, which `VariableNameSchema`
+// (@codaco/shared-consts) restricts to /^[a-zA-Z0-9._:-]+$/ — no NUL, so those
+// keys cannot collide. Unrestricted user data (categorical option values) is
+// never joined on it; see the categorical arm of `pinnedValue`.
 const KEY_SEPARATOR = '\u0000';
 
 const stripKey = (ref: VariableRuleRef): string =>
@@ -893,14 +896,31 @@ type DateResolution = 'full' | 'month' | 'year';
 /**
  * A datetime variable's storage resolution, for the mixed-resolution
  * sameAs-component check (third-wave Finding 3, rescoped by tenth-wave
- * Finding 5). Only a DatePicker's own `parameters.type` can coarsen it to
- * 'month'/'year' — a RelativeDatePicker always stores a full date, and a
- * variable with no component configured yet has no resolution of its own to
- * disagree with, so both default to 'full'.
+ * Finding 5) and the coarse arm of `pinnedValue`. Only a DatePicker's own
+ * `parameters.type` can coarsen it to 'month'/'year' — a RelativeDatePicker
+ * always stores a full date, so it defaults to 'full'.
+ *
+ * Seventeenth-wave Finding 2 corrects what an ABSENT `component` means. It
+ * used to fall in with RelativeDatePicker on "no component configured yet has
+ * no resolution of its own", but `component` is OPTIONAL on the DatePicker
+ * datetime member (variable.ts's `dateTimeDatePickerSchema`), so a
+ * schema-valid variable can omit it while still declaring
+ * `parameters: { type: 'year' }`. Reading that as full resolution discarded a
+ * resolution the author really did declare — and one a NetworkComposer field
+ * inherits when it re-declares only the component (see `schema.ts`'s
+ * `validateComposerFieldContradictions`) — so a `sameAs` with an explicit year
+ * picker was falsely rejected. A `{ type }` parameter shape identifies a
+ * DatePicker unambiguously: the RelativeDatePicker member's parameters are a
+ * strictObject of anchor/before/after and cannot carry `type`. Parameters that
+ * are absent or carry no recognised `type` still mean 'full', and a variable
+ * that DOES declare a component is unaffected.
  */
 const dateResolutionOf = (variable: unknown): DateResolution => {
   const record = asRecord(variable);
-  if (record?.component !== 'DatePicker') return 'full';
+  if (record === null) return 'full';
+  if (record.component !== undefined && record.component !== 'DatePicker') {
+    return 'full';
+  }
   const type = asRecord(record.parameters)?.type;
   return type === 'month' || type === 'year' ? type : 'full';
 };
@@ -916,14 +936,29 @@ const dateResolutionOf = (variable: unknown): DateResolution => {
  *     (`minValue === maxValue`) pins that value.
  *   - boolean: `booleanDomain`'s existing singleton-`options` logic (the
  *     fifth-wave Finding 5 check, folded in here).
- *   - datetime: a min/max window collapsed to one point pins that day
- *     — but ONLY at full resolution. A month/year-resolution DatePicker's
- *     equal-looking min/max (e.g. both '2020') still leaves every day in
- *     that month/year selectable, so it is not a pinned value the way a
- *     full-resolution equal window is. The value is keyed by the window's
- *     origin (fourteenth-wave Finding 1) so an anchorless
- *     RelativeDatePicker's interview-date offset can only ever match another
- *     anchorless picker's, never a calendar day number.
+ *   - datetime: a min/max window collapsed to one point pins that day. At
+ *     full resolution the value is a day number keyed by the window's origin
+ *     (fourteenth-wave Finding 1) so an anchorless RelativeDatePicker's
+ *     interview-date offset can only ever match another anchorless picker's,
+ *     never a calendar day number.
+ *
+ *     Seventeenth-wave Finding 1: a COARSE (month/year) DatePicker with an
+ *     equal min/max is pinned too. The sixth wave excluded it on the grounds
+ *     that "every day in that month/year is still selectable", which is not
+ *     what the runtime stores: a coarse picker stores the TRUNCATED string —
+ *     'YYYY' at year resolution, 'YYYY-MM' at month (see `DATE_RESOLUTION` in
+ *     variable.ts, and fresco-ui's DatePicker, whose year/month controls
+ *     offer only the options its min/max admit and emit the bare year or
+ *     `${year}-${month}`). With min === max exactly one option exists, and
+ *     `differentFrom` compares stored values exactly (fresco-ui's
+ *     `isMatchingValue`), so two such variables could never differ.
+ *
+ *     The pinned value is the stored STRING, tagged with the resolution
+ *     rather than an origin — a coarse picker's window is always calendar
+ *     ('fixed') — because that is precisely what the runtime compares: a year
+ *     picker pinned to '2020' and a full picker pinned to '2020-01-01' hold
+ *     different strings and CAN differ, so they must not share a key. The
+ *     resolution tags are disjoint from the origin tags for the same reason.
  *   - ordinal (tenth-wave Finding 2): single-select, so a variable whose
  *     options expose exactly ONE distinct value (duplicate-value entries
  *     collapse, per `optionValues`) can only ever hold that value — and
@@ -937,9 +972,11 @@ const dateResolutionOf = (variable: unknown): DateResolution => {
  *     keeps this robust either way). The runtime compares categorical arrays
  *     as order-insensitive multisets (fresco-ui's isMatchingValue), so the
  *     pinned "value" is a canonical composite key over the distinct values,
- *     typeof-tagged like isMatchingValue's own keying and sorted; the
- *     'categorical:' prefix keeps it from ever colliding with another type's
- *     pinned primitive. `maxSelected` is irrelevant here: it can only shrink
+ *     typeof-tagged like isMatchingValue's own keying, sorted, and JSON-framed
+ *     so no option value can forge another set's key (seventeenth-wave
+ *     Finding 3). Keys are only ever compared between same-typed endpoints
+ *     (`usableReference`), so no type's pinned value can collide with
+ *     another's. `maxSelected` is irrelevant here: it can only shrink
  *     the feasible set further (a maxSelected below minSelected is its own
  *     `invertedBounds` contradiction), never admit a second answer.
  *   - text/scalar/layout: no rule on these types ever collapses to one
@@ -959,7 +996,22 @@ const pinnedValue = (
       return domain.size === 1 ? [...domain][0] : undefined;
     }
     case 'datetime': {
-      if (dateResolutionOf(variable) !== 'full') return undefined;
+      const resolution = dateResolutionOf(variable);
+      if (resolution !== 'full') {
+        const parameters = asRecord(asRecord(variable)?.parameters);
+        const min = parameters?.min;
+        // A bound that does not match the picker's own resolution is
+        // malformed rather than pinning (the schema rejects it separately),
+        // and the analyser also runs over raw migration input.
+        if (
+          typeof min !== 'string' ||
+          min !== parameters?.max ||
+          !isValidDateAtResolution(min, resolution)
+        ) {
+          return undefined;
+        }
+        return `datetime:${resolution}:${min}`;
+      }
       const window = dateWindowInterval(variable);
       if (window?.min === undefined || window.min !== window.max) {
         return undefined;
@@ -984,10 +1036,19 @@ const pinnedValue = (
       ) {
         return undefined;
       }
-      return `categorical:${[...values]
-        .map((value) => `${typeof value}:${String(value)}`)
-        .toSorted()
-        .join(KEY_SEPARATOR)}`;
+      // Seventeenth-wave Finding 3: JSON-encode each type-tagged pair and the
+      // sorted token list, rather than joining the raw tokens on
+      // KEY_SEPARATOR. Categorical option values are unrestricted strings
+      // (`categoricalOptionsSchema`), so a value carrying the separator plus a
+      // token prefix made two genuinely different sets encode identically —
+      // e.g. {'x', 'y'} and the singleton {'x<SEP>string:y'} — and the pair was
+      // falsely reported even though their runtime arrays differ in length.
+      // JSON escapes both the separator and its own delimiters, so the
+      // encoding is injective.
+      const tokens = [...values]
+        .map((value) => JSON.stringify([typeof value, String(value)]))
+        .toSorted();
+      return `categorical:${JSON.stringify(tokens)}`;
     }
     default:
       return undefined;
