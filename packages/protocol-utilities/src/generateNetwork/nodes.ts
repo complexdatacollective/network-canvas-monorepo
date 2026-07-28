@@ -93,13 +93,46 @@ function getPromptAdditionalAttributes(
 }
 
 /**
- * The nodes a prompt's `additionalAttributes` can write one value onto, keyed
- * by variable id and then by the value's registry key. See
+ * The nodes one value the draw never chose can be written onto, keyed by
+ * variable id and then by the value's registry key. See
  * {@link countPromptFixedValues}.
  */
-type FixedValueTally = { value: boolean; count: number };
+type FixedValueTally = {
+  value: boolean;
+  count: number;
+  /**
+   * The last stage that writes this value onto a node whatever the registry
+   * already holds, if any does.
+   *
+   * A stage that may fabricate writes its prompt's value onto every node it
+   * creates: where the row it would have drawn is passed over for holding a
+   * value the network already has, it builds a node of its own and writes the
+   * value there instead. Nothing stands between such a write and the finished
+   * network, so a roster row offered before that stage can hold the same value
+   * alongside it — see {@link countRosterCarriedValues}, which is what reads
+   * this.
+   *
+   * `undefined` where every stage fixing the value draws from rows and only
+   * from rows. Every node such a stage builds comes from a row the registry
+   * judged first, and it is the merged assignment that is judged — the prompt's
+   * value included — so the value reaches a node only where the network could
+   * still take it.
+   */
+  stampedAt?: number;
+};
 
 export type PromptFixedValues = Map<string, Map<string, FixedValueTally>>;
+
+/**
+ * The values roster rows carry, keyed by variable id and then by the value's
+ * registry key, each held against the first stage that can draw a row holding
+ * it. See {@link countRosterCarriedValues}.
+ *
+ * The value itself is not kept. What reads this already holds it — a row is
+ * only ever weighed against a value something else fixes, and that tally
+ * carries the value it displays.
+ */
+export type RosterCarriedValues = Map<string, Map<string, number>>;
 
 /** The name-generator variants, the only stages whose prompts fix a value. */
 type PromptedNodeStage = StageOfType<
@@ -158,6 +191,10 @@ function promptCanDraw(
  * A roster stage is the one place a prompt's value can fail to land: the row's
  * own value for the variable wins there (see `createNodesForStage`), so only
  * the rows leaving it unset are counted.
+ *
+ * Where each value is written is recorded alongside how often — see
+ * {@link FixedValueTally.stampedAt}, which is what decides whether a roster row
+ * carrying the same value can be holding it at the same time.
  */
 export function countPromptFixedValues(
   stages: Stage[],
@@ -166,7 +203,7 @@ export function countPromptFixedValues(
 ): Map<string, PromptFixedValues> {
   const byType = new Map<string, PromptFixedValues>();
 
-  for (const stage of stages) {
+  for (const [stageIndex, stage] of stages.entries()) {
     if (!isPromptedNodeStage(stage)) continue;
 
     const nodeType = getSubjectType(stage.subject, 'node');
@@ -178,6 +215,9 @@ export function countPromptFixedValues(
       stage.type === 'NameGeneratorRoster'
         ? externalData?.[stage.id]
         : undefined;
+    // A roster stage handed rows builds every node from one; anything else may
+    // fabricate, and writes its prompt's value onto whatever it fabricates.
+    const fabricates = pool === undefined;
 
     const forStage: PromptFixedValues = new Map();
 
@@ -207,6 +247,7 @@ export function countPromptFixedValues(
           // The most this stage can spend, not the sum of what its prompts
           // could each spend alone: they share the stage's capacity.
           count: Math.max(forVariable.get(key)?.count ?? 0, carriers),
+          ...(fabricates ? { stampedAt: stageIndex } : {}),
         });
         forStage.set(variable, forVariable);
       }
@@ -218,15 +259,152 @@ export function countPromptFixedValues(
     for (const [variable, values] of forStage) {
       const running =
         forType.get(variable) ?? new Map<string, FixedValueTally>();
-      for (const [key, { value, count }] of values) {
+      for (const [key, { value, count, stampedAt }] of values) {
+        const carried = running.get(key);
+        // The last stage stamping the value, because a roster row offered
+        // before any of them can hold it alongside that stage's node.
+        const stamped =
+          stampedAt === undefined
+            ? carried?.stampedAt
+            : Math.max(carried?.stampedAt ?? stampedAt, stampedAt);
         running.set(key, {
           value,
-          count: (running.get(key)?.count ?? 0) + count,
+          count: (carried?.count ?? 0) + count,
+          ...(stamped === undefined ? {} : { stampedAt: stamped }),
         });
       }
       forType.set(variable, running);
     }
     byType.set(nodeType, forType);
+  }
+
+  return byType;
+}
+
+/**
+ * The variables a stage settles for itself whatever row it draws: the ones
+ * every prompt that can draw fixes.
+ *
+ * A stage that may fabricate spreads its prompt's `additionalAttributes` over
+ * the row's own values, so a variable that prompt fixes is one the row never
+ * writes — `fixedValuesFor` settles that merge, and `rosterRowIsDrawable` is
+ * asked about the merged assignment for the same reason. It takes every
+ * reachable prompt to settle it, because a row drawn under a prompt that fixes
+ * nothing keeps its own value; a prompt the ceiling leaves nothing for settles
+ * nothing, since no row is ever drawn under it (see {@link promptCanDraw}).
+ *
+ * A roster stage settles none of them: the row's value wins the collision
+ * there, so every value a drawn row carries is written onto its node.
+ */
+function variablesEveryPromptFixes(
+  stage: PromptedNodeStage,
+  bounds: { minNodes: number; maxNodes: number },
+): ReadonlySet<string> {
+  if (stage.type === 'NameGeneratorRoster') return new Set();
+
+  let shared: Set<string> | undefined;
+
+  for (const [index, prompt] of stage.prompts.entries()) {
+    if (!promptCanDraw(index, bounds)) break;
+
+    const fixed = new Set<string>(
+      (prompt.additionalAttributes ?? []).map(({ variable }) => variable),
+    );
+    shared =
+      shared === undefined
+        ? fixed
+        : new Set([...shared].filter((variable) => fixed.has(variable)));
+    if (shared.size === 0) break;
+  }
+
+  return shared ?? new Set();
+}
+
+/**
+ * The values roster rows can carry into the network, keyed by node type, with
+ * the first stage that can draw a row holding each of them.
+ *
+ * A row's values are the researcher's rather than the registry's, and the node
+ * built from a row holds them: `createNodesForStage` generates around them
+ * exactly as it generates around a prompt's `additionalAttributes`. So a value
+ * a row carries and something else fixes has two writers and no draw between
+ * either of them and the finished network — which is what makes it a question
+ * for this pass rather than for the draw. What `rosterRowIsDrawable` settles at
+ * the draw is only which node carries such a value: where the row is passed
+ * over, a stage that may fabricate builds a node of its own and writes the
+ * fixed value onto that instead, and the network holds the value twice.
+ *
+ * Read from every stage that draws rows rather than from the roster stages
+ * alone, as `reserveExternalRosterValues` reads them: a name generator given a
+ * panel draws its rows too, and their values reach the network the same way.
+ *
+ * The first stage offering each value is kept because the collision is one of
+ * order: this says which values are on offer and from where, and
+ * `analyseFeasibility` weighs each against {@link FixedValueTally.stampedAt}.
+ * A row offered before the value is stamped can be drawn and claim it, leaving
+ * the stamp to duplicate it; a row offered after meets a value the network
+ * already holds and is passed over, which is the interview's own reading of a
+ * roster as a pool of candidates rather than a list of people it must add.
+ *
+ * Rows a run might never draw are counted all the same, and that is the
+ * looseness this carries: a row whose values break rules of their own, or that
+ * leaves the draw no way to complete the node around them, is passed over at
+ * the draw and collides with nothing, but judging that needs the type's whole
+ * constraint set, which this collector does not hold. So a roster whose rows
+ * could never have been drawn refuses a protocol the run would have completed.
+ * That is the direction to err in for `unique`: the other one emits a value two
+ * nodes hold, on every seed.
+ *
+ * One carrier per value however many rows carry it, and however many stages
+ * offer them — the rows share the group's single `unique` slot, so the second
+ * row offering a value the network already holds is passed over — but that is
+ * `analyseFeasibility`'s to apply, since the slot is a whole equality group's
+ * rather than one variable's.
+ */
+export function countRosterCarriedValues(
+  stages: Stage[],
+  config: GenerationConfig,
+  externalData: Record<string, NcNode[]> | undefined,
+): Map<string, RosterCarriedValues> {
+  const byType = new Map<string, RosterCarriedValues>();
+
+  for (const [stageIndex, stage] of stages.entries()) {
+    if (!isPromptedNodeStage(stage)) continue;
+
+    const rows = externalData?.[stage.id];
+    if (rows === undefined || rows.length === 0) continue;
+
+    const nodeType = getSubjectType(stage.subject, 'node');
+    if (nodeType === undefined) continue;
+
+    const bounds = getNodeCountBounds(stage, config);
+    // A stage that can build no node draws no row, so its rows carry nothing.
+    if (bounds.maxNodes <= 0) continue;
+
+    const settled = variablesEveryPromptFixes(stage, bounds);
+    const forType: RosterCarriedValues = byType.get(nodeType) ?? new Map();
+
+    for (const row of rows) {
+      for (const [variable, value] of Object.entries(
+        row[entityAttributesProperty],
+      )) {
+        if (value === undefined) continue;
+        if (settled.has(variable)) continue;
+
+        const forVariable = forType.get(variable) ?? new Map<string, number>();
+        // Keyed as the registry keys it, so the rows counted here are the ones
+        // the registry would judge equal — and so a row's value meets a
+        // prompt's under one key.
+        const key = valueKey(value);
+        forVariable.set(
+          key,
+          Math.min(forVariable.get(key) ?? stageIndex, stageIndex),
+        );
+        forType.set(variable, forVariable);
+      }
+    }
+
+    if (forType.size > 0) byType.set(nodeType, forType);
   }
 
   return byType;

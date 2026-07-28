@@ -1283,6 +1283,254 @@ describe('values a prompt fixes', () => {
 });
 
 /**
+ * A roster row and a prompt can want the same value, and the draw settles only
+ * which node ends up carrying it. Where the prompt's stage may fabricate, the
+ * row being passed over buys nothing: the stage builds a person of its own and
+ * writes the value onto them, so the row's node and the prompt's both hold it.
+ * Two writers, no draw between either of them and the network, and a refusal
+ * rather than a draw that fails on some seeds and not others.
+ */
+describe('a value a prompt fixes and a roster row carries', () => {
+  const uniqueFlag = codebookWith({
+    flagged: { name: 'Flagged', type: 'boolean', validation: { unique: true } },
+  });
+
+  function row(id: string, attributes: Record<string, unknown>): NcNode {
+    return {
+      [entityPrimaryKeyProperty]: id,
+      type: 'person',
+      [entityAttributesProperty]: attributes,
+    } as unknown as NcNode;
+  }
+
+  /** A one-person roster stage, whose rows are given per test. */
+  const rosterStage = {
+    id: 'stage-roster',
+    type: 'NameGeneratorRoster',
+    label: 'Roster',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [{ id: 'r-p1', text: 'Pick people' }],
+    behaviours: { minNodes: 1, maxNodes: 1 },
+  } as unknown as Stage;
+
+  /** A one-person panel stage whose prompt fixes `flagged`. */
+  function panelStage(value: boolean): Stage {
+    return {
+      id: 'stage-panel',
+      type: 'NameGenerator',
+      label: 'Panel',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p-p1',
+          text: 'Name people',
+          additionalAttributes: [{ variable: 'flagged', value }],
+        },
+      ],
+      behaviours: { minNodes: 1, maxNodes: 1 },
+    } as unknown as Stage;
+  }
+
+  const carried = {
+    'stage-roster': [row('r1', { flagged: true })],
+    'stage-panel': [row('p1', { flagged: true })],
+  };
+
+  it('reports the roster stage the panel follows', () => {
+    const conflicts = analyseFeasibility(
+      uniqueFlag,
+      [rosterStage, panelStage(true)],
+      config,
+      carried,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['unique', 'additionalAttributes']);
+    expect(conflicts[0]?.variableNames).toEqual(['Flagged']);
+    expect(conflicts[0]?.reason).toBe(
+      'a prompt and a roster row fix this to true on up to 2 nodes, but unique allows one node to hold a value',
+    );
+  });
+
+  it('generates the same protocol with the panel first', () => {
+    // The panel's node claims the value before the roster stage runs, so the
+    // row carrying it is passed over and the network holds it once. A roster is
+    // a pool of candidates rather than a list of people the run must add, so
+    // that stage simply draws nobody — nothing the protocol declares is broken.
+    const stages = [panelStage(true), rosterStage];
+
+    expect(analyseFeasibility(uniqueFlag, stages, config, carried)).toEqual([]);
+
+    for (let seed = 1; seed <= 20; seed++) {
+      const { network } = generateNetwork({
+        codebook: uniqueFlag,
+        stages,
+        seed,
+        externalData: carried,
+      });
+      const flags = network.nodes.map(
+        (node) => node[entityAttributesProperty].flagged,
+      );
+
+      expect(flags, `seed ${seed}`).toEqual([true]);
+    }
+  });
+
+  it('generates a fixed value no roster row carries', () => {
+    const stages = [rosterStage, panelStage(true)];
+    const unset = { 'stage-roster': [row('r1', {})] };
+
+    expect(analyseFeasibility(uniqueFlag, stages, config, unset)).toEqual([]);
+
+    for (let seed = 1; seed <= 20; seed++) {
+      const { network } = generateNetwork({
+        codebook: uniqueFlag,
+        stages,
+        seed,
+        externalData: unset,
+      });
+      const flags = network.nodes
+        .map((node) => node[entityAttributesProperty].flagged)
+        .toSorted((left, right) => String(left).localeCompare(String(right)));
+
+      expect(flags, `seed ${seed}`).toEqual([false, true]);
+    }
+  });
+
+  it('generates a fixed value the roster rows differ from', () => {
+    const stages = [rosterStage, panelStage(true)];
+    const differing = { 'stage-roster': [row('r1', { flagged: false })] };
+
+    expect(analyseFeasibility(uniqueFlag, stages, config, differing)).toEqual(
+      [],
+    );
+
+    for (let seed = 1; seed <= 20; seed++) {
+      const { network } = generateNetwork({
+        codebook: uniqueFlag,
+        stages,
+        seed,
+        externalData: differing,
+      });
+      const flags = network.nodes.map(
+        (node) => node[entityAttributesProperty].flagged,
+      );
+
+      expect(flags, `seed ${seed}`).toEqual([false, true]);
+    }
+  });
+
+  it('reports the value a roster row shares with a prompt of another stage', () => {
+    // The panel that carries the row and the panel that fixes the value need
+    // not be the same stage, and neither need be a roster stage: what matters
+    // is that a row holding the value is offered before something writes it
+    // onto a person of its own.
+    const carrying = {
+      id: 'stage-carry',
+      type: 'NameGenerator',
+      label: 'Carrying panel',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'c-p1', text: 'Name people' }],
+      behaviours: { minNodes: 1, maxNodes: 1 },
+    } as unknown as Stage;
+
+    const conflicts = analyseFeasibility(
+      uniqueFlag,
+      [carrying, panelStage(true)],
+      config,
+      { 'stage-carry': [row('c1', { flagged: true })] },
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.reason).toContain('a prompt and a roster row fix');
+  });
+
+  it('accepts a roster stage fixing a value its own rows carry', () => {
+    // Every node this stage builds comes from a row the registry judged, and it
+    // judges the assignment the node will hold — the prompt's value included —
+    // so the second person holding the value is never built.
+    const fixing = {
+      ...rosterStage,
+      prompts: [
+        {
+          id: 'r-p1',
+          text: 'Pick people',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+      ],
+      behaviours: { minNodes: 2, maxNodes: 2 },
+    } as unknown as Stage;
+
+    expect(
+      analyseFeasibility(uniqueFlag, [fixing], config, {
+        'stage-roster': [row('r1', { flagged: true }), row('r2', {})],
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts a panel whose every prompt overwrites what its rows carry', () => {
+    // The row's own value is never written where the prompt fixes the same
+    // variable, so the row and the prompt are one writer between them.
+    expect(
+      analyseFeasibility(uniqueFlag, [panelStage(true)], config, {
+        'stage-panel': [row('p1', { flagged: true })],
+      }),
+    ).toEqual([]);
+  });
+
+  it('folds a roster row onto the unique group its variable belongs to', () => {
+    // The members share a single `unique` slot, so a row carrying one member's
+    // value collides with a prompt fixing the other's.
+    const conflicts = analyseFeasibility(
+      codebookWith({
+        token: { name: 'Token', type: 'boolean', validation: { unique: true } },
+        flagged: {
+          name: 'Flagged',
+          type: 'boolean',
+          validation: { sameAs: 'token' },
+        },
+      }),
+      [rosterStage, panelStage(true)],
+      config,
+      { 'stage-roster': [row('r1', { token: true })] },
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames.toSorted()).toEqual([
+      'Flagged',
+      'Token',
+    ]);
+    expect(conflicts[0]?.reason).toContain('a prompt and a roster row fix');
+  });
+
+  it('counts rows repeating one value as the single node they build', () => {
+    // Three rows carrying `true` are one person holding it: the rest are passed
+    // over. Without the prompt they collide with nothing at all.
+    expect(
+      analyseFeasibility(uniqueFlag, [rosterStage], config, {
+        'stage-roster': ['r1', 'r2', 'r3'].map((id) =>
+          row(id, { flagged: true }),
+        ),
+      }),
+    ).toEqual([]);
+
+    const conflicts = analyseFeasibility(
+      uniqueFlag,
+      [rosterStage, panelStage(true)],
+      config,
+      {
+        'stage-roster': ['r1', 'r2', 'r3'].map((id) =>
+          row(id, { flagged: true }),
+        ),
+      },
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.reason).toContain('on up to 2 nodes');
+  });
+});
+
+/**
  * The ego flag a FamilyPedigree stage writes is the same kind of value as a
  * prompt's: the interface pins `true` on its proband and `false` on every other
  * node it builds, so no draw stands between those values and the finished
@@ -1426,6 +1674,52 @@ describe('the ego flag a pedigree stage pins', () => {
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.variableNames.toSorted()).toEqual(['Is ego', 'Token']);
+  });
+
+  it('reports a roster row carrying the flag a later pedigree pins', () => {
+    // The pedigree marks its proband whatever the network already holds, so a
+    // row carrying `true` drawn before it leaves two people marked ego. The
+    // other order is what `pedigreeEgoFlag` covers: the pin claims the value
+    // first, and the row is passed over.
+    const roster = {
+      id: 'stage-roster',
+      type: 'NameGeneratorRoster',
+      label: 'Roster',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Pick people' }],
+      behaviours: { minNodes: 1, maxNodes: 1 },
+    } as unknown as Stage;
+    const rows = {
+      'stage-roster': [
+        {
+          [entityPrimaryKeyProperty]: 'r1',
+          type: 'person',
+          [entityAttributesProperty]: { isEgo: true },
+        } as unknown as NcNode,
+      ],
+    };
+
+    const conflicts = analyseFeasibility(
+      uniqueFlag,
+      [roster, pedigree()],
+      sizedConfig(1),
+      rows,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['unique', 'egoVariable']);
+    expect(conflicts[0]?.reason).toBe(
+      'a family pedigree and a roster row fix this to true on up to 2 nodes, but unique allows one node to hold a value',
+    );
+
+    expect(
+      analyseFeasibility(
+        uniqueFlag,
+        [pedigree(), roster],
+        sizedConfig(1),
+        rows,
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -2749,5 +3043,102 @@ describe('a text length beyond what a generated value can hold', () => {
     });
 
     expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+});
+
+describe('roster rows the rules turn away, at the seam the counts feed', () => {
+  // The collector excludes a row whose merged values its own rules reject —
+  // statically dead on every seed — and this is the wiring that hands it the
+  // constraints the draw judges by. Without the lookup the counter reads the
+  // whole pool, and this protocol was refused for three edges the run never
+  // creates.
+  const codebook = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        variables: {
+          age: { name: 'Age', type: 'number', validation: { minValue: 18 } },
+        },
+      },
+    },
+    edge: {
+      knows: {
+        name: 'Knows',
+        color: 'edge-color-seq-1',
+        variables: {
+          strength: {
+            name: 'Strength',
+            type: 'boolean',
+            validation: { unique: true },
+          },
+        },
+      },
+    },
+  } as unknown as StructuralCodebook;
+
+  const roster = {
+    id: 'stage-roster',
+    type: 'NameGeneratorRoster',
+    label: 'Roster',
+    subject: { entity: 'node', type: 'person' },
+    dataSource: 'roster-asset',
+    prompts: [{ id: 'p1', text: 'Pick people' }],
+    behaviours: { maxNodes: 3 },
+  } as unknown as Stage;
+
+  const census = {
+    id: 'stage-census',
+    type: 'DyadCensus',
+    label: 'Census',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [
+      { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+    ],
+  } as unknown as Stage;
+
+  function ages(...values: number[]): Record<string, NcNode[]> {
+    return {
+      'stage-roster': values.map(
+        (age, index) =>
+          ({
+            [entityPrimaryKeyProperty]: `r${index}`,
+            type: 'person',
+            [entityAttributesProperty]: { age },
+          }) as unknown as NcNode,
+      ),
+    };
+  }
+
+  it('accepts a census over people no row can become', () => {
+    const externalData = ages(5, 6, 7);
+
+    expect(
+      analyseFeasibility(codebook, [roster, census], config, externalData),
+    ).toEqual([]);
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook: codebook as Parameters<typeof generateNetwork>[0]['codebook'],
+        stages: [roster, census],
+        externalData,
+      }),
+    ).not.toThrow();
+  });
+
+  it('still refuses when the rows really do become people', () => {
+    // Three admitted rows make three pairs, and a two-value unique domain
+    // cannot cover them — the refusal the shape above must not lose.
+    const conflicts = analyseFeasibility(
+      codebook,
+      [roster, census],
+      config,
+      ages(21, 22, 23),
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.reason).toMatch(
+      /up to 3 edges of this type can be generated/,
+    );
   });
 });

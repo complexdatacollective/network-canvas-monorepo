@@ -102,11 +102,19 @@ beforeEach(() => {
 });
 
 describe('the verdict a roster row is judged by', () => {
-  it('is reached once per row however many nodes the stage draws', () => {
+  // Two readers each judge a row exactly once per run: feasibility's drawable
+  // count, which decides how many people the pool can become, and the stage
+  // draw itself. They are separate passes over separate memoisations — the
+  // counter is a pure function with no generation context to hold one — so the
+  // whole-run ceiling is two verdicts per row, not one.
+  const READERS = 2;
+
+  it('is reached once per row and reader however many nodes are drawn', () => {
     // Ninety rows the draw cannot complete and ten it can. Every node the stage
     // is asked for walks the pool afresh from a fresh random start, so without
     // a memo the rows already turned away are judged again and again — around
-    // 176 searches per run against the 100 a pool of this size can ever need.
+    // 176 searches in the draw alone against the 100 a pool of this size can
+    // ever need from it.
     const ages = Array.from({ length: 100 }, (_unused, index) =>
       index % 10 === 0 ? 0 : 1,
     );
@@ -116,21 +124,21 @@ describe('the verdict a roster row is judged by', () => {
       const rows = rowsOf(ages, (index) => `row-${index}`);
 
       expect(draw(seed, 10, rows)).toHaveLength(10);
-      expect(completability.checks).toBeLessThanOrEqual(rows.length);
+      expect(completability.checks).toBeLessThanOrEqual(READERS * rows.length);
     }
   });
 
   it('belongs to the row rather than to its primary key', () => {
     // Two rows a caller gave one key, one of which the draw can complete. Both
-    // are judged, whichever of them the walk reaches first: a verdict standing
-    // for the key would answer the second row with the first row's values, and
-    // be reached once.
+    // are judged by both readers, whichever of them the walk reaches first: a
+    // verdict standing for the key would answer the second row with the first
+    // row's values, and be reached once per reader.
     for (let seed = 1; seed <= 20; seed++) {
       completability.checks = 0;
       const rows = rowsOf([1, 0], () => 'shared-key');
 
       expect(draw(seed, 2, rows)).toEqual([0]);
-      expect(completability.checks).toBe(2);
+      expect(completability.checks).toBe(READERS * 2);
     }
   });
 });

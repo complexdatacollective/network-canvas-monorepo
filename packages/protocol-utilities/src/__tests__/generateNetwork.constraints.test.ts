@@ -807,6 +807,241 @@ describe('a unique number in a range that holds no integer', () => {
 });
 
 /**
+ * A strict comparison between two `number` variables whose ranges hold no whole
+ * value. The draw fills such a range from the two-decimal grid — plus the two
+ * ends themselves where rounding leaves it — so the step a strict comparison
+ * puts between the two variables has to be read from that grid rather than
+ * assumed to be a whole unit. A whole unit lifts the upper end's floor a
+ * hundredfold past its own ceiling and refuses protocols whose every pair of
+ * values satisfies the rule.
+ *
+ * Swept from both sides. Reading the step too finely would buy those protocols
+ * back by giving up the refusals underneath, so the pairs a run must still
+ * refuse are swept alongside the pairs it must generate.
+ */
+describe('a strict comparison between numbers in fractional ranges', () => {
+  type Range = { minValue: number; maxValue: number };
+
+  /** `b > a`, on five people, each variable declaring the range it is given. */
+  function comparedPair(a: Range, b: Range) {
+    return {
+      codebook: personCodebook({
+        a: { name: 'A', type: 'number', validation: { required: true, ...a } },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: { required: true, ...b, greaterThanVariable: 'a' },
+        },
+      }),
+      stages: [nameGeneratorStage],
+    };
+  }
+
+  it.each([
+    {
+      a: { minValue: 0.1, maxValue: 0.2 },
+      b: { minValue: 0.3, maxValue: 0.4 },
+    },
+    {
+      a: { minValue: 0.1, maxValue: 0.9 },
+      b: { minValue: 0.1, maxValue: 0.9 },
+    },
+    // A range whose two ends are every value it holds.
+    {
+      a: { minValue: 0.001, maxValue: 0.009 },
+      b: { minValue: 0.001, maxValue: 0.009 },
+    },
+    // One end fractional and the other whole-valued, each way round.
+    {
+      a: { minValue: 0.1, maxValue: 0.2 },
+      b: { minValue: 0, maxValue: 10 },
+    },
+    {
+      a: { minValue: 0, maxValue: 10 },
+      b: { minValue: 0.1, maxValue: 0.2 },
+    },
+    // A range that does hold whole values, where a whole unit is the step.
+    {
+      a: { minValue: 0.5, maxValue: 2.5 },
+      b: { minValue: 0.5, maxValue: 2.5 },
+    },
+  ])(
+    `orders [$a.minValue, $a.maxValue] below [$b.minValue, $b.maxValue], over ${SEEDS} seeds`,
+    ({ a, b }) => {
+      const protocol = comparedPair(a, b);
+      const failures: string[] = [];
+
+      for (let seed = 1; seed <= SEEDS; seed++) {
+        const { network } = generateNetwork({ seed, ...protocol });
+
+        for (const node of network.nodes) {
+          const attrs = node[entityAttributesProperty];
+          const drawn = { a: Number(attrs.a), b: Number(attrs.b) };
+          complain(
+            failures,
+            drawn.b > drawn.a &&
+              drawn.a >= a.minValue &&
+              drawn.a <= a.maxValue &&
+              drawn.b >= b.minValue &&
+              drawn.b <= b.maxValue,
+            () => `seed ${seed}: ${JSON.stringify(drawn)}`,
+          );
+        }
+      }
+
+      expect(failures).toEqual([]);
+    },
+  );
+
+  it.each([
+    // Nothing in `b` reaches anything in `a`.
+    {
+      why: 'the upper end sits entirely below the lower one',
+      a: { minValue: 0.3, maxValue: 0.4 },
+      b: { minValue: 0.1, maxValue: 0.2 },
+    },
+    // One value each, and a rule that needs two.
+    {
+      why: 'both ends hold the one same value',
+      a: { minValue: 0.5, maxValue: 0.5 },
+      b: { minValue: 0.5, maxValue: 0.5 },
+    },
+  ])('refuses a pair where $why', ({ a, b }) => {
+    expect(() => generateNetwork({ seed: 7, ...comparedPair(a, b) })).toThrow(
+      SyntheticDataConstraintError,
+    );
+  });
+
+  it('refuses a chain longer than its fractional range can separate', () => {
+    // `[0.1, 0.11]` holds two values of the grid, and three variables strictly
+    // ordered inside it need three.
+    const codebook = personCodebook({
+      a: {
+        name: 'A',
+        type: 'number',
+        validation: { minValue: 0.1, maxValue: 0.11 },
+      },
+      b: {
+        name: 'B',
+        type: 'number',
+        validation: {
+          minValue: 0.1,
+          maxValue: 0.11,
+          greaterThanVariable: 'a',
+        },
+      },
+      c: {
+        name: 'C',
+        type: 'number',
+        validation: {
+          minValue: 0.1,
+          maxValue: 0.11,
+          greaterThanVariable: 'b',
+        },
+      },
+    });
+
+    expect(() =>
+      generateNetwork({ seed: 7, codebook, stages: [nameGeneratorStage] }),
+    ).toThrow(SyntheticDataConstraintError);
+  });
+});
+
+/**
+ * A strict date comparison against the last date the calendar holds. The floor
+ * it puts on the other end is the day after 9999-12-31, which is not a date at
+ * all: written out it is `10000-01-01`, whose leading digit sorts it below every
+ * four-digit year, so a bound derived there is read as the looser one and
+ * dropped. Both readers have to refuse instead — the propagation that narrows
+ * a declared window, and the fold the draw makes against a value a prompt
+ * fixes, which is the only one a wide window ever reaches.
+ */
+describe('a strict date comparison at the end of the calendar', () => {
+  const window = { type: 'full', min: '1920-01-01', max: '9999-12-31' };
+
+  /** `until` after `since`, strictly or not, over the whole calendar. */
+  function datedPair(strict: boolean, since = window) {
+    return personCodebook({
+      since: { name: 'Since', type: 'datetime', parameters: since },
+      until: {
+        name: 'Until',
+        type: 'datetime',
+        parameters: window,
+        validation: {
+          [strict ? 'greaterThanVariable' : 'greaterThanOrEqualToVariable']:
+            'since',
+        },
+      },
+    });
+  }
+
+  /** A stage pinning `since` to the last date the picker offers. */
+  const pinningStage = {
+    id: 'stage-1',
+    type: 'NameGenerator',
+    label: 'Name generator',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [
+      {
+        id: 'p1',
+        text: 'Name people',
+        additionalAttributes: [{ variable: 'since', value: '9999-12-31' }],
+      },
+    ],
+    behaviours: { minNodes: 3, maxNodes: 3 },
+  } as unknown as Stage;
+
+  it('refuses a window pinned at the last date the picker offers', () => {
+    expect(() =>
+      generateNetwork({
+        seed: 7,
+        codebook: datedPair(true, {
+          type: 'full',
+          min: '9999-12-31',
+          max: '9999-12-31',
+        }),
+        stages: [nameGeneratorStage],
+      }),
+    ).toThrow(SyntheticDataConstraintError);
+  });
+
+  it('refuses a prompt fixing the lower end of the comparison to that date', () => {
+    expect(() =>
+      generateNetwork({
+        seed: 7,
+        codebook: datedPair(true),
+        stages: [pinningStage],
+      }),
+    ).toThrow(SyntheticDataConstraintError);
+  });
+
+  it(`draws that same pinned pair under a non-strict rule, over ${SEEDS} seeds`, () => {
+    // The boundary the refusal must not cross: `>=` is satisfied by the last
+    // date itself, so the fixed value and the drawn one are both that date.
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: datedPair(false),
+        stages: [pinningStage],
+      });
+
+      for (const node of network.nodes) {
+        const { since, until } = node[entityAttributesProperty];
+        complain(
+          failures,
+          since === '9999-12-31' && until === '9999-12-31',
+          () => `seed ${seed}: ${String(since)} then ${String(until)}`,
+        );
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+});
+
+/**
  * The rules whose satisfaction can only be read off two values at once, swept
  * wide because a comparison that holds for one draw fails for the next: a rule
  * leaves a range, and only part of it breaks.
@@ -2757,10 +2992,17 @@ describe('a unique value a prompt fixes', () => {
     // 2 go to the roster so band 3 is the next one the middle stage's draw
     // reaches, where a hold that survived is the only thing sending it past.
     //
-    // Judged only on the seeds that leave the band 3 row in the pool. The seeds
-    // that draw it put the researcher's own value on one person and the
-    // prompt's on another, which is a duplicate from the data rather than from
-    // the draw and is not what this fixture is about.
+    // The fixing stage draws from a roster row of its own, which is what keeps
+    // this protocol one the run will accept: every node it builds comes from a
+    // row, so the value it fixes reaches a node only where the network can
+    // still take it. A stage that could fabricate would write band 3 onto a
+    // person of its own however the roster's own band 3 row was drawn, and
+    // `analyseFeasibility` refuses that pairing before a seed is consulted.
+    //
+    // Judged only on the seeds that leave the roster's band 3 row in the pool.
+    // The seeds that draw it hand the fixing stage a value the network already
+    // holds, and its row is passed over — a stage drawing nobody rather than a
+    // duplicate, and not what this fixture is about.
     const failures: string[] = [];
     const codebook = personCodebook({
       band: {
@@ -2800,19 +3042,26 @@ describe('a unique value a prompt fixes', () => {
       } as unknown as Stage,
       {
         id: 'stage-fix',
-        type: 'NameGenerator',
-        label: 'Name generator',
+        type: 'NameGeneratorRoster',
+        label: 'Roster',
         subject: { entity: 'node', type: 'person' },
         prompts: [
           {
             id: 'p3',
-            text: 'Name people',
+            text: 'Pick someone',
             additionalAttributes: [{ variable: 'band', value: 3 }],
           },
         ],
         behaviours: { minNodes: 1, maxNodes: 1 },
       } as unknown as Stage,
     ];
+
+    /** The fixing stage's own row, which leaves `band` to the prompt. */
+    const fixedRow = {
+      [entityPrimaryKeyProperty]: 'fixed-0',
+      type: 'person',
+      [entityAttributesProperty]: {},
+    } as unknown as NcNode;
 
     let judged = 0;
 
@@ -2821,7 +3070,10 @@ describe('a unique value a prompt fixes', () => {
         seed,
         codebook,
         stages,
-        externalData: { 'stage-roster': rows.map((row) => ({ ...row })) },
+        externalData: {
+          'stage-roster': rows.map((row) => ({ ...row })),
+          'stage-fix': [{ ...fixedRow }],
+        },
       });
 
       if (

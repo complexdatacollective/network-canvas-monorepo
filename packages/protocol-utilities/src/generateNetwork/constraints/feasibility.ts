@@ -12,7 +12,9 @@ import { isContentStage } from '../contentStages';
 import {
   collectPromptFixedAssignments,
   countPromptFixedValues,
+  countRosterCarriedValues,
   type PromptFixedValues,
+  type RosterCarriedValues,
   ruleBrokenByFixedValues,
 } from '../nodes';
 import { collectBinOnlyVariables } from './binOnlyVariables';
@@ -69,18 +71,34 @@ type EntityScope = {
   fixedValues: PromptFixedValues;
   /** The same, for the ego flag a FamilyPedigree stage pins on its own nodes. */
   pedigreeFixedValues: PromptFixedValues;
+  /** The values roster rows of this type carry, and where they are offered. */
+  rosterCarriedValues: RosterCarriedValues;
   /** Each prompt's whole set of values, as one entity ends up holding it. */
   fixedAssignments: readonly Record<string, VariableValue>[];
 };
 
-/** Which part of the protocol wrote a value the draw never got to choose. */
-type FixedValueOrigin = 'prompt' | 'pedigree';
+/**
+ * Which writer put a value on an entity that the draw never got to choose: a
+ * part of the protocol, or a roster row the researcher supplied.
+ */
+type FixedValueOrigin = 'prompt' | 'pedigree' | 'roster';
 
 /** How many entities hold one fixed value, and what wrote it onto them. */
-type FixedCarriers = { count: number; origins: Set<FixedValueOrigin> };
+type FixedCarriers = {
+  count: number;
+  origins: Set<FixedValueOrigin>;
+  /**
+   * The last stage writing the value onto an entity whatever the registry holds
+   * — the group's, folded from every member's `stampedAt`. `undefined` where
+   * nothing writes it that way, which is what leaves a roster row carrying it
+   * nothing to collide with.
+   */
+  stampedAt?: number;
+};
 
 const NO_UNVALIDATED_VARIABLES: ReadonlySet<string> = new Set();
 const NO_FIXED_VALUES: PromptFixedValues = new Map();
+const NO_ROSTER_VALUES: RosterCarriedValues = new Map();
 const NO_FIXED_ASSIGNMENTS: readonly Record<string, VariableValue>[] = [];
 
 // The reference-bearing constraints that can merge two variables into one
@@ -96,12 +114,36 @@ function namesOf(entity: EntityConstraints, ids: string[]): string[] {
 }
 
 /**
- * What to call whatever wrote a fixed value, so the message points at the part
- * of the protocol its author would edit.
+ * What to call whatever wrote a fixed value, and the verb agreeing with it, so
+ * the message points at the part of the protocol its author would edit.
+ *
+ * A roster is named alongside the protocol's own writer rather than folded into
+ * "the protocol" with it. The two are edited in different places — one is a
+ * prompt or a pedigree in the protocol, the other a column of the researcher's
+ * data — and either one changing resolves the conflict, so naming only one of
+ * them would send its reader to a file that is not necessarily the one they
+ * meant to change.
  */
-function fixedBy(origins: ReadonlySet<FixedValueOrigin>): string {
-  if (origins.size > 1) return 'the protocol';
-  return origins.has('pedigree') ? 'a family pedigree' : 'a prompt';
+function fixedBy(origins: ReadonlySet<FixedValueOrigin>): {
+  writers: string;
+  verb: string;
+} {
+  const inProtocol = [...origins].filter((origin) => origin !== 'roster');
+
+  if (inProtocol.length === 0) {
+    return { writers: 'a roster row', verb: 'fixes' };
+  }
+
+  const writer =
+    inProtocol.length > 1
+      ? 'the protocol'
+      : inProtocol[0] === 'pedigree'
+        ? 'a family pedigree'
+        : 'a prompt';
+
+  return origins.has('roster')
+    ? { writers: `${writer} and a roster row`, verb: 'fix' }
+    : { writers: writer, verb: 'fixes' };
 }
 
 /**
@@ -116,6 +158,10 @@ function fixedBy(origins: ReadonlySet<FixedValueOrigin>): string {
  * configured ceiling, for the same reason the rest of feasibility counts worst
  * cases, and summed across stages because a `unique` value is claimed once for
  * the whole run.
+ *
+ * A pedigree writes its nodes without consulting the registry, so every pin is
+ * stamped where its stage runs — the tally's `stampedAt`, which is what a
+ * roster row carrying the same value is weighed against.
  */
 function countPedigreeFixedValues(
   stages: Stage[],
@@ -123,7 +169,7 @@ function countPedigreeFixedValues(
 ): Map<string, PromptFixedValues> {
   const byType = new Map<string, PromptFixedValues>();
 
-  for (const stage of stages) {
+  for (const [stageIndex, stage] of stages.entries()) {
     if (stage.type !== 'FamilyPedigree') continue;
 
     const nodeType = stage.nodeConfig?.type;
@@ -141,9 +187,11 @@ function countPedigreeFixedValues(
     for (const [value, carriers] of pinned) {
       if (carriers === 0) continue;
       const key = valueKey(value);
+      const carried = forVariable.get(key);
       forVariable.set(key, {
         value,
-        count: (forVariable.get(key)?.count ?? 0) + carriers,
+        count: (carried?.count ?? 0) + carriers,
+        stampedAt: Math.max(carried?.stampedAt ?? stageIndex, stageIndex),
       });
     }
     forType.set(egoVariable, forVariable);
@@ -351,13 +399,19 @@ function analyseEntity(
       const group = groupOf.get(id) ?? id;
       const carriers =
         fixedByGroup.get(group) ?? new Map<string, FixedCarriers>();
-      for (const [key, { value, count }] of tallies) {
+      for (const [key, { value, count, stampedAt }] of tallies) {
         const carrier = carriers.get(key) ?? {
           count: 0,
           origins: new Set<FixedValueOrigin>(),
         };
         carrier.count += count;
         carrier.origins.add(origin);
+        if (stampedAt !== undefined) {
+          carrier.stampedAt = Math.max(
+            carrier.stampedAt ?? stampedAt,
+            stampedAt,
+          );
+        }
         carriers.set(key, carrier);
         fixedDisplay.set(key, String(value));
       }
@@ -366,6 +420,33 @@ function analyseEntity(
   };
   foldFixedValues(scope.fixedValues, 'prompt');
   foldFixedValues(scope.pedigreeFixedValues, 'pedigree');
+
+  // Roster rows join a value the protocol already fixes, rather than starting a
+  // tally of their own: rows repeating a value between them are the pass-over's
+  // business and spend it once, which `worstCaseCountFor` already counts. What
+  // no pass-over reaches is a row holding a value some stage will write onto a
+  // node of its own regardless — and only where the row can be drawn first.
+  // Once the stage has written it the value is claimed, and every row carrying
+  // it from there on is passed over, which is what the stage indices settle.
+  //
+  // Counted once per value however many members of the group carry it and
+  // however many rows do: the members share a single `unique` slot, so one row
+  // holding the value on two of them is one node holding it, and the second row
+  // to offer it is passed over.
+  for (const [id, carried] of scope.rosterCarriedValues) {
+    if (!entity.has(id)) continue;
+    const carriers = fixedByGroup.get(groupOf.get(id) ?? id);
+    if (carriers === undefined) continue;
+
+    for (const [key, offeredAt] of carried) {
+      const carrier = carriers.get(key);
+      if (carrier?.stampedAt === undefined) continue;
+      if (offeredAt > carrier.stampedAt) continue;
+      if (carrier.origins.has('roster')) continue;
+      carrier.count += 1;
+      carrier.origins.add('roster');
+    }
+  }
 
   /** Every declared variable belonging to one of these groups, in codebook order. */
   const idsInGroups = (representatives: readonly string[]): string[] => {
@@ -612,6 +693,13 @@ function analyseEntity(
         // pedigrees pin `true` once each. No draw stands between those pins and
         // the finished network, which is why this is a refusal rather than
         // something the unique registry could settle.
+        //
+        // A roster row carrying the same value is the third writer, and the one
+        // whose collision the draw looks like it settles and does not: the row
+        // is passed over, and the value the protocol fixes is then written onto
+        // the node fabricated in its place. Counted here rather than left to
+        // `rosterRowIsDrawable`, which decides which node carries a fixed value
+        // and never whether the protocol left room for it at all.
         const spent = [...(fixedByGroup.get(group) ?? [])].filter(
           ([, carrier]) => carrier.count > 1,
         );
@@ -626,14 +714,17 @@ function analyseEntity(
           const origins = new Set(
             spent.flatMap(([, carrier]) => [...carrier.origins]),
           );
+          const { writers, verb } = fixedBy(origins);
           report(
             members,
             [
+              // Only the protocol's own writers name a rule: a roster row is
+              // data the run is handed, and the schema has no key for it.
               'unique',
               ...(origins.has('prompt') ? ['additionalAttributes'] : []),
               ...(origins.has('pedigree') ? ['egoVariable'] : []),
             ],
-            `${fixedBy(origins)} fixes ${members.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${detail}, but unique allows one ${scope.entity} to hold a value`,
+            `${writers} ${verb} ${members.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${detail}, but unique allows one ${scope.entity} to hold a value`,
           );
         }
       }
@@ -954,10 +1045,28 @@ export function analyseFeasibility(
   config: ResolvedGenerationConfig,
   externalData?: Record<string, NcNode[]>,
 ): ConstraintConflict[] {
-  const counts = worstCaseEntityCounts(stages, config, externalData);
   const binOnly = collectBinOnlyVariables(stages);
+  // The map the draw judges a roster row against, so a row this pass counts is
+  // one `createNodesForStage` would really build a node from. Per type on
+  // demand: the counter asks only about types a roster stage draws people of,
+  // so a stale bound on an unused type keeps being skipped rather than thrown
+  // on. `binOnly` is load-bearing — the draw builds its constraints with it,
+  // and building without it would exclude rows the draw really does use.
+  const nodeConstraints = (type: string): EntityConstraints | undefined => {
+    const variables = codebook.node?.[type]?.variables;
+    return variables === undefined
+      ? undefined
+      : buildEntityConstraints(variables, config.today, binOnly.get(type));
+  };
+  const counts = worstCaseEntityCounts(
+    stages,
+    config,
+    externalData,
+    nodeConstraints,
+  );
   const promptFixed = countPromptFixedValues(stages, config, externalData);
   const pedigreeFixed = countPedigreeFixedValues(stages, config);
+  const rosterCarried = countRosterCarriedValues(stages, config, externalData);
   const promptAssignments = collectPromptFixedAssignments(
     stages,
     config,
@@ -994,9 +1103,11 @@ export function analyseFeasibility(
       worstCaseCountFor: () => 1,
       // No stage fixes a value on ego: `additionalAttributes` belongs to a
       // name-generator prompt, and a pedigree's ego flag to its own nodes, both
-      // of whose subjects are always a node.
+      // of whose subjects are always a node. A roster row is a node too — it is
+      // drawn into the network as one — so it writes nothing here either.
       fixedValues: NO_FIXED_VALUES,
       pedigreeFixedValues: NO_FIXED_VALUES,
+      rosterCarriedValues: NO_ROSTER_VALUES,
       fixedAssignments: NO_FIXED_ASSIGNMENTS,
     });
   }
@@ -1055,6 +1166,7 @@ export function analyseFeasibility(
         nodeCountFor(counts.node, type, variableIds),
       fixedValues: promptFixed.get(type) ?? NO_FIXED_VALUES,
       pedigreeFixedValues: pedigreeFixed.get(type) ?? NO_FIXED_VALUES,
+      rosterCarriedValues: rosterCarried.get(type) ?? NO_ROSTER_VALUES,
       fixedAssignments: promptAssignments.get(type) ?? NO_FIXED_ASSIGNMENTS,
     });
   }
@@ -1093,9 +1205,11 @@ export function analyseFeasibility(
       // through `generateEntityAttributes` like any other drawn attribute. So an
       // edge has no fixed value for a rule to be broken by, and none for the
       // draw to have to complete around — its rules are settled by the unpinned
-      // analysis alone.
+      // analysis alone. Roster rows are nodes, and no stage draws an edge from
+      // one, so they write nothing here either.
       fixedValues: NO_FIXED_VALUES,
       pedigreeFixedValues: NO_FIXED_VALUES,
+      rosterCarriedValues: NO_ROSTER_VALUES,
       fixedAssignments: NO_FIXED_ASSIGNMENTS,
     });
   }
