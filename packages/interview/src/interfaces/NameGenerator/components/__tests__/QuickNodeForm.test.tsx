@@ -1,0 +1,219 @@
+import { configureStore } from '@reduxjs/toolkit';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Provider } from 'react-redux';
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+  asEntityAttributeReference,
+  type Codebook,
+  type Validation,
+} from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
+
+import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
+import type { ProtocolPayload } from '../../../../contract/types';
+import protocol from '../../../../store/modules/protocol';
+import session, { type SessionState } from '../../../../store/modules/session';
+import ui from '../../../../store/modules/ui';
+import type { StageProps } from '../../../../types';
+import QuickNodeForm from '../QuickNodeForm';
+
+vi.mock('../../../../hooks/useCelebrate', () => ({
+  useCelebrate: () => vi.fn(),
+}));
+
+const NODE_TYPE = 'person';
+const TARGET_VARIABLE = 'name';
+const STAGE_ID = 'quick-add-stage';
+const PROMPT_ID = 'prompt-1';
+
+function buildCodebook(validation?: Validation): Codebook {
+  return {
+    node: {
+      [NODE_TYPE]: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        icon: 'add-a-person',
+        variables: {
+          [TARGET_VARIABLE]: {
+            name: 'Name',
+            type: 'text',
+            component: 'Text',
+            ...(validation ? { validation } : {}),
+          },
+        },
+      },
+    },
+    edge: {},
+    ego: { variables: {} },
+  };
+}
+
+type QuickAddStage = StageProps<'NameGeneratorQuickAdd'>['stage'];
+
+function buildStage(): QuickAddStage {
+  return {
+    id: STAGE_ID,
+    type: 'NameGeneratorQuickAdd',
+    label: 'Add people',
+    subject: { entity: 'node', type: NODE_TYPE },
+    quickAdd: asEntityAttributeReference(TARGET_VARIABLE),
+    prompts: [
+      {
+        id: PROMPT_ID,
+        text: 'Name the people in your network',
+      },
+    ],
+  };
+}
+
+function buildSession(existingNodes: NcNode[] = []): SessionState {
+  return {
+    id: 'session',
+    startTime: '2024-01-01T00:00:00.000Z',
+    finishTime: null,
+    exportTime: null,
+    lastUpdated: '2024-01-01T00:00:00.000Z',
+    network: {
+      ego: {
+        [entityPrimaryKeyProperty]: 'ego',
+        [entityAttributesProperty]: {},
+      },
+      nodes: existingNodes,
+      edges: [],
+    },
+  };
+}
+
+function buildProtocol(validation?: Validation): ProtocolPayload {
+  return {
+    id: 'protocol',
+    hash: 'hash',
+    importedAt: '2024-01-01T00:00:00.000Z',
+    assets: [],
+    name: 'Test protocol',
+    schemaVersion: 8,
+    codebook: buildCodebook(validation),
+    stages: [buildStage()],
+  };
+}
+
+function renderQuickNodeForm({
+  validation,
+  existingNodes,
+  addNode,
+}: {
+  validation?: Validation;
+  existingNodes?: NcNode[];
+  addNode: (
+    attributes: NcNode[typeof entityAttributesProperty],
+  ) => Promise<void>;
+}) {
+  const store = configureStore({
+    reducer: { session, protocol, ui },
+    preloadedState: {
+      session: buildSession(existingNodes),
+      protocol: buildProtocol(validation),
+    },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({ serializableCheck: false }),
+  });
+
+  render(
+    <Provider store={store}>
+      <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+        <QuickNodeForm
+          disabled={false}
+          targetVariable={TARGET_VARIABLE}
+          addNode={addNode}
+        />
+      </CurrentStepProvider>
+    </Provider>,
+  );
+
+  return { store };
+}
+
+const openField = async () => {
+  await userEvent.click(screen.getByTestId('quick-add-toggle'));
+  return screen.findByTestId('quick-add-input');
+};
+
+describe('QuickNodeForm honours codebook validation', () => {
+  it('rejects an empty entry and an entry over maxLength when the codebook requires the field', async () => {
+    const addNode = vi.fn(async () => {});
+    renderQuickNodeForm({
+      validation: { required: true, maxLength: 10 },
+      addNode,
+    });
+
+    const input = await openField();
+
+    // Over maxLength (11 chars): rejected, node not created.
+    await userEvent.type(input, 'a very long name');
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(input).not.toBeDisabled());
+    expect(addNode).not.toHaveBeenCalled();
+
+    // Empty (violates required): also rejected.
+    await userEvent.clear(input);
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(input).not.toBeDisabled());
+    expect(addNode).not.toHaveBeenCalled();
+  });
+
+  it('accepts an empty submission and creates the node when the codebook has no validation rules (no runtime fallback)', async () => {
+    const addNode = vi.fn(async () => {});
+    renderQuickNodeForm({ validation: undefined, addNode });
+
+    const input = await openField();
+
+    // No text typed: submitting an empty, rule-less field still creates the
+    // node — the agreed no-fallback behaviour.
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
+    expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: '' });
+  });
+
+  it('resolves a unique-across-the-network rule via the threaded validationContext, proving context reaches quick-add (no currentEntityId needed at creation)', async () => {
+    const existingNode: NcNode = {
+      [entityPrimaryKeyProperty]: 'existing-node',
+      type: NODE_TYPE,
+      [entityAttributesProperty]: { [TARGET_VARIABLE]: 'Alice' },
+    };
+    const addNode = vi.fn(async () => {});
+    renderQuickNodeForm({
+      validation: { unique: true },
+      existingNodes: [existingNode],
+      addNode,
+    });
+
+    const input = await openField();
+
+    // Duplicates the existing node's name: rejected, proving the validation
+    // context (network) reached the field without throwing (unique's
+    // implementation invariants on context being provided).
+    await userEvent.type(input, 'Alice');
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(input).not.toBeDisabled());
+    expect(addNode).not.toHaveBeenCalled();
+
+    // A distinct value is accepted.
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Bob');
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
+    expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: 'Bob' });
+  });
+});
