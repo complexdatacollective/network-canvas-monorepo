@@ -17,6 +17,7 @@ import { buildEntityConstraints } from './buildConstraints';
 import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
 import {
   edgeCountFor,
+  nodeCountFor,
   pedigreeNodeCeiling,
   worstCaseEntityCounts,
 } from './entityCounts';
@@ -45,9 +46,10 @@ type EntityScope = {
   /** Variables of this type whose rules nothing in the interview applies. */
   unvalidated: ReadonlySet<string>;
   /**
-   * The most entities of this type that can hold a value for one variable.
-   * Per variable rather than per type, because a pedigree edge holds a value
-   * only for the variables some stage writes onto it.
+   * How many distinct values of one variable entities of this type can spend
+   * between them. Per variable rather than per type, because a pedigree edge
+   * holds a value only for the variables some stage writes onto it, and roster
+   * rows repeating one variable's value spend it once between them.
    */
   worstCaseCountFor: (variableId: string) => number;
   /** Values prompts write onto this type, and how many entities can hold each. */
@@ -679,7 +681,6 @@ export function analyseFeasibility(
   ];
 
   for (const [type, definition] of Object.entries(codebook.node ?? {})) {
-    const nodeCount = counts.node.get(type) ?? 0;
     scopes.push({
       entity: 'node',
       entityType: type,
@@ -688,9 +689,12 @@ export function analyseFeasibility(
         : {}),
       variables: definition.variables,
       unvalidated: binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES,
-      // Every stage creating a node generates its whole attribute set, so one
-      // count covers each of the type's variables.
-      worstCaseCountFor: () => nodeCount,
+      // Every stage creating a node generates its whole attribute set, so a
+      // fabricated node spends a value for each of the type's variables. Roster
+      // rows are the one place that differs, and only for the variable whose
+      // value they repeat — see `nodeCountFor`.
+      worstCaseCountFor: (variableId) =>
+        nodeCountFor(counts.node, type, variableId),
       fixedValues: promptFixed.get(type) ?? NO_FIXED_VALUES,
       pedigreeFixedValues: pedigreeFixed.get(type) ?? NO_FIXED_VALUES,
       fixedAssignments: promptAssignments.get(type) ?? NO_FIXED_ASSIGNMENTS,

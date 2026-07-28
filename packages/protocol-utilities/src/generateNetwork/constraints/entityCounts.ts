@@ -2,15 +2,20 @@ import {
   collectEntityAttributeReferences,
   type Stage,
 } from '@codaco/protocol-validation';
-import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import type { GenerationConfig } from '../config';
 import type { StageOfType } from '../context';
 import { getNodeCountBounds, type NodeCreationStage } from '../nodes';
 import { getSubjectType } from '../subject';
+import { valueKey } from './uniqueRegistry';
 
 type WorstCaseCounts = {
-  node: Map<string, number>;
+  node: NodeCounts;
   edge: EdgeCounts;
 };
 
@@ -63,9 +68,23 @@ type NodeTally = {
   fabricated: number;
   /** From roster-bounded stages, before the shared rows are accounted for. */
   rosterDrawn: number;
-  /** Rows those stages offer between them, as copies per primary key. */
-  rosterRows: Map<string, number>;
+  /** Rows those stages offer between them, keyed by primary key. */
+  rosterRows: RosterRows;
 };
+
+/**
+ * The rows behind one node type, deduped across the stages offering them.
+ *
+ * A pool repeating a primary key can build a node per copy, since one stage
+ * draws its whole pool before any of it is marked used; two stages offering one
+ * key cannot, because the used-set is shared. `copies` is therefore the most
+ * any single stage offers, while `rows` is every row seen under the key — the
+ * values those nodes could carry, whichever pool they were drawn from.
+ */
+type RosterRows = Map<string, { copies: number; rows: NcNode[] }>;
+
+/** Per node type, the tallies {@link nodeCountFor} combines. */
+export type NodeCounts = Map<string, NodeTally>;
 
 /**
  * Stages whose prompts each name a single edge type to create for every
@@ -96,10 +115,7 @@ function add(counts: Map<string, number>, key: string, value: number): void {
   counts.set(key, (counts.get(key) ?? 0) + value);
 }
 
-function tallyFor(
-  tallies: Map<string, NodeTally>,
-  nodeType: string,
-): NodeTally {
+function tallyFor(tallies: NodeCounts, nodeType: string): NodeTally {
   const existing = tallies.get(nodeType);
   if (existing) return existing;
 
@@ -119,22 +135,100 @@ function tallyFor(
  * excludes it — while a pool repeating one primary key counts each copy,
  * because that single stage can draw them all.
  */
-function addRosterRows(rows: Map<string, number>, pool: NcNode[]): void {
+function addRosterRows(rows: RosterRows, pool: NcNode[]): void {
   const copies = new Map<string, number>();
   for (const row of pool) {
     const key = row[entityPrimaryKeyProperty];
     copies.set(key, (copies.get(key) ?? 0) + 1);
   }
 
-  for (const [key, count] of copies) {
-    rows.set(key, Math.max(rows.get(key) ?? 0, count));
+  for (const row of pool) {
+    const key = row[entityPrimaryKeyProperty];
+    const entry = rows.get(key) ?? { copies: 0, rows: [] };
+    entry.copies = Math.max(entry.copies, copies.get(key) ?? 0);
+    entry.rows.push(row);
+    rows.set(key, entry);
   }
 }
 
-function totalRows(rows: Map<string, number>): number {
+function totalRows(rows: RosterRows): number {
   let total = 0;
-  for (const count of rows.values()) total += count;
+  for (const { copies } of rows.values()) total += copies;
   return total;
+}
+
+/**
+ * How many distinct values of `variableId` a node type's roster rows can spend.
+ *
+ * A roster row is data rather than protocol, so two rows may carry one value
+ * for a variable the codebook marks `unique` — and `rosterRowIsDrawable` passes
+ * the second of them over rather than refusing the protocol, since leaving a
+ * row undrawn contradicts nothing the protocol declares. Rows repeating a value
+ * therefore spend it once between them, whatever their number, which is why
+ * they are counted by the registry's own `valueKey` rather than as a pool
+ * length: counting them any other way would put this number and the pass-over
+ * at odds, and the count is what decides whether the pass-over is ever reached.
+ *
+ * A row leaving the variable unset is the opposite case. `createNodesForStage`
+ * generates the node around only the values the row supplies, so the draw is
+ * asked for that variable and spends a value on it exactly as a fabricated node
+ * would. Those rows are counted one apiece — capped by the copies a stage can
+ * draw, since a key no stage offers twice cannot build two nodes.
+ *
+ * A row whose values break rules of their own is passed over too (the draw
+ * refuses it the same way), but is counted here regardless: judging that needs
+ * the type's whole constraint set, and over-counting only leaves a refusal
+ * standing that is already standing today, where under-counting would let a
+ * `unique` variable pass this check and run out of values mid-draw.
+ */
+function rosterValueCount(rows: RosterRows, variableId: string): number {
+  const distinct = new Set<string>();
+  let drawn = 0;
+
+  for (const { copies, rows: group } of rows.values()) {
+    let unset = 0;
+    for (const row of group) {
+      const value = row[entityAttributesProperty][variableId];
+      if (value === undefined) unset += 1;
+      else distinct.add(valueKey(value));
+    }
+    drawn += Math.min(copies, unset);
+  }
+
+  return drawn + distinct.size;
+}
+
+/** Every node of a type, whatever variable is being asked about. */
+function nodeTotal(tally: NodeTally): number {
+  return (
+    tally.fabricated + Math.min(tally.rosterDrawn, totalRows(tally.rosterRows))
+  );
+}
+
+/**
+ * How many distinct values of `variableId` nodes of `type` can spend between
+ * them.
+ *
+ * Fabricated nodes each draw their own value, so they spend one apiece. Roster
+ * rows do not: see {@link rosterValueCount}, which counts what they can spend
+ * as the rows the run could actually draw rather than as the rows it was
+ * handed.
+ *
+ * Per variable rather than per type, because which rows repeat a value is a
+ * question about one variable — a roster whose `nickname` column is unique and
+ * whose `consented` column is a boolean offers a different number of each.
+ */
+export function nodeCountFor(
+  counts: NodeCounts,
+  type: string,
+  variableId: string,
+): number {
+  const tally = counts.get(type);
+  if (tally === undefined) return 0;
+  return (
+    tally.fabricated +
+    Math.min(tally.rosterDrawn, rosterValueCount(tally.rosterRows, variableId))
+  );
 }
 
 /**
@@ -187,13 +281,18 @@ function namedEdgeAttributes(
   return named;
 }
 
-/** The largest number of unordered pairs a subject node type could ever reach. */
-function pairsFor(
-  nodeType: string | undefined,
-  node: Map<string, number>,
-): number {
+/**
+ * The largest number of unordered pairs a subject node type could ever reach.
+ *
+ * Read from the type's whole node count rather than from any one variable's:
+ * an edge is created for a pair of people, whatever values those people hold,
+ * so a roster row passed over for repeating one variable's value still pairs
+ * with everyone for a stage reading another.
+ */
+function pairsFor(nodeType: string | undefined, node: NodeCounts): number {
   if (nodeType === undefined) return 0;
-  const count = node.get(nodeType) ?? 0;
+  const tally = node.get(nodeType);
+  const count = tally === undefined ? 0 : nodeTotal(tally);
   return (count * (count - 1)) / 2;
 }
 
@@ -211,12 +310,13 @@ function pairsFor(
  * Counts sum across stages producing the same type, since a `unique` constraint
  * spans the whole run.
  *
- * Edges are therefore counted as the entities that can hold a value, not as
- * every entity the run creates, because holding values is the only thing the
- * count is asked about: feasibility measures a `unique` variable's value space
- * against it, and an edge born empty spends none of that space. Which pedigree
- * edges are empty is settled per variable rather than per type — see
- * {@link edgeCountFor}, which reads the two tallies this returns.
+ * Entities are therefore counted as the value space they spend, not as every
+ * entity the run creates, because spending values is the only thing the count
+ * is asked about: feasibility measures a `unique` variable's value space
+ * against it, and an edge born empty spends none of that space, as do two
+ * roster rows carrying one value between them. Both are settled per variable
+ * rather than per type — see {@link edgeCountFor} and {@link nodeCountFor},
+ * which read the tallies this returns.
  *
  * `externalData` is `generateNetwork`'s own roster argument, read here for the
  * same three-way meaning `createNodesForStage` gives it: a roster stage with no
@@ -231,17 +331,16 @@ export function worstCaseEntityCounts(
   config: GenerationConfig,
   externalData?: Record<string, NcNode[]>,
 ): WorstCaseCounts {
-  const node = new Map<string, number>();
   const base = new Map<string, number>();
   const pedigree = new Map<string, number>();
-  const tallies = new Map<string, NodeTally>();
+  const node: NodeCounts = new Map();
 
   for (const stage of stages) {
     if (isNodeCreationStage(stage)) {
       const nodeType = getSubjectType(stage.subject, 'node');
       if (nodeType === undefined) continue;
 
-      const tally = tallyFor(tallies, nodeType);
+      const tally = tallyFor(node, nodeType);
       const { maxNodes } = getNodeCountBounds(stage, config);
       // Only a roster stage is held to its rows. Every other node-creation
       // stage may fabricate, so a roster it also draws from lowers nothing.
@@ -263,17 +362,9 @@ export function worstCaseEntityCounts(
     if (stage.type === 'FamilyPedigree') {
       const nodeType = stage.nodeConfig?.type;
       if (nodeType) {
-        tallyFor(tallies, nodeType).fabricated += pedigreeNodeCeiling(config);
+        tallyFor(node, nodeType).fabricated += pedigreeNodeCeiling(config);
       }
     }
-  }
-
-  for (const [nodeType, tally] of tallies) {
-    node.set(
-      nodeType,
-      tally.fabricated +
-        Math.min(tally.rosterDrawn, totalRows(tally.rosterRows)),
-    );
   }
 
   for (const stage of stages) {
