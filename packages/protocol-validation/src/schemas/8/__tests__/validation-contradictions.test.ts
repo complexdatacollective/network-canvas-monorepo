@@ -5354,37 +5354,39 @@ describe('findValidationContradictions — Twenty-fifth wave: one-sided out-of-w
     ).toEqual([]);
   });
 
-  // A one-sided IN-window coarse bound keeps its half-open reading: the
-  // runtime falls back to the default window's own 1920-01-01 edge there, but
-  // this file has never modelled the coarse default window (a neither-bound
-  // picker contributes no interval at all), and an unbounded side is a strict
-  // superset of the default edge — it can only accept, never falsely reject.
-  // This pairing is therefore a DELIBERATE accept-direction gap (the runtime
-  // offers no year below 1920), asserted here so any future change to it is a
-  // conscious one.
-  it('still accepts a one-sided in-window coarse bound against a partner below the default window', () => {
-    expect(
-      findValidationContradictions({
-        a: datePicker(
-          'a',
-          { type: 'year', max: '2000' },
-          { lessThanVariable: 'b' },
-        ),
-        b: datePicker('b', { min: '1900-01-01', max: '1900-01-01' }),
-      }),
-    ).toEqual([]);
+  // Thirtieth wave (Fix 4) consciously closed the accept-direction gap this
+  // block used to record: the runtime's dropdown floor for an unauthored
+  // coarse min side is the STABLE default 1920 (date-independent), so it is
+  // modelled exactly — the year picker below offers nothing under 1920 and
+  // can never lie strictly below a partner pinned at 1900.
+  it('floors a one-sided in-window coarse bound at the stable default window minimum', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '2000' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '1900-01-01', max: '1900-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
   });
 
-  // A coarse picker with NEITHER bound authored stays unmodelled (no interval
-  // at all), exactly as before — the runtime's plain default window has never
-  // been modelled for a DatePicker, and this change must not disturb that.
-  it('still accepts a coarse picker with no authored bounds at all', () => {
-    expect(
-      findValidationContradictions({
-        a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
-        b: datePicker('b', { min: '1800-01-01', max: '1800-01-01' }),
-      }),
-    ).toEqual([]);
+  // A coarse picker with NEITHER bound authored now carries the same stable
+  // default floor (thirtieth-wave Fix 4); its today side stays unbounded.
+  it('floors a coarse picker with no authored bounds at the stable default window minimum', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: '1800-01-01', max: '1800-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
   });
 
   // Thirtieth wave (Fix 2) consciously revised this recorded stance: the
@@ -5438,9 +5440,12 @@ describe('findValidationContradictions — Twenty-fifth wave: one-sided out-of-w
   });
 
   // The out-of-window gate on the max side is date-independent and mirrored
-  // exactly: the runtime synthesizes only when the authored max is strictly
-  // earlier than 1920-01-01, so '1919' synthesizes (lower edge 1719 at the
-  // horizon span) and '1920' does not.
+  // exactly: the runtime synthesizes the deep extension floor only when the
+  // authored max is strictly earlier than 1920-01-01, so '1919' extends the
+  // window down to 1719 (the horizon span) while '1920' keeps the stable
+  // default 1920 floor (thirtieth-wave Fix 4 — this arm used to record the
+  // half-open accept-direction gap). A partner pinned BETWEEN the two floors
+  // separates the branches.
   it('brackets the lower-edge synthesis gate at exactly the default window minimum', () => {
     const result = findValidationContradictions({
       a: datePicker(
@@ -5453,16 +5458,31 @@ describe('findValidationContradictions — Twenty-fifth wave: one-sided out-of-w
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
 
+    // '1919' extends: 1800 lies inside the extended window, so a value
+    // strictly below the partner exists ...
     expect(
       findValidationContradictions({
         a: datePicker(
           'a',
-          { type: 'year', max: '1920' },
+          { type: 'year', max: '1919' },
           { lessThanVariable: 'b' },
         ),
-        b: datePicker('b', { min: '1719-01-01', max: '1719-01-01' }),
+        b: datePicker('b', { min: '1800-01-01', max: '1800-01-01' }),
       }),
     ).toEqual([]);
+
+    // ... while '1920' does not extend — its floor is the stable default
+    // edge, above that same partner.
+    const atGate = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1920' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '1800-01-01', max: '1800-01-01' }),
+    });
+    expect(atGate).toHaveLength(1);
+    expect(atGate[0]?.class).toBe('disjointBounds');
   });
 
   // The min side's gate is date-DEPENDENT at runtime (`authoredMin > today`),
@@ -5569,7 +5589,7 @@ describe('findValidationContradictions — Twenty-fifth wave: derivation fidelit
   // today pinned there must land on exactly the bounds the analyser uses —
   // the probes below bracket the analyser's modelled edges to the day. If
   // fresco-ui's arithmetic ever changes shape (span, rounding, branch
-  // conditions), this mirror and `synthesizedCoarseFarBound` must change
+  // conditions), this mirror and `synthesizedCoarseMissingSideBound` must change
   // together.
   type MirrorYmd = { year: number; month: number; day: number };
 
@@ -5907,16 +5927,20 @@ describe('findValidationContradictions — Twenty-sixth-wave Finding 2: unbounde
     ]);
   });
 
-  // A coarse picker with no authored bounds stays unmodelled — its default
-  // 1920-to-today dropdown window has never been modelled, and the floor is
-  // scoped to full resolution.
-  it('leaves a bound-less coarse picker unjudged by the floor', () => {
-    expect(
-      findValidationContradictions({
-        a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
-        b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
-      }),
-    ).toEqual([]);
+  // Thirtieth wave (Fix 4): a bound-less coarse picker is no longer unjudged
+  // — its dropdown floors at the stable 1920 default edge, far above a
+  // partner pinned at the native floor, so the strict comparison can never
+  // be satisfied.
+  it('floors a bound-less coarse picker at the default dropdown edge', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
   });
 });
 
@@ -7201,5 +7225,191 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
         },
       }),
     ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — Thirtieth wave Fix 4: coarse DatePickers model the stable default window floor', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: a required year picker with no bounds at all
+  // always starts its dropdown at 1920 — the runtime's DEFAULT_MIN, a stable
+  // date-independent constant — so it can never lie strictly below a partner
+  // pinned to 1900.
+  it('rejects the reviewer repro: an unbounded year picker strictly below a partner pinned at 1900', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { type: 'year', min: '1900', max: '1900' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // Bracketing the floor to the year: a partner pinned AT the floor is still
+  // unreachable from strictly below (the floor's own emission is not below
+  // itself), while one pinned a single year above it is.
+  it('brackets the default floor at exactly 1920', () => {
+    const atFloor = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { type: 'year', min: '1920', max: '1920' }),
+    });
+    expect(atFloor).toHaveLength(1);
+    expect(atFloor[0]?.class).toBe('disjointBounds');
+
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { type: 'year', min: '1921', max: '1921' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A one-sided IN-window authored max gets the same default floor on its
+  // missing side — the runtime's fallback there is the identical stable
+  // edge.
+  it('floors an in-window max-only month picker at the default edge', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'month', max: '1980-06' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { type: 'month', min: '1920-01', max: '1920-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'month', max: '1980-06' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { type: 'month', min: '1920-02', max: '1920-02' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The today side stays unbounded: an in-horizon min-only picker's upper
+  // edge is date-dependent (it caps at the interview date), so no ceiling is
+  // modelled and a far-future partner stays accepted — the deliberate
+  // superset direction.
+  it('keeps the date-dependent today side unbounded', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2000' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '9000-01-01', max: '9000-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The floor flows into the discrete emission-set machinery exactly as an
+  // authored bound does: with only `max: '1925'` the year picker's window
+  // used to be open below (unenumerable), silently skipping the
+  // exact-instant check. Floored at 1920 it enumerates to the 1920-1925
+  // January instants, which overlap the month picker's convex interval while
+  // sharing no instant with its February-December emissions.
+  it('rejects a comparator-forced equality whose floored year window shares no instant with a month picker', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1925' },
+        { greaterThanOrEqualToVariable: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'month', min: '1920-02', max: '1920-12' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'the exact dates their pickers can ever emit share no instant',
+    );
+
+    // Widening the month window to include a January restores a genuinely
+    // shared instant (1920-01-01) inside the floored year window.
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1925' },
+          { greaterThanOrEqualToVariable: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { type: 'month', min: '1920-01', max: '1920-06' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // The floor seeds the chained bound propagation exactly as an authored
+  // bound does: the unbounded year picker's 1920 floor travels two strict
+  // hops up to `c`, whose pinned 1900 window lies below every value the
+  // chain admits — infeasible although each single hop looks fine.
+  it('seeds comparator chains from the default floor', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', {}, { lessThanVariable: 'c' }),
+      c: datePicker('c', { min: '1900-01-01', max: '1900-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain('form a comparison chain');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', {}, { lessThanVariable: 'c' }),
+        c: datePicker('c', { min: '1925-01-01', max: '1925-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The floor reaches the twenty-ninth wave's group-pin derivation through
+  // `coarseInstantsOf`: with only `max: '1921'`, `a`'s emission set is the
+  // floored {1920, 1921}, whose intersection with `b`'s {1921, 1922} is the
+  // single emission '1921' — the very value `c` is pinned to.
+  it('derives a group pin from a floored emission-set intersection', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1921' },
+        { sameAs: 'b', differentFrom: 'c' },
+      ),
+      b: datePicker('b', { type: 'year', min: '1921', max: '1922' }),
+      c: datePicker('c', { type: 'year', min: '1921', max: '1921' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
   });
 });
