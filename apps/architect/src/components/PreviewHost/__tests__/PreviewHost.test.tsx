@@ -524,6 +524,63 @@ describe('PreviewHost', () => {
     }
   });
 
+  it('reports the rule conflicts when a payload arrives after the timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<PreviewHost />);
+      act(() => {
+        vi.advanceTimersByTime(5_000);
+      });
+      expect(
+        screen.getByText(/couldn't reach the architect tab/i),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+
+    postPayload(
+      openerStub,
+      makePayload({
+        protocol: makeUnsatisfiableProtocol(),
+        useSyntheticData: true,
+      }),
+    );
+
+    expect(
+      await screen.findByText(/protocol can't be previewed/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+    ).toBeInTheDocument();
+    // Architect answered, so blaming the connection hides the rules the user
+    // can actually correct.
+    expect(
+      screen.queryByText(/couldn't reach the architect tab/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the preview when a payload arrives after the timeout and builds', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<PreviewHost />);
+      act(() => {
+        vi.advanceTimersByTime(5_000);
+      });
+      expect(
+        screen.getByText(/couldn't reach the architect tab/i),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+
+    postPayload(openerStub, makePayload());
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(
+      screen.queryByText(/couldn't reach the architect tab/i),
+    ).not.toBeInTheDocument();
+  });
+
   it('re-posts preview:ready when the user clicks Try again', () => {
     vi.useFakeTimers();
     try {

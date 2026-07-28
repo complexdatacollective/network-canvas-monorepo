@@ -79,9 +79,12 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
     stageMetadata,
   };
 }
-// A build fails for exactly one reason, so the reasons share one slot: a later
-// failure can never leave an earlier one's screen behind.
+// A preview fails for exactly one reason — the payload never arrived, or the
+// build it started failed — so the reasons share one slot: a later failure can
+// never leave an earlier one's screen behind. A payload that arrives is no
+// longer a timeout, so recording its outcome is what retires the timeout.
 type PreviewFailure =
+  | { kind: 'timeout' }
   | { kind: 'constraints'; conflicts: ConstraintConflict[] }
   | { kind: 'processing' };
 export function PreviewHost() {
@@ -89,7 +92,6 @@ export function PreviewHost() {
     useState<InterviewPayload | null>(null);
   const [protocolId, setProtocolId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
-  const [timedOut, setTimedOut] = useState(false);
   const [failure, setFailure] = useState<PreviewFailure | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   // Index of the stage receiving a one-stage preview override, or null.
@@ -138,7 +140,6 @@ export function PreviewHost() {
         previewPayload.skipLogicBypassed ? previewPayload.startStage : null,
       );
       setSkipLogicNoticeDismissed(false);
-      setTimedOut(false);
     };
     const onMessage = (event: MessageEvent) => {
       if (event.source !== opener) return;
@@ -159,15 +160,15 @@ export function PreviewHost() {
         });
       }
       // The payload message arrived — the handshake succeeded, so disarm the
-      // "couldn't reach Architect" timeout regardless of how the async build
-      // resolves. A build failure surfaces the processing-failed screen.
+      // "couldn't reach Architect" timeout. If it already fired, processPayload
+      // replaces that state with this build's own outcome.
       received = true;
       void processPayload(previewPayload);
     };
     window.addEventListener('message', onMessage);
     opener.postMessage({ type: 'preview:ready' }, expectedOrigin);
     const timeoutId = setTimeout(() => {
-      if (!received) setTimedOut(true);
+      if (!received) setFailure({ kind: 'timeout' });
     }, PAYLOAD_TIMEOUT_MS);
     return () => {
       cancelled = true;
@@ -190,7 +191,7 @@ export function PreviewHost() {
       </div>
     );
   }
-  if (!interviewPayload && timedOut) {
+  if (!interviewPayload && failure?.kind === 'timeout') {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
         <Heading level="h1" margin="none" className="text-2xl font-semibold">
@@ -204,7 +205,7 @@ export function PreviewHost() {
           <Button
             color="primary"
             onClick={() => {
-              setTimedOut(false);
+              setFailure(null);
               setRetryNonce((n) => n + 1);
             }}
           >
