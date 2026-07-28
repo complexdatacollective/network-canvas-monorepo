@@ -572,4 +572,83 @@ describe('makeFieldEditorValidate', () => {
       expect(errors.validation).toContain('different resolutions');
     });
   });
+
+  // protocol-validation commit 8900da73b gated options-derived boolean
+  // domains on a new `stageEffectiveComponents` analyser option: an explicit
+  // `component: 'Boolean'` with singleton `options` only pins the variable's
+  // value when the caller has RESOLVED every variable's stage-effective
+  // rendering, because a NetworkComposer field is free to override even an
+  // explicit codebook `component: 'Boolean'` to `Toggle` (which ignores
+  // `options` and is unconditionally two-valued). The record-level schema
+  // check and the migration call the analyser without the flag; only
+  // schema.ts's `validateComposerFieldContradictions` overlay — which knows
+  // every field's own resolved component — passes it. These tests confirm
+  // the composer field editor's `makeFieldEditorValidate` overlay call
+  // matches that overlay's verdict, and that the plain codebook dialog
+  // (no overlay) still matches the record-level acceptance.
+  describe('explicit Boolean singleton differentFrom pairs', () => {
+    const singletonBooleans = {
+      boolA: {
+        name: 'boolA',
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+        validation: { differentFrom: 'boolB' },
+      },
+      boolB: {
+        name: 'boolB',
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+        validation: {},
+      },
+    };
+
+    it('flags the pair in the composer editor when both sibling fields still render Boolean', () => {
+      const composerFields = [
+        { variable: 'boolA', component: 'Boolean' },
+        { variable: 'boolB', component: 'Boolean' },
+      ];
+      const validate = makeFieldEditorValidate(
+        singletonBooleans,
+        buildComposerFieldOverlay(composerFields, 0),
+      );
+      const errors = validate({
+        variable: 'boolA',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+        validation: { differentFrom: 'boolB' },
+      });
+      expect(errors.validation).toContain('must differ');
+    });
+
+    it('does not flag the same pair in a plain codebook dialog with no stage overlay', () => {
+      const validate = makeFieldEditorValidate(singletonBooleans);
+      const errors = validate({
+        variable: 'boolA',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+        validation: { differentFrom: 'boolB' },
+      });
+      expect(errors).toEqual({});
+    });
+
+    it('does not flag the pair once every composer occurrence overrides to Toggle', () => {
+      const composerFields = [
+        { variable: 'boolA', component: 'Toggle' },
+        { variable: 'boolB', component: 'Toggle' },
+      ];
+      const validate = makeFieldEditorValidate(
+        singletonBooleans,
+        buildComposerFieldOverlay(composerFields, 0),
+      );
+      const errors = validate({
+        variable: 'boolA',
+        component: 'Toggle',
+        options: [{ label: 'Yes', value: true }],
+        validation: { differentFrom: 'boolB' },
+      });
+      expect(errors).toEqual({});
+    });
+  });
 });

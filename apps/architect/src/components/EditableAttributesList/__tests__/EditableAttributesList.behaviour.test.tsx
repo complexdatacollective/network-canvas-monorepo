@@ -44,8 +44,10 @@ vi.mock('~/components/Form/ValidatedFieldArray', () => ({
 }));
 
 // One categorical variable whose committed `minSelected: 3` contradicts any
-// draft that shrinks its options below three, plus a pair of year-resolution
-// DatePickers joined by `sameAs` for the parameter-inheritance cases below.
+// draft that shrinks its options below three, a pair of year-resolution
+// DatePickers joined by `sameAs` for the parameter-inheritance cases below,
+// and a pair of explicit-Boolean singleton-options variables joined by
+// `differentFrom` for the stage-effective boolean-domain cases below.
 const codebookVariables = {
   colors: {
     name: 'colors',
@@ -69,6 +71,20 @@ const codebookVariables = {
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year' },
+    validation: {},
+  },
+  boolA: {
+    name: 'boolA',
+    type: 'boolean',
+    component: 'Boolean',
+    options: [{ label: 'Yes', value: true }],
+    validation: { differentFrom: 'boolB' },
+  },
+  boolB: {
+    name: 'boolB',
+    type: 'boolean',
+    component: 'Boolean',
+    options: [{ label: 'Yes', value: true }],
     validation: {},
   },
 };
@@ -360,5 +376,50 @@ describe('null composer parameters mean inheritance', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+// protocol-validation commit 8900da73b gated options-derived boolean domains
+// (an explicit `component: 'Boolean'` with singleton `options` pinning the
+// variable's value) on a new `stageEffectiveComponents` analyser option,
+// since a NetworkComposer field can override even an explicit codebook
+// `component: 'Boolean'` to `Toggle` (which ignores `options` and is always
+// two-valued). Only schema.ts's stage-effective composer overlay passes that
+// flag; this editor's `editorValidate` must match it — pre-warning about
+// exactly the `differentFrom` contradiction the schema will reject at save
+// time, while still accepting the pair once every occurrence renders Toggle.
+describe('stage-effective boolean domains', () => {
+  it('blocks the save when the sibling field still renders the Boolean choice control', () => {
+    const { onSubmit } = renderEditor({
+      composerFields: [{ variable: 'boolB', component: 'Boolean' }],
+      draft: {
+        variable: 'boolA',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+        validation: { differentFrom: 'boolB' },
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText(/must differ/)).toBeInTheDocument();
+  });
+
+  it('accepts the same pair once the sibling field renders Toggle instead', () => {
+    const { onSubmit } = renderEditor({
+      composerFields: [{ variable: 'boolB', component: 'Toggle' }],
+      draft: {
+        variable: 'boolA',
+        component: 'Toggle',
+        options: [{ label: 'Yes', value: true }],
+        validation: { differentFrom: 'boolB' },
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/must differ/)).not.toBeInTheDocument();
   });
 });

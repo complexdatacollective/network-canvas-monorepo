@@ -52,6 +52,22 @@ export type ProspectiveDraft = {
   options?: unknown;
   /** Draft component parameters (e.g. DatePicker min/max), from form state. */
   parameters?: unknown;
+  /**
+   * Threaded straight through to `findValidationContradictions`'
+   * `stageEffectiveComponents` option (see @codaco/protocol-validation's
+   * `booleanDomain`): vouches that every variable's `component` in
+   * `allVariables` is its RESOLVED stage-effective rendering, not a
+   * codebook default a NetworkComposer field elsewhere is still free to
+   * override (e.g. to `Toggle`, which ignores `options` and always offers
+   * both values). Only then may an explicit `component: 'Boolean'` read its
+   * `options` as a pinned domain for the singleton-domain `differentFrom`
+   * check. Only a caller holding a stage-scoped overlay (the composer field
+   * editor's `buildComposerFieldOverlay`) can make that guarantee; a plain
+   * codebook dialog has no stage in scope and must leave this at its
+   * default `false`, matching protocol-validation's own record-level check
+   * and the v7→v8 migration.
+   */
+  stageEffectiveComponents?: boolean;
 };
 
 export const buildProspectiveVariables = ({
@@ -92,9 +108,9 @@ export const findDraftContradictions = (
   // Same `allVariables` as `buildProspectiveVariables` receives below, so both
   // derive an identical id for this draft.
   const id = draft.currentVariableId || draftVariableId(draft.allVariables);
-  return findValidationContradictions(buildProspectiveVariables(draft)).filter(
-    (contradiction) => contradiction.variableIds.includes(id),
-  );
+  return findValidationContradictions(buildProspectiveVariables(draft), {
+    stageEffectiveComponents: draft.stageEffectiveComponents ?? false,
+  }).filter((contradiction) => contradiction.variableIds.includes(id));
 };
 
 /**
@@ -161,6 +177,16 @@ export type ReferenceTargetLegalityInput = {
   component?: unknown;
   options?: unknown;
   parameters?: unknown;
+  /**
+   * See `ProspectiveDraft.stageEffectiveComponents` — threaded through
+   * unchanged to every `findValidationContradictions` call this makes.
+   * `Validations.tsx` is the only caller today, and it only ever backs the
+   * plain codebook `ValidationSection` (never a stage-scoped overlay), so it
+   * leaves this at its default `false`; a future stage-scoped
+   * reference-target picker would need to pass `true` to stay consistent
+   * with the validate path it feeds.
+   */
+  stageEffectiveComponents?: boolean;
 };
 
 /**
@@ -194,6 +220,7 @@ export const findLegalReferenceTargets = ({
   component,
   options,
   parameters,
+  stageEffectiveComponents = false,
 }: ReferenceTargetLegalityInput): Set<string> => {
   const id = currentVariableId || draftVariableId(allVariables);
 
@@ -287,7 +314,9 @@ export const findLegalReferenceTargets = ({
         [ruleKey]: candidateId,
       });
     }
-    const contradictions = findValidationContradictions(batchRecord);
+    const contradictions = findValidationContradictions(batchRecord, {
+      stageEffectiveComponents,
+    });
     for (const { candidateId, cloneId } of clones) {
       const hasContradiction = contradictions.some((contradiction) =>
         contradiction.variableIds.includes(cloneId),
@@ -313,7 +342,9 @@ export const findLegalReferenceTargets = ({
       }
     }
     pruned[id] = draftEntry({ ...baseline, [ruleKey]: candidateId });
-    const contradictions = findValidationContradictions(pruned);
+    const contradictions = findValidationContradictions(pruned, {
+      stageEffectiveComponents,
+    });
     const hasContradiction = contradictions.some((contradiction) =>
       contradiction.variableIds.includes(id),
     );
@@ -467,6 +498,15 @@ export const makeFieldEditorValidate =
       component: values.component,
       options: values.options,
       parameters: values.parameters,
+      // An `overlay` is only ever built from a stage's OWN composer fields
+      // (`buildComposerFieldOverlay`), so its presence IS the stage-effective
+      // signal: every variable it names carries that field's own RESOLVED
+      // component, and this dialog's own draft component (above) is the
+      // edited field's resolved component too. An overlay-less caller (the
+      // shared FieldFields dialog, FamilyPedigree's NodeConfiguration) has no
+      // stage in scope to resolve any OTHER variable's rendering, so it must
+      // stay in the default, unresolved mode.
+      stageEffectiveComponents: overlay !== undefined,
     })[0];
     return first ? { validation: first.message } : {};
   };
