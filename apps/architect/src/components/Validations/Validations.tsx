@@ -1,12 +1,24 @@
 import { keys as getKeys, isNull, toPairs } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
-import { useId, useState, type ReactNode, type ComponentProps } from 'react';
+import {
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+  type ComponentProps,
+} from 'react';
 import { Field } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import type { Variable } from '@codaco/protocol-validation';
 
+import {
+  findDraftContradictions,
+  findLegalReferenceTargets,
+  floorIssue,
+} from './contradictions';
+import { isValidationWithListValue } from './options';
 import Validation from './Validation';
 
 // redux-form calls a field validator with the field's raw value, which is null
@@ -126,6 +138,12 @@ type ValidationsProps = {
   handleDelete: (itemKey: string) => void;
   handleAddNew: (key: string, value: unknown, itemKey: string) => void;
   existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  variableType?: string;
+  allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  currentVariableId?: string;
+  draftOptions?: unknown;
+  draftComponent?: unknown;
+  draftParameters?: unknown;
 };
 
 const Validations = ({
@@ -138,16 +156,157 @@ const Validations = ({
   handleChange,
   handleDelete,
   handleAddNew,
+  variableType,
+  allVariables,
+  currentVariableId,
+  draftOptions,
+  draftComponent,
+  draftParameters,
 }: ValidationsProps) => {
   // Only one row (existing or the "add new" draft) is ever open for editing
   // at a time.
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const usedOptions = getKeys(value);
+
+  const uniqueValueCount = useMemo(() => {
+    if (variableType !== 'boolean' && variableType !== 'ordinal') {
+      return undefined;
+    }
+    const isRecord = (v: unknown): v is Record<string, unknown> =>
+      typeof v === 'object' && v !== null && !Array.isArray(v);
+    const current = allVariables?.[currentVariableId ?? ''];
+    const storedOptions =
+      isRecord(current) && 'options' in current ? current.options : undefined;
+    const options = Array.isArray(draftOptions)
+      ? draftOptions
+      : Array.isArray(storedOptions)
+        ? storedOptions
+        : undefined;
+    // Fifteenth-wave Finding 2: `booleanOptionsSchema` accepts a single-option
+    // array, so a Boolean can genuinely offer one value — with `unique` set,
+    // the second entity to answer then has nothing left to pick. Only an
+    // ABSENT options array means the unrestricted Yes/No default of two; an
+    // ordinal with no options configured yet has no domain to report at all.
+    if (options === undefined)
+      return variableType === 'boolean' ? 2 : undefined;
+    // Sixteenth-wave Finding 2: count DISTINCT option values, for ordinals as
+    // well as Booleans. Two options may carry the same `value`, and the
+    // runtime stores one value per distinct value — counting option entries
+    // would overstate how many entities can hold a unique answer.
+    return new Set(
+      options
+        .map((option) => (isRecord(option) ? option.value : undefined))
+        .filter((optionValue) => optionValue !== undefined),
+    ).size;
+  }, [variableType, draftOptions, allVariables, currentVariableId]);
+
+  const checkDraft = useMemo(
+    () =>
+      (
+        ruleKey: string,
+        ruleValue: unknown,
+        replacingKey?: string,
+      ): string[] => {
+        // R1 floor check runs ahead of the contradiction analyser: a below-floor
+        // value (e.g. maxLength 0) is meaningless input the schema would reject
+        // outright, so there is no point feeding it into findDraftContradictions.
+        const floor = floorIssue(ruleKey, ruleValue);
+        if (floor) return [floor];
+        const prospective: Record<string, unknown> = { ...value };
+        if (replacingKey && replacingKey !== ruleKey) {
+          delete prospective[replacingKey];
+        }
+        prospective[ruleKey] = ruleValue;
+        // The Anonymisation passphrase is not a codebook variable; a text
+        // surrogate lets the local length-pair check still apply.
+        const isPassphrase = variableType === 'passphrase';
+        return findDraftContradictions({
+          allVariables: isPassphrase ? {} : (allVariables ?? {}),
+          currentVariableId: currentVariableId ?? '',
+          variableType: isPassphrase ? 'text' : (variableType ?? ''),
+          validation: prospective,
+          options: draftOptions,
+          // Nineteenth-wave Finding 4: without these the row check analysed
+          // the COMMITTED variable, so a parameters edit and a new reference
+          // rule made in the same dialog session disagreed with the
+          // form-level validator — the row rejected an edit that saves
+          // perfectly well once the dialog is closed and reopened.
+          component: draftComponent,
+          parameters: draftParameters,
+        }).map((contradiction) => contradiction.message);
+      },
+    [
+      value,
+      allVariables,
+      currentVariableId,
+      variableType,
+      draftOptions,
+      draftComponent,
+      draftParameters,
+    ],
+  );
+
+  // Twenty-third-wave Finding 3: the reference-target dropdown needs the
+  // legal candidates for one rule, not just one candidate at a time — see
+  // findLegalReferenceTargets for why that can be answered in one shared
+  // analysis pass instead of one `checkDraft` call per candidate.
+  const findLegalTargets = useMemo(
+    () =>
+      (
+        ruleKey: string,
+        candidateIds: string[],
+        replacingKey?: string,
+      ): Set<string> => {
+        const isPassphrase = variableType === 'passphrase';
+        return findLegalReferenceTargets({
+          allVariables: isPassphrase ? {} : (allVariables ?? {}),
+          currentVariableId: currentVariableId ?? '',
+          variableType: isPassphrase ? 'text' : (variableType ?? ''),
+          validation: value,
+          ruleKey,
+          replacingKey,
+          candidateIds,
+          options: draftOptions,
+          component: draftComponent,
+          parameters: draftParameters,
+        });
+      },
+    [
+      value,
+      allVariables,
+      currentVariableId,
+      variableType,
+      draftOptions,
+      draftComponent,
+      draftParameters,
+    ],
+  );
+
+  // A reference rule (e.g. "Same as") is disabled in the dropdown once no
+  // existing variable could legally serve as its target.
   const availableOptions = getOptionsWithUsedDisabled(
     validationOptions,
     usedOptions,
+  ).map((option) => {
+    if (option.disabled || !isValidationWithListValue(option.value)) {
+      return option;
+    }
+    const hasLegalTarget = Object.keys(existingVariables).some(
+      (candidateId) =>
+        checkDraft(option.value, candidateId, editingKey ?? undefined)
+          .length === 0,
+    );
+    return hasLegalTarget ? option : { ...option, disabled: true };
+  });
+  // Twenty-first-wave Finding 5: when all unused validation rules are
+  // reference rules with no legal target, the options map disables every
+  // remaining option, but isFull below still compared only the number of used
+  // rules with the total option count. Treat disabled unused options as
+  // unavailable when deciding whether another rule can be added.
+  const enabledUnusedOptions = availableOptions.filter(
+    (option) => !option.disabled && !usedOptions.includes(option.value),
   );
-  const isFull = usedOptions.length === availableOptions.length;
+  const isFull = enabledUnusedOptions.length === 0;
   const isEditingSomething = addNew || editingKey !== null;
 
   const handleSaveExisting = (
@@ -182,6 +341,9 @@ const Validations = ({
         editingKey={editingKey}
         onEditKey={setEditingKey}
         validate={validate}
+        checkDraft={checkDraft}
+        findLegalTargets={findLegalTargets}
+        uniqueValueCount={uniqueValueCount}
       >
         {addNew && (
           <Validation
@@ -190,6 +352,9 @@ const Validations = ({
             onCancel={() => setAddNew(false)}
             options={availableOptions}
             existingVariables={existingVariables}
+            checkDraft={checkDraft}
+            findLegalTargets={findLegalTargets}
+            uniqueValueCount={uniqueValueCount}
           />
         )}
       </Field>

@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { WrappedFieldProps } from 'redux-form';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -7,6 +8,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section, Subsection } from '~/components/EditorLayout';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
+import { getReduxFieldErrorState } from '~/components/Form/reduxFieldMeta';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Options from '~/components/Options';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';
@@ -30,15 +32,46 @@ const FrescoNativeSelectField = NativeSelectField as ComponentType<
   Record<string, unknown>
 >;
 
+/**
+ * Eighteenth-wave Finding 2: the contradiction check for this editor is a
+ * form-level validate (`makeFieldEditorValidate`, wired in
+ * EditableAttributesList) whose message belongs to no single control — it can
+ * follow from the input control, its options, or its parameters together with
+ * the codebook rules and the stage's sibling attributes. redux-form only
+ * fails a submit over errors on REGISTERED fields, so the message needs a
+ * field of its own: without one the error was inert and the contradictory
+ * edit saved straight back to the codebook. This field holds no value; it
+ * exists to register the error and render it.
+ */
+export const COMPOSER_CONTRADICTION_FIELD = '_contradiction';
+
+const ContradictionAlert = ({ meta }: WrappedFieldProps) => {
+  const { errors, showErrors } = getReduxFieldErrorState(meta);
+  if (!showErrors) return null;
+  return (
+    <Alert variant="destructive" className="my-7">
+      <AlertTitle>This attribute cannot be saved</AlertTitle>
+      <AlertDescription>{errors.join(' ')}</AlertDescription>
+    </Alert>
+  );
+};
+
 type ComposerAttributeFieldsProps = {
   form: string;
   entity?: string | null;
   type?: string | null;
+  // The stage's committed composer fields and this row's index within them,
+  // supplied by DialogArrayField/EditableAttributesList so the variable picker
+  // can drop what a sibling attribute already collects.
+  composerFields?: unknown;
+  editIndex?: number;
 };
 const ComposerAttributeFields = ({
   form,
   entity = null,
   type = null,
+  composerFields,
+  editIndex,
 }: ComposerAttributeFieldsProps) => {
   const {
     variable,
@@ -56,10 +89,17 @@ const ComposerAttributeFields = ({
     form,
     entity: entity ?? '',
     type: type ?? '',
+    siblingFields: composerFields,
+    editIndex,
   });
   const lockedOptions = getLockedOptions(existingVariables, variable);
   return (
     <Section layout="vertical">
+      <ValidatedField
+        name={COMPOSER_CONTRADICTION_FIELD}
+        component={ContradictionAlert}
+        validation={{}}
+      />
       <Subsection id={getFieldId('variable')} title="Variable">
         {variable && !isNewVariable && (
           <Alert variant="info" className="my-7">

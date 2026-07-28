@@ -1,6 +1,6 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
 import { difference, keys } from 'es-toolkit/compat';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { compose, withHandlers } from 'react-recompose';
 import { connect, type ConnectedProps, useSelector } from 'react-redux';
 import {
@@ -33,6 +33,7 @@ import {
   normalizeField,
 } from '~/components/sections/Form/helpers';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { makeFieldEditorValidate } from '~/components/Validations/contradictions';
 import { getTypeForComponent } from '~/config/variables';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -42,7 +43,9 @@ import {
 import { getFamilyPedigreeNodeTypeChangeBlock } from '~/ducks/modules/protocol/stages';
 import type { RootState } from '~/ducks/store';
 import {
+  EMPTY_VARIABLES,
   getVariableOptionsForSubject,
+  getVariablesForSubjectSelector,
   makeGetVariable,
 } from '~/selectors/codebook';
 import { getProtocol } from '~/selectors/protocol';
@@ -169,6 +172,22 @@ const NodeConfigurationInner = ({
     nodeType
       ? getVariableOptionsForSubject(state, { entity: 'node', type: nodeType })
       : [],
+  );
+  // Memoized on nodeType so the subject object identity is stable across
+  // renders, matching getVariablesForSubjectSelector's reselect memoization
+  // instead of defeating it every render.
+  const nodeVariablesSubject = useMemo(
+    () => (nodeType ? { entity: 'node' as const, type: nodeType } : null),
+    [nodeType],
+  );
+  const allVariables = useSelector((state: RootState) =>
+    nodeVariablesSubject
+      ? getVariablesForSubjectSelector(state, nodeVariablesSubject)
+      : EMPTY_VARIABLES,
+  );
+  const editorValidate = useMemo(
+    () => makeFieldEditorValidate(allVariables),
+    [allVariables],
   );
   const textNodeVariables = nodeVariableOptions.filter(
     (v) => v.type === 'text',
@@ -317,6 +336,7 @@ const NodeConfigurationInner = ({
                   editorProps: { type: nodeType, entity: 'node' },
                   previewComponent: NodeFormFieldPreview,
                   editorTitle: 'Edit Field',
+                  editorValidate,
                   itemLabel: 'field',
                   sortable: true,
                   onBeforeSave: (value: unknown) =>

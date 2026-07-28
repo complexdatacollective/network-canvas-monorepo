@@ -69,6 +69,19 @@ function todayYmd(): Ymd {
   };
 }
 
+function compareYmd(a: Ymd, b: Ymd): number {
+  if (a.year !== b.year) return a.year - b.year;
+  if (a.month !== b.month) return a.month - b.month;
+  return a.day - b.day;
+}
+
+function formatYmd(ymd: Ymd): string {
+  const year = ymd.year.toString().padStart(4, '0');
+  const month = ymd.month.toString().padStart(2, '0');
+  const day = ymd.day.toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 const DEFAULT_MIN: Ymd = { year: 1920, month: 1, day: 1 };
 
 const months: SelectOption[] = [
@@ -117,14 +130,54 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     ...rest
   } = props;
 
-  const minYmd = useMemo(
-    () => (min ? (parseYmd(min) ?? DEFAULT_MIN) : DEFAULT_MIN),
-    [min],
-  );
-  const maxYmd = useMemo(
-    () => (max ? (parseYmd(max) ?? todayYmd()) : todayYmd()),
-    [max],
-  );
+  // Twenty-third-wave Findings 4, 5, and 8: an authored bound outside the
+  // default 1920-to-today window must not collapse the resolvable range to
+  // nothing OR to a single point. An absent (or unparseable) min falls back
+  // to the default lower bound UNLESS the authored max is earlier than that
+  // default, in which case the lower bound extends BELOW it by the default
+  // window's own span (today's year minus 1920) so the picker still offers a
+  // genuine range rather than pinning the variable to one value; an absent
+  // max falls back to today UNLESS the authored min is later than today, in
+  // which case the upper bound extends ABOVE it by the same span. The
+  // extended bound reuses DEFAULT_MIN's month/day convention (a full
+  // calendar year, January 1 through December 31) rather than the authored
+  // bound's own month/day, so a partial month/year authored bound doesn't
+  // leak an arbitrary sub-year boundary onto the far, unconstrained end.
+  // When both bounds are authored, both are honoured exactly. The year loop
+  // and the month filtering at boundary years always read this derivation,
+  // since the custom picker UI needs a finite list either way. The
+  // full-resolution native input reads it too, but only once at least one
+  // bound is authored (see `hasAuthoredBound` below) — a fully unbounded
+  // full-resolution DatePicker must stay genuinely unbounded, matching how
+  // @codaco/protocol-validation's contradiction analyser models it as
+  // contributing no interval.
+  const { minYmd, maxYmd, hasAuthoredBound } = useMemo(() => {
+    const authoredMin = min ? parseYmd(min) : null;
+    const authoredMax = max ? parseYmd(max) : null;
+    const today = todayYmd();
+    const defaultWindowSpanYears = today.year - DEFAULT_MIN.year;
+
+    const resolvedMin =
+      authoredMin ??
+      (authoredMax && compareYmd(authoredMax, DEFAULT_MIN) < 0
+        ? { year: authoredMax.year - defaultWindowSpanYears, month: 1, day: 1 }
+        : DEFAULT_MIN);
+    const resolvedMax =
+      authoredMax ??
+      (authoredMin && compareYmd(authoredMin, today) > 0
+        ? {
+            year: authoredMin.year + defaultWindowSpanYears,
+            month: 12,
+            day: 31,
+          }
+        : today);
+
+    return {
+      minYmd: resolvedMin,
+      maxYmd: resolvedMax,
+      hasAuthoredBound: authoredMin !== null || authoredMax !== null,
+    };
+  }, [min, max]);
 
   const initialMonthParts = getMonthParts(value);
   const [selectedYear, setSelectedYear] = useState<string | undefined>(
@@ -319,8 +372,15 @@ export default function DatePickerField(props: DatePickerFieldProps) {
       id={id}
       type="date"
       size={size}
-      min={min}
-      max={max}
+      // A fully unbounded full-resolution picker (neither min nor max
+      // authored) must stay unbounded: falling back to the 1920-to-today
+      // default window here would silently block dates outside it (e.g. a
+      // pre-1920 birthdate, or any future date) that were always enterable
+      // before bounds existed. Once at least one bound is authored, both
+      // attributes come from the shared derivation above so this input
+      // can't disagree with the year/month picker's default window.
+      min={hasAuthoredBound ? formatYmd(minYmd) : undefined}
+      max={hasAuthoredBound ? formatYmd(maxYmd) : undefined}
       value={value}
       onChange={(v) => onChange?.(v === undefined || v === '' ? undefined : v)}
       name={name}

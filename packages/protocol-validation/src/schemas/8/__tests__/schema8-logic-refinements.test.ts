@@ -474,6 +474,97 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       );
       expect(result.success).toBe(true);
     });
+
+    // Twenty-first-wave Finding 4, correcting ninth-wave Finding 6: the
+    // anchor floor is 0100, not 1000. fresco-ui's `addDays` runtime
+    // arithmetic (form/utils/ymd.ts) builds `Date.UTC(year, ...)`, which only
+    // two-digit-coerces a year in 0-99 onto 1900-1999 — years 0100-0999
+    // round-trip correctly, so they must be accepted rather than rejected.
+    it('accepts an anchor year in the previously-rejected 0100-0999 range', () => {
+      expect(
+        ProtocolSchemaV8.safeParse(
+          buildProtocolWithParams({
+            anchor: '0100-01-01',
+            before: 1,
+            after: 5,
+          }),
+        ).success,
+      ).toBe(true);
+      expect(
+        ProtocolSchemaV8.safeParse(
+          buildProtocolWithParams({
+            anchor: '0999-12-31',
+            before: 1,
+            after: 5,
+          }),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('still rejects an anchor year that Date.UTC actually coerces (0-99)', () => {
+      const belowFloor = ProtocolSchemaV8.safeParse(
+        buildProtocolWithParams({ anchor: '0099-12-31', before: 1, after: 5 }),
+      );
+      expect(belowFloor.success).toBe(false);
+      if (!belowFloor.success) {
+        expect(
+          belowFloor.error.issues.some((issue) =>
+            issue.message.includes('Date.UTC maps years 0-99'),
+          ),
+        ).toBe(true);
+      }
+
+      expect(
+        ProtocolSchemaV8.safeParse(
+          buildProtocolWithParams({
+            anchor: '0000-01-01',
+            before: 1,
+            after: 5,
+          }),
+        ).success,
+      ).toBe(false);
+    });
+
+    // Contrast case, so the two floors introduced by different waves are
+    // never conflated: the coarse (year/month-resolution) DatePicker bound
+    // floor is a SEPARATE rule from the RelativeDatePicker anchor floor
+    // above, and is deliberately unaffected by this fix. It stays at 1000
+    // because the interview builds that resolution's selectable year options
+    // via unpadded `y.toString()` (e.g. '999', not '0999'), which can never
+    // match a zero-padded stored value — a problem that afflicts every year
+    // below 1000, not just 0-99, and has nothing to do with `Date.UTC`.
+    it('still rejects a coarse-resolution DatePicker bound below 1000, even a year the RelativeDatePicker floor now accepts', () => {
+      const base = createBaseProtocol();
+      const protocol = {
+        ...base,
+        codebook: {
+          ...base.codebook,
+          ego: {
+            variables: {
+              ...base.codebook.ego.variables,
+              when: {
+                name: 'When',
+                type: 'datetime',
+                component: 'DatePicker',
+                parameters: { type: 'year', min: '0999' },
+              },
+            },
+          },
+        },
+      };
+
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(
+          result.error.issues.some((issue) =>
+            issue.message.includes(
+              'must use a four-digit year of 1000 or later',
+            ),
+          ),
+        ).toBe(true);
+      }
+    });
   });
 
   describe('ordinal options non-empty', () => {

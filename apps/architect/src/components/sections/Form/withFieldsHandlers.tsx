@@ -18,18 +18,32 @@ import {
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
 
+import { isVariableUsedBySibling } from './composerHelpers';
+
 type Entity = 'node' | 'edge' | 'ego';
 
 type UseFieldHandlerProps = {
   form: string;
   entity: string;
   type: string;
+  /**
+   * Seventeenth-wave follow-up: the committed fields of the NetworkComposer
+   * form this editor edits a row of, and that row's array index. Supplied only
+   * by the composer editor: `ComposerFormSchema` rejects a form naming one
+   * variable twice, so a variable a sibling field already claims must not be
+   * offered. The regular Form editor omits both and is filtered exactly as
+   * before — its schema permits the repeat.
+   */
+  siblingFields?: unknown;
+  editIndex?: number;
 };
 
 export const useFieldHandlers = ({
   form,
   entity,
   type,
+  siblingFields,
+  editIndex,
 }: UseFieldHandlerProps) => {
   const dispatch = useAppDispatch();
   const changeField = useCallback(
@@ -87,6 +101,17 @@ export const useFieldHandlers = ({
       // If not a variable with corresponding component, we can't use it here.
       .filter((option) =>
         VARIABLE_TYPES_WITH_COMPONENTS.includes(option.type as string),
+      )
+      // Seventeenth-wave follow-up: drop what a sibling composer field already
+      // collects, using the same predicate the save-time gate applies so the
+      // picker and the gate cannot drift apart. The value this field currently
+      // holds is always kept: excluding `editIndex` covers a committed row, but
+      // a picker whose value is missing from its options renders blank and
+      // silently drops the selection, so never let that happen.
+      .filter(
+        (option) =>
+          option.value === variable ||
+          !isVariableUsedBySibling(siblingFields, option.value, editIndex),
       );
 
     // with New variable
@@ -95,7 +120,14 @@ export const useFieldHandlers = ({
           { label: createNewVariable, value: createNewVariable },
         ])
       : filtered;
-  }, [baseVariableOptions, isNewVariable, createNewVariable]);
+  }, [
+    baseVariableOptions,
+    isNewVariable,
+    createNewVariable,
+    siblingFields,
+    editIndex,
+    variable,
+  ]);
 
   // 1. If type defined use that (existing variable)
   // 2. Otherwise derive it from component (new variable)

@@ -58,10 +58,27 @@ const RelativeDatePickerParameters = ({
           label="Specific Anchor Date"
           component={DatePicker}
           name={`${name}.anchor`}
-          validation={{ required: !useInterviewDate, ISODate: dateFormat }}
+          // Audit sweep: the `min` below configures the picker's selectable
+          // range; only a validation rule gates the committed value. Twenty-
+          // first-wave Finding 4: the schema requires a year of 0100 or later
+          // — fresco-ui's `addDays` runtime arithmetic (`Date.UTC`) only
+          // two-digit-coerces a year in 0-99 onto 1900-1999, so 0100-0999
+          // round-trip correctly and the floor is 0100, not 1000 — and without
+          // a matching rule here the dialog saved and the protocol-validation
+          // listener then threw a blocking invalid-protocol dialog offering to
+          // revert the edit.
+          validation={{
+            required: !useInterviewDate,
+            ISODate: dateFormat,
+            minDate: {
+              value: '0100-01-01',
+              message:
+                'Anchor date must use a year of 0100 or later — Date.UTC maps years 0-99 onto 1900-1999',
+            },
+          }}
           componentProps={{
             parameters: {
-              min: '1000-01-01',
+              min: '0100-01-01',
               max: '3000-01-01',
             },
           }}
