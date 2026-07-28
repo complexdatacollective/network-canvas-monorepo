@@ -169,9 +169,10 @@ export function edgeCountFor(
  *
  * Held to edge types every one of whose edges a pedigree creates. An edge any
  * other stage creates is born with its type's whole attribute set, so nothing
- * of it is unwritten; and a type the stages name while nothing creates one
- * keeps its rules for the reason the node half does — a form renders its fields
- * whether or not this generator ever builds an entity to fill.
+ * of it is unwritten; and a type nothing creates has no edge to exempt anything
+ * on, which `analyseFeasibility` settles before this is asked — a type only an
+ * alter form names drops its whole scope there, for the same reason this
+ * exempts a group here.
  *
  * What this exempts the draw never asks for, so nothing has to be exempted
  * there to match: every writer of a pedigree edge names what it writes, which
@@ -213,18 +214,20 @@ type NodeTally = {
 };
 
 /**
- * The rows behind one node type, deduped across the stages offering them.
+ * The rows behind one node type, grouped by the primary key they arrived under.
  *
- * A pool repeating a primary key can build a node per copy, since one stage
- * draws its whole pool before any of it is marked used; two stages offering one
- * key cannot, because the used-set is shared. `copies` is therefore the most
- * any single stage offers, while `rows` is every row seen under the key — the
- * values those nodes could carry, whichever pool they were drawn from.
+ * A key builds at most one node however many rows carry it, and whichever pool
+ * they came from: `createNodesForStage` adds each drawn row's key to the shared
+ * `usedRosterUids`, and its `rowIsDrawable` turns away any later row whose key
+ * that set already holds. So a repeated key is not a repeated person — it is
+ * several descriptions of one, and which of them the draw reaches is a seed's
+ * business. Every row under the key is therefore kept, as the values that one
+ * node could carry, and every count below spends the key once.
  *
  * Only the rows a run could actually draw reach here — see
  * {@link drawableRosterRows}.
  */
-type RosterRows = Map<string, { copies: number; rows: NcNode[] }>;
+type RosterRows = Map<string, NcNode[]>;
 
 /**
  * The constraints one node type's values are judged against: the map
@@ -377,36 +380,27 @@ function tallyFor(tallies: NodeCounts, nodeType: string): NodeTally {
 
 /**
  * Folds one stage's drawable roster rows into the rows already counted for its
- * node type. A row another stage also offers is not counted twice — the first
- * stage to draw it puts it in the shared used-set, and every later stage's pool
- * excludes it — while a pool repeating one primary key counts each copy,
- * because that single stage can draw them all.
+ * node type. Neither a key two stages offer nor a key one pool repeats is
+ * counted twice: the first draw of it enters the shared used-set, and every
+ * later row carrying it is passed over.
  *
  * `pool` is the stage's drawable window rather than its whole roster, so a key
  * one stage's prompts leave undrawable still arrives from a stage whose prompts
- * admit it, and the copies counted for a key are the copies that stage could
- * really build a node from.
+ * admit it, and the rows kept under a key are the rows some stage could really
+ * build a node from.
  */
 function addRosterRows(rows: RosterRows, pool: NcNode[]): void {
-  const copies = new Map<string, number>();
   for (const row of pool) {
     const key = row[entityPrimaryKeyProperty];
-    copies.set(key, (copies.get(key) ?? 0) + 1);
-  }
-
-  for (const row of pool) {
-    const key = row[entityPrimaryKeyProperty];
-    const entry = rows.get(key) ?? { copies: 0, rows: [] };
-    entry.copies = Math.max(entry.copies, copies.get(key) ?? 0);
-    entry.rows.push(row);
-    rows.set(key, entry);
+    const group = rows.get(key) ?? [];
+    group.push(row);
+    rows.set(key, group);
   }
 }
 
+/** Every node the rows can build between them: one per key. */
 function totalRows(rows: RosterRows): number {
-  let total = 0;
-  for (const { copies } of rows.values()) total += copies;
-  return total;
+  return rows.size;
 }
 
 /**
@@ -424,8 +418,8 @@ function totalRows(rows: RosterRows): number {
  * A row leaving the variable unset is the opposite case. `createNodesForStage`
  * generates the node around only the values the row supplies, so the draw is
  * asked for that variable and spends a value on it exactly as a fabricated node
- * would. Those rows are counted one apiece — capped by the copies a stage can
- * draw, since a key no stage offers twice cannot build two nodes.
+ * would. Those rows are counted one apiece — one per KEY, since a key builds
+ * one node whichever of its rows the draw reaches.
  *
  * A row whose values break rules of their own never reaches this count at all:
  * {@link drawableRosterRows} has already left it out of `rows`, because no seed
@@ -436,14 +430,14 @@ function rosterValueCount(rows: RosterRows, variableId: string): number {
   const distinct = new Set<string>();
   let drawn = 0;
 
-  for (const { copies, rows: group } of rows.values()) {
-    let unset = 0;
+  for (const group of rows.values()) {
+    let anyUnset = false;
     for (const row of group) {
       const value = row[entityAttributesProperty][variableId];
-      if (value === undefined) unset += 1;
+      if (value === undefined) anyUnset = true;
       else distinct.add(valueKey(value));
     }
-    drawn += Math.min(copies, unset);
+    if (anyUnset) drawn += 1;
   }
 
   return drawn + distinct.size;
@@ -460,6 +454,12 @@ function rosterValueCount(rows: RosterRows, variableId: string): number {
  * most as many nodes as there are distinct values among them, and at most as
  * many as there are such rows. Rows carrying none of them are the unset case
  * again: the draw supplies the group's value, so they count one apiece.
+ *
+ * Read per key rather than per row, because a key builds one node: a key some
+ * of whose rows carry a value and some of which do not is one node either way,
+ * and is counted on both sides only because which row the draw reaches is a
+ * seed's business. That leaves the reading an upper bound, which is what it is
+ * asked to be.
  */
 function rosterGroupValueCount(
   rows: RosterRows,
@@ -469,9 +469,9 @@ function rosterGroupValueCount(
   let carrying = 0;
   let bare = 0;
 
-  for (const { copies, rows: group } of rows.values()) {
-    let withValues = 0;
-    let without = 0;
+  for (const group of rows.values()) {
+    let anyWithValues = false;
+    let anyWithout = false;
 
     for (const row of group) {
       const attributes = row[entityAttributesProperty];
@@ -482,12 +482,12 @@ function rosterGroupValueCount(
         holds = true;
         carried.add(valueKey(value));
       }
-      if (holds) withValues += 1;
-      else without += 1;
+      if (holds) anyWithValues = true;
+      else anyWithout = true;
     }
 
-    carrying += Math.min(copies, withValues);
-    bare += Math.min(copies, without);
+    if (anyWithValues) carrying += 1;
+    if (anyWithout) bare += 1;
   }
 
   return bare + Math.min(carrying, carried.size);
@@ -506,12 +506,17 @@ function rosterGroupValueCount(
  * are tightest read together. Both are upper bounds on the same quantity, so
  * the smallest of them is one too, and taking it can only refuse fewer
  * protocols than reading any single member would.
+ *
+ * The key count is a third bound, and the only one that sees a key some of
+ * whose rows carry a value while others leave it unset. Which of them the draw
+ * reaches is a seed's business, so the readings above count such a key on both
+ * sides; one node is all it can build either way.
  */
 function rosterCarrierCount(
   rows: RosterRows,
   variableIds: readonly string[],
 ): number {
-  let bound = rosterGroupValueCount(rows, variableIds);
+  let bound = Math.min(rosterGroupValueCount(rows, variableIds), rows.size);
   for (const id of variableIds) {
     bound = Math.min(bound, rosterValueCount(rows, id));
   }

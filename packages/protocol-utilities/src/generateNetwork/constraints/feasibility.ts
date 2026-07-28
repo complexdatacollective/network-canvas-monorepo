@@ -17,6 +17,7 @@ import {
   type RosterCarriedValues,
   ruleBrokenByFixedValues,
 } from '../nodes';
+import { getSubjectType } from '../subject';
 import { collectBinOnlyVariables } from './binOnlyVariables';
 import { buildEntityConstraints } from './buildConstraints';
 import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
@@ -171,6 +172,64 @@ function recordPinned(
 }
 
 /**
+ * The last stage index at which some handler REDRAWS each edge variable on
+ * edges it did not create, per edge type — what tells a pedigree's written
+ * value from one a later stage replaces.
+ *
+ * Two handlers do it, and both do it the same way: `handleAlterEdgeForm` walks
+ * every existing edge of its subject type and calls `generateAttributesForEntity`
+ * with its form's field ids as `only`; `handleTieStrengthCensus` does the same
+ * for its prompt's `edgeVariable` over the pairs it reuses as well as the ones
+ * it creates. Either way the pedigree's literal is `existing` to a draw that
+ * releases it and issues another, so what the finished edge holds is drawn, not
+ * written.
+ *
+ * Deliberately narrower than {@link EdgeCounts.named}, which answers the
+ * placement question for the counts. That map is wide on purpose — any
+ * reference resolving an edge subject keeps a variable's pedigree edges
+ * counted, whether or not its stage would write them — because over-counting
+ * holders only ever refuses more. Here the fail-safe runs the other way: a
+ * naming site read as an overwriter DROPS a pin, and dropping one wrongly lets
+ * a pedigree emit `n - 1` identical values for a `unique` variable. So this
+ * asks only after handlers proven to redraw, and a new one taught to would
+ * leave a refusal standing until it is listed — the same direction every other
+ * unrecognised shape is read in.
+ */
+function regeneratedEdgeAttributes(
+  stages: Stage[],
+): Map<string, Map<string, number>> {
+  const regenerated = new Map<string, Map<string, number>>();
+
+  const record = (type: string, variableId: string, at: number): void => {
+    const forType = regenerated.get(type) ?? new Map<string, number>();
+    forType.set(variableId, Math.max(forType.get(variableId) ?? -1, at));
+    regenerated.set(type, forType);
+  };
+
+  for (const [stageIndex, stage] of stages.entries()) {
+    if (stage.type === 'AlterEdgeForm') {
+      const type = getSubjectType(stage.subject, 'edge');
+      if (type === undefined) continue;
+      for (const field of stage.form?.fields ?? []) {
+        record(type, field.variable, stageIndex);
+      }
+      continue;
+    }
+
+    if (stage.type === 'TieStrengthCensus') {
+      for (const prompt of stage.prompts) {
+        const { createEdge, edgeVariable } = prompt;
+        if (createEdge && edgeVariable) {
+          record(createEdge, edgeVariable, stageIndex);
+        }
+      }
+    }
+  }
+
+  return regenerated;
+}
+
+/**
  * The values each FamilyPedigree stage writes rather than draws, counted like a
  * prompt's fixed values so both reach the same refusal.
  *
@@ -188,6 +247,17 @@ function recordPinned(
  * A pedigree writes without consulting the registry, so every pin is stamped
  * where its stage runs — the tally's `stampedAt`, which is what a roster row
  * carrying the same value is weighed against.
+ *
+ * An edge value is a pin only while it is the last word on that variable. A
+ * stage running LATER regenerates it on the very edges the pedigree built, and
+ * what those edges end up holding is then drawn against the variable's rules
+ * like any other value — so counting the literal there would refuse a `unique`
+ * relationship type the form has options enough to tell apart. Strictly later,
+ * because a stage runs before the pedigree never meets its edges: they do not
+ * exist yet, so its regeneration passes over them and the pins stand. That is
+ * the same at-or-after reading `edgeCountFor` gives a writer's placement, asked
+ * of {@link regeneratedEdgeAttributes} rather than of the counts' own map for
+ * the reason recorded there.
  */
 function countPedigreeFixedValues(
   stages: Stage[],
@@ -198,6 +268,7 @@ function countPedigreeFixedValues(
 } {
   const node = new Map<string, PromptFixedValues>();
   const edge = new Map<string, PromptFixedValues>();
+  const regenerated = regeneratedEdgeAttributes(stages);
 
   for (const [stageIndex, stage] of stages.entries()) {
     if (stage.type !== 'FamilyPedigree') continue;
@@ -215,13 +286,16 @@ function countPedigreeFixedValues(
     const edgeType = stage.edgeConfig?.type;
     if (edgeType === undefined) continue;
     const edges = Math.max(ceiling - 1, 0);
+    const redrawnAt = regenerated.get(edgeType);
     recordPinned(
       edge,
       edgeType,
       stageIndex,
-      Object.entries(pedigreeEdgeValues(stage.edgeConfig)).map(
-        ([variableId, value]) => [variableId, value, edges] as const,
-      ),
+      Object.entries(pedigreeEdgeValues(stage.edgeConfig))
+        .filter(
+          ([variableId]) => (redrawnAt?.get(variableId) ?? -1) <= stageIndex,
+        )
+        .map(([variableId, value]) => [variableId, value, edges] as const),
     );
   }
 
@@ -257,6 +331,47 @@ function referencedByContentStage(
 }
 
 /**
+ * Whether a collected reference belongs to a stage that writes only onto
+ * entities some other stage created — the second kind of naming that is no
+ * evidence of an entity.
+ *
+ * `handleAlterForm` and `handleAlterEdgeForm` create nothing: each reads the
+ * existing population through `getStageFilteredNodes`/`getStageFilteredEdges`
+ * and fills the variables its form renders on what it finds. Over a type
+ * nothing creates, that population is empty, both loops run zero times, and no
+ * value is drawn.
+ *
+ * The interview does the same, which is what makes this a statement about
+ * validation rather than only about the draw. Both interfaces short-circuit on
+ * an empty item list — `AlterForm.tsx` and `AlterEdgeForm.tsx` each compute
+ * `mode === 'form' && items.length === 0`, call `moveForward()` from an effect
+ * and `return null` — so no `SlidesForm` mounts, no `Field` renders, and
+ * nothing is submitted. A rule is a form-field mechanism, so a rule declared on
+ * such a type is never applied, and analysing it refuses a protocol over a
+ * variable the run never reaches.
+ *
+ * Asked of the stage rather than of the reference site, as
+ * {@link referencedByContentStage} is, and for the same reason: the answer is a
+ * property of the handler, not of the tag. It is deliberately narrower than
+ * "every stage that creates nothing" — a display-only reference site on a
+ * writing stage still counts, and so does a bin's or a census' subject, because
+ * distinguishing those would collapse the two readers `carriesNothing` weighs
+ * against each other. What makes these two safe to drop is that a creating
+ * stage names its own type through the same tags, so a type whose every naming
+ * comes from a form is one no stage in the protocol creates at all — leaving
+ * the counter with nothing it could have failed to model.
+ */
+function referencedByPopulationForm(
+  path: readonly (string | number)[],
+  stages: Stage[],
+): boolean {
+  const [root, stageIndex] = path;
+  if (root !== 'stages' || typeof stageIndex !== 'number') return false;
+  const stage = stages[stageIndex];
+  return stage?.type === 'AlterForm' || stage?.type === 'AlterEdgeForm';
+}
+
+/**
  * The scopes a protocol's stages name in a way that could put a value on an
  * entity: the codebook node and edge types — as a subject, as a prompt's
  * created edge, as a FamilyPedigree's node or edge config, or as a filter
@@ -275,13 +390,17 @@ function referencedByContentStage(
  *
  * The tags describe the protocol, though, and not what the generator does with
  * it, so a stage that only DISPLAYS a type names it just as loudly as one that
- * creates it. What the tags cannot see, {@link referencedByContentStage} asks
- * the dispatch: a type only a Narrative puts on a canvas has no entity to hold
- * a value, because `generateNetwork` runs nothing for that stage. Asked of the
- * stage rather than of the reference site, because the dispatch is where the
- * answer actually lives — a Sociogram prompt's `edges.display` names an edge
- * type its stage will not create either, and that finer reading belongs to the
- * counter, which already draws it from `edges.create` alone.
+ * creates it. What the tags cannot see, two predicates ask of the handlers.
+ * {@link referencedByContentStage} drops a type only a Narrative puts on a
+ * canvas, which has no entity to hold a value because `generateNetwork` runs
+ * nothing for that stage. {@link referencedByPopulationForm} drops a type only
+ * an alter form names, which has none either: the form writes onto a population
+ * it did not create, and over a type nothing creates that population is empty.
+ * Both are asked of the stage rather than of the reference site, because the
+ * handler is where the answer actually lives — a Sociogram prompt's
+ * `edges.display` names an edge type its stage will not create either, and that
+ * finer reading belongs to the counter, which already draws it from
+ * `edges.create` alone.
  */
 function collectReferencedScopes(stages: Stage[]): {
   ego: boolean;
@@ -293,6 +412,7 @@ function collectReferencedScopes(stages: Stage[]): {
 
   for (const hit of collectEntityTypeReferences({ stages })) {
     if (referencedByContentStage(hit.path, stages)) continue;
+    if (referencedByPopulationForm(hit.path, stages)) continue;
     (hit.entity === 'edge' ? edge : node).add(hit.typeId);
   }
 
@@ -1179,12 +1299,18 @@ export function analyseFeasibility(
   // stage the counter does not model can on its own delete a refusal.
   //
   // What the tag reader keeps at a count of zero is a type some stage names
-  // while nothing creates one: an AlterForm renders a field for it, and a rule
-  // is applied where a field is rendered, whether or not this generator ever
-  // builds an entity to fill. That fallback is worth having and is why the
-  // counts alone do not decide this — but it is only worth having for a stage
-  // that could write. A content stage's naming is dropped before it gets here;
-  // see `collectReferencedScopes`.
+  // while this counter models nothing creating one — a creating stage the
+  // counter does not model, or one whose reading of a configured bound differs.
+  // That fallback is why the counts alone do not decide this, and dropping a
+  // scope wrongly is the expensive direction: it does not make the draw fail,
+  // it makes it emit a value the rule rejects.
+  //
+  // It is only worth having for a naming that is evidence of an entity, though.
+  // Two kinds are not, and both are dropped before they get here — see
+  // `collectReferencedScopes`. A content stage runs no handler at all. An alter
+  // form runs one that writes onto a population it did not create, so over a
+  // type nothing creates it writes onto nobody, and the interview's own
+  // interface advances past an empty item list without rendering a field.
   const carriesNothing = (
     entity: 'node' | 'edge',
     type: string,

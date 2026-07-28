@@ -774,6 +774,47 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
     expect(nodeCountFor(counts.node, 'person', ['consented'])).toBe(3);
   });
 
+  it('counts one node per primary key when one pool repeats it', () => {
+    // `createNodesForStage` adds each drawn row's key to the shared
+    // `usedRosterUids`, and `rowIsDrawable` turns away every later row carrying
+    // a key that set holds — so three rows under one key are three descriptions
+    // of one person, not three people. Counting a node per copy would claim
+    // value spends and pairs nothing reaches.
+    const counts = worstCaseEntityCounts([rosterStage()], config, {
+      'stage-roster': [
+        valuedRow('a', { consented: true }),
+        rosterRow('a'),
+        rosterRow('a'),
+      ],
+    });
+
+    expect(nodeCountFor(counts.node, 'person', ['consented'])).toBe(1);
+    expect(nodeCountFor(counts.node, 'person', ['nickname'])).toBe(1);
+  });
+
+  it('holds a repeated key to one node for the pairs it can reach', () => {
+    const stages = [
+      rosterStage(),
+      {
+        id: 'stage-census',
+        type: 'DyadCensus',
+        label: 'Census',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+        ],
+      } as unknown as Stage,
+    ];
+
+    // Two keys among three rows are two people, so C(2, 2) = 1 pair — where
+    // counting the repeat as its own person would claim C(3, 2) = 3.
+    const counts = worstCaseEntityCounts(stages, config, {
+      'stage-roster': [rosterRow('a'), rosterRow('a'), rosterRow('b')],
+    });
+
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
+  });
+
   it('counts one row per primary key when two stages offer the same value', () => {
     // Rows are drawn without replacement across stages, so the second stage
     // never sees a key the first took — and the value it carries is spent once.
@@ -2434,6 +2475,102 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
 
     expect(generate).toThrow(SyntheticDataConstraintError);
     expect(generate).toThrow(/up to 9 edges of this type can be generated/);
+  });
+
+  /**
+   * A pedigree's written edge value is the last word on its variable only while
+   * nothing runs after it that redraws the same variable on the same edges.
+   * `handleAlterEdgeForm` regenerates every field it renders over every
+   * existing edge of its type, so a form after the pedigree replaces the
+   * literal on all of them — and what those edges finish holding is drawn
+   * against the variable's rules like any other value.
+   */
+  describe('whose written value a later form redraws', () => {
+    const uniqueRelationshipType = {
+      node: {
+        relative: {
+          name: 'Relative',
+          color: 'node-color-seq-1',
+          variables: {},
+        },
+      },
+      edge: {
+        kin: {
+          name: 'Kin',
+          color: 'edge-color-seq-1',
+          variables: {
+            relationshipType: {
+              name: 'Relationship',
+              type: 'categorical',
+              options: RELATIONSHIP_TYPE_OPTIONS,
+              validation: { unique: true },
+            },
+          },
+        },
+      },
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+    /** Two edges, against the six options the locked enum offers. */
+    const twoEdges = { familyPedigreeNodeCount: { min: 3, max: 3 } };
+
+    it('accepts it, and draws the distinct values the form has room for', () => {
+      for (let seed = 1; seed <= 25; seed++) {
+        const { network } = generateNetwork({
+          seed,
+          codebook: uniqueRelationshipType,
+          stages: [
+            familyPedigree({ edgeConfig }),
+            alterEdgeForm('relationshipType'),
+          ],
+          config: twoEdges,
+        });
+
+        const values = network.edges.map(
+          (edge) => edge[entityAttributesProperty].relationshipType,
+        );
+
+        expect(values, `seed ${seed}`).toHaveLength(2);
+        expect(
+          new Set(values.map((value) => JSON.stringify(value))).size,
+          `seed ${seed}`,
+        ).toBe(2);
+      }
+    });
+
+    it('still refuses where the form runs before the pedigree', () => {
+      // Edges created after a form never meet it, so the pins stand: both of
+      // them hold the literal the pedigree wrote.
+      const generate = (): unknown =>
+        generateNetwork({
+          seed: 1,
+          codebook: uniqueRelationshipType,
+          stages: [
+            alterEdgeForm('relationshipType'),
+            familyPedigree({ edgeConfig }),
+          ],
+          config: twoEdges,
+        });
+
+      expect(generate).toThrow(SyntheticDataConstraintError);
+      expect(generate).toThrow(
+        /a family pedigree fixes this to .* but unique allows one edge to hold a value/,
+      );
+    });
+
+    it('still refuses where the later form renders a different variable', () => {
+      const generate = (): unknown =>
+        generateNetwork({
+          seed: 1,
+          codebook: uniqueRelationshipType,
+          stages: [familyPedigree({ edgeConfig }), alterEdgeForm('carrier')],
+          config: twoEdges,
+        });
+
+      expect(generate).toThrow(SyntheticDataConstraintError);
+      expect(generate).toThrow(
+        /a family pedigree fixes this to .* but unique allows one edge to hold a value/,
+      );
+    });
   });
 });
 

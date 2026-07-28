@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import type {
+  Stage,
+  StructuralCodebook,
+  Variables,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -8,13 +12,36 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../../generateNetwork';
+import { ValueGenerator } from '../../../ValueGenerator';
 import { resolveGenerationConfig } from '../../config';
 import { CONTENT_STAGE_TYPES } from '../../contentStages';
+import type { GenerationContext } from '../../context';
+import { buildEntityConstraints } from '../buildConstraints';
 import { SyntheticDataConstraintError } from '../error';
 import { analyseFeasibility } from '../feasibility';
+import { generateEntityAttributes } from '../generateEntityAttributes';
+import { UniqueRegistry } from '../uniqueRegistry';
 import { MAX_TEXT_DRAW_LENGTH } from '../valueSpace';
 
 const config = resolveGenerationConfig({ today: '2026-07-27' });
+
+/**
+ * Enough context to run one draw directly, for the guards that assert what the
+ * generator does with a set of rules this pass judges. The per-type maps stay
+ * empty: those guards hand their constraints to `generateEntityAttributes`.
+ */
+function makeDrawContext(seed = 1): GenerationContext {
+  return {
+    codebook: {},
+    valueGen: new ValueGenerator(seed, config.today),
+    config,
+    usedRosterUids: new Set(),
+    externalData: undefined,
+    respectSkipLogicAndFiltering: false,
+    uniqueRegistry: new UniqueRegistry(),
+    entityConstraints: { ego: new Map(), node: new Map(), edge: new Map() },
+  };
+}
 
 const nameGenerator = {
   id: 'stage-1',
@@ -1751,7 +1778,7 @@ describe('the ego flag a pedigree stage pins', () => {
 
   it('accepts a two-node pedigree, whose two pins differ', () => {
     // One `true` and one `false` spend one value each, which is what unique
-    // allows. This is the shape `reserveFamilyPedigreeEgoValues` settles.
+    // allows. This is the shape `reserveFamilyPedigreeFixedValues` settles.
     expect(
       analyseFeasibility(uniqueFlag, [pedigree()], sizedConfig(2)),
     ).toEqual([]);
@@ -2531,24 +2558,86 @@ describe('a codebook scope no stage names', () => {
     expect(conflicts[0]?.reason).toBe('minLength 10 exceeds maxLength 5');
   });
 
-  it('keeps a node type a stage names but no stage creates', () => {
-    // Nothing fabricates an artefact, so its worst-case count is zero — but a
-    // form renders a field for it, which is exactly where a rule is applied.
-    const alterForm = {
+  function artefactForm(): Stage {
+    return {
       id: 'stage-af',
       type: 'AlterForm',
       label: 'Alter form',
       subject: { entity: 'node', type: 'artefact' },
       form: { fields: [{ variable: 'code', prompt: 'Code' }] },
     } as unknown as Stage;
+  }
 
-    const codebook = {
-      node: { person, artefact },
-    } as unknown as StructuralCodebook;
+  const withArtefactContradiction = {
+    node: { person, artefact },
+  } as unknown as StructuralCodebook;
+
+  it('drops a node type only an alter form names', () => {
+    // Nothing fabricates an artefact, so the form writes onto nobody:
+    // `handleAlterForm` walks `getStageFilteredNodes`, which is empty, and its
+    // loop body never runs. The interview matches it — `AlterForm.tsx` computes
+    // `mode === 'form' && items.length === 0`, calls `moveForward()` from an
+    // effect and returns null, so no SlidesForm mounts and no Field renders.
+    // A rule nothing applies must not refuse the protocol.
+    expect(
+      analyseFeasibility(
+        withArtefactContradiction,
+        [nameGenerator, artefactForm()],
+        config,
+      ),
+    ).toEqual([]);
+  });
+
+  it('generates that protocol rather than moving the refusal to the draw', () => {
+    // The premise the acceptance rests on: the form really does reach nobody.
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook: withArtefactContradiction,
+      stages: [nameGenerator, artefactForm()],
+    });
+
+    expect(network.nodes.length).toBeGreaterThan(0);
+    expect(network.nodes.some((node) => node.type === 'artefact')).toBe(false);
+  });
+
+  it('still refuses once any stage creates the type the form names', () => {
+    // The drop is gated on the count, not on the form: give the artefacts a
+    // maker and every one of them is born holding a `code`.
+    const conflicts = analyseFeasibility(
+      withArtefactContradiction,
+      [
+        nameGenerator,
+        {
+          ...nameGenerator,
+          id: 'stage-ng-artefact',
+          subject: { entity: 'node', type: 'artefact' },
+        } as unknown as Stage,
+        artefactForm(),
+      ],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entityTypeName).toBe('Artefact');
+  });
+
+  it('still keeps a zero-count type another kind of stage names', () => {
+    // The fallback the two readers exist to give each other is untouched. Only
+    // the two stages whose handlers provably write onto a population they did
+    // not create are read this way; every other naming — a Sociogram's subject
+    // here — keeps its type analysed, so a creating stage this counter fails to
+    // model still cannot delete a refusal on its own.
+    const sociogram = {
+      id: 'stage-socio',
+      type: 'Sociogram',
+      label: 'Place them',
+      subject: { entity: 'node', type: 'artefact' },
+      prompts: [{ id: 'p1', text: 'Place them' }],
+    } as unknown as Stage;
 
     const conflicts = analyseFeasibility(
-      codebook,
-      [nameGenerator, alterForm],
+      withArtefactContradiction,
+      [nameGenerator, sociogram],
       config,
     );
 
@@ -2836,11 +2925,32 @@ describe('a pedigree edge variable no stage writes', () => {
     expect(conflicts[0]?.entityTypeName).toBe('Kin');
   });
 
-  it('keeps an edge type a stage names while no stage creates one', () => {
-    // The node half's rule, unchanged: nothing builds a `kin` edge here, but a
-    // form renders a field for `code`, which is where a rule is applied. Only a
-    // type whose edges are all born empty is exempted.
-    const conflicts = analyseFeasibility(codeOnly, [edgeForm('code')], config);
+  it('drops an edge type only an alter form names', () => {
+    // The node half's rule: with the pedigree gone nothing builds a `kin` edge,
+    // so `handleAlterEdgeForm` walks an empty `getStageFilteredEdges` and
+    // writes onto nobody — and `AlterEdgeForm.tsx` advances past an empty item
+    // list without mounting a SlidesForm, so no Field renders either.
+    expect(analyseFeasibility(codeOnly, [edgeForm('code')], config)).toEqual(
+      [],
+    );
+  });
+
+  it('still refuses where a census creates the edges that form fills', () => {
+    // The drop is gated on the count: a stage that creates `kin` edges puts
+    // every variable of the type back in play.
+    const census = {
+      id: 'stage-dc',
+      type: 'DyadCensus',
+      label: 'Related?',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Are they related?', createEdge: 'kin' }],
+    } as unknown as Stage;
+
+    const conflicts = analyseFeasibility(
+      codeOnly,
+      [nameGenerator, census, edgeForm('code')],
+      config,
+    );
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.entityTypeName).toBe('Kin');
@@ -2852,6 +2962,102 @@ describe('a pedigree edge variable no stage writes', () => {
     expect(
       analyseFeasibility(codeOnly, [edgeForm('code'), pedigree], config),
     ).toEqual([]);
+  });
+
+  /**
+   * Why the exemption above is all-or-nothing across an equality group, stated
+   * as the property that decides it: the value a form's field ends up holding
+   * is drawn against every member's bounds, including members the form never
+   * renders and the draw never emits.
+   *
+   * `handleAlterEdgeForm` passes only its field ids to
+   * `generateEntityAttributes` as `only`, and that set decides what is EMITTED:
+   * a group with any member in it is drawn, and `produced[id]` is written only
+   * for the members `only` holds. What the group is drawn AGAINST is settled
+   * elsewhere — `plan.groups` comes from `intersectGroupConstraints` over the
+   * whole entity, which folds every member's bounds into one range. So an
+   * unrendered sibling's floor is applied to the rendered member's value, and a
+   * group whose members' bounds do not overlap has no value the draw can give
+   * the field the participant actually sees.
+   */
+  describe('a group only one of whose members a form renders', () => {
+    const pair = {
+      source: {
+        name: 'Source',
+        type: 'text',
+        validation: { minLength: 10 },
+      },
+      confirm: {
+        name: 'Confirm',
+        type: 'text',
+        validation: { maxLength: 5, sameAs: 'source' },
+      },
+    };
+
+    it('refuses bounds the rendered member alone would satisfy', () => {
+      // Neither variable contradicts itself, and no writer ever populates
+      // `source`. Held equal, they leave the draw no value at all.
+      const conflicts = analyseFeasibility(
+        codebookWithEdgeVariables(pair),
+        [pedigree, edgeForm('confirm')],
+        config,
+      );
+
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0]?.variableNames).toEqual(['Source', 'Confirm']);
+      expect(conflicts[0]?.reason).toBe(
+        'these variables are held to a single value, but their bounds do not ' +
+          'overlap: minLength 10 exceeds maxLength 5',
+      );
+    });
+
+    it('is what the draw does with that group, not a stricter reading of it', () => {
+      // The refusal's premise, run: `only` keeps `source` out of the emitted
+      // attributes, and `source`'s floor still lands on the value `confirm`
+      // holds — ten characters, which `confirm`'s own maxLength rejects. The
+      // interview would refuse that submission, which is the defect this pass
+      // exists to remove rather than a protocol it should have generated.
+      const attributes = generateEntityAttributes(
+        buildEntityConstraints(pair as unknown as Variables, config.today),
+        makeDrawContext(),
+        { entity: 'edge', type: 'kin' },
+        0,
+        { only: new Set(['confirm']) },
+      );
+
+      expect(attributes.source).toBeUndefined();
+      expect(typeof attributes.confirm).toBe('string');
+      expect(attributes.confirm).toHaveLength(10);
+    });
+
+    it('exempts the group where the form renders neither member', () => {
+      // The other direction: with nothing of the group named, no writer reaches
+      // it, every edge leaves both undefined, and the same bounds are accepted.
+      const withNote = codebookWithEdgeVariables({
+        ...pair,
+        note: { name: 'Note', type: 'text' },
+      });
+
+      expect(
+        analyseFeasibility(withNote, [pedigree, edgeForm('note')], config),
+      ).toEqual([]);
+
+      const { network } = generateNetwork({
+        seed: 1,
+        codebook: withNote,
+        stages: [pedigree, edgeForm('note')],
+      });
+
+      expect(network.edges.length).toBeGreaterThan(0);
+      expect(
+        network.edges.every((edge) => {
+          const attributes = edge[entityAttributesProperty];
+          return (
+            attributes.source === undefined && attributes.confirm === undefined
+          );
+        }),
+      ).toBe(true);
+    });
   });
 });
 
