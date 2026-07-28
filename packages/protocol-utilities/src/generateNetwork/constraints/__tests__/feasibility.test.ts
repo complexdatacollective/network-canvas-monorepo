@@ -1014,6 +1014,68 @@ describe('analyseFeasibility', () => {
 });
 
 /**
+ * The members of an equality group share one value and one `unique` slot, so
+ * each of them bounds the whole group: a roster row is turned away by any
+ * member's value the network already holds. Reading the members one at a time
+ * and taking the widest counted rows the draw never reaches.
+ */
+describe('a unique group whose members a roster populates unevenly', () => {
+  const heldEqual = codebookWith({
+    a: { name: 'A', type: 'boolean', validation: { unique: true } },
+    b: { name: 'B', type: 'boolean', validation: { sameAs: 'a' } },
+  });
+
+  const roster = {
+    id: 'stage-roster',
+    type: 'NameGeneratorRoster',
+    label: 'Roster',
+    subject: { entity: 'node', type: 'person' },
+    dataSource: 'roster-asset',
+    prompts: [{ id: 'p1', text: 'Pick people' }],
+    behaviours: { maxNodes: 3 },
+  } as unknown as Stage;
+
+  function row(id: string, attributes: Record<string, unknown>): NcNode {
+    return {
+      [entityPrimaryKeyProperty]: id,
+      type: 'person',
+      [entityAttributesProperty]: attributes,
+    } as unknown as NcNode;
+  }
+
+  it('accepts rows that all carry one value of the group', () => {
+    // The draw takes the first row and passes the other two over, so one
+    // person is built and one of the two booleans is spent.
+    expect(
+      analyseFeasibility(heldEqual, [roster], config, {
+        'stage-roster': [
+          row('r1', { a: true }),
+          row('r2', { a: true }),
+          row('r3', { a: true }),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it('reports the group when its rows really do exhaust the space', () => {
+    // Two rows spend both booleans, and the third leaves the group unset — so
+    // the draw is asked for a value neither of them left.
+    const conflicts = analyseFeasibility(heldEqual, [roster], config, {
+      'stage-roster': [
+        row('r1', { a: true }),
+        row('r2', { a: false }),
+        row('r3', {}),
+      ],
+    });
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['unique']);
+    expect(conflicts[0]?.variableNames).toEqual(['A', 'B']);
+    expect(conflicts[0]?.reason).toContain('up to 3 nodes');
+  });
+});
+
+/**
  * A prompt's `additionalAttributes` are written onto every node the prompt
  * creates, so the count of nodes holding one of those values is a property of
  * the protocol rather than of the seed — which makes it decidable here.

@@ -73,7 +73,7 @@ function networkComposer(overrides: Record<string, unknown> = {}): Stage {
 describe('worstCaseEntityCounts', () => {
   it('uses the config node maximum when a stage declares no behaviours', () => {
     const counts = worstCaseEntityCounts([nameGenerator()], config);
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(
       config.nodeCount.max,
     );
   });
@@ -83,7 +83,7 @@ describe('worstCaseEntityCounts', () => {
       [nameGenerator({ behaviours: { maxNodes: 20 } })],
       config,
     );
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(20);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(20);
   });
 
   it('counts a minNodes floor above the config maximum, as the generator does', () => {
@@ -91,7 +91,7 @@ describe('worstCaseEntityCounts', () => {
       [nameGenerator({ behaviours: { minNodes: 20 } })],
       config,
     );
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(20);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(20);
   });
 
   it('sums across every stage producing the same node type', () => {
@@ -102,12 +102,12 @@ describe('worstCaseEntityCounts', () => {
       ],
       config,
     );
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(12);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(12);
   });
 
   it('counts FamilyPedigree nodes against its configured node type', () => {
     const counts = worstCaseEntityCounts([familyPedigree()], config);
-    expect(nodeCountFor(counts.node, 'relative', 'name')).toBe(
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
       config.familyPedigreeNodeCount.max,
     );
   });
@@ -116,7 +116,7 @@ describe('worstCaseEntityCounts', () => {
     // `handleFamilyPedigree` builds its edges with empty attributes, so nothing
     // in this protocol ever holds a value on one.
     const counts = worstCaseEntityCounts([familyPedigree()], config);
-    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(0);
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
   });
 
   it('counts pedigree edges once a stage names an attribute of their type', () => {
@@ -124,7 +124,7 @@ describe('worstCaseEntityCounts', () => {
       [familyPedigree(), alterEdgeForm('verified')],
       config,
     );
-    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(
       config.familyPedigreeNodeCount.max - 1,
     );
   });
@@ -137,10 +137,10 @@ describe('worstCaseEntityCounts', () => {
       [familyPedigree(), alterEdgeForm('note')],
       config,
     );
-    expect(edgeCountFor(counts.edge, 'kin', 'note')).toBe(
+    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(
       config.familyPedigreeNodeCount.max - 1,
     );
-    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(0);
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
   });
 
   it('counts an unnamed variable on edges another stage creates', () => {
@@ -160,7 +160,7 @@ describe('worstCaseEntityCounts', () => {
       config,
     );
     // C(4, 2) = 6
-    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(6);
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(6);
   });
 
   it('adds pedigree edges to the edges another stage creates of the same type', () => {
@@ -178,8 +178,8 @@ describe('worstCaseEntityCounts', () => {
     );
     // C(10, 2) = 45 pedigree-built people paired by the sociogram, plus the
     // pedigree's own nine edges for the variable the form fills.
-    expect(edgeCountFor(counts.edge, 'kin', 'note')).toBe(54);
-    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(45);
+    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(54);
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(45);
   });
 
   it('reads only edge-subject references, not a node type of the same name', () => {
@@ -194,7 +194,7 @@ describe('worstCaseEntityCounts', () => {
     } as unknown as Stage;
 
     const counts = worstCaseEntityCounts([familyPedigree(), alterForm], config);
-    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(0);
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
   });
 
   it('counts an inverted FamilyPedigree range as the generator draws it', () => {
@@ -209,8 +209,8 @@ describe('worstCaseEntityCounts', () => {
       [familyPedigree(), alterEdgeForm('verified')],
       inverted,
     );
-    expect(nodeCountFor(counts.node, 'relative', 'name')).toBe(20);
-    expect(edgeCountFor(counts.edge, 'kin', 'verified')).toBe(19);
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(20);
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(19);
   });
 
   it('bounds an edge type by the pair count over its node type', () => {
@@ -229,7 +229,7 @@ describe('worstCaseEntityCounts', () => {
 
     // C(4, 2) = 6
     const counts = worstCaseEntityCounts(stages, config);
-    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(6);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(6);
   });
 
   it('bounds a NetworkComposer edge by the composer own node ceiling', () => {
@@ -248,7 +248,7 @@ describe('worstCaseEntityCounts', () => {
       ],
       twoNodes,
     );
-    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(1);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
   });
 
   it('counts an inverted composer node range as the generator draws it', () => {
@@ -262,8 +262,8 @@ describe('worstCaseEntityCounts', () => {
     });
 
     const counts = worstCaseEntityCounts([networkComposer()], inverted);
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(6);
-    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(15);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(6);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(15);
   });
 
   it('sums the pairs of every composer creating one edge type', () => {
@@ -279,7 +279,7 @@ describe('worstCaseEntityCounts', () => {
       threeNodes,
     );
     // C(3, 2) = 3 apiece.
-    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(6);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(6);
   });
 
   it('leaves a census reading the whole node total, composer people included', () => {
@@ -311,7 +311,7 @@ describe('worstCaseEntityCounts', () => {
     );
     // C(7, 2) = 21 for the census over all seven people, plus the composer's
     // own C(2, 2) = 1.
-    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(22);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(22);
   });
 
   it('counts nothing for a composer whose subject names no node type', () => {
@@ -360,7 +360,7 @@ describe('worstCaseEntityCounts', () => {
       config,
     );
     // C(3, 2) = 3.
-    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(3);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(3);
   });
 
   it('returns empty maps for a protocol with no entity-producing stages', () => {
@@ -415,21 +415,21 @@ describe('worstCaseEntityCounts with roster rows', () => {
     const counts = worstCaseEntityCounts([rosterStage()], config, {
       'stage-roster': [],
     });
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(0);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(0);
   });
 
   it('caps a roster stage at the rows its roster holds', () => {
     const counts = worstCaseEntityCounts([rosterStage()], config, {
       'stage-roster': [rosterRow('a'), rosterRow('b')],
     });
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(2);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(2);
   });
 
   it('keeps the configured maximum when the roster holds more rows than that', () => {
     const counts = worstCaseEntityCounts([rosterStage()], config, {
       'stage-roster': ['a', 'b', 'c', 'd', 'e'].map(rosterRow),
     });
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(3);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(3);
   });
 
   it('counts the configured maximum when the stage has no roster entry', () => {
@@ -441,12 +441,12 @@ describe('worstCaseEntityCounts with roster rows', () => {
       config,
       { other: [] },
     );
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(3);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(3);
   });
 
   it('counts the configured maximum when no roster rows are supplied at all', () => {
     const counts = worstCaseEntityCounts([rosterStage()], config);
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(3);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(3);
   });
 
   it('counts a roster panel on a fabricating name generator at the full maximum', () => {
@@ -457,7 +457,7 @@ describe('worstCaseEntityCounts with roster rows', () => {
       config,
       { 'stage-1': [] },
     );
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(4);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(4);
   });
 
   it('counts rows once when two roster stages draw the same roster', () => {
@@ -470,7 +470,7 @@ describe('worstCaseEntityCounts with roster rows', () => {
       config,
       { 'stage-roster': rows, 'second': rows },
     );
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(4);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(4);
   });
 
   it('holds each roster stage to its own bound when their rosters share no rows', () => {
@@ -487,7 +487,7 @@ describe('worstCaseEntityCounts with roster rows', () => {
         'second': ['b', 'c', 'd'].map(rosterRow),
       },
     );
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(2);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(2);
   });
 
   it('adds a fabricating stage to a roster stage capped by its rows', () => {
@@ -496,7 +496,7 @@ describe('worstCaseEntityCounts with roster rows', () => {
       config,
       { 'stage-roster': [rosterRow('a')] },
     );
-    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(5);
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(5);
   });
 
   it('bounds an edge type by the pairs a roster-capped node count reaches', () => {
@@ -517,7 +517,7 @@ describe('worstCaseEntityCounts with roster rows', () => {
     const counts = worstCaseEntityCounts(stages, config, {
       'stage-roster': [rosterRow('a'), rosterRow('b')],
     });
-    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(1);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
   });
 });
 
@@ -533,7 +533,7 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
         valuedRow('c', { consented: true }),
       ],
     });
-    expect(nodeCountFor(counts.node, 'person', 'consented')).toBe(2);
+    expect(nodeCountFor(counts.node, 'person', ['consented'])).toBe(2);
   });
 
   it('leaves a variable those rows say nothing about at the full row count', () => {
@@ -546,7 +546,7 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
         valuedRow('c', { consented: true }),
       ],
     });
-    expect(nodeCountFor(counts.node, 'person', 'nickname')).toBe(3);
+    expect(nodeCountFor(counts.node, 'person', ['nickname'])).toBe(3);
   });
 
   it('counts a row leaving the variable unset as a value the draw still spends', () => {
@@ -560,7 +560,7 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
         rosterRow('c'),
       ],
     });
-    expect(nodeCountFor(counts.node, 'person', 'consented')).toBe(3);
+    expect(nodeCountFor(counts.node, 'person', ['consented'])).toBe(3);
   });
 
   it('judges sameness as the unique registry does, not as raw JSON would', () => {
@@ -573,7 +573,7 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
         valuedRow('b', { tags: ['y', 'x'] }),
       ],
     });
-    expect(nodeCountFor(counts.node, 'person', 'tags')).toBe(1);
+    expect(nodeCountFor(counts.node, 'person', ['tags'])).toBe(1);
   });
 
   it('adds a fabricating stage to what the roster can spend', () => {
@@ -587,7 +587,7 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
         ],
       },
     );
-    expect(nodeCountFor(counts.node, 'person', 'consented')).toBe(3);
+    expect(nodeCountFor(counts.node, 'person', ['consented'])).toBe(3);
   });
 
   it('counts one row per primary key when two stages offer the same value', () => {
@@ -602,7 +602,7 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
       config,
       { 'stage-roster': rows, 'second': rows },
     );
-    expect(nodeCountFor(counts.node, 'person', 'consented')).toBe(1);
+    expect(nodeCountFor(counts.node, 'person', ['consented'])).toBe(1);
   });
 
   it('holds a repeated value against the pairs its rows can still reach', () => {
@@ -631,7 +631,76 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
     });
     // C(3, 2) = 3, over every row rather than the two `consented` can tell
     // apart.
-    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(3);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(3);
+  });
+});
+
+describe('worstCaseEntityCounts across a unique equality group', () => {
+  it('counts rows a group member repeats as the one node they build', () => {
+    // Every row carries `consented` and none carries the variable held equal
+    // to it. Read one member at a time, `mirror` is three people the draw must
+    // tell apart; read across the group, the rows share one `unique` slot, so
+    // the first claims `true` and `rosterRowIsDrawable` passes the rest over.
+    const counts = worstCaseEntityCounts([rosterStage()], config, {
+      'stage-roster': [
+        valuedRow('a', { consented: true }),
+        valuedRow('b', { consented: true }),
+        valuedRow('c', { consented: true }),
+      ],
+    });
+    expect(nodeCountFor(counts.node, 'person', ['consented', 'mirror'])).toBe(
+      1,
+    );
+  });
+
+  it('counts one value two rows carry on different members once', () => {
+    // One row supplies `consented` and the other the variable held equal to
+    // it, both saying `true`. That is one value of the group's slot between
+    // them, so only one of the two rows is ever drawable.
+    const counts = worstCaseEntityCounts([rosterStage()], config, {
+      'stage-roster': [
+        valuedRow('a', { consented: true }),
+        valuedRow('b', { mirror: true }),
+      ],
+    });
+    expect(nodeCountFor(counts.node, 'person', ['consented', 'mirror'])).toBe(
+      1,
+    );
+  });
+
+  it('still counts every row when the group values they carry differ', () => {
+    // Two rows spending a boolean each, and a third carrying neither member —
+    // which the draw is asked to supply a group value for, exactly as it would
+    // for a fabricated person. Nothing here is passed over.
+    const counts = worstCaseEntityCounts([rosterStage()], config, {
+      'stage-roster': [
+        valuedRow('a', { consented: true }),
+        valuedRow('b', { consented: false }),
+        rosterRow('c'),
+      ],
+    });
+    expect(nodeCountFor(counts.node, 'person', ['consented', 'mirror'])).toBe(
+      3,
+    );
+  });
+
+  it('adds a fabricating stage to what the group can spend', () => {
+    // The roster's three rows build one person between them; the name
+    // generator's two are drawn against the same slot and spend one apiece.
+    const counts = worstCaseEntityCounts(
+      [rosterStage(), nameGenerator({ id: 'ng', behaviours: { maxNodes: 2 } })],
+      config,
+      {
+        'stage-roster': [
+          valuedRow('a', { consented: true }),
+          valuedRow('b', { consented: true }),
+          valuedRow('c', { consented: true }),
+        ],
+      },
+    );
+    expect(nodeCountFor(counts.node, 'person', ['consented', 'mirror'])).toBe(
+      3,
+    );
   });
 });
 
@@ -734,6 +803,95 @@ describe('generateNetwork with a roster-capped unique variable', () => {
     // only alternative to throwing partway through the draw.
     expect(() =>
       generateNetwork({ seed: 1, codebook, stages: [rosterStage()] }),
+    ).toThrow(SyntheticDataConstraintError);
+  });
+});
+
+describe('generateNetwork with a unique group a roster populates unevenly', () => {
+  const codebook = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        variables: {
+          consented: {
+            name: 'Consented',
+            type: 'boolean',
+            validation: { unique: true },
+          },
+          mirror: {
+            name: 'Mirror',
+            type: 'boolean',
+            validation: { sameAs: 'consented' },
+          },
+        },
+      },
+    },
+  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+  it('generates the one person three rows repeating a value can build', () => {
+    // Reading `mirror` on its own counted three people against a two-value
+    // space and refused this protocol. The rows share the group's `unique`
+    // slot, so the draw takes the first and passes the other two over.
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages: [rosterStage()],
+      externalData: {
+        'stage-roster': [
+          valuedRow('a', { consented: true }),
+          valuedRow('b', { consented: true }),
+          valuedRow('c', { consented: true }),
+        ],
+      },
+    });
+
+    expect(network.nodes).toHaveLength(1);
+    expect(network.nodes[0]?.[entityAttributesProperty]).toEqual({
+      consented: true,
+      mirror: true,
+    });
+  });
+
+  it('still refuses when the rows really do exhaust the group', () => {
+    // Two rows spend both booleans between them, and the third carries neither
+    // member — so the draw is asked for a group value it has nothing left to
+    // issue. Under-counting here would move this refusal into the draw.
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook,
+        stages: [rosterStage()],
+        externalData: {
+          'stage-roster': [
+            valuedRow('a', { consented: true }),
+            valuedRow('b', { consented: false }),
+            rosterRow('c'),
+          ],
+        },
+      }),
+    ).toThrow(SyntheticDataConstraintError);
+  });
+
+  it('still refuses when a fabricating stage needs what the rows left', () => {
+    // The roster's rows spend `true`, and the two people the name generator
+    // fabricates have one boolean left to be told apart by.
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook,
+        stages: [
+          rosterStage(),
+          nameGenerator({ id: 'ng', behaviours: { minNodes: 2, maxNodes: 2 } }),
+        ],
+        externalData: {
+          'stage-roster': [
+            valuedRow('a', { consented: true }),
+            valuedRow('b', { consented: true }),
+            valuedRow('c', { consented: true }),
+          ],
+        },
+      }),
     ).toThrow(SyntheticDataConstraintError);
   });
 });
@@ -1068,5 +1226,108 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
         stages: [familyPedigree(), sociogram, alterEdgeForm('note')],
       }),
     ).toThrow(SyntheticDataConstraintError);
+  });
+});
+
+/**
+ * The interview reuses the pair's edge when two prompts name one edge type —
+ * `edgeExists({ from, to, type })` on the shared graph — but the generator
+ * does not: `handleDyadCensus` runs `createEdgesForPairs` once per prompt and
+ * appends everything it returns. These pin the behaviour the per-prompt sum in
+ * `worstCaseEntityCounts` bounds, so deduplicating that count cannot land
+ * without the handler being changed to match.
+ */
+describe('generateNetwork with two prompts sharing one edge type', () => {
+  const codebook = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        variables: { name: { name: 'Name', type: 'text' } },
+      },
+    },
+    edge: {
+      knows: {
+        name: 'Knows',
+        color: 'edge-color-seq-1',
+        variables: {
+          band: {
+            name: 'Band',
+            type: 'ordinal',
+            options: [1, 2, 3, 4, 5, 6].map((value) => ({
+              label: `Band ${value}`,
+              value,
+            })),
+            validation: { unique: true },
+          },
+        },
+      },
+    },
+  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+  const census = {
+    id: 'stage-census',
+    type: 'DyadCensus',
+    label: 'Census',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [
+      { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+      { id: 'p2', text: 'Are they close?', createEdge: 'knows' },
+    ],
+  } as unknown as Stage;
+
+  const threePeople = nameGenerator({
+    behaviours: { minNodes: 3, maxNodes: 3 },
+  });
+
+  it('creates an edge per pair per prompt, each spending its own value', () => {
+    const { network } = generateNetwork({
+      seed: 3,
+      codebook,
+      stages: [threePeople, census],
+      config: { censusEdgeProbability: { min: 1, max: 1 } },
+    });
+
+    const knows = network.edges.filter((edge) => edge.type === 'knows');
+    const bands = knows.map((edge) => edge[entityAttributesProperty].band);
+
+    // C(3, 2) = 3 pairs for each of the two prompts.
+    expect(knows).toHaveLength(6);
+    expect(new Set(bands).size).toBe(6);
+  });
+
+  it('refuses a value space that only covers one prompt', () => {
+    const threeBands = {
+      ...codebook,
+      edge: {
+        knows: {
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+          variables: {
+            band: {
+              name: 'Band',
+              type: 'ordinal',
+              options: [1, 2, 3].map((value) => ({
+                label: `Band ${value}`,
+                value,
+              })),
+              validation: { unique: true },
+            },
+          },
+        },
+      },
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+    // Three values for the six edges the two prompts create between them.
+    // Counting the shared type once would accept this and leave the draw to
+    // run out of values on the fourth edge.
+    expect(() =>
+      generateNetwork({
+        seed: 3,
+        codebook: threeBands,
+        stages: [threePeople, census],
+        config: { censusEdgeProbability: { min: 1, max: 1 } },
+      }),
+    ).toThrow(/up to 6 edges of this type can be generated/);
   });
 });

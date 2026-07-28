@@ -47,12 +47,16 @@ type EntityScope = {
   /** Variables of this type whose rules nothing in the interview applies. */
   unvalidated: ReadonlySet<string>;
   /**
-   * How many distinct values of one variable entities of this type can spend
-   * between them. Per variable rather than per type, because a pedigree edge
-   * holds a value only for the variables some stage writes onto it, and roster
-   * rows repeating one variable's value spend it once between them.
+   * How many distinct values of one equality group entities of this type can
+   * spend between them. Asked of the group rather than of the type, because a
+   * pedigree edge holds a value only for the variables some stage writes onto
+   * it, and roster rows repeating one of the group's values spend it once
+   * between them. Asked of the whole group at once rather than of its members
+   * one at a time, because the members share a single value and a single
+   * `unique` slot: what turns a roster row away is any of them, so no member's
+   * count read on its own describes the group.
    */
-  worstCaseCountFor: (variableId: string) => number;
+  worstCaseCountFor: (variableIds: readonly string[]) => number;
   /** Values prompts write onto this type, and how many entities can hold each. */
   fixedValues: PromptFixedValues;
   /** The same, for the ego flag a FamilyPedigree stage pins on its own nodes. */
@@ -439,14 +443,14 @@ function analyseEntity(
         // reaches only the narrower value space, however wide its own is.
         const group = groupOf.get(id) ?? id;
         const members = membersOf.get(group) ?? [id];
-        // The widest of the group's members, because the group holds one value
-        // and every entity carrying any member of it spends that value: a
-        // variable a form fills on nine edges spends nine, however few carry
-        // the member held equal to it.
-        const holders = members.reduce(
-          (most, member) => Math.max(most, scope.worstCaseCountFor(member)),
-          0,
-        );
+        // Counted over the group rather than over its members one at a time.
+        // Every entity carrying any member of the group spends the group's
+        // value — a variable a form fills on nine edges spends nine, however
+        // few carry the member held equal to it — but the members' counts also
+        // constrain each other, because they share one `unique` slot: three
+        // roster rows all carrying `a` build one node between them whatever
+        // the count of a `b` they leave unset says.
+        const holders = scope.worstCaseCountFor(members);
         const size = valueSpaceSize(groups.get(group) ?? variable, holders);
 
         if (
@@ -747,10 +751,10 @@ export function analyseFeasibility(
       unvalidated: binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES,
       // Every stage creating a node generates its whole attribute set, so a
       // fabricated node spends a value for each of the type's variables. Roster
-      // rows are the one place that differs, and only for the variable whose
-      // value they repeat — see `nodeCountFor`.
-      worstCaseCountFor: (variableId) =>
-        nodeCountFor(counts.node, type, variableId),
+      // rows are the one place that differs, and only where the group's value
+      // is one they repeat between them — see `nodeCountFor`.
+      worstCaseCountFor: (variableIds) =>
+        nodeCountFor(counts.node, type, variableIds),
       fixedValues: promptFixed.get(type) ?? NO_FIXED_VALUES,
       pedigreeFixedValues: pedigreeFixed.get(type) ?? NO_FIXED_VALUES,
       fixedAssignments: promptAssignments.get(type) ?? NO_FIXED_ASSIGNMENTS,
@@ -772,8 +776,8 @@ export function analyseFeasibility(
       // Both binning stages take a node subject, so no edge variable can be
       // bin-assigned.
       unvalidated: NO_UNVALIDATED_VARIABLES,
-      worstCaseCountFor: (variableId) =>
-        edgeCountFor(counts.edge, type, variableId),
+      worstCaseCountFor: (variableIds) =>
+        edgeCountFor(counts.edge, type, variableIds),
       // `additionalAttributes` writes onto the nodes a prompt creates, never
       // onto an edge.
       fixedValues: NO_FIXED_VALUES,

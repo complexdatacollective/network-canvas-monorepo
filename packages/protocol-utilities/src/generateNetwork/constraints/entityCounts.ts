@@ -38,21 +38,25 @@ export type EdgeCounts = {
 };
 
 /**
- * The most edges of `type` that can end up holding a value for `variableId`.
+ * The most edges of `type` that can end up holding a value for the equality
+ * group `variableIds` — one variable, or every member of a group held to a
+ * single value.
  *
- * Pedigree-built edges join the count only where some stage names that
- * variable, since nothing else writes onto an edge it did not create. Edges
- * from every other stage count for every variable, because those stages
- * generate the type's whole attribute set as they create them — a structural
- * fact about the draw rather than a rule about which stages exist.
+ * Pedigree-built edges join the count where some stage names any member of the
+ * group, since nothing else writes onto an edge it did not create and writing
+ * one member gives the whole group a value. Edges from every other stage count
+ * for every variable, because those stages generate the type's whole attribute
+ * set as they create them — a structural fact about the draw rather than a rule
+ * about which stages exist.
  */
 export function edgeCountFor(
   counts: EdgeCounts,
   type: string,
-  variableId: string,
+  variableIds: readonly string[],
 ): number {
   const base = counts.base.get(type) ?? 0;
-  const fillable = counts.named.get(type)?.has(variableId) ?? false;
+  const named = counts.named.get(type);
+  const fillable = variableIds.some((id) => named?.has(id) ?? false);
   return base + (fillable ? (counts.pedigree.get(type) ?? 0) : 0);
 }
 
@@ -198,6 +202,75 @@ function rosterValueCount(rows: RosterRows, variableId: string): number {
   return drawn + distinct.size;
 }
 
+/**
+ * The same count read across a whole equality group rather than one member.
+ *
+ * A drawn row claims every value it carries into the group's single `unique`
+ * slot — `claimFixedValues` walks `uniqueSlotMembers`, which keys the slot by
+ * the group — and `rosterRowIsDrawable` passes over any later row carrying a
+ * value that slot already holds. Two drawn rows therefore share no value
+ * between them, so the rows carrying any of the group's values can build at
+ * most as many nodes as there are distinct values among them, and at most as
+ * many as there are such rows. Rows carrying none of them are the unset case
+ * again: the draw supplies the group's value, so they count one apiece.
+ */
+function rosterGroupValueCount(
+  rows: RosterRows,
+  variableIds: readonly string[],
+): number {
+  const carried = new Set<string>();
+  let carrying = 0;
+  let bare = 0;
+
+  for (const { copies, rows: group } of rows.values()) {
+    let withValues = 0;
+    let without = 0;
+
+    for (const row of group) {
+      const attributes = row[entityAttributesProperty];
+      let holds = false;
+      for (const id of variableIds) {
+        const value = attributes[id];
+        if (value === undefined) continue;
+        holds = true;
+        carried.add(valueKey(value));
+      }
+      if (holds) withValues += 1;
+      else without += 1;
+    }
+
+    carrying += Math.min(copies, withValues);
+    bare += Math.min(copies, without);
+  }
+
+  return bare + Math.min(carrying, carried.size);
+}
+
+/**
+ * How many of a node type's roster rows can end up holding a value of the
+ * equality group `variableIds`.
+ *
+ * Every member of the group bounds the whole group on its own, by the argument
+ * {@link rosterValueCount} makes: the members share one `unique` slot, so a
+ * drawn row's value for any member is what a later row carrying that same value
+ * is turned away by. Reading the group as a whole bounds it again, and neither
+ * reading dominates the other — a group whose members are populated unevenly is
+ * tightest per member, while rows spreading one value across different members
+ * are tightest read together. Both are upper bounds on the same quantity, so
+ * the smallest of them is one too, and taking it can only refuse fewer
+ * protocols than reading any single member would.
+ */
+function rosterCarrierCount(
+  rows: RosterRows,
+  variableIds: readonly string[],
+): number {
+  let bound = rosterGroupValueCount(rows, variableIds);
+  for (const id of variableIds) {
+    bound = Math.min(bound, rosterValueCount(rows, id));
+  }
+  return bound;
+}
+
 /** Every node of a type, whatever variable is being asked about. */
 function nodeTotal(tally: NodeTally): number {
   return (
@@ -206,28 +279,33 @@ function nodeTotal(tally: NodeTally): number {
 }
 
 /**
- * How many distinct values of `variableId` nodes of `type` can spend between
- * them.
+ * How many distinct values of the equality group `variableIds` nodes of `type`
+ * can spend between them — one variable, or every member of a group held to a
+ * single value.
  *
  * Fabricated nodes each draw their own value, so they spend one apiece. Roster
- * rows do not: see {@link rosterValueCount}, which counts what they can spend
+ * rows do not: see {@link rosterCarrierCount}, which counts what they can spend
  * as the rows the run could actually draw rather than as the rows it was
  * handed.
  *
- * Per variable rather than per type, because which rows repeat a value is a
- * question about one variable — a roster whose `nickname` column is unique and
- * whose `consented` column is a boolean offers a different number of each.
+ * Per group rather than per type, because which rows repeat a value is a
+ * question about the variables in play — a roster whose `nickname` column is
+ * unique and whose `consented` column is a boolean offers a different number of
+ * each.
  */
 export function nodeCountFor(
   counts: NodeCounts,
   type: string,
-  variableId: string,
+  variableIds: readonly string[],
 ): number {
   const tally = counts.get(type);
   if (tally === undefined) return 0;
   return (
     tally.fabricated +
-    Math.min(tally.rosterDrawn, rosterValueCount(tally.rosterRows, variableId))
+    Math.min(
+      tally.rosterDrawn,
+      rosterCarrierCount(tally.rosterRows, variableIds),
+    )
   );
 }
 
@@ -379,6 +457,21 @@ export function worstCaseEntityCounts(
 
   for (const stage of stages) {
     if (isPairEdgeStage(stage)) {
+      // One pair count per prompt, summed rather than deduplicated across
+      // prompts sharing an edge type — deliberately, and not because the
+      // interview works that way. It does not: DyadCensus and
+      // TieStrengthCensus look the pair up on the shared graph with
+      // `edgeExists({ from, to, type })` and reuse the edge a sibling prompt
+      // created, so a participant answering two prompts about one pair leaves
+      // one edge behind. But this count bounds the generator, and
+      // `handleDyadCensus` calls `createEdgesForPairs` once per prompt and
+      // pushes everything it returns onto the draft without consulting the
+      // edges already there. Two prompts sharing a type over three people
+      // really do produce six edges, each generating its own attribute set and
+      // each spending its own `unique` value, so counting three would accept a
+      // protocol that runs out of values partway through the draw. Narrowing
+      // this is a change to the handlers first; until they reuse the pair's
+      // edge as the runtime does, the sum is what the draw creates.
       const pairs = pairsFor(getSubjectType(stage.subject, 'node'), node);
       for (const prompt of stage.prompts) {
         const edgeType = prompt.createEdge;
@@ -388,6 +481,8 @@ export function worstCaseEntityCounts(
     }
 
     if (stage.type === 'Sociogram') {
+      // Summed per prompt for the same reason: `handleSociogram` creates its
+      // edges through `createEdgesForPairs` too, once for each prompt.
       const pairs = pairsFor(getSubjectType(stage.subject, 'node'), node);
       for (const prompt of stage.prompts) {
         const edgeType = prompt.edges?.create;
