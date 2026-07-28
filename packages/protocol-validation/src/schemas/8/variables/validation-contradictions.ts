@@ -1710,6 +1710,114 @@ const pinnedValue = (
   }
 };
 
+const intervalsOfMembers = (
+  variables: UnknownRecord,
+  members: string[],
+): GroupIntervals => {
+  const intervals: GroupIntervals = new Map();
+  for (const member of members) {
+    addToGroupIntervals(intervals, intervalOf(variables[member]));
+  }
+  return intervals;
+};
+
+/**
+ * The option values EVERY member of a member list offers, with the single type
+ * they share. `undefined` means the list is unusable for the option-set checks:
+ * mixed types, a type without option semantics, or a member carrying no
+ * `options` array at all (`optionValues` treats absent options as unusable
+ * rather than empty).
+ */
+const sharedOptionValues = (
+  variables: UnknownRecord,
+  members: string[],
+):
+  | { type: 'categorical' | 'ordinal'; values: Set<string | number> }
+  | undefined => {
+  const types = new Set(members.map((member) => typeOf(variables[member])));
+  const [onlyType] = types;
+  if (types.size !== 1) return undefined;
+  if (onlyType !== 'categorical' && onlyType !== 'ordinal') return undefined;
+  let intersection: Set<string | number> | undefined;
+  for (const member of members) {
+    const values = optionValues(variables[member]);
+    if (values === undefined) return undefined;
+    intersection =
+      intersection === undefined
+        ? values
+        : new Set([...intersection].filter((value) => values.has(value)));
+  }
+  if (intersection === undefined) return undefined;
+  return { type: onlyType, values: intersection };
+};
+
+/**
+ * Twenty-seventh-wave Finding 1: the single value a sameAs component's
+ * members are COLLECTIVELY forced to hold when no member's own rules pin it
+ * alone. `A [0,1] sameAs D [1,3]` forces both to exactly 1 — the group's
+ * intersected window collapses to one point — yet neither member's own
+ * `pinnedValue` fires, so `sameAsInheritedPins` below had nothing to inherit
+ * and the pin was invisible to the pinned-equal `differentFrom` check. The
+ * derivation mirrors `pinnedValue`'s own per-type encodings exactly, and
+ * every uncertainty returns `undefined` (accept):
+ *
+ *   - number: the intersected minValue/maxValue window collapsing to one
+ *     point pins that number — the same numeric key `pinnedValue` returns.
+ *   - datetime: only when every member window lives on ONE origin and the
+ *     members share FULL resolution. A full-resolution collapse point is a
+ *     day number inside every member's own window (it is their
+ *     intersection), so the origin-tagged `datetime:${origin}:${day}` key is
+ *     exactly the key `pinnedValue` derives when a single member's window
+ *     collapses. A pin is never synthesized across origins — a two-origin
+ *     group has no single collapsed window to read, and its members'
+ *     `pinnedValue` keys would not even share a tag. A uniformly COARSE
+ *     component is deliberately left unpinned: connecting the day-number
+ *     collapse maths back to the coarse STORED-STRING key `pinnedValue`'s
+ *     coarse branch uses is a separate derivation this conservatively
+ *     declines, and mixed resolutions never reach here at all — the caller
+ *     defers them to the mixed-resolution machinery.
+ *   - ordinal: the intersection of every member's distinct option values
+ *     collapsing to one value pins it — single-select, so that value is the
+ *     only one every member can store, keyed as the genuine primitive
+ *     exactly like `pinnedValue`'s ordinal arm.
+ *   - categorical, text and every other type derive nothing: a categorical
+ *     group pin would have to reproduce the composite-set key against the
+ *     members' merged cardinality rules, and a text length-window collapse
+ *     does not pin a VALUE at all.
+ */
+const sameAsGroupDerivedPin = (
+  variables: UnknownRecord,
+  members: string[],
+  type: string,
+): string | number | undefined => {
+  if (type === 'number' || type === 'datetime') {
+    const intervals = intervalsOfMembers(variables, members);
+    if (intervals.size !== 1) return undefined;
+    const [entry] = intervals;
+    if (entry === undefined) return undefined;
+    const [origin, interval] = entry;
+    if (interval.min === undefined || interval.min !== interval.max) {
+      return undefined;
+    }
+    if (type === 'number') return interval.min;
+    const resolutions = new Set(
+      members.map((member) => dateResolutionOf(variables[member])),
+    );
+    const [resolution] = resolutions;
+    if (resolutions.size !== 1 || resolution !== 'full') return undefined;
+    return `datetime:${origin}:${interval.min}`;
+  }
+  if (type === 'ordinal') {
+    const shared = sharedOptionValues(variables, members);
+    if (shared?.type !== 'ordinal' || shared.values.size !== 1) {
+      return undefined;
+    }
+    const [value] = shared.values;
+    return value;
+  }
+  return undefined;
+};
+
 /**
  * Twenty-fourth-wave Finding 1: the pinned value a variable INHERITS through
  * its sameAs-only component, for the pinned-equal `differentFrom` check
@@ -1749,6 +1857,12 @@ const pinnedValue = (
  *     already reads pins at merged-group granularity via
  *     `sharedBooleanDomain`, so inheriting here would only re-class its
  *     reports.
+ *
+ * Twenty-seventh-wave Finding 1: a component NONE of whose members carries an
+ * own pin can still be pinned collectively — its intersected window (or
+ * shared option domain) collapsing to a single value forces every member to
+ * that value just as hard as a member pin does. `sameAsGroupDerivedPin`
+ * derives that group pin, under this function's same guards.
  */
 function sameAsInheritedPins(
   variables: UnknownRecord,
@@ -1807,7 +1921,13 @@ function sameAsInheritedPins(
         disagreement = true;
       }
     }
-    if (pin === undefined || disagreement) continue;
+    if (disagreement) continue;
+    // Twenty-seventh-wave Finding 1: with no member pinned by its own rules,
+    // the group's INTERSECTED constraints can still collapse to one value —
+    // that value is the group's pin, inherited by every member exactly as a
+    // member's own pin is.
+    pin ??= sameAsGroupDerivedPin(variables, members, onlyType);
+    if (pin === undefined) continue;
     for (const member of unpinned) inherited.set(member, pin);
   }
   return inherited;
@@ -1986,47 +2106,6 @@ const groupEqualityStrips = (
   if (comparatorStrips.length > 0 && resolves('sameAs'))
     return comparatorStrips;
   return [...sameAsStrips, ...comparatorStrips];
-};
-
-const intervalsOfMembers = (
-  variables: UnknownRecord,
-  members: string[],
-): GroupIntervals => {
-  const intervals: GroupIntervals = new Map();
-  for (const member of members) {
-    addToGroupIntervals(intervals, intervalOf(variables[member]));
-  }
-  return intervals;
-};
-
-/**
- * The option values EVERY member of a member list offers, with the single type
- * they share. `undefined` means the list is unusable for the option-set checks:
- * mixed types, a type without option semantics, or a member carrying no
- * `options` array at all (`optionValues` treats absent options as unusable
- * rather than empty).
- */
-const sharedOptionValues = (
-  variables: UnknownRecord,
-  members: string[],
-):
-  | { type: 'categorical' | 'ordinal'; values: Set<string | number> }
-  | undefined => {
-  const types = new Set(members.map((member) => typeOf(variables[member])));
-  const [onlyType] = types;
-  if (types.size !== 1) return undefined;
-  if (onlyType !== 'categorical' && onlyType !== 'ordinal') return undefined;
-  let intersection: Set<string | number> | undefined;
-  for (const member of members) {
-    const values = optionValues(variables[member]);
-    if (values === undefined) return undefined;
-    intersection =
-      intersection === undefined
-        ? values
-        : new Set([...intersection].filter((value) => values.has(value)));
-  }
-  if (intersection === undefined) return undefined;
-  return { type: onlyType, values: intersection };
 };
 
 /**

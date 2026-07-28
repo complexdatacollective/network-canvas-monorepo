@@ -5910,3 +5910,188 @@ describe('findValidationContradictions — Twenty-sixth-wave Finding 2: unbounde
     ).toEqual([]);
   });
 });
+
+describe('findValidationContradictions — Twenty-seventh-wave Finding 1: sameAs group intersections derive an inheritable pin', () => {
+  const number = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'number',
+    validation,
+  });
+
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // The reviewer's own report: neither `a` [0, 1] nor `d` [1, 3] is pinned by
+  // its OWN rules, but their sameAs group's intersected window is exactly
+  // [1, 1] — both are forced to 1, the same value `c`'s own window pins — so
+  // `a.differentFrom = c` can never be satisfied. `sameAsInheritedPins` only
+  // ever propagated a MEMBER'S own pin, so the collectively-forced value was
+  // invisible.
+  it('rejects a differentFrom against a group whose intersected window collapses to the partner pin', () => {
+    const result = findValidationContradictions({
+      a: number('a', {
+        required: true,
+        minValue: 0,
+        maxValue: 1,
+        sameAs: 'd',
+        differentFrom: 'c',
+      }),
+      c: number('c', { required: true, minValue: 1, maxValue: 1 }),
+      d: number('d', { required: true, minValue: 1, maxValue: 3 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror: the differentFrom is declared from the pinned partner's side
+  // instead, against a member of the collectively-pinned group.
+  it('rejects when the pinned partner declares the differentFrom against a group member', () => {
+    const result = findValidationContradictions({
+      a: number('a', { minValue: 0, maxValue: 1, sameAs: 'd' }),
+      c: number('c', { minValue: 1, maxValue: 1, differentFrom: 'a' }),
+      d: number('d', { minValue: 1, maxValue: 3 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'c', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The accept guard immediately outside the boundary: an intersection
+  // spanning TWO values ([1, 2]) pins nothing, so the differentFrom stays
+  // satisfiable (a = 2, c = 1) and must stay accepted.
+  it('accepts when the group intersection still spans more than one value', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', {
+          minValue: 0,
+          maxValue: 2,
+          sameAs: 'd',
+          differentFrom: 'c',
+        }),
+        c: number('c', { minValue: 1, maxValue: 1 }),
+        d: number('d', { minValue: 1, maxValue: 3 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Full-resolution datetime: the group's intersected fixed-origin window
+  // collapses to 2020-01-05, the same origin-tagged day-number key `d`'s own
+  // window pins — the derived key must travel `pinnedValue`'s own encoding.
+  it('rejects a full-resolution datetime pair pinned by the group window intersection', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2020-01-01', max: '2020-01-05' },
+        { sameAs: 'e', differentFrom: 'd' },
+      ),
+      d: datePicker('d', { min: '2020-01-05', max: '2020-01-05' }),
+      e: datePicker('e', { min: '2020-01-05', max: '2020-01-10' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Never across origins: the group ALSO contains an anchorless
+  // RelativeDatePicker, whose window lives on the symbolic interview-date
+  // origin. Even though the fixed-origin intersection collapses, a two-origin
+  // group derives no pin — a singleton must be single WITHIN one origin.
+  it('derives no pin from a group whose windows span two origins', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-05', max: '2020-01-10' },
+          { sameAs: 'e', differentFrom: 'd' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-05' },
+          {
+            sameAs: 'e',
+          },
+        ),
+        d: datePicker('d', { min: '2020-01-05', max: '2020-01-05' }),
+        e: {
+          name: 'e',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { before: 5, after: 0 },
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  // Ordinal: the members' option sets intersect to the single value {2} —
+  // the only value every member can store — which is `d`'s whole domain.
+  it('rejects an ordinal differentFrom whose group option intersection is a singleton', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'ordinal',
+        options: [
+          { label: 'One', value: 1 },
+          { label: 'Two', value: 2 },
+        ],
+        validation: { sameAs: 'e', differentFrom: 'd' },
+      },
+      d: {
+        name: 'd',
+        type: 'ordinal',
+        options: [{ label: 'Two', value: 2 }],
+      },
+      e: {
+        name: 'e',
+        type: 'ordinal',
+        options: [
+          { label: 'Two', value: 2 },
+          { label: 'Three', value: 3 },
+        ],
+      },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Recorded restriction: a uniformly COARSE datetime group derives no pin
+  // even when its intersected window collapses — connecting the day-number
+  // collapse back to the coarse STORED-STRING key is deliberately declined,
+  // so this genuinely-contradictory shape stays accepted (the conservative
+  // direction).
+  it('derives no pin from a uniformly coarse datetime group (recorded restriction)', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2021' },
+          { sameAs: 'e', differentFrom: 'd' },
+        ),
+        d: datePicker('d', { type: 'year', min: '2020', max: '2020' }),
+        e: datePicker('e', { type: 'year', min: '2019', max: '2020' }),
+      }),
+    ).toEqual([]);
+  });
+});
