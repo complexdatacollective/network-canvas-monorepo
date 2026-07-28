@@ -1,12 +1,5 @@
-import { DATE_PICKER_DEFAULT_MIN } from '@codaco/shared-consts';
-
 import type { VariableEntry } from '../../types';
-import {
-  addSteps,
-  type DateResolution,
-  stepsBetween,
-  truncateToResolution,
-} from './dateWindow';
+import { type DateResolution, openDateFloor, stepsBetween } from './dateWindow';
 import type { ConstrainedVariable, VariableConstraints } from './types';
 import { valueKey } from './uniqueRegistry';
 
@@ -69,8 +62,7 @@ const DEFAULT_MAX_SELECTED = 2;
  * fallbacks the way `generateEntityAttributes` mirrors the number range: what
  * the draw walks is what the count has to describe, and the pair are held
  * together by the conformance tests that draw a date variable's whole space.
- * The floor both stop at is the date picker's own, read from
- * `DATE_PICKER_DEFAULT_MIN`.
+ * Where that reach lands is decided once, by `openDateFloor`, which both read.
  */
 const DATE_DEFAULT_REACH: Record<DateResolution, number> = {
   year: 40,
@@ -189,26 +181,6 @@ export function selectionSizeRange(variable: ConstrainedVariable): {
     min: max === 0 ? 0 : Math.min(Math.max(1, minSelected ?? 1), optionCount),
     max,
   };
-}
-
-/**
- * The floor a date is drawn from when the protocol declares none: as far back
- * as the draw's own span reaches, held at the earliest date the picker offers.
- * A ceiling already before that date is one the protocol declared, and reaching
- * behind it is then the only way to have a range at all.
- */
-function openDateFloor(
-  max: string,
-  resolution: DateResolution,
-  unique: boolean,
-): string {
-  const reach = addSteps(
-    max,
-    -(unique ? UNIQUE_DATE_REACH : DATE_DEFAULT_REACH)[resolution],
-    resolution,
-  );
-  const floor = truncateToResolution(DATE_PICKER_DEFAULT_MIN, resolution);
-  return reach < floor && floor <= max ? floor : reach;
 }
 
 /** The `rank`-th `k`-subset of `{0, …, n - 1}`, in lexicographic order. */
@@ -367,15 +339,22 @@ export function valueSpaceSize(
 
     case 'datetime': {
       const window = constraints.dateWindow;
-      // `buildVariableConstraints` closes every window it builds at the last
-      // date the field offers, so only a descriptor assembled elsewhere can
-      // arrive without a ceiling. Reading today's date to supply one here would
-      // move the count with the wall clock, which a seeded run has to survive.
+      // `buildVariableConstraints` closes every window it builds — at the last
+      // date the field offers, or at the floor where a full-date floor sits
+      // later than that — so only a descriptor assembled elsewhere can arrive
+      // without a ceiling. Reading today's date to supply one here would move
+      // the count with the wall clock, which a seeded run has to survive.
       if (!window?.max) return 'unbounded';
 
       const min =
         window.min ??
-        openDateFloor(window.max, window.resolution, constraints.unique);
+        openDateFloor(
+          window.max,
+          (constraints.unique ? UNIQUE_DATE_REACH : DATE_DEFAULT_REACH)[
+            window.resolution
+          ],
+          window.resolution,
+        );
 
       return cap(
         Math.max(0, stepsBetween(min, window.max, window.resolution) + 1),

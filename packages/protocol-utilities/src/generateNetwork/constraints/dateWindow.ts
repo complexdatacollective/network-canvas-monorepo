@@ -1,4 +1,26 @@
+import { DATE_PICKER_DEFAULT_MIN } from '@codaco/shared-consts';
+
 export type DateResolution = 'full' | 'month' | 'year';
+
+/**
+ * The earliest date each resolution's own control can represent.
+ *
+ * A full-resolution field is a native `<input type="date">`, whose dates start
+ * at year 0001. The other two resolutions render a `<select>` listing their
+ * years unpadded, so anything below year 1000 names an option that no
+ * zero-padded bound can ever match.
+ *
+ * `buildConstraints` holds a bound the protocol *declares* to the same years.
+ * This is where a floor the generator *derives* stops, which is a separate
+ * escape: stepping back from an early ceiling underflows past year zero, and
+ * `addSteps` then emits a string (`-996-12-25`, `00-5-01-04`) that no
+ * comparison, count or draw can read.
+ */
+export const EARLIEST_OFFERED_DATE = {
+  full: '0001-01-01',
+  month: '1000-01',
+  year: '1000',
+} as const satisfies Record<DateResolution, string>;
 
 /**
  * A closed date range at a single resolution. Bounds are strings at that
@@ -117,4 +139,37 @@ export function stepsBetween(
   const fromMs = utcDate(a.year, a.month, a.day).getTime();
   const toMs = utcDate(b.year, b.month, b.day).getTime();
   return Math.round((toMs - fromMs) / msPerDay);
+}
+
+/**
+ * The floor a date is drawn from when the protocol declares none: `span` steps
+ * back from the window's ceiling, held at the earliest date the picker offers.
+ * A ceiling already before that date is one the protocol declared, and reaching
+ * behind it is then the only way to have a range at all — but no further back
+ * than {@link EARLIEST_OFFERED_DATE}, since a date the control cannot represent
+ * is one no participant could have entered.
+ *
+ * Without that stop an early ceiling underflows: `max: "0005-01-01"` on a
+ * full-date picker reaches `-996-12-25`, which `stepsBetween` reads as a window
+ * of negative width. The count then calls the variable empty and feasibility
+ * refuses a protocol whose field would have collected dates perfectly well,
+ * while the draw writes a date from a year nobody asked for.
+ *
+ * Read by both the value-space count and the draw, which have to describe the
+ * same window or feasibility is spending values the generator cannot reach.
+ */
+export function openDateFloor(
+  max: string,
+  span: number,
+  resolution: DateResolution,
+): string {
+  const reach = addSteps(max, -span, resolution);
+  const offered = truncateToResolution(DATE_PICKER_DEFAULT_MIN, resolution);
+  if (reach < offered && offered <= max) return offered;
+
+  // Underflowed bounds compare below the earliest offered date rather than
+  // needing to be recognised: every string `addSteps` emits past year zero
+  // carries a `-` or a shorter year, both of which sort before `0`.
+  const earliest = EARLIEST_OFFERED_DATE[resolution];
+  return reach < earliest ? earliest : reach;
 }

@@ -1,13 +1,11 @@
 import { en, Faker } from '@faker-js/faker';
 
-import {
-  DATE_PICKER_DEFAULT_MIN,
-  type VariableValue,
-} from '@codaco/shared-consts';
+import type { VariableValue } from '@codaco/shared-consts';
 
 import {
   addSteps,
   type DateResolution,
+  openDateFloor,
   stepsBetween,
   todayYmd,
   truncateToResolution,
@@ -308,8 +306,7 @@ export class ValueGenerator {
           ? this.uniqueDateHeadroom(window.resolution)
           : this.defaultDateSpan(window.resolution);
         const min =
-          window.min ??
-          this.defaultDateMin(max, defaultSpan, window.resolution);
+          window.min ?? openDateFloor(max, defaultSpan, window.resolution);
         const span = Math.max(0, stepsBetween(min, max, window.resolution));
         const offset =
           seq !== undefined ? seq % (span + 1) : this.randomInt(0, span);
@@ -344,22 +341,6 @@ export class ValueGenerator {
     if (resolution === 'year') return UNIQUE_DATE_REACH_YEARS;
     if (resolution === 'month') return UNIQUE_DATE_REACH_YEARS * 12;
     return Math.round(UNIQUE_DATE_REACH_YEARS * 365.25);
-  }
-
-  /**
-   * The start of a date window the protocol left open: as far back as the
-   * resolution allows, held at whatever the field itself offers. A `max`
-   * already below that floor is a bound the protocol declared, and reaching
-   * before it is then the only way to have a range at all.
-   */
-  private defaultDateMin(
-    max: string,
-    span: number,
-    resolution: DateResolution,
-  ): string {
-    const reach = addSteps(max, -span, resolution);
-    const floor = truncateToResolution(DATE_PICKER_DEFAULT_MIN, resolution);
-    return reach < floor && floor <= max ? floor : reach;
   }
 
   /** Roughly a decade back, replacing the old faker.date.past() window. */

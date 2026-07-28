@@ -444,6 +444,59 @@ describe('valueSpaceSize', () => {
     expect(valueSpaceSize(variable, 100)).toBe(0);
   });
 
+  // A ceiling in a low year is one the schema admits at full resolution, and the
+  // reach behind it underflowed past year zero: the floor came back as
+  // `-996-12-25`, `stepsBetween` read a window of negative width, and the count
+  // called a field offering every date from 0001-01-01 to 0005-01-01 empty —
+  // which refuses the protocol before a single node is generated. Both spans
+  // reach behind year zero from here, so both are held at the same floor.
+  it.each([{ unique: true }, { unique: false }])(
+    'counts every date a ceiling in year 0005 leaves reachable (unique $unique)',
+    ({ unique }) => {
+      const variable = make({
+        id: 'v',
+        name: 'V',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'full', max: '0005-01-01' },
+        ...(unique ? { validation: { unique: true } } : {}),
+      });
+
+      // Every day of years 0001-0004, plus the ceiling itself.
+      expect(valueSpaceSize(variable, 10_000)).toBe(1462);
+    },
+  );
+
+  // The draw has to reach exactly what the count spends. A floor the two
+  // disagreed about let feasibility accept a `unique` variable and the draw then
+  // hand back one date — the malformed floor reparsed — for every entity.
+  it('draws the whole low-year space it counts, and no date outside it', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', max: '0005-01-01' },
+      validation: { unique: true },
+    });
+    const size = valueSpaceSize(variable, 10_000);
+    expect(size).toBe(1462);
+
+    const generator = new ValueGenerator(1, TODAY);
+    const drawn = new Set<string>();
+    for (let seq = 0; seq < 1462; seq++) {
+      drawn.add(
+        String(
+          generator.generateConstrained(variable, 0, { distinctSeq: seq }),
+        ),
+      );
+    }
+
+    expect(drawn.size).toBe(1462);
+    expect([...drawn].toSorted()[0]).toBe('0001-01-01');
+    expect([...drawn].toSorted().at(-1)).toBe('0005-01-01');
+  });
+
   it('treats text with no maxLength as unbounded', () => {
     expect(
       valueSpaceSize(make({ id: 'v', name: 'V', type: 'text' }), 100),
