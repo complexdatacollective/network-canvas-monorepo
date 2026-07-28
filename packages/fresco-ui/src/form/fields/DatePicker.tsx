@@ -84,6 +84,13 @@ function formatYmd(ymd: Ymd): string {
 
 const DEFAULT_MIN: Ymd = { year: 1920, month: 1, day: 1 };
 
+// The coarse year/month dropdowns store `y.toString()` with no zero-padding,
+// so the protocol schema's YYYY/YYYY-MM coarse values can only round-trip a
+// four-digit year (1000-9999). These bracket the synthesized (non-authored)
+// far bound below so the dropdown never offers a year it cannot itself emit.
+const COARSE_MIN_YEAR = 1000;
+const COARSE_MAX_YEAR = 9999;
+
 const months: SelectOption[] = [
   { value: '01', label: 'January' },
   { value: '02', label: 'February' },
@@ -143,41 +150,78 @@ export default function DatePickerField(props: DatePickerFieldProps) {
   // calendar year, January 1 through December 31) rather than the authored
   // bound's own month/day, so a partial month/year authored bound doesn't
   // leak an arbitrary sub-year boundary onto the far, unconstrained end.
-  // When both bounds are authored, both are honoured exactly. The year loop
-  // and the month filtering at boundary years always read this derivation,
-  // since the custom picker UI needs a finite list either way. The
-  // full-resolution native input reads it too, but only once at least one
-  // bound is authored (see `hasAuthoredBound` below) — a fully unbounded
-  // full-resolution DatePicker must stay genuinely unbounded, matching how
-  // @codaco/protocol-validation's contradiction analyser models it as
-  // contributing no interval.
-  const { minYmd, maxYmd, hasAuthoredBound } = useMemo(() => {
-    const authoredMin = min ? parseYmd(min) : null;
-    const authoredMax = max ? parseYmd(max) : null;
-    const today = todayYmd();
-    const defaultWindowSpanYears = today.year - DEFAULT_MIN.year;
+  // When both bounds are authored, both are honoured exactly. `minYmd`/
+  // `maxYmd` feed the full-resolution native input's `min`/`max` attributes
+  // (only once at least one bound is authored — see `hasAuthoredBound` below;
+  // a fully unbounded full-resolution DatePicker must stay genuinely
+  // unbounded, matching how @codaco/protocol-validation's contradiction
+  // analyser models it as contributing no interval). `formatYmd` always
+  // zero-pads to four digits, so a native input min/max like "0894-01-01" is
+  // still a schema-valid full-resolution date — this pair is intentionally
+  // left unclamped.
+  //
+  // `coarseMinYmd`/`coarseMaxYmd` additionally bracket the SYNTHESIZED
+  // (non-authored) side to the four-digit year range (1000-9999) the coarse
+  // year/month dropdowns can round-trip: those controls store `y.toString()`
+  // with no zero-padding, so an unclamped synthesized edge like 894 would
+  // offer a three-digit "894" the schema's YYYY/YYYY-MM coarse values can
+  // never represent. An authored bound is left exactly as authored — its own
+  // validity against the schema is the schema's job, not this derivation's —
+  // and the clamp is bounded by that authored opposite side so it can never
+  // invert the range (a `max: '1000'` clamps its synthesized lower bound to
+  // 1000 too, yielding a genuine, if single-year, domain). The year loop and
+  // the month filtering at boundary years read this pair.
+  const { minYmd, maxYmd, coarseMinYmd, coarseMaxYmd, hasAuthoredBound } =
+    useMemo(() => {
+      const authoredMin = min ? parseYmd(min) : null;
+      const authoredMax = max ? parseYmd(max) : null;
+      const today = todayYmd();
+      const defaultWindowSpanYears = today.year - DEFAULT_MIN.year;
 
-    const resolvedMin =
-      authoredMin ??
-      (authoredMax && compareYmd(authoredMax, DEFAULT_MIN) < 0
-        ? { year: authoredMax.year - defaultWindowSpanYears, month: 1, day: 1 }
-        : DEFAULT_MIN);
-    const resolvedMax =
-      authoredMax ??
-      (authoredMin && compareYmd(authoredMin, today) > 0
-        ? {
-            year: authoredMin.year + defaultWindowSpanYears,
-            month: 12,
-            day: 31,
-          }
-        : today);
+      const resolvedMin =
+        authoredMin ??
+        (authoredMax && compareYmd(authoredMax, DEFAULT_MIN) < 0
+          ? {
+              year: authoredMax.year - defaultWindowSpanYears,
+              month: 1,
+              day: 1,
+            }
+          : DEFAULT_MIN);
+      const resolvedMax =
+        authoredMax ??
+        (authoredMin && compareYmd(authoredMin, today) > 0
+          ? {
+              year: authoredMin.year + defaultWindowSpanYears,
+              month: 12,
+              day: 31,
+            }
+          : today);
 
-    return {
-      minYmd: resolvedMin,
-      maxYmd: resolvedMax,
-      hasAuthoredBound: authoredMin !== null || authoredMax !== null,
-    };
-  }, [min, max]);
+      const coarseMin =
+        authoredMin === null && resolvedMin.year < COARSE_MIN_YEAR
+          ? {
+              year: Math.min(COARSE_MIN_YEAR, resolvedMax.year),
+              month: 1,
+              day: 1,
+            }
+          : resolvedMin;
+      const coarseMax =
+        authoredMax === null && resolvedMax.year > COARSE_MAX_YEAR
+          ? {
+              year: Math.max(COARSE_MAX_YEAR, resolvedMin.year),
+              month: 12,
+              day: 31,
+            }
+          : resolvedMax;
+
+      return {
+        minYmd: resolvedMin,
+        maxYmd: resolvedMax,
+        coarseMinYmd: coarseMin,
+        coarseMaxYmd: coarseMax,
+        hasAuthoredBound: authoredMin !== null || authoredMax !== null,
+      };
+    }, [min, max]);
 
   const initialMonthParts = getMonthParts(value);
   const [selectedYear, setSelectedYear] = useState<string | undefined>(
@@ -219,19 +263,19 @@ export default function DatePickerField(props: DatePickerFieldProps) {
 
   const years = useMemo(() => {
     const arr: SelectOption[] = [];
-    for (let y = maxYmd.year; y >= minYmd.year; y--) {
+    for (let y = coarseMaxYmd.year; y >= coarseMinYmd.year; y--) {
       arr.push({ value: y.toString(), label: y.toString() });
     }
     return arr;
-  }, [minYmd.year, maxYmd.year]);
+  }, [coarseMinYmd.year, coarseMaxYmd.year]);
 
   const getAvailableMonths = (yearValue?: string) => {
     if (!yearValue) return months;
     const year = Number.parseInt(yearValue, 10);
     let startMonth = 1;
     let endMonth = 12;
-    if (year === minYmd.year) startMonth = minYmd.month;
-    if (year === maxYmd.year) endMonth = maxYmd.month;
+    if (year === coarseMinYmd.year) startMonth = coarseMinYmd.month;
+    if (year === coarseMaxYmd.year) endMonth = coarseMaxYmd.month;
     return months.filter((m) => {
       const monthNum = Number.parseInt(String(m.value), 10);
       return monthNum >= startMonth && monthNum <= endMonth;
@@ -242,7 +286,7 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     return getAvailableMonths(selectedYear);
     // getAvailableMonths is a pure calculation over the listed date bounds.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYear, minYmd, maxYmd]);
+  }, [selectedYear, coarseMinYmd, coarseMaxYmd]);
 
   const handleChange = (year?: string, month?: string) => {
     const newYear = year === '' ? undefined : (year ?? selectedYear);
