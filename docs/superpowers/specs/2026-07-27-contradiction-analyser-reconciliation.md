@@ -209,3 +209,89 @@ places a changed conflict message or a changed refusal set becomes visible to a 
   that previously produced one combined message, or vice versa. Several tests assert exact conflict
   counts and variable name lists; expect to update them, and justify each change rather than
   loosening the assertion.
+
+## Executor's notes (2026-07-28, this branch's session)
+
+Working notes from the #1108 side, recorded before the merge so they survive a context change.
+Nothing here overrides the body above; where the two disagree, re-derive from code.
+
+### Premises I will re-verify first, beyond the listed ones
+
+- **"`analyseFeasibility` reasons over `EntityConstraints` with the rendering already folded in, so
+  the adapter should pass `stageEffectiveComponents: true`"** — verify the folded-in half before
+  trusting the conclusion. Our descriptors read `entry.component` from the **codebook variable**
+  (`buildConstraints.ts`). If a NetworkComposer field can override a Boolean's component to Toggle
+  per-occurrence, we may NOT be a resolved-rendering caller for that case, and passing `true` could
+  over-refuse a protocol whose every rendering is a Toggle. Decide with a failing-or-passing test,
+  not by reading this sentence or that one.
+- **The delegation surface moved again after the spec's own revision.** Batches 6–10 of #1108 review
+  (2026-07-28) added: the ego-scope skip (87d2727d6 — stays ours, stage-graph question like
+  bin-only), the solver-backed prompt-pin refusal (15b5babf7 — stays, needs prompts and the solver),
+  roster-pin completability with a post-draw read-back for undecidable components (9412d4999 + the
+  batch in flight as I write — stays, draw-time), stage-ordered entity counts (da591a7f0 — stays,
+  runtime counts), coarse-date-bound **completion** (9ed201df5 — cross-check below), the fractional
+  decimal grid with clamped endpoints (e448ff36a — see below), and a text-length cap (in flight).
+  Re-derive the kept/delegated split from HEAD at execution; every snapshot in this file is stale by
+  construction.
+
+### Date reconciliation specifics
+
+- **Coarse-bound completion must agree with their synthesis.** 9ed201df5 completes a coarse declared
+  bound to the picker's resolution (floor → first admitted date; ceiling → last admitted for `full`,
+  **January for `month`**, because `ymdPattern` defaults missing parts to 1 at both ends). #1107
+  "synthesizes out-of-window coarse far bounds". If the two complete the same bound to different
+  windows, one side is wrong about the control — settle it against `DatePickerField` itself and add
+  the disagreement shapes to the containment fixtures. The month-caps-at-January asymmetry is the
+  case most likely to differ.
+- **Containment fixtures must include the floors' differing causes.** Our month/year floors sit at
+  year 1000 (unpadded `<select>` options), full at 0001 (native input) — `EARLIEST_OFFERED_DATE`,
+  dateWindow.ts. #1107 models the native 0001-01-01 floor; whether its window model knows the
+  year-1000 select floor is unverified. A year-0800 month bound is the deliberate fixture: if they
+  accept it and we refuse, that is correct containment and the test should say so on purpose.
+- **Our solver DECLINES mixed-resolution date components** (documented in solver.ts: the search
+  compares domain strings lexically, where `2026-12-01` outranks the `2026-12` it equals). #1107
+  now enumerates discrete coarse-date domains under a 1,000-period cap — the better answer. Two
+  consequences: (a) where possible, adopt their instant-tracking rather than keeping both behaviours;
+  (b) Invariant B is **vacuous through our solver for exactly these classes** — a declined component
+  yields no witness either way. The harness must record "solver declined" as a coverage gap, never
+  as a confirmation, or the witness search silently under-covers the date classes it matters most for.
+
+### Invariant B mechanics
+
+- The witness search needs the **same input adapter as work item 1** (their analyser takes a
+  variables record; the solver takes `EntityConstraints`). Build the adapter once, test it at the
+  date classes in both roles.
+- Seed the corpus with the shapes #1108's own review proved dangerous, not only #1107's fixtures:
+  narrow fractional ranges (`[0.001, 0.009]` — clamped endpoints; e448ff36a landed after their
+  truth-fixing, so their catalogue may not know the endpoints are drawable), coupled
+  count/draw defects that masked each other, sub-unit `sameAs` scalar/number pairs, and pins on
+  unbounded comparator components (the undecidable class).
+- The text-length cap (in flight) adds a refusal class #1107 has no counterpart rule for (their R1
+  is a floor, not a ceiling). Likely stays ours; flag it to their catalogue rather than assuming.
+
+### Merge-time practicalities (each cost real time today)
+
+- Merging main produced an **add/add conflict** in `RelativeDatePicker.test.tsx` (both sides created
+  it). Expect the same class when #1107 lands: `DatePicker.tsx` + tests, `useProtocolForm.tsx`, and
+  interview date tests are now three-way-touched surfaces. Resolve by keeping both suites, not by
+  picking a side.
+- After any lockfile-changing merge: if typecheck fails somewhere absurd (`Cannot find name
+'document'` in a file CI passes), it is the environment, in order of likelihood: stale
+  `*.tsbuildinfo` **replaying cached diagnostics from the old config** (delete them — this one
+  presented as a compiler bug and was not), then pnpm's stale workspace state
+  (`rm node_modules/.pnpm-workspace-state-v1.json && pnpm install --force`). `--showConfig` telling
+  you the lib is present while tsc denies it is the tsbuildinfo signature.
+- Interview's `e2e/` tree is now CI-typechecked (PR #1112 landed on main 2026-07-28). Reconciliation
+  edits to interview e2e helpers get checked; architect's `e2e/**` turbo inputs likewise.
+- `pnpm --filter <pkg> test -- <files>` does not filter; run `pnpm exec vitest run <files>` from the
+  package directory.
+
+### Sequencing reminders
+
+- The merge arriving here carries **AWE** (attribute-writer exclusivity) inside #1107. Its rules are
+  not summarised anywhere in this file; read its spec fresh. Anything it does near quickAdd or
+  bin-only scoping intersects the kept table's bin-only row.
+- Verification baseline moved: protocol-utilities is at 798+ tests (rising as the current batch
+  lands), interview units 1283+. The "identical output for a fixed seed" bar in Verification applies
+  to the post-merge, post-current-batch state — capture fresh goldens immediately before starting
+  work item 1, not from this file.
