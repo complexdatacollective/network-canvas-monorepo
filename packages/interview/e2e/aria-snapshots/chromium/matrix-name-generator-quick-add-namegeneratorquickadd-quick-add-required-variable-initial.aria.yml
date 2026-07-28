@@ -1,12 +1,9 @@
 - main:
   - status:
     - heading "Who do you know?" [level=2]
-  - listbox "Added Nodes":
-    - option "Alice"
-    - option "Bob"
-    - option "Person"
-  - textbox "Type a label and press enter..."
-  - button [pressed]
+  - listbox "Added Nodes"
+  - button "Add a person":
+    - img "Add a person"
   - navigation:
     - button "Previous Step"
     - progressbar "Progress indicator": x

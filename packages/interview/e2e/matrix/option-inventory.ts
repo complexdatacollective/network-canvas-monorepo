@@ -29,6 +29,8 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'other-dialog-submit-writes-other-clears-variable',
     'other-dialog-cancel-noop',
     'regular-bin-drop-clears-other-variable',
+    'other-dialog-submit-empty-accepted-when-rule-less',
+    'codebook.variables.otherVariable.validation=required',
     'multi-value-membership',
     'empty-array-treated-as-unset',
     'ready-for-next-pulse',
@@ -407,6 +409,8 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'codebook.node.icon',
     'codebook.node.shape',
     'codebook.variables.quickAdd.encrypted',
+    'codebook.variables.quickAdd.validation=none',
+    'codebook.variables.quickAdd.validation=required',
   ],
   FamilyPedigree: [
     'label',

@@ -380,9 +380,13 @@ export const categoricalBinScenarios: InterfaceScenarios = {
               { label: 'Work', value: 2 },
             ],
           });
+          // component is required so the dialog's Field can resolve
+          // validation props through the codebook-variable metadata lookup
+          // (there is no stage-level form field here to supply one instead).
           const otherReason = personType.addVariable({
             name: 'otherReason',
             type: 'text',
+            component: 'Text',
           });
           nameVarId = personName.id;
           categoryVarId = categoryVar.id;
@@ -489,6 +493,189 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           ).toBeNull();
           expect(carol[entityAttributesProperty][categoryVarId]).toEqual([1]);
           expect(await stage.categoricalBin.getNodeCountInBin('Other')).toBe(1);
+        },
+      };
+    })(),
+
+    ((): ScenarioDefinition => {
+      let categoryVarId = '';
+      let otherVarId = '';
+      let nameVarId = '';
+      return {
+        id: 'other-bin-empty-submit-accepted',
+        covers: ['other-dialog-submit-empty-accepted-when-rule-less'],
+        seedNetwork: true,
+        build: () => {
+          const synth = new SyntheticInterview();
+          const personType = synth.addNodeType({ name: 'Person' });
+          const personName = personType.addVariable({
+            name: 'name',
+            type: 'text',
+          });
+          const categoryVar = personType.addVariable({
+            name: 'Category',
+            type: 'categorical',
+            options: [
+              { label: 'Family', value: 1 },
+              { label: 'Work', value: 2 },
+            ],
+          });
+          // No `validation` block: otherReason is genuinely optional, so an
+          // empty dialog submission must be accepted (no-fallback design).
+          const otherReason = personType.addVariable({
+            name: 'otherReason',
+            type: 'text',
+            component: 'Text',
+          });
+          nameVarId = personName.id;
+          categoryVarId = categoryVar.id;
+          otherVarId = otherReason.id;
+
+          const stage = synth.addStage('CategoricalBin', {
+            label: 'Categorise',
+            subject: { entity: 'node', type: personType.id },
+            initialNodes: { count: 1 },
+          });
+          stage.addPrompt({
+            variable: categoryVar.id,
+            otherVariable: otherReason.id,
+            otherVariablePrompt: 'Please specify:',
+            otherOptionLabel: 'Other',
+          });
+
+          synth.setNodeAttribute(0, personName.id, 'Alice');
+          synth.setNodeAttribute(0, categoryVar.id, []);
+          // seedNetwork randomises unset attributes on non-manual nodes; a
+          // random non-null otherReason would place Alice straight into the
+          // Other bin instead of the drawer.
+          synth.setNodeAttribute(0, otherReason.id, null);
+          return synth;
+        },
+        run: async ({ page, stage, protocol, interview }) => {
+          await keyboardDropNode(
+            page,
+            stage.categoricalBin.getNodeInDrawer('Alice'),
+            (a) => a.includes('Category: Other'),
+          );
+          const dialog = page.getByRole('dialog');
+          await expect(dialog.getByText('Please specify:')).toBeVisible();
+
+          // Submit with nothing typed: accepted, no rejection tooltip — the
+          // dialog closes rather than staying open with a validation error.
+          await page.getByTestId('dialog-submit').click();
+          await expect(dialog).not.toBeVisible();
+
+          const state = await protocol.getNetworkState(interview.interviewId);
+          const alice = state!.nodes.find(
+            (n) => n[entityAttributesProperty][nameVarId] === 'Alice',
+          )!;
+          // An untouched field submits as `undefined`, which the dialog
+          // writes through as null (not ''), same as Category — so the node
+          // has neither a category nor an "other" value and lands back in
+          // the drawer as unplaced, rather than in the Other bin.
+          expect(
+            alice[entityAttributesProperty][categoryVarId] ?? null,
+          ).toBeNull();
+          expect(
+            alice[entityAttributesProperty][otherVarId] ?? null,
+          ).toBeNull();
+          expect(await stage.categoricalBin.getNodeCountInBin('Other')).toBe(0);
+          await expect(stage.categoricalBin.drawerToggle).toContainText(
+            '1 unplaced',
+          );
+          await expect(
+            stage.categoricalBin.getNodeInDrawer('Alice'),
+          ).toBeVisible();
+        },
+      };
+    })(),
+
+    ((): ScenarioDefinition => {
+      let otherVarId = '';
+      let nameVarId = '';
+      return {
+        id: 'other-bin-required-other-variable',
+        covers: ['codebook.variables.otherVariable.validation=required'],
+        seedNetwork: true,
+        build: () => {
+          const synth = new SyntheticInterview();
+          const personType = synth.addNodeType({ name: 'Person' });
+          const personName = personType.addVariable({
+            name: 'name',
+            type: 'text',
+          });
+          const categoryVar = personType.addVariable({
+            name: 'Category',
+            type: 'categorical',
+            options: [
+              { label: 'Family', value: 1 },
+              { label: 'Work', value: 2 },
+            ],
+          });
+          const otherReason = personType.addVariable({
+            name: 'otherReason',
+            type: 'text',
+            component: 'Text',
+            validation: { required: true },
+          });
+          nameVarId = personName.id;
+          otherVarId = otherReason.id;
+
+          const stage = synth.addStage('CategoricalBin', {
+            label: 'Categorise',
+            subject: { entity: 'node', type: personType.id },
+            initialNodes: { count: 1 },
+          });
+          stage.addPrompt({
+            variable: categoryVar.id,
+            otherVariable: otherReason.id,
+            otherVariablePrompt: 'Please specify:',
+            otherOptionLabel: 'Other',
+          });
+
+          synth.setNodeAttribute(0, personName.id, 'Alice');
+          synth.setNodeAttribute(0, categoryVar.id, []);
+          // seedNetwork randomises unset attributes on non-manual nodes; a
+          // random non-null otherReason would place Alice straight into the
+          // Other bin instead of the drawer.
+          synth.setNodeAttribute(0, otherReason.id, null);
+          return synth;
+        },
+        run: async ({ page, stage, protocol, interview }) => {
+          await keyboardDropNode(
+            page,
+            stage.categoricalBin.getNodeInDrawer('Alice'),
+            (a) => a.includes('Category: Other'),
+          );
+          const dialog = page.getByRole('dialog');
+          await expect(dialog.getByText('Please specify:')).toBeVisible();
+
+          // A codebook `required` rule on otherVariable is still honoured:
+          // an empty submission is rejected and the dialog stays open.
+          await page.getByTestId('dialog-submit').click();
+          await expect(dialog).toBeVisible();
+          await expect(
+            page.getByTestId('otherVariable-field-error'),
+          ).toBeVisible();
+
+          let state = await protocol.getNetworkState(interview.interviewId);
+          let alice = state!.nodes.find(
+            (n) => n[entityAttributesProperty][nameVarId] === 'Alice',
+          )!;
+          expect(
+            alice[entityAttributesProperty][otherVarId] ?? null,
+          ).toBeNull();
+
+          // A non-empty value is accepted and written.
+          await dialog.getByRole('textbox').fill('Gym buddy');
+          await page.getByTestId('dialog-submit').click();
+          await expect(dialog).not.toBeVisible();
+
+          state = await protocol.getNetworkState(interview.interviewId);
+          alice = state!.nodes.find(
+            (n) => n[entityAttributesProperty][nameVarId] === 'Alice',
+          )!;
+          expect(alice[entityAttributesProperty][otherVarId]).toBe('Gym buddy');
         },
       };
     })(),
