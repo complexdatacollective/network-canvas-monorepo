@@ -6076,23 +6076,28 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 1: sameAs
     ]);
   });
 
-  // Recorded restriction: a uniformly COARSE datetime group derives no pin
-  // even when its intersected window collapses — connecting the day-number
-  // collapse back to the coarse STORED-STRING key is deliberately declined,
-  // so this genuinely-contradictory shape stays accepted (the conservative
-  // direction).
-  it('derives no pin from a uniformly coarse datetime group (recorded restriction)', () => {
-    expect(
-      findValidationContradictions({
-        a: datePicker(
-          'a',
-          { type: 'year', min: '2020', max: '2021' },
-          { sameAs: 'e', differentFrom: 'd' },
-        ),
-        d: datePicker('d', { type: 'year', min: '2020', max: '2020' }),
-        e: datePicker('e', { type: 'year', min: '2019', max: '2020' }),
-      }),
-    ).toEqual([]);
+  // Formerly a recorded restriction: a uniformly COARSE datetime group used
+  // to derive no pin even when its members' emission sets intersect to one
+  // stored value. The twenty-ninth wave lifted that restriction (see its own
+  // describe block below), so this genuinely-contradictory shape now
+  // rejects: `a` and `e` can only both store '2020', which is `d`'s whole
+  // domain.
+  it('derives a coarse pin from a uniformly coarse datetime group (twenty-ninth wave)', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { sameAs: 'e', differentFrom: 'd' },
+      ),
+      d: datePicker('d', { type: 'year', min: '2020', max: '2020' }),
+      e: datePicker('e', { type: 'year', min: '2019', max: '2020' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
   });
 });
 
@@ -6547,6 +6552,210 @@ describe('findValidationContradictions — Twenty-eighth wave: pinned disequalit
     expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
     expect(result[0]?.strips).toEqual([
       { variableId: 'b', rule: 'lessThanVariable' },
+    ]);
+  });
+});
+
+describe('findValidationContradictions — Twenty-ninth wave: uniformly coarse sameAs groups derive a pin from singleton emission intersections', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // The reviewer's own report: required year pickers `a` spanning 2020-2021
+  // and `b` spanning 2021-2022 with `a.sameAs = b` — neither is pinned by
+  // its own rules and the group's convex window collapse was deliberately
+  // not connected to a coarse STORED-STRING key (the twenty-seventh wave's
+  // recorded restriction), yet the members' emission sets intersect to
+  // exactly one emission, '2021', so both must store it. With `c` pinned to
+  // that same year, `a.differentFrom = c` can never be satisfied.
+  it('rejects the reviewer repro: a year group forced onto a single emission equals the partner pin', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { required: true, sameAs: 'b', differentFrom: 'c' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2021', max: '2022' },
+        { required: true },
+      ),
+      c: datePicker(
+        'c',
+        { type: 'year', min: '2021', max: '2021' },
+        { required: true },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The month-resolution analogue: overlapping three-month windows share
+  // only the emission '2021-01', which is the partner's whole domain.
+  it('rejects the month-resolution analogue', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'month', min: '2020-11', max: '2021-01' },
+        { sameAs: 'b', differentFrom: 'c' },
+      ),
+      b: datePicker('b', { type: 'month', min: '2021-01', max: '2021-03' }),
+      c: datePicker('c', { type: 'month', min: '2021-01', max: '2021-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The accept guard immediately outside the boundary: the intersection
+  // holds TWO emissions (2020 and 2021), so nothing is pinned and the
+  // differentFrom stays satisfiable (the group stores 2020, `c` stores
+  // 2021).
+  it('derives nothing when the emission intersection holds two instants', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2022' },
+          { sameAs: 'b', differentFrom: 'c' },
+        ),
+        b: datePicker('b', { type: 'year', min: '2019', max: '2021' }),
+        c: datePicker('c', { type: 'year', min: '2021', max: '2021' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Mixed resolutions within the group never reach the coarse derivation:
+  // the cross-resolution sameAs edge is the mixed-resolution machinery's to
+  // report (and its repair strips exactly that edge, freeing the members),
+  // so no pin may be derived meanwhile even though the members' emission
+  // sets intersect to the single instant 2021-01-01. `a.differentFrom = d`
+  // therefore stays unjudged — the only report is the resolution one.
+  it('derives nothing from a mixed-resolution group', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { sameAs: 'e', differentFrom: 'd' },
+      ),
+      d: datePicker('d', { type: 'year', min: '2021', max: '2021' }),
+      e: datePicker('e', { type: 'month', min: '2020-12', max: '2021-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'but store dates at different resolutions',
+    );
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  // An interview-date-origin member keeps the group off the coarse
+  // derivation. Coarse resolution structurally implies a fixed-origin
+  // DatePicker window, so an anchorless RelativeDatePicker joining the
+  // group necessarily makes it mixed-resolution (full vs year) and
+  // two-origin at once — the resolution machinery owns the shape, and the
+  // fixed-side singleton intersection (2021) must not pin `a` against `c`.
+  it('derives nothing from a group containing an interview-date-origin member', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { sameAs: 'b', differentFrom: 'c' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2021', max: '2022' },
+        { sameAs: 'r' },
+      ),
+      c: datePicker('c', { type: 'year', min: '2021', max: '2021' }),
+      r: {
+        name: 'r',
+        type: 'datetime',
+        component: 'RelativeDatePicker',
+        parameters: { before: 5, after: 0 },
+      },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'but store dates at different resolutions',
+    );
+    expect(result[0]?.strips).toEqual([{ variableId: 'b', rule: 'sameAs' }]);
+  });
+
+  // Zero surviving instants: at ONE resolution an empty emission
+  // intersection always comes with already-disjoint convex windows (every
+  // bound is a period start), so the group-level emptiness check reports it
+  // — and the derivation contributes no SECOND report through the
+  // differentFrom against pinned `c`.
+  it('reports a zero-instant intersection via the existing group-emptiness class only', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2019', max: '2020' },
+        { sameAs: 'b', differentFrom: 'c' },
+      ),
+      b: datePicker('b', { type: 'year', min: '2021', max: '2022' }),
+      c: datePicker('c', { type: 'year', min: '2020', max: '2020' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'but their rules leave no value they can share',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  // Composition with the twenty-eighth wave's disequality pruning: the
+  // derived group pin ('2021', inherited by `g1`) is a prune source exactly
+  // like an own pin, and `f`'s own pin removes the other emission — `e`'s
+  // two-emission domain is emptied, which the pruning pass reports ONCE.
+  // The pinned-equal machinery adds nothing (`e` itself is never pinned),
+  // and the single-exclusion carve-out keeps the two classes from ever
+  // double-reporting one conflict.
+  it('composes with disequality pruning without double-reporting', () => {
+    const result = findValidationContradictions({
+      e: datePicker(
+        'e',
+        { type: 'year', min: '2020', max: '2021' },
+        { differentFrom: 'g1' },
+      ),
+      f: datePicker(
+        'f',
+        { type: 'year', min: '2020', max: '2020' },
+        { differentFrom: 'e' },
+      ),
+      g1: datePicker(
+        'g1',
+        { type: 'year', min: '2020', max: '2021' },
+        { sameAs: 'g2' },
+      ),
+      g2: datePicker('g2', { type: 'year', min: '2021', max: '2022' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "e": differentFrom rules against pinned variables "f", "g1" leave no selectable date',
+    );
+    expect(result[0]?.variableIds).toEqual(['e', 'f', 'g1']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'f', rule: 'differentFrom' },
     ]);
   });
 });

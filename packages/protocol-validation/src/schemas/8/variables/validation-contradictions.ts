@@ -1770,12 +1770,23 @@ const sharedOptionValues = (
  *     exactly the key `pinnedValue` derives when a single member's window
  *     collapses. A pin is never synthesized across origins — a two-origin
  *     group has no single collapsed window to read, and its members'
- *     `pinnedValue` keys would not even share a tag. A uniformly COARSE
- *     component is deliberately left unpinned: connecting the day-number
- *     collapse maths back to the coarse STORED-STRING key `pinnedValue`'s
- *     coarse branch uses is a separate derivation this conservatively
- *     declines, and mixed resolutions never reach here at all — the caller
- *     defers them to the mixed-resolution machinery.
+ *     `pinnedValue` keys would not even share a tag. Twenty-ninth wave: a
+ *     uniformly COARSE (all-year or all-month) fixed-origin group pins too,
+ *     when the intersection of its members' exact emission sets
+ *     (`coarseInstantsOf`, enumeration cap included) contains exactly ONE
+ *     instant with a canonical stored form — required year pickers spanning
+ *     2020-2021 and 2021-2022 can each only emit '2021', a collapse the
+ *     day-number window maths above cannot see as a STORED-STRING key. The
+ *     key is `pinnedValue`'s own coarse encoding, via `storedPinKeyAtDay`
+ *     (which reuses `coarseStoredValueAtDay` rather than re-deriving the
+ *     encoding), so it compares exactly against a coarse partner's own pin.
+ *     Everything else still derives nothing: an unenumerable or over-cap
+ *     window, an instant with no canonical stored form (unpadded year), zero
+ *     surviving instants (at one resolution that means the convex windows
+ *     are already disjoint, so the group-emptiness machinery reports it —
+ *     never doubled here) or more than one — and mixed resolutions never
+ *     reach here at all, the caller defers them to the mixed-resolution
+ *     machinery.
  *   - ordinal: the intersection of every member's distinct option values
  *     collapsing to one value pins it — single-select, so that value is the
  *     only one every member can store, keyed as the genuine primitive
@@ -1796,15 +1807,42 @@ const sameAsGroupDerivedPin = (
     const [entry] = intervals;
     if (entry === undefined) return undefined;
     const [origin, interval] = entry;
+    if (type === 'datetime') {
+      const resolutions = new Set(
+        members.map((member) => dateResolutionOf(variables[member])),
+      );
+      const [resolution] = resolutions;
+      if (resolutions.size !== 1) return undefined;
+      if (resolution === 'month' || resolution === 'year') {
+        // Twenty-ninth wave: a uniformly coarse group pins when the
+        // intersection of its members' exact emission sets holds exactly one
+        // instant with a canonical stored form (see the doc comment above).
+        // Coarse resolution structurally implies a fixed-origin DatePicker
+        // window, so the origin check is defensive, matching the file's
+        // treatment of raw migration input.
+        if (origin !== 'fixed') return undefined;
+        let instants: Set<number> | undefined;
+        for (const member of members) {
+          const coarse = coarseInstantsOf(variables[member]);
+          if (coarse === 'unenumerable' || coarse === undefined) {
+            return undefined;
+          }
+          instants =
+            instants === undefined
+              ? coarse
+              : intersectInstantSets(instants, coarse);
+        }
+        if (instants === undefined || instants.size !== 1) return undefined;
+        const [day] = instants;
+        if (day === undefined) return undefined;
+        return storedPinKeyAtDay(day, resolution);
+      }
+      if (resolution !== 'full') return undefined;
+    }
     if (interval.min === undefined || interval.min !== interval.max) {
       return undefined;
     }
     if (type === 'number') return interval.min;
-    const resolutions = new Set(
-      members.map((member) => dateResolutionOf(variables[member])),
-    );
-    const [resolution] = resolutions;
-    if (resolutions.size !== 1 || resolution !== 'full') return undefined;
     return `datetime:${origin}:${interval.min}`;
   }
   if (type === 'ordinal') {
