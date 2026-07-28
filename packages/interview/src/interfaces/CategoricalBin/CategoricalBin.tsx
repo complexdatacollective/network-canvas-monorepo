@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
 import type { Stage } from '@codaco/protocol-validation';
 import {
@@ -21,6 +22,7 @@ import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
+  getValidationContext,
   selectFieldMetadataFromVariables,
   validationPropsFor,
 } from '../../selectors/forms';
@@ -173,6 +175,10 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
+  // Base pieces of the validation context useProtocolForm builds for every
+  // other Field (codebook + network + this stage's subject); the dialog below
+  // scopes it to the specific dropped node via currentEntityId.
+  const baseValidationContext = useStageSelector(getValidationContext);
 
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
@@ -214,6 +220,27 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         ? validationPropsFor(otherFieldMetadata)
         : {};
 
+      // Context-dependent rules (unique, sameAs, differentFrom,
+      // greaterThanVariable, etc.) resolve against the entity being edited and
+      // the live network — mirror useProtocolForm's ValidationContext, scoped
+      // to this dropped node via currentEntityId so e.g. `unique` excludes the
+      // node's own previous value and `differentFrom`/`sameAs` can read a
+      // sibling attribute already recorded on this same node.
+      // stageSubject is only ever null for stage types that carry no subject
+      // at all (Information/Anonymisation/FamilyPedigree/NarrativePedigree);
+      // CategoricalBin always has a node subject, so the undefined fallback
+      // here is defensive only, matching the "Missing codebook entry" guard
+      // above.
+      const validationContext: ValidationContext | undefined =
+        baseValidationContext.stageSubject
+          ? {
+              codebook: baseValidationContext.codebook,
+              network: baseValidationContext.network,
+              stageSubject: baseValidationContext.stageSubject,
+              currentEntityId: nodeId,
+            }
+          : undefined;
+
       const result = await openDialog({
         type: 'form',
         title: 'Specify other',
@@ -239,6 +266,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               component={InputField}
               name="otherVariable"
               {...otherValidationProps}
+              validationContext={validationContext}
               autoFocus
             />
           </div>

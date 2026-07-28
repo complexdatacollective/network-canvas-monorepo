@@ -15,15 +15,22 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { type DndStore, DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import {
+  asEntityAttributeReference,
+  type Codebook,
+  type Validation,
+} from '@codaco/protocol-validation';
+import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import type { ProtocolPayload } from '../../../contract/types';
 import protocol from '../../../store/modules/protocol';
-import session from '../../../store/modules/session';
+import session, { type SessionState } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
+import type { StageProps } from '../../../types';
 import CategoricalBin from '../CategoricalBin';
 import { getCatBinDropTargetId } from '../components/CategoricalBinItem';
 
@@ -41,6 +48,12 @@ class ImmediateIntersectionObserver {
   }
 
   observe(target: Element) {
+    // jsdom has no real IntersectionObserver, and the DOM lib's
+    // IntersectionObserverEntry/IntersectionObserver types carry many
+    // properties (boundingClientRect, intersectionRatio, ...) this minimal
+    // stub doesn't implement. This is the same narrow, established stub
+    // pattern used package-wide (see SlidesForm.navigation.test.tsx and
+    // NetworkComposer.inspector.test.tsx).
     this.callback(
       [{ isIntersecting: true, target } as IntersectionObserverEntry],
       this as unknown as IntersectionObserver,
@@ -70,9 +83,11 @@ beforeAll(() => {
 const NODE_TYPE = 'person';
 const CATEGORY_VARIABLE = 'category';
 const OTHER_VARIABLE = 'otherReason';
+const NOTE_VARIABLE = 'existingNote';
 const STAGE_ID = 'categorical-bin-stage';
 const PROMPT_ID = 'prompt-1';
 const OTHER_PROMPT_TEXT = 'Please specify the other category';
+const RESERVED_NOTE_VALUE = 'reserved-value';
 // Only one categorical option is configured, so the bins array is
 // [category option, other bin] — the other bin is always index 1 here.
 const OTHER_BIN_INDEX = 1;
@@ -80,10 +95,10 @@ const OTHER_BIN_INDEX = 1;
 const node: NcNode = {
   [entityPrimaryKeyProperty]: 'node-1',
   type: NODE_TYPE,
-  [entityAttributesProperty]: {},
+  [entityAttributesProperty]: { [NOTE_VARIABLE]: RESERVED_NOTE_VALUE },
 };
 
-function buildCodebook(otherValidation?: Record<string, unknown>) {
+function buildCodebook(otherValidation?: Validation): Codebook {
   return {
     node: {
       [NODE_TYPE]: {
@@ -95,6 +110,12 @@ function buildCodebook(otherValidation?: Record<string, unknown>) {
             name: 'Category',
             type: 'categorical',
             component: 'CheckboxGroup',
+            // The schema's categoricalOptionsSchema requires >= 2 options at
+            // runtime (an authoring-time zod refinement), but that minimum
+            // isn't reflected in the static Variable type, and bins is fixed
+            // to [category option, other bin] with the "other" bin at index 1
+            // as long as there is exactly one option — matching
+            // OTHER_BIN_INDEX below.
             options: [{ label: 'Family', value: 1 }],
           },
           [OTHER_VARIABLE]: {
@@ -102,6 +123,11 @@ function buildCodebook(otherValidation?: Record<string, unknown>) {
             type: 'text',
             component: 'Text',
             ...(otherValidation ? { validation: otherValidation } : {}),
+          },
+          [NOTE_VARIABLE]: {
+            name: 'Existing note',
+            type: 'text',
+            component: 'Text',
           },
         },
       },
@@ -111,7 +137,9 @@ function buildCodebook(otherValidation?: Record<string, unknown>) {
   };
 }
 
-function buildStage() {
+type CategoricalBinStage = StageProps<'CategoricalBin'>['stage'];
+
+function buildStage(): CategoricalBinStage {
   return {
     id: STAGE_ID,
     type: 'CategoricalBin',
@@ -121,12 +149,43 @@ function buildStage() {
       {
         id: PROMPT_ID,
         text: 'Which category?',
-        variable: CATEGORY_VARIABLE,
-        otherVariable: OTHER_VARIABLE,
+        variable: asEntityAttributeReference(CATEGORY_VARIABLE),
+        otherVariable: asEntityAttributeReference(OTHER_VARIABLE),
         otherVariablePrompt: OTHER_PROMPT_TEXT,
         otherOptionLabel: 'Other',
       },
     ],
+  };
+}
+
+function buildSession(): SessionState {
+  return {
+    id: 'session',
+    startTime: '2024-01-01T00:00:00.000Z',
+    finishTime: null,
+    exportTime: null,
+    lastUpdated: '2024-01-01T00:00:00.000Z',
+    network: {
+      ego: {
+        [entityPrimaryKeyProperty]: 'ego',
+        [entityAttributesProperty]: {},
+      },
+      nodes: [node],
+      edges: [],
+    },
+  };
+}
+
+function buildProtocol(otherValidation?: Validation): ProtocolPayload {
+  return {
+    id: 'protocol',
+    hash: 'hash',
+    importedAt: '2024-01-01T00:00:00.000Z',
+    assets: [],
+    name: 'Test protocol',
+    schemaVersion: 8,
+    codebook: buildCodebook(otherValidation),
+    stages: [buildStage()],
   };
 }
 
@@ -142,26 +201,12 @@ function CaptureDndStore({
   return null;
 }
 
-function renderCategoricalBin(otherValidation?: Record<string, unknown>) {
+function renderCategoricalBin(otherValidation?: Validation) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
-      session: {
-        id: 'session',
-        promptIndex: 0,
-        network: {
-          ego: { [entityAttributesProperty]: {} },
-          nodes: [node],
-          edges: [],
-        },
-      } as never,
-      protocol: {
-        id: 'protocol',
-        hash: 'hash',
-        schemaVersion: 8,
-        codebook: buildCodebook(otherValidation),
-        stages: [buildStage()],
-      } as never,
+      session: buildSession(),
+      protocol: buildProtocol(otherValidation),
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
@@ -182,7 +227,7 @@ function renderCategoricalBin(otherValidation?: Record<string, unknown>) {
             {/* CategoricalBin never reads its props (destructures `_props`);
                 these satisfy the type without any bearing on behaviour. */}
             <CategoricalBin
-              stage={buildStage() as never}
+              stage={buildStage()}
               getNavigationHelpers={() => ({
                 moveForward: () => {},
                 moveBackward: () => {},
@@ -284,5 +329,38 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     });
 
     expect(getOtherAttribute(store)).toBeNull();
+  });
+
+  it('rejects a value matching a sibling attribute on the same node and accepts a distinct one, proving validationContext (network + currentEntityId) reaches the dialog Field', async () => {
+    const { store, getDndStore } = renderCategoricalBin({
+      differentFrom: asEntityAttributeReference(NOTE_VARIABLE),
+    });
+
+    await dropNodeIntoOtherBin(getDndStore);
+
+    const input = await screen.findByRole('textbox');
+
+    // Matches the node's existing `existingNote` attribute: rejected without
+    // validationContext (differentFrom has nothing to compare against, since
+    // the dialog's field name is the literal "otherVariable", not the real
+    // codebook attribute id — the comparison value can only be found via
+    // network + currentEntityId, exactly as differentFrom/getComparisonValue
+    // resolve it).
+    fireEvent.change(input, { target: { value: RESERVED_NOTE_VALUE } });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await screen.findByTestId('otherVariable-field-error');
+    expect(screen.getByTestId('dialog-submit')).toBeInTheDocument();
+    expect(getOtherAttribute(store)).toBeUndefined();
+
+    // A distinct value is accepted and written.
+    fireEvent.change(input, { target: { value: 'a genuinely new reason' } });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('dialog-submit')).not.toBeInTheDocument();
+    });
+
+    expect(getOtherAttribute(store)).toBe('a genuinely new reason');
   });
 });
