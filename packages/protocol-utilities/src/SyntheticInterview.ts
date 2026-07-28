@@ -1588,20 +1588,23 @@ export class SyntheticInterview {
     const ctx = this.generationContext(today);
     const stagesById = new Map(this.stages.map((stage) => [stage.id, stage]));
 
-    // Values the caller wrote onto a node outright, restricted to the type's
-    // codebook variables — an attribute no variable declares has no rules to
-    // satisfy and no place in the network.
-    const explicitOf = (
-      nodeEntry: NodeEntry,
-    ): Record<string, VariableValue> => {
-      const explicit: Record<string, VariableValue> = {};
-      const variables = this.nodeTypes.get(nodeEntry.type)?.variables;
-      for (const varId of variables?.keys() ?? []) {
-        if (!(varId in nodeEntry.explicitAttributes)) continue;
-        explicit[varId] = nodeEntry.explicitAttributes[varId] as VariableValue;
-      }
-      return explicit;
-    };
+    const explicitOf = (nodeEntry: NodeEntry): Record<string, VariableValue> =>
+      this.explicitValuesOf(
+        this.nodeTypes.get(nodeEntry.type)?.variables,
+        nodeEntry.explicitAttributes,
+      );
+
+    // An edge has no attribute store of its own: `addEdges` opens an empty one
+    // and `setEdgeAttribute` writes into it, so what it holds is exactly what
+    // the caller wrote — an edge's explicit values and a node's are the same
+    // thing under different names.
+    const explicitOfEdge = (
+      edgeEntry: EdgeEntry,
+    ): Record<string, VariableValue> =>
+      this.explicitValuesOf(
+        this.edgeTypes.get(edgeEntry.type)?.variables,
+        edgeEntry.attributes,
+      );
 
     // Recorded before any node is drawn, not as each node is reached: a
     // `unique` value written onto the last node is still one the first node's
@@ -1610,8 +1613,25 @@ export class SyntheticInterview {
     // given is refused rather than copied into the network twice.
     for (const nodeEntry of this.nodes) {
       const explicit = explicitOf(nodeEntry);
-      this.refuseDuplicateFixedValues(ctx, nodeEntry.type, explicit);
+      this.refuseDuplicateFixedValues(
+        ctx,
+        { entity: 'node', type: nodeEntry.type },
+        explicit,
+      );
       claimFixedValues(ctx, { entity: 'node', type: nodeEntry.type }, explicit);
+    }
+
+    // Edges take the same pass, against their own registry scope: `unique` is
+    // declared per variable, and an edge variable's values are shared among
+    // edges rather than with any node.
+    for (const edgeEntry of this.edges) {
+      const explicit = explicitOfEdge(edgeEntry);
+      this.refuseDuplicateFixedValues(
+        ctx,
+        { entity: 'edge', type: edgeEntry.type },
+        explicit,
+      );
+      claimFixedValues(ctx, { entity: 'edge', type: edgeEntry.type }, explicit);
     }
 
     const ncNodes = this.nodes.map((nodeEntry, index) => {
@@ -1671,16 +1691,50 @@ export class SyntheticInterview {
       };
     });
 
-    const ncEdges = this.edges.map((edgeEntry) => ({
-      [entityPrimaryKeyProperty]: edgeEntry.uid,
-      type: edgeEntry.type,
-      from: edgeEntry.from,
-      to: edgeEntry.to,
-      [entityAttributesProperty]: edgeEntry.attributes as Record<
-        string,
-        VariableValue
-      >,
-    }));
+    const ncEdges = this.edges.map((edgeEntry, index) => {
+      const edgeType = this.edgeTypes.get(edgeEntry.type);
+      const explicit = explicitOfEdge(edgeEntry);
+      const attributes: Record<string, VariableValue> = {};
+
+      if (edgeType) {
+        // The node treatment, for the same reasons: an edge type's variables
+        // carry validation rules too, and an edge the builder created is one
+        // the interview would have collected answers for. Copying its empty
+        // attribute store left every rule unsatisfied — a required variable
+        // absent rather than answered.
+        const drawn = edgeEntry.manual
+          ? undefined
+          : generateAttributesForEntity(
+              ctx,
+              { entity: 'edge', type: edgeEntry.type },
+              index,
+              {
+                existing: explicit,
+                only: new Set(
+                  [...edgeType.variables.keys()].filter(
+                    (varId) => !(varId in explicit),
+                  ),
+                ),
+              },
+            );
+
+        for (const [varId, variable] of edgeType.variables) {
+          const value = varId in explicit ? explicit[varId] : drawn?.[varId];
+          attributes[varId] =
+            value === undefined
+              ? ctx.valueGen.neutralForVariable(variable)
+              : value;
+        }
+      }
+
+      return {
+        [entityPrimaryKeyProperty]: edgeEntry.uid,
+        type: edgeEntry.type,
+        from: edgeEntry.from,
+        to: edgeEntry.to,
+        [entityAttributesProperty]: attributes,
+      };
+    });
 
     return {
       ego: {
@@ -1788,31 +1842,60 @@ export class SyntheticInterview {
   }
 
   /**
-   * Refuses a `unique` value the caller wrote onto two nodes.
+   * The values the caller wrote onto one entity outright, restricted to the
+   * type's codebook variables — an attribute no variable declares has no rules
+   * to satisfy and no place in the network.
+   *
+   * A node keeps these apart from the attributes it reports, in
+   * `explicitAttributes`; an edge's store holds nothing else, because it starts
+   * empty and only `setEdgeAttribute` and `addManualEdge` write to it. Both
+   * arrive here as the same thing, so the draw treats them alike.
+   */
+  private explicitValuesOf(
+    variables: Map<string, VariableEntry> | undefined,
+    written: Record<string, unknown>,
+  ): Record<string, VariableValue> {
+    const explicit: Record<string, VariableValue> = {};
+    for (const varId of variables?.keys() ?? []) {
+      if (!(varId in written)) continue;
+      explicit[varId] = written[varId] as VariableValue;
+    }
+    return explicit;
+  }
+
+  /**
+   * Refuses a `unique` value the caller wrote onto two entities of one type.
    *
    * `UniqueRegistry.claim` keys a set, so claiming one value twice reports
    * nothing, and a variable the caller set outright is excluded from the draw
    * that would otherwise have objected — both duplicates would be copied into
    * the network unchanged. Which is the point, as it is for a prompt fixing a
    * `unique` value on a stage that creates two people: the values and the
-   * nodes holding them are both the caller's, so whether two of them hold one
-   * value is settled before any drawing, on every seed.
+   * entities holding them are both the caller's, so whether two of them hold
+   * one value is settled before any drawing, on every seed.
    *
-   * Read against what earlier nodes claimed rather than per variable, because
-   * variables held equal by `sameAs` are issued from one slot: a single node
-   * setting every member of such a group to one value spends one claim between
-   * them and is no duplicate.
+   * Read against what earlier entities claimed rather than per variable,
+   * because variables held equal by `sameAs` are issued from one slot: a single
+   * entity setting every member of such a group to one value spends one claim
+   * between them and is no duplicate.
+   *
+   * Nodes and edges share this because they share the rule: `unique` is
+   * declared per variable and scoped per type, and which of the two carries the
+   * variable changes nothing about what the registry was asked.
    */
   private refuseDuplicateFixedValues(
     ctx: GenerationContext,
-    type: string,
+    ref: { entity: 'node' | 'edge'; type: string },
     fixed: Record<string, VariableValue>,
   ): void {
-    const constraints = ctx.entityConstraints.node.get(type);
+    const constraints = ctx.entityConstraints[ref.entity].get(ref.type);
     if (!constraints) return;
 
-    const registry = scopeKey({ entity: 'node', type });
-    const nodeType = this.nodeTypes.get(type);
+    const registry = scopeKey(ref);
+    const entityType =
+      ref.entity === 'node'
+        ? this.nodeTypes.get(ref.type)
+        : this.edgeTypes.get(ref.type);
 
     for (const [slot, memberIds] of uniqueSlotMembers(constraints)) {
       for (const id of memberIds) {
@@ -1823,19 +1906,19 @@ export class SyntheticInterview {
         throw new SyntheticDataConstraintError(
           [
             {
-              entity: 'node',
-              entityType: type,
-              ...(nodeType ? { entityTypeName: nodeType.name } : {}),
+              entity: ref.entity,
+              entityType: ref.type,
+              ...(entityType ? { entityTypeName: entityType.name } : {}),
               variableIds: [...memberIds],
               variableNames: memberIds.map(
                 (memberId) =>
-                  nodeType?.variables.get(memberId)?.name ?? memberId,
+                  entityType?.variables.get(memberId)?.name ?? memberId,
               ),
               rules: ['unique'],
               // Reported as the key the collision was judged on rather than
               // the value as written: it is what the registry compared, and a
               // layout or categorical value has no useful `String()` form.
-              reason: `the caller sets ${memberIds.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${valueKey(value)} on two nodes, but unique allows one node to hold a value`,
+              reason: `the caller sets ${memberIds.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${valueKey(value)} on two ${ref.entity}s, but unique allows one ${ref.entity} to hold a value`,
             },
           ],
           "this interview fixes values that its protocol's rules do not allow",
@@ -2125,7 +2208,14 @@ export class SyntheticInterview {
     to: string,
     attributes: Record<string, unknown>,
   ): void {
-    this.edges.push({ uid, type: edgeTypeId, from, to, attributes });
+    this.edges.push({
+      uid,
+      type: edgeTypeId,
+      from,
+      to,
+      attributes,
+      manual: true,
+    });
   }
 
   /**

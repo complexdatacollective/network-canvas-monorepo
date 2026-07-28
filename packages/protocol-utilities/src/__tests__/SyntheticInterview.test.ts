@@ -1779,3 +1779,323 @@ describe('validation rules on generated nodes', () => {
     ]);
   });
 });
+
+describe('validation rules on generated edges', () => {
+  // As for nodes: enough seeds that a rule satisfied by luck on one of them
+  // cannot pass.
+  const SEEDS = [1, 2, 7, 42, 99, 1234, 20260727];
+
+  const attributesOf = (network: NcNetwork) =>
+    network.edges.map((edge) => edge[entityAttributesProperty]);
+
+  /** Two nodes and one edge type, the smallest thing that can carry an edge. */
+  const twoNodes = (si: SyntheticInterview, count = 2) => {
+    const nt = si.addNodeType();
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count },
+    });
+  };
+
+  it('gives a procedural edge the variables its type declares', () => {
+    const si = new SyntheticInterview(42);
+    const et = si.addEdgeType();
+    const strength = et.addVariable({
+      type: 'number',
+      name: 'strength',
+      validation: { required: true, minValue: 1, maxValue: 10 },
+    });
+    twoNodes(si);
+    si.addEdges([[0, 1]], et.id);
+
+    // The edge's attribute store starts empty and `getNetwork` once copied it
+    // verbatim, so a required variable was absent rather than answered.
+    const attrs = attributesOf(si.getNetwork())[0]!;
+    expect(attrs[strength.id]).toBeGreaterThanOrEqual(1);
+    expect(attrs[strength.id]).toBeLessThanOrEqual(10);
+  });
+
+  it('gives every member of a sameAs pair one value', () => {
+    for (const seed of SEEDS) {
+      const si = new SyntheticInterview(seed);
+      const et = si.addEdgeType();
+      const flagA = et.addVariable({ type: 'boolean', name: 'flagA' });
+      const flagB = et.addVariable({
+        type: 'boolean',
+        name: 'flagB',
+        validation: { sameAs: flagA.id },
+      });
+      twoNodes(si, 8);
+      si.addEdges(
+        [
+          [0, 1],
+          [1, 2],
+          [2, 3],
+          [3, 4],
+          [4, 5],
+          [5, 6],
+          [6, 7],
+        ],
+        et.id,
+      );
+
+      for (const attrs of attributesOf(si.getNetwork())) {
+        expect(attrs[flagB.id]).toBe(attrs[flagA.id]);
+      }
+    }
+  });
+
+  it('orders a comparison rule against the value its counterpart was given', () => {
+    for (const seed of SEEDS) {
+      const si = new SyntheticInterview(seed);
+      const et = si.addEdgeType();
+      const low = et.addVariable({
+        type: 'number',
+        name: 'low',
+        validation: { minValue: 0, maxValue: 100 },
+      });
+      const high = et.addVariable({
+        type: 'number',
+        name: 'high',
+        validation: { minValue: 0, maxValue: 100, greaterThanVariable: low.id },
+      });
+      twoNodes(si, 4);
+      si.addEdges(
+        [
+          [0, 1],
+          [1, 2],
+          [2, 3],
+        ],
+        et.id,
+      );
+
+      for (const attrs of attributesOf(si.getNetwork())) {
+        expect(Number(attrs[high.id])).toBeGreaterThan(Number(attrs[low.id]));
+      }
+    }
+  });
+
+  it('issues a unique edge variable no value twice across the whole network', () => {
+    for (const seed of SEEDS) {
+      const si = new SyntheticInterview(seed);
+      const et = si.addEdgeType();
+      const codeName = et.addVariable({
+        type: 'text',
+        name: 'codeName',
+        validation: { unique: true },
+      });
+      twoNodes(si, 6);
+      si.addEdges(
+        [
+          [0, 1],
+          [1, 2],
+          [2, 3],
+          [3, 4],
+          [4, 5],
+        ],
+        et.id,
+      );
+
+      const issued = attributesOf(si.getNetwork()).map(
+        (attrs) => attrs[codeName.id],
+      );
+      expect(new Set(issued).size).toBe(issued.length);
+    }
+  });
+
+  it('draws around a value the caller set outright', () => {
+    const si = new SyntheticInterview(42);
+    const et = si.addEdgeType();
+    const anchor = et.addVariable({
+      type: 'number',
+      name: 'anchor',
+      validation: { minValue: 0, maxValue: 100 },
+    });
+    const echo = et.addVariable({
+      type: 'number',
+      name: 'echo',
+      validation: { minValue: 0, maxValue: 100, sameAs: anchor.id },
+    });
+    const above = et.addVariable({
+      type: 'number',
+      name: 'above',
+      validation: {
+        minValue: 0,
+        maxValue: 100,
+        greaterThanVariable: anchor.id,
+      },
+    });
+    twoNodes(si);
+    si.addEdges([[0, 1]], et.id);
+    si.setEdgeAttribute(0, anchor.id, 12);
+
+    const attrs = attributesOf(si.getNetwork())[0]!;
+    expect(attrs[anchor.id]).toBe(12);
+    expect(attrs[echo.id]).toBe(12);
+    expect(Number(attrs[above.id])).toBeGreaterThan(12);
+  });
+
+  it('never issues a unique value another edge was given outright', () => {
+    for (const seed of SEEDS) {
+      const si = new SyntheticInterview(seed);
+      const et = si.addEdgeType();
+      const flag = et.addVariable({
+        type: 'boolean',
+        name: 'flag',
+        validation: { unique: true },
+      });
+      twoNodes(si, 3);
+      si.addEdges(
+        [
+          [0, 1],
+          [1, 2],
+        ],
+        et.id,
+      );
+      // A boolean holds two values, so an edge fixed to one leaves exactly one
+      // for the draw — and the fixed edge is the *last*, which a registry
+      // populated as edges are reached would not have seen in time.
+      si.setEdgeAttribute(1, flag.id, true);
+
+      const issued = attributesOf(si.getNetwork()).map(
+        (attrs) => attrs[flag.id],
+      );
+      expect(issued).toEqual([false, true]);
+    }
+  });
+
+  it('refuses a unique value the caller sets on two edges', () => {
+    const si = new SyntheticInterview(42);
+    const et = si.addEdgeType();
+    const codeName = et.addVariable({
+      type: 'text',
+      name: 'codeName',
+      validation: { unique: true },
+    });
+    twoNodes(si, 3);
+    si.addEdges(
+      [
+        [0, 1],
+        [1, 2],
+      ],
+      et.id,
+    );
+    si.setEdgeAttribute(0, codeName.id, 'Raven');
+    si.setEdgeAttribute(1, codeName.id, 'Raven');
+
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+    expect(() => si.getNetwork()).toThrow(
+      /the caller sets this to "Raven" on two edges, but unique allows one edge to hold a value/,
+    );
+  });
+
+  it('refuses a unique value two manual edges were built with', () => {
+    const si = new SyntheticInterview(42);
+    const et = si.addEdgeType();
+    const codeName = et.addVariable({
+      type: 'text',
+      name: 'codeName',
+      validation: { unique: true },
+    });
+    twoNodes(si);
+
+    const [from, to] = si.getNodeEntries();
+    si.addManualEdge(et.id, 'edge-1', from!.uid, to!.uid, {
+      [codeName.id]: 'Raven',
+    });
+    si.addManualEdge(et.id, 'edge-2', to!.uid, from!.uid, {
+      [codeName.id]: 'Raven',
+    });
+
+    // A manual edge keeps its unset attributes neutral, but the ones it was
+    // built with are in the network verbatim — the same duplicate.
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+  });
+
+  it('leaves a manual edge its neutral values rather than solving them', () => {
+    const si = new SyntheticInterview(42);
+    const et = si.addEdgeType();
+    const flagA = et.addVariable({ type: 'boolean', name: 'flagA' });
+    const flagB = et.addVariable({
+      type: 'boolean',
+      name: 'flagB',
+      validation: { sameAs: flagA.id },
+    });
+    twoNodes(si);
+
+    const [from, to] = si.getNodeEntries();
+    si.addManualEdge(et.id, 'edge-1', from!.uid, to!.uid, {
+      [flagA.id]: true,
+    });
+
+    const attrs = attributesOf(si.getNetwork())[0]!;
+    expect(attrs[flagA.id]).toBe(true);
+    // `sameAs` would make this true; the manual contract says unanswered.
+    expect(attrs[flagB.id]).toBe(false);
+  });
+
+  it('lets the caller repeat a value an edge variable does not declare unique', () => {
+    const si = new SyntheticInterview(42);
+    const et = si.addEdgeType();
+    const label = et.addVariable({ type: 'text', name: 'label' });
+    twoNodes(si, 3);
+    si.addEdges(
+      [
+        [0, 1],
+        [1, 2],
+      ],
+      et.id,
+    );
+    si.setEdgeAttribute(0, label.id, 'Raven');
+    si.setEdgeAttribute(1, label.id, 'Raven');
+
+    const issued = attributesOf(si.getNetwork()).map(
+      (attrs) => attrs[label.id],
+    );
+    expect(issued).toEqual(['Raven', 'Raven']);
+  });
+
+  it('refuses an edge codebook whose rules leave an edge no value', () => {
+    // No feasibility pass runs for edges either: `worstCaseEntityCounts` models
+    // what a `generateNetwork` run fabricates from stage behaviours, while
+    // these edges are the ones the caller asked for by name. What refuses
+    // instead is the draw, running out against the count actually generated —
+    // a boolean holds two values and this asks for three distinct ones.
+    const si = new SyntheticInterview(42);
+    const et = si.addEdgeType();
+    et.addVariable({
+      type: 'boolean',
+      name: 'flag',
+      validation: { unique: true },
+    });
+    twoNodes(si, 4);
+    si.addEdges(
+      [
+        [0, 1],
+        [1, 2],
+        [2, 3],
+      ],
+      et.id,
+    );
+
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+    expect(() => si.getNetwork()).toThrow(/cannot all be satisfied together/);
+  });
+
+  it('leaves an edge type carrying no variables its empty attributes', () => {
+    // Most story fixtures declare edge types with no variables at all, and
+    // this is why generating edge attributes leaves them untouched.
+    const si = new SyntheticInterview(42);
+    const et = si.addEdgeType();
+    twoNodes(si, 3);
+    si.addEdges(
+      [
+        [0, 1],
+        [1, 2],
+      ],
+      et.id,
+    );
+
+    expect(attributesOf(si.getNetwork())).toEqual([{}, {}]);
+  });
+});

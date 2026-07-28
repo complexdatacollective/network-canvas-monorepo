@@ -349,6 +349,9 @@ export type EdgeEntry = {
   from: string;
   to: string;
   attributes: Record<string, unknown>;
+  // Manually seeded edges (addManualEdge) take full control of their
+  // attributes: unset attributes are left neutral rather than randomised.
+  manual?: boolean;
 };
 
 // --- Input types for builder methods ---
