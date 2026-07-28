@@ -1,5 +1,10 @@
 import type { VariableEntry, VariableOptionInput } from '../../types';
-import { addSteps, type DateResolution } from './dateWindow';
+import {
+  addSteps,
+  type DateResolution,
+  EARLIEST_OFFERED_DATE,
+  LATEST_OFFERED_DATE,
+} from './dateWindow';
 import {
   canonicalComparatorEdges,
   type ComparatorEdge,
@@ -10,7 +15,12 @@ import type {
   EntityConstraints,
   VariableConstraints,
 } from './types';
-import { SCALAR_DECIMAL_PLACES } from './valueSpace';
+import {
+  decimalGrid,
+  decimalGridStep,
+  numberDrawBounds,
+  scalarDrawGrid,
+} from './valueSpace';
 
 /**
  * Keeps whichever of two bounds is tighter. Dates are compared as strings,
@@ -471,9 +481,60 @@ export function emptyGroupBounds(
   return empty;
 }
 
-/** The gap a strict comparator must leave, in the units the type is drawn in. */
-export function comparatorGap(type: 'number' | 'scalar'): number {
-  return type === 'scalar' ? 10 ** -SCALAR_DECIMAL_PLACES : 1;
+/**
+ * The gap a strict comparator must leave, in the units this variable is drawn
+ * in — read from the values its own draw can produce rather than from its type.
+ *
+ * A number is drawn whole wherever its range holds a whole value, and one unit
+ * is then the closest two of its values come. Where its range holds none the
+ * draw falls back to the same decimal grid a scalar is drawn on, and a whole
+ * unit is far wider than anything that range can separate: `[0.1, 0.2]` and
+ * `[0.3, 0.4]` under `>` are satisfied by every pair of values either range
+ * holds, and stepping a whole unit between them empties the upper one and
+ * refuses the protocol. That is why the step comes from
+ * {@link decimalGridStep}, which is what the draw itself walks — including the
+ * two ends of a range holding no grid multiple at all, which is all such a
+ * range has.
+ *
+ * Only the types a comparison can be declared on reach this. Anything else has
+ * no bound for a comparison to step and never asks.
+ */
+export function comparatorGap(variable: ConstrainedVariable): number {
+  const { entry, constraints } = variable;
+  if (entry.type === 'scalar') {
+    return decimalGridStep(scalarDrawGrid(constraints));
+  }
+  if (entry.type !== 'number') return 1;
+
+  const { min, max } = numberDrawBounds(constraints);
+  if (Math.floor(max) - Math.ceil(min) + 1 > 0) return 1;
+  return decimalGridStep(decimalGrid(min, max));
+}
+
+/**
+ * How much precision a stepped bound keeps. Far finer than any grid this
+ * analysis reasons in, so a bound genuinely off the grid keeps its own value,
+ * and coarse enough to erase what binary floating point leaves behind.
+ */
+const BOUND_DECIMAL_PLACES = 10;
+
+/**
+ * A numeric bound `steps` gaps from `base`.
+ *
+ * Adding a gap in binary floating point lands a hair beside the value the
+ * decimal arithmetic names — `0.1 + 0.01` is `0.11000000000000001` — and a
+ * bound carrying that noise is one no draw sits exactly on. The draw clamps up
+ * to it instead, writing the noise into the network, and a `unique` slot then
+ * spends a value on something the count never described. Rounded back to a
+ * precision no bound this analysis handles can need, so a bound the protocol
+ * declared off the grid is left where it was declared.
+ */
+export function steppedNumericBound(
+  base: number,
+  steps: number,
+  gap: number,
+): number {
+  return Number((base + steps * gap).toFixed(BOUND_DECIMAL_PLACES));
 }
 
 /** `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, before the calendar is consulted. */
@@ -520,6 +581,15 @@ function atResolution(value: string, resolution: DateResolution): string {
 }
 
 /**
+ * What a comparison against one date leaves the other end: a bound that end
+ * must respect, or the statement that no date its picker can hold satisfies the
+ * comparison at all.
+ */
+export type ComparatorDateBound =
+  | { kind: 'bound'; value: string }
+  | { kind: 'empty' };
+
+/**
  * The bound a comparison against one date puts on the other end, written at
  * that end's own resolution.
  *
@@ -538,20 +608,39 @@ function atResolution(value: string, resolution: DateResolution): string {
  * is strict, because `2009-06` does not reach `2009-06-17`; a ceiling already
  * clears it, and steps back only when the two do coincide and the comparison is
  * strict.
+ *
+ * A step that would leave the calendar leaves no bound at all: it says the
+ * comparison is empty, and it says so rather than being clamped back onto the
+ * last date the picker offers. Clamping is what a *window* derived from an
+ * offset wants — `offsetWithinOfferedDates` — because a window still has
+ * to name somewhere for a value to sit. Here the step is exactly what the rule
+ * excludes, so holding a strict floor at `9999-12-31` would readmit the one
+ * date the rule refuses. Nor can the overflow be caught downstream: `addSteps`
+ * writes it as `10000-01-01`, whose leading digit sorts it *below* every
+ * four-digit year, so `tighten` reads it as the looser bound and drops it and
+ * the draw then emits a date the comparison forbids.
  */
 export function comparatorBound(
   target: string,
   resolution: DateResolution,
   { boundsUpper, strict }: { boundsUpper: boolean; strict: boolean },
-): string | undefined {
+): ComparatorDateBound | undefined {
   if (dateValueResolution(target) === undefined) return undefined;
 
   const here = atResolution(target, resolution);
   const coincides = atResolution(here, 'full') === atResolution(target, 'full');
+  const stepsAway = boundsUpper ? strict || !coincides : strict && coincides;
+  if (!stepsAway) return { kind: 'bound', value: here };
 
-  return boundsUpper
-    ? addSteps(here, strict || !coincides ? 1 : 0, resolution)
-    : addSteps(here, strict && coincides ? -1 : 0, resolution);
+  const leavesCalendar = boundsUpper
+    ? here >= LATEST_OFFERED_DATE[resolution]
+    : here <= EARLIEST_OFFERED_DATE[resolution];
+  if (leavesCalendar) return { kind: 'empty' };
+
+  return {
+    kind: 'bound',
+    value: addSteps(here, boundsUpper ? 1 : -1, resolution),
+  };
 }
 
 /**
@@ -629,15 +718,14 @@ type Range = {
 /**
  * How far apart a strict comparator provably holds its two ends: the finer of
  * the two ends' granularities, or one unit at each date window's own
- * resolution. `gridUpper`/`gridLower` say which end sits on the scalar grid, so
- * the bound stepped towards that end can be rounded back onto it.
+ * resolution.
  *
  * The two date resolutions are carried separately because a bound crossing
  * between them is rewritten into the units of the end it lands on, which
  * `comparatorBound` does.
  */
 export type Span =
-  | { kind: 'numeric'; gap: number; gridUpper: boolean; gridLower: boolean }
+  | { kind: 'numeric'; gap: number }
   | { kind: 'date'; lower: DateResolution; upper: DateResolution };
 
 function isNumeric(variable: ConstrainedVariable): boolean {
@@ -689,28 +777,22 @@ function incomparableEnds(
  * compares those as instants, so the comparison is real and propagating it is
  * a matter of writing each bound in the units of the end it constrains.
  *
- * The numeric gap is the finer of the two ends' granularities, which is the
- * largest step a strict comparison is guaranteed to leave: both ends are
- * multiples of it, so any two distinct values differ by at least it. Stepping
- * by the coarser end's unit instead over-tightens — a scalar strictly below a
- * number pinned to 1 still reaches 0.99, not 0 — and an over-tight bound turns
- * satisfiable protocols into refusals.
+ * The numeric gap is the finer of the two ends' granularities, each read from
+ * what that end's own draw can produce — see {@link comparatorGap}. Stepping by
+ * the coarser end's unit instead over-tightens: a scalar strictly below a
+ * number pinned to 1 still reaches 0.99, not 0, and a number in `[0.3, 0.4]`
+ * strictly above one in `[0.1, 0.2]` has its whole range to draw from rather
+ * than none of it. An over-tight bound turns satisfiable protocols into
+ * refusals.
  */
 export function comparatorSpan(
   lower: ConstrainedVariable,
   upper: ConstrainedVariable,
 ): Span | undefined {
   if (isNumeric(lower) && isNumeric(upper)) {
-    const gridUpper = upper.entry.type === 'scalar';
-    const gridLower = lower.entry.type === 'scalar';
     return {
       kind: 'numeric',
-      gap: Math.min(
-        comparatorGap(gridUpper ? 'scalar' : 'number'),
-        comparatorGap(gridLower ? 'scalar' : 'number'),
-      ),
-      gridUpper,
-      gridLower,
+      gap: Math.min(comparatorGap(lower), comparatorGap(upper)),
     };
   }
 
@@ -725,15 +807,6 @@ export function comparatorSpan(
   }
 
   return { kind: 'date', lower: lowerResolution, upper: upperResolution };
-}
-
-/**
- * Scalars are drawn on a fixed decimal grid, and adding the gap in binary
- * floating point lands just beside it; a bound off that grid is one every draw
- * would be clamped up to.
- */
-function onGrid(value: number, grid: boolean): number {
-  return grid ? Number(value.toFixed(SCALAR_DECIMAL_PLACES)) : value;
 }
 
 function isInverted({
@@ -778,8 +851,10 @@ type PropagatedBounds = {
   /**
    * Groups whose comparators no assignment satisfies: the ones propagation
    * itself emptied, because the comparators around them are what their range
-   * could not hold, and the ends of a comparison between a number and a date,
-   * which has no satisfying assignment at any range. A group whose range was
+   * could not hold; the ones a strict comparison sent off the end of the
+   * calendar, where the bound it needs is not a date at all; and the ends of a
+   * comparison between a number and a date, which has no satisfying assignment
+   * at any range. A group whose range was
    * already empty when propagation started is left out, because that is either
    * one variable's own bounds crossing or a group's members' bounds failing to
    * overlap — both of which the feasibility pass reports without propagating
@@ -833,6 +908,10 @@ export function propagateComparatorBounds(
   const declaredInverted = new Set<string>();
   const inverted = new Set<string>();
   const incomparable = new Set<string>();
+  // Groups a comparison put outside the calendar. The overflow cannot be seen
+  // in the range afterwards — a bound past year 9999 sorts below every date it
+  // was meant to exclude — so it is recorded where it happens.
+  const emptied = new Set<string>();
 
   for (const [group, { constraints }] of groups) {
     const range: Range = {
@@ -878,18 +957,18 @@ export function propagateComparatorBounds(
     if (span?.kind === 'numeric' && from.minValue !== undefined) {
       into.minValue = tighten(
         into.minValue,
-        onGrid(from.minValue + steps * span.gap, span.gridUpper),
+        steppedNumericBound(from.minValue, steps, span.gap),
         true,
       );
     } else if (span?.kind === 'date' && from.windowMin !== undefined) {
-      into.windowMin = tighten(
-        into.windowMin,
-        comparatorBound(from.windowMin, span.upper, {
-          boundsUpper: true,
-          strict: edge.strict,
-        }),
-        true,
-      );
+      const bound = comparatorBound(from.windowMin, span.upper, {
+        boundsUpper: true,
+        strict: edge.strict,
+      });
+      if (bound?.kind === 'empty') emptied.add(edge.upper);
+      else if (bound !== undefined) {
+        into.windowMin = tighten(into.windowMin, bound.value, true);
+      }
     }
   }
 
@@ -906,18 +985,18 @@ export function propagateComparatorBounds(
     if (span?.kind === 'numeric' && from.maxValue !== undefined) {
       into.maxValue = tighten(
         into.maxValue,
-        onGrid(from.maxValue - steps * span.gap, span.gridLower),
+        steppedNumericBound(from.maxValue, -steps, span.gap),
         false,
       );
     } else if (span?.kind === 'date' && from.windowMax !== undefined) {
-      into.windowMax = tighten(
-        into.windowMax,
-        comparatorBound(from.windowMax, span.lower, {
-          boundsUpper: false,
-          strict: edge.strict,
-        }),
-        false,
-      );
+      const bound = comparatorBound(from.windowMax, span.lower, {
+        boundsUpper: false,
+        strict: edge.strict,
+      });
+      if (bound?.kind === 'empty') emptied.add(edge.lower);
+      else if (bound !== undefined) {
+        into.windowMax = tighten(into.windowMax, bound.value, false);
+      }
     }
   }
 
@@ -926,7 +1005,7 @@ export function propagateComparatorBounds(
   for (const [group, variable] of groups) {
     const range = ranges.get(group);
 
-    if (range === undefined || isInverted(range)) {
+    if (range === undefined || emptied.has(group) || isInverted(range)) {
       if (range !== undefined && !declaredInverted.has(group)) {
         inverted.add(group);
       }

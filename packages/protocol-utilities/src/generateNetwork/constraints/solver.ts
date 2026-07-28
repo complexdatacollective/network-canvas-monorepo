@@ -251,9 +251,14 @@ function domainSize(
  * protocol into a refusal. `decimalGrid` does now describe that set exactly —
  * the count and the draw both read it — but the solver is left declining those
  * components all the same. Declining only ever sends a component to the greedy
- * draw, while admitting one puts a fresh `unsat` proof behind bounds that
- * `comparatorSpan` steps in whole units for a number: a component the search
- * could then refuse is one the greedy path may well satisfy.
+ * draw, while admitting one puts a fresh `unsat` proof behind the whole set.
+ *
+ * The original reason for holding back was that `comparatorSpan` stepped a
+ * number in whole units, which those bounds could not honour; it now reads the
+ * step from the same grid the draw walks, so that reason has gone. What is left
+ * is that admitting them is a change of its own — {@link domainSize} needs a
+ * branch matching this one, and a search that refuses is owed the evidence that
+ * the greedy path could not have satisfied it either.
  */
 function enumerateDomain(
   variable: ConstrainedVariable,

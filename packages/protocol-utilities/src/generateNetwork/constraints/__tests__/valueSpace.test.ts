@@ -7,6 +7,9 @@ import { buildVariableConstraints } from '../buildConstraints';
 import type { ConstrainedVariable } from '../types';
 import { valueKey } from '../uniqueRegistry';
 import {
+  decimalGrid,
+  decimalGridStep,
+  decimalGridValueAt,
   MAX_TEXT_DRAW_LENGTH,
   selectionSizeRange,
   textDrawLength,
@@ -89,6 +92,53 @@ function narrowedScalar(bounds: {
     constraints: { ...variable.constraints, ...bounds },
   };
 }
+
+/**
+ * The step a strict comparison across a grid may rely on, held to the values
+ * the draw itself walks. A wider step refuses comparisons the draw satisfies —
+ * `[0.001, 0.009]` holds two values eight thousandths apart and a whole grid
+ * place between them empties it — while a narrower one would promise a
+ * separation no pair of drawn values reaches.
+ */
+describe('decimalGridStep', () => {
+  const walked = (min: number, max: number) => {
+    const grid = decimalGrid(min, max);
+    return Array.from({ length: grid.size }, (_value, index) =>
+      decimalGridValueAt(grid, index),
+    );
+  };
+
+  const closest = (values: number[]) =>
+    Math.min(
+      ...values.slice(1).map((value, index) => value - Number(values[index])),
+    );
+
+  it.each([
+    { min: 0, max: 1 },
+    { min: 0.1, max: 0.2 },
+    { min: 0.1, max: 0.11 },
+    { min: 0.001, max: 0.009 },
+    { min: 0.005, max: 0.5 },
+    { min: 0.105, max: 0.195 },
+  ])(
+    'separates $min to $max by the closest two values the draw walks',
+    ({ min, max }) => {
+      const values = walked(min, max);
+
+      expect(values.length).toBeGreaterThan(1);
+      expect(decimalGridStep(decimalGrid(min, max))).toBeCloseTo(
+        closest(values),
+        12,
+      );
+    },
+  );
+
+  it('gives a range holding one value the grid place back', () => {
+    // There is no separation of its own to state, and the other end of the
+    // comparison is what decides how far a rule against a pinned value reaches.
+    expect(decimalGridStep(decimalGrid(0.5, 0.5))).toBe(0.01);
+  });
+});
 
 describe('valueSpaceSize', () => {
   it('gives boolean exactly two values', () => {

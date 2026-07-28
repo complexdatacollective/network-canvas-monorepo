@@ -17,6 +17,7 @@ import {
   groupComparatorEdges,
   intersectGroupConstraints,
   propagateComparatorBounds,
+  steppedNumericBound,
   tighten,
 } from './groupConstraints';
 import {
@@ -31,7 +32,6 @@ import type {
   VariableConstraints,
 } from './types';
 import { valueKey } from './uniqueRegistry';
-import { SCALAR_DECIMAL_PLACES } from './valueSpace';
 
 /**
  * How many redraws a variable forbidden a value gets before the run is given
@@ -174,12 +174,9 @@ function reserveHeadroom(
 
     if (entry.type === 'number' || entry.type === 'scalar') {
       if (bounds.maxValue === undefined) continue;
-      const raw = bounds.maxValue - steps * comparatorGap(entry.type);
       maxValue = tighten(
         maxValue,
-        entry.type === 'scalar'
-          ? Number(raw.toFixed(SCALAR_DECIMAL_PLACES))
-          : raw,
+        steppedNumericBound(bounds.maxValue, -steps, comparatorGap(other)),
         false,
       );
       continue;
@@ -202,11 +199,12 @@ function reserveHeadroom(
       boundsUpper: false,
       strict: false,
     });
-    if (ceiling === undefined) continue;
+    // Read non-strictly, so it never steps and so never leaves the calendar.
+    if (ceiling?.kind !== 'bound') continue;
 
     windowMax = tighten(
       windowMax,
-      addSteps(ceiling, -steps, window.resolution),
+      addSteps(ceiling.value, -steps, window.resolution),
       false,
     );
   }
@@ -356,6 +354,13 @@ function applyComparatorBounds(
   // group's own can be inverted by a protocol nothing here wrote, and that is
   // not a statement about the values this entity was given.
   let bounded = false;
+  // Whether a comparison asked for a date the calendar does not hold, which the
+  // folded window cannot show: the bound it needs sits past year 9999 or before
+  // year one, and neither is a string any comparison can place.
+  let offCalendar = false;
+  // The closest two values this group's own draw can produce come, which is
+  // what a strict comparison has to leave between it and its counterpart.
+  const gap = comparatorGap(variable);
 
   for (const edge of edges) {
     const groupIsUpper = edge.upper === group;
@@ -382,23 +387,30 @@ function applyComparatorBounds(
       if (bound === undefined) continue;
 
       bounded = true;
-      if (groupIsUpper) windowMin = tighten(windowMin, bound, true);
-      else windowMax = tighten(windowMax, bound, false);
+      if (bound.kind === 'empty') {
+        // Nothing the calendar holds satisfies this comparison, so the draw
+        // goes as far towards it as the group's own window reaches and the
+        // fold reports that every value left breaks the rule.
+        offCalendar = true;
+        if (groupIsUpper) windowMin = tighten(windowMin, window?.max, true);
+        else windowMax = tighten(windowMax, window?.min, false);
+        continue;
+      }
+
+      if (groupIsUpper) windowMin = tighten(windowMin, bound.value, true);
+      else windowMax = tighten(windowMax, bound.value, false);
       continue;
     }
 
     const numeric = Number(target);
     if (Number.isNaN(numeric)) continue;
 
-    const gap = edge.strict ? comparatorGap(entry.type) : 0;
-    const raw = groupIsUpper ? numeric + gap : numeric - gap;
-    // Scalars are drawn on a fixed decimal grid, and adding the gap in binary
-    // floating point lands just beside it; a bound off that grid is one every
-    // draw would be clamped up to.
-    const bound =
-      entry.type === 'scalar'
-        ? Number(raw.toFixed(SCALAR_DECIMAL_PLACES))
-        : raw;
+    const steps = edge.strict ? 1 : 0;
+    const bound = steppedNumericBound(
+      numeric,
+      groupIsUpper ? steps : -steps,
+      gap,
+    );
 
     bounded = true;
     if (groupIsUpper) minValue = tighten(minValue, bound, true);
@@ -411,9 +423,10 @@ function applyComparatorBounds(
     // the group's own ceiling has already crossed the ceiling held here.
     const crossed =
       bounded &&
-      windowMin !== undefined &&
-      windowMax !== undefined &&
-      windowMin > windowMax;
+      (offCalendar ||
+        (windowMin !== undefined &&
+          windowMax !== undefined &&
+          windowMin > windowMax));
 
     if (window?.max !== undefined && windowMin !== undefined) {
       windowMin = windowMin > window.max ? window.max : windowMin;

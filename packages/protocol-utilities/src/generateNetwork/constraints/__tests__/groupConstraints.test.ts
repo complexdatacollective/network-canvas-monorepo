@@ -10,6 +10,7 @@ import type { DateResolution } from '../dateWindow';
 import { resolveGenerationOrder } from '../dependencyOrder';
 import {
   comparatorBound,
+  type ComparatorDateBound,
   emptyGroupBounds,
   groupComparatorEdges,
   intersectGroupConstraints,
@@ -876,6 +877,201 @@ describe('propagateComparatorBounds', () => {
 
     expect([...propagate(entity).inverted]).toEqual([]);
   });
+
+  /** Two date variables over their own windows, the second strictly after. */
+  function datePair(
+    a: { type: DateResolution; min: string; max: string },
+    b: { type: DateResolution; min: string; max: string },
+    rule = 'greaterThanVariable',
+  ): EntityConstraints {
+    return buildEntityConstraints(
+      {
+        a: { name: 'A', type: 'datetime', parameters: a },
+        b: {
+          name: 'B',
+          type: 'datetime',
+          parameters: b,
+          validation: { [rule]: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+  }
+
+  it('refuses a strict comparison against a date pinned at the end of the calendar', () => {
+    // The floor `b` needs is the day after the last one the calendar holds.
+    // `addSteps` writes that as `10000-01-01`, which sorts below every
+    // four-digit year — so `tighten` reads it as the looser bound and drops it,
+    // and without the emptiness being recorded where it happens `b` keeps a
+    // window whose every date breaks the rule.
+    const { groups, inverted } = propagate(
+      datePair(
+        { type: 'full', min: '9999-12-31', max: '9999-12-31' },
+        { type: 'full', min: '1920-01-01', max: '9999-12-31' },
+      ),
+    );
+
+    // `a` is reported alongside it, its own ceiling having been stepped back
+    // below the one date it can hold: pinning the lower end at the last date
+    // leaves neither end of the rule anywhere to go.
+    expect([...inverted].toSorted()).toEqual(['a', 'b']);
+    // Declared bounds are kept, so a draw made before the feasibility pass
+    // refuses the protocol still lands on a date the picker offers.
+    expect(groups.get('b')?.constraints.dateWindow).toMatchObject({
+      min: '1920-01-01',
+      max: '9999-12-31',
+    });
+  });
+
+  it('leaves a non-strict comparison against that same date satisfiable', () => {
+    // The boundary the refusal must not cross: `>=` is satisfied by the last
+    // date itself, so both ends generate.
+    const { groups, inverted } = propagate(
+      datePair(
+        { type: 'full', min: '9999-12-31', max: '9999-12-31' },
+        { type: 'full', min: '1920-01-01', max: '9999-12-31' },
+        'greaterThanOrEqualToVariable',
+      ),
+    );
+
+    expect([...inverted]).toEqual([]);
+    expect(groups.get('b')?.constraints.dateWindow).toMatchObject({
+      min: '9999-12-31',
+      max: '9999-12-31',
+    });
+  });
+
+  it('refuses a coarser end asked to clear the last period the calendar holds', () => {
+    // A year picker held after a month pinned at `9999-12` has to clear the
+    // whole of 9999 whether or not the rule is strict, and there is no later
+    // year to clear it into.
+    const { inverted } = propagate(
+      datePair(
+        { type: 'month', min: '9999-12', max: '9999-12' },
+        { type: 'year', min: '1920', max: '9999' },
+        'greaterThanOrEqualToVariable',
+      ),
+    );
+
+    expect([...inverted].toSorted()).toEqual(['a', 'b']);
+  });
+
+  /** `b > a`, each number declaring the range it is given. */
+  function numberPair(
+    a: { minValue: number; maxValue: number },
+    b: { minValue: number; maxValue: number },
+  ): EntityConstraints {
+    return buildEntityConstraints(
+      {
+        a: { name: 'A', type: 'number', validation: a },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            ...b,
+            greaterThanVariable: asEntityAttributeReference('a'),
+          },
+        },
+      },
+      TODAY,
+    );
+  }
+
+  it('keeps both ranges of a strict comparison neither of which holds an integer', () => {
+    // Every value in `[0.3, 0.4]` is above every value in `[0.1, 0.2]`, and the
+    // draw fills both on the two-decimal grid. Stepping a whole unit between
+    // them raises `b`'s floor to 1.1 and refuses a protocol that generates.
+    const { groups, inverted } = propagate(
+      numberPair(
+        { minValue: 0.1, maxValue: 0.2 },
+        { minValue: 0.3, maxValue: 0.4 },
+      ),
+    );
+
+    expect([...inverted]).toEqual([]);
+    expect(groups.get('a')?.constraints).toMatchObject({
+      minValue: 0.1,
+      maxValue: 0.2,
+    });
+    expect(groups.get('b')?.constraints).toMatchObject({
+      minValue: 0.3,
+      maxValue: 0.4,
+    });
+  });
+
+  it('steps a fractional end by the grid and a whole-valued one by a unit', () => {
+    // One end of a comparison holding whole values does not make the other
+    // one's step a whole unit: the gap is the finer of the two, which is the
+    // closest any pair of values the two draws can produce comes.
+    const fractionalLower = propagate(
+      numberPair(
+        { minValue: 0.1, maxValue: 0.2 },
+        { minValue: 0, maxValue: 10 },
+      ),
+    );
+    expect([...fractionalLower.inverted]).toEqual([]);
+    expect(fractionalLower.groups.get('b')?.constraints.minValue).toBe(0.11);
+
+    const fractionalUpper = propagate(
+      numberPair(
+        { minValue: 0, maxValue: 10 },
+        { minValue: 0.1, maxValue: 0.2 },
+      ),
+    );
+    expect([...fractionalUpper.inverted]).toEqual([]);
+    expect(fractionalUpper.groups.get('a')?.constraints.maxValue).toBe(0.19);
+  });
+
+  it('separates a range by the only two values it holds', () => {
+    // `[0.001, 0.009]` holds no multiple of the grid at all, so the draw is its
+    // two ends and nothing between them. A strict comparison across it is
+    // satisfied by those two, and a step of a whole grid place would refuse it.
+    const { groups, inverted } = propagate(
+      numberPair(
+        { minValue: 0.001, maxValue: 0.009 },
+        { minValue: 0.001, maxValue: 0.009 },
+      ),
+    );
+
+    expect([...inverted]).toEqual([]);
+    expect(groups.get('a')?.constraints.maxValue).toBe(0.001);
+    expect(groups.get('b')?.constraints.minValue).toBe(0.009);
+  });
+
+  it('still refuses a fractional chain longer than its range can separate', () => {
+    // The other direction: `[0.1, 0.11]` holds two grid values, so a third
+    // variable in the chain has nowhere to sit and every group is reported.
+    const entity = buildEntityConstraints(
+      {
+        a: {
+          name: 'A',
+          type: 'number',
+          validation: { minValue: 0.1, maxValue: 0.11 },
+        },
+        b: {
+          name: 'B',
+          type: 'number',
+          validation: {
+            minValue: 0.1,
+            maxValue: 0.11,
+            greaterThanVariable: asEntityAttributeReference('a'),
+          },
+        },
+        c: {
+          name: 'C',
+          type: 'number',
+          validation: {
+            minValue: 0.1,
+            maxValue: 0.11,
+            greaterThanVariable: asEntityAttributeReference('b'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect([...propagate(entity).inverted].toSorted()).toEqual(['a', 'b', 'c']);
+  });
 });
 
 /**
@@ -886,13 +1082,24 @@ describe('propagateComparatorBounds', () => {
  * while a ceiling steps only when they do coincide and the rule is strict.
  */
 describe('comparatorBound', () => {
+  /**
+   * The bound as the one string it names, or the word `empty` where the
+   * comparison names none — no date being written that way, the two readings
+   * cannot be confused for each other.
+   */
+  const stated = (bound: ComparatorDateBound | undefined) => {
+    if (bound === undefined) return undefined;
+    return bound.kind === 'empty' ? 'empty' : bound.value;
+  };
+
   const floor = (target: string, resolution: DateResolution, strict: boolean) =>
-    comparatorBound(target, resolution, { boundsUpper: true, strict });
+    stated(comparatorBound(target, resolution, { boundsUpper: true, strict }));
   const ceiling = (
     target: string,
     resolution: DateResolution,
     strict: boolean,
-  ) => comparatorBound(target, resolution, { boundsUpper: false, strict });
+  ) =>
+    stated(comparatorBound(target, resolution, { boundsUpper: false, strict }));
 
   it('steps a coinciding bound only where the comparison is strict', () => {
     expect(floor('2026-06-17', 'full', true)).toBe('2026-06-18');
@@ -926,20 +1133,50 @@ describe('comparatorBound', () => {
   });
 
   it('leaves a value that is no date at all unbounded', () => {
-    expect(
-      comparatorBound('', 'full', { boundsUpper: true, strict: true }),
-    ).toBe(undefined);
-    expect(
-      comparatorBound('not a date', 'full', {
-        boundsUpper: true,
-        strict: true,
-      }),
-    ).toBe(undefined);
-    expect(
-      comparatorBound('2026-06-17T09:00:00Z', 'full', {
-        boundsUpper: true,
-        strict: true,
-      }),
-    ).toBe(undefined);
+    expect(floor('', 'full', true)).toBe(undefined);
+    expect(floor('not a date', 'full', true)).toBe(undefined);
+    expect(floor('2026-06-17T09:00:00Z', 'full', true)).toBe(undefined);
+  });
+
+  /**
+   * A step past either end of the calendar is the comparison having no
+   * solution, not a bound to be clamped: holding a strict floor at the last
+   * date the picker offers would readmit the one date the rule excludes, and
+   * the overflowed string cannot be caught later either — `10000-01-01` sorts
+   * below every four-digit year, so a floor written there is dropped as the
+   * looser bound and the draw goes on to emit a date the rule forbids.
+   */
+  it('has no bound for a strict comparison against the last date the calendar holds', () => {
+    expect(floor('9999-12-31', 'full', true)).toBe('empty');
+    expect(floor('9999-12', 'month', true)).toBe('empty');
+    expect(floor('9999', 'year', true)).toBe('empty');
+  });
+
+  it('has no bound for a strict comparison against the first date each picker offers', () => {
+    // The two `<select>` resolutions list their years unpadded, so year 1000 is
+    // the earliest either offers; a native date input reaches back to year one.
+    expect(ceiling('0001-01-01', 'full', true)).toBe('empty');
+    expect(ceiling('1000-01', 'month', true)).toBe('empty');
+    expect(ceiling('1000', 'year', true)).toBe('empty');
+  });
+
+  it('leaves a non-strict comparison pinned at either end satisfiable', () => {
+    expect(floor('9999-12-31', 'full', false)).toBe('9999-12-31');
+    expect(floor('9999-12', 'month', false)).toBe('9999-12');
+    expect(floor('9999', 'year', false)).toBe('9999');
+    expect(ceiling('0001-01-01', 'full', false)).toBe('0001-01-01');
+    expect(ceiling('1000-01', 'month', false)).toBe('1000-01');
+    expect(ceiling('1000', 'year', false)).toBe('1000');
+  });
+
+  it('has no bound where clearing the last period leaves the calendar', () => {
+    // A coarser end has to clear the whole period whether or not the rule is
+    // strict, and there is no month or year after the last one.
+    expect(floor('9999-12-31', 'month', false)).toBe('empty');
+    expect(floor('9999-12-31', 'year', false)).toBe('empty');
+    // A ceiling already sits earlier than a finer target, so it is the target's
+    // own period and stays inside the calendar.
+    expect(ceiling('9999-12-31', 'month', true)).toBe('9999-12');
+    expect(ceiling('9999-12-31', 'year', true)).toBe('9999');
   });
 });

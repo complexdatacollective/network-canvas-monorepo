@@ -220,6 +220,53 @@ export function decimalGrid(min: number, max: number): DecimalGrid {
 }
 
 /**
+ * The smallest difference between two values {@link decimalGridValueAt} walks,
+ * which is the largest step a strict comparison across this grid is guaranteed
+ * to leave.
+ *
+ * Usually one grid place, since the values are consecutive multiples of it. A
+ * bound the grid does not itself hold is the exception: it sits closer to its
+ * neighbouring multiple than one place, and a range holding no multiple at all
+ * — `[0.001, 0.009]` — is drawn as its two ends alone and so separates them by
+ * whatever the protocol declared. A grid with one value has no separation of
+ * its own to state, and gives the grid place back: the pair's other end is what
+ * decides how far a comparison against a pinned value has to reach.
+ */
+export function decimalGridStep(grid: DecimalGrid): number {
+  const { min, max, first, points, clampedMin, clampedMax, size } = grid;
+  const place = 1 / GRID_SCALE;
+  if (size < 2) return place;
+
+  if (points === 0) return max - min;
+
+  let step = points > 1 ? place : Number.POSITIVE_INFINITY;
+  if (clampedMin) step = Math.min(step, first / GRID_SCALE - min);
+  if (clampedMax) {
+    step = Math.min(step, max - (first + points - 1) / GRID_SCALE);
+  }
+
+  return Number.isFinite(step) ? step : place;
+}
+
+/**
+ * The grid a scalar is drawn on: the normalised scale, narrowed by whatever a
+ * group or a comparison left it. Read wherever a scalar's reachable values are
+ * counted, stepped or compared, so those readings cannot disagree.
+ */
+export function scalarDrawGrid(constraints: VariableConstraints): DecimalGrid {
+  return decimalGrid(
+    Math.max(
+      constraints.minValue ?? SCALAR_DOMAIN.minValue,
+      SCALAR_DOMAIN.minValue,
+    ),
+    Math.min(
+      constraints.maxValue ?? SCALAR_DOMAIN.maxValue,
+      SCALAR_DOMAIN.maxValue,
+    ),
+  );
+}
+
+/**
  * The `index`-th value of the grid, ascending, wrapping past the end. A bound
  * the grid does not already hold takes the position outside it, so values come
  * out in the order they sit in on the number line — which is what lets a
@@ -509,16 +556,8 @@ export function valueSpaceSize(
       // number can inherit that number's off-grid bounds, and it is drawn with
       // the same clamp as the number is — so it reaches the same two ends, and
       // is counted the same way rather than one value short of them.
-      const min = Math.max(
-        constraints.minValue ?? SCALAR_DOMAIN.minValue,
-        SCALAR_DOMAIN.minValue,
-      );
-      const max = Math.min(
-        constraints.maxValue ?? SCALAR_DOMAIN.maxValue,
-        SCALAR_DOMAIN.maxValue,
-      );
-      if (max <= min) return 1;
-      return cap(decimalGrid(min, max).size);
+      const grid = scalarDrawGrid(constraints);
+      return grid.size < 2 ? 1 : cap(grid.size);
     }
 
     case 'text':
