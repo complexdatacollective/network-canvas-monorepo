@@ -93,4 +93,23 @@ describe('<VariableRoleConflictsAlert />', () => {
     expect(item).toHaveTextContent('Alter form');
     expect(item).toHaveTextContent('Sort into bins');
   });
+
+  it('lists a stage once even when it writes the variable from several prompts', () => {
+    const twoPromptBinStage = {
+      ...categoricalBinStage,
+      prompts: [
+        { id: 'p1', text: 'Sort', variable: 'category' },
+        { id: 'p2', text: 'Sort again', variable: 'category' },
+      ],
+    };
+    const store = createTestStore({
+      ...conflictProtocol,
+      stages: [alterFormStage, twoPromptBinStage],
+    });
+    render(<VariableRoleConflictsAlert />, { wrapper: wrap(store) });
+
+    const item = screen.getByText('Category').closest('li');
+    expect(item).not.toBeNull();
+    expect(item?.textContent?.match(/Sort into bins/g)).toHaveLength(1);
+  });
 });

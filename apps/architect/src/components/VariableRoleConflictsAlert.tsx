@@ -9,18 +9,23 @@ import { getProtocol } from '~/selectors/protocol';
  * Every stage carries a required, non-empty `label`, so a hit's stage is
  * only ever missing when its `stageIndex` couldn't be resolved (see
  * `findVariableRoleConflicts`); that case still renders a legible fallback
- * instead of an empty string.
+ * instead of an empty string. De-duplicated so a stage writing the variable
+ * from several prompts lists once, not once per hit.
  */
 const describeHits = (
   stages: { label: string }[],
   hits: VariableRoleHit[],
 ): string =>
-  hits
-    .map((hit) =>
-      hit.stageIndex !== undefined ? stages[hit.stageIndex]?.label : undefined,
-    )
-    .map((label) => label ?? 'an unknown stage')
-    .join(', ');
+  [
+    ...new Set(
+      hits.map(
+        (hit) =>
+          (hit.stageIndex !== undefined
+            ? stages[hit.stageIndex]?.label
+            : undefined) ?? 'an unknown stage',
+      ),
+    ),
+  ].join(', ');
 
 /**
  * Timeline warning shown when a codebook variable is written both by a form

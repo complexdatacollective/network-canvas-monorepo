@@ -37,12 +37,13 @@ const stageIndexOf = (path: (string | number)[]): number | undefined =>
   path[0] === 'stages' && typeof path[1] === 'number' ? path[1] : undefined;
 
 /**
- * FamilyPedigree declares no top-level `subject`, so its only
- * `stageSubject`-resolved writer — `nominationPrompts[].variable` — collects
- * with `hit.subject` undefined. Recover it from the stage's own `nodeConfig`
- * (or, symmetrically, `edgeConfig`) type instead. FamilyPedigree's other
- * writer fields (on `nodeConfig`/`edgeConfig` themselves) are sibling-resolved
- * and already carry a subject, so they never reach this fallback.
+ * FamilyPedigree declares no top-level `subject`, so its
+ * `stageSubject`-resolved writers — `nominationPrompts[].variable` and
+ * `nodeConfig.form[].variable` — collect with `hit.subject` undefined.
+ * Recover it from the stage's own `nodeConfig` (or, symmetrically,
+ * `edgeConfig`) type instead. FamilyPedigree's remaining writer fields (the
+ * slots on `nodeConfig`/`edgeConfig` themselves) are sibling-resolved and
+ * already carry a subject, so they never reach this fallback.
  * NarrativePedigree has neither `nodeConfig` nor `edgeConfig`, and its one
  * entity-attribute reference (`diseases[].variable`) carries no `usage` tag
  * today, so it never reaches this function at all.
@@ -52,11 +53,12 @@ const recoverSubject = (
   hit: EntityAttributeReferenceHit,
 ): { entity: 'node' | 'edge' | 'ego'; type?: string } | undefined => {
   if (hit.subject) {
-    const { entity, type } = hit.subject as {
-      entity: 'node' | 'edge' | 'ego';
-      type?: string;
-    };
-    return { entity, ...(type !== undefined ? { type } : {}) };
+    const subject = hit.subject;
+    // StageSubject is a union whose ego member carries no `type` — the `in`
+    // check narrows to the node/edge members instead of asserting one shape.
+    return 'type' in subject
+      ? { entity: subject.entity, type: subject.type }
+      : { entity: subject.entity };
   }
   const index = stageIndexOf(hit.path);
   if (index === undefined) return undefined;

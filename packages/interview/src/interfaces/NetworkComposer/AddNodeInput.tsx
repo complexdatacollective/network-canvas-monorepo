@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
@@ -43,7 +43,6 @@ function AddNodeField({
   validationContext,
   ...validationProps
 }: AddNodeInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const validateForm = useFormStore((state) => state.validateForm);
 
   const { id, meta, fieldProps, containerProps } = useField({
@@ -83,7 +82,6 @@ function AddNodeField({
   return (
     <div {...containerProps} className="flex w-72 flex-col">
       <InputField
-        ref={inputRef}
         // eslint-disable-next-line jsx-a11y/no-autofocus -- intentional: the
         // popover exists to capture a name, so focus belongs here on open.
         autoFocus
