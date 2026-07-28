@@ -96,7 +96,7 @@ In Architect, your protocol — including any roster resources you add — is sa
 
 <AppOnly app="classic">
 
-In Architect Classic, your protocol is a `.netcanvas` file on your computer, and the roster is stored inside that file when you save.
+In <Term name="architect-classic">Architect Classic</Term>, your protocol is a `.netcanvas` file on your computer, and the roster is stored inside that file when you save.
 
 ![Resource library button](/assets/img/roster-tutorial/resource-button.png 'The resource library button from within a protocol in Architect Classic')
 
@@ -175,7 +175,7 @@ With a Name Generator (using quick add), we can nominate new nodes with the new 
 
 <AppOnly app="classic">
 
-Below is an example of such a screen in Interviewer Classic, with some of the Simpsons already nominated (in the alter pool) and some still in roster.
+Below is an example of such a screen in <Term name="interviewer-classic">Interviewer Classic</Term>, with some of the Simpsons already nominated (in the alter pool) and some still in roster.
 
 ![Side panels in Name Generator](/assets/img/roster-tutorial/quick-add-roster-side-panel.png 'A Name Generator in Interviewer Classic with side panels for the roster and for nodes already mentioned')
 

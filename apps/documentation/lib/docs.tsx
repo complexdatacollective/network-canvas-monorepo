@@ -69,6 +69,7 @@ import {
   SummaryCard,
   SummarySection,
 } from '~/components/customComponents/SummaryCard';
+import Term from '~/components/customComponents/Term';
 import TipBox, { type TipBoxProps } from '~/components/customComponents/TipBox';
 import type { AppAxis } from '~/components/customComponents/useSelectedApp';
 import VideoIFrame from '~/components/customComponents/VideoIFrame';
@@ -356,6 +357,9 @@ const createMarkdownComponents = (docSlug?: string) => ({
   }) => <InterfaceMeta {...props} compatibility={getCompatibility(docSlug)} />,
   definition: (props: { children: ReactNode }) => (
     <div className="text-lg font-normal">{props.children}</div>
+  ),
+  term: (props: { name: string; children: ReactNode }) => (
+    <Term {...props} currentSlug={docSlug} />
   ),
   appswitch: (props: { children: ReactNode; axis?: AppAxis }) => (
     <AppSwitch {...props} />

@@ -16,10 +16,10 @@ The export process transforms your interview data—including ego attributes, al
 
 ## Where to export from
 
-This page describes what Network Canvas exports contain, regardless of which application produced them. The steps for actually running an export differ by application — Interviewer and Interviewer Classic store data on the device and export it as files you keep, while Fresco stores data centrally and exports from its dashboard. Each application's own guide walks through its export workflow:
+This page describes what Network Canvas exports contain, regardless of which application produced them. The steps for actually running an export differ by application — Interviewer and <Term name="interviewer-classic">Interviewer Classic</Term> store data on the device and export it as files you keep, while Fresco stores data centrally and exports from its dashboard. Each application's own guide walks through its export workflow:
 
 - **Interviewer** — see [Using Interviewer](/en/collect-data/interviewer/using-interviewer#resuming-exporting-and-managing-interview-sessions)
-- **Interviewer Classic** — see [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows#data-export-via-cloud-file-sharing)
+- **<Term name="interviewer-classic">Interviewer Classic</Term>** — see [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows#data-export-via-cloud-file-sharing)
 - **Fresco** — see [Using Fresco](/en/collect-data/fresco/using-fresco#exporting-data)
 
 ## File types
@@ -199,7 +199,7 @@ Network Canvas provides several specialized export options that affect how your 
 
 This option combines all interview sessions conducted with the same protocol into a single file (or set of files for CSV).
 
-**Availability:** This option is only available in Interviewer Classic, up to version 6.5—it was removed in version 6.6. Interviewer and Fresco always export each session as separate files—Interviewer packages them into a single `.zip` archive for download.
+**Availability:** This option is only available in <Term name="interviewer-classic">Interviewer Classic</Term>, up to version 6.5—it was removed in version 6.6. Interviewer and Fresco always export each session as separate files—Interviewer packages them into a single `.zip` archive for download.
 
 When enabled, this creates one combined file per protocol containing all interviews. For CSV exports, you get a single ego file, a single alter file per type, and a single edge file per type. For GraphML exports, you get a single file containing a separate `<graph>` element for each session—note that most software outside Network Canvas does not support GraphML files with multiple graphs. When disabled, the export creates separate files for each interview session.
 
@@ -215,7 +215,7 @@ This option adds screen-specific pixel coordinates alongside the normalized node
 
 Network Canvas stores node positions from Sociogram layout variables as normalized x/y coordinates (values between 0 and 1) with the origin at the top-left. This normalization allows layouts to be displayed on screens of different sizes while maintaining relative positions.
 
-A layout variable is exported as two CSV columns named after the variable, with `_x` and `_y` suffixes—a layout variable named `layout` produces `layout_x` and `layout_y` columns containing the normalized values. When this option is enabled, the export keeps those normalized columns and **adds** two further columns, `layout_screenSpaceX` and `layout_screenSpaceY`, containing pixel values (rounded to two decimal places) based on a screen size. In Interviewer, it uses the screen layout width and height you set in **Settings → Data export** (default 1920 x 1080 pixels). In Interviewer Classic, it uses the screen dimensions configured in its export settings, which default to — and can be reset to — the device's own resolution. In Fresco, it uses a fixed size of 1920 x 1080 pixels. When disabled (the default), only the normalized 0-1 columns are exported. Note that the screen-space Y value is calculated as (1 − y) × screen height, so it is measured from the bottom of the screen—matching the coordinate convention of most visualization software—while the normalized `_y` column is measured from the top.
+A layout variable is exported as two CSV columns named after the variable, with `_x` and `_y` suffixes—a layout variable named `layout` produces `layout_x` and `layout_y` columns containing the normalized values. When this option is enabled, the export keeps those normalized columns and **adds** two further columns, `layout_screenSpaceX` and `layout_screenSpaceY`, containing pixel values (rounded to two decimal places) based on a screen size. In Interviewer, it uses the screen layout width and height you set in **Settings → Data export** (default 1920 x 1080 pixels). In <Term name="interviewer-classic">Interviewer Classic</Term>, it uses the screen dimensions configured in its export settings, which default to — and can be reset to — the device's own resolution. In Fresco, it uses a fixed size of 1920 x 1080 pixels. When disabled (the default), only the normalized 0-1 columns are exported. Note that the screen-space Y value is calculated as (1 − y) × screen height, so it is measured from the bottom of the screen—matching the coordinate convention of most visualization software—while the normalized `_y` column is measured from the top.
 
 Enable this option when you want to recreate the exact visual layout as it appeared during the interview, when you're importing into visualization software that expects pixel coordinates, or when you need coordinates that match specific screen dimensions. Disable it when you want device-independent coordinates that work on any canvas size, when you're comparing layouts created on different screen sizes, or when you want maximum flexibility for visualization.
 
