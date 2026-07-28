@@ -49,7 +49,11 @@ async function uploadProtocolFile(canvas: ReturnType<typeof within>) {
 // to it, then the slot fills with the installed protocol), delete a
 // protocol (scale out, neighbours close the gap), and install the sample
 // (the slot's content swaps in place with simulated progress).
-function DeckHarness() {
+function DeckHarness({
+  newSessionProtocolHash,
+}: {
+  newSessionProtocolHash?: string;
+}) {
   const [protocols, setProtocols] = useState<ProtocolWithCounts[]>([
     makeProtocol('Friendship Ties', 'A quick two-prompt name generator.'),
     makeProtocol(
@@ -133,6 +137,8 @@ function DeckHarness() {
         }
         onInstallSample={installSample}
         onDismissSample={() => setShowSample(false)}
+        newSessionProtocolHash={newSessionProtocolHash}
+        onCancelNewSession={() => {}}
       />
     </div>
   );
@@ -210,6 +216,40 @@ export const FileDragActivatesImportCard: Story = {
     );
 
     await fireEvent(document.body, dragEvent('dragleave'));
+  },
+};
+
+export const FileDragDoesNotAnnounceSelectionDuringNewSession: Story = {
+  render: () => <DeckHarness newSessionProtocolHash="hash-Friendship Ties" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const status = canvas.getByRole('status');
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(
+      new File(['netcanvas'], 'study.netcanvas', {
+        type: 'application/x-netcanvas',
+      }),
+    );
+
+    await fireEvent(
+      document.body,
+      new DragEvent('dragenter', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      }),
+    );
+
+    await expect(status).toBeEmptyDOMElement();
+
+    await fireEvent(
+      document.body,
+      new DragEvent('dragleave', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      }),
+    );
   },
 };
 

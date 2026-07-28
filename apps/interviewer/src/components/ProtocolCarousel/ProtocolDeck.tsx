@@ -408,7 +408,9 @@ export function ProtocolDeck({
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center">
       <output className="sr-only" aria-live="polite">
-        {isDragGlobal ? 'Import a protocol card selected' : ''}
+        {isDragGlobal && !newSessionActive
+          ? 'Import a protocol card selected'
+          : ''}
       </output>
       <AnimatePresence>
         {newSessionActive ? (
