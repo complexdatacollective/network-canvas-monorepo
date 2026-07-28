@@ -49,6 +49,11 @@ export {
   type ValidationContradiction,
 } from './schemas/8/variables/validation-contradictions.ts';
 export {
+  findVariableRoleConflicts,
+  type VariableRoleConflict,
+  type VariableRoleHit,
+} from './utils/findVariableRoleConflicts.ts';
+export {
   asEntityAttributeReference,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
