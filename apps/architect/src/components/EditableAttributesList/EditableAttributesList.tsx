@@ -10,6 +10,7 @@ import { getVariablesForSubjectSelector } from '~/selectors/codebook';
 import ComposerFieldPreview from '../sections/Form/ComposerFieldPreview';
 import {
   buildComposerFieldOverlay,
+  composerDraftValues,
   composerItemSelector,
   composerNormalizeField,
   isVariableUsedBySibling,
@@ -93,10 +94,14 @@ const EditableAttributesList = ({
         // edit back to the codebook. Re-key it onto the editor's own
         // always-rendered contradiction field, which both blocks the save and
         // shows the researcher why.
+        // Nineteenth-wave Finding 3: `composerDraftValues` reads the editor's
+        // `component`/`parameters` null reset as inheritance, matching the
+        // runtime's `fieldParameters ?? codebookParameters` — the overlay
+        // builder does the same for the committed siblings.
         const { validation, ...rest } = makeFieldEditorValidate(
           allVariables,
           buildComposerFieldOverlay(composerFields, props?.editIndex),
-        )(values);
+        )(composerDraftValues(values));
         return typeof validation === 'string'
           ? { ...rest, [COMPOSER_CONTRADICTION_FIELD]: validation }
           : rest;

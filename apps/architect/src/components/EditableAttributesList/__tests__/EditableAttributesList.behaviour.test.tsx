@@ -44,7 +44,8 @@ vi.mock('~/components/Form/ValidatedFieldArray', () => ({
 }));
 
 // One categorical variable whose committed `minSelected: 3` contradicts any
-// draft that shrinks its options below three.
+// draft that shrinks its options below three, plus a pair of year-resolution
+// DatePickers joined by `sameAs` for the parameter-inheritance cases below.
 const codebookVariables = {
   colors: {
     name: 'colors',
@@ -55,6 +56,20 @@ const codebookVariables = {
       { label: 'Green', value: 'green' },
     ],
     validation: { minSelected: 3 },
+  },
+  startDate: {
+    name: 'startDate',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'year' },
+    validation: { sameAs: 'endDate' },
+  },
+  endDate: {
+    name: 'endDate',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'year' },
+    validation: {},
   },
 };
 
@@ -262,5 +277,88 @@ describe('the composer attribute editor’s contradiction gate', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+// Nineteenth-wave Finding 3: changing a composer field's input control resets
+// its `parameters` to null (withFieldsHandlers' `handleChangeComponent`). The
+// stage commit prunes that null away, and the interview runtime resolves
+// `fieldParameters ?? codebookParameters` — so null MEANS "inherit the
+// codebook parameters". Passing the raw null into the prospective views
+// installed it OVER those parameters and read the picker at full resolution,
+// falsely rejecting a coherent edit.
+describe('null composer parameters mean inheritance', () => {
+  it('inherits the codebook parameters for a draft whose parameters were reset', () => {
+    const { onSubmit } = renderEditor({
+      composerFields: [],
+      draft: {
+        variable: 'startDate',
+        component: 'DatePicker',
+        parameters: null,
+        validation: { sameAs: 'endDate' },
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(screen.queryByText(/different resolutions/)).not.toBeInTheDocument();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('inherits the codebook parameters for a sibling field whose parameters were reset', () => {
+    const { onSubmit } = renderEditor({
+      composerFields: [
+        { variable: 'endDate', component: 'DatePicker', parameters: null },
+      ],
+      draft: {
+        variable: 'startDate',
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+        validation: { sameAs: 'endDate' },
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(screen.queryByText(/different resolutions/)).not.toBeInTheDocument();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('still lets a sibling field’s real parameters override the codebook', () => {
+    const { onSubmit } = renderEditor({
+      composerFields: [
+        {
+          variable: 'endDate',
+          component: 'DatePicker',
+          parameters: { type: 'month' },
+        },
+      ],
+      draft: {
+        variable: 'startDate',
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+        validation: { sameAs: 'endDate' },
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText(/different resolutions/)).toBeInTheDocument();
+  });
+
+  it('leaves an absent parameters key inheriting exactly as before', () => {
+    const { onSubmit } = renderEditor({
+      composerFields: [{ variable: 'endDate', component: 'DatePicker' }],
+      draft: {
+        variable: 'startDate',
+        component: 'DatePicker',
+        validation: { sameAs: 'endDate' },
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });

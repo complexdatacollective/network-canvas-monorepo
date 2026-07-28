@@ -192,8 +192,28 @@ export const makeFieldEditorValidate =
     // restricts results to contradictions the edited variable participates
     // in, so an empty validation map is safe to proceed with.
     const validation = isRecord(values.validation) ? values.validation : {};
+    // Nineteenth-wave Finding 2: creating a variable writes the typed DISPLAY
+    // NAME into `variable` as well as `_createNewVariable` (see
+    // withFieldsHandlers' `handleNewVariable`), so a non-empty
+    // `values.variable` is not necessarily a committed codebook id. Reading it
+    // as one bypassed `buildProspectiveVariables`'s collision-free sentinel:
+    // a typed name matching a real codebook id injected the draft OVER that
+    // variable, so the draft's rules against it read as self-references
+    // (a `sameAs` to oneself is vacuously satisfiable and reports nothing) —
+    // then creation assigned a fresh uuid and left a genuinely contradictory
+    // pair for protocol validation to reject.
+    // Truthiness, not mere presence: `handleChangeVariable` resets the flag to
+    // `null` when an existing variable is picked, and both commit handlers
+    // (`withFormHandlers`/`withComposerFormHandlers`) branch on
+    // `if (!_createNewVariable)`, so a blank flag commits as an EXISTING
+    // variable and must be read as one here too.
+    const isCreatingVariable =
+      typeof values._createNewVariable === 'string' &&
+      values._createNewVariable !== '';
     const currentVariableId =
-      typeof values.variable === 'string' ? values.variable : '';
+      !isCreatingVariable && typeof values.variable === 'string'
+        ? values.variable
+        : '';
     const overlaidVariables = withOverlay(allVariables, overlay);
     const existing = currentVariableId
       ? overlaidVariables[currentVariableId]

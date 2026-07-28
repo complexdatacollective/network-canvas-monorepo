@@ -785,8 +785,12 @@ const DATE_PICKER_PARAMETER_KEYS = ['type', 'min', 'max'] as const;
  * neither member (the schema rejects it, and the analyser also runs over raw
  * migration input). No inference is safe then, so the pre-existing DatePicker
  * reading stands.
+ *
+ * Nineteenth-wave Finding 1: exported so the v7→v8 migration's codebook
+ * datetime step routes a componentless variable to the same normaliser this
+ * reading assumes.
  */
-const isRelativeDatePickerShape = (parameters: UnknownRecord): boolean =>
+export const isRelativeDatePickerShape = (parameters: UnknownRecord): boolean =>
   RELATIVE_DATE_PICKER_PARAMETER_KEYS.some(
     (key) => parameters[key] !== undefined,
   ) && !DATE_PICKER_PARAMETER_KEYS.some((key) => parameters[key] !== undefined);

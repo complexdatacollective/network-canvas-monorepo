@@ -8,6 +8,7 @@ import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
 import {
   type ContradictionClass,
   findValidationContradictions,
+  isRelativeDatePickerShape,
   type ValidationContradiction,
 } from './variables/validation-contradictions.ts';
 import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation.ts';
@@ -1324,7 +1325,22 @@ const migrationV7toV8 = createMigration({
             if (typedVariable.type !== 'datetime') continue;
             const parameters = asRecord(typedVariable.parameters);
             if (!parameters) continue;
-            if (typedVariable.component === 'RelativeDatePicker') {
+            // Nineteenth-wave Finding 1: `component` is OPTIONAL on both
+            // datetime members, so a v7 variable can declare an
+            // anchor/before/after window without naming a component (the
+            // stage that renders it supplies one). Routing that to the
+            // DatePicker normaliser left the relative keys untouched and the
+            // v8 variable union then rejected the protocol outright — it
+            // could not be imported at all. `isRelativeDatePickerShape` is
+            // the analyser's own inference over the two members' disjoint
+            // strictObject key sets, so both layers read such a variable the
+            // same way; a record mixing keys from BOTH shapes matches neither
+            // member, and keeps the pre-existing DatePicker reading.
+            if (
+              typedVariable.component === 'RelativeDatePicker' ||
+              (typedVariable.component === undefined &&
+                isRelativeDatePickerShape(parameters))
+            ) {
               normalizeRelativeDatePickerParameters(parameters);
             } else {
               normalizeDatePickerParameters(parameters);

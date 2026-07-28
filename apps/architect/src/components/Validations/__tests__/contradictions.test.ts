@@ -201,6 +201,81 @@ describe('makeFieldEditorValidate', () => {
     expect(errors.validation).toContain('minLength');
   });
 
+  // Nineteenth-wave Finding 2: creating a variable writes the typed DISPLAY
+  // NAME into both `variable` and `_createNewVariable` (withFieldsHandlers'
+  // `handleNewVariable`), so a non-empty `values.variable` is not always a
+  // committed codebook id. Treating it as one bypassed the collision-free
+  // sentinel entirely: a typed name matching a real codebook id overwrote
+  // that variable, collapsing the draft's rules against it into harmless
+  // self-references — and creation then assigned a fresh uuid, leaving a
+  // genuinely contradictory pair that only protocol validation would catch.
+  describe('a draft creating a new variable', () => {
+    const collidingName = 'Age';
+    const allVariablesWithColliding = {
+      [collidingName]: {
+        name: collidingName,
+        type: 'categorical',
+        options: [
+          { label: 'Red', value: 'red' },
+          { label: 'Blue', value: 'blue' },
+        ],
+        validation: {},
+      },
+    };
+
+    // The contradiction is only visible if the real `Age` survived: a draft
+    // injected over it reads `sameAs` as a self-reference, which is
+    // vacuously satisfiable and reports nothing at all — so the dialog saved,
+    // creation assigned a fresh uuid, and the disjoint option sets surfaced
+    // only at protocol validation.
+    it('reports a genuine contradiction against the colliding variable', () => {
+      const validate = makeFieldEditorValidate(allVariablesWithColliding);
+      const errors = validate({
+        variable: collidingName,
+        _createNewVariable: collidingName,
+        component: 'CheckboxGroup',
+        options: [
+          { label: 'Green', value: 'green' },
+          { label: 'Yellow', value: 'yellow' },
+        ],
+        validation: { sameAs: collidingName },
+      });
+      expect(errors.validation).toContain('share no option values');
+    });
+
+    it('still reports a contradiction when the typed name collides with nothing', () => {
+      const validate = makeFieldEditorValidate({
+        limit: numberVariable('limit', { maxValue: 5 }),
+      });
+      const errors = validate({
+        variable: 'Brand New',
+        _createNewVariable: 'Brand New',
+        component: 'Number',
+        validation: { minValue: 10, lessThanVariable: 'limit' },
+      });
+      expect(errors.validation).toContain(
+        'can never be satisfied because their value ranges do not overlap',
+      );
+    });
+
+    it('still treats an edit of an existing variable as that variable', () => {
+      // No `_createNewVariable`: `colors` is a committed codebook id, and the
+      // draft must substitute for it rather than be injected alongside under
+      // a sentinel (which would leave the committed `minSelected: 3` intact
+      // and report nothing).
+      const validate = makeFieldEditorValidate(allVariables);
+      const errors = validate({
+        variable: 'colors',
+        validation: { minSelected: 3 },
+        options: [
+          { label: 'Red', value: 'red' },
+          { label: 'Blue', value: 'blue' },
+        ],
+      });
+      expect(errors.validation).toContain('minSelected');
+    });
+  });
+
   // Finding 2 (second-wave review): a variable that is only a TARGET of
   // another's sameAs/comparator never configures rules of its own, so
   // `values.validation` can be absent entirely — previously that short-
@@ -243,11 +318,12 @@ describe('makeFieldEditorValidate', () => {
     expect(errors.validation).toContain('share no option values');
   });
 
-  // Finding C: the dialog is the only editor surface that can change
-  // `parameters` (the row editor's `checkDraft` path never sees them), so it
-  // must forward the draft parameters into the analyser or an edit like this
-  // one — narrowing a DatePicker window until it no longer overlaps a
+  // Finding C: the dialog is the editor surface that changes `parameters`, so
+  // it must forward the draft parameters into the analyser or an edit like
+  // this one — narrowing a DatePicker window until it no longer overlaps a
   // committed comparator's other side — would slip through unvalidated.
+  // (Nineteenth-wave Finding 4 gave the row-level `checkDraft` the same
+  // forwarding, so the two levels now judge one draft.)
   it('flags a disjointBounds contradiction introduced by editing parameters.max', () => {
     const dateVariables = {
       start: {
@@ -308,6 +384,40 @@ describe('makeFieldEditorValidate', () => {
     expect(errors.validation).toContain(
       'can never be satisfied because their value ranges do not overlap',
     );
+  });
+
+  // Nineteenth-wave Finding 3 is deliberately composer-only. For a CODEBOOK
+  // variable the same `parameters: null` reset commits as a replacement —
+  // `updateVariableAsync` prunes the null and `replaceProperties` drops the
+  // old record — so the variable really does end up with no parameters, and
+  // the prospective view must keep reading null as cleared rather than as
+  // inheritance. Here that clears `start`'s year resolution and leaves it
+  // mismatching its `sameAs` partner.
+  it('reads a null parameters reset as CLEARED for a codebook variable', () => {
+    const dateVariables = {
+      start: {
+        name: 'start',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+        validation: { sameAs: 'end' },
+      },
+      end: {
+        name: 'end',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+        validation: {},
+      },
+    };
+    const validate = makeFieldEditorValidate(dateVariables);
+    const errors = validate({
+      variable: 'start',
+      component: 'DatePicker',
+      parameters: null,
+      validation: { sameAs: 'end' },
+    });
+    expect(errors.validation).toContain('different resolutions');
   });
 
   // Fifth-wave Finding 4: the codebook definitions of `a`/`b` are both

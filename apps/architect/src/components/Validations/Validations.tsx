@@ -138,6 +138,8 @@ type ValidationsProps = {
   allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
   currentVariableId?: string;
   draftOptions?: unknown;
+  draftComponent?: unknown;
+  draftParameters?: unknown;
 };
 
 const Validations = ({
@@ -154,6 +156,8 @@ const Validations = ({
   allVariables,
   currentVariableId,
   draftOptions,
+  draftComponent,
+  draftParameters,
 }: ValidationsProps) => {
   // Only one row (existing or the "add new" draft) is ever open for editing
   // at a time.
@@ -218,9 +222,24 @@ const Validations = ({
           variableType: isPassphrase ? 'text' : (variableType ?? ''),
           validation: prospective,
           options: draftOptions,
+          // Nineteenth-wave Finding 4: without these the row check analysed
+          // the COMMITTED variable, so a parameters edit and a new reference
+          // rule made in the same dialog session disagreed with the
+          // form-level validator — the row rejected an edit that saves
+          // perfectly well once the dialog is closed and reopened.
+          component: draftComponent,
+          parameters: draftParameters,
         }).map((contradiction) => contradiction.message);
       },
-    [value, allVariables, currentVariableId, variableType, draftOptions],
+    [
+      value,
+      allVariables,
+      currentVariableId,
+      variableType,
+      draftOptions,
+      draftComponent,
+      draftParameters,
+    ],
   );
 
   // A reference rule (e.g. "Same as") is disabled in the dropdown once no

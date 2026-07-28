@@ -4563,6 +4563,91 @@ describe('Migration V7 to V8', () => {
       expect(variables?.a).toHaveProperty('parameters.anchor', '2020-01-01');
     });
 
+    // Nineteenth-wave Finding 1: `component` is OPTIONAL on both datetime
+    // members, so a v7 codebook variable can declare an anchor/before/after
+    // window with no component at all. Routing it to the DatePicker
+    // normaliser left `anchor`/`before` untouched and the v8 variable union
+    // then rejected the whole protocol on import.
+    it('normalises a componentless relative-shaped parameters record', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'relative_small_year',
+          type: 'datetime',
+          parameters: { anchor: '0500-01-01', before: -2 },
+        },
+        b: {
+          name: 'relative_valid_anchor',
+          type: 'datetime',
+          parameters: { anchor: '2020-01-01', after: -3 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.anchor');
+      expect(variables?.a).not.toHaveProperty('parameters.before');
+      expect(variables?.b).toHaveProperty('parameters.anchor', '2020-01-01');
+      expect(variables?.b).not.toHaveProperty('parameters.after');
+    });
+
+    it('still applies DatePicker truncation to a componentless picker', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'componentless_year_picker',
+          type: 'datetime',
+          parameters: { type: 'year', min: '2020-05-03' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.min', '2020');
+      expect(variables?.a).toHaveProperty('parameters.type', 'year');
+    });
+
+    it('leaves declared-component datetime variables on their own normaliser', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'declared_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'year', min: '2020-05-03' },
+        },
+        b: {
+          name: 'declared_relative',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '0500-01-01', before: -2 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.min', '2020');
+      expect(variables?.b).not.toHaveProperty('parameters.anchor');
+      expect(variables?.b).not.toHaveProperty('parameters.before');
+    });
+
+    // A record carrying keys from BOTH parameter shapes matches neither
+    // strictObject member, so no inference is safe: the pre-existing
+    // DatePicker reading stands rather than guessing at relative intent.
+    it('keeps the DatePicker reading for a mixed-key componentless record', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'mixed_shape',
+          type: 'datetime',
+          parameters: { type: 'year', min: '2020-05-03', before: -2 },
+        },
+      });
+      const variables = (
+        migratedRaw as unknown as {
+          codebook: { ego: { variables: Record<string, unknown> } };
+        }
+      ).codebook.ego.variables;
+      expect(variables.a).toHaveProperty('parameters.min', '2020');
+      expect(variables.a).toHaveProperty('parameters.before', -2);
+    });
+
     // Third-wave Finding 2: isValidCalendarDate must not fall into
     // Date.UTC's two-digit-year coercion (a year 0-99 silently becoming
     // 1900-1999), which would falsely reject a real four-digit year like

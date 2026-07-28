@@ -18,9 +18,11 @@ import Validations from '../index';
 
 type TestVariable = {
   name: string;
-  type: 'number' | 'text' | 'boolean' | 'ordinal';
+  type: 'number' | 'text' | 'boolean' | 'ordinal' | 'datetime';
   validation?: Record<string, unknown>;
   options?: { label: string; value: boolean | number }[];
+  component?: string;
+  parameters?: Record<string, unknown>;
 };
 
 type OwnProps = {
@@ -58,10 +60,19 @@ const ReduxHarness = reduxForm<Record<string, unknown>, OwnProps>({
   form: FORM_NAME,
 })(Harness);
 
+// `component`/`parameters` are seeded as ordinary form values, exactly as the
+// field editor's own controls write them — the connected Validations reads
+// them off the same form through `formValueSelector`.
 const setup = ({
   validation = {},
+  component,
+  parameters,
   ...ownProps
-}: OwnProps & { validation?: Record<string, unknown> }) => {
+}: OwnProps & {
+  validation?: Record<string, unknown>;
+  component?: string;
+  parameters?: Record<string, unknown>;
+}) => {
   const store = configureStore({
     reducer: { form: formReducer },
     middleware: (getDefaultMiddleware) =>
@@ -70,7 +81,10 @@ const setup = ({
 
   return render(
     <Provider store={store}>
-      <ReduxHarness initialValues={{ validation }} {...ownProps} />
+      <ReduxHarness
+        initialValues={{ validation, component, parameters }}
+        {...ownProps}
+      />
     </Provider>,
   );
 };
@@ -266,6 +280,106 @@ describe('Validations behaviour', () => {
     });
 
     expect(screen.queryByText(/possible values/)).not.toBeInTheDocument();
+  });
+
+  // Nineteenth-wave Finding 4: the row check forwarded only the draft
+  // `validation` and `options`, so it judged a reference rule against the
+  // COMMITTED component and parameters. Widening A's singleton DatePicker
+  // window to match B and adding `A sameAs B` in one dialog session was
+  // therefore rejected on the old window, even though the form-level
+  // validator (which does see the draft) accepts it and the saved protocol is
+  // valid — the researcher had to close and reopen the dialog to make a legal
+  // edit.
+  describe('reference rules judged against the draft parameters', () => {
+    const singletonYearPickers = (draftYear: string) => ({
+      variableType: 'datetime',
+      entity: 'node',
+      currentVariableId: 'a',
+      allVariables: {
+        a: {
+          name: 'A',
+          type: 'datetime' as const,
+          component: 'DatePicker',
+          parameters: { type: 'year', min: '2020', max: '2020' },
+          validation: {},
+        },
+        b: {
+          name: 'B',
+          type: 'datetime' as const,
+          component: 'DatePicker',
+          parameters: { type: 'year', min: '2021', max: '2021' },
+          validation: {},
+        },
+      },
+      existingVariables: { b: { name: 'B', type: 'datetime' as const } },
+      validation: {},
+      component: 'DatePicker',
+      parameters: { type: 'year', min: draftYear, max: draftYear },
+    });
+
+    it('offers Same as once the draft window matches the only candidate', () => {
+      setup(singletonYearPickers('2021'));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+
+      expect(
+        within(screen.getByRole('combobox')).getByRole('option', {
+          name: 'Same as',
+        }),
+      ).not.toBeDisabled();
+    });
+
+    it('still withholds Same as when the draft window stays disjoint', () => {
+      setup(singletonYearPickers('2022'));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+
+      expect(
+        within(screen.getByRole('combobox')).getByRole('option', {
+          name: 'Same as',
+        }),
+      ).toBeDisabled();
+    });
+
+    // The draft `component` matters on its own: while A is still committed as
+    // a RelativeDatePicker the row check reads it at full resolution (and as
+    // an interview-date window), which mismatches B's year picker however the
+    // draft parameters are written.
+    it('offers Same as once the draft switches the picker to match', () => {
+      setup({
+        variableType: 'datetime',
+        entity: 'node',
+        currentVariableId: 'a',
+        allVariables: {
+          a: {
+            name: 'A',
+            type: 'datetime' as const,
+            component: 'RelativeDatePicker',
+            parameters: { anchor: '2021-06-01' },
+            validation: {},
+          },
+          b: {
+            name: 'B',
+            type: 'datetime' as const,
+            component: 'DatePicker',
+            parameters: { type: 'year', min: '2021', max: '2021' },
+            validation: {},
+          },
+        },
+        existingVariables: { b: { name: 'B', type: 'datetime' as const } },
+        validation: {},
+        component: 'DatePicker',
+        parameters: { type: 'year', min: '2021', max: '2021' },
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+
+      expect(
+        within(screen.getByRole('combobox')).getByRole('option', {
+          name: 'Same as',
+        }),
+      ).not.toBeDisabled();
+    });
   });
 
   it('gates a below-floor draft: disables the tick and shows the floor message', () => {

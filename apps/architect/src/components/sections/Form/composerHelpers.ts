@@ -62,6 +62,27 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
+ * Nineteenth-wave Finding 3: a composer field's `component`/`parameters` with
+ * the editor's null reset read as ABSENT. Changing a field's input control
+ * writes `parameters: null` and picking a componentless codebook variable
+ * writes `component: null` (withFieldsHandlers' `handleChangeComponent` /
+ * `handleChangeVariable`); the stage commit prunes those nulls away, and the
+ * interview runtime resolves `fieldParameters ?? codebookParameters` (see
+ * `@codaco/interview`'s form-field selector), so a null on the FIELD means
+ * "inherit the codebook variable's". Passing the raw null through installed
+ * it OVER the codebook value and read the field as a full-resolution
+ * override, falsely rejecting e.g. a codebook year DatePicker switched back
+ * from RelativeDatePicker beside a year-resolution `sameAs` sibling.
+ *
+ * This is composer-only on purpose. The codebook-variable editors
+ * (`FieldFields`, `NodeConfiguration`) commit the same reset as a REPLACEMENT
+ * of the variable's own parameters (`prune`d away by `updateVariableAsync`),
+ * so there a null genuinely clears them and the prospective view must keep
+ * reading it that way.
+ */
+const inheritWhenNull = (value: unknown): unknown => value ?? undefined;
+
+/**
  * A stage's committed composer fields (redux-form's `nodeForm.fields` or one
  * edge type's `edges[i].form.fields`), reshaped into the
  * `makeFieldEditorValidate` overlay: each field's OWN `component`/
@@ -91,10 +112,27 @@ export const buildComposerFieldOverlay = (
     if (!isRecord(field)) continue;
     const { variable, component, parameters } = field;
     if (typeof variable !== 'string' || variable === '') continue;
-    overlay[variable] = { component, parameters };
+    overlay[variable] = {
+      component: inheritWhenNull(component),
+      parameters: inheritWhenNull(parameters),
+    };
   }
   return overlay;
 };
+
+/**
+ * The live draft values for the composer attribute editor, with the same null
+ * reset read as inheritance. Feeds `makeFieldEditorValidate`, whose
+ * `buildProspectiveVariables` layers `component`/`parameters` over the
+ * codebook variable only when they are not `undefined`.
+ */
+export const composerDraftValues = (
+  values: Record<string, unknown>,
+): Record<string, unknown> => ({
+  ...values,
+  component: inheritWhenNull(values.component),
+  parameters: inheritWhenNull(values.parameters),
+});
 
 /**
  * Sixteenth-wave Finding 1: whether a committed sibling field — any field
