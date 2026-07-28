@@ -149,25 +149,25 @@ In `collectEntityAttributeReferences.ts`, add to the hit type (lines 12–17) `u
 
 Add `usage: 'validatedAttribute'` or `usage: 'unvalidatedAttribute'` to the descriptor argument at each site. The complete, verified table (file:line references are pre-#1107-merge positions — locate by the surrounding key if drifted):
 
-| File | Line | Site | Tag |
-| --- | --- | --- | --- |
-| `common/forms.ts` | 10 | `FormFieldSchema.variable` | `validatedAttribute` |
-| `stages/network-composer.ts` | 42 | `ComposerFormFieldSchema.variable` | `validatedAttribute` |
-| `stages/name-generator-quick-add.ts` | 15 | `quickAdd` | `validatedAttribute` (rewired in Task 5) |
-| `common/prompts.ts` | 173 AND its narrowed duplicate at 226 | CategoricalBin `otherVariable` | `validatedAttribute` (rewired in Task 4) |
-| `common/prompts.ts` | 41 | `additionalAttributes[].variable` | `unvalidatedAttribute` |
-| `common/prompts.ts` | 58 AND narrowed duplicates at 77, 81 | Sociogram `highlight.variable` | `unvalidatedAttribute` |
-| `common/prompts.ts` | 93 | Sociogram `layout.layoutVariable` | `unvalidatedAttribute` |
-| `common/prompts.ts` | 126 | TieStrengthCensus `edgeVariable` | `unvalidatedAttribute` |
-| `common/prompts.ts` | 150 | OrdinalBin `variable` | `unvalidatedAttribute` |
-| `common/prompts.ts` | 157 AND narrowed duplicate near 225 | CategoricalBin `variable` | `unvalidatedAttribute` |
-| `common/prompts.ts` | 249 | Geospatial `variable` | `unvalidatedAttribute` |
-| `common/prompts.ts` | 253 | FamilyPedigree `nominationPrompts[].variable` | `unvalidatedAttribute` |
-| `stages/network-composer.ts` | 65 | composer `quickAdd` | `unvalidatedAttribute` |
-| `stages/network-composer.ts` | 67 | composer `layoutVariable` | `unvalidatedAttribute` |
-| `stages/network-composer.ts` | 74 | `convexHullVariable` | `unvalidatedAttribute` |
-| `stages/family-pedigree.ts` | 41, 45, 49, 53 | `nodeConfig.{nodeLabelVariable, egoVariable, relationshipVariable, biologicalSexVariable}` | `unvalidatedAttribute` |
-| `stages/family-pedigree.ts` | 64, 68, 72, 76 | `edgeConfig.{relationshipTypeVariable, isActiveVariable, isGestationalCarrierVariable, gameteRoleVariable}` | `unvalidatedAttribute` |
+| File                                 | Line                                  | Site                                                                                                        | Tag                                      |
+| ------------------------------------ | ------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `common/forms.ts`                    | 10                                    | `FormFieldSchema.variable`                                                                                  | `validatedAttribute`                     |
+| `stages/network-composer.ts`         | 42                                    | `ComposerFormFieldSchema.variable`                                                                          | `validatedAttribute`                     |
+| `stages/name-generator-quick-add.ts` | 15                                    | `quickAdd`                                                                                                  | `validatedAttribute` (rewired in Task 5) |
+| `common/prompts.ts`                  | 173 AND its narrowed duplicate at 226 | CategoricalBin `otherVariable`                                                                              | `validatedAttribute` (rewired in Task 4) |
+| `common/prompts.ts`                  | 41                                    | `additionalAttributes[].variable`                                                                           | `unvalidatedAttribute`                   |
+| `common/prompts.ts`                  | 58 AND narrowed duplicates at 77, 81  | Sociogram `highlight.variable`                                                                              | `unvalidatedAttribute`                   |
+| `common/prompts.ts`                  | 93                                    | Sociogram `layout.layoutVariable`                                                                           | `unvalidatedAttribute`                   |
+| `common/prompts.ts`                  | 126                                   | TieStrengthCensus `edgeVariable`                                                                            | `unvalidatedAttribute`                   |
+| `common/prompts.ts`                  | 150                                   | OrdinalBin `variable`                                                                                       | `unvalidatedAttribute`                   |
+| `common/prompts.ts`                  | 157 AND narrowed duplicate near 225   | CategoricalBin `variable`                                                                                   | `unvalidatedAttribute`                   |
+| `common/prompts.ts`                  | 249                                   | Geospatial `variable`                                                                                       | `unvalidatedAttribute`                   |
+| `common/prompts.ts`                  | 253                                   | FamilyPedigree `nominationPrompts[].variable`                                                               | `unvalidatedAttribute`                   |
+| `stages/network-composer.ts`         | 65                                    | composer `quickAdd`                                                                                         | `unvalidatedAttribute`                   |
+| `stages/network-composer.ts`         | 67                                    | composer `layoutVariable`                                                                                   | `unvalidatedAttribute`                   |
+| `stages/network-composer.ts`         | 74                                    | `convexHullVariable`                                                                                        | `unvalidatedAttribute`                   |
+| `stages/family-pedigree.ts`          | 41, 45, 49, 53                        | `nodeConfig.{nodeLabelVariable, egoVariable, relationshipVariable, biologicalSexVariable}`                  | `unvalidatedAttribute`                   |
+| `stages/family-pedigree.ts`          | 64, 68, 72, 76                        | `edgeConfig.{relationshipTypeVariable, isActiveVariable, isGestationalCarrierVariable, gameteRoleVariable}` | `unvalidatedAttribute`                   |
 
 **Do NOT tag** (read-only): `variables/validation.ts` (all six reference rules), `codebook/definitions.ts` shape-mapping variables, `filters/filter.ts:94`, `stages/narrative.ts:23,26,37`, `stages/narrative-pedigree.ts:22`.
 
@@ -812,6 +812,7 @@ export const roleMapKey = (
   subject: { entity: string; type?: string },
   variableId: string,
 ): string => `${subject.entity}:${subject.type ?? ''}:${variableId}`;
+```
 
 First, in `packages/protocol-validation/src/utils/findVariableRoleConflicts.ts`, expose the pre-filter grouping (this keeps pedigree subject-recovery in ONE place): extract the grouping loop into
 
@@ -1103,6 +1104,3 @@ eval "$(fnm env)" && git add -A apps/architect/src && git commit -m "feat(archit
 - Task order is strict through Task 3; Tasks 4–5 (interview) and 7–10 (Architect) can run as two lanes after Task 2, with Task 3 anywhere after Task 1. Task 6 follows 4–5; Task 11 follows everything; Task 12 last.
 - The two-lane split from the previous project applies (separate worktrees, one committer per worktree, merge before Task 11).
 - When done, `shipping-a-pull-request` — PR description must include the corpus conflict report (Step 2 of Task 11).
-
-
-
