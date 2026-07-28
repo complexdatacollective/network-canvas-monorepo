@@ -5569,6 +5569,112 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('otherVariable and quickAdd required backfill', () => {
+    const migrate = (protocol: Record<string, unknown>) =>
+      migrationV7toV8.migrate(protocol as unknown as Protocol<7>, {
+        name: 'Test Protocol',
+      }) as unknown as {
+        codebook: {
+          node: { person: { variables: Record<string, unknown> } };
+        };
+      };
+
+    const protocolWith = (
+      variables: Record<string, unknown>,
+      stages: unknown[],
+    ) => ({
+      schemaVersion: 7 as const,
+      codebook: { node: { person: { name: 'Person', color: 'c', variables } } },
+      stages,
+    });
+
+    it('sets required on otherVariable and quickAdd targets, overriding explicit false', () => {
+      const migrated = migrate(
+        protocolWith(
+          {
+            other: { name: 'other', type: 'text' },
+            quick: {
+              name: 'quick',
+              type: 'text',
+              validation: { required: false },
+            },
+            untouched: { name: 'untouched', type: 'text' },
+          },
+          [
+            {
+              id: 's1',
+              type: 'CategoricalBin',
+              label: 'Bin',
+              subject: { entity: 'node', type: 'person' },
+              prompts: [
+                {
+                  id: 'p1',
+                  text: 'T',
+                  variable: 'untouched',
+                  otherVariable: 'other',
+                  otherVariablePrompt: 'W',
+                  otherOptionLabel: 'O',
+                },
+              ],
+            },
+            {
+              id: 's2',
+              type: 'NameGeneratorQuickAdd',
+              label: 'QA',
+              subject: { entity: 'node', type: 'person' },
+              quickAdd: 'quick',
+              prompts: [{ id: 'p2', text: 'T' }],
+            },
+          ],
+        ),
+      );
+      const variables = migrated.codebook.node.person.variables;
+      expect(variables.other).toHaveProperty('validation.required', true);
+      expect(variables.quick).toHaveProperty('validation.required', true);
+      expect(variables.untouched).not.toHaveProperty('validation.required');
+    });
+
+    it('leaves other rules on the target intact', () => {
+      const migrated = migrate(
+        protocolWith(
+          {
+            other: {
+              name: 'other',
+              type: 'text',
+              validation: { maxLength: 10 },
+            },
+          },
+          [
+            {
+              id: 's1',
+              type: 'CategoricalBin',
+              label: 'Bin',
+              subject: { entity: 'node', type: 'person' },
+              prompts: [
+                {
+                  id: 'p1',
+                  text: 'T',
+                  variable: 'other2x',
+                  otherVariable: 'other',
+                  otherVariablePrompt: 'W',
+                  otherOptionLabel: 'O',
+                },
+              ],
+            },
+          ],
+        ),
+      );
+      expect(migrated.codebook.node.person.variables.other).toHaveProperty(
+        'validation.maxLength',
+        10,
+      );
+      expect(migrated.codebook.node.person.variables.other).toHaveProperty(
+        'validation.required',
+        true,
+      );
+    });
+  });
+
   // Fuzz finding (migration-fuzz.test.ts): v7's loose validation object
   // admits rule keys v8 has never defined, wrong-typed rule values, and
   // rules parked on a variable type whose v8 rule set does not list them.

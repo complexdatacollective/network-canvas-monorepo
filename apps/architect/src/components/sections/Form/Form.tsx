@@ -1,4 +1,4 @@
-import { type ComponentType, useMemo } from 'react';
+import { type ComponentType, useCallback, useMemo } from 'react';
 import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
 
@@ -18,6 +18,7 @@ import {
   EMPTY_VARIABLES,
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
+import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 
 import { makeFieldEditorValidate } from '../../Validations/contradictions';
 import FieldFields from './FieldFields';
@@ -66,9 +67,24 @@ const Form = ({
   const allVariables = useSelector((state: RootState) =>
     subject ? getVariablesForSubjectSelector(state, subject) : EMPTY_VARIABLES,
   );
+  const roleMap = useSelector(getVariableRoleMap);
+  // Backs makeFieldEditorValidate's save-time gate: a form field may not pick
+  // a variable some bin/highlight/census/etc. elsewhere already writes.
+  const hasUnvalidatedUse = useCallback(
+    (variableId: string) =>
+      !!subject &&
+      (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0,
+    [roleMap, subject],
+  );
   const editorValidate = useMemo(
-    () => makeFieldEditorValidate(allVariables),
-    [allVariables],
+    () =>
+      makeFieldEditorValidate(
+        allVariables,
+        undefined,
+        undefined,
+        hasUnvalidatedUse,
+      ),
+    [allVariables, hasUnvalidatedUse],
   );
 
   return (

@@ -26,6 +26,7 @@ vi.mock('react-redux', () => {
 vi.mock('redux-form', () => ({
   formValueSelector: () => () => 'person',
   getFormValues: () => () => ({}),
+  getFormInitialValues: () => () => ({}),
   change: (form: string, field: string, value: unknown) => ({
     type: 'CHANGE',
     form,

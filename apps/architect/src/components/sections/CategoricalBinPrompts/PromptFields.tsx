@@ -33,6 +33,8 @@ type PromptFieldsProps = {
   onCreateOtherVariable: (value: string, field: string) => void;
   optionsForVariableDraft?: Array<Record<string, unknown>>;
   otherVariable?: string;
+  otherVariableOptions?: VariableOption[];
+  sortVariableOptions?: VariableOption[];
   type: string;
   variable?: string;
   variableOptions?: VariableOption[];
@@ -44,6 +46,8 @@ const PromptFields = ({
   onCreateOtherVariable,
   optionsForVariableDraft = [],
   otherVariable,
+  otherVariableOptions = [],
+  sortVariableOptions = [],
   type,
   variable,
   variableOptions = [],
@@ -83,10 +87,16 @@ const PromptFields = ({
   const categoricalVariableOptions = variableOptions.filter(
     ({ type: variableType }) => variableType === 'categorical',
   );
-  const otherVariableOptions = variableOptions.filter(
+  // otherVariable is a VALIDATED writer, so it draws from the HOC's
+  // otherVariable-role-filtered pool rather than the (unvalidated-role-
+  // filtered) variableOptions pool used above.
+  const otherVariableTextOptions = otherVariableOptions.filter(
     ({ type: variableType }) => variableType === 'text',
   );
-  const getOptions = getSortOrderOptionGetter(variableOptions);
+  // Sort keys are read-only references outside the writer-exclusivity rule:
+  // they draw from the HOC's RAW pool so a bin can still be bucket/bin-sorted
+  // by a form-collected variable the (role-filtered) writer pool above drops.
+  const getOptions = getSortOrderOptionGetter(sortVariableOptions);
   const sortMaxItems = getOptions('property', undefined, []).length;
   const totalOptionsLength =
     optionsForVariableDraft &&
@@ -164,7 +174,7 @@ const PromptFields = ({
             componentProps={{
               entity,
               type,
-              options: otherVariableOptions,
+              options: otherVariableTextOptions,
               onCreateOption: (value: string) =>
                 onCreateOtherVariable(value, 'otherVariable'),
               variable: otherVariable,

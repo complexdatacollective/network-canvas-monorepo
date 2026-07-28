@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { formValueSelector } from 'redux-form';
 
@@ -6,6 +6,7 @@ import DialogArrayField from '~/components/Form/DialogArrayField';
 import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubjectSelector } from '~/selectors/codebook';
+import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
 
 import ComposerFieldPreview from '../sections/Form/ComposerFieldPreview';
@@ -59,6 +60,15 @@ const EditableAttributesList = ({
   const composerFields = useSelector((state: RootState) =>
     formValueSelector(form)(state, fieldName),
   );
+  const roleMap = useSelector(getVariableRoleMap);
+  // Backs makeFieldEditorValidate's save-time gate: a composer attribute may
+  // not pick a variable some bin/highlight/census/etc. elsewhere already
+  // writes.
+  const hasUnvalidatedUse = useCallback(
+    (variableId: string) =>
+      (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0,
+    [roleMap, subject],
+  );
   // Thirty-fifth-wave finding: this subject's variables that a composer form
   // in some OTHER stage renders with its own control. The stage being edited
   // is excluded by the id its draft carries (`initialValues = stage` in
@@ -91,7 +101,7 @@ const EditableAttributesList = ({
     () =>
       (
         values: Record<string, unknown>,
-        props?: { editIndex?: number },
+        props?: { editIndex?: number; initialValues?: unknown },
       ): Record<string, unknown> => {
         const variable =
           typeof values.variable === 'string' ? values.variable : '';
@@ -129,12 +139,13 @@ const EditableAttributesList = ({
           allVariables,
           buildComposerFieldOverlay(composerFields, props?.editIndex),
           crossFormRendered,
-        )(composerDraftValues(values));
+          hasUnvalidatedUse,
+        )(composerDraftValues(values), props);
         return typeof validation === 'string'
           ? { ...rest, [COMPOSER_CONTRADICTION_FIELD]: validation }
           : rest;
       },
-    [allVariables, composerFields, crossFormRendered],
+    [allVariables, composerFields, crossFormRendered, hasUnvalidatedUse],
   );
 
   return (

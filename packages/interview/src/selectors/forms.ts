@@ -1,6 +1,7 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 
+import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import type {
   Codebook,
   ComponentType,
@@ -66,6 +67,16 @@ type FieldMetadata = Variable extends infer V
   : never;
 
 /**
+ * Look up a single codebook variable by name — the lookup both
+ * `createFieldMetadata` (which throws when it's missing) and
+ * `selectValidationMetadataForVariable` (which returns `undefined`) share.
+ */
+const getCodebookEntry = (
+  variables: Record<string, Variable>,
+  variable: string,
+): Variable | undefined => variables[variable];
+
+/**
  * Creates field metadata from form fields and codebook variables.
  * Used by useProtocolForm to convert protocol form definitions to Field components.
  *
@@ -90,11 +101,10 @@ const createFieldMetadata = (
 
   return fields.map((field) => {
     const { variable, hint, showValidationHints } = field;
-    if (!variables[variable]) {
+    const codebookEntry = getCodebookEntry(variables, variable);
+    if (!codebookEntry) {
       throw new Error(`Missing codebook entry for variable: ${variable}`);
     }
-
-    const codebookEntry = variables[variable];
 
     // Shared form fields caption with a required `prompt`; NetworkComposer
     // fields carry an optional `label` instead, falling back to the codebook
@@ -136,6 +146,115 @@ export const selectFieldMetadataFromVariables = (
   variables: Record<string, Variable>,
   fields: Array<FormField | ComposerFormField>,
 ) => createFieldMetadata(variables, fields);
+
+/**
+ * The subset of field/variable data `validationPropsFor` actually reads:
+ * the attribute name, its `type` (needed only to tag
+ * greaterThanVariable/lessThanVariable-style comparisons), and the raw
+ * `validation` block. Deliberately excludes `component` — `FieldMetadata` is
+ * still assignable here (it's a strict superset), so useProtocolForm's real
+ * form fields pass through unchanged.
+ */
+type ValidationSource = {
+  variable: string;
+  type: Variable['type'];
+  validation?: unknown;
+};
+
+/**
+ * Build a writer's validation-only metadata directly from a codebook
+ * variable, bypassing `createFieldMetadata`/component resolution entirely.
+ * For writers that render their OWN input and only ever need `.validation`
+ * — CategoricalBin's "other" dialog and QuickNodeForm's quick-add field —
+ * routing through `createFieldMetadata` would trip its "Missing component"
+ * invariant on a component-less variable, which the schema permits and which
+ * Architect's "Create New Variable" dialog produces by default. Returns
+ * `undefined` when the variable isn't in the codebook, matching
+ * `createFieldMetadata`'s "Missing codebook entry" guard.
+ */
+export function selectValidationMetadataForVariable(
+  variables: Record<string, Variable>,
+  variable: string,
+): ValidationSource | undefined {
+  const codebookEntry = getCodebookEntry(variables, variable);
+  if (!codebookEntry) {
+    return undefined;
+  }
+
+  return {
+    variable,
+    type: codebookEntry.type,
+    validation:
+      'validation' in codebookEntry ? codebookEntry.validation : undefined,
+  };
+}
+
+/**
+ * Derive a Field's validation props (required, maxLength, sameAs, etc.) from
+ * a codebook variable's `validation` block. Shared by useProtocolForm (the
+ * main form system) and any other writer that renders a single ad-hoc Field
+ * for a codebook variable outside the form system (e.g. CategoricalBin's
+ * "other" dialog, QuickNodeForm's quick-add field — see
+ * `selectValidationMetadataForVariable`), so every writer honours the same
+ * rules from one mapping. A variable with no `validation` block returns an
+ * empty object — there is no runtime fallback to `required`.
+ */
+export function validationPropsFor(
+  field: ValidationSource,
+): Partial<ValidationPropsCatalogue> {
+  const props: Partial<ValidationPropsCatalogue> = {};
+
+  if (!('validation' in field) || !field.validation) {
+    return props;
+  }
+
+  const validation = field.validation as Record<string, unknown>;
+
+  if (validation.required !== undefined)
+    props.required = validation.required as boolean;
+  if (validation.minLength !== undefined)
+    props.minLength = validation.minLength as number;
+  if (validation.maxLength !== undefined)
+    props.maxLength = validation.maxLength as number;
+  if (validation.minValue !== undefined)
+    props.minValue = validation.minValue as number;
+  if (validation.maxValue !== undefined)
+    props.maxValue = validation.maxValue as number;
+  if (validation.minSelected !== undefined)
+    props.minSelected = validation.minSelected as number;
+  if (validation.maxSelected !== undefined)
+    props.maxSelected = validation.maxSelected as number;
+  if (validation.pattern !== undefined)
+    props.pattern = validation.pattern as ValidationPropsCatalogue['pattern'];
+  // For 'unique', the protocol uses boolean but validation needs the attribute name
+  if (validation.unique === true) props.unique = field.variable;
+  if (validation.differentFrom !== undefined)
+    props.differentFrom = validation.differentFrom as string;
+  if (validation.sameAs !== undefined)
+    props.sameAs = validation.sameAs as string;
+  if (validation.greaterThanVariable !== undefined)
+    props.greaterThanVariable = {
+      attribute: validation.greaterThanVariable as string,
+      type: field.type,
+    };
+  if (validation.lessThanVariable !== undefined)
+    props.lessThanVariable = {
+      attribute: validation.lessThanVariable as string,
+      type: field.type,
+    };
+  if (validation.greaterThanOrEqualToVariable !== undefined)
+    props.greaterThanOrEqualToVariable = {
+      attribute: validation.greaterThanOrEqualToVariable as string,
+      type: field.type,
+    };
+  if (validation.lessThanOrEqualToVariable !== undefined)
+    props.lessThanOrEqualToVariable = {
+      attribute: validation.lessThanOrEqualToVariable as string,
+      type: field.type,
+    };
+
+  return props;
+}
 
 /**
  * Select field metadata using a subject provided as a prop.

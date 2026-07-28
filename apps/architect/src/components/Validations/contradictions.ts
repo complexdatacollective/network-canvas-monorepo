@@ -652,6 +652,62 @@ const withOverlay = (
   return overlaid;
 };
 
+/** A variable's codebook display name, falling back to its id when absent. */
+export const variableDisplayName = (
+  variables: UnknownRecord,
+  variableId: string,
+): string => {
+  const variable = variables[variableId];
+  return isRecord(variable) && typeof variable.name === 'string'
+    ? variable.name
+    : variableId;
+};
+
+/**
+ * Bound at save-time when an UNVALIDATED writer (bin/highlight/census/etc.)
+ * picks a variable a form elsewhere already collects — the mirror of
+ * `unvalidatedElsewhereMessage` below.
+ */
+export const validatedElsewhereMessage = (variableName: string): string =>
+  `"${variableName}" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)`;
+
+/**
+ * Bound at save-time when a form field picks a variable a bin/highlight/
+ * census/etc. elsewhere already writes without validation.
+ */
+export const unvalidatedElsewhereMessage = (variableName: string): string =>
+  `"${variableName}" is written without validation by another stage, so it cannot be used as a form field`;
+
+/**
+ * The save-time exclusivity gate shared by every writer surface (the form
+ * dialog's `variable` field, and each unvalidated writer's `onBeforeSave`/
+ * `handleChangePrompt`). `hasConflictingUse` reports whether the OPPOSITE
+ * writer class (form validation vs. bin/highlight/etc.) already claims
+ * `variableId` for this subject — callers pass the role-map-backed check that
+ * matches their own class. Escapes when `variableId` equals
+ * `originalVariableId`, the field's PRE-EDIT committed value: re-saving an
+ * unchanged pick must never be blocked by a conflict this edit did not
+ * introduce (e.g. one arising from a stale draft, or a pre-existing conflict
+ * in an imported protocol).
+ */
+export const crossClassPickIssue = ({
+  variableId,
+  originalVariableId,
+  hasConflictingUse,
+  allVariables,
+  message,
+}: {
+  variableId: string;
+  originalVariableId: string;
+  hasConflictingUse: (variableId: string) => boolean;
+  allVariables: UnknownRecord;
+  message: (variableName: string) => string;
+}): string | undefined => {
+  if (!variableId || variableId === originalVariableId) return undefined;
+  if (!hasConflictingUse(variableId)) return undefined;
+  return message(variableDisplayName(allVariables, variableId));
+};
+
 /**
  * redux-form sync validate for the field-editor dialog. Errors are keyed at
  * `validation` so they surface through the Validations field's FieldErrors on
@@ -680,11 +736,22 @@ const withOverlay = (
  * the same deliberate missed-detection-over-false-block trade the schema
  * documents. Only stage-scoped (`overlay`-passing) callers supply it; a
  * plain codebook dialog makes no rendering claim and omits it.
+ *
+ * `hasUnvalidatedUse`, when supplied, backs the save-time cross-class gate:
+ * a draft picking a variable some bin/highlight/census/etc. elsewhere already
+ * writes is rejected at the `variable` field, mirroring the exclusion the
+ * picker already applies (this is the second-layer backstop for a stale
+ * draft that bypassed it). Redux-form passes the decorated component's props
+ * as this validate's second argument (see InlineEditScreen/Form's
+ * WrappedFormProps); `props.initialValues` is the row's PRE-EDIT committed
+ * values, read here to implement `crossClassPickIssue`'s unchanged-pick
+ * escape.
  */
 export const makeFieldEditorValidate = (
   allVariables: UnknownRecord,
   overlay?: VariableOverlay,
   crossFormRendered?: ReadonlySet<string>,
+  hasUnvalidatedUse?: (variableId: string) => boolean,
 ) => {
   // Computed once per dialog session, not on every keystroke: `allVariables`
   // and `overlay` are fixed for the returned validator's whole lifetime, so
@@ -704,7 +771,10 @@ export const makeFieldEditorValidate = (
       !(overlay !== undefined && Object.hasOwn(overlay, id)) &&
       Object.hasOwn(overlaidVariables, id),
   );
-  return (values: Record<string, unknown>): Record<string, unknown> => {
+  return (
+    values: Record<string, unknown>,
+    props?: { initialValues?: unknown },
+  ): Record<string, unknown> => {
     // A variable that is only a TARGET of another's sameAs/comparator (never
     // configuring rules of its own) can have `values.validation` absent or
     // non-record here — that must not skip the check, since editing this
@@ -784,6 +854,24 @@ export const makeFieldEditorValidate = (
       // default, unresolved mode.
       stageEffectiveComponents: overlay !== undefined,
     })[0];
-    return first ? { validation: first.message } : {};
+    if (first) return { validation: first.message };
+    if (hasUnvalidatedUse) {
+      const initialValues = isRecord(props?.initialValues)
+        ? props.initialValues
+        : undefined;
+      const originalVariableId =
+        typeof initialValues?.variable === 'string'
+          ? initialValues.variable
+          : '';
+      const issue = crossClassPickIssue({
+        variableId: currentVariableId,
+        originalVariableId,
+        hasConflictingUse: hasUnvalidatedUse,
+        allVariables: overlaidVariables,
+        message: unvalidatedElsewhereMessage,
+      });
+      if (issue) return { variable: issue };
+    }
+    return {};
   };
 };

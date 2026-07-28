@@ -80,6 +80,11 @@
             "type": "boolean",
             "component": "Boolean"
           },
+          "highlighted": {
+            "name": "highlighted",
+            "type": "boolean",
+            "component": "Boolean"
+          },
           "age": {
             "name": "age",
             "type": "number"
@@ -415,7 +420,7 @@
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "flagged"
+            "variable": "highlighted"
           }
         }
       ]

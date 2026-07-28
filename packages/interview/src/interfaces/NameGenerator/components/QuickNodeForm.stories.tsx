@@ -12,6 +12,13 @@ import {
 
 import QuickNodeForm from './QuickNodeForm';
 
+// `component` on the "name" variable here is incidental, not required:
+// QuickNodeForm derives validation directly from the codebook variable
+// without resolving a component, so a target variable created without one
+// (e.g. via Architect's "Create New Variable" dialog) works identically.
+// `validation` is omitted so the field is a genuinely optional writer
+// (no-fallback design) — see WithRequiredVariable below for the codebook
+// `required` case.
 const mockProtocol = {
   id: 'test-protocol',
   codebook: {
@@ -25,6 +32,7 @@ const mockProtocol = {
           name: {
             name: 'Name',
             type: 'text',
+            component: 'Text',
           },
         },
       } satisfies NodeDefinition,
@@ -54,6 +62,28 @@ const mockProtocol = {
   assets: [],
 };
 
+// A variant of the protocol whose "name" variable carries a codebook
+// `required` rule, demonstrating that QuickNodeForm derives validation from
+// the codebook rather than a hard-coded default.
+const mockProtocolWithRequiredVariable = {
+  ...mockProtocol,
+  codebook: {
+    node: {
+      person: {
+        ...mockProtocol.codebook.node.person,
+        variables: {
+          name: {
+            name: 'Name',
+            type: 'text',
+            component: 'Text',
+            validation: { required: true },
+          },
+        },
+      } satisfies NodeDefinition,
+    },
+  },
+};
+
 const mockSession = {
   id: 'test-session',
   currentStep: 0,
@@ -67,11 +97,11 @@ const mockSession = {
   },
 };
 
-const createMockStore = () => {
+const createMockStore = (protocol: typeof mockProtocol = mockProtocol) => {
   const mockProtocolState = {
     id: 'test-protocol-id',
-    codebook: mockProtocol.codebook,
-    stages: mockProtocol.stages,
+    codebook: protocol.codebook,
+    stages: protocol.stages,
     assets: [],
     experiments: {
       encryptedVariables: false,
@@ -104,8 +134,23 @@ const createMockStore = () => {
   });
 };
 
-const ReduxDecorator = (Story: React.ComponentType) => {
-  const store = createMockStore();
+type StoryArgs = React.ComponentProps<typeof QuickNodeForm> & {
+  /** Story-only: switches the mock codebook's "name" variable between
+   * rule-less and a codebook `required` rule, demonstrating that
+   * QuickNodeForm derives validation from the codebook rather than a
+   * hard-coded default. */
+  requiredVariable?: boolean;
+};
+
+const ReduxDecorator = (
+  Story: React.ComponentType,
+  context: { args: { requiredVariable?: boolean } },
+) => {
+  const store = createMockStore(
+    context.args.requiredVariable
+      ? mockProtocolWithRequiredVariable
+      : mockProtocol,
+  );
   return (
     <Provider store={store}>
       <div className="relative flex h-[400px] w-[800px] items-end justify-end p-6">
@@ -115,12 +160,15 @@ const ReduxDecorator = (Story: React.ComponentType) => {
   );
 };
 
-const meta: Meta<typeof QuickNodeForm> = {
+const meta: Meta<StoryArgs> = {
   title: 'Interfaces/NameGenerator/QuickNodeForm',
   component: QuickNodeForm,
   decorators: [ReduxDecorator],
   parameters: {
     layout: 'centered',
+  },
+  args: {
+    requiredVariable: false,
   },
   argTypes: {
     disabled: {
@@ -138,6 +186,11 @@ const meta: Meta<typeof QuickNodeForm> = {
     addNode: {
       action: 'node-added',
       description: 'Callback when a node is added',
+    },
+    requiredVariable: {
+      control: 'boolean',
+      description:
+        'Give the target variable a codebook `required` rule (story-only — drives which mock codebook is used).',
     },
   },
 };
@@ -202,7 +255,9 @@ export const Default: Story = {
     disabled: false,
     targetVariable: 'name',
   },
-  render: (args) => <QuickNodeFormWrapper {...args} />,
+  render: ({ requiredVariable: _requiredVariable, ...args }) => (
+    <QuickNodeFormWrapper {...args} />
+  ),
   parameters: {
     docs: {
       description: {
@@ -218,7 +273,9 @@ export const Disabled: Story = {
     disabled: true,
     targetVariable: 'name',
   },
-  render: (args) => <QuickNodeFormWrapper {...args} />,
+  render: ({ requiredVariable: _requiredVariable, ...args }) => (
+    <QuickNodeFormWrapper {...args} />
+  ),
   parameters: {
     docs: {
       description: {
@@ -233,7 +290,9 @@ export const AddNodeFlow: Story = {
     disabled: false,
     targetVariable: 'name',
   },
-  render: (args) => <QuickNodeFormWrapper {...args} />,
+  render: ({ requiredVariable: _requiredVariable, ...args }) => (
+    <QuickNodeFormWrapper {...args} />
+  ),
   parameters: {
     docs: {
       description: {
@@ -249,11 +308,32 @@ export const DisabledState: Story = {
     disabled: true,
     targetVariable: 'name',
   },
-  render: (args) => <QuickNodeFormWrapper {...args} />,
+  render: ({ requiredVariable: _requiredVariable, ...args }) => (
+    <QuickNodeFormWrapper {...args} />
+  ),
   parameters: {
     docs: {
       description: {
         story: 'The disabled state prevents form interaction.',
+      },
+    },
+  },
+};
+
+export const WithCodebookRequiredVariable: Story = {
+  args: {
+    disabled: false,
+    targetVariable: 'name',
+    requiredVariable: true,
+  },
+  render: ({ requiredVariable: _requiredVariable, ...args }) => (
+    <QuickNodeFormWrapper {...args} />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Validation is derived from the codebook, not hard-coded: this mock protocol gives the quickAdd target variable a `required` rule, so pressing Enter with nothing typed is rejected. Toggle `requiredVariable` off (the other stories' default) to see the no-fallback behaviour — a rule-less variable accepts an empty submission and creates the node.",
       },
     },
   },

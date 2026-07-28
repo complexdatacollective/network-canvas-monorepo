@@ -179,10 +179,6 @@
           {
             "variable": "c5fee926-855d-4419-b5bb-54e89010cea6",
             "prompt": "What is this person's age?"
-          },
-          {
-            "variable": "e343a91f-628d-4175-870c-957beffa0154",
-            "prompt": "Multiple categorical membership variable"
           }
         ]
       },
@@ -904,18 +900,6 @@
           {
             "variable": "9b56bc6d-6b20-4e38-9aab-4057e78e1130",
             "prompt": "Choose a date"
-          },
-          {
-            "variable": "23c5a7b9-b553-4ff1-b515-6a81999773d2",
-            "prompt": "Required likert scale"
-          },
-          {
-            "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
-            "prompt": "Does this person have this boolean attribute?"
-          },
-          {
-            "variable": "4ccba4e2-a246-46ee-a3ff-1c70fb4c449c",
-            "prompt": "Which of these does this person like?"
           },
           {
             "variable": "490db003-3289-4969-b426-919cefb4cdf0",

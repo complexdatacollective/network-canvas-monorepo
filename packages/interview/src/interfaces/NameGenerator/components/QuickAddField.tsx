@@ -7,6 +7,7 @@ import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/type
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
@@ -68,6 +69,11 @@ type QuickAddFieldProps = {
   placeholder: string;
   disabled: boolean;
   onShowInput?: () => void;
+  /**
+   * Context required for context-dependent validations like unique, sameAs,
+   * etc. — forwarded to useField exactly as Field forwards it.
+   */
+  validationContext?: ValidationContext;
 } & Partial<ValidationPropsCatalogue>;
 
 export default function QuickAddField({
@@ -75,6 +81,7 @@ export default function QuickAddField({
   name: targetVariable,
   disabled,
   onShowInput,
+  validationContext,
   ...validationProps
 }: QuickAddFieldProps) {
   const [checked, setChecked] = useState(false);
@@ -88,6 +95,7 @@ export default function QuickAddField({
     disabled,
     validateOnChange: true,
     validateOnChangeDelay: 0,
+    validationContext,
     ...validationProps,
   });
 

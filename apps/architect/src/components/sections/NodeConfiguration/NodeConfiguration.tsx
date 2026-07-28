@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import { change, formValueSelector, getFormInitialValues } from 'redux-form';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -17,13 +17,27 @@ import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  crossClassPickIssue,
+  unvalidatedElsewhereMessage,
+} from '~/components/Validations/contradictions';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
-import { getVariableOptionsForSubject } from '~/selectors/codebook';
+import {
+  EMPTY_VARIABLES,
+  getVariableOptionsForSubject,
+  getVariablesForSubjectSelector,
+} from '~/selectors/codebook';
+import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import { excludeUnvalidatedUses } from '~/selectors/roleFilters';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import withComposerFormHandlers from '../Form/withComposerFormHandlers';
 import { getLayoutVariablesForSubject } from '../SociogramPrompts/selectors';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 type LayoutVariableOption = {
   isUsed?: boolean;
   label: string;
@@ -86,6 +100,54 @@ export const NodeConfigurationComponent = ({
       dispatch(change(form, 'behaviours.automaticLayout', true));
     }
   }, [rawAutomaticLayout, dispatch, form]);
+  // quickAdd is a VALIDATED writer (its interview input now honours the
+  // target variable's codebook validation — see network-composer.ts), so it
+  // gets the same save-time gate Form.tsx's form fields do: a saved-document
+  // role-map check rejecting a pick some bin/highlight/census/etc. elsewhere
+  // already writes without validation, with the usual committed-value escape.
+  // convexHullVariable is UNTAGGED (a grouping/display slot, not an attribute
+  // writer — see network-composer.ts) and nodeForm.fields is itself a
+  // validated writer, so no cross-class pair can exist within this stage's
+  // OWN draft any more — quickAdd's gate below covers the only surface left.
+  const nodeVariablesSubject = useMemo(
+    () => (type ? { entity: entity === 'ego' ? 'node' : entity, type } : null),
+    [entity, type],
+  );
+  const allVariables = useAppSelector((state: RootState) =>
+    nodeVariablesSubject
+      ? getVariablesForSubjectSelector(state, nodeVariablesSubject)
+      : EMPTY_VARIABLES,
+  );
+  const roleMap = useAppSelector(getVariableRoleMap);
+  const hasUnvalidatedUseForSubject = useCallback(
+    (variableId: string) =>
+      !!nodeVariablesSubject &&
+      (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.unvalidated ??
+        0) > 0,
+    [roleMap, nodeVariablesSubject],
+  );
+  const stageInitialValues = useAppSelector((state: RootState) =>
+    getFormInitialValues(form)(state),
+  );
+  const originalQuickAdd =
+    isRecord(stageInitialValues) &&
+    typeof stageInitialValues.quickAdd === 'string'
+      ? stageInitialValues.quickAdd
+      : '';
+  const quickAddCrossClassValidate = useCallback(
+    (value: unknown): string | undefined => {
+      const variableId = typeof value === 'string' ? value : '';
+      if (!variableId) return undefined;
+      return crossClassPickIssue({
+        variableId,
+        originalVariableId: originalQuickAdd,
+        hasConflictingUse: hasUnvalidatedUseForSubject,
+        allVariables,
+        message: unvalidatedElsewhereMessage,
+      });
+    },
+    [originalQuickAdd, hasUnvalidatedUseForSubject, allVariables],
+  );
   const newVariableWindowInitialProps = {
     entity: (entity === 'ego' ? 'node' : entity) as Entity,
     type: type ?? '',
@@ -125,7 +187,10 @@ export const NodeConfigurationComponent = ({
           <ValidatedField
             name="quickAdd"
             component={VariablePicker}
-            validation={{ required: true }}
+            validation={{
+              required: true,
+              crossClassPick: quickAddCrossClassValidate,
+            }}
             componentProps={{
               label: 'Create or select a variable for the quick-add form',
               type,
@@ -247,23 +312,68 @@ const withLayoutOptions = connect(
       : [],
   }),
 );
+/**
+ * convexHullVariable is UNTAGGED — a grouping/display slot, not an attribute
+ * writer (see network-composer.ts) — so it must never restrict, or be
+ * restricted by, a variable's use elsewhere. Every categorical variable for
+ * the subject is offered, unconditionally. Exported (alongside its quickAdd
+ * sibling below) so this stays pinned directly in `pickerExclusions.test.ts`.
+ */
+export const getConvexHullOptionsForSubject = (
+  state: RootState,
+  subject: { entity: 'node' | 'edge' | 'ego'; type: string },
+) =>
+  getVariableOptionsForSubject(state, subject).filter(
+    ({ type: variableType }) => variableType === 'categorical',
+  );
+
+/**
+ * NetworkComposer's own quickAdd (distinct from NameGeneratorQuickAdd's) is a
+ * VALIDATED writer (its interview input now honours the target variable's
+ * codebook validation — see network-composer.ts): drop options an
+ * unvalidated writer elsewhere already claims. Mirrors
+ * `QuickAdd/withOptions.tsx`'s `getQuickAddOptionsForSubject`.
+ */
+export const getComposerQuickAddOptionsForSubject = (
+  state: RootState,
+  subject: { entity: 'node' | 'edge' | 'ego'; type: string },
+  currentValue?: string,
+) => {
+  const textOptions = getVariableOptionsForSubject(state, subject).filter(
+    ({ type: variableType }) => variableType === 'text',
+  );
+  return excludeUnvalidatedUses(state, subject, textOptions, currentValue);
+};
+
 const withCategoricalOptions = connect(
-  (state: RootState, { entity, type }: OwnProps) => ({
-    categoricalVariablesForSubject: type
-      ? getVariableOptionsForSubject(state, { entity, type }).filter(
-          ({ type: variableType }) => variableType === 'categorical',
-        )
-      : [],
-  }),
+  (state: RootState, { entity, type }: OwnProps) => {
+    if (!type) {
+      return { categoricalVariablesForSubject: [] };
+    }
+    return {
+      categoricalVariablesForSubject: getConvexHullOptionsForSubject(state, {
+        entity,
+        type,
+      }),
+    };
+  },
 );
 const withQuickAddOptions = connect(
-  (state: RootState, { entity, type }: OwnProps) => ({
-    quickAddOptionsForSubject: type
-      ? getVariableOptionsForSubject(state, { entity, type }).filter(
-          ({ type: variableType }) => variableType === 'text',
-        )
-      : [],
-  }),
+  (state: RootState, { entity, type, form }: OwnProps) => {
+    if (!type) {
+      return { quickAddOptionsForSubject: [] };
+    }
+    const quickAdd = formValueSelector(form)(state, 'quickAdd') as
+      | string
+      | undefined;
+    return {
+      quickAddOptionsForSubject: getComposerQuickAddOptionsForSubject(
+        state,
+        { entity, type },
+        quickAdd,
+      ),
+    };
+  },
 );
 export default compose<NodeConfigurationProps, StageEditorSectionProps>(
   withSubject,

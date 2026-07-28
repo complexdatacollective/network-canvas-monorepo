@@ -481,21 +481,6 @@
             "prompt": "How is this person related to you?"
           },
           {
-            "variable": "support_emotional",
-            "prompt": "Do they give you **emotional support**?",
-            "hint": "Someone you can talk to about how you feel."
-          },
-          {
-            "variable": "support_practical",
-            "prompt": "Do they help you with **practical things**?",
-            "hint": "Such as tasks, money, or getting around."
-          },
-          {
-            "variable": "support_informational",
-            "prompt": "Do they give you **information or advice**?",
-            "hint": "Advice that helps you cope or make decisions."
-          },
-          {
             "variable": "knows_about_mh",
             "prompt": "Does this person **know about your mental health**?",
             "hint": "That is, have you told them about it?"
@@ -504,10 +489,6 @@
             "variable": "is_clinical",
             "prompt": "Is this person a **formal or clinical source of help**?",
             "hint": "For example, a doctor, therapist, counsellor, or other professional."
-          },
-          {
-            "variable": "is_source_of_stress",
-            "prompt": "Is this person sometimes a **source of stress or conflict** for you?"
           }
         ]
       }
