@@ -361,6 +361,51 @@ describe('Migration V7 to V8', () => {
       ).toHaveProperty('validation.required', true);
     });
 
+    // Twenty-eighth-wave Finding 1: the v8 shape rule now accepts
+    // `options: []` on a componentless boolean directly (variable.ts), so
+    // this strip is no longer the only thing standing between a v7 import and
+    // rejection here — but it still runs ahead of the v8 parse, so a
+    // componentless v7 boolean with an empty options array was never
+    // import-blocked in the first place, and keeps migrating to the Yes/No
+    // default (rather than surfacing as a value-less `options: []` a v8
+    // Boolean-rendered NetworkComposer field could still choke on).
+    it('removes an explicitly empty options array from a componentless boolean variable too', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                hasChildren: {
+                  name: 'HasChildren',
+                  type: 'boolean',
+                  options: [],
+                  validation: { required: true },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as unknown as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      expect(
+        parsed.data?.codebook.node?.person?.variables?.hasChildren,
+      ).not.toHaveProperty('options');
+      expect(
+        parsed.data?.codebook.node?.person?.variables?.hasChildren,
+      ).toHaveProperty('validation.required', true);
+    });
+
     it('does not affect non-boolean variables', () => {
       const v7Protocol = {
         schemaVersion: 7 as const,

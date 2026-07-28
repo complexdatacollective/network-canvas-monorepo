@@ -43,6 +43,7 @@ import type { FilterRule } from './filters/index.ts';
 import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
 import {
+  ComponentTypes,
   NON_RENDERABLE_VARIABLE_TYPES,
   type Variable,
   VARIABLE_TYPE_COMPONENTS,
@@ -235,6 +236,19 @@ const validateFormFieldVariable = (
  *
  * A field naming a variable absent from the codebook is skipped: the
  * entity-attribute reference pass owns that error.
+ *
+ * Twenty-eighth-wave Finding 1: `Boolean` is a legal control for every
+ * boolean variable regardless of the codebook's own `options` — the pairing
+ * check above only cares about `variable.type`, and variable.ts's shape rule
+ * only rejects `options: []` when the variable's OWN declared `component` is
+ * `Boolean` (see that schema's comment). So a componentless (or
+ * Toggle-declared) boolean carrying an explicitly empty `options` array
+ * passes the pairing check even where a composer field renders it through
+ * `Boolean` — a pairing that IS broken: fresco-ui's BooleanField renders no
+ * buttons at all when `options` is an explicit empty array, so the control
+ * has nothing to offer a participant. This is the one place a field's
+ * EFFECTIVE rendering is known independently of the codebook default, so the
+ * check belongs here rather than at the record level.
  */
 const validateComposerFieldComponents = (
   codebookVariables: Record<string, Variable>,
@@ -248,8 +262,21 @@ const validateComposerFieldComponents = (
     if (!variable) return;
     const allowedComponents: readonly string[] =
       VARIABLE_TYPE_COMPONENTS[variable.type];
-    if (allowedComponents.includes(field.component)) return;
     const path = [...fieldsPath, fieldIndex, 'component'];
+    if (allowedComponents.includes(field.component)) {
+      if (
+        field.component === ComponentTypes.Boolean &&
+        'options' in variable &&
+        Array.isArray(variable.options) &&
+        variable.options.length === 0
+      ) {
+        addIssue({
+          message: `NetworkComposer field for "${variable.name}" renders it with the "Boolean" control, but its codebook options are empty — the control has no choice to offer.`,
+          path,
+        });
+      }
+      return;
+    }
     if (allowedComponents.length === 0) {
       addIssue({
         message: `NetworkComposer field variable "${variable.name}" of type "${variable.type}" cannot be rendered as a form field.`,

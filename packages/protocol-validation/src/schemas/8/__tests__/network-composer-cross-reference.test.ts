@@ -775,6 +775,52 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
     ).toBe(true);
   });
 
+  // Twenty-eighth-wave Finding 1: `options: []` on a componentless boolean
+  // now passes the record-level shape rule (variable.ts), since a
+  // componentless variable's rendering is decided by the composer field, not
+  // the codebook. That means the genuinely broken pairing — a field that
+  // actually RENDERS the variable through `Boolean` (which fresco-ui's
+  // BooleanField renders with no buttons at all over an empty array) — has to
+  // be caught here, where the field's own component is known.
+  it('rejects a componentless boolean with empty options rendered as Boolean, anchored at the field', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        { is_close: { name: 'IsClose', type: 'boolean', options: [] } },
+        nodeFormOnly([
+          { variable: 'is_close', component: ComponentTypes.Boolean },
+        ]),
+      ),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('no choice to offer'),
+    );
+    expect(issue?.path).toEqual([
+      'stages',
+      0,
+      'nodeForm',
+      'fields',
+      0,
+      'component',
+    ]);
+  });
+
+  it('accepts a componentless boolean with empty options rendered as Toggle', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithPersonVariables(
+        { is_close: { name: 'IsClose', type: 'boolean', options: [] } },
+        nodeFormOnly([
+          { variable: 'is_close', component: ComponentTypes.Toggle },
+        ]),
+      ),
+    );
+    expect(
+      result.success,
+      JSON.stringify(!result.success && result.error.issues),
+    ).toBe(true);
+  });
+
   it('accepts a scalar variable rendered as a VisualAnalogScale', () => {
     const result = ProtocolSchemaV8.safeParse(
       composerProtocolWithPersonVariables(

@@ -384,22 +384,56 @@ const textVariableSchema = baseVariableSchema.extend({
 // control with no buttons — unanswerable, and fatal on a required variable.
 // `findValidationContradictions`'s `booleanDomain` models the same
 // distinction.
-const booleanOptionsSchema = z
-  .array(
-    z.strictObject({
-      label: z.string(),
-      value: z.boolean(),
-      negative: z.boolean().optional(),
-    }),
-  )
-  .min(1, 'Boolean options must offer at least one choice');
+//
+// Twenty-eighth-wave Finding 1: that only holds once `component: 'Boolean'`
+// IS this variable's own rendering — the refinement below anchors the
+// rejection there. A componentless boolean is renderable by EITHER control
+// `VARIABLE_TYPE_COMPONENTS['boolean']` lists (`Boolean` and `Toggle`; see
+// `rejectValidationContradictions`'s Twenty-first/Twenty-sixth-wave findings
+// above `booleanDomain`), and which one a participant actually sees is
+// decided solely by the rendering surface — a NetworkComposer field's own
+// required `component`, independent of the codebook — which this SHAPE rule
+// (run per-variable, with no stage in scope) can never know. Rejecting
+// `options: []` here for a componentless variable exclusively rendered by
+// `Toggle` (which takes no `options` prop and is unconditionally two-valued)
+// is a false rejection, and blocked identical v7 protocols from importing
+// before the strip below existed. The empty-array rejection is therefore
+// scoped to variables that EXPLICITLY declare `component: 'Boolean'`
+// themselves — their own declared rendering needs the options it can never
+// fill. The genuinely broken stage-level case — a NetworkComposer field that
+// RENDERS a boolean through the `Boolean` control over a variable whose
+// options are empty, whatever the codebook declares — is instead caught in
+// schema.ts's `validateComposerFieldComponents`, where the rendering is
+// actually known.
+const booleanOptionsSchema = z.array(
+  z.strictObject({
+    label: z.string(),
+    value: z.boolean(),
+    negative: z.boolean().optional(),
+  }),
+);
 
-const booleanBooleanVariableSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.boolean),
-  component: z.enum(booleanChoiceComponents).optional(),
-  validation: z.strictObject(validations).pick(booleanValidations).optional(),
-  options: booleanOptionsSchema.optional(), // This is different from the categorical options!
-});
+const booleanBooleanVariableSchema = baseVariableSchema
+  .extend({
+    type: z.literal(VariableTypes.boolean),
+    component: z.enum(booleanChoiceComponents).optional(),
+    validation: z.strictObject(validations).pick(booleanValidations).optional(),
+    options: booleanOptionsSchema.optional(), // This is different from the categorical options!
+  })
+  .superRefine((variable, ctx) => {
+    if (
+      variable.component === ComponentTypes.Boolean &&
+      variable.options !== undefined &&
+      variable.options.length === 0
+    ) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message:
+          'Boolean options must offer at least one choice when component is "Boolean"',
+        path: ['options'],
+      });
+    }
+  });
 
 const booleanToggleVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.boolean),
