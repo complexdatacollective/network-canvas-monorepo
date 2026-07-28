@@ -1,6 +1,7 @@
 {
   "extends": "@codaco/tsconfig/web.json",
   "compilerOptions": {
+    "strict": true,
     "noEmit": true,
     "types": ["node", "@playwright/test", "vite/client"],
     "module": "ESNext",
