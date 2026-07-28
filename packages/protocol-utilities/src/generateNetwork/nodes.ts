@@ -18,7 +18,10 @@ import {
 } from './attributes';
 import type { GenerationConfig } from './config';
 import { stepsBetween } from './constraints/dateWindow';
-import type { EntityScopeRef } from './constraints/generateEntityAttributes';
+import {
+  completionCheckFor,
+  type EntityScopeRef,
+} from './constraints/generateEntityAttributes';
 import { dateValueResolution } from './constraints/groupConstraints';
 import {
   COMPARATOR_DIRECTION,
@@ -658,6 +661,39 @@ export function createNodesForStage(
       : { ...additionalAttrs, ...rosterValues };
   };
 
+  const canComplete = completionCheckFor(constraints);
+
+  /**
+   * Whether the run can build a node from this row, memoised by the row's key.
+   *
+   * The verdict is a function of the row and the prompt's own attributes, both
+   * of which stand still for the whole draw, while `takeDrawableRosterRow`
+   * walks the window afresh for every node it is asked for — so a pool of
+   * hundreds is judged once per row here rather than once per row per node.
+   */
+  const rowVerdicts = new Map<string, boolean>();
+  const rulesAllow = (row: NcNode): boolean => {
+    const key = row[entityPrimaryKeyProperty];
+    const memoised = rowVerdicts.get(key);
+    if (memoised !== undefined) return memoised;
+
+    const fixed = fixedValuesFor(row);
+    // A row whose value its own rules reject, or whose values break a rule
+    // between two of them or between one of them and a value the prompt fixes,
+    // is passed over exactly as one repeating a `unique` value is: no draw
+    // stands between those values and the finished node, so the row is simply
+    // not one this protocol can use. A row that breaks nothing itself but
+    // leaves the draw no value to satisfy a rule with is passed over for the
+    // same reason — the node it would build is one whose drawn half cannot be
+    // made to fit. Refusing instead would fail a roster of hundreds over rows
+    // the draw might never have reached.
+    const verdict =
+      ruleBrokenByFixedValues(constraints, fixed) === undefined &&
+      canComplete(fixed);
+    rowVerdicts.set(key, verdict);
+    return verdict;
+  };
+
   reserveRosterValues(ctx, scope, pool);
 
   for (let i = 0; i < count; i++) {
@@ -668,22 +704,7 @@ export function createNodesForStage(
       (!roster.allowFabrication ||
         ctx.valueGen.randomFloat(0, 1) < ctx.config.rosterDrawRatio);
     const picked = wantsRosterRow
-      ? takeDrawableRosterRow(
-          ctx,
-          scope,
-          pool,
-          drawn,
-          // A row whose value its own rules reject, or whose values break a
-          // rule between two of them or between one of them and a value the
-          // prompt fixes, is passed over exactly as one repeating a `unique`
-          // value is: no draw stands between those values and the finished
-          // node, so the row is simply not one this protocol can use. Refusing
-          // instead would fail a roster of hundreds over rows the draw might
-          // never have reached.
-          (row) =>
-            ruleBrokenByFixedValues(constraints, fixedValuesFor(row)) ===
-            undefined,
-        )
+      ? takeDrawableRosterRow(ctx, scope, pool, drawn, rulesAllow)
       : undefined;
 
     // A roster stage builds nodes only from rows, so a pool holding none the

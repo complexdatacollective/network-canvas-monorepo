@@ -1489,6 +1489,85 @@ describe('a rule between two fixed attributes', () => {
     expect(failures).toEqual([]);
   });
 
+  it(`passes over a row whose value leaves the draw no value to satisfy a comparator with, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    // `age` at the top of the range breaks nothing on its own — it is inside
+    // its own bounds, and the rule spanning the pair names a variable the row
+    // leaves for the draw. What it does is leave that draw nowhere to go:
+    // `retired` has to be above 1 and cannot leave [0, 1].
+    const codebook = personCodebook({
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 1 },
+      },
+      retired: {
+        name: 'Retired at',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 1, greaterThanVariable: 'age' },
+      },
+    });
+    // Two rows the draw can complete and two it cannot, so the stage can fill
+    // its two people only by passing the uncompletable rows over.
+    const rows = rowsOf([{ age: 1 }, { age: 0 }, { age: 1 }, { age: 0 }]);
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [rosterStage(2)],
+        externalData: { 'stage-1': rows.map((row) => ({ ...row })) },
+      });
+
+      complain(
+        failures,
+        network.nodes.length === 2,
+        () => `seed ${seed}: ${network.nodes.length} nodes, not 2`,
+      );
+      for (const node of network.nodes) {
+        const { age, retired } = node[entityAttributesProperty];
+        complain(
+          failures,
+          Number(retired) > Number(age),
+          () =>
+            `seed ${seed}: retired ${String(retired)} is not above age ${String(age)}`,
+        );
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it('draws nothing from a roster whose every row leaves the draw no completion', () => {
+    // The same outcome a roster whose every row breaks a rule of its own
+    // already has, reached the same way: a roster stage builds nodes only from
+    // rows, so a pool holding none the network can take ends the stage rather
+    // than failing the run. An empty stage is the honest result — every person
+    // this roster offers is one the protocol's own rules cannot describe.
+    const codebook = personCodebook({
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 1 },
+      },
+      retired: {
+        name: 'Retired at',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 1, greaterThanVariable: 'age' },
+      },
+    });
+    const rows = rowsOf([{ age: 1 }, { age: 1 }, { age: 1 }]);
+
+    const { network } = generateNetwork({
+      seed: 3,
+      codebook,
+      stages: [rosterStage(2)],
+      externalData: { 'stage-1': rows.map((row) => ({ ...row })) },
+    });
+
+    expect(network.nodes).toEqual([]);
+  });
+
   it(`passes over a row breaking sameAs between two of its own values, over ${SEEDS} seeds`, () => {
     const failures: string[] = [];
     const rows = rowsOf([

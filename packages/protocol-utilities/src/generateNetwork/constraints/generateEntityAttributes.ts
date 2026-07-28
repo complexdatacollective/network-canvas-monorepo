@@ -563,6 +563,75 @@ export function uniqueSlotMembers(
 }
 
 /**
+ * Whether the values an entity is given rather than drawn leave the draw a way
+ * to fill the rest of it.
+ *
+ * A fixed value settles its own variable and nothing more. Whatever rule spans
+ * it and a variable the draw still owns is met by whichever value that draw
+ * produces — and where the fixed value pushes its counterpart past the
+ * counterpart's own bounds, no value it can produce meets it.
+ * `applyComparatorBounds` keeps the draw inside those bounds in that case, on
+ * the reasoning that a value outside them fails the hard validator a
+ * participant's form applies where a broken comparison fails a cross-variable
+ * one. Which is right, and still leaves the finished entity holding a pair the
+ * comparison rejects — so the assignment has to be judged before it is taken,
+ * not after.
+ *
+ * Judged by the same complete search a component is solved with during
+ * generation, pinned the same way: the fixed values enter as pins and the rest
+ * of the component is searched around them. Only a proven `unsat` is an answer.
+ * An oversized component, an unenumerable domain or an exhausted search budget
+ * all leave the assignment accepted, exactly as they leave the draw to its
+ * greedy path — this reads the solver's proofs, it does not add a second
+ * opinion about what is satisfiable.
+ *
+ * The component analysis is resolved once for the entity type and the returned
+ * predicate applied per assignment, so a roster costs one analysis and at most
+ * one search per row.
+ */
+export function completionCheckFor(
+  entity: EntityConstraints,
+): (fixed: Record<string, VariableValue>) => boolean {
+  const { order, membersOf, groupOf } = resolveGenerationOrder(entity);
+  const edges = groupComparatorEdges(entity, groupOf);
+  const excluded = differentFromGroups(entity, groupOf);
+  const { groups: propagated } = propagateComparatorBounds(
+    intersectGroupConstraints(entity, membersOf),
+    order,
+    edges,
+  );
+
+  const tractable = componentsFor(entity, propagated, order, edges, excluded)
+    .map((component) => component.tractable)
+    .filter((component) => component !== undefined);
+  if (tractable.length === 0) return () => true;
+
+  return (fixed) => {
+    const pins = new Map<string, VariableValue>();
+    for (const [group, memberIds] of membersOf) {
+      const held = groupValue(memberIds, fixed);
+      // A null binds no comparator and collides with no drawn value, so it
+      // settles nothing here either — the same reading the draw gives a null
+      // counterpart.
+      if (held !== undefined && held !== null) pins.set(group, held);
+    }
+    if (pins.size === 0) return true;
+
+    for (const component of tractable) {
+      if (!component.groups.some((group) => pins.has(group))) continue;
+      // A component the fixed values settle entirely leaves nothing to
+      // complete. Whether those values may stand together is what the rules
+      // between two fixed values already answer, and answering it twice could
+      // only disagree.
+      if (component.groups.every((group) => pins.has(group))) continue;
+      if (solveComponent(component, { pins }).kind === 'unsat') return false;
+    }
+
+    return true;
+  };
+}
+
+/**
  * Generates one entity's attributes in dependency order, so each variable is
  * drawn once every value it is defined against is known. Variables joined by
  * `sameAs` share a single value drawn against their combined rules.
