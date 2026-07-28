@@ -284,6 +284,18 @@ const Validations = ({
 
   // A reference rule (e.g. "Same as") is disabled in the dropdown once no
   // existing variable could legally serve as its target.
+  //
+  // Twenty-seventh-wave Finding 1: this used to call `checkDraft` once per
+  // candidate variable per unused reference rule, and each call re-ran
+  // `findDraftContradictions` over the WHOLE record — O(rule types ×
+  // variable count) analyser passes, each itself O(variable count), so
+  // rendering this section was quadratic in codebook size and could freeze
+  // Architect on large protocols. `findLegalTargets` answers "does this rule
+  // have any legal target at all" for every candidate in one shared,
+  // UnionFind-batched analysis pass (see findLegalReferenceTargets) — the
+  // same path the target dropdown itself already uses — so a rule is enabled
+  // exactly when that set is non-empty.
+  const candidateIds = Object.keys(existingVariables);
   const availableOptions = getOptionsWithUsedDisabled(
     validationOptions,
     usedOptions,
@@ -291,11 +303,9 @@ const Validations = ({
     if (option.disabled || !isValidationWithListValue(option.value)) {
       return option;
     }
-    const hasLegalTarget = Object.keys(existingVariables).some(
-      (candidateId) =>
-        checkDraft(option.value, candidateId, editingKey ?? undefined)
-          .length === 0,
-    );
+    const hasLegalTarget =
+      findLegalTargets(option.value, candidateIds, editingKey ?? undefined)
+        .size > 0;
     return hasLegalTarget ? option : { ...option, disabled: true };
   });
   // Twenty-first-wave Finding 5: when all unused validation rules are
