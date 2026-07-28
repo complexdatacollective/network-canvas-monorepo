@@ -1094,14 +1094,33 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
   const record = asRecord(variable);
   if (!record) return undefined;
   const parameters = asRecord(record.parameters);
+  // Twenty-fourth-wave Finding 2: an explicit RelativeDatePicker may legally
+  // omit `parameters` altogether (`dateTimeRelativeDatePickerSchema` marks
+  // the record optional), and the control it renders is identical to one
+  // configured with an EMPTY record: fresco-ui's RelativeDatePickerField
+  // destructures `before = 180, after = 0` and resolves a missing anchor to
+  // `todayYmd()` whether the record was absent or empty. Treating absence as
+  // "no window at all" therefore modelled a control the runtime never
+  // renders — an absent-parameters picker `greaterThanVariable` an anchorless
+  // `{ before: 0, after: 0 }` partner is unsatisfiable (both windows cap at
+  // the interview date, and the partner is pinned to it) yet was accepted.
+  // `relativeDateWindowInterval` already owns the default handling, so an
+  // absent record routes through it as an empty one. (One runtime nuance,
+  // noted for honesty: useProtocolForm's submission-time min/max precompute
+  // is gated on a PRESENT record today, so the absent case's window is
+  // enforced by the control's own native min/max — the same
+  // control-determined-domain reading `booleanDomain` and the option-set
+  // checks already rely on.) A COMPONENTLESS variable with absent parameters
+  // stays unjudged below: with neither a component nor a parameter shape,
+  // no control can be identified at all.
+  if (record.component === 'RelativeDatePicker') {
+    return relativeDateWindowInterval(parameters ?? {});
+  }
   if (!parameters) return undefined;
   // Audit sweep: a null `component` is an absent one (see `dateResolutionOf`),
   // and testing `=== undefined` here dropped the shape inference entirely,
   // losing the relative window rather than merely mis-reading it.
-  if (
-    record.component === 'RelativeDatePicker' ||
-    (record.component == null && isRelativeDatePickerShape(parameters))
-  ) {
+  if (record.component == null && isRelativeDatePickerShape(parameters)) {
     return relativeDateWindowInterval(parameters);
   }
   const min =

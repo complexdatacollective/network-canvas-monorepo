@@ -5007,3 +5007,116 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs 
     expect(result.map((item) => item.class)).toContain('disjointBounds');
   });
 });
+
+describe('findValidationContradictions — Twenty-fourth-wave Finding 2: an absent RelativeDatePicker parameters record models the runtime default window', () => {
+  // Deliberately NOT defaulting `parameters` in this helper: the block's
+  // subject is the difference between an absent record and a present one.
+  const relativePicker = (
+    name: string,
+    parameters: Record<string, unknown> | undefined,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'RelativeDatePicker',
+    ...(parameters !== undefined ? { parameters } : {}),
+    validation,
+  });
+
+  // The reviewer's own report: `a` legally omits `parameters`
+  // (`dateTimeRelativeDatePickerSchema` marks the record optional), but the
+  // control it renders is identical to an empty record's — fresco-ui's
+  // RelativeDatePickerField destructures `before = 180, after = 0` and
+  // resolves a missing anchor to the interview date — so `a`'s window caps at
+  // the interview date, `b` is pinned to it, and `a` can never exceed `b`.
+  // Before this fix the early return treated absent parameters as unbounded
+  // and accepted the pair.
+  it('rejects greaterThanVariable between an absent-parameters picker and a partner pinned to the interview date', () => {
+    const result = findValidationContradictions({
+      a: relativePicker('a', undefined, {
+        required: true,
+        greaterThanVariable: 'b',
+      }),
+      b: relativePicker('b', { before: 0, after: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+  });
+
+  // The false-positive guard that matters most: the partner window has
+  // genuine headroom below the interview date, so `a` can exceed it.
+  it('accepts the same shape once the partner window has headroom below the interview date', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker('a', undefined, { greaterThanVariable: 'b' }),
+        b: relativePicker('b', { before: 5, after: 0 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The default window's UPPER edge sits exactly at the interview date
+  // (after = 0): a NON-strict comparator against a partner pinned there is
+  // satisfiable at that shared instant, so it must stay accepted — together
+  // with the strict rejection above this brackets the modelled `after`
+  // default at exactly 0.
+  it('accepts a non-strict comparator sitting exactly on the default upper edge', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker('a', undefined, {
+          greaterThanOrEqualToVariable: 'b',
+        }),
+        b: relativePicker('b', { before: 0, after: 0 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A COMPONENTLESS datetime with absent parameters identifies no control at
+  // all (component inference needs a parameter shape), so it stays unjudged.
+  it('leaves a componentless datetime with no parameters unjudged', () => {
+    expect(
+      findValidationContradictions({
+        a: {
+          name: 'a',
+          type: 'datetime',
+          validation: { greaterThanVariable: 'b' },
+        },
+        b: relativePicker('b', { before: 0, after: 0 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The default window's LOWER edge sits exactly 180 days before the
+  // interview date (fresco-ui RelativeDatePickerField: `before = 180`). The
+  // partner pins single-day offset windows via a raw negative `after` — the
+  // schema rejects a negative offset, but the analyser also runs over raw
+  // pre-schema migration input (this file's own defensive-reads convention),
+  // and it is the only way to place an anchorless single-day window anywhere
+  // but offset 0. A partner pinned AT -180 is reachable (satisfiable exactly
+  // on the edge); one day earlier is not.
+  it('models the default lower edge at exactly 180 days before the interview date', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker('a', undefined, {
+          lessThanOrEqualToVariable: 'b',
+        }),
+        b: relativePicker('b', { before: 180, after: -180 }),
+      }),
+    ).toEqual([]);
+
+    const result = findValidationContradictions({
+      a: relativePicker('a', undefined, {
+        lessThanOrEqualToVariable: 'b',
+      }),
+      b: relativePicker('b', { before: 181, after: -181 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanOrEqualToVariable' },
+    ]);
+  });
+});
