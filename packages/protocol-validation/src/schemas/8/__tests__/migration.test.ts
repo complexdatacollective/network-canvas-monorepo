@@ -5736,4 +5736,106 @@ describe('Migration V7 to V8', () => {
       expect(variables.pos).not.toHaveProperty('component');
     });
   });
+
+  // Fuzz finding (migration-fuzz.test.ts): v8 option values are strings or
+  // whole numbers with string labels, and boolean options are labelled
+  // true/false choices; v7-legal fractional values, numeric labels, and
+  // wrong-typed boolean entries all blocked the import.
+  describe('option entry normalisation', () => {
+    const migrateEgoVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: { variables } },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables ?? {};
+    };
+
+    it('coerces a fractional numeric option value to its string form', () => {
+      const variables = migrateEgoVariables({
+        rating: {
+          name: 'rating',
+          type: 'ordinal',
+          component: 'RadioGroup',
+          options: [
+            { label: 'Half', value: 0.5 },
+            { label: 'One', value: 1 },
+          ],
+        },
+      });
+      const rating = variables.rating;
+      if (!rating || !('options' in rating)) {
+        throw new Error('expected rating options');
+      }
+      expect(rating.options).toEqual([
+        { label: 'Half', value: '0.5' },
+        { label: 'One', value: 1 },
+      ]);
+    });
+
+    it('coerces a numeric option label to its display string', () => {
+      const variables = migrateEgoVariables({
+        rating: {
+          name: 'rating',
+          type: 'categorical',
+          component: 'CheckboxGroup',
+          options: [
+            { label: 7, value: 'seven' },
+            { label: 'Eight', value: 'eight' },
+          ],
+        },
+      });
+      const rating = variables.rating;
+      if (!rating || !('options' in rating)) {
+        throw new Error('expected rating options');
+      }
+      expect(rating.options).toEqual([
+        { label: '7', value: 'seven' },
+        { label: 'Eight', value: 'eight' },
+      ]);
+    });
+
+    it('drops a malformed boolean option entry, keeping the well-formed one', () => {
+      const variables = migrateEgoVariables({
+        employed: {
+          name: 'employed',
+          type: 'boolean',
+          component: 'Boolean',
+          options: [
+            { label: 'Yes', value: 'true' },
+            { label: 'No', value: false },
+          ],
+        },
+      });
+      const employed = variables.employed;
+      if (!employed || !('options' in employed)) {
+        throw new Error('expected employed options');
+      }
+      expect(employed.options).toEqual([{ label: 'No', value: false }]);
+    });
+
+    it('removes boolean options entirely when no well-formed entry remains', () => {
+      const variables = migrateEgoVariables({
+        employed: {
+          name: 'employed',
+          type: 'boolean',
+          component: 'Boolean',
+          options: [
+            { label: 'Yes', value: 1 },
+            { label: 2, value: false },
+          ],
+        },
+      });
+      // Falls back to the runtime's standard Yes/No choices.
+      expect(variables.employed).not.toHaveProperty('options');
+    });
+  });
 });

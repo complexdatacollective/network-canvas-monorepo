@@ -405,6 +405,7 @@ const migrationV7toV8 = createMigration({
 - A datetime codebook variable's RelativeDatePicker \`anchor\` must be a real date using a year of 0100 or later — the interview's date arithmetic (\`Date.UTC\`) maps a two-digit year (0-99) onto 1900-1999, so such an anchor already produced a wrong window, while years 0100-0999 round-trip correctly — and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
 - Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the variable's type (e.g. \`minValue\` on a text variable, or \`requiredAcceptsNull\` anywhere). A removed \`minValue\`/\`minLength\`/\`minSelected\` still marks the variable required, preserving the old implied-required behaviour. Layout variables take no validation at all; theirs is removed.
 - A variable's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout variables, which have no control, have it removed.
+- Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean variable's option entry that is not a labelled true/false choice is removed; if no entries remain the variable falls back to the standard Yes/No choices.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -448,6 +449,26 @@ const migrationV7toV8 = createMigration({
             if (typeof variable === 'object' && variable !== null) {
               const typedVariable = variable as Record<string, unknown>;
               if (typedVariable.type !== 'boolean') continue;
+              // A malformed entry (non-boolean value, non-string label, or a
+              // wrong-typed `negative` flag) fails v8's boolean options
+              // schema and has no faithful per-entry repair — the value IS
+              // the datum stored — so the entry is dropped. An options array
+              // this leaves empty falls through to the empty-array deletion
+              // below, restoring the runtime's Yes/No default.
+              if (Array.isArray(typedVariable.options)) {
+                typedVariable.options = typedVariable.options.filter(
+                  (option) => {
+                    const typedOption = asRecord(option);
+                    return (
+                      typedOption !== null &&
+                      typeof typedOption.label === 'string' &&
+                      typeof typedOption.value === 'boolean' &&
+                      (typedOption.negative === undefined ||
+                        typeof typedOption.negative === 'boolean')
+                    );
+                  },
+                );
+              }
               if (
                 typedVariable.component === 'Toggle' ||
                 (Array.isArray(typedVariable.options) &&
@@ -644,6 +665,19 @@ const migrationV7toV8 = createMigration({
               const typedOption = option as Record<string, unknown>;
               if (typeof typedOption.value === 'boolean') {
                 typedOption.value = typedOption.value ? 'true' : 'false';
+              } else if (
+                typeof typedOption.value === 'number' &&
+                !Number.isInteger(typedOption.value)
+              ) {
+                // V8 option values are strings or integers. A v7-legal
+                // fractional value (e.g. a 0.5-step Likert option) is
+                // coerced to its string form, exactly as booleans are above.
+                typedOption.value = String(typedOption.value);
+              }
+              if (typeof typedOption.label === 'number') {
+                // Labels are display strings in v8; a numeric label keeps
+                // its rendered text.
+                typedOption.label = String(typedOption.label);
               }
             }
           }
