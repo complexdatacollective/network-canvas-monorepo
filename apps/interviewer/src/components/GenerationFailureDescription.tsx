@@ -1,4 +1,3 @@
-import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type {
   ConstraintConflict,
   SyntheticDataConstraintError,
@@ -31,13 +30,10 @@ function ConstraintConflictItem({
 /**
  * The body of the "Generation failed" toast.
  *
- * A protocol can declare arbitrarily many clashing rules, and the toast that
- * shows them is anchored to the bottom of the screen and grows upwards — so an
- * unbounded list carries its own title and Close control off the top, leaving
- * the researcher unable to read the failure or dismiss it by pointer. The list
- * is therefore capped and scrolls within itself, which keeps the toast on
- * screen however many conflicts a protocol produces. `ScrollArea` is
- * keyboard-focusable, so the conflicts stay reachable without a mouse.
+ * A protocol can declare arbitrarily many clashing rules. fresco-ui's `Toast`
+ * bounds and scrolls its description internally, so however many conflicts a
+ * protocol produces, the toast's own title and Close control stay on screen
+ * without this component needing its own scroll handling.
  */
 export function GenerationFailureDescription({
   error,
@@ -48,20 +44,14 @@ export function GenerationFailureDescription({
   return (
     <>
       <p>{summary}</p>
-      <ScrollArea
-        className="max-h-[30vh]"
-        viewportClassName="pr-2"
-        aria-label="Conflicting validation rules"
-      >
-        <ul className="list-disc space-y-1 pl-5">
-          {error.conflicts.map((conflict) => (
-            <ConstraintConflictItem
-              key={`${conflict.entity}-${conflict.variableIds.join('-')}`}
-              conflict={conflict}
-            />
-          ))}
-        </ul>
-      </ScrollArea>
+      <ul className="list-disc space-y-1 pl-5">
+        {error.conflicts.map((conflict) => (
+          <ConstraintConflictItem
+            key={`${conflict.entity}-${conflict.variableIds.join('-')}`}
+            conflict={conflict}
+          />
+        ))}
+      </ul>
     </>
   );
 }

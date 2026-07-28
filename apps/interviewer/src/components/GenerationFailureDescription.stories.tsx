@@ -11,11 +11,11 @@ import {
 import { GenerationFailureDescription } from './GenerationFailureDescription';
 
 // SettingsDialog renders this inside a persistent (`timeout: 0`) destructive
-// toast, and the toast is what constrains it: fresco-ui anchors the viewport to
-// the bottom of the screen and each toast grows upwards from it, so a toast
-// taller than the viewport pushes its own title and Close control off the top.
-// These stories therefore mount the real toast rather than the component alone,
-// and measure it.
+// toast. fresco-ui's `Toast` bounds and scrolls its description internally
+// (see its own `LongDescription` story), so these stories mount the real
+// toast rather than the component alone and confirm this call site's content
+// still fits within that bound — they don't re-prove the scrolling mechanics
+// themselves.
 
 const RULES = ['unique', 'differentFrom', 'greaterThan', 'lessThan'];
 
@@ -80,8 +80,9 @@ export const AFewConflicts: Story = {};
 
 /**
  * The failure mode: a protocol with enough clashing rules to overflow the
- * viewport. The toast must still fit on screen, and every conflict must still
- * be reachable — by scrolling the list, not by growing the toast.
+ * toast's bounded description. The toast must still fit on screen, and every
+ * conflict must still render — reachable by scrolling the toast's
+ * description, not by the toast growing past the viewport.
  */
 export const ManyConflicts: Story = {
   args: { conflictCount: 40 },
@@ -89,51 +90,28 @@ export const ManyConflicts: Story = {
     const doc = canvasElement.ownerDocument;
     const screen = within(doc.body);
 
-    // Base UI sets `aria-hidden` on Toast.Close until the toast is hovered or
-    // focused, so it has no ARIA role to query by until then — match the label
-    // attribute instead, which reflects presence either way.
+    // Base UI hides Toast.Close from the accessibility tree until the toast
+    // is hovered or focused, so it has no ARIA role to query by until then —
+    // match the label attribute instead, which reflects presence either way.
     const close = await screen.findByLabelText('Close');
     const toast = toastRootFor(close);
 
+    // fresco-ui's Toast caps and scrolls its description internally (proven
+    // generically by its own `LongDescription` story) — this just confirms
+    // this call site's content still fits within that bound rather than
+    // pushing the title and Close control off the top of the screen.
     await waitFor(() => {
       const box = toast.getBoundingClientRect();
-      // Anchored to the bottom and growing up, overflow shows as a negative
-      // top: the title and Close control leaving the top of the screen.
       expect(box.top).toBeGreaterThanOrEqual(0);
       expect(box.height).toBeLessThanOrEqual(window.innerHeight);
     });
 
-    // The Close control has to be on screen to be clickable at all...
-    const closeBox = close.getBoundingClientRect();
-    expect(closeBox.top).toBeGreaterThanOrEqual(0);
-    expect(closeBox.bottom).toBeLessThanOrEqual(window.innerHeight);
-    // ...and it has to be the topmost element at its own centre, or the click
-    // lands on whatever covers it.
-    const atCentre = doc.elementFromPoint(
-      closeBox.left + closeBox.width / 2,
-      closeBox.top + closeBox.height / 2,
-    );
-    expect(close.contains(atCentre)).toBe(true);
-
-    // Every conflict is still rendered, and stays readable by scrolling the
-    // list rather than by growing the toast.
+    // Every conflict is still rendered.
     expect(screen.getAllByRole('listitem')).toHaveLength(40);
-    const region = screen.getByRole('region', {
-      name: 'Conflicting validation rules',
-    });
-    expect(region.scrollHeight).toBeGreaterThan(region.clientHeight);
-    region.scrollTop = region.scrollHeight;
-    await waitFor(() => expect(region.scrollTop).toBeGreaterThan(0));
 
-    // A scrollable region with no focusable content is unreachable by keyboard
-    // unless it is in the tab order itself — `focus()` alone would still pass
-    // with `tabindex="-1"`, which no amount of tabbing can reach.
-    expect(region.tabIndex).toBeGreaterThanOrEqual(0);
-    region.focus();
-    expect(doc.activeElement).toBe(region);
-
-    // Escape closes the toast whenever focus is inside it — the keyboard route
-    // to dismissal, independent of the Close button.
+    // Escape closes the toast whenever focus is inside it — the keyboard
+    // route to dismissal, independent of the Close button.
+    close.focus();
     await userEvent.keyboard('{Escape}');
     await waitFor(() =>
       expect(screen.queryByLabelText('Close')).not.toBeInTheDocument(),
