@@ -443,12 +443,27 @@ export function ruleBrokenByFixedValues(
   entity: EntityConstraints,
   fixed: Record<string, VariableValue>,
 ): BrokenFixedRule | undefined {
-  const declared = [...entity.keys()];
-  const held = (id: string): VariableValue | undefined => {
-    const value = fixed[id];
-    return value === null ? undefined : value;
-  };
+  return (
+    ownRuleBrokenByFixedValues(entity, fixed) ??
+    crossRuleBrokenByFixedValues(entity, fixed)
+  );
+}
 
+/**
+ * The first fixed value its own variable's bounds reject, if any.
+ *
+ * Split from the rules spanning two variables because the two halves are not
+ * always answered the same way. A value breaking a bound of its own is a
+ * complete statement on its own — whoever wrote it can be handed it back — while
+ * a rule between two fixed values says only that the pair cannot stand, without
+ * saying which of them was meant. {@link SyntheticInterview} refuses the second
+ * and keeps the first, where the whole point of writing a value is to put a
+ * chosen one in front of an interface.
+ */
+export function ownRuleBrokenByFixedValues(
+  entity: EntityConstraints,
+  fixed: Record<string, VariableValue>,
+): BrokenFixedRule | undefined {
   for (const [id, variable] of entity) {
     if (!(id in fixed)) continue;
     // A key present without a value is what an emptied column arrives as, and
@@ -460,6 +475,20 @@ export function ruleBrokenByFixedValues(
       return { variableIds: [id], values: [value], rule };
     }
   }
+
+  return undefined;
+}
+
+/** The first rule spanning two of an entity's fixed values that they break. */
+export function crossRuleBrokenByFixedValues(
+  entity: EntityConstraints,
+  fixed: Record<string, VariableValue>,
+): BrokenFixedRule | undefined {
+  const declared = [...entity.keys()];
+  const held = (id: string): VariableValue | undefined => {
+    const value = fixed[id];
+    return value === null ? undefined : value;
+  };
 
   for (const [id, { constraints, entry }] of entity) {
     const own = held(id);

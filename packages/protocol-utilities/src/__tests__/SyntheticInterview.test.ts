@@ -1658,6 +1658,194 @@ describe('validation rules on generated nodes', () => {
     expect(() => si.getNetwork()).toThrow(/cannot all be satisfied together/);
   });
 
+  it('refuses a pair of values the caller sets that sameAs cannot hold', () => {
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const anchor = nt.addVariable({
+      type: 'number',
+      name: 'anchor',
+      validation: { minValue: 0, maxValue: 100 },
+    });
+    const echo = nt.addVariable({
+      type: 'number',
+      name: 'echo',
+      validation: { minValue: 0, maxValue: 100, sameAs: anchor.id },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 1 },
+    });
+    // Held to one value and given two: the node can carry either, and both are
+    // the caller's, so there is no assignment that honours what was asked.
+    si.setNodeAttribute(0, anchor.id, 10);
+    si.setNodeAttribute(0, echo.id, 20);
+
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+    expect(() => si.getNetwork()).toThrow(
+      /"anchor" and "echo" \(sameAs\): the caller sets these variables on one node to 10 and 20, which sameAs cannot hold/,
+    );
+  });
+
+  it('refuses a comparator the caller sets the wrong way round', () => {
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const low = nt.addVariable({
+      type: 'number',
+      name: 'low',
+      validation: { minValue: 0, maxValue: 100 },
+    });
+    const high = nt.addVariable({
+      type: 'number',
+      name: 'high',
+      validation: { minValue: 0, maxValue: 100, greaterThanVariable: low.id },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 1 },
+    });
+    si.setNodeAttribute(0, low.id, 80);
+    si.setNodeAttribute(0, high.id, 20);
+
+    expect(() => si.getNetwork()).toThrow(/greaterThanVariable cannot hold/);
+  });
+
+  it('keeps a value the caller sets outside its own bounds', () => {
+    // The deliberate counterpart to the two tests above. One value, named by
+    // the caller, with nothing to weigh it against: setting an attribute is how
+    // a story puts chosen data in front of an interface, and stories set values
+    // no participant could have entered — an off-list option among them.
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const age = nt.addVariable({
+      type: 'number',
+      name: 'age',
+      validation: { minValue: 18, maxValue: 90 },
+    });
+    const community = nt.addVariable({
+      type: 'categorical',
+      name: 'community',
+      options: [
+        { label: 'Family', value: 'family' },
+        { label: 'Work', value: 'work' },
+      ],
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 1 },
+    });
+    si.setNodeAttribute(0, age.id, 5);
+    si.setNodeAttribute(0, community.id, ['biological']);
+
+    const attrs = attributesOf(si.getNetwork())[0]!;
+    expect(attrs[age.id]).toBe(5);
+    expect(attrs[community.id]).toEqual(['biological']);
+  });
+
+  it('refuses length rules that leave the draw no string to reach', () => {
+    // The drawer has no way to report that it could not comply: it fits its
+    // answer to whichever bound it can reach and emits it, so this used to
+    // arrive as a ten-character value under a five-character ceiling.
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    nt.addVariable({
+      type: 'text',
+      name: 'bio',
+      validation: { minLength: 10, maxLength: 5 },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 2 },
+    });
+
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+    expect(() => si.getNetwork()).toThrow(
+      /"bio" \(maxLength\): the closest value these rules leave drawable is "\w{10}", which maxLength rejects/,
+    );
+  });
+
+  it('refuses value bounds that cross over', () => {
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    nt.addVariable({
+      type: 'number',
+      name: 'age',
+      validation: { minValue: 50, maxValue: 10 },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 1 },
+    });
+
+    expect(() => si.getNetwork()).toThrow(/which maxValue rejects/);
+  });
+
+  it('refuses a selection ceiling the variable requires an answer above', () => {
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    nt.addVariable({
+      type: 'categorical',
+      name: 'interests',
+      validation: { required: true, maxSelected: 0 },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 1 },
+    });
+
+    expect(() => si.getNetwork()).toThrow(/which required rejects/);
+  });
+
+  it('refuses a sameAs group whose members leave no value between them', () => {
+    // Each variable's own bounds are satisfiable; held to one value they are
+    // not, and the value that arrived was outside one of the two ranges.
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const early = nt.addVariable({
+      type: 'number',
+      name: 'early',
+      validation: { minValue: 0, maxValue: 10 },
+    });
+    nt.addVariable({
+      type: 'number',
+      name: 'late',
+      validation: { minValue: 20, maxValue: 30, sameAs: early.id },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 1 },
+    });
+
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+    expect(() => si.getNetwork()).toThrow(/which maxValue rejects/);
+  });
+
+  it('leaves a value the caller set to reach a drawn variable unjudged', () => {
+    // `sameAs` hands the caller's value straight on, so refusing what the draw
+    // did with it would refuse the value itself by another route — which the
+    // test above this one says the builder does not do.
+    const si = new SyntheticInterview(42);
+    const nt = si.addNodeType();
+    const anchor = nt.addVariable({
+      type: 'number',
+      name: 'anchor',
+      validation: { minValue: 18, maxValue: 90 },
+    });
+    const echo = nt.addVariable({
+      type: 'number',
+      name: 'echo',
+      validation: { minValue: 18, maxValue: 90, sameAs: anchor.id },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 1 },
+    });
+    si.setNodeAttribute(0, anchor.id, 5);
+
+    const attrs = attributesOf(si.getNetwork())[0]!;
+    expect(attrs[anchor.id]).toBe(5);
+    expect(attrs[echo.id]).toBe(5);
+  });
+
   it('leaves a manual node its neutral values rather than solving them', () => {
     const si = new SyntheticInterview(42);
     const nt = si.addNodeType();
@@ -1933,6 +2121,45 @@ describe('validation rules on generated edges', () => {
     expect(attrs[anchor.id]).toBe(12);
     expect(attrs[echo.id]).toBe(12);
     expect(Number(attrs[above.id])).toBeGreaterThan(12);
+  });
+
+  it('refuses a pair of values the caller sets on one edge that sameAs cannot hold', () => {
+    const si = new SyntheticInterview(42);
+    const et = si.addEdgeType();
+    const anchor = et.addVariable({
+      type: 'number',
+      name: 'anchor',
+      validation: { minValue: 0, maxValue: 100 },
+    });
+    const echo = et.addVariable({
+      type: 'number',
+      name: 'echo',
+      validation: { minValue: 0, maxValue: 100, sameAs: anchor.id },
+    });
+    twoNodes(si);
+    si.addEdges([[0, 1]], et.id);
+    si.setEdgeAttribute(0, anchor.id, 10);
+    si.setEdgeAttribute(0, echo.id, 20);
+
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+    expect(() => si.getNetwork()).toThrow(
+      /the caller sets these variables on one edge to 10 and 20, which sameAs cannot hold/,
+    );
+  });
+
+  it('refuses length rules that leave an edge draw no string to reach', () => {
+    const si = new SyntheticInterview(42);
+    const et = si.addEdgeType();
+    et.addVariable({
+      type: 'text',
+      name: 'note',
+      validation: { minLength: 10, maxLength: 5 },
+    });
+    twoNodes(si);
+    si.addEdges([[0, 1]], et.id);
+
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+    expect(() => si.getNetwork()).toThrow(/which maxLength rejects/);
   });
 
   it('never issues a unique value another edge was given outright', () => {

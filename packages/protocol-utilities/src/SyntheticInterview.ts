@@ -30,17 +30,27 @@ import {
 import { resolveGenerationConfig } from './generateNetwork/config';
 import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints';
 import { todayYmd } from './generateNetwork/constraints/dateWindow';
-import { SyntheticDataConstraintError } from './generateNetwork/constraints/error';
+import {
+  type ConstraintConflict,
+  SyntheticDataConstraintError,
+} from './generateNetwork/constraints/error';
 import {
   scopeKey,
   uniqueSlotMembers,
 } from './generateNetwork/constraints/generateEntityAttributes';
-import type { EntityConstraints } from './generateNetwork/constraints/types';
+import {
+  COMPARISON_RULES,
+  type EntityConstraints,
+} from './generateNetwork/constraints/types';
 import {
   UniqueRegistry,
   valueKey,
 } from './generateNetwork/constraints/uniqueRegistry';
 import type { GenerationContext } from './generateNetwork/context';
+import {
+  crossRuleBrokenByFixedValues,
+  ownRuleBrokenByFixedValues,
+} from './generateNetwork/nodes';
 import type {
   AddCategoricalBinPromptInput,
   AddDiseaseNominationStepInput,
@@ -85,6 +95,58 @@ import { ValueGenerator } from './ValueGenerator';
 type VariableRef = {
   id: string;
 };
+
+// Every constraint whose value is another variable's id, so a value written
+// onto one variable can reach the other's draw.
+const REFERENCE_RULES = [
+  'sameAs',
+  'differentFrom',
+  ...COMPARISON_RULES,
+] as const;
+
+/**
+ * The variables a set of written values can have decided, as the ids reachable
+ * from them through the rules that relate one variable to another.
+ *
+ * Followed transitively and in both directions: `sameAs` hands a value straight
+ * on, and a comparator bounds the draw by whatever the variable it names holds,
+ * whichever end declared it. Anything a chain of those reaches is a value the
+ * caller's own settled rather than one the rules alone chose.
+ */
+function reachedByFixedValues(
+  entity: EntityConstraints,
+  fixed: Record<string, VariableValue>,
+): Set<string> {
+  const neighbours = new Map<string, Set<string>>();
+  const link = (from: string, to: string): void => {
+    const linked = neighbours.get(from) ?? new Set<string>();
+    linked.add(to);
+    neighbours.set(from, linked);
+  };
+
+  for (const [id, { constraints }] of entity) {
+    for (const rule of REFERENCE_RULES) {
+      const target = constraints[rule];
+      if (target === undefined || !entity.has(target)) continue;
+      link(id, target);
+      link(target, id);
+    }
+  }
+
+  const reached = new Set(Object.keys(fixed).filter((id) => entity.has(id)));
+  const pending = [...reached];
+  while (pending.length > 0) {
+    const id = pending.pop();
+    if (id === undefined) break;
+    for (const next of neighbours.get(id) ?? []) {
+      if (reached.has(next)) continue;
+      reached.add(next);
+      pending.push(next);
+    }
+  }
+
+  return reached;
+}
 
 type NodeTypeHandle = {
   id: string;
@@ -1613,6 +1675,11 @@ export class SyntheticInterview {
     // given is refused rather than copied into the network twice.
     for (const nodeEntry of this.nodes) {
       const explicit = explicitOf(nodeEntry);
+      this.refuseContradictoryFixedValues(
+        ctx,
+        { entity: 'node', type: nodeEntry.type },
+        explicit,
+      );
       this.refuseDuplicateFixedValues(
         ctx,
         { entity: 'node', type: nodeEntry.type },
@@ -1626,6 +1693,11 @@ export class SyntheticInterview {
     // edges rather than with any node.
     for (const edgeEntry of this.edges) {
       const explicit = explicitOfEdge(edgeEntry);
+      this.refuseContradictoryFixedValues(
+        ctx,
+        { entity: 'edge', type: edgeEntry.type },
+        explicit,
+      );
       this.refuseDuplicateFixedValues(
         ctx,
         { entity: 'edge', type: edgeEntry.type },
@@ -1660,6 +1732,15 @@ export class SyntheticInterview {
                 ),
               },
             );
+
+        if (drawn) {
+          this.refuseUndrawableValues(
+            ctx,
+            { entity: 'node', type: nodeEntry.type },
+            drawn,
+            explicit,
+          );
+        }
 
         for (const [varId, variable] of nodeType.variables) {
           const value = varId in explicit ? explicit[varId] : drawn?.[varId];
@@ -1717,6 +1798,15 @@ export class SyntheticInterview {
                 ),
               },
             );
+
+        if (drawn) {
+          this.refuseUndrawableValues(
+            ctx,
+            { entity: 'edge', type: edgeEntry.type },
+            drawn,
+            explicit,
+          );
+        }
 
         for (const [varId, variable] of edgeType.variables) {
           const value = varId in explicit ? explicit[varId] : drawn?.[varId];
@@ -1892,10 +1982,6 @@ export class SyntheticInterview {
     if (!constraints) return;
 
     const registry = scopeKey(ref);
-    const entityType =
-      ref.entity === 'node'
-        ? this.nodeTypes.get(ref.type)
-        : this.edgeTypes.get(ref.type);
 
     for (const [slot, memberIds] of uniqueSlotMembers(constraints)) {
       for (const id of memberIds) {
@@ -1905,26 +1991,130 @@ export class SyntheticInterview {
 
         throw new SyntheticDataConstraintError(
           [
-            {
-              entity: ref.entity,
-              entityType: ref.type,
-              ...(entityType ? { entityTypeName: entityType.name } : {}),
-              variableIds: [...memberIds],
-              variableNames: memberIds.map(
-                (memberId) =>
-                  entityType?.variables.get(memberId)?.name ?? memberId,
-              ),
-              rules: ['unique'],
+            this.conflict(ref, [...memberIds], ['unique'], {
               // Reported as the key the collision was judged on rather than
               // the value as written: it is what the registry compared, and a
               // layout or categorical value has no useful `String()` form.
               reason: `the caller sets ${memberIds.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${valueKey(value)} on two ${ref.entity}s, but unique allows one ${ref.entity} to hold a value`,
-            },
+            }),
           ],
           "this interview fixes values that its protocol's rules do not allow",
         );
       }
     }
+  }
+
+  /**
+   * Refuses a pair of values the caller wrote onto one entity that the rule
+   * between them cannot hold: a `sameAs` pair given two different values, a
+   * comparator given its pair the wrong way round.
+   *
+   * Both values are the caller's own and no assignment honours both, so
+   * whichever the network ended up carrying would be one they did not ask for.
+   * That is the same reason a `unique` value written onto two entities is
+   * refused rather than resolved, and it reaches the same refusal.
+   *
+   * A value breaking a bound of its own variable — a number under `minValue`, an
+   * option the variable's list does not offer — is deliberately **not** refused.
+   * Writing a value onto an entity is how a story puts chosen data in front of
+   * an interface, data a participant could not have entered included, and
+   * stories rely on exactly that: FamilyPedigree's fixtures set an edge
+   * relationship their option list does not carry, and Narrative's set a bare
+   * string on a categorical. There is one value and the caller named it, so
+   * there is nothing to resolve and nobody else's intent to honour. What the
+   * draw produces is held to the rules instead — see
+   * {@link refuseUndrawableValues}.
+   */
+  private refuseContradictoryFixedValues(
+    ctx: GenerationContext,
+    ref: { entity: 'node' | 'edge'; type: string },
+    fixed: Record<string, VariableValue>,
+  ): void {
+    const constraints = ctx.entityConstraints[ref.entity].get(ref.type);
+    if (!constraints) return;
+
+    const broken = crossRuleBrokenByFixedValues(constraints, fixed);
+    if (broken === undefined) return;
+
+    const setTo = broken.values.map((value) => valueKey(value)).join(' and ');
+    throw new SyntheticDataConstraintError(
+      [
+        this.conflict(ref, broken.variableIds, [broken.rule], {
+          reason: `the caller sets these variables on one ${ref.entity} to ${setTo}, which ${broken.rule} cannot hold`,
+        }),
+      ],
+      "this interview fixes values that its protocol's rules do not allow",
+    );
+  }
+
+  /**
+   * Refuses a value the draw produced that the rules it was drawn against
+   * reject.
+   *
+   * `generateNetwork` refuses a codebook no value can satisfy before it draws
+   * anything, judged against how many entities its stages would fabricate. This
+   * builder's entities are the ones the caller asked for rather than a worst
+   * case of them, so that pass would refuse counts nothing here generates — but
+   * a rule set no value satisfies needs no counting to find. The drawer fits its
+   * answer to whichever bound it can reach and emits it regardless, so
+   * `minLength: 10` under `maxLength: 5` arrives as a ten-character string and a
+   * `sameAs` pair whose ranges do not overlap arrives outside one of them.
+   * Reading each drawn value back against its own rules catches both, exactly
+   * for the entities that exist.
+   *
+   * Variables the caller's own values reach are left out. A written value is
+   * kept whatever its bounds say (see
+   * {@link refuseContradictoryFixedValues}), and `sameAs` copies it into every
+   * variable held equal to it, so judging what the draw did with it would refuse
+   * that value by another route.
+   */
+  private refuseUndrawableValues(
+    ctx: GenerationContext,
+    ref: { entity: 'node' | 'edge'; type: string },
+    drawn: Record<string, VariableValue>,
+    fixed: Record<string, VariableValue>,
+  ): void {
+    const constraints = ctx.entityConstraints[ref.entity].get(ref.type);
+    if (!constraints) return;
+
+    const reached = reachedByFixedValues(constraints, fixed);
+    const judged = Object.fromEntries(
+      Object.entries(drawn).filter(([id]) => !reached.has(id)),
+    );
+
+    const broken = ownRuleBrokenByFixedValues(constraints, judged);
+    if (broken === undefined) return;
+
+    throw new SyntheticDataConstraintError([
+      this.conflict(ref, broken.variableIds, [broken.rule], {
+        reason: `the closest value these rules leave drawable is ${valueKey(broken.values[0] ?? null)}, which ${broken.rule} rejects`,
+      }),
+    ]);
+  }
+
+  /** One conflict, named the way a consumer reading the codebook would name it. */
+  private conflict(
+    ref: { entity: 'node' | 'edge'; type: string },
+    variableIds: string[],
+    rules: string[],
+    { reason }: { reason: string },
+  ): ConstraintConflict {
+    const entityType =
+      ref.entity === 'node'
+        ? this.nodeTypes.get(ref.type)
+        : this.edgeTypes.get(ref.type);
+
+    return {
+      entity: ref.entity,
+      entityType: ref.type,
+      ...(entityType ? { entityTypeName: entityType.name } : {}),
+      variableIds,
+      variableNames: variableIds.map(
+        (id) => entityType?.variables.get(id)?.name ?? id,
+      ),
+      rules,
+      reason,
+    };
   }
 
   private buildCodebook() {
