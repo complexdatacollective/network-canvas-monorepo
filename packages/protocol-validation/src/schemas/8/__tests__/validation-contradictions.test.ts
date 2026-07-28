@@ -7037,12 +7037,14 @@ describe('findValidationContradictions — Thirtieth wave Fix 2: one-sided full-
     ).toEqual([]);
   });
 
-  // The coarse 1000-9999 clamp does NOT apply at full resolution: the clamp
+  // The coarse 1000 FLOOR does NOT apply at full resolution: that clamp
   // exists only on the dropdowns' coarse pair, so an out-of-window authored
   // max of 1100 resolves a floor of 0900-01-01 here (a coarse year picker
   // with the same max floors at 1000 — see the twenty-sixth-wave fidelity
-  // block).
-  it('extends a full-resolution out-of-window floor without the coarse clamp', () => {
+  // block). The synthesized CEILING is different: the thirty-second wave
+  // caps it at year 9999 on both paths, mirroring fresco-ui's clamp of the
+  // resolved native max.
+  it('extends a full-resolution out-of-window floor without the coarse floor clamp', () => {
     const result = findValidationContradictions({
       a: datePicker('a', { max: '1100-06-15' }, { lessThanVariable: 'b' }),
       b: datePicker('b', { min: '0900-01-01', max: '0900-01-01' }),
@@ -8176,5 +8178,111 @@ describe('findValidationContradictions — Thirty-second wave Fix 2: ordinal par
         c2: datePicker('c2', narrow),
       }),
     ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — Thirty-second wave Fix 3: the synthesized full-resolution far bound clamps at year 9999', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: fresco-ui clamps the resolved native max at
+  // 9999-12-31 (the form validator's compareDateStrings is
+  // four-digit-lexical, so five-digit years are unusable), so a
+  // full-resolution picker authored with only `min: '9999-12-31'` models
+  // the exact single-day window [9999-12-31, 9999-12-31] — pinned through
+  // the existing min === max datetime path, equal to the partner's pin. The
+  // unclamped wave-30 ceiling (Dec 31 of 10199) modelled a multi-day window
+  // and accepted this.
+  it('rejects the reviewer repro: a min-only picker at 9999-12-31 differentFrom a partner pinned there', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { min: '9999-12-31' }, { differentFrom: 'b' }),
+      b: datePicker('b', { min: '9999-12-31', max: '9999-12-31' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror direction: the differentFrom declared from the
+  // both-bounds-authored partner reaches the same collapsed-window pin.
+  it('rejects the mirror declared from the pinned partner', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { min: '9999-12-31' }),
+      b: datePicker(
+        'b',
+        { min: '9999-12-31', max: '9999-12-31' },
+        { differentFrom: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Accept guard just outside the boundary: an authored min one year
+  // earlier keeps a multi-day window ([9998-12-31, 9999-12-31]) — nothing
+  // is pinned, and a differentFrom against the ceiling-pinned partner is
+  // satisfiable by any earlier day in the window.
+  it('accepts an authored min at 9998 whose clamped window stays multi-day', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { min: '9998-12-31' }, { differentFrom: 'b' }),
+        b: datePicker('b', { min: '9999-12-31', max: '9999-12-31' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Derivation fidelity: a far-future authored min whose unclamped
+  // extension (9900 + 200 = 10100) overshoots the ceiling models its far
+  // bound at exactly 9999-12-31 — a strict greaterThanVariable against a
+  // partner pinned ON the clamped ceiling is infeasible (the unclamped
+  // model accepted it), while one pinned a single day below it is exceeded
+  // by the ceiling's own instant.
+  it('brackets the clamped ceiling of a far-future authored min to the day', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { min: '9900-01-01' }, { greaterThanVariable: 'b' }),
+      b: datePicker('b', { min: '9999-12-31', max: '9999-12-31' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { min: '9900-01-01' }, { greaterThanVariable: 'b' }),
+        b: datePicker('b', { min: '9999-12-30', max: '9999-12-30' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The below-1920 extension side is unaffected: it only ever walks
+  // DOWNWARD from an early authored max, where the native year-1 floor
+  // (not the coarse 1000 floor, and not this ceiling) governs — the
+  // wave-30 out-of-window floor behaviour is unchanged.
+  it('leaves the downward extension of an early authored max unclamped by the ceiling', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { max: '1100-06-15' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: '0900-01-01', max: '0900-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
   });
 });

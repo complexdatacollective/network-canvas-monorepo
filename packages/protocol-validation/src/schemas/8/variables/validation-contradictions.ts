@@ -1105,6 +1105,15 @@ const COARSE_SYNTHESIS_SPAN_YEARS =
  * unclamped synthesis was a safe superset of the clamped runtime window (a
  * superset can only accept more), so this is a precision improvement, not a
  * soundness fix.
+ *
+ * Thirty-second wave (Fix 3): the MAX side of this range also caps the
+ * FULL-resolution synthesized far bound — fresco-ui clamps the resolved
+ * native `max` attribute at 9999-12-31 for the same four-digit-year reason
+ * (the form validator's `compareDateStrings` compares lexically over the
+ * fixed-width YYYY grammar, so a five-digit year is unusable) — see
+ * `synthesizedFullResolutionResolvedBound`. The 1000 floor stays
+ * coarse-only: the native input floors at year 1 instead
+ * (`clampToNativeDateFloor`).
  */
 const COARSE_SYNTHESIS_MIN_YEAR = 1000;
 const COARSE_SYNTHESIS_MAX_YEAR = 9999;
@@ -1274,23 +1283,31 @@ const periodStartDayNumber = ({ year, month }: YearMonth): number =>
  *   - authored max before 1920-01-01 ⇒ the out-of-window extension:
  *     modelled min at 1 January of `max.year` minus the horizon span. The
  *     full-resolution path shares the coarse extension arithmetic but NOT
- *     the coarse 1000-9999 clamp — that clamp exists only on the
+ *     the coarse 1000 floor — that floor exists only on the
  *     `coarseMinYmd`/`coarseMaxYmd` pair the dropdowns read, never on the
  *     native input's attributes. An extension reaching before year 1 falls
  *     to the native input floor via `clampToNativeDateFloor`, which is
  *     exactly where the control lands when its negative-year `min`
  *     attribute fails the native grammar;
  *   - authored min ⇒ modelled max at 31 December of
- *     `max(horizon, min.year + span)`. The runtime's upper edge is `today`
- *     once the authored min has passed and the full-year extension
- *     `min.year + span(today)` while it has not; the LATER of the horizon's
- *     December and the horizon-span extension covers both branches on every
- *     in-horizon interview date (`today <= horizon` and
+ *     `min(9999, max(horizon, min.year + span))`. The runtime's upper edge
+ *     is `today` once the authored min has passed and the full-year
+ *     extension `min.year + span(today)` while it has not; the LATER of the
+ *     horizon's December and the horizon-span extension covers both
+ *     branches on every in-horizon interview date (`today <= horizon` and
  *     `span(today) <= span(horizon)`), so the modelled window is a superset
  *     of every runtime window — supersets only ever accept more. A literal
  *     horizon ceiling alone would UNDER-cover a future-dated authored min
  *     (the runtime extends past the horizon there), inverting the modelled
- *     window into a false rejection.
+ *     window into a false rejection. Thirty-second wave (Fix 3): the outer
+ *     year-9999 cap mirrors fresco-ui's own clamp of the resolved native
+ *     `max` at 9999-12-31 — the form validator's `compareDateStrings`
+ *     compares four-digit-lexically, so a five-digit year is unusable and
+ *     the runtime window truncates there — keeping the model a superset
+ *     WITHIN that ceiling rather than modelling days the control never
+ *     admits. An authored `min: '9999-12-31'` therefore collapses the
+ *     window to that exact single day, which the existing pinning path
+ *     (`dateWindowInterval` min === max) treats as pinned;
  *
  * Authoredness is judged by `parseRuntimeYmd` — the runtime's own grammar —
  * exactly as `synthesizedCoarseMissingSideBound` judges it, and the call site's
@@ -1319,9 +1336,12 @@ const synthesizedFullResolutionResolvedBound = (
     return {
       edge: 'max',
       day: utcDayNumber(
-        Math.max(
-          COARSE_SYNTHESIS_HORIZON_YEAR,
-          authoredMin.year + COARSE_SYNTHESIS_SPAN_YEARS,
+        Math.min(
+          COARSE_SYNTHESIS_MAX_YEAR,
+          Math.max(
+            COARSE_SYNTHESIS_HORIZON_YEAR,
+            authoredMin.year + COARSE_SYNTHESIS_SPAN_YEARS,
+          ),
         ),
         11,
         31,
