@@ -689,9 +689,14 @@ const lastDayOfMonth = (year: number, month: number): number => {
 };
 
 /**
- * A date bound as a UTC day number. A partial date expands to its earliest
- * day for a `min` bound and its latest for a `max` bound, so coarse
- * resolutions are compared conservatively.
+ * A date bound as a UTC day number. A partial date expands to the earliest day
+ * of its period for a `min` bound and the latest for a `max` bound.
+ *
+ * The `max` expansion models "the latest day the control can EMIT", which is
+ * only right when the control stores full dates. A coarse (month/year) picker
+ * stores the truncated string, which `compareVariables` reads back as the
+ * START of the period — see `dateWindowInterval`, which is the only caller
+ * that has to make that distinction.
  */
 const dayNumber = (value: string, edge: 'min' | 'max'): number | undefined => {
   const match = DATE_PART_PATTERN.exec(value);
@@ -795,6 +800,70 @@ export const isRelativeDatePickerShape = (parameters: UnknownRecord): boolean =>
     (key) => parameters[key] !== undefined,
   ) && !DATE_PICKER_PARAMETER_KEYS.some((key) => parameters[key] !== undefined);
 
+type DateResolution = 'full' | 'month' | 'year';
+
+/**
+ * A datetime variable's storage resolution, for the max edge of
+ * `dateWindowInterval` below (twentieth-wave Finding 1), the mixed-resolution
+ * sameAs-component check (third-wave Finding 3, rescoped by tenth-wave
+ * Finding 5) and the coarse arm of `pinnedValue`. Only a DatePicker's own
+ * `parameters.type` can coarsen it to 'month'/'year' — a RelativeDatePicker
+ * always stores a full date, so it defaults to 'full'.
+ *
+ * Seventeenth-wave Finding 2 corrects what an ABSENT `component` means. It
+ * used to fall in with RelativeDatePicker on "no component configured yet has
+ * no resolution of its own", but `component` is OPTIONAL on the DatePicker
+ * datetime member (variable.ts's `dateTimeDatePickerSchema`), so a
+ * schema-valid variable can omit it while still declaring
+ * `parameters: { type: 'year' }`. Reading that as full resolution discarded a
+ * resolution the author really did declare — and one a NetworkComposer field
+ * inherits when it re-declares only the component (see `schema.ts`'s
+ * `validateComposerFieldContradictions`) — so a `sameAs` with an explicit year
+ * picker was falsely rejected. A `{ type }` parameter shape identifies a
+ * DatePicker unambiguously: the RelativeDatePicker member's parameters are a
+ * strictObject of anchor/before/after and cannot carry `type`. Parameters that
+ * are absent or carry no recognised `type` still mean 'full', and a variable
+ * that DOES declare a component is unaffected.
+ */
+const dateResolutionOf = (variable: unknown): DateResolution => {
+  const record = asRecord(variable);
+  if (record === null) return 'full';
+  if (record.component !== undefined && record.component !== 'DatePicker') {
+    return 'full';
+  }
+  const type = asRecord(record.parameters)?.type;
+  return type === 'month' || type === 'year' ? type : 'full';
+};
+
+/**
+ * Twentieth-wave Finding 1: the interval a DatePicker's own min/max bounds
+ * describe, as the convex hull of the INSTANTS `compareVariables` derives from
+ * the values the control can store — not of the days the control can display.
+ *
+ * The two differ only at the max edge of a COARSE picker. A month/year picker
+ * stores the truncated string ('2020', '2020-05'), and every comparator rule
+ * resolves it with `new Date(stored)` (fresco-ui's `compareVariables`), which
+ * reads a bare year as 1 January and a bare month as the 1st — the START of
+ * the period, never the end. Expanding a coarse `max` to its period end
+ * therefore modelled instants the variable can never hold: a year picker
+ * pinned to '2020' with `greaterThanVariable` a full picker pinned to
+ * '2020-06-01' was accepted although every runtime comparison fails. Earlier
+ * waves declined this twice as "conservative", but a later wave began pinning
+ * coarse dates to their stored string for equality/`differentFrom`
+ * (seventeenth-wave Finding 1), leaving the analyser modelling one variable
+ * two different ways; the stored instant is the reading both checks share.
+ * `[Jan 1 of minYear, Jan 1 of maxYear]` is still a superset of the coarse
+ * picker's discrete emissions — just the tightest one — so the model stays
+ * sound for both the group-intersection and comparator-feasibility consumers.
+ *
+ * The period-end expansion is kept for a FULL-resolution picker carrying a
+ * coarse bound string. `datePickerParametersSchema` rejects that pairing, so
+ * it only reaches the analyser as raw (pre-schema) migration input — where the
+ * control genuinely can emit any day up to the end of the period.
+ *
+ * The min edge is the period start at every resolution, which is already both
+ * the earliest emittable day and the coarse stored instant.
+ */
 const dateWindowInterval = (variable: unknown): Interval | undefined => {
   const record = asRecord(variable);
   if (!record) return undefined;
@@ -810,9 +879,10 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
     typeof parameters.min === 'string'
       ? dayNumber(parameters.min, 'min')
       : undefined;
+  const storesFullDates = dateResolutionOf(variable) === 'full';
   const max =
     typeof parameters.max === 'string'
-      ? dayNumber(parameters.max, 'max')
+      ? dayNumber(parameters.max, storesFullDates ? 'max' : 'min')
       : undefined;
   if (min === undefined && max === undefined) return undefined;
   return { min, max, origin: 'fixed' };
@@ -928,40 +998,6 @@ const booleanDomain = (variable: unknown): Set<boolean> => {
     if (typeof value === 'boolean') domain.add(value);
   }
   return domain.size > 0 ? domain : new Set([true, false]);
-};
-
-type DateResolution = 'full' | 'month' | 'year';
-
-/**
- * A datetime variable's storage resolution, for the mixed-resolution
- * sameAs-component check (third-wave Finding 3, rescoped by tenth-wave
- * Finding 5) and the coarse arm of `pinnedValue`. Only a DatePicker's own
- * `parameters.type` can coarsen it to 'month'/'year' — a RelativeDatePicker
- * always stores a full date, so it defaults to 'full'.
- *
- * Seventeenth-wave Finding 2 corrects what an ABSENT `component` means. It
- * used to fall in with RelativeDatePicker on "no component configured yet has
- * no resolution of its own", but `component` is OPTIONAL on the DatePicker
- * datetime member (variable.ts's `dateTimeDatePickerSchema`), so a
- * schema-valid variable can omit it while still declaring
- * `parameters: { type: 'year' }`. Reading that as full resolution discarded a
- * resolution the author really did declare — and one a NetworkComposer field
- * inherits when it re-declares only the component (see `schema.ts`'s
- * `validateComposerFieldContradictions`) — so a `sameAs` with an explicit year
- * picker was falsely rejected. A `{ type }` parameter shape identifies a
- * DatePicker unambiguously: the RelativeDatePicker member's parameters are a
- * strictObject of anchor/before/after and cannot carry `type`. Parameters that
- * are absent or carry no recognised `type` still mean 'full', and a variable
- * that DOES declare a component is unaffected.
- */
-const dateResolutionOf = (variable: unknown): DateResolution => {
-  const record = asRecord(variable);
-  if (record === null) return 'full';
-  if (record.component !== undefined && record.component !== 'DatePicker') {
-    return 'full';
-  }
-  const type = asRecord(record.parameters)?.type;
-  return type === 'month' || type === 'year' ? type : 'full';
 };
 
 /**
@@ -1147,37 +1183,152 @@ function pinnedEqualDifferentFromContradictions(variables: UnknownRecord): {
 }
 
 /**
- * The rules a group-level emptiness conflict (interval or, for Finding D,
- * option-value-set) resolves by stripping: every member's `sameAs` when the
- * group has any (the pre-Finding-E policy) — otherwise, since a group can
- * also be forced together purely by a non-strict comparator cycle, every
- * non-strict comparator edge whose both ends fall inside this group.
+ * How an equality group's members re-partition once ONE of the two grouping
+ * mechanisms is removed: `'sameAs'` keeps only the members' `sameAs` edges,
+ * `'comparators'` keeps only the strongly-connected components of their
+ * internal non-strict comparator edges. Every edge of either mechanism that
+ * touches a group member has its other end inside the same group (a `sameAs`
+ * edge unions its two ends, and an SCC's whole cycle is unioned together — see
+ * `buildEqualityGroups`), so both mechanisms can be replayed over the group in
+ * isolation.
+ */
+const residualGroups = (
+  variables: UnknownRecord,
+  members: string[],
+  internalNonStrictEdges: ComparatorEdge[],
+  keep: 'sameAs' | 'comparators',
+): string[][] => {
+  const { find, union } = createUnionFind(members);
+  const memberSet = new Set(members);
+  if (keep === 'sameAs') {
+    for (const member of members) {
+      const target = usableReference(variables, member, 'sameAs');
+      if (target !== undefined && memberSet.has(target)) union(target, member);
+    }
+  } else {
+    for (const component of nonStrictComparatorComponents(
+      internalNonStrictEdges,
+    )) {
+      const [anchor] = component;
+      if (anchor === undefined) continue;
+      for (const other of component.slice(1)) union(anchor, other);
+    }
+  }
+  const partitions = new Map<string, string[]>();
+  for (const member of members) {
+    const root = find(member);
+    const bucket = partitions.get(root) ?? [];
+    bucket.push(member);
+    partitions.set(root, bucket);
+  }
+  return [...partitions.values()];
+};
+
+/**
+ * The rules a group-level emptiness conflict (interval, boolean domain or, for
+ * Finding D, option-value-set) resolves by stripping. A group can be forced
+ * together by `sameAs` edges, by non-strict comparator cycles, or by both, so
+ * the policy asks which mechanism actually causes THIS conflict: it replays the
+ * group with one mechanism removed (`residualGroups`) and keeps the removal
+ * that leaves every residual sub-group satisfiable, per the caller's own
+ * emptiness predicate.
  *
- * Ninth-wave Finding 3: a group with at least one `sameAs` edge strips ONLY
- * the `sameAs` edges, never `internalNonStrictEdges` too. A "hybrid" group —
- * `sameAs`-joined members that also happen to have a one-way non-strict
- * comparator sitting between two of them (e.g. A sameAs B, plus A <= B) —
- * previously stripped that comparator as well, even though it never forced
- * the grouping (only a `sameAs` edge, or a genuine strongly-connected
- * comparator cycle, does that — see `buildEqualityGroups`). Stripping
- * `sameAs` alone already resolves the group; the comparator is an
- * independent, still-satisfiable rule and the minimal-strip policy leaves it
- * standing. `internalNonStrictEdges` is only ever non-empty AND relevant when
- * `sameAsStrips` is empty, since a no-`sameAs` group is formed exclusively by
- * union()-ing one strongly-connected component's own members (see
- * `buildEqualityGroups`), so those edges are then genuinely the ones that
- * forced the group to exist.
+ * Ninth-wave Finding 3 is preserved as the `sameAs`-first branch: a "hybrid"
+ * group — `sameAs`-joined members that also happen to have a one-way non-strict
+ * comparator sitting between two of them (e.g. A sameAs B, plus A <= B) — is
+ * resolved by dropping `sameAs` alone, because the comparator never forced the
+ * grouping and stays satisfiable once the members separate. Twentieth-wave
+ * Finding 2 corrects the other hybrid direction, which that policy got wrong:
+ * when a comparator SCC is what empties the group (A pinned 0 and B pinned 1
+ * joined by mutual `>=`), an unconstrained C carrying `C.sameAs = A` made the
+ * repair delete C's satisfiable, unrelated rule — and the migration's fixpoint
+ * then went on to strip the comparators anyway, so the rule was destroyed for
+ * nothing. Neither branch resolving means both mechanisms genuinely contribute,
+ * and both are stripped.
  */
 const groupEqualityStrips = (
   variables: UnknownRecord,
   members: string[],
   internalNonStrictEdges: ComparatorEdge[],
+  isEmptyFor: (subset: string[]) => boolean,
 ): VariableRuleRef[] => {
   const sameAsStrips = members
     .filter((member) => hasUsableSameAs(variables, member))
     .map((member): VariableRuleRef => ({ variableId: member, rule: 'sameAs' }));
-  if (sameAsStrips.length > 0) return sameAsStrips;
-  return internalNonStrictEdges.flatMap((edge) => edge.sources);
+  const comparatorStrips = internalNonStrictEdges.flatMap(
+    (edge) => edge.sources,
+  );
+  const resolves = (keep: 'sameAs' | 'comparators'): boolean =>
+    !residualGroups(variables, members, internalNonStrictEdges, keep).some(
+      isEmptyFor,
+    );
+  if (sameAsStrips.length > 0 && resolves('comparators')) return sameAsStrips;
+  if (comparatorStrips.length > 0 && resolves('sameAs'))
+    return comparatorStrips;
+  return [...sameAsStrips, ...comparatorStrips];
+};
+
+const intervalsOfMembers = (
+  variables: UnknownRecord,
+  members: string[],
+): GroupIntervals => {
+  const intervals: GroupIntervals = new Map();
+  for (const member of members) {
+    addToGroupIntervals(intervals, intervalOf(variables[member]));
+  }
+  return intervals;
+};
+
+/**
+ * The option values EVERY member of a member list offers, with the single type
+ * they share. `undefined` means the list is unusable for the option-set checks:
+ * mixed types, a type without option semantics, or a member carrying no
+ * `options` array at all (`optionValues` treats absent options as unusable
+ * rather than empty).
+ */
+const sharedOptionValues = (
+  variables: UnknownRecord,
+  members: string[],
+):
+  | { type: 'categorical' | 'ordinal'; values: Set<string | number> }
+  | undefined => {
+  const types = new Set(members.map((member) => typeOf(variables[member])));
+  const [onlyType] = types;
+  if (types.size !== 1) return undefined;
+  if (onlyType !== 'categorical' && onlyType !== 'ordinal') return undefined;
+  let intersection: Set<string | number> | undefined;
+  for (const member of members) {
+    const values = optionValues(variables[member]);
+    if (values === undefined) return undefined;
+    intersection =
+      intersection === undefined
+        ? values
+        : new Set([...intersection].filter((value) => values.has(value)));
+  }
+  if (intersection === undefined) return undefined;
+  return { type: onlyType, values: intersection };
+};
+
+/**
+ * The available boolean values every member of an all-boolean member list
+ * offers; `undefined` when the list is not uniformly boolean.
+ */
+const sharedBooleanDomain = (
+  variables: UnknownRecord,
+  members: string[],
+): Set<boolean> | undefined => {
+  const types = new Set(members.map((member) => typeOf(variables[member])));
+  const [onlyType] = types;
+  if (types.size !== 1 || onlyType !== 'boolean') return undefined;
+  let intersection: Set<boolean> | undefined;
+  for (const member of members) {
+    const domain = booleanDomain(variables[member]);
+    intersection =
+      intersection === undefined
+        ? domain
+        : new Set([...intersection].filter((value) => domain.has(value)));
+  }
+  return intersection;
 };
 
 function disjointBoundsContradictions(
@@ -1207,35 +1358,75 @@ function disjointBoundsContradictions(
     internalNonStrictEdgesByGroup.set(lowerGroup, bucket);
   }
 
+  // Whether a candidate member list is left unsatisfiable by each of the four
+  // group-level checks below. `groupEqualityStrips` re-runs the relevant one
+  // over the sub-groups a partial repair would leave behind, so detection and
+  // repair-sufficiency always ask exactly the same question. A list of one is
+  // never "empty" here: a lone variable's own bounds are a local contradiction
+  // (`invertedBounds`), which no amount of edge-stripping resolves.
+  const intervalsEmpty = (subset: string[]): boolean =>
+    subset.length > 1 && hasEmptyOrigin(intervalsOfMembers(variables, subset));
+
+  const optionsDisjoint = (subset: string[]): boolean =>
+    subset.length > 1 &&
+    sharedOptionValues(variables, subset)?.values.size === 0;
+
+  const optionShortfall = (
+    subset: string[],
+  ): { shared: number; minSelected: number } | undefined => {
+    if (subset.length < 2) return undefined;
+    const shared = sharedOptionValues(variables, subset);
+    if (shared?.type !== 'categorical' || shared.values.size === 0) {
+      return undefined;
+    }
+    const subsetIntervals = intervalsOfMembers(variables, subset);
+    if (hasEmptyOrigin(subsetIntervals)) return undefined;
+    const minSelected = subsetIntervals.get('fixed')?.min;
+    if (minSelected === undefined || minSelected <= shared.values.size) {
+      return undefined;
+    }
+    return { shared: shared.values.size, minSelected };
+  };
+
+  const optionsBelowMinSelected = (subset: string[]): boolean =>
+    optionShortfall(subset) !== undefined;
+
+  const booleanDomainsDisjoint = (subset: string[]): boolean =>
+    subset.length > 1 && sharedBooleanDomain(variables, subset)?.size === 0;
+
   const groupIntervals = new Map<string, GroupIntervals>();
   for (const [group, members] of membersOf) {
-    const intervals: GroupIntervals = new Map();
-    for (const member of members) {
-      addToGroupIntervals(intervals, intervalOf(variables[member]));
-    }
+    const intervals = intervalsOfMembers(variables, members);
     groupIntervals.set(group, intervals);
 
     const internalNonStrictEdges =
       internalNonStrictEdgesByGroup.get(group) ?? [];
 
-    if (members.length > 1 && hasEmptyOrigin(intervals)) {
+    const report = (
+      clause: string,
+      isEmptyFor: (subset: string[]) => boolean,
+    ): void => {
       const strips = groupEqualityStrips(
         variables,
         members,
         internalNonStrictEdges,
+        isEmptyFor,
       );
       const [first, ...rest] = strips;
-      if (first) {
-        const names = members.map(
-          (member) => `"${nameOf(member, variables[member])}"`,
-        );
-        found.push({
-          class: 'disjointBounds',
-          message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but their rules leave no value they can share`,
-          variableIds: members,
-          strips: [first, ...rest],
-        });
-      }
+      if (!first) return;
+      const names = members.map(
+        (member) => `"${nameOf(member, variables[member])}"`,
+      );
+      found.push({
+        class: 'disjointBounds',
+        message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} ${clause}`,
+        variableIds: members,
+        strips: [first, ...rest],
+      });
+    };
+
+    if (intervalsEmpty(members)) {
+      report('but their rules leave no value they can share', intervalsEmpty);
     }
 
     // Finding D: a sameAs-joined categorical/ordinal group whose members'
@@ -1244,83 +1435,23 @@ function disjointBoundsContradictions(
     // apply to these types (see `requireType` on the four comparator
     // rules), so such a group can only ever be sameAs-forced; the shared
     // strip/message helpers still handle the general case defensively.
-    if (members.length > 1) {
-      const types = new Set(members.map((member) => typeOf(variables[member])));
-      const [onlyType] = types;
-      if (
-        types.size === 1 &&
-        (onlyType === 'categorical' || onlyType === 'ordinal')
-      ) {
-        const memberOptionValues: Set<string | number>[] = [];
-        let everyMemberHasOptions = true;
-        for (const member of members) {
-          const values = optionValues(variables[member]);
-          if (values === undefined) {
-            everyMemberHasOptions = false;
-            break;
-          }
-          memberOptionValues.push(values);
-        }
-        const [firstValues, ...restValues] = memberOptionValues;
-        if (everyMemberHasOptions && firstValues) {
-          let intersection = firstValues;
-          for (const values of restValues) {
-            intersection = new Set(
-              [...intersection].filter((value) => values.has(value)),
-            );
-          }
-          if (intersection.size === 0) {
-            const strips = groupEqualityStrips(
-              variables,
-              members,
-              internalNonStrictEdges,
-            );
-            const [first, ...rest] = strips;
-            if (first) {
-              const names = members.map(
-                (member) => `"${nameOf(member, variables[member])}"`,
-              );
-              found.push({
-                class: 'disjointBounds',
-                message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but share no option values`,
-                variableIds: members,
-                strips: [first, ...rest],
-              });
-            }
-          } else if (onlyType === 'categorical' && !hasEmptyOrigin(intervals)) {
-            // Non-empty but too small: the group's intersected minSelected
-            // (already computed above as the fixed-origin interval's `min` —
-            // the group interval pass intersects every member's own
-            // minSelected, and selection counts are always absolute) can still
-            // exceed the number of option values every member actually
-            // shares, which is equally unsatisfiable. Ordinal is excluded —
-            // it is single-select, so any non-empty shared set already
-            // suffices and is covered by the emptiness check above. Skipped
-            // when the group's own bounds are already empty — that case is
-            // reported above and resolves via the same strips.
-            const minSelected = intervals.get('fixed')?.min;
-            if (minSelected !== undefined && minSelected > intersection.size) {
-              const strips = groupEqualityStrips(
-                variables,
-                members,
-                internalNonStrictEdges,
-              );
-              const [first, ...rest] = strips;
-              if (first) {
-                const names = members.map(
-                  (member) => `"${nameOf(member, variables[member])}"`,
-                );
-                found.push({
-                  class: 'disjointBounds',
-                  message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but share only ${intersection.size} option values, fewer than minSelected (${minSelected})`,
-                  variableIds: members,
-                  strips: [first, ...rest],
-                });
-              }
-            }
-          }
-        }
-      }
+    const shortfall = optionShortfall(members);
+    if (optionsDisjoint(members)) {
+      report('but share no option values', optionsDisjoint);
+    } else if (shortfall) {
+      // Non-empty but too small: the group's intersected minSelected (the
+      // fixed-origin interval's `min` — the group interval pass intersects
+      // every member's own minSelected, and selection counts are always
+      // absolute) can still exceed the number of option values every member
+      // actually shares, which is equally unsatisfiable. Ordinal is excluded
+      // — it is single-select, so any non-empty shared set already suffices
+      // and is covered by the emptiness check above. Skipped when the group's
+      // own bounds are already empty — that case is reported above and
+      // resolves via the same strips.
+      report(
+        `but share only ${shortfall.shared} option values, fewer than minSelected (${shortfall.minSelected})`,
+        optionsBelowMinSelected,
+      );
     }
 
     // Eighth-wave Finding 1: an equality group of boolean variables whose
@@ -1337,42 +1468,11 @@ function disjointBoundsContradictions(
     // provenance this reuses: equal-comparison semantics for booleans are the
     // same as stored equality, so this check applies to BOTH sameAs and
     // comparator-only boolean groups.
-    if (members.length > 1) {
-      const booleanTypes = new Set(
-        members.map((member) => typeOf(variables[member])),
+    if (booleanDomainsDisjoint(members)) {
+      report(
+        'but their available values never overlap',
+        booleanDomainsDisjoint,
       );
-      const [onlyBooleanType] = booleanTypes;
-      if (booleanTypes.size === 1 && onlyBooleanType === 'boolean') {
-        let domainIntersection: Set<boolean> | undefined;
-        for (const member of members) {
-          const domain = booleanDomain(variables[member]);
-          domainIntersection =
-            domainIntersection === undefined
-              ? domain
-              : new Set(
-                  [...domainIntersection].filter((value) => domain.has(value)),
-                );
-        }
-        if (domainIntersection !== undefined && domainIntersection.size === 0) {
-          const strips = groupEqualityStrips(
-            variables,
-            members,
-            internalNonStrictEdges,
-          );
-          const [first, ...rest] = strips;
-          if (first) {
-            const names = members.map(
-              (member) => `"${nameOf(member, variables[member])}"`,
-            );
-            found.push({
-              class: 'disjointBounds',
-              message: `Variables ${names.join(', ')} ${groupEqualityDescription(variables, members)} but their available values never overlap`,
-              variableIds: members,
-              strips: [first, ...rest],
-            });
-          }
-        }
-      }
     }
 
     // The datetime resolution-uniformity check deliberately does NOT run on

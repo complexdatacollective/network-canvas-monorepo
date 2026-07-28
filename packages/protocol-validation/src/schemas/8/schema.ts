@@ -40,7 +40,7 @@ import {
   type StageSubject,
 } from './common/index.ts';
 import type { FilterRule } from './filters/index.ts';
-import { type Prompt, stageSchema } from './stages/index.ts';
+import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
 import {
   NON_RENDERABLE_VARIABLE_TYPES,
@@ -301,16 +301,41 @@ const validateComposerFieldComponents = (
  * record-level check anchors those at the codebook rule. Each remaining
  * contradiction is anchored at the FIRST field (in field-array order) whose
  * variable participates in it.
+ *
+ * Twentieth-wave Finding 3: this is a PER-STAGE view, so it may only reason
+ * over variables whose effective rendering it actually knows. A variable this
+ * form does not write, but some OTHER composer form overrides, renders at that
+ * other form's control — reading it here through its unused codebook default
+ * invented cross-stage mismatches: two codebook-full datetimes joined by
+ * `sameAs`, one rendered as a year picker in stage 1 and the other as a year
+ * picker in stage 2, both really store 'YYYY' and both forms submit, yet each
+ * stage's view paired its own year override against the other variable's
+ * unused full-resolution default and BOTH stages were rejected. Such variables
+ * are therefore dropped from the overlay entirely (`unknownRendering`), which
+ * makes references to them unusable and leaves the pair unjudged. A variable
+ * no composer field overrides anywhere keeps its codebook definition — that
+ * default IS its effective rendering, since only NetworkComposer fields carry
+ * their own control (the shared `FormFieldSchema` has no component/parameters).
+ * The cost is a missed detection: a genuine mismatch whose two endpoints are
+ * overridden by two DIFFERENT composer forms is no longer reported. A false
+ * rejection is the worse failure for this analyser, so the trade is deliberate.
  */
 const validateComposerFieldContradictions = (
   codebookVariables: Record<string, Variable>,
   fields: ComposerFormField[] | undefined,
   fieldsPath: (string | number)[],
+  unknownRendering: ReadonlySet<string>,
   addIssue: IssueReporter,
 ) => {
   if (!fields || fields.length === 0) return;
 
-  const overlaid: Record<string, unknown> = { ...codebookVariables };
+  const visible: Record<string, Variable> = {};
+  for (const [id, variable] of Object.entries(codebookVariables)) {
+    if (unknownRendering.has(id)) continue;
+    visible[id] = variable;
+  }
+
+  const overlaid: Record<string, unknown> = { ...visible };
   for (const field of fields) {
     const base = codebookVariables[field.variable];
     if (!base) continue;
@@ -337,9 +362,9 @@ const validateComposerFieldContradictions = (
         .join(','),
     ].join('|');
 
-  const baseKeys = new Set(
-    findValidationContradictions(codebookVariables).map(keyOf),
-  );
+  // The baseline runs over the SAME visible subset so its contradiction keys
+  // (which carry group membership) are comparable with the overlay's.
+  const baseKeys = new Set(findValidationContradictions(visible).map(keyOf));
 
   for (const contradiction of findValidationContradictions(overlaid)) {
     if (baseKeys.has(keyOf(contradiction))) continue;
@@ -355,6 +380,58 @@ const validateComposerFieldContradictions = (
       path: [...fieldsPath, fieldIndex, 'parameters'],
     });
   }
+};
+
+const subjectKey = (subject: StageSubject): string =>
+  subject.entity === 'ego' ? 'ego' : `${subject.entity}:${subject.type}`;
+
+/**
+ * Every variable a NetworkComposer field anywhere in the protocol renders with
+ * its own control, keyed by the subject that variable belongs to. Feeds
+ * `validateComposerFieldContradictions`' `unknownRendering` set — see its
+ * comment for why a per-stage view must not read another stage's variables
+ * through their codebook defaults (twentieth-wave Finding 3).
+ */
+const collectComposerFieldOverrides = (
+  stages: Stage[],
+): Map<string, Set<string>> => {
+  const counts = new Map<string, Set<string>>();
+  const record = (subject: StageSubject, variable: string): void => {
+    const key = subjectKey(subject);
+    const bucket = counts.get(key) ?? new Set<string>();
+    bucket.add(variable);
+    counts.set(key, bucket);
+  };
+  for (const stage of stages) {
+    if (stage.type !== 'NetworkComposer') continue;
+    for (const field of stage.nodeForm?.fields ?? []) {
+      record(stage.subject, field.variable);
+    }
+    for (const edge of stage.edges ?? []) {
+      for (const field of edge.form?.fields ?? []) {
+        record(edge.subject, field.variable);
+      }
+    }
+  }
+  return counts;
+};
+
+/**
+ * The subject's variables whose effective rendering THIS form does not
+ * determine: overridden by a composer field somewhere, but not by a field of
+ * this form.
+ */
+const unknownRenderingFor = (
+  overrides: Map<string, Set<string>>,
+  subject: StageSubject,
+  fields: ComposerFormField[] | undefined,
+): ReadonlySet<string> => {
+  const bucket = overrides.get(subjectKey(subject));
+  if (!bucket) return new Set();
+  const written = new Set<string>(
+    (fields ?? []).map((field) => field.variable),
+  );
+  return new Set([...bucket].filter((id) => !written.has(id)));
 };
 
 type CanonicalOption = { value: string; label: string };
@@ -410,6 +487,10 @@ const ProtocolSchema = z
     for (const issue of validateReferences(protocol.codebook, hits)) {
       ctx.addIssue(issue);
     }
+
+    const composerFieldOverrides = collectComposerFieldOverrides(
+      protocol.stages,
+    );
 
     // 1. Stage validation
     protocol.stages.forEach((stage, stageIndex) => {
@@ -519,6 +600,11 @@ const ProtocolSchema = z
           nodeVariables,
           stage.nodeForm?.fields,
           nodeFormPath,
+          unknownRenderingFor(
+            composerFieldOverrides,
+            stage.subject,
+            stage.nodeForm?.fields,
+          ),
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
         );
         stage.edges?.forEach((edge, edgeIndex) => {
@@ -544,6 +630,11 @@ const ProtocolSchema = z
             edgeVariables,
             edge.form?.fields,
             edgeFormPath,
+            unknownRenderingFor(
+              composerFieldOverrides,
+              edge.subject,
+              edge.form?.fields,
+            ),
             (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
           );
         });

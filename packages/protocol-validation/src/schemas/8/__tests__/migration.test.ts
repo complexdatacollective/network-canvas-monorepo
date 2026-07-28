@@ -4859,6 +4859,48 @@ describe('Migration V7 to V8', () => {
       expect(variables?.b).toHaveProperty('validation.minValue', 10);
     });
 
+    // Twentieth-wave Finding 2: the comparator SCC between the two pinned
+    // variables is what empties the group; c's sameAs is satisfiable and
+    // unrelated, so the repair must leave it standing.
+    it('strips the comparator cycle that empties a group, keeping an unrelated sameAs', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 0,
+            greaterThanOrEqualToVariable: 'b',
+          },
+        },
+        b: {
+          name: 'b',
+          type: 'number',
+          validation: {
+            minValue: 1,
+            maxValue: 1,
+            greaterThanOrEqualToVariable: 'a',
+          },
+        },
+        c: { name: 'c', type: 'number', validation: { sameAs: 'a' } },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.c).toHaveProperty('validation.sameAs', 'a');
+      expect(variables?.a).not.toHaveProperty(
+        'validation.greaterThanOrEqualToVariable',
+      );
+      expect(variables?.b).not.toHaveProperty(
+        'validation.greaterThanOrEqualToVariable',
+      );
+      expect(variables?.a).toHaveProperty('validation.minValue', 0);
+      expect(variables?.b).toHaveProperty('validation.maxValue', 1);
+    });
+
     it('strips a sameAs categorical group whose option values share nothing', () => {
       const migratedRaw = migrateVariables({
         a: {

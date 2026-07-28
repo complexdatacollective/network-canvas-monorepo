@@ -360,14 +360,38 @@ describe('findValidationContradictions — bound disjointness', () => {
     expect(disjoint).toHaveLength(1);
     expect(disjoint[0]?.class).toBe('disjointBounds');
 
-    // Same year at year resolution: expands to Jan 1 vs Dec 31, so a strict
-    // comparison is conservatively considered satisfiable.
-    const overlapping = findValidationContradictions({
+    // Twentieth-wave Finding 1 supersedes the "expands to Jan 1 vs Dec 31, so
+    // a strict comparison is conservatively satisfiable" reading this case
+    // previously asserted. A year picker stores the bare year, which
+    // compareVariables resolves to 1 January, so `a` can only ever hold an
+    // instant at or before 2020-01-01 and `b` one at or after it — a strict
+    // `a > b` is unsatisfiable.
+    const sameYear = findValidationContradictions({
       a: {
         name: 'a',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', max: '2020' },
+        validation: { greaterThanVariable: 'b' },
+      },
+      b: {
+        name: 'b',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', min: '2020' },
+      },
+    });
+    expect(sameYear).toHaveLength(1);
+    expect(sameYear[0]?.class).toBe('disjointBounds');
+
+    // One year of headroom leaves a = '2021', b = '2020' satisfying the
+    // strict comparator.
+    const overlapping = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', max: '2021' },
         validation: { greaterThanVariable: 'b' },
       },
       b: {
@@ -1329,7 +1353,11 @@ describe('findValidationContradictions — seventh-wave Finding 1: comparator-on
   // comparing, so this pair CAN compare equal at interview time even though
   // their stored strings never would — the mixed-resolution check must not
   // fire here. Explicit overlapping windows rule out the interval-emptiness
-  // check as an alternative explanation for a rejection.
+  // check as an alternative explanation for a rejection: twentieth-wave
+  // Finding 1 resolves the year picker's stored '2020' to 2020-01-01, so the
+  // full picker is pinned to that same day for the two windows to overlap
+  // (it was pinned to 2020-06-01 while a coarse max still expanded to the
+  // period end).
   it('accepts a year+full pair joined only by mutual comparators with overlapping windows', () => {
     const result = findValidationContradictions({
       a: datePicker(
@@ -1339,7 +1367,7 @@ describe('findValidationContradictions — seventh-wave Finding 1: comparator-on
       ),
       b: datePicker(
         'b',
-        { min: '2020-06-01', max: '2020-06-01' },
+        { min: '2020-01-01', max: '2020-01-01' },
         { greaterThanOrEqualToVariable: 'a' },
       ),
     });
@@ -1523,12 +1551,14 @@ describe('findValidationContradictions — fifth-wave Finding 3: fixed-anchor Re
   });
 
   it('treats a fixed-anchor RelativeDatePicker as full resolution in the mixed-resolution check', () => {
-    // Interval overlap: the single anchor day sits inside the year window,
-    // so only the resolution-mismatch check (not interval emptiness) fires.
+    // Interval overlap: the single anchor day sits on the year window's only
+    // instant, so only the resolution-mismatch check (not interval emptiness)
+    // fires. Twentieth-wave Finding 1 makes that instant 1 January — the
+    // anchor was 2020-06-15 while a coarse max still expanded to 31 December.
     const result = findValidationContradictions({
       a: relativePicker(
         'a',
-        { anchor: '2020-06-15', before: 0, after: 0 },
+        { anchor: '2020-01-01', before: 0, after: 0 },
         { sameAs: 'b' },
       ),
       b: datePicker('b', { type: 'year', min: '2020', max: '2020' }),
@@ -2309,5 +2339,278 @@ describe('findValidationContradictions — large comparator graphs', () => {
     expect(result[0]?.class).toBe('strictComparatorCycle');
     expect(result[0]?.variableIds).toHaveLength(size);
     expect(result[0]?.strips).toHaveLength(size);
+  });
+});
+
+describe('findValidationContradictions — twentieth-wave Finding 1: coarse date bounds compare at their stored instant', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  it('rejects a pinned year picker required to be greater than a mid-year full date', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2020' },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '2020-06-01', max: '2020-06-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+  });
+
+  it('accepts a year picker whose range can still exceed a mid-year full date', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2021' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '2020-06-01', max: '2020-06-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('rejects two year pickers pinned to the same year under a strict comparator', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2020' },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker('b', { type: 'year', min: '2020', max: '2020' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  it('rejects two year pickers pinned to 2020 and 2021 with the comparator in the infeasible direction', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2020' },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker('b', { type: 'year', min: '2021', max: '2021' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  it('rejects a pinned month picker required to be greater than a mid-month full date', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'month', min: '2020-05', max: '2020-05' },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '2020-05-15', max: '2020-05-15' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  it('accepts a month picker whose range can still exceed a mid-month full date', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'month', min: '2020-05', max: '2020-07' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '2020-05-15', max: '2020-05-15' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The min edge is the period START at every resolution and is unchanged: a
+  // year picker bounded below by '2020' can never precede a 2019 day.
+  it('keeps a coarse min bound at the start of its period', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '2019-06-01', max: '2019-06-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  // A comparator SCC forces its members to compare EQUAL under
+  // compareVariables' Date conversion, so a year picker pinned to '2020'
+  // (stored '2020' -> 2020-01-01) can never equal a full picker pinned to a
+  // mid-year day.
+  it('rejects a comparator-forced equality between a pinned year picker and a mid-year full date', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2020' },
+        { greaterThanOrEqualToVariable: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2020-06-01', max: '2020-06-01' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain('leave no value they can share');
+  });
+
+  it('accepts a comparator-forced equality whose coarse and full members share one instant', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2020' },
+          { greaterThanOrEqualToVariable: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-01' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Scoping guard: the period-END expansion is retained for a FULL-resolution
+  // picker carrying a coarse bound string. That shape only reaches the
+  // analyser as raw (pre-schema) migration input, where the control really can
+  // emit any day up to 2020-12-31, so the bound must still expand.
+  it('keeps the period-end expansion for a full-resolution picker with a coarse max bound', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '2020' }, { greaterThanVariable: 'b' }),
+        b: datePicker('b', { min: '2020-06-01', max: '2020-06-01' }),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — twentieth-wave Finding 2: hybrid group repairs target the causing constraints', () => {
+  const number = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'number',
+    validation,
+  });
+
+  // The comparator SCC between the two pinned variables is what empties the
+  // group; c's sameAs is satisfiable and unrelated, so it must survive.
+  it('strips the comparator cycle rather than an unrelated sameAs', () => {
+    const result = findValidationContradictions({
+      a: number('a', {
+        minValue: 0,
+        maxValue: 0,
+        greaterThanOrEqualToVariable: 'b',
+      }),
+      b: number('b', {
+        minValue: 1,
+        maxValue: 1,
+        greaterThanOrEqualToVariable: 'a',
+      }),
+      c: number('c', { sameAs: 'a' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(
+      result[0]?.strips.toSorted((x, y) =>
+        x.variableId.localeCompare(y.variableId),
+      ),
+    ).toEqual([
+      { variableId: 'a', rule: 'greaterThanOrEqualToVariable' },
+      { variableId: 'b', rule: 'greaterThanOrEqualToVariable' },
+    ]);
+  });
+
+  it('still strips sameAs only when the sameAs edges alone cause the emptiness', () => {
+    const result = findValidationContradictions({
+      a: number('a', { maxValue: 5, sameAs: 'b' }),
+      b: number('b', { minValue: 10 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  it('leaves a comparator-only empty group stripping its comparators', () => {
+    const result = findValidationContradictions({
+      a: number('a', {
+        minValue: 0,
+        maxValue: 0,
+        greaterThanOrEqualToVariable: 'b',
+      }),
+      b: number('b', {
+        minValue: 1,
+        maxValue: 1,
+        greaterThanOrEqualToVariable: 'a',
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(
+      result[0]?.strips.toSorted((x, y) =>
+        x.variableId.localeCompare(y.variableId),
+      ),
+    ).toEqual([
+      { variableId: 'a', rule: 'greaterThanOrEqualToVariable' },
+      { variableId: 'b', rule: 'greaterThanOrEqualToVariable' },
+    ]);
+  });
+
+  // A residual sub-group of ONE is never "empty" for this policy: a lone
+  // variable's own inverted bounds are a local contradiction that no amount of
+  // edge-stripping resolves, so they must not widen the group repair.
+  it('does not widen the strip when a residual member has its own inverted bounds', () => {
+    const result = findValidationContradictions({
+      a: number('a', {
+        minValue: 10,
+        maxValue: 2,
+        sameAs: 'b',
+        lessThanOrEqualToVariable: 'b',
+      }),
+      b: number('b'),
+    });
+    const group = result.find(
+      (contradiction) => contradiction.class === 'disjointBounds',
+    );
+    expect(group?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  // Neither mechanism alone splits the group, so both must go.
+  it('strips both mechanisms when neither alone resolves the emptiness', () => {
+    const result = findValidationContradictions({
+      a: number('a', {
+        minValue: 0,
+        maxValue: 0,
+        sameAs: 'b',
+        greaterThanOrEqualToVariable: 'b',
+      }),
+      b: number('b', {
+        minValue: 1,
+        maxValue: 1,
+        greaterThanOrEqualToVariable: 'a',
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.strips.map((strip) => strip.rule).toSorted()).toEqual([
+      'greaterThanOrEqualToVariable',
+      'greaterThanOrEqualToVariable',
+      'sameAs',
+    ]);
   });
 });

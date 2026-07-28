@@ -816,3 +816,208 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   // record key reused across entity types. The per-form scope is covered at
   // stage level in network-composer.test.ts.
 });
+
+// Twentieth-wave Finding 3: each composer stage's overlay is a per-stage view.
+// Reading an endpoint that a DIFFERENT composer stage renders through its
+// codebook default invents a mismatch the runtime never has, so an endpoint
+// whose effective rendering this form does not determine is left out of the
+// overlay entirely.
+describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding 3)', () => {
+  const composerProtocolWithStages = (stages: Record<string, unknown>[]) => {
+    const base = createBaseProtocol();
+    return {
+      ...base,
+      codebook: {
+        ...base.codebook,
+        node: {
+          ...base.codebook.node,
+          person: {
+            ...base.codebook.node.person,
+            variables: {
+              ...base.codebook.node.person.variables,
+              event_a: {
+                name: 'EventA',
+                type: 'datetime',
+                validation: { sameAs: 'event_b' },
+              },
+              event_b: { name: 'EventB', type: 'datetime' },
+            },
+          },
+        },
+      },
+      stages,
+    };
+  };
+
+  const composerStage = (
+    id: string,
+    fields: Record<string, unknown>[],
+  ): Record<string, unknown> => ({
+    ...baseStage,
+    id,
+    nodeForm: { fields },
+    edges: [],
+  });
+
+  // Both variables really are stored as 'YYYY' at interview time, so the
+  // sameAs is satisfiable and neither stage may be rejected.
+  it('accepts sameAs-joined variables rendered at matching resolutions by two different composer stages', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithStages([
+        composerStage('nc1', [
+          {
+            variable: 'event_a',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year' },
+          },
+        ]),
+        composerStage('nc2', [
+          {
+            variable: 'event_b',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year' },
+          },
+        ]),
+      ]),
+    );
+    expect(
+      result.success,
+      JSON.stringify(!result.success && result.error.issues),
+    ).toBe(true);
+  });
+
+  // Both endpoints are rendered by fields of ONE form, so their effective
+  // renderings are known together and a genuine mismatch is still reported.
+  it('still rejects differing resolutions rendered by one composer form', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithStages([
+        composerStage('nc1', [
+          {
+            variable: 'event_a',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year' },
+          },
+          {
+            variable: 'event_b',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'month' },
+          },
+        ]),
+      ]),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('make its validation contradictory'),
+    );
+    expect(issue?.message).toContain('store dates at different resolutions');
+  });
+
+  // The partner is not overridden by ANY composer field, so its codebook
+  // default IS its effective rendering everywhere and the pair stays checked.
+  it('still rejects an override against a partner no composer field overrides', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      composerProtocolWithStages([
+        composerStage('nc1', [
+          {
+            variable: 'event_a',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year' },
+          },
+        ]),
+        composerStage('nc2', [
+          { variable: 'age', component: ComponentTypes.Number },
+        ]),
+      ]),
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('make its validation contradictory'),
+    );
+    expect(issue?.message).toContain('store dates at different resolutions');
+  });
+});
+
+// The skip-if-already-in-the-codebook baseline must be computed over the same
+// visible subset as the overlay: a contradiction's identity carries its
+// equality-group membership, so a baseline taken over the FULL codebook keys
+// differently once a group member is dropped, and the codebook's own
+// contradiction gets re-reported at the stage path.
+describe('NetworkComposer overlay baseline tracks the visible subset', () => {
+  it('does not re-report a codebook contradiction whose group loses a member to another stage', () => {
+    const base = createBaseProtocol();
+    const pinned = (min: string) => ({
+      component: ComponentTypes.DatePicker,
+      parameters: { min, max: min },
+    });
+    const protocol = {
+      ...base,
+      codebook: {
+        ...base.codebook,
+        node: {
+          ...base.codebook.node,
+          person: {
+            ...base.codebook.node.person,
+            variables: {
+              ...base.codebook.node.person.variables,
+              event_a: {
+                name: 'EventA',
+                type: 'datetime',
+                ...pinned('2020-01-01'),
+                validation: { sameAs: 'event_b' },
+              },
+              event_b: {
+                name: 'EventB',
+                type: 'datetime',
+                ...pinned('2020-06-01'),
+              },
+              event_c: {
+                name: 'EventC',
+                type: 'datetime',
+                validation: { sameAs: 'event_a' },
+              },
+            },
+          },
+        },
+      },
+      stages: [
+        {
+          ...baseStage,
+          id: 'nc1',
+          nodeForm: {
+            fields: [{ variable: 'event_a', ...pinned('2020-01-01') }],
+          },
+          edges: [],
+        },
+        {
+          ...baseStage,
+          id: 'nc2',
+          nodeForm: {
+            fields: [
+              { variable: 'event_c', component: ComponentTypes.DatePicker },
+            ],
+          },
+          edges: [],
+        },
+      ],
+    };
+    const result = ProtocolSchemaV8.safeParse(protocol);
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    // The record-level check owns the codebook's own contradiction...
+    expect(
+      result.error.issues.some(
+        (candidate) =>
+          candidate.path.includes('codebook') &&
+          candidate.message.includes('leave no value they can share'),
+      ),
+    ).toBe(true);
+    // ...and no composer form re-reports it.
+    expect(
+      result.error.issues.filter((candidate) =>
+        candidate.message.includes('make its validation contradictory'),
+      ),
+    ).toEqual([]);
+  });
+});
