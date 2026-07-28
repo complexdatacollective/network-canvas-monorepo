@@ -1,14 +1,27 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
-import type { VariableValue } from '@codaco/shared-consts';
+import {
+  asEntityAttributeReference,
+  type Stage,
+  type Variables,
+} from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+  type VariableValue,
+} from '@codaco/shared-consts';
 
+import { generateNetwork } from '../../../generateNetwork';
 import { ValueGenerator } from '../../../ValueGenerator';
 import { resolveGenerationConfig } from '../../config';
 import type { GenerationContext } from '../../context';
 import { buildEntityConstraints } from '../buildConstraints';
 import { SyntheticDataConstraintError } from '../error';
-import { generateEntityAttributes } from '../generateEntityAttributes';
+import {
+  completionCheckFor,
+  generateEntityAttributes,
+} from '../generateEntityAttributes';
 import type { EntityConstraints } from '../types';
 import { UniqueRegistry } from '../uniqueRegistry';
 
@@ -1972,5 +1985,237 @@ describe('generateEntityAttributes', () => {
     };
 
     expect(run()).toEqual(run());
+  });
+});
+
+/**
+ * A fixed value whose comparator the draw can only meet by leaving the drawn
+ * variable's own bounds.
+ *
+ * The complete search settles this wherever it can enumerate the component's
+ * domains. Where it cannot — an unbounded `number` has no domain to walk — it
+ * declines, and declining accepts, so the assignment falls through to the
+ * greedy draw. `applyComparatorBounds` then clamps the drawn value back inside
+ * its own range and the entity is emitted holding a pair the comparison
+ * rejects.
+ *
+ * The codebook below is the smallest shape that reaches it: `age` declares no
+ * bounds at all, so neither it nor `retired` can be enumerated, while `retired`
+ * is required both to stay at or under 0 and to exceed `age`. A row fixing
+ * `age` to 1 leaves `retired` a floor of 2 and a ceiling of 0.
+ */
+describe('a fixed value the greedy draw can only complete by breaking a rule', () => {
+  type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
+
+  const unboundedPair: Variables = {
+    age: { name: 'Age', type: 'number' },
+    retired: {
+      name: 'Retired',
+      type: 'number',
+      validation: {
+        maxValue: 0,
+        greaterThanVariable: asEntityAttributeReference('age'),
+      },
+    },
+  };
+
+  function personCodebook(variables: Record<string, unknown>): Codebook {
+    return {
+      node: {
+        person: { name: 'Person', color: 'node-color-seq-1', variables },
+      },
+    } as unknown as Codebook;
+  }
+
+  function rosterStage(nodes: number): Stage {
+    return {
+      id: 'stage-roster',
+      type: 'NameGeneratorRoster',
+      label: 'People',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Pick people' }],
+      behaviours: { minNodes: nodes, maxNodes: nodes },
+    } as unknown as Stage;
+  }
+
+  function rows(attributes: Record<string, VariableValue>[]): NcNode[] {
+    return attributes.map(
+      (values, index) =>
+        ({
+          [entityPrimaryKeyProperty]: `roster-${index}`,
+          type: 'person',
+          [entityAttributesProperty]: { ...values },
+        }) as unknown as NcNode,
+    );
+  }
+
+  function run(
+    seed: number,
+    codebook: Codebook,
+    stage: Stage,
+    pool: NcNode[],
+  ): Record<string, VariableValue>[] {
+    const { network } = generateNetwork({
+      seed,
+      codebook,
+      stages: [stage],
+      externalData: { 'stage-roster': pool },
+    });
+    return network.nodes.map((node) => node[entityAttributesProperty]);
+  }
+
+  /** Every emitted entity whose drawn `retired` failed to exceed its `age`. */
+  function invalid(
+    attributes: Record<string, VariableValue>[],
+  ): Record<string, VariableValue>[] {
+    return attributes.filter(
+      (values) => !(Number(values.retired) > Number(values.age)),
+    );
+  }
+
+  it('rejects the pin whose completion the draw can only clamp', () => {
+    const entity = buildEntityConstraints(unboundedPair, TODAY);
+
+    expect(completionCheckFor(entity)({ age: 1 })).toBe(false);
+  });
+
+  it('accepts a pin the same unenumerable component leaves room under', () => {
+    // `retired` may be anything above -5 and at or under 0, so four values are
+    // available and the row is one the run can use. Rejecting it would be the
+    // false refusal this check must never make.
+    const entity = buildEntityConstraints(unboundedPair, TODAY);
+
+    expect(completionCheckFor(entity)({ age: -5 })).toBe(true);
+  });
+
+  it('accepts a pin in an unenumerable component with no ceiling to cross', () => {
+    const entity = buildEntityConstraints(
+      {
+        age: { name: 'Age', type: 'number' },
+        retired: {
+          name: 'Retired',
+          type: 'number',
+          validation: {
+            greaterThanVariable: asEntityAttributeReference('age'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    expect(completionCheckFor(entity)({ age: 1 })).toBe(true);
+  });
+
+  it('emits no entity whose drawn value fails its comparator', () => {
+    const codebook = personCodebook(unboundedPair);
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= 50; seed++) {
+      const attributes = run(
+        seed,
+        codebook,
+        rosterStage(1),
+        rows([{ age: 1 }]),
+      );
+      const broken = invalid(attributes);
+      if (broken.length > 0) {
+        failures.push(`seed ${seed}: ${JSON.stringify(broken)}`);
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it('draws nothing and completes when every row fails the same way', () => {
+    // The degradation a roster whose rows all break their own rules already
+    // has: the stage produces no nodes and the run finishes.
+    const codebook = personCodebook(unboundedPair);
+
+    for (let seed = 1; seed <= 25; seed++) {
+      expect(
+        run(seed, codebook, rosterStage(2), rows([{ age: 1 }, { age: 2 }])),
+      ).toEqual([]);
+    }
+  });
+
+  it('fills the stage from the rows that remain', () => {
+    const codebook = personCodebook(unboundedPair);
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= 50; seed++) {
+      const attributes = run(
+        seed,
+        codebook,
+        rosterStage(2),
+        rows([{ age: 1 }, { age: -5 }, { age: 2 }, { age: -6 }]),
+      );
+      if (attributes.length !== 2 || invalid(attributes).length > 0) {
+        failures.push(`seed ${seed}: ${JSON.stringify(attributes)}`);
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it('leaves a passed-over row unique value available to the rows it draws', () => {
+    // `tag` offers exactly two values for exactly two nodes, and the row the
+    // check turns away carries the same one as a row that can be drawn. A row
+    // passed over before anything is drawn claims nothing, so the value it
+    // named is still the drawable row's to take and the pair draws to
+    // exhaustion.
+    const codebook = personCodebook({
+      ...unboundedPair,
+      tag: {
+        name: 'Tag',
+        type: 'number',
+        validation: { unique: true, minValue: 1, maxValue: 2 },
+      },
+    });
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= 50; seed++) {
+      const attributes = run(
+        seed,
+        codebook,
+        rosterStage(2),
+        rows([
+          { age: 1, tag: 1 },
+          { age: -5, tag: 1 },
+          { age: -6, tag: 2 },
+        ]),
+      );
+      const tags = attributes.map((values) => values.tag);
+      if (
+        attributes.length !== 2 ||
+        invalid(attributes).length > 0 ||
+        new Set(tags).size !== 2
+      ) {
+        failures.push(`seed ${seed}: ${JSON.stringify(attributes)}`);
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it('still draws a satisfiable row the search declined to analyse', () => {
+    // The guard against over-refusing: nothing here can be enumerated either,
+    // and every row leaves the draw somewhere to go, so all of them must be
+    // usable.
+    const codebook = personCodebook(unboundedPair);
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= 50; seed++) {
+      const attributes = run(
+        seed,
+        codebook,
+        rosterStage(2),
+        rows([{ age: -5 }, { age: -6 }]),
+      );
+      if (attributes.length !== 2 || invalid(attributes).length > 0) {
+        failures.push(`seed ${seed}: ${JSON.stringify(attributes)}`);
+      }
+    }
+
+    expect(failures).toEqual([]);
   });
 });

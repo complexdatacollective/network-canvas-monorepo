@@ -291,6 +291,22 @@ function groupValue(
   return undefined;
 }
 
+/** What folding a group's comparators reads. A {@link Plan} supplies both. */
+type ComparatorContext = Pick<Plan, 'edges' | 'membersOf'>;
+
+/** A group's bounds after its comparators were folded in, and what that cost. */
+type FoldedBounds = {
+  constraints: VariableConstraints;
+  /**
+   * Whether the fold emptied the range before it was clamped back — a floor a
+   * comparison put above the group's own ceiling, or two comparisons that leave
+   * nothing between them. The constraints alongside it are the clamped ones the
+   * draw uses, so every value the draw can still produce for this group breaks
+   * one of the comparisons folded in.
+   */
+  crossed: boolean;
+};
+
 /**
  * The group's bounds narrowed by every comparator whose counterpart already
  * holds a value.
@@ -305,14 +321,17 @@ function groupValue(
  * pulled back only as far as they allow — as close to satisfying the comparison
  * as the group can get. A value outside its own bounds fails the hard validator
  * a participant's form applies, where a broken comparison fails a cross-variable
- * one and still leaves a form that can be seen.
+ * one and still leaves a form that can be seen. That the fold was emptied is
+ * reported alongside the clamped bounds rather than kept: it is the one thing
+ * that says the value about to be drawn cannot satisfy the rules it is drawn
+ * for, whoever chose the counterpart.
  */
 function applyComparatorBounds(
   variable: ConstrainedVariable,
   group: string,
-  { edges, membersOf }: Plan,
+  { edges, membersOf }: ComparatorContext,
   resolved: Record<string, VariableValue>,
-): VariableConstraints {
+): FoldedBounds {
   const { entry, constraints } = variable;
 
   // Only these three types accept a comparison rule (see the variable schema),
@@ -324,7 +343,7 @@ function applyComparatorBounds(
     entry.type !== 'scalar' &&
     entry.type !== 'datetime'
   ) {
-    return constraints;
+    return { constraints, crossed: false };
   }
 
   const window = constraints.dateWindow;
@@ -333,6 +352,10 @@ function applyComparatorBounds(
   let maxValue = constraints.maxValue;
   let windowMin = window?.min;
   let windowMax = window?.max;
+  // Whether any comparison contributed a bound at all. Bounds that are the
+  // group's own can be inverted by a protocol nothing here wrote, and that is
+  // not a statement about the values this entity was given.
+  let bounded = false;
 
   for (const edge of edges) {
     const groupIsUpper = edge.upper === group;
@@ -358,6 +381,7 @@ function applyComparatorBounds(
       });
       if (bound === undefined) continue;
 
+      bounded = true;
       if (groupIsUpper) windowMin = tighten(windowMin, bound, true);
       else windowMax = tighten(windowMax, bound, false);
       continue;
@@ -376,11 +400,21 @@ function applyComparatorBounds(
         ? Number(raw.toFixed(SCALAR_DECIMAL_PLACES))
         : raw;
 
+    bounded = true;
     if (groupIsUpper) minValue = tighten(minValue, bound, true);
     else maxValue = tighten(maxValue, bound, false);
   }
 
   if (entry.type === 'datetime') {
+    // Read before the clamps, which is the only place the emptiness shows.
+    // `tighten` only ever raises a floor and lowers a ceiling, so a floor above
+    // the group's own ceiling has already crossed the ceiling held here.
+    const crossed =
+      bounded &&
+      windowMin !== undefined &&
+      windowMax !== undefined &&
+      windowMin > windowMax;
+
     if (window?.max !== undefined && windowMin !== undefined) {
       windowMin = windowMin > window.max ? window.max : windowMin;
     }
@@ -396,14 +430,24 @@ function applyComparatorBounds(
     }
 
     return {
-      ...constraints,
-      dateWindow: {
-        resolution,
-        ...(windowMin !== undefined ? { min: windowMin } : {}),
-        ...(windowMax !== undefined ? { max: windowMax } : {}),
+      constraints: {
+        ...constraints,
+        dateWindow: {
+          resolution,
+          ...(windowMin !== undefined ? { min: windowMin } : {}),
+          ...(windowMax !== undefined ? { max: windowMax } : {}),
+        },
       },
+      crossed,
     };
   }
+
+  // Read before the clamps, exactly as the date branch above reads its own.
+  const crossed =
+    bounded &&
+    minValue !== undefined &&
+    maxValue !== undefined &&
+    minValue > maxValue;
 
   if (constraints.maxValue !== undefined && minValue !== undefined) {
     minValue = Math.min(minValue, constraints.maxValue);
@@ -416,9 +460,12 @@ function applyComparatorBounds(
   }
 
   return {
-    ...constraints,
-    ...(minValue !== undefined ? { minValue } : {}),
-    ...(maxValue !== undefined ? { maxValue } : {}),
+    constraints: {
+      ...constraints,
+      ...(minValue !== undefined ? { minValue } : {}),
+      ...(maxValue !== undefined ? { maxValue } : {}),
+    },
+    crossed,
   };
 }
 
@@ -524,7 +571,7 @@ function forbiddenKeys(
 
     const sole = soleValue(
       variable.entry,
-      applyComparatorBounds(variable, other, plan, resolved),
+      applyComparatorBounds(variable, other, plan, resolved).constraints,
     );
     if (sole !== undefined) keys.add(valueKey(sole));
   }
@@ -577,7 +624,9 @@ export function uniqueSlotMembers(
  * comparison rejects — so the assignment has to be judged before it is taken,
  * not after.
  *
- * Judged by the same complete search a component is solved with during
+ * Judged in two passes, neither of which guesses.
+ *
+ * The first is the same complete search a component is solved with during
  * generation, pinned the same way: the fixed values enter as pins and the rest
  * of the component is searched around them. Only a proven `unsat` is an answer.
  * An oversized component, an unenumerable domain or an exhausted search budget
@@ -585,9 +634,25 @@ export function uniqueSlotMembers(
  * greedy path — this reads the solver's proofs, it does not add a second
  * opinion about what is satisfiable.
  *
+ * Which leaves the greedy path itself to account for, since accepting is what
+ * hands the assignment to it. So the second pass asks a narrower question the
+ * draw's own arithmetic answers outright: fold each unsettled group's
+ * comparators against the fixed values exactly as the draw is about to, and see
+ * whether the fold empties the range. An empty fold is not an opinion about
+ * satisfiability — it says every value the draw can still produce for that
+ * group breaks one of the comparisons, because the clamp that follows it puts
+ * the value back inside bounds the comparison has already been pushed past.
+ * That is the completed entity verified ahead of being built, and it is why an
+ * unenumerable domain no longer means an unchecked one.
+ *
+ * The two cannot disagree. Where the search proves a completion exists, some
+ * value satisfies every comparison, so no group's fold can be empty — those
+ * groups are skipped rather than reasoned about twice, which also keeps the
+ * fold off the path a solved component already took.
+ *
  * The component analysis is resolved once for the entity type and the returned
- * predicate applied per assignment, so a roster costs one analysis and at most
- * one search per row.
+ * predicate applied per assignment, so a roster costs one analysis, at most one
+ * search per row, and a fold that is one pass over the comparators.
  */
 export function completionCheckFor(
   entity: EntityConstraints,
@@ -604,7 +669,16 @@ export function completionCheckFor(
   const tractable = componentsFor(entity, propagated, order, edges, excluded)
     .map((component) => component.tractable)
     .filter((component) => component !== undefined);
-  if (tractable.length === 0) return () => true;
+
+  // Only a group a comparison can bound is worth folding: nothing else takes a
+  // bound from a fixed value, so nothing else can have its range emptied by one.
+  const comparatorEnds = new Set<string>();
+  for (const edge of edges) {
+    comparatorEnds.add(edge.lower);
+    comparatorEnds.add(edge.upper);
+  }
+
+  if (tractable.length === 0 && comparatorEnds.size === 0) return () => true;
 
   return (fixed) => {
     const pins = new Map<string, VariableValue>();
@@ -617,6 +691,7 @@ export function completionCheckFor(
     }
     if (pins.size === 0) return true;
 
+    const settled = new Set<string>();
     for (const component of tractable) {
       if (!component.groups.some((group) => pins.has(group))) continue;
       // A component the fixed values settle entirely leaves nothing to
@@ -624,7 +699,28 @@ export function completionCheckFor(
       // between two fixed values already answer, and answering it twice could
       // only disagree.
       if (component.groups.every((group) => pins.has(group))) continue;
-      if (solveComponent(component, { pins }).kind === 'unsat') return false;
+
+      const verdict = solveComponent(component, { pins });
+      if (verdict.kind === 'unsat') return false;
+      if (verdict.kind === 'sat') {
+        for (const group of component.groups) settled.add(group);
+      }
+    }
+
+    // Read against the propagated bounds rather than the reserved ones, which
+    // are what the draw falls back to when the room it held for a dependent
+    // leaves it nothing: a fold empty even there is empty for every value the
+    // draw could reach.
+    for (const group of comparatorEnds) {
+      if (pins.has(group) || settled.has(group)) continue;
+      const variable = propagated.get(group);
+      if (variable === undefined) continue;
+      if (
+        applyComparatorBounds(variable, group, { edges, membersOf }, fixed)
+          .crossed
+      ) {
+        return false;
+      }
     }
 
     return true;
@@ -1070,7 +1166,7 @@ function drawGroup(
     entry: source.entry,
     constraints: withFallbackFloor(
       source.entry,
-      applyComparatorBounds(source, group, plan, resolved),
+      applyComparatorBounds(source, group, plan, resolved).constraints,
     ),
   });
 
