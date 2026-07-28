@@ -160,20 +160,43 @@ describe('a conflict-free variable is never dropped in either direction', () => 
   });
 });
 
-// Fix round 1: the two follow-up sites (NetworkComposer's own quickAdd, and
-// NameGeneratorQuickAdd's quickAdd) reuse `qa` — a text variable written both
-// by a form field (validated, stage s1) and by NetworkComposer's own quickAdd
-// (unvalidated, stage s3) on the same subject.
+// Fix round 1 introduced the two follow-up sites (NetworkComposer's own
+// quickAdd, and NameGeneratorQuickAdd's quickAdd), reusing `qa` — a text
+// variable written both by a form field (validated, stage s1) and by
+// NetworkComposer's own quickAdd (unvalidated, stage s3) on the same subject.
+//
+// Fix round 2: testing each site against the combined (both-hit) `protocol`
+// fixture cannot tell a correct implementation from one with the exclusion
+// direction swapped — `cat`/`qa` carry BOTH a validated and an unvalidated
+// hit, so either direction drops them. Single-hit fixture variants below
+// (mirroring the `formOnly`/`binOnly` pattern above) isolate each hit kind so
+// a swapped `excludeValidatedUses`/`excludeUnvalidatedUses` call fails.
+const validatedOnly = { ...protocol, stages: [protocol.stages[0]] }; // s1 only: cat + qa validated, neither unvalidated
+const catUnvalidatedOnly = { ...protocol, stages: [protocol.stages[1]] }; // s2 only: cat unvalidated, not validated; qa has no hits at all
+const qaUnvalidatedOnly = { ...protocol, stages: [protocol.stages[2]] }; // s3 only: qa unvalidated, not validated; cat has no hits at all
+
 describe('getConvexHullOptionsForSubject (NodeConfiguration convexHull picker, UNVALIDATED writer)', () => {
   it('drops a categorical variable a form elsewhere already writes', () => {
-    const result = getConvexHullOptionsForSubject(stateWith(protocol), subject);
+    const result = getConvexHullOptionsForSubject(
+      stateWith(validatedOnly),
+      subject,
+    );
 
     expect(result.map((o) => o.value)).not.toContain('cat');
   });
 
+  it('keeps a categorical variable only an unvalidated writer elsewhere claims', () => {
+    const result = getConvexHullOptionsForSubject(
+      stateWith(catUnvalidatedOnly),
+      subject,
+    );
+
+    expect(result.map((o) => o.value)).toContain('cat');
+  });
+
   it('keeps the dropped option when it is the currently-selected value', () => {
     const result = getConvexHullOptionsForSubject(
-      stateWith(protocol),
+      stateWith(validatedOnly),
       subject,
       'cat',
     );
@@ -185,16 +208,25 @@ describe('getConvexHullOptionsForSubject (NodeConfiguration convexHull picker, U
 describe('getComposerQuickAddOptionsForSubject (NetworkComposer quickAdd picker, UNVALIDATED writer)', () => {
   it('drops a text variable a form elsewhere already writes', () => {
     const result = getComposerQuickAddOptionsForSubject(
-      stateWith(protocol),
+      stateWith(validatedOnly),
       subject,
     );
 
     expect(result.map((o) => o.value)).not.toContain('qa');
   });
 
+  it('keeps a text variable only an unvalidated writer elsewhere claims', () => {
+    const result = getComposerQuickAddOptionsForSubject(
+      stateWith(qaUnvalidatedOnly),
+      subject,
+    );
+
+    expect(result.map((o) => o.value)).toContain('qa');
+  });
+
   it('keeps the dropped option when it is the currently-selected value', () => {
     const result = getComposerQuickAddOptionsForSubject(
-      stateWith(protocol),
+      stateWith(validatedOnly),
       subject,
       'qa',
     );
@@ -205,14 +237,26 @@ describe('getComposerQuickAddOptionsForSubject (NetworkComposer quickAdd picker,
 
 describe('getQuickAddOptionsForSubject (NameGeneratorQuickAdd picker, VALIDATED writer)', () => {
   it('drops a text variable an unvalidated writer elsewhere already claims', () => {
-    const result = getQuickAddOptionsForSubject(stateWith(protocol), subject);
+    const result = getQuickAddOptionsForSubject(
+      stateWith(qaUnvalidatedOnly),
+      subject,
+    );
 
     expect(result.map((o) => o.value)).not.toContain('qa');
   });
 
+  it('keeps a text variable only a form elsewhere already writes', () => {
+    const result = getQuickAddOptionsForSubject(
+      stateWith(validatedOnly),
+      subject,
+    );
+
+    expect(result.map((o) => o.value)).toContain('qa');
+  });
+
   it('keeps the dropped option when it is the currently-selected value', () => {
     const result = getQuickAddOptionsForSubject(
-      stateWith(protocol),
+      stateWith(qaUnvalidatedOnly),
       subject,
       'qa',
     );
