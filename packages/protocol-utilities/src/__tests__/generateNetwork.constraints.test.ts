@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { Stage } from '@codaco/protocol-validation';
 import {
@@ -9,14 +9,6 @@ import {
 
 import { generateNetwork } from '../generateNetwork';
 import { SyntheticDataConstraintError } from '../generateNetwork/constraints/error';
-
-// Every sweep below generates a full network per seed, and the solver added by
-// PR #1109 costs a little more per entity. On this repo's CI runners the
-// heaviest sweep measured 7.0s against vitest's 5s default, so the whole file
-// is given room rather than the handful that happened to cross first. Set for
-// the file, not the package: a sweep that took a minute would be a real
-// regression, and every other suite keeps the default.
-vi.setConfig({ testTimeout: 60_000 });
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 
