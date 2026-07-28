@@ -17,11 +17,9 @@ import {
   rosterRowIsDrawable,
 } from './attributes';
 import type { GenerationConfig } from './config';
-import {
-  type DateResolution,
-  truncateToResolution,
-} from './constraints/dateWindow';
+import { stepsBetween } from './constraints/dateWindow';
 import type { EntityScopeRef } from './constraints/generateEntityAttributes';
+import { dateValueResolution } from './constraints/groupConstraints';
 import {
   COMPARATOR_DIRECTION,
   COMPARISON_RULES,
@@ -271,13 +269,6 @@ function isUnanswered(value: VariableValue): boolean {
   return false;
 }
 
-/** The shape a date has once written at each resolution. */
-const DATE_AT_RESOLUTION: Record<DateResolution, RegExp> = {
-  year: /^\d{4}$/,
-  month: /^\d{4}-\d{2}$/,
-  full: /^\d{4}-\d{2}-\d{2}$/,
-};
-
 /**
  * Whether an option list offers a value.
  *
@@ -370,16 +361,19 @@ function ownRuleBroken(
     }
   }
 
-  if (dateWindow !== undefined && typeof value === 'string') {
+  if (dateWindow !== undefined && typeof value === 'string' && value !== '') {
     const { resolution, min, max } = dateWindow;
-    const at = truncateToResolution(value, resolution);
-    // A value the picker's units cannot describe is left alone rather than
-    // compared: these bounds are ordered as strings, where anything else would
-    // sort by accident rather than by date.
-    if (DATE_AT_RESOLUTION[resolution].test(at)) {
-      if (min !== undefined && at < min) return 'parameters';
-      if (max !== undefined && at > max) return 'parameters';
-    }
+    // A picker writes its dates at one resolution and no other, and offers only
+    // days the calendar holds, so a value of any other shape is one the control
+    // could neither have produced nor display: `2020-05-01` in a year picker,
+    // `2020-02-31` in a full one. Judged before the window rather than
+    // truncated into it, because a string naming no date the field offers has
+    // no place inside the field's range either.
+    if (dateValueResolution(value) !== resolution) return 'parameters';
+    // Both ends are now written at the same resolution, so they order as
+    // strings — which is how the runtime's own min/max validators compare them.
+    if (min !== undefined && value < min) return 'parameters';
+    if (max !== undefined && value > max) return 'parameters';
   }
 
   return undefined;
@@ -389,9 +383,16 @@ function ownRuleBroken(
  * Whether a comparator holds between two values neither of which is drawn.
  *
  * Read the way `applyComparatorBounds` reads a counterpart it is drawing
- * against: a datetime against a date string, anything else against a number,
- * and a pair it cannot order left alone rather than judged. Dates compare as
- * strings, which is how the runtime's own min/max validators compare them.
+ * against: a datetime against a date, anything else against a number, and a
+ * pair it cannot order left alone rather than judged.
+ *
+ * Dates are ordered as the runtime orders them. `compareVariables` parses both
+ * ends with `new Date(...)`, and ECMAScript reads a date-only string as UTC
+ * midnight beginning the period it names, so `2020` is the same instant as
+ * `2020-01-01` and two values written at different resolutions still compare.
+ * A string comparison would call `2020-01-01` the greater of that pair and
+ * accept a strict comparator the interview rejects, which is why the two are
+ * counted apart in days — the units `stepsBetween` reads a partial date in.
  */
 function comparatorHolds(
   entry: VariableEntry,
@@ -402,8 +403,11 @@ function comparatorHolds(
   if (entry.type === 'datetime') {
     if (typeof own !== 'string' || own === '') return true;
     if (typeof other !== 'string' || other === '') return true;
+    if (dateValueResolution(own) === undefined) return true;
+    if (dateValueResolution(other) === undefined) return true;
     const [upper, lower] = ownerIsUpper ? [own, other] : [other, own];
-    return strict ? upper > lower : upper >= lower;
+    const days = stepsBetween(lower, upper, 'full');
+    return strict ? days > 0 : days >= 0;
   }
 
   const ownNumber = Number(own);

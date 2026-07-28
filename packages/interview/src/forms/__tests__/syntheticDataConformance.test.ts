@@ -18,6 +18,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNetwork,
+  type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
 
@@ -1468,6 +1469,135 @@ describe('date comparators across picker resolutions', () => {
           wrong.push(`seed ${seed}: ${variableId}=${shown(value)}`);
         }
       }
+    }
+
+    expect(wrong).toEqual([]);
+  });
+});
+
+/**
+ * A roster whose rows fix both ends of a cross-resolution comparator.
+ *
+ * A value a row carries is never drawn — the draw is asked only for what the
+ * fixed values leave over — so the comparator between two of them is settled by
+ * accepting or passing over the row. Ordering those two as strings disagrees
+ * with the runtime in both directions: `2020-01-01` sorts after `2020` while
+ * naming the same instant, so a strict `greaterThanVariable` looks satisfied
+ * and the row is copied into a network the interview's own validators reject.
+ *
+ * Three of the six rows below land exactly on the first instant of their
+ * counterpart's period and three clear it, so a run can fill the stage only by
+ * passing the first three over.
+ */
+const rosterDateVariables: Variables = {
+  rosterYear: {
+    name: 'Started',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'year', min: '2000-01-01', max: '2030-12-31' },
+  },
+  rosterDay: {
+    name: 'Finished',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full', min: '2000-01-01', max: '2030-12-31' },
+    validation: { greaterThanVariable: ref('rosterYear') },
+  },
+};
+
+const rosterDateCodebook: Codebook = {
+  node: {
+    rosterPerson: {
+      name: 'Person',
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+      variables: rosterDateVariables,
+    },
+  },
+};
+
+const rosterDateStages = [
+  {
+    id: 'stage-roster-dates',
+    type: 'NameGeneratorRoster',
+    label: 'People',
+    subject: { entity: 'node', type: 'rosterPerson' },
+    prompts: [{ id: 'p1', text: 'Pick people' }],
+    form: {
+      title: 'About this person',
+      fields: formFields(rosterDateVariables),
+    },
+    behaviours: { minNodes: 3, maxNodes: 3 },
+  },
+] as unknown as Stage[];
+
+/** The rows the stage draws from, rebuilt per seed so no run mutates another's. */
+function rosterDateRows(): NcNode[] {
+  return [
+    { rosterYear: '2020', rosterDay: '2020-01-01' },
+    { rosterYear: '2020', rosterDay: '2020-01-02' },
+    { rosterYear: '2021', rosterDay: '2021-01-01' },
+    { rosterYear: '2021', rosterDay: '2021-06-30' },
+    { rosterYear: '2022', rosterDay: '2022-01-01' },
+    { rosterYear: '2022', rosterDay: '2022-12-31' },
+  ].map((attributes, index) => ({
+    [entityPrimaryKeyProperty]: `roster-${index}`,
+    type: 'rosterPerson',
+    [entityAttributesProperty]: { ...attributes },
+  }));
+}
+
+describe('a roster fixing both ends of a cross-resolution comparator', () => {
+  it('draws rows whose values pass the real form validators', async () => {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= 25; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: rosterDateCodebook,
+        stages: rosterDateStages,
+        externalData: { 'stage-roster-dates': rosterDateRows() },
+        config: { today },
+      });
+
+      if (network.nodes.length !== 3) {
+        failures.push(`seed ${seed}: ${network.nodes.length} nodes, not 3`);
+      }
+
+      failures.push(
+        ...(
+          await collectFailures(rosterDateCodebook, network, rosterDateStages)
+        ).map((failure) => `seed ${seed}: ${failure}`),
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  // Conformance alone would also be satisfied by a run that drew nothing, and a
+  // roster holding three usable rows is not that. The three rows a strict
+  // comparator accepts are the three the stage draws.
+  it('draws exactly the rows the comparator accepts', () => {
+    const wrong: string[] = [];
+
+    for (let seed = 1; seed <= 25; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: rosterDateCodebook,
+        stages: rosterDateStages,
+        externalData: { 'stage-roster-dates': rosterDateRows() },
+        config: { today },
+      });
+
+      const drawn = network.nodes
+        .map((node) => shown(node[entityAttributesProperty].rosterDay))
+        .toSorted()
+        .join(', ');
+      const expected = ['"2020-01-02"', '"2021-06-30"', '"2022-12-31"'].join(
+        ', ',
+      );
+
+      if (drawn !== expected) wrong.push(`seed ${seed}: ${drawn}`);
     }
 
     expect(wrong).toEqual([]);

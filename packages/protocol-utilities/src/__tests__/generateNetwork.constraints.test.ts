@@ -1473,6 +1473,164 @@ describe('a rule between two fixed attributes', () => {
 
     expect(failures).toEqual([]);
   });
+
+  /**
+   * A comparator between two fixed dates written at different picker
+   * resolutions.
+   *
+   * The runtime's `compareVariables` parses both ends with `new Date(...)`, and
+   * ECMAScript reads a date-only string as UTC midnight beginning the period it
+   * names: `2020` is the instant `2020-01-01`, and `2009-06` is `2009-06-01`.
+   * Ordering the two as strings disagrees with that in both directions —
+   * `2020-01-01` sorts after `2020`, and `2009-06` sorts before `2009-06-01` —
+   * so a lexical check accepts a pair the interview rejects and writes it into
+   * the network.
+   */
+  const yearAndDay = personCodebook({
+    start: {
+      name: 'Start',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '2000', max: '2030' },
+    },
+    finish: {
+      name: 'Finish',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', min: '2000-01-01', max: '2030-12-31' },
+      validation: { greaterThanVariable: 'start' },
+    },
+  });
+
+  const monthAndDay = personCodebook({
+    day: {
+      name: 'Day',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', min: '2000-01-01', max: '2030-12-31' },
+    },
+    month: {
+      name: 'Month',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'month', min: '2000-01', max: '2030-12' },
+      validation: { lessThanVariable: 'day' },
+    },
+  });
+
+  function sweepPairs(
+    codebook: Codebook,
+    rows: NcNode[],
+    holds: (attributes: Record<string, unknown>) => boolean,
+  ): string[] {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [rosterStage(3)],
+        externalData: {
+          'stage-1': rows.map((row) => ({
+            ...row,
+            [entityAttributesProperty]: { ...row[entityAttributesProperty] },
+          })),
+        },
+      });
+
+      complain(
+        failures,
+        network.nodes.length === 3,
+        () => `seed ${seed}: ${network.nodes.length} nodes, not 3`,
+      );
+      for (const node of network.nodes) {
+        const attributes = node[entityAttributesProperty];
+        complain(
+          failures,
+          holds(attributes),
+          () => `seed ${seed}: drew ${JSON.stringify(attributes)}`,
+        );
+      }
+    }
+
+    return failures;
+  }
+
+  it(`passes over a row whose finer date only sorts past a coarser one, over ${SEEDS} seeds`, () => {
+    // Each rejected row's `finish` is the first instant of its `start` year, so
+    // a strict comparator does not hold however the two are written.
+    const rows = rowsOf([
+      { start: '2020', finish: '2020-01-01' },
+      { start: '2020', finish: '2020-01-02' },
+      { start: '2021', finish: '2021-01-01' },
+      { start: '2021', finish: '2021-06-30' },
+      { start: '2022', finish: '2022-01-01' },
+      { start: '2022', finish: '2022-12-31' },
+    ]);
+
+    expect(
+      sweepPairs(
+        yearAndDay,
+        rows,
+        ({ start, finish }) => String(finish) > `${String(start)}-01-01`,
+      ),
+    ).toEqual([]);
+  });
+
+  it(`passes over a row whose coarser date only sorts before a finer one, over ${SEEDS} seeds`, () => {
+    // The other direction: `2009-06` sorts before `2009-06-01` as a string, but
+    // names the very instant it is required to precede.
+    const rows = rowsOf([
+      { day: '2009-06-01', month: '2009-06' },
+      { day: '2009-06-02', month: '2009-06' },
+      { day: '2010-06-01', month: '2010-06' },
+      { day: '2010-07-15', month: '2010-06' },
+      { day: '2011-03-01', month: '2011-03' },
+      { day: '2011-03-20', month: '2011-03' },
+    ]);
+
+    expect(
+      sweepPairs(
+        monthAndDay,
+        rows,
+        ({ day, month }) => `${String(month)}-01` < String(day),
+      ),
+    ).toEqual([]);
+  });
+
+  it(`draws a row whose two resolutions coincide under a non-strict rule, over ${SEEDS} seeds`, () => {
+    // The same pair a strict comparator rejects is one a non-strict comparator
+    // accepts: the two ends are the same instant, so neither reading may drop
+    // the row.
+    const atLeast = personCodebook({
+      start: {
+        name: 'Start',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', min: '2000', max: '2030' },
+      },
+      finish: {
+        name: 'Finish',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'full', min: '2000-01-01', max: '2030-12-31' },
+        validation: { greaterThanOrEqualToVariable: 'start' },
+      },
+    });
+    const rows = rowsOf([
+      { start: '2020', finish: '2020-01-01' },
+      { start: '2021', finish: '2021-01-01' },
+      { start: '2022', finish: '2022-01-01' },
+    ]);
+
+    expect(
+      sweepPairs(
+        atLeast,
+        rows,
+        ({ start, finish }) => String(finish) === `${String(start)}-01-01`,
+      ),
+    ).toEqual([]);
+  });
 });
 
 /**
@@ -1716,6 +1874,153 @@ describe('a fixed value its own rules reject', () => {
         return value >= '2000-01-01' && value <= '2010-12-31';
       }),
     ).toEqual([]);
+  });
+
+  /**
+   * A picker collects a date at one resolution and no other, and its calendar
+   * offers only days that exist. A window check alone cannot see either: it
+   * truncates the value to the picker's units before comparing, so a full date
+   * in a year picker lands inside the window and is then copied out verbatim,
+   * and `2005-02-31` sorts between the bounds like any other string.
+   */
+  const yearPicker = personCodebook({
+    met: {
+      name: 'Met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '2000', max: '2010' },
+    },
+  });
+
+  const fullPicker = personCodebook({
+    met: {
+      name: 'Met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
+    },
+  });
+
+  it(`passes over a row written finer than its picker collects, over ${SEEDS} seeds`, () => {
+    const rows = rowsOf([
+      { met: '2001-03-04' },
+      { met: '2004' },
+      { met: '2005-06-07' },
+      { met: '2007' },
+      { met: '2008-12-31' },
+      { met: '2009' },
+    ]);
+
+    expect(
+      sweepRoster(yearPicker, rows, ({ met }) => /^\d{4}$/.test(String(met))),
+    ).toEqual([]);
+  });
+
+  it(`passes over a row naming a day the calendar does not hold, over ${SEEDS} seeds`, () => {
+    // `2005-02-31` neither fails to parse nor names February 31st — it rolls
+    // forward into March — so a native date input can show neither what was
+    // written nor what it means.
+    const rows = rowsOf([
+      { met: '2005-02-31' },
+      { met: '2005-03-01' },
+      { met: '2006-04-31' },
+      { met: '2006-05-01' },
+      { met: '2007-11-31' },
+      { met: '2007-12-01' },
+    ]);
+
+    expect(
+      sweepRoster(fullPicker, rows, ({ met }) =>
+        ['2005-03-01', '2006-05-01', '2007-12-01'].includes(String(met)),
+      ),
+    ).toEqual([]);
+  });
+
+  it(`passes over a row holding a string that names no date, over ${SEEDS} seeds`, () => {
+    const rows = rowsOf([
+      { met: 'not-a-date' },
+      { met: '2005-01-02' },
+      { met: '2005/06/07' },
+      { met: '2006-01-02' },
+      { met: '20070102' },
+      { met: '2007-01-02' },
+    ]);
+
+    expect(
+      sweepRoster(fullPicker, rows, ({ met }) =>
+        /^\d{4}-\d{2}-\d{2}$/.test(String(met)),
+      ),
+    ).toEqual([]);
+  });
+
+  it(`draws every row its picker could have collected, over ${SEEDS} seeds`, () => {
+    // The guard reads the picker's own resolution rather than preferring the
+    // finest one: a year picker's rows are years, and all three are usable.
+    const rows = rowsOf([{ met: '2001' }, { met: '2004' }, { met: '2009' }]);
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const drawn = drawnOver(yearPicker, rows, 3, seed).map(({ met }) =>
+        String(met),
+      );
+
+      complain(
+        failures,
+        drawn.toSorted().join(',') === '2001,2004,2009',
+        () => `seed ${seed}: dates ${drawn.join(', ')}, not all three rows`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`draws a row whose date column is empty, over ${SEEDS} seeds`, () => {
+    // An emptied column is no answer rather than a date of the wrong shape, and
+    // `required` is the rule that owns emptiness — as it does for every other
+    // type. A picker the protocol does not mark required accepts a blank.
+    const rows = rowsOf([{ met: '2001' }, { met: '' }, { met: '2009' }]);
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const drawn = drawnOver(yearPicker, rows, 3, seed).map(({ met }) =>
+        String(met),
+      );
+
+      complain(
+        failures,
+        drawn.toSorted().join(',') === ',2001,2009',
+        () => `seed ${seed}: dates ${drawn.join(', ')}, not all three rows`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it('refuses a prompt fixing a date its picker cannot collect', () => {
+    const fixing = {
+      id: 'stage-1',
+      type: 'NameGenerator',
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Name people',
+          additionalAttributes: [{ variable: 'met', value: '2005-05-01' }],
+        },
+      ],
+      behaviours: { minNodes: 2, maxNodes: 2 },
+    } as unknown as Stage;
+
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const build = () =>
+        generateNetwork({ seed, codebook: yearPicker, stages: [fixing] });
+
+      expect(build).toThrow(SyntheticDataConstraintError);
+      expect(build).toThrow(
+        'a prompt fixes this variable to 2005-05-01, which parameters does not allow',
+      );
+    }
   });
 
   it(`passes over a row outside the normalised scalar scale, over ${SEEDS} seeds`, () => {
