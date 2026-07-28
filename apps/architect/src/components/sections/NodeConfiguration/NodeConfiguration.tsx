@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import { change, formValueSelector, getFormInitialValues } from 'redux-form';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -17,14 +17,44 @@ import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  crossClassPickIssue,
+  validatedElsewhereMessage,
+  variableDisplayName,
+} from '~/components/Validations/contradictions';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
-import { getVariableOptionsForSubject } from '~/selectors/codebook';
+import {
+  EMPTY_VARIABLES,
+  getVariableOptionsForSubject,
+  getVariablesForSubjectSelector,
+} from '~/selectors/codebook';
+import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 import { excludeValidatedUses } from '~/selectors/roleFilters';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import withComposerFormHandlers from '../Form/withComposerFormHandlers';
 import { getLayoutVariablesForSubject } from '../SociogramPrompts/selectors';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// The variable ids this draft's OWN nodeForm.fields[] currently write —
+// intra-editor siblings of quickAdd/convexHullVariable within the SAME
+// unsaved stage draft, not anything committed. Neither side has a "pre-edit"
+// value to escape against here: two live draft fields simply cannot name the
+// same variable while one validates it and the other does not.
+const draftNodeFormVariables = (
+  allValues: Record<string, unknown> | undefined,
+): string[] => {
+  const nodeForm = isRecord(allValues) ? allValues.nodeForm : undefined;
+  const fields =
+    isRecord(nodeForm) && Array.isArray(nodeForm.fields) ? nodeForm.fields : [];
+  return fields
+    .filter(isRecord)
+    .map((field) => field.variable)
+    .filter((variable): variable is string => typeof variable === 'string');
+};
 type LayoutVariableOption = {
   isUsed?: boolean;
   label: string;
@@ -87,6 +117,97 @@ export const NodeConfigurationComponent = ({
       dispatch(change(form, 'behaviours.automaticLayout', true));
     }
   }, [rawAutomaticLayout, dispatch, form]);
+  // NetworkComposer is the one stage carrying both writer classes at once
+  // (an unvalidated `quickAdd`/`convexHullVariable` alongside a validated
+  // `nodeForm.fields` form) directly on the SAME draft, so an intra-editor
+  // pick the pickers can't see (Task 8's exclusions only compare each picker
+  // to the COMMITTED protocol) can still create a cross-class pair here.
+  // This mount's save-time gate below covers both halves: (a) the SAVED
+  // document's role map, mirroring the other unvalidated-writer gates
+  // (Bin/TSC/Sociogram/Nomination), with the same committed-value escape;
+  // and (b) the live DRAFT's own `nodeForm.fields` list, which the saved-doc
+  // role map cannot see until this stage is actually saved.
+  const nodeVariablesSubject = useMemo(
+    () => (type ? { entity: entity === 'ego' ? 'node' : entity, type } : null),
+    [entity, type],
+  );
+  const allVariables = useAppSelector((state: RootState) =>
+    nodeVariablesSubject
+      ? getVariablesForSubjectSelector(state, nodeVariablesSubject)
+      : EMPTY_VARIABLES,
+  );
+  const roleMap = useAppSelector(getVariableRoleMap);
+  const hasValidatedUseForSubject = useCallback(
+    (variableId: string) =>
+      !!nodeVariablesSubject &&
+      (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.validated ?? 0) >
+        0,
+    [roleMap, nodeVariablesSubject],
+  );
+  const stageInitialValues = useAppSelector((state: RootState) =>
+    getFormInitialValues(form)(state),
+  );
+  const originalQuickAdd =
+    isRecord(stageInitialValues) &&
+    typeof stageInitialValues.quickAdd === 'string'
+      ? stageInitialValues.quickAdd
+      : '';
+  const originalConvexHullVariable =
+    isRecord(stageInitialValues) &&
+    typeof stageInitialValues.convexHullVariable === 'string'
+      ? stageInitialValues.convexHullVariable
+      : '';
+  const makeCrossClassValidate = useCallback(
+    (originalVariableId: string) =>
+      (
+        value: unknown,
+        allValues?: Record<string, unknown>,
+      ): string | undefined => {
+        const variableId = typeof value === 'string' ? value : '';
+        if (!variableId) return undefined;
+        const savedDocIssue = crossClassPickIssue({
+          variableId,
+          originalVariableId,
+          hasConflictingUse: hasValidatedUseForSubject,
+          allVariables,
+          message: validatedElsewhereMessage,
+        });
+        if (savedDocIssue) return savedDocIssue;
+        if (draftNodeFormVariables(allValues).includes(variableId)) {
+          return validatedElsewhereMessage(
+            variableDisplayName(allVariables, variableId),
+          );
+        }
+        return undefined;
+      },
+    [hasValidatedUseForSubject, allVariables],
+  );
+  const quickAddCrossClassValidate = useMemo(
+    () => makeCrossClassValidate(originalQuickAdd),
+    [makeCrossClassValidate, originalQuickAdd],
+  );
+  const convexHullCrossClassValidate = useMemo(
+    () => makeCrossClassValidate(originalConvexHullVariable),
+    [makeCrossClassValidate, originalConvexHullVariable],
+  );
+  // Mirror check: this stage's OWN unvalidated writers' CURRENT draft picks,
+  // handed to the nodeForm.fields editor so it rejects a variable quickAdd/
+  // convexHullVariable already claim in the SAME draft, symmetric with the
+  // check above (which reads nodeForm.fields' current draft picks the same
+  // way, via the `allValues` a field-level validator receives).
+  const quickAddValue = useAppSelector((state: RootState) =>
+    formValueSelector(form)(state, 'quickAdd'),
+  );
+  const convexHullVariableValue = useAppSelector((state: RootState) =>
+    formValueSelector(form)(state, 'convexHullVariable'),
+  );
+  const siblingUnvalidatedVariableIds = useMemo(
+    () =>
+      [quickAddValue, convexHullVariableValue].filter(
+        (value): value is string => typeof value === 'string' && value !== '',
+      ),
+    [quickAddValue, convexHullVariableValue],
+  );
   const newVariableWindowInitialProps = {
     entity: (entity === 'ego' ? 'node' : entity) as Entity,
     type: type ?? '',
@@ -126,7 +247,10 @@ export const NodeConfigurationComponent = ({
           <ValidatedField
             name="quickAdd"
             component={VariablePicker}
-            validation={{ required: true }}
+            validation={{
+              required: true,
+              crossClassPick: quickAddCrossClassValidate,
+            }}
             componentProps={{
               label: 'Create or select a variable for the quick-add form',
               type,
@@ -198,7 +322,7 @@ export const NodeConfigurationComponent = ({
           <ValidatedField
             name="convexHullVariable"
             component={VariablePicker}
-            validation={{}}
+            validation={{ crossClassPick: convexHullCrossClassValidate }}
             componentProps={{
               label: 'Create or select a categorical variable for grouping',
               type,
@@ -226,6 +350,7 @@ export const NodeConfigurationComponent = ({
           editFormName="node-attr-edit"
           title="Edit attribute"
           handleChangeFields={handleChangeFields}
+          siblingUnvalidatedVariableIds={siblingUnvalidatedVariableIds}
         />
       </Subsection>
 

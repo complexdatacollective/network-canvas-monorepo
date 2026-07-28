@@ -29,6 +29,18 @@ type EditableAttributesListProps = {
   editFormName?: string;
   title?: string;
   handleChangeFields: (field: Record<string, unknown>) => unknown;
+  /**
+   * Variable ids this stage's OWN unvalidated writers (NetworkComposer's
+   * `quickAdd`/`convexHullVariable`) currently pick in the SAME live draft —
+   * not yet reflected in the saved-document role map, since this stage
+   * hasn't been saved yet. Folded into this editor's `hasUnvalidatedUse`
+   * check so a `nodeForm.fields` attribute cannot pick a variable those
+   * sibling fields already claim, mirroring the gate NodeConfiguration.tsx
+   * applies to `quickAdd`/`convexHullVariable` themselves. Omitted by
+   * callers with no such sibling fields (e.g. FamilyPedigree's
+   * NodeConfiguration.tsx).
+   */
+  siblingUnvalidatedVariableIds?: string[];
 };
 
 const EditableAttributesList = ({
@@ -39,6 +51,7 @@ const EditableAttributesList = ({
   editFormName = 'editable-list-form',
   title = 'Edit attribute',
   handleChangeFields,
+  siblingUnvalidatedVariableIds,
 }: EditableAttributesListProps) => {
   // Memoized on the primitives so the subject object identity is stable
   // across renders, matching getVariablesForSubjectSelector's reselect
@@ -61,11 +74,13 @@ const EditableAttributesList = ({
   const roleMap = useSelector(getVariableRoleMap);
   // Backs makeFieldEditorValidate's save-time gate: a composer attribute may
   // not pick a variable some bin/highlight/census/etc. elsewhere already
-  // writes.
+  // writes — including this stage's OWN quickAdd/convexHullVariable, whose
+  // current draft picks the saved-document role map cannot see yet.
   const hasUnvalidatedUse = useCallback(
     (variableId: string) =>
-      (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0,
-    [roleMap, subject],
+      (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0 ||
+      (siblingUnvalidatedVariableIds?.includes(variableId) ?? false),
+    [roleMap, subject, siblingUnvalidatedVariableIds],
   );
   // Eleventh-wave Finding 4: the overlay is built per validate call so the
   // edited row itself — identified by the array index DialogArrayField
