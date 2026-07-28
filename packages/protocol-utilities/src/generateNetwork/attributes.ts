@@ -123,7 +123,16 @@ export function releaseRosterValues(
 }
 
 /**
- * Whether the network can still take every `unique` value a roster row carries.
+ * Whether the network can still take every `unique` value the node built from a
+ * roster row would hold.
+ *
+ * Asked of the assignment that will actually be written — the row merged with
+ * the prompt's `additionalAttributes`, as `createNodesForStage` settles it —
+ * rather than of the row as it arrived. Where a prompt's value wins the
+ * collision the row's own value is never written and the prompt's is, so a
+ * check reading the row answers about a value no node ends up holding: it
+ * passes over a row the network could still take, and lets through one whose
+ * finished node repeats a value the registry has already issued.
  *
  * A row's values are the researcher's rather than the registry's, so nothing
  * stops two rows offering one value for a variable the codebook marks `unique`.
@@ -139,13 +148,13 @@ export function releaseRosterValues(
 export function rosterRowIsDrawable(
   ctx: GenerationContext,
   ref: EntityScopeRef,
-  row: NcNode,
+  fixed: Record<string, VariableValue>,
 ): boolean {
   const registry = scopeKey(ref);
 
   for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
     for (const id of memberIds) {
-      const value = row[entityAttributesProperty][id];
+      const value = fixed[id];
       if (value === undefined) continue;
       if (ctx.uniqueRegistry.isTaken(registry, slot, value)) return false;
     }

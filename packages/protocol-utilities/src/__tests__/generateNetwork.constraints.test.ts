@@ -3625,3 +3625,264 @@ describe('roster values held against an earlier stage', () => {
     expect(failures).toEqual([]);
   });
 });
+
+/**
+ * A roster row and a prompt's `additionalAttributes` can both settle one
+ * variable, and which of them wins belongs to the interface: the roster
+ * interface lets the row's value win, while a name generator's panel lets the
+ * prompt's win. Only one of the two ever reaches the node, so every judgement a
+ * row is put to has to read that one — a row held to a value the prompt is
+ * about to overwrite is passed over for nothing, and a row whose overwritten
+ * value goes unexamined builds a node holding whatever the prompt says.
+ */
+describe('a variable a roster row and a prompt both settle', () => {
+  const uniqueFlag = personCodebook({
+    flag: { name: 'Flag', type: 'boolean', validation: { unique: true } },
+    name: { name: 'Name', type: 'text' },
+  });
+
+  /** Rows under their own id prefix: one person is never in two rosters. */
+  function rowsOf(
+    attributes: Record<string, unknown>[],
+    prefix: string,
+  ): NcNode[] {
+    return attributes.map(
+      (values, index) =>
+        ({
+          [entityPrimaryKeyProperty]: `${prefix}-${index}`,
+          type: 'person',
+          [entityAttributesProperty]: values,
+        }) as unknown as NcNode,
+    );
+  }
+
+  /** A one-person stage, optionally fixing `flag` through its prompt. */
+  function stageOf(id: string, type: string, fixes?: boolean): Stage {
+    return {
+      id,
+      type,
+      label: id,
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: `${id}-p1`,
+          text: 'Name someone',
+          ...(fixes === undefined
+            ? {}
+            : { additionalAttributes: [{ variable: 'flag', value: fixes }] }),
+        },
+      ],
+      behaviours: { minNodes: 1, maxNodes: 1 },
+    } as unknown as Stage;
+  }
+
+  function shapeOf(nodes: NcNode[]): string[] {
+    return nodes.map((node) => {
+      const { flag, name } = node[entityAttributesProperty];
+      return `${String(node.stageId)}:${node[entityPrimaryKeyProperty]}:${String(flag)}:${String(name)}`;
+    });
+  }
+
+  it(`writes a prompt's value over a panel row's, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: uniqueFlag,
+        stages: [stageOf('stage-panel', 'NameGenerator', false)],
+        externalData: {
+          'stage-panel': rowsOf([{ flag: true, name: 'Rowan' }], 'panel'),
+        },
+        config: { rosterDrawRatio: 1 },
+      });
+
+      const shape = shapeOf(network.nodes);
+      complain(
+        failures,
+        shape.join('|') === 'stage-panel:panel-0:false:Rowan',
+        () => `seed ${seed}: ${JSON.stringify(shape)}`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`writes a roster row's value over a prompt's, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: uniqueFlag,
+        stages: [stageOf('stage-roster', 'NameGeneratorRoster', false)],
+        externalData: {
+          'stage-roster': rowsOf([{ flag: true, name: 'Rowan' }], 'roster'),
+        },
+      });
+
+      const shape = shapeOf(network.nodes);
+      complain(
+        failures,
+        shape.join('|') === 'stage-roster:roster-0:true:Rowan',
+        () => `seed ${seed}: ${JSON.stringify(shape)}`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`draws a panel row whose claimed value the prompt overwrites, over ${SEEDS} seeds`, () => {
+    // The panel row carries the `true` an earlier stage has already claimed,
+    // and the prompt overwrites it with `false` — so the person the row
+    // describes is one the network can still take. Reading the row's own value
+    // passed it over and fabricated a stranger in its place.
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: uniqueFlag,
+        stages: [
+          stageOf('stage-roster', 'NameGeneratorRoster'),
+          stageOf('stage-panel', 'NameGenerator', false),
+        ],
+        externalData: {
+          'stage-roster': rowsOf([{ flag: true, name: 'Ann' }], 'roster'),
+          'stage-panel': rowsOf([{ flag: true, name: 'Rowan' }], 'panel'),
+        },
+        config: { rosterDrawRatio: 1 },
+      });
+
+      const shape = shapeOf(network.nodes);
+      complain(
+        failures,
+        shape.join('|') ===
+          'stage-roster:roster-0:true:Ann|stage-panel:panel-0:false:Rowan',
+        () => `seed ${seed}: ${JSON.stringify(shape)}`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  it(`passes over a roster row whose gap the prompt fills with a claimed value, over ${SEEDS} seeds`, () => {
+    // The second stage's row leaves `flag` for the prompt, which fixes the
+    // `true` the first stage's row has already claimed: the node that row would
+    // build is a duplicate of one the network holds, so the row is passed over
+    // and the roster stage adds nobody. Reading the row alone saw no value at
+    // all and drew it, and the finished network held `true` twice.
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: uniqueFlag,
+        stages: [
+          stageOf('stage-first', 'NameGeneratorRoster'),
+          stageOf('stage-second', 'NameGeneratorRoster', true),
+        ],
+        externalData: {
+          'stage-first': rowsOf([{ flag: true, name: 'Ann' }], 'first'),
+          'stage-second': rowsOf([{ name: 'Rowan' }], 'second'),
+        },
+      });
+
+      const flags = network.nodes.map(
+        (node) => node[entityAttributesProperty].flag,
+      );
+      complain(
+        failures,
+        new Set(flags.map((flag) => String(flag))).size === flags.length,
+        () => `seed ${seed}: flags ${flags.map(String).join(', ')} repeat`,
+      );
+      complain(
+        failures,
+        shapeOf(network.nodes).join('|') === 'stage-first:first-0:true:Ann',
+        () => `seed ${seed}: ${JSON.stringify(shapeOf(network.nodes))}`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+});
+
+/**
+ * Roster rows arrive as data, and a caller assembling them by hand can put one
+ * primary key on two rows carrying different values. Each of them describes a
+ * different person, so each has to be judged on the values it carries: a
+ * verdict standing for the key rather than for the row copies whichever row the
+ * draw happened to reach first onto the other.
+ */
+describe('two roster rows a caller gave one primary key', () => {
+  const aged = personCodebook({
+    age: {
+      name: 'Age',
+      type: 'number',
+      validation: { minValue: 18, maxValue: 90 },
+    },
+  });
+
+  const rosterStage = {
+    id: 'stage-roster',
+    type: 'NameGeneratorRoster',
+    label: 'Roster',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [{ id: 'p1', text: 'Pick people' }],
+    behaviours: { minNodes: 2, maxNodes: 2 },
+  } as unknown as Stage;
+
+  /** Two rows sharing one key, in the order given. */
+  function rowsAged(ages: number[]): NcNode[] {
+    return ages.map(
+      (age) =>
+        ({
+          [entityPrimaryKeyProperty]: 'shared-key',
+          type: 'person',
+          [entityAttributesProperty]: { age },
+        }) as unknown as NcNode,
+    );
+  }
+
+  function complaintsFor(seed: number, ages: number[]): string[] {
+    const failures: string[] = [];
+    const { network } = generateNetwork({
+      seed,
+      codebook: aged,
+      stages: [rosterStage],
+      externalData: { 'stage-roster': rowsAged(ages) },
+    });
+
+    const drawn = network.nodes.map((node) =>
+      Number(node[entityAttributesProperty].age),
+    );
+    // The row below the age floor is one no participant's form would have
+    // accepted, so it is passed over; the row above it is one the protocol
+    // describes perfectly well, so it is drawn. A verdict shared by key
+    // answered both rows with whichever of them the draw reached first, which
+    // on some seeds copied the 5 into the network and on others left the 30
+    // behind.
+    complain(
+      failures,
+      drawn.join(',') === '30',
+      () => `seed ${seed}: ages ${JSON.stringify(drawn)}, not just 30`,
+    );
+    return failures;
+  }
+
+  it(`passes over the row the rules reject, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      failures.push(...complaintsFor(seed, [30, 5]));
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it(`passes it over given first as readily as last, over ${SEEDS} seeds`, () => {
+    const failures: string[] = [];
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      failures.push(...complaintsFor(seed, [5, 30]));
+    }
+    expect(failures).toEqual([]);
+  });
+});

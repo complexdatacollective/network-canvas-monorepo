@@ -69,7 +69,14 @@ type NodeDrawPrompt = {
  */
 export type RosterDraw = {
   pool?: NcNode[];
-  /** Roster rows already drawn, shared across all prompts and stages. */
+  /**
+   * Roster rows already drawn, shared across all prompts and stages.
+   *
+   * Keyed by primary key, and read once per call to build that call's drawable
+   * pool. Two rows a caller gave one key are therefore both drawable inside a
+   * single prompt's draw — and the nodes they build share that key — while
+   * drawing either of them keeps both out of every later prompt and stage.
+   */
   used: Set<string>;
   /** Whether the stage may fabricate nodes beyond the roster. */
   allowFabrication: boolean;
@@ -664,10 +671,9 @@ export function releaseExternalRosterValues(
  */
 function takeDrawableRosterRow(
   ctx: GenerationContext,
-  scope: EntityScopeRef,
   pool: NcNode[],
   from: number,
-  rulesAllow: (row: NcNode) => boolean,
+  isDrawable: (row: NcNode) => boolean,
 ): NcNode | undefined {
   const window = pool.length - from;
   if (window <= 0) return undefined;
@@ -677,8 +683,7 @@ function takeDrawableRosterRow(
   for (let step = 0; step < window; step++) {
     const index = from + ((start - from + step) % window);
     const candidate = pool[index]!;
-    if (!rosterRowIsDrawable(ctx, scope, candidate)) continue;
-    if (!rulesAllow(candidate)) continue;
+    if (!isDrawable(candidate)) continue;
 
     pool[index] = pool[from]!;
     pool[from] = candidate;
@@ -775,20 +780,34 @@ export function createNodesForStage(
   const canComplete = completionCheckFor(constraints);
 
   /**
-   * Whether the run can build a node from this row, memoised by the row's key.
+   * Whether the rules accept the assignment a row would be built from,
+   * memoised by the row itself.
    *
    * The verdict is a function of the row and the prompt's own attributes, both
    * of which stand still for the whole draw, while `takeDrawableRosterRow`
    * walks the window afresh for every node it is asked for — so a pool of
    * hundreds is judged once per row here rather than once per row per node.
+   *
+   * Keyed by the row rather than by its primary key. Rows are data a caller
+   * hands in, and hand-built data can carry one key on two rows holding
+   * different values; a memo keyed that way would settle the second of them by
+   * the first one's values, copying a row the rules reject into the network or
+   * passing over one they accept, depending which of the two the walk reached
+   * first. The row is what the assignment is read from, so it is what the
+   * verdict belongs to.
+   *
+   * Only what the protocol settles is memoised. Whether the network can still
+   * take the assignment's `unique` values is not: that changes as nodes are
+   * built, and {@link rowIsDrawable} asks it afresh for every candidate.
    */
-  const rowVerdicts = new Map<string, boolean>();
-  const rulesAllow = (row: NcNode): boolean => {
-    const key = row[entityPrimaryKeyProperty];
-    const memoised = rowVerdicts.get(key);
+  const rowVerdicts = new WeakMap<NcNode, boolean>();
+  const rulesAllow = (
+    row: NcNode,
+    fixed: Record<string, VariableValue>,
+  ): boolean => {
+    const memoised = rowVerdicts.get(row);
     if (memoised !== undefined) return memoised;
 
-    const fixed = fixedValuesFor(row);
     // A row whose value its own rules reject, or whose values break a rule
     // between two of them or between one of them and a value the prompt fixes,
     // is passed over exactly as one repeating a `unique` value is: no draw
@@ -801,8 +820,25 @@ export function createNodesForStage(
     const verdict =
       ruleBrokenByFixedValues(constraints, fixed) === undefined &&
       canComplete(fixed);
-    rowVerdicts.set(key, verdict);
+    rowVerdicts.set(row, verdict);
     return verdict;
+  };
+
+  /**
+   * Whether the run can build a node from this row.
+   *
+   * Every judgement a row is put to reads one assignment: the values the node
+   * will actually be written with, which `fixedValuesFor` settles by merging
+   * the row with the prompt's `additionalAttributes` in whichever order the
+   * stage's interface gives them. Judging the row as it arrived instead asks
+   * about values the node may never hold — a variable the prompt overrides is
+   * one the row never writes — and answers both ways round: a row the network
+   * could take is passed over, and a row whose finished node repeats a value
+   * the registry has already issued is drawn.
+   */
+  const rowIsDrawable = (row: NcNode): boolean => {
+    const fixed = fixedValuesFor(row);
+    return rosterRowIsDrawable(ctx, scope, fixed) && rulesAllow(row, fixed);
   };
 
   for (let i = 0; i < count; i++) {
@@ -813,7 +849,7 @@ export function createNodesForStage(
       (!roster.allowFabrication ||
         ctx.valueGen.randomFloat(0, 1) < ctx.config.rosterDrawRatio);
     const picked = wantsRosterRow
-      ? takeDrawableRosterRow(ctx, scope, pool, drawn, rulesAllow)
+      ? takeDrawableRosterRow(ctx, pool, drawn, rowIsDrawable)
       : undefined;
 
     // A roster stage builds nodes only from rows, so a pool holding none the
