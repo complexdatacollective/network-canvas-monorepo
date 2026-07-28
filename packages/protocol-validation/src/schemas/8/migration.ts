@@ -1536,9 +1536,11 @@ const migrationV7toV8 = createMigration({
         // is overridden too).
         paths: [''],
         fn: <V>(document: V) => {
-          const doc = asRecord(document);
-          if (!doc) return document;
-          const stages = Array.isArray(doc.stages) ? doc.stages : [];
+          const typedDocument = asRecord(document);
+          if (!typedDocument) return document;
+          const stages = Array.isArray(typedDocument.stages)
+            ? typedDocument.stages
+            : [];
 
           const targets: { subject: unknown; variableId: string }[] = [];
           for (const rawStage of stages) {
@@ -1571,7 +1573,7 @@ const migrationV7toV8 = createMigration({
 
           for (const target of targets) {
             const variable = codebookVariable(
-              doc.codebook,
+              typedDocument.codebook,
               target.subject,
               target.variableId,
             );
