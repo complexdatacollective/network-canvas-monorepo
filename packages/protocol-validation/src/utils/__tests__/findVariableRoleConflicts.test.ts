@@ -29,6 +29,38 @@ const categoricalBinStage = (variable: string) => ({
   prompts: [{ id: 'p1', text: 'Sort', variable }],
 });
 
+// FamilyPedigree declares no top-level `subject` (unlike AlterForm/
+// CategoricalBin above); its nomination-prompt variable resolves via
+// `stageSubject`, which recoverSubject must derive from nodeConfig.type.
+const familyPedigreeStage = (nominationVariable: string) => ({
+  id: 'fp1',
+  type: 'FamilyPedigree',
+  label: 'Family Pedigree',
+  nodeConfig: {
+    type: 'person',
+    nodeLabelVariable: 'pedigreeLabel',
+    egoVariable: 'pedigreeEgo',
+    relationshipVariable: 'pedigreeRelationship',
+    biologicalSexVariable: 'pedigreeBioSex',
+  },
+  edgeConfig: {
+    type: 'knows',
+    relationshipTypeVariable: 'pedigreeRelType',
+    isActiveVariable: 'pedigreeActive',
+    isGestationalCarrierVariable: 'pedigreeGestCarrier',
+    gameteRoleVariable: 'pedigreeGameteRole',
+  },
+  framing: { mode: 'participantChoice' },
+  boundaries: {
+    requireGrandparents: 'off',
+    requireChildrenContributors: 'off',
+  },
+  censusPrompt: 'Who is related to you?',
+  nominationPrompts: [
+    { id: 'np1', text: 'Family history', variable: nominationVariable },
+  ],
+});
+
 const withStages = (stages: unknown[]) => {
   const base = createBaseProtocol();
   return { ...base, stages: [...(base.stages as unknown[]), ...stages] };
@@ -43,9 +75,33 @@ describe('findVariableRoleConflicts', () => {
     const conflict = conflicts[0];
     expect(conflict?.variableId).toBe('category');
     expect(conflict?.subject).toEqual({ entity: 'node', type: 'person' });
+    expect(conflict?.variableName).toBe('Category');
     expect(conflict?.validated).toHaveLength(1);
     expect(conflict?.unvalidated).toHaveLength(1);
     expect(typeof conflict?.unvalidated[0]?.stageIndex).toBe('number');
+  });
+
+  it('recovers the subject for a FamilyPedigree stage with no top-level subject', () => {
+    // nominationPrompts[].variable resolves via stageSubject, which is
+    // undefined for FamilyPedigree; recoverSubject must fall back to reading
+    // nodeConfig.type from the stage document itself.
+    const conflicts = findVariableRoleConflicts(
+      withStages([alterFormStage('category'), familyPedigreeStage('category')]),
+    );
+    expect(conflicts).toHaveLength(1);
+    const conflict = conflicts[0];
+    expect(conflict?.variableId).toBe('category');
+    expect(conflict?.subject).toEqual({ entity: 'node', type: 'person' });
+    expect(conflict?.validated).toHaveLength(1);
+    expect(conflict?.unvalidated).toHaveLength(1);
+  });
+
+  it('falls back to the variable id for a variableName absent from the codebook', () => {
+    const conflicts = findVariableRoleConflicts(
+      withStages([alterFormStage('ghost'), categoricalBinStage('ghost')]),
+    );
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableName).toBe('ghost');
   });
 
   it('accepts same-class sharing', () => {

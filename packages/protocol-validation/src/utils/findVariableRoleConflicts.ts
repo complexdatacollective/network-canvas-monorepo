@@ -30,10 +30,15 @@ const stageIndexOf = (path: (string | number)[]): number | undefined =>
   path[0] === 'stages' && typeof path[1] === 'number' ? path[1] : undefined;
 
 /**
- * FamilyPedigree (and NarrativePedigree) stages declare no top-level subject,
- * so the collector resolves their hits' subject to undefined. Their writers
- * always target the stage's own nodeConfig/edgeConfig type; recover it from
- * the stage document so those hits still participate in the rule.
+ * FamilyPedigree declares no top-level `subject`, so its only
+ * `stageSubject`-resolved writer — `nominationPrompts[].variable` — collects
+ * with `hit.subject` undefined. Recover it from the stage's own `nodeConfig`
+ * (or, symmetrically, `edgeConfig`) type instead. FamilyPedigree's other
+ * writer fields (on `nodeConfig`/`edgeConfig` themselves) are sibling-resolved
+ * and already carry a subject, so they never reach this fallback.
+ * NarrativePedigree has neither `nodeConfig` nor `edgeConfig`, and its one
+ * entity-attribute reference (`diseases[].variable`) carries no `usage` tag
+ * today, so it never reaches this function at all.
  */
 const recoverSubject = (
   protocol: UnknownRecord,
