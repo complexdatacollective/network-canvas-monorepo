@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  getComposerQuickAddOptionsForSubject,
+  getConvexHullOptionsForSubject,
+} from '~/components/sections/NodeConfiguration/NodeConfiguration';
+import { getQuickAddOptionsForSubject } from '~/components/sections/QuickAdd/withOptions';
 import type { RootState } from '~/ducks/modules/root';
 import {
   excludeUnvalidatedUses,
@@ -14,7 +19,9 @@ const stateWith = (protocol: unknown): RootState =>
 
 // Same shape as the Task 7 role-map fixture: `cat` is written both by a form
 // field (validated) and a CategoricalBin prompt (unvalidated), on the same
-// node-type subject.
+// node-type subject. `qa` extends this for the two quickAdd sites below: a
+// text variable written both by a form field (validated) and by
+// NetworkComposer's own quickAdd (unvalidated), on the same subject.
 const protocol = {
   schemaVersion: 8,
   codebook: {
@@ -31,6 +38,10 @@ const protocol = {
               { label: 'B', value: 'b' },
             ],
           },
+          qa: {
+            name: 'qa',
+            type: 'text',
+          },
         },
       },
     },
@@ -42,7 +53,12 @@ const protocol = {
       label: 'F',
       subject: { entity: 'node', type: 'person' },
       introductionPanel: { title: 'T', text: 'X' },
-      form: { fields: [{ variable: 'cat', prompt: 'P' }] },
+      form: {
+        fields: [
+          { variable: 'cat', prompt: 'P' },
+          { variable: 'qa', prompt: 'Q' },
+        ],
+      },
     },
     {
       id: 's2',
@@ -51,10 +67,20 @@ const protocol = {
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'p1', text: 'T', variable: 'cat' }],
     },
+    {
+      id: 's3',
+      type: 'NetworkComposer',
+      label: 'C',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'qa',
+    },
   ],
 };
 
-const subject = { entity: 'node', type: 'person' };
+const subject: { entity: 'node' | 'edge' | 'ego'; type: string } = {
+  entity: 'node',
+  type: 'person',
+};
 const options = [
   { value: 'cat', label: 'Cat' },
   { value: 'dog', label: 'Dog' },
@@ -131,5 +157,66 @@ describe('a conflict-free variable is never dropped in either direction', () => 
         (o) => o.value,
       ),
     ).toEqual(['dog']);
+  });
+});
+
+// Fix round 1: the two follow-up sites (NetworkComposer's own quickAdd, and
+// NameGeneratorQuickAdd's quickAdd) reuse `qa` — a text variable written both
+// by a form field (validated, stage s1) and by NetworkComposer's own quickAdd
+// (unvalidated, stage s3) on the same subject.
+describe('getConvexHullOptionsForSubject (NodeConfiguration convexHull picker, UNVALIDATED writer)', () => {
+  it('drops a categorical variable a form elsewhere already writes', () => {
+    const result = getConvexHullOptionsForSubject(stateWith(protocol), subject);
+
+    expect(result.map((o) => o.value)).not.toContain('cat');
+  });
+
+  it('keeps the dropped option when it is the currently-selected value', () => {
+    const result = getConvexHullOptionsForSubject(
+      stateWith(protocol),
+      subject,
+      'cat',
+    );
+
+    expect(result.map((o) => o.value)).toContain('cat');
+  });
+});
+
+describe('getComposerQuickAddOptionsForSubject (NetworkComposer quickAdd picker, UNVALIDATED writer)', () => {
+  it('drops a text variable a form elsewhere already writes', () => {
+    const result = getComposerQuickAddOptionsForSubject(
+      stateWith(protocol),
+      subject,
+    );
+
+    expect(result.map((o) => o.value)).not.toContain('qa');
+  });
+
+  it('keeps the dropped option when it is the currently-selected value', () => {
+    const result = getComposerQuickAddOptionsForSubject(
+      stateWith(protocol),
+      subject,
+      'qa',
+    );
+
+    expect(result.map((o) => o.value)).toContain('qa');
+  });
+});
+
+describe('getQuickAddOptionsForSubject (NameGeneratorQuickAdd picker, VALIDATED writer)', () => {
+  it('drops a text variable an unvalidated writer elsewhere already claims', () => {
+    const result = getQuickAddOptionsForSubject(stateWith(protocol), subject);
+
+    expect(result.map((o) => o.value)).not.toContain('qa');
+  });
+
+  it('keeps the dropped option when it is the currently-selected value', () => {
+    const result = getQuickAddOptionsForSubject(
+      stateWith(protocol),
+      subject,
+      'qa',
+    );
+
+    expect(result.map((o) => o.value)).toContain('qa');
   });
 });

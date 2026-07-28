@@ -248,40 +248,73 @@ const withLayoutOptions = connect(
       : [],
   }),
 );
+/**
+ * convexHullVariable is an UNVALIDATED writer: drop options a form elsewhere
+ * already validates. Exported (alongside its quickAdd sibling below) so both
+ * directions can be pinned directly in `pickerExclusions.test.ts`, the same
+ * way `getHighlightVariablesForSubject` is.
+ */
+export const getConvexHullOptionsForSubject = (
+  state: RootState,
+  subject: { entity: 'node' | 'edge' | 'ego'; type: string },
+  currentValue?: string,
+) => {
+  const categoricalOptions = getVariableOptionsForSubject(
+    state,
+    subject,
+  ).filter(({ type: variableType }) => variableType === 'categorical');
+  return excludeValidatedUses(state, subject, categoricalOptions, currentValue);
+};
+
+/**
+ * NetworkComposer's own quickAdd (distinct from NameGeneratorQuickAdd's) is an
+ * UNVALIDATED writer: drop options a form elsewhere already validates.
+ */
+export const getComposerQuickAddOptionsForSubject = (
+  state: RootState,
+  subject: { entity: 'node' | 'edge' | 'ego'; type: string },
+  currentValue?: string,
+) => {
+  const textOptions = getVariableOptionsForSubject(state, subject).filter(
+    ({ type: variableType }) => variableType === 'text',
+  );
+  return excludeValidatedUses(state, subject, textOptions, currentValue);
+};
+
 const withCategoricalOptions = connect(
   (state: RootState, { entity, type, form }: OwnProps) => {
     if (!type) {
       return { categoricalVariablesForSubject: [] };
     }
-    const subject = { entity, type };
     const convexHullVariable = formValueSelector(form)(
       state,
       'convexHullVariable',
     ) as string | undefined;
-    const categoricalOptions = getVariableOptionsForSubject(
-      state,
-      subject,
-    ).filter(({ type: variableType }) => variableType === 'categorical');
-    // convexHullVariable is an UNVALIDATED writer: drop options a form
-    // elsewhere already validates.
     return {
-      categoricalVariablesForSubject: excludeValidatedUses(
+      categoricalVariablesForSubject: getConvexHullOptionsForSubject(
         state,
-        subject,
-        categoricalOptions,
+        { entity, type },
         convexHullVariable,
       ),
     };
   },
 );
 const withQuickAddOptions = connect(
-  (state: RootState, { entity, type }: OwnProps) => ({
-    quickAddOptionsForSubject: type
-      ? getVariableOptionsForSubject(state, { entity, type }).filter(
-          ({ type: variableType }) => variableType === 'text',
-        )
-      : [],
-  }),
+  (state: RootState, { entity, type, form }: OwnProps) => {
+    if (!type) {
+      return { quickAddOptionsForSubject: [] };
+    }
+    const quickAdd = formValueSelector(form)(state, 'quickAdd') as
+      | string
+      | undefined;
+    return {
+      quickAddOptionsForSubject: getComposerQuickAddOptionsForSubject(
+        state,
+        { entity, type },
+        quickAdd,
+      ),
+    };
+  },
 );
 export default compose<NodeConfigurationProps, StageEditorSectionProps>(
   withSubject,
