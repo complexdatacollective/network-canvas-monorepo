@@ -1325,51 +1325,39 @@ const booleanDomain = (variable: unknown): Set<boolean> => {
  *     resolution tags are disjoint from the origin tags for the same reason.
  *   - ordinal (tenth-wave Finding 2): single-select, so a variable whose
  *     options expose exactly ONE distinct value (duplicate-value entries
- *     collapse, per `optionValues`) can only ever hold that value IF it must
- *     hold a value at all — and ordinal's validation pick includes
- *     `differentFrom` (see `ordinalValidations` in variable.ts), so the
- *     pairing is reachable. Twenty-third-wave Finding 9: an OPTIONAL ordinal
- *     can be left unanswered, and an unanswered value is never equal to a
- *     pinned option value at runtime, so the singleton domain only pins when
- *     `required` is also set — gating on `required` here is a correction of
- *     a pre-existing over-pin, not a new exception (see the categorical arm
- *     below for why gating on `required` is appropriate at all). The pinned
- *     value is the genuine primitive.
- *   - categorical (tenth-wave Finding 2): a selection is a SET of distinct
- *     option values, so a `minSelected` rule at or above the distinct-value
- *     count forces selecting ALL of them — one possible answer (strictly
- *     above the count is its own `minSelectedExceedsOptions` class, but >=
- *     keeps this robust either way). The runtime compares categorical arrays
- *     as order-insensitive multisets (fresco-ui's isMatchingValue), so the
- *     pinned "value" is a canonical composite key over the distinct values,
- *     typeof-tagged like isMatchingValue's own keying, sorted, and JSON-framed
- *     so no option value can forge another set's key (seventeenth-wave
- *     Finding 3). Keys are only ever compared between same-typed endpoints
+ *     collapse, per `optionValues`) can only ever hold that value — and
+ *     ordinal's validation pick includes `differentFrom` (see
+ *     `ordinalValidations` in variable.ts), so the pairing is reachable. The
+ *     pinned value is the genuine primitive.
+ *   - categorical (tenth-wave Finding 2, twenty-third-wave Finding 9): a
+ *     selection is a SET of distinct option values, so it pins to a single
+ *     possible answer whenever either (a) the distinct-value domain is
+ *     itself a singleton — the only non-empty selection is that one value —
+ *     or (b) a `minSelected` rule sits at or above the distinct-value count,
+ *     forcing selection of ALL of them (strictly above the count is its own
+ *     `minSelectedExceedsOptions` class, but >= keeps this robust either
+ *     way). The runtime compares categorical arrays as order-insensitive
+ *     multisets (fresco-ui's isMatchingValue), so the pinned "value" is a
+ *     canonical composite key over the distinct values, typeof-tagged like
+ *     isMatchingValue's own keying, sorted, and JSON-framed so no option
+ *     value can forge another set's key (seventeenth-wave Finding 3). Keys
+ *     are only ever compared between same-typed endpoints
  *     (`usableReference`), so no type's pinned value can collide with
  *     another's. `maxSelected` is irrelevant here: it can only shrink
  *     the feasible set further (a maxSelected below minSelected is its own
  *     `invertedBounds` contradiction), never admit a second answer.
  *
- *     Twenty-third-wave Finding 9: when `minSelected` is ABSENT, `required:
- *     true` also pins a singleton distinct-value domain. `required` forces a
- *     non-empty selection independent of `minSelected` — fresco-ui's
- *     `minSelected` validator explicitly short-circuits on an empty array
- *     (`value.length === 0`), so `minSelected` alone never forces an answer;
- *     only `required` does — and with exactly one distinct option value the
- *     only non-empty selection is that value. Elsewhere this analyser
- *     deliberately does NOT gate on `required` (a rule like `minValue` or
- *     `sameAs` only ever CONSTRAINS a value that is already present; an
- *     unanswered optional field trivially satisfies any such rule, and
- *     `differentFrom` in particular is never violated by two unanswered
- *     sides, so checking `required` there would only add false negatives).
- *     This is not that case: here `required` is what forces the answer to
- *     exist in the first place. Without it, an empty selection remains a
- *     second, unpinned possibility (`isMatchingValue([], ['x'])` is false),
- *     so an optional categorical must not pin even with a singleton domain —
- *     gating on `required` is therefore consistent with, not a reversal of,
- *     the rest of this file. Once `minSelected` IS present the pre-existing
- *     branch above already governs and is left unchanged, since it is
- *     strictly more permissive (it also fires when `required` is absent).
+ *     None of these checks — nor the ordinal, number, boolean, or datetime
+ *     arms above — gate on `required`. This function's contract is: a
+ *     contradiction exists when no ENTERED value can satisfy the rules
+ *     together. An unanswered/empty field is outside that model — `required`
+ *     owns emptiness, and "this field can never be validly answered" is
+ *     exactly the defect `pinnedValue` exists to surface, not a case to
+ *     special-case around. (Twenty-third-wave Finding 9 briefly gated the
+ *     ordinal arm and a required-only categorical branch on `required`, on
+ *     runtime-faithfulness grounds; that broke uniformity with every other
+ *     arm here and was reverted — a singleton effective domain pins the
+ *     entered value regardless of `required`.)
  *   - text/scalar/layout: no rule on these types ever collapses to one
  *     runtime value.
  */
@@ -1414,8 +1402,7 @@ const pinnedValue = (
     }
     case 'ordinal': {
       const values = optionValues(variable);
-      const required = validationOf(variable).required === true;
-      return required && values?.size === 1 ? [...values][0] : undefined;
+      return values?.size === 1 ? [...values][0] : undefined;
     }
     case 'categorical': {
       const values = optionValues(variable);
@@ -1423,16 +1410,12 @@ const pinnedValue = (
         return undefined;
       }
       const minSelected = numberRule(variable, 'minSelected');
-      const required = validationOf(variable).required === true;
-      // Twenty-third-wave Finding 9: `minSelected` present keeps the
-      // pre-existing (unchanged) cardinality check; `minSelected` absent
-      // falls back to `required` treated as an effective minimum of one,
-      // which only pins when the distinct-value domain is itself a
-      // singleton (see the doc comment above `pinnedValue`).
+      // A singleton distinct-value domain pins outright (see the doc comment
+      // above `pinnedValue`); otherwise fall back to the pre-existing
+      // minSelected-at-or-above-count cardinality check.
       const pinned =
-        minSelected === undefined
-          ? required && values.size === 1
-          : minSelected >= values.size;
+        values.size === 1 ||
+        (minSelected !== undefined && minSelected >= values.size);
       if (!pinned) {
         return undefined;
       }

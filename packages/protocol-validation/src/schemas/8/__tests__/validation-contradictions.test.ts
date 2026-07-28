@@ -1797,14 +1797,11 @@ describe('findValidationContradictions — tenth-wave Finding 2: pinned option-d
 
   // Ordinal is single-select, so one distinct option value (here via a
   // duplicate-value entry pair, which the schema permits) pins the variable
-  // to that value outright — no minSelected involved. Twenty-third-wave
-  // Finding 9: `required` is now load-bearing here too (an unanswered
-  // optional ordinal is not pinned — see the Finding 9 describe block below),
-  // so both sides need it to keep this a genuine positive case.
-  it('rejects two required single-distinct-value ordinals with the same value joined by differentFrom', () => {
+  // to that value outright — no minSelected involved.
+  it('rejects two single-distinct-value ordinals with the same value joined by differentFrom', () => {
     const result = findValidationContradictions({
-      a: ordinal('a', ['x', 'x'], { required: true, differentFrom: 'b' }),
-      b: ordinal('b', ['x'], { required: true }),
+      a: ordinal('a', ['x', 'x'], { differentFrom: 'b' }),
+      b: ordinal('b', ['x']),
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
@@ -1816,14 +1813,14 @@ describe('findValidationContradictions — tenth-wave Finding 2: pinned option-d
   it('accepts single-distinct-value ordinals pinned to different values', () => {
     expect(
       findValidationContradictions({
-        a: ordinal('a', ['x'], { required: true, differentFrom: 'b' }),
-        b: ordinal('b', ['y'], { required: true }),
+        a: ordinal('a', ['x'], { differentFrom: 'b' }),
+        b: ordinal('b', ['y']),
       }),
     ).toEqual([]);
   });
 });
 
-describe('findValidationContradictions — Twenty-third-wave Finding 9: required forces singleton categorical/ordinal domains', () => {
+describe('findValidationContradictions — Twenty-third-wave Finding 9 (reverted): singleton domains pin regardless of required', () => {
   const categorical = (
     name: string,
     optionValues: (string | number)[],
@@ -1846,10 +1843,12 @@ describe('findValidationContradictions — Twenty-third-wave Finding 9: required
     validation,
   });
 
-  // The reviewer's exact case: two option ENTRIES sharing one distinct value
-  // ('x') collapse to a single-value domain (`optionValues` dedupes), and
-  // `required: true` forces a non-empty selection — the only one available is
-  // `['x']` — even though neither variable sets `minSelected`.
+  // The reviewer's original finding: two option ENTRIES sharing one distinct
+  // value ('x') collapse to a single-value domain (`optionValues` dedupes),
+  // so two required categoricals joined by differentFrom are pinned to the
+  // same value even though neither sets `minSelected`. Still rejected under
+  // the uniform (non-`required`-gated) policy — `required` is incidental
+  // here, not load-bearing.
   it('rejects two required categoricals whose duplicate-value options force the same singleton selection', () => {
     const result = findValidationContradictions({
       a: categorical('a', ['x', 'x'], { required: true, differentFrom: 'b' }),
@@ -1862,20 +1861,22 @@ describe('findValidationContradictions — Twenty-third-wave Finding 9: required
     ]);
   });
 
-  // Without `required`, the categorical can be submitted empty
-  // (`isMatchingValue([], ['x'])` is false), so it is never forced onto its
-  // single option value and `differentFrom` is satisfiable.
-  it('accepts the same duplicate-value pairing when neither categorical is required', () => {
-    expect(
-      findValidationContradictions({
-        a: categorical('a', ['x', 'x'], { differentFrom: 'b' }),
-        b: categorical('b', ['x', 'x']),
-      }),
-    ).toEqual([]);
+  // Uniformity case (a): a singleton distinct-value domain pins the same way
+  // whether or not `required` is set — an unanswered field is outside the
+  // contradiction model, so the possibility of leaving it blank does not
+  // rescue `differentFrom`. This is new detection: pre-wave-23 there was no
+  // categorical singleton pin at all.
+  it('rejects two optional categoricals whose duplicate-value options force the same singleton selection', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['x', 'x'], { differentFrom: 'b' }),
+      b: categorical('b', ['x', 'x']),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
   });
 
-  // Two distinct option values leave a required selection non-empty but not
-  // determined — required alone does not pin it.
+  // Two distinct option values are never a singleton domain, so this stays
+  // unpinned regardless of `required`.
   it('accepts a required categorical pair with two distinct option values and no minSelected', () => {
     expect(
       findValidationContradictions({
@@ -1888,10 +1889,10 @@ describe('findValidationContradictions — Twenty-third-wave Finding 9: required
     ).toEqual([]);
   });
 
-  // The pre-existing minSelected-based pin (tenth-wave Finding 2) is
-  // unaffected by this change: minSelected alone still pins regardless of
-  // required.
-  it('still rejects the existing minSelected-pinned pairing without required', () => {
+  // Uniformity case (c): the pre-existing minSelected-based pin (tenth-wave
+  // Finding 2) fires without `required` set anywhere, re-asserting existing
+  // behaviour.
+  it('rejects two optional categoricals with minSelected at the distinct-value count joined by differentFrom', () => {
     const result = findValidationContradictions({
       a: categorical('a', ['x', 'y'], { minSelected: 2, differentFrom: 'b' }),
       b: categorical('b', ['x', 'y'], { minSelected: 2 }),
@@ -1900,38 +1901,27 @@ describe('findValidationContradictions — Twenty-third-wave Finding 9: required
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
   });
 
-  // Ordinal consistency: a required single-select ordinal with one distinct
-  // option value is likewise forced to that value.
-  it('rejects two required ordinals with the same single distinct option value', () => {
+  // Uniformity case (a), ordinal side: single-select, so a singleton
+  // distinct-value domain pins outright with no `required` set anywhere —
+  // matches the reverted tenth-wave Finding 2 test above, asserted again
+  // here alongside its categorical counterparts for direct comparison.
+  it('rejects two optional ordinals with the same single distinct option value', () => {
     const result = findValidationContradictions({
-      a: ordinal('a', ['x', 'x'], { required: true, differentFrom: 'b' }),
-      b: ordinal('b', ['x'], { required: true }),
+      a: ordinal('a', ['x'], { differentFrom: 'b' }),
+      b: ordinal('b', ['x']),
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
   });
 
-  // An optional ordinal can likewise be left unanswered, so a matching
-  // single-value domain must not pin it without required — the pre-existing
-  // over-pin this finding corrects (see the updated tenth-wave Finding 2
-  // test above).
-  it('accepts two ordinals with the same single distinct option value when neither is required', () => {
+  // Mirror accept case, guarding against over-reach: two distinct option
+  // values leave an ordinal's domain non-empty but not determined, so it
+  // stays unpinned — with no `required` set anywhere.
+  it('accepts two optional ordinals with two distinct option values', () => {
     expect(
       findValidationContradictions({
-        a: ordinal('a', ['x'], { differentFrom: 'b' }),
-        b: ordinal('b', ['x']),
-      }),
-    ).toEqual([]);
-  });
-
-  // Two distinct option values leave a required single-select ordinal
-  // non-empty but not determined — required alone does not pin it, mirroring
-  // the categorical two-distinct-value case above.
-  it('accepts a required ordinal pair with two distinct option values', () => {
-    expect(
-      findValidationContradictions({
-        a: ordinal('a', ['x', 'y'], { required: true, differentFrom: 'b' }),
-        b: ordinal('b', ['x', 'y'], { required: true }),
+        a: ordinal('a', ['x', 'y'], { differentFrom: 'b' }),
+        b: ordinal('b', ['x', 'y']),
       }),
     ).toEqual([]);
   });
