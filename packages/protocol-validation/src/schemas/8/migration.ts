@@ -16,6 +16,7 @@ import {
   DATE_RESOLUTION,
   isIsoDate,
   isValidDateAtResolution,
+  VARIABLE_TYPE_VALIDATIONS,
 } from './variables/variable.ts';
 
 // Operators whose operand is a categorical option value (as opposed to a count,
@@ -36,6 +37,33 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null
     ? (value as Record<string, unknown>)
     : null;
+
+// A string-keyed view of the per-type rule record, so migration steps
+// (which read raw, untyped v7 JSON) can index it with a plain string
+// without asserting the variable's `type` is a known member first.
+const VALIDATION_RULES_BY_TYPE: Record<
+  string,
+  Partial<Record<string, true>>
+> = VARIABLE_TYPE_VALIDATIONS;
+
+// The value kind each v8 validation rule requires. Together these cover every
+// key of the v8 `validations` record; anything else is an unknown rule.
+const BOOLEAN_VALUED_VALIDATIONS = new Set([
+  'required',
+  'requiredAcceptsNull',
+  'unique',
+]);
+const NUMBER_VALUED_VALIDATIONS = new Set([
+  'minLength',
+  'maxLength',
+  'minValue',
+  'maxValue',
+  'minSelected',
+  'maxSelected',
+]);
+const REFERENCE_VALUED_VALIDATIONS = new Set<string>(
+  VARIABLE_REFERENCE_VALIDATIONS,
+);
 
 // `ValidationContradiction.variableIds` is documented as "every variable
 // participating in the contradiction", which is exactly the property batching
@@ -372,6 +400,7 @@ const migrationV7toV8 = createMigration({
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed. Any parameter key other than \`type\`, \`min\`, or \`max\` — e.g. a RelativeDatePicker \`anchor\` left over from a component switch — is also removed.
 - A datetime codebook variable's RelativeDatePicker \`anchor\` must be a real date using a year of 0100 or later — the interview's date arithmetic (\`Date.UTC\`) maps a two-digit year (0-99) onto 1900-1999, so such an anchor already produced a wrong window, while years 0100-0999 round-trip correctly — and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
+- Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the variable's type (e.g. \`minValue\` on a text variable, or \`requiredAcceptsNull\` anywhere). A removed \`minValue\`/\`minLength\`/\`minSelected\` still marks the variable required, preserving the old implied-required behaviour. Layout variables take no validation at all; theirs is removed.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -441,6 +470,56 @@ const migrationV7toV8 = createMigration({
             const validation = (variable as Record<string, unknown>).validation;
             if (typeof validation === 'object' && validation !== null) {
               delete (validation as Record<string, unknown>).unique;
+            }
+          }
+          return variables;
+        },
+      },
+      {
+        // V7's loose validation object admits shapes v8's `validations`
+        // record cannot express at all: rule keys v8 has never defined (e.g.
+        // a hand-added `pattern` or `minWords`) and known rules whose value
+        // is the wrong primitive type (a string `minLength`, a numeric
+        // `required`, a numeric reference target). Either fails the v8
+        // strictObject outright, blocking the import. Delete them here —
+        // BEFORE any step that infers meaning from a rule's mere presence
+        // (the ordinal minSelected strip and the min-implies-required
+        // backfill), so a garbage value never fabricates requiredness.
+        // Layout and location variables take no validation at all in v8
+        // (their rule set is empty), so their whole `validation` object is
+        // removed.
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          const typedVariables = asRecord(variables);
+          if (!typedVariables) return variables;
+          for (const variable of Object.values(typedVariables)) {
+            const typedVariable = asRecord(variable);
+            if (!typedVariable) continue;
+            const validation = asRecord(typedVariable.validation);
+            if (!validation) continue;
+            const type = typedVariable.type;
+            const rules =
+              typeof type === 'string'
+                ? VALIDATION_RULES_BY_TYPE[type]
+                : undefined;
+            if (rules && Object.keys(rules).length === 0) {
+              delete typedVariable.validation;
+              continue;
+            }
+            for (const [rule, value] of Object.entries(validation)) {
+              if (BOOLEAN_VALUED_VALIDATIONS.has(rule)) {
+                if (typeof value !== 'boolean') delete validation[rule];
+              } else if (NUMBER_VALUED_VALIDATIONS.has(rule)) {
+                if (typeof value !== 'number') delete validation[rule];
+              } else if (REFERENCE_VALUED_VALIDATIONS.has(rule)) {
+                if (typeof value !== 'string') delete validation[rule];
+              } else {
+                delete validation[rule];
+              }
             }
           }
           return variables;
@@ -1312,6 +1391,40 @@ const migrationV7toV8 = createMigration({
 
             if (hasMinValidator && typedValidation.required !== true) {
               typedValidation.required = true;
+            }
+          }
+          return variables;
+        },
+      },
+      {
+        // V8 admits each validation rule only on the variable types whose
+        // rule set (`VARIABLE_TYPE_VALIDATIONS`) lists it, via a strict
+        // per-type pick — so a v7 rule parked on the wrong type (`minValue`
+        // on text, `sameAs` on scalar, `requiredAcceptsNull` anywhere)
+        // failed the pick and blocked the import. Remove every rule outside
+        // the type's own set. Runs AFTER the min-implies-required backfill
+        // so a min* rule that conferred requiredness in v7 keeps it,
+        // matching the dedicated ordinal-minSelected and scalar-bound
+        // strips; and BEFORE the contradiction fixpoint below, so the
+        // analyser never reasons over rules v8 would reject wholesale.
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          const typedVariables = asRecord(variables);
+          if (!typedVariables) return variables;
+          for (const variable of Object.values(typedVariables)) {
+            const typedVariable = asRecord(variable);
+            const validation = asRecord(typedVariable?.validation);
+            if (!typedVariable || !validation) continue;
+            const type = typedVariable.type;
+            if (typeof type !== 'string') continue;
+            const rules = VALIDATION_RULES_BY_TYPE[type];
+            if (!rules) continue;
+            for (const rule of Object.keys(validation)) {
+              if (rules[rule] !== true) delete validation[rule];
             }
           }
           return variables;

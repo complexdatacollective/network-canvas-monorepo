@@ -5568,4 +5568,106 @@ describe('Migration V7 to V8', () => {
       );
     });
   });
+
+  // Fuzz finding (migration-fuzz.test.ts): v7's loose validation object
+  // admits rule keys v8 has never defined, wrong-typed rule values, and
+  // rules parked on a variable type whose v8 rule set does not list them.
+  // All of them failed the v8 strict per-type pick and blocked the import.
+  describe('validation-rule shape strips', () => {
+    const migrateEgoVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: { variables } },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables ?? {};
+    };
+
+    it('strips a wrong-typed rule value without fabricating requiredness', () => {
+      const variables = migrateEgoVariables({
+        nickname: {
+          name: 'nickname',
+          type: 'text',
+          component: 'Text',
+          validation: { minLength: '3' },
+        },
+      });
+      expect(variables.nickname).not.toHaveProperty('validation.minLength');
+      expect(variables.nickname).not.toHaveProperty('validation.required');
+    });
+
+    it('strips unknown rule keys, keeping the known siblings', () => {
+      const variables = migrateEgoVariables({
+        nickname: {
+          name: 'nickname',
+          type: 'text',
+          component: 'Text',
+          validation: { pattern: '^a', minWords: 2, maxLength: 12 },
+        },
+      });
+      expect(variables.nickname).not.toHaveProperty('validation.pattern');
+      expect(variables.nickname).not.toHaveProperty('validation.minWords');
+      expect(variables.nickname).toHaveProperty('validation.maxLength', 12);
+    });
+
+    it('strips a wrong-typed reference target', () => {
+      const variables = migrateEgoVariables({
+        age: {
+          name: 'age',
+          type: 'number',
+          component: 'Number',
+          validation: { sameAs: 7 },
+        },
+      });
+      expect(variables.age).not.toHaveProperty('validation.sameAs');
+    });
+
+    it('strips a rule parked on a type v8 does not allow it on, preserving the implied requiredness', () => {
+      const variables = migrateEgoVariables({
+        nickname: {
+          name: 'nickname',
+          type: 'text',
+          component: 'Text',
+          validation: { minValue: 5 },
+        },
+      });
+      expect(variables.nickname).not.toHaveProperty('validation.minValue');
+      // v7 treated any min* validator as implying the field was required.
+      expect(variables.nickname).toHaveProperty('validation.required', true);
+    });
+
+    it('strips requiredAcceptsNull (no v8 variable type accepts it)', () => {
+      const variables = migrateEgoVariables({
+        age: {
+          name: 'age',
+          type: 'number',
+          component: 'Number',
+          validation: { requiredAcceptsNull: true, required: true },
+        },
+      });
+      expect(variables.age).not.toHaveProperty(
+        'validation.requiredAcceptsNull',
+      );
+      expect(variables.age).toHaveProperty('validation.required', true);
+    });
+
+    it('removes validation from a layout variable entirely', () => {
+      const variables = migrateEgoVariables({
+        pos: {
+          name: 'pos',
+          type: 'layout',
+          validation: { required: true },
+        },
+      });
+      expect(variables.pos).not.toHaveProperty('validation');
+    });
+  });
 });
