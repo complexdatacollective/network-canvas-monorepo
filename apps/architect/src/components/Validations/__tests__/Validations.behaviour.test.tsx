@@ -18,9 +18,9 @@ import Validations from '../index';
 
 type TestVariable = {
   name: string;
-  type: 'number' | 'text' | 'boolean';
+  type: 'number' | 'text' | 'boolean' | 'ordinal';
   validation?: Record<string, unknown>;
-  options?: { label: string; value: boolean }[];
+  options?: { label: string; value: boolean | number }[];
 };
 
 type OwnProps = {
@@ -199,6 +199,59 @@ describe('Validations behaviour', () => {
 
     expect(
       screen.getByText(/This variable has only 2 possible values/),
+    ).toBeInTheDocument();
+  });
+
+  // Sixteenth-wave Finding 2: two ordinal options may carry the same stored
+  // value, and only one of them is reachable as an answer — counting option
+  // entries overstated the domain the `unique` hint reports.
+  it('counts an ordinal variable’s distinct option values, not its option entries', () => {
+    setup({
+      variableType: 'ordinal',
+      entity: 'node',
+      currentVariableId: 'ordinal-var',
+      allVariables: {
+        'ordinal-var': {
+          name: 'Closeness',
+          type: 'ordinal',
+          options: [
+            { label: 'Not close', value: 1 },
+            { label: 'Distant', value: 1 },
+            { label: 'Very close', value: 2 },
+          ],
+        },
+      },
+      existingVariables: {},
+      validation: { unique: true },
+    });
+
+    expect(
+      screen.getByText(/This variable has only 2 possible values/),
+    ).toBeInTheDocument();
+  });
+
+  it('counts every option of an all-distinct ordinal variable', () => {
+    setup({
+      variableType: 'ordinal',
+      entity: 'node',
+      currentVariableId: 'ordinal-var',
+      allVariables: {
+        'ordinal-var': {
+          name: 'Closeness',
+          type: 'ordinal',
+          options: [
+            { label: 'Not close', value: 1 },
+            { label: 'Somewhat close', value: 2 },
+            { label: 'Very close', value: 3 },
+          ],
+        },
+      },
+      existingVariables: {},
+      validation: { unique: true },
+    });
+
+    expect(
+      screen.getByText(/This variable has only 3 possible values/),
     ).toBeInTheDocument();
   });
 

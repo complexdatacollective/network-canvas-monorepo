@@ -174,12 +174,17 @@ const Validations = ({
       : Array.isArray(storedOptions)
         ? storedOptions
         : undefined;
-    if (variableType === 'ordinal') return options?.length;
     // Fifteenth-wave Finding 2: `booleanOptionsSchema` accepts a single-option
     // array, so a Boolean can genuinely offer one value — with `unique` set,
     // the second entity to answer then has nothing left to pick. Only an
-    // ABSENT options array means the unrestricted Yes/No default of two.
-    if (options === undefined) return 2;
+    // ABSENT options array means the unrestricted Yes/No default of two; an
+    // ordinal with no options configured yet has no domain to report at all.
+    if (options === undefined)
+      return variableType === 'boolean' ? 2 : undefined;
+    // Sixteenth-wave Finding 2: count DISTINCT option values, for ordinals as
+    // well as Booleans. Two options may carry the same `value`, and the
+    // runtime stores one value per distinct value — counting option entries
+    // would overstate how many entities can hold a unique answer.
     return new Set(
       options
         .map((option) => (isRecord(option) ? option.value : undefined))

@@ -95,3 +95,27 @@ export const buildComposerFieldOverlay = (
   }
   return overlay;
 };
+
+/**
+ * Sixteenth-wave Finding 1: whether a committed sibling field — any field
+ * except the one at `excludeIndex`, the row being edited — already writes
+ * `variable`. `ComposerFormSchema` rejects a form naming one variable twice
+ * (thirteenth-wave Finding 1), but the overlay above cannot surface that: it
+ * is keyed BY variable, so a duplicate draft merely replaces its sibling's
+ * entry and the contradiction check sees a single, coherent field. Reads the
+ * same `fields`/`excludeIndex` pair the overlay is built from, and matches on
+ * the variable alone — a field's `id` is optional on
+ * ComposerFormFieldSchema, so id-less imported fields count exactly like ones
+ * Architect created.
+ */
+export const isVariableUsedBySibling = (
+  fields: unknown,
+  variable: string,
+  excludeIndex?: number,
+): boolean => {
+  if (!Array.isArray(fields) || variable === '') return false;
+  return fields.some(
+    (field, index) =>
+      index !== excludeIndex && isRecord(field) && field.variable === variable,
+  );
+};

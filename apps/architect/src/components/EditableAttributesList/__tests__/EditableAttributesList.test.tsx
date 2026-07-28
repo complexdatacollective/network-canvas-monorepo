@@ -112,6 +112,29 @@ const listTree = () => (
 
 const renderList = () => render(listTree());
 
+// A stage whose committed composer fields are `fields`, rendered through the
+// same component tree so `editorValidate` closes over them exactly as it does
+// in the app.
+const renderListWithComposerFields = (fields: Record<string, unknown>[]) =>
+  render(
+    <Provider
+      store={configureStore({
+        reducer: () => ({
+          form: { 'edit-stage': { values: { nodeForm: { fields } } } },
+        }),
+      })}
+    >
+      <EditableAttributesList
+        fieldName="nodeForm.fields"
+        entity="node"
+        type="person"
+        form="edit-stage"
+        editFormName="node-attr-edit"
+        handleChangeFields={() => undefined}
+      />
+    </Provider>,
+  );
+
 it('binds the dialog array field to the given fieldName + editFormName', () => {
   renderList();
   expect(screen.getByTestId('validated-field').dataset.fieldname).toBe(
@@ -294,4 +317,61 @@ it('excludes a reassigned id-less field’s own stale overlay entry from editorV
   expect(capturedEditorValidate?.(draft)?.validation).toContain(
     'different resolutions',
   );
+});
+
+// PR #1107 sixteenth-wave Finding 1: ComposerFormSchema rejects a form that
+// names one variable twice (thirteenth-wave Finding 1), but the sibling
+// overlay is keyed BY variable — a duplicate draft simply replaced its
+// sibling's entry, so the dialog saved a stage its own schema refuses. The
+// error is keyed at `variable` (a plain field, so a plain string message),
+// which anchors it to the variable picker the researcher must change.
+it('blocks a draft naming a variable another committed field already collects, id-less or not', () => {
+  renderListWithComposerFields([
+    { id: 'f0', variable: 'colors', component: 'CheckboxGroup' },
+    { variable: 'a', component: 'DatePicker', parameters: { type: 'year' } },
+  ]);
+
+  expect(capturedEditorValidate).toBeInstanceOf(Function);
+  // No editIndex: a brand-new attribute, not yet in the committed array.
+  expect(
+    capturedEditorValidate?.({ variable: 'colors', validation: {} })?.variable,
+  ).toContain('already collected by another attribute');
+  expect(
+    capturedEditorValidate?.({ variable: 'a', validation: {} })?.variable,
+  ).toContain('already collected by another attribute');
+});
+
+it('blocks reassigning an existing field onto a sibling’s variable', () => {
+  renderListWithComposerFields([
+    { variable: 'a', component: 'DatePicker', parameters: { type: 'year' } },
+    { variable: 'b', component: 'DatePicker' },
+  ]);
+
+  expect(
+    capturedEditorValidate?.(
+      { variable: 'b', validation: {}, component: 'DatePicker' },
+      { editIndex: 0 },
+    )?.variable,
+  ).toContain('already collected by another attribute');
+});
+
+it('still allows editing a field that keeps its own variable', () => {
+  renderListWithComposerFields([
+    { variable: 'a', component: 'DatePicker', parameters: { type: 'year' } },
+    { variable: 'b', component: 'DatePicker' },
+  ]);
+
+  // The edited row's own claim on `a` must not fire the duplicate gate
+  // against itself.
+  expect(
+    capturedEditorValidate?.(
+      {
+        variable: 'a',
+        validation: {},
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+      },
+      { editIndex: 0 },
+    ),
+  ).toEqual({});
 });

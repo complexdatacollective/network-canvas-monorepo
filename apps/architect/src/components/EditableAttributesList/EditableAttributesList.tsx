@@ -12,6 +12,7 @@ import {
   buildComposerFieldOverlay,
   composerItemSelector,
   composerNormalizeField,
+  isVariableUsedBySibling,
 } from '../sections/Form/composerHelpers';
 import { makeFieldEditorValidate } from '../Validations/contradictions';
 import ComposerAttributeFields from './ComposerAttributeFields';
@@ -65,11 +66,28 @@ const EditableAttributesList = ({
       (
         values: Record<string, unknown>,
         props?: { editIndex?: number },
-      ): Record<string, unknown> =>
-        makeFieldEditorValidate(
+      ): Record<string, unknown> => {
+        const variable =
+          typeof values.variable === 'string' ? values.variable : '';
+        // Sixteenth-wave Finding 1: the overlay below is keyed by variable, so
+        // a draft that duplicates a sibling's variable just replaces that
+        // sibling's entry and looks coherent — while ComposerFormSchema
+        // rejects the saved stage outright. Gate the duplicate here, ahead of
+        // the contradiction check, using the same committed sibling list the
+        // overlay is built from.
+        if (
+          isVariableUsedBySibling(composerFields, variable, props?.editIndex)
+        ) {
+          return {
+            variable:
+              'This variable is already collected by another attribute in this list. Choose a different variable, or edit the existing attribute instead.',
+          };
+        }
+        return makeFieldEditorValidate(
           allVariables,
           buildComposerFieldOverlay(composerFields, props?.editIndex),
-        )(values),
+        )(values);
+      },
     [allVariables, composerFields],
   );
 
