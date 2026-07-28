@@ -72,7 +72,7 @@ export function handleSociogram(
   for (const prompt of stage.prompts) {
     const createEdge = prompt.edges?.create;
     if (createEdge) {
-      const { edges: newEdges } = createEdgesForPairs(
+      const { created } = createEdgesForPairs(
         ctx,
         subjectNodes,
         createEdge,
@@ -80,8 +80,11 @@ export function handleSociogram(
           ctx.config.sociogramEdgeProbability.min,
           ctx.config.sociogramEdgeProbability.max,
         ),
+        draft.edges,
       );
-      draft.edges.push(...newEdges);
+      // Reused pairs need nothing written: `toggleEdge` only adds or deletes,
+      // and the Sociogram collects no variable of its own on an edge.
+      draft.edges.push(...created.map(({ edge }) => edge));
     }
 
     const layoutVariable = prompt.layout?.layoutVariable;
@@ -113,7 +116,18 @@ export function handleDyadCensus(
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
 
-  const negativeResponses: DyadCensusMetadataItem[] = [];
+  // Both answers, as DyadCensus records them: a "yes" writes
+  // `[promptIndex, a, b, true]` alongside the edge it may or may not have had
+  // to create, and a "no" writes the same tuple with `false`. A pair reusing a
+  // sibling prompt's edge is a "yes" — the interface pre-selects it from the
+  // shared graph — so it belongs here rather than among the negatives, and
+  // without it a resumed synthetic session would read that pair as unanswered.
+  //
+  // OneToManyDyadCensus shares this handler but records no stage metadata of
+  // its own in the runtime, so its tuples are inert. Left as they were: the
+  // divergence predates this and removing it is not a question about duplicate
+  // edges.
+  const responses: DyadCensusMetadataItem[] = [];
   for (let promptIndex = 0; promptIndex < stage.prompts.length; promptIndex++) {
     const createEdgeType = stage.prompts[promptIndex]!.createEdge;
     if (!createEdgeType) continue;
@@ -122,16 +136,27 @@ export function handleDyadCensus(
       ctx.config.censusEdgeProbability.min,
       ctx.config.censusEdgeProbability.max,
     );
-    const { edges: newEdges, negativeIndices } = createEdgesForPairs(
+    const { created, reused, negativeIndices } = createEdgesForPairs(
       ctx,
       subjectNodes,
       createEdgeType,
       probability,
+      draft.edges,
     );
-    draft.edges.push(...newEdges);
+    draft.edges.push(...created.map(({ edge }) => edge));
+
+    for (const { indices } of [...created, ...reused]) {
+      const [a, b] = indices;
+      responses.push([
+        promptIndex,
+        subjectNodes[a]![entityPrimaryKeyProperty],
+        subjectNodes[b]![entityPrimaryKeyProperty],
+        true,
+      ]);
+    }
 
     for (const [a, b] of negativeIndices) {
-      negativeResponses.push([
+      responses.push([
         promptIndex,
         subjectNodes[a]![entityPrimaryKeyProperty],
         subjectNodes[b]![entityPrimaryKeyProperty],
@@ -140,8 +165,8 @@ export function handleDyadCensus(
     }
   }
 
-  if (negativeResponses.length > 0) {
-    draft.stageMetadata[stageIndex] = negativeResponses;
+  if (responses.length > 0) {
+    draft.stageMetadata[stageIndex] = responses;
   }
 }
 
@@ -156,6 +181,10 @@ export function handleTieStrengthCensus(
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
 
+  // Negatives only, unlike DyadCensus: TieStrengthCensus records an ordinal
+  // answer as the value on the edge and *removes* any metadata entry for the
+  // pair, so its metadata never holds a positive tuple. A reused pair is an
+  // ordinal answer, so it writes nothing here.
   const negativeResponses: DyadCensusMetadataItem[] = [];
   for (let promptIndex = 0; promptIndex < stage.prompts.length; promptIndex++) {
     const prompt = stage.prompts[promptIndex]!;
@@ -167,16 +196,23 @@ export function handleTieStrengthCensus(
       ctx.config.censusEdgeProbability.min,
       ctx.config.censusEdgeProbability.max,
     );
-    const { edges: newEdges, negativeIndices } = createEdgesForPairs(
+    const { created, reused, negativeIndices } = createEdgesForPairs(
       ctx,
       subjectNodes,
       createEdgeType,
       probability,
+      draft.edges,
     );
 
     if (edgeVariable) {
-      for (let edgeIdx = 0; edgeIdx < newEdges.length; edgeIdx++) {
-        const attrs = newEdges[edgeIdx]![entityAttributesProperty];
+      // Over the reused edges as well as the new ones: an ordinal answer on a
+      // pair that already has an edge dispatches `updateEdge` with just
+      // `{ [edgeVariable]: value }`, and the reducer merges it into whatever
+      // the edge already held. Regeneration goes through the draw machinery,
+      // which releases the value it is replacing before drawing another.
+      const answered = [...created, ...reused];
+      for (let edgeIdx = 0; edgeIdx < answered.length; edgeIdx++) {
+        const attrs = answered[edgeIdx]!.edge[entityAttributesProperty];
         Object.assign(
           attrs,
           generateAttributesForEntity(
@@ -189,7 +225,7 @@ export function handleTieStrengthCensus(
       }
     }
 
-    draft.edges.push(...newEdges);
+    draft.edges.push(...created.map(({ edge }) => edge));
 
     for (const [a, b] of negativeIndices) {
       negativeResponses.push([
@@ -717,7 +753,7 @@ export function handleNetworkComposer(
   for (const edgeDef of stage.edges ?? []) {
     const edgeType = edgeDef.subject?.type;
     if (!edgeType) continue;
-    const { edges: newEdges } = createEdgesForPairs(
+    const { created } = createEdgesForPairs(
       ctx,
       newNodes,
       edgeType,
@@ -728,7 +764,10 @@ export function handleNetworkComposer(
         ctx.config.networkComposerEdgeProbability.min,
         ctx.config.networkComposerEdgeProbability.max,
       ),
+      draft.edges,
     );
-    draft.edges.push(...newEdges);
+    // Pushed inside the loop so two edge definitions naming one type see each
+    // other's edges, the way the composer's own canvas would.
+    draft.edges.push(...created.map(({ edge }) => edge));
   }
 }

@@ -389,14 +389,18 @@ function pairsFor(nodeType: string | undefined, node: NodeCounts): number {
  * bound, not its actual random draw: name-generator variants and
  * NetworkComposer use `getNodeCountBounds`'s ceiling, FamilyPedigree uses the
  * configured maximum pedigree size. For edges, DyadCensus, TieStrengthCensus,
- * OneToManyDyadCensus and Sociogram bound each prompt by the pair count over
- * their subject node type — a run creates at most one edge of a type per
- * unordered node pair per prompt, so bounds accumulate per prompt. A
- * NetworkComposer bounds each of its edge definitions by the pairs of its own
- * node ceiling instead, since it pairs only the people it built itself.
- * FamilyPedigree bounds its edge type by one less than its node ceiling, the
- * parent-child edges it actually creates. Counts sum across stages producing
- * the same type, since a `unique` constraint spans the whole run.
+ * OneToManyDyadCensus and Sociogram bound an edge type by the pair count over
+ * each subject node type any of them pairs it for — a run creates at most one
+ * edge of a type per unordered node pair, however many prompts and stages ask
+ * about it, because `createEdgesForPairs` reuses the pair's existing edge the
+ * way the interview does. A NetworkComposer bounds each of its edge types by
+ * the pairs of its own node ceiling instead, since it pairs only the people it
+ * built itself, and contributes nothing where something else already pairs its
+ * node type for that edge type. FamilyPedigree bounds its edge type by one less
+ * than its node ceiling, the parent-child edges it actually creates, and is
+ * counted apart because those edges deliberately repeat a pair. Node counts sum
+ * across stages producing the same type, since a `unique` constraint spans the
+ * whole run.
  *
  * Entities are therefore counted as the value space they spend, not as every
  * entity the run creates, because spending values is the only thing the count
@@ -455,38 +459,50 @@ export function worstCaseEntityCounts(
     }
   }
 
+  // The node types whose whole population is paired for each edge type, and
+  // the composers that pair only the people they build themselves.
+  //
+  // One pair count per node type rather than per prompt, because
+  // `createEdgesForPairs` now looks the pair up on `draft.edges` before drawing
+  // and reuses whatever it finds, exactly as the interview's `edgeExists` does.
+  // Edges carry no stage or prompt provenance, so that lookup spans the whole
+  // run: two prompts of one census, two censuses, and a Sociogram elsewhere in
+  // the protocol all draw from the same set of pairs and leave at most one edge
+  // of the type on each. Summing them would count edges the draw cannot create.
+  //
+  // Node types are summed against each other, not unioned: a pair is two nodes
+  // of one type, so a stage over `person` and a stage over `place` reach
+  // disjoint sets of pairs even when both create the same edge type.
+  const pairedNodeTypes = new Map<string, Set<string>>();
+  const composerPairs: {
+    edgeType: string;
+    nodeType: string;
+    pairs: number;
+  }[] = [];
+
+  function pairsWith(edgeType: string, nodeType: string): void {
+    const nodeTypes = pairedNodeTypes.get(edgeType) ?? new Set<string>();
+    nodeTypes.add(nodeType);
+    pairedNodeTypes.set(edgeType, nodeTypes);
+  }
+
   for (const stage of stages) {
     if (isPairEdgeStage(stage)) {
-      // One pair count per prompt, summed rather than deduplicated across
-      // prompts sharing an edge type — deliberately, and not because the
-      // interview works that way. It does not: DyadCensus and
-      // TieStrengthCensus look the pair up on the shared graph with
-      // `edgeExists({ from, to, type })` and reuse the edge a sibling prompt
-      // created, so a participant answering two prompts about one pair leaves
-      // one edge behind. But this count bounds the generator, and
-      // `handleDyadCensus` calls `createEdgesForPairs` once per prompt and
-      // pushes everything it returns onto the draft without consulting the
-      // edges already there. Two prompts sharing a type over three people
-      // really do produce six edges, each generating its own attribute set and
-      // each spending its own `unique` value, so counting three would accept a
-      // protocol that runs out of values partway through the draw. Narrowing
-      // this is a change to the handlers first; until they reuse the pair's
-      // edge as the runtime does, the sum is what the draw creates.
-      const pairs = pairsFor(getSubjectType(stage.subject, 'node'), node);
+      const nodeType = getSubjectType(stage.subject, 'node');
+      if (nodeType === undefined) continue;
       for (const prompt of stage.prompts) {
         const edgeType = prompt.createEdge;
-        if (edgeType) add(base, edgeType, pairs);
+        if (edgeType) pairsWith(edgeType, nodeType);
       }
       continue;
     }
 
     if (stage.type === 'Sociogram') {
-      // Summed per prompt for the same reason: `handleSociogram` creates its
-      // edges through `createEdgesForPairs` too, once for each prompt.
-      const pairs = pairsFor(getSubjectType(stage.subject, 'node'), node);
+      const nodeType = getSubjectType(stage.subject, 'node');
+      if (nodeType === undefined) continue;
       for (const prompt of stage.prompts) {
         const edgeType = prompt.edges?.create;
-        if (edgeType) add(base, edgeType, pairs);
+        if (edgeType) pairsWith(edgeType, nodeType);
       }
       continue;
     }
@@ -494,16 +510,15 @@ export function worstCaseEntityCounts(
     if (stage.type === 'NetworkComposer') {
       // `handleNetworkComposer` returns before building anything when its
       // subject names no node type.
-      if (getSubjectType(stage.subject, 'node') === undefined) continue;
+      const nodeType = getSubjectType(stage.subject, 'node');
+      if (nodeType === undefined) continue;
 
       // Pairs of the stage's own new nodes, not of the type's whole population:
       // `handleNetworkComposer` hands `createEdgesForPairs` the `newNodes` it
       // just built, so people an earlier stage added are never among them. The
       // protocol-wide total would count pairs the handler cannot form — a
       // five-person name generator ahead of a composer capped at two claims 21
-      // edges for a stage able to create one — and each composer therefore
-      // contributes its own pairs, which sum across stages as every other edge
-      // count does.
+      // edges for a stage able to create one.
       //
       // The ceiling is `getNodeCountBounds`'s, which is what
       // `createNodesForStage` caps the stage at, and it reads an inverted
@@ -511,11 +526,18 @@ export function worstCaseEntityCounts(
       // roster — `handleNetworkComposer` passes no pool and allows fabrication
       // — so nothing narrows the stage below it.
       const pairs = pairCount(getNodeCountBounds(stage, config).maxNodes);
+      // Once per distinct type, not once per definition: the handler pushes
+      // each definition's edges onto the draft before the next one runs, so two
+      // definitions naming one type share the stage's pairs between them.
       // Mirrors `handleNetworkComposer`'s read exactly (no `entity` check), so
       // this count can never be lower than what the generator produces.
+      const edgeTypes = new Set<string>();
       for (const edgeDef of stage.edges ?? []) {
         const edgeType = edgeDef.subject?.type;
-        if (edgeType !== undefined) add(base, edgeType, pairs);
+        if (edgeType !== undefined) edgeTypes.add(edgeType);
+      }
+      for (const edgeType of edgeTypes) {
+        composerPairs.push({ edgeType, nodeType, pairs });
       }
       continue;
     }
@@ -533,6 +555,27 @@ export function worstCaseEntityCounts(
         add(pedigree, edgeType, Math.max(pedigreeNodeCeiling(config) - 1, 0));
       }
     }
+  }
+
+  for (const [edgeType, nodeTypes] of pairedNodeTypes) {
+    for (const nodeType of nodeTypes) {
+      add(base, edgeType, pairsFor(nodeType, node));
+    }
+  }
+
+  for (const { edgeType, nodeType, pairs } of composerPairs) {
+    // A composer's people are part of their type's population, so where some
+    // census or Sociogram already pairs that whole population for this edge
+    // type, the composer's edges are inside that count and the census reuses
+    // whichever of them it meets. Counting them again would double a pair.
+    //
+    // Where nothing else pairs the type, each composer contributes its own
+    // pairs and they sum: two composers build disjoint sets of people, so no
+    // pair of theirs is shared. That sum can never exceed the type's whole pair
+    // count, since every composer's ceiling is inside `nodeTotal` and pairs
+    // grow faster than nodes.
+    if (pairedNodeTypes.get(edgeType)?.has(nodeType)) continue;
+    add(base, edgeType, pairs);
   }
 
   return { node, edge: { base, pedigree, named: namedEdgeAttributes(stages) } };

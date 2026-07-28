@@ -309,9 +309,111 @@ describe('worstCaseEntityCounts', () => {
       ],
       twoNodes,
     );
-    // C(7, 2) = 21 for the census over all seven people, plus the composer's
-    // own C(2, 2) = 1.
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(22);
+    // C(7, 2) = 21 for the census over all seven people, and nothing more for
+    // the composer: its own pair is one of those 21, and the census reuses
+    // whichever edge the composer already left on it.
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(21);
+  });
+
+  it('counts one census pair set however many prompts and stages ask for it', () => {
+    // Every prompt of every census and Sociogram naming an edge type draws from
+    // the same set of pairs, and `createEdgesForPairs` reuses the edge already
+    // on a pair rather than drawing another, so the type is bounded once.
+    const census = {
+      id: 'stage-census',
+      type: 'DyadCensus',
+      label: 'Census',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+        { id: 'p2', text: 'Are they close?', createEdge: 'knows' },
+      ],
+    } as unknown as Stage;
+
+    const sociogram = {
+      id: 'stage-sociogram',
+      type: 'Sociogram',
+      label: 'Link them',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        { id: 'p1', text: 'Who knows who?', edges: { create: 'knows' } },
+      ],
+    } as unknown as Stage;
+
+    const counts = worstCaseEntityCounts(
+      [
+        nameGenerator({ behaviours: { minNodes: 4, maxNodes: 4 } }),
+        census,
+        sociogram,
+      ],
+      config,
+    );
+    // C(4, 2) = 6, not 6 per prompt across the three of them.
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(6);
+  });
+
+  it('sums the pair sets of two node types creating one edge type', () => {
+    // A pair is two nodes of one type, so a census over `person` and a census
+    // over `place` reach disjoint pairs even though both create `knows`.
+    const people = {
+      id: 'stage-people',
+      type: 'DyadCensus',
+      label: 'People',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+      ],
+    } as unknown as Stage;
+
+    const places = {
+      id: 'stage-places',
+      type: 'DyadCensus',
+      label: 'Places',
+      subject: { entity: 'node', type: 'place' },
+      prompts: [
+        { id: 'p1', text: 'Are these connected?', createEdge: 'knows' },
+      ],
+    } as unknown as Stage;
+
+    const counts = worstCaseEntityCounts(
+      [
+        nameGenerator({ behaviours: { minNodes: 4, maxNodes: 4 } }),
+        nameGenerator({
+          id: 'stage-places-ng',
+          subject: { entity: 'node', type: 'place' },
+          behaviours: { minNodes: 3, maxNodes: 3 },
+        }),
+        people,
+        places,
+      ],
+      config,
+    );
+    // C(4, 2) = 6 plus C(3, 2) = 3.
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(9);
+  });
+
+  it('counts a composer pairing one type twice only once', () => {
+    // `handleNetworkComposer` pushes each definition's edges onto the draft
+    // before the next definition runs, so the second finds the first's edge on
+    // the pair and reuses it.
+    const threeNodes = resolveGenerationConfig({
+      today: '2026-07-27',
+      nodeCount: { min: 3, max: 3 },
+    });
+
+    const counts = worstCaseEntityCounts(
+      [
+        networkComposer({
+          edges: [
+            { id: 'e1', subject: { entity: 'edge', type: 'knows' } },
+            { id: 'e2', subject: { entity: 'edge', type: 'knows' } },
+          ],
+        }),
+      ],
+      threeNodes,
+    );
+    // C(3, 2) = 3, not 3 per definition.
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(3);
   });
 
   it('counts nothing for a composer whose subject names no node type', () => {
@@ -956,7 +1058,10 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
 
   it('still refuses when a later census pairs everyone the composer added', () => {
     // The census reads the whole draft, composer people included, so the count
-    // that matters there is the protocol-wide one.
+    // that matters there is the protocol-wide one — C(3, 2) = 3 rather than the
+    // composer's own single pass. The composer's edges are inside that number
+    // rather than added to it, since the census meets them on the pairs it
+    // walks and reuses them.
     const census = {
       id: 'stage-census',
       type: 'DyadCensus',
@@ -974,7 +1079,7 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
         stages: [networkComposer(), census],
         config: { nodeCount: { min: 3, max: 3 } },
       }),
-    ).toThrow(/up to 6 edges of this type can be generated/);
+    ).toThrow(/up to 3 edges of this type can be generated/);
   });
 });
 
@@ -1231,11 +1336,11 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
 
 /**
  * The interview reuses the pair's edge when two prompts name one edge type —
- * `edgeExists({ from, to, type })` on the shared graph — but the generator
- * does not: `handleDyadCensus` runs `createEdgesForPairs` once per prompt and
- * appends everything it returns. These pin the behaviour the per-prompt sum in
- * `worstCaseEntityCounts` bounds, so deduplicating that count cannot land
- * without the handler being changed to match.
+ * `edgeExists({ from, to, type })` on the shared graph — and the generator now
+ * does the same: `createEdgesForPairs` looks the pair up on `draft.edges`
+ * before drawing, so a second prompt over the same people leaves the first
+ * prompt's edge alone. These pin that, and the count in `worstCaseEntityCounts`
+ * that follows from it: one pair set per node type, not one per prompt.
  */
 describe('generateNetwork with two prompts sharing one edge type', () => {
   const codebook = {
@@ -1280,7 +1385,32 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
     behaviours: { minNodes: 3, maxNodes: 3 },
   });
 
-  it('creates an edge per pair per prompt, each spending its own value', () => {
+  function bandsOf(
+    optionCount: number,
+  ): Parameters<typeof generateNetwork>[0]['codebook'] {
+    return {
+      ...codebook,
+      edge: {
+        knows: {
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+          variables: {
+            band: {
+              name: 'Band',
+              type: 'ordinal',
+              options: Array.from({ length: optionCount }, (_value, at) => ({
+                label: `Band ${at + 1}`,
+                value: at + 1,
+              })),
+              validation: { unique: true },
+            },
+          },
+        },
+      },
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+  }
+
+  it('creates one edge per pair, whichever prompt reached it first', () => {
     const { network } = generateNetwork({
       seed: 3,
       codebook,
@@ -1291,43 +1421,53 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
     const knows = network.edges.filter((edge) => edge.type === 'knows');
     const bands = knows.map((edge) => edge[entityAttributesProperty].band);
 
-    // C(3, 2) = 3 pairs for each of the two prompts.
-    expect(knows).toHaveLength(6);
-    expect(new Set(bands).size).toBe(6);
+    // C(3, 2) = 3 pairs, answered twice over and joined once.
+    expect(knows).toHaveLength(3);
+    expect(new Set(bands).size).toBe(3);
   });
 
-  it('refuses a value space that only covers one prompt', () => {
-    const threeBands = {
-      ...codebook,
-      edge: {
-        knows: {
-          name: 'Knows',
-          color: 'edge-color-seq-1',
-          variables: {
-            band: {
-              name: 'Band',
-              type: 'ordinal',
-              options: [1, 2, 3].map((value) => ({
-                label: `Band ${value}`,
-                value,
-              })),
-              validation: { unique: true },
-            },
-          },
-        },
-      },
-    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+  it('records the second prompt as answered without drawing a second edge', () => {
+    // The runtime pre-selects 'Yes' for a pair a sibling prompt already
+    // connected and records that answer per prompt, so both prompts read as
+    // answered for all three pairs while one edge joins each of them.
+    const { stageMetadata } = generateNetwork({
+      seed: 3,
+      codebook,
+      stages: [threePeople, census],
+      config: { censusEdgeProbability: { min: 1, max: 1 } },
+    });
 
-    // Three values for the six edges the two prompts create between them.
-    // Counting the shared type once would accept this and leave the draw to
-    // run out of values on the fourth edge.
+    const meta = stageMetadata?.[1] as [number, string, string, boolean][];
+    expect(meta).toHaveLength(6);
+    expect(meta.every(([, , , answer]) => answer)).toBe(true);
+    expect(new Set(meta.map(([promptIndex]) => promptIndex))).toEqual(
+      new Set([0, 1]),
+    );
+  });
+
+  it('accepts a value space covering the pairs once', () => {
+    // Three values for the three edges the two prompts share between them.
+    // Counting a pair set per prompt would refuse this for needing six.
+    const { network } = generateNetwork({
+      seed: 3,
+      codebook: bandsOf(3),
+      stages: [threePeople, census],
+      config: { censusEdgeProbability: { min: 1, max: 1 } },
+    });
+
+    expect(network.edges.filter((edge) => edge.type === 'knows')).toHaveLength(
+      3,
+    );
+  });
+
+  it('refuses a value space that cannot cover the pairs even once', () => {
     expect(() =>
       generateNetwork({
         seed: 3,
-        codebook: threeBands,
+        codebook: bandsOf(2),
         stages: [threePeople, census],
         config: { censusEdgeProbability: { min: 1, max: 1 } },
       }),
-    ).toThrow(/up to 6 edges of this type can be generated/);
+    ).toThrow(/up to 3 edges of this type can be generated/);
   });
 });
