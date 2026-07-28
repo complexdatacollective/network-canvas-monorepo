@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import type { VariableValue } from '@codaco/shared-consts';
+
 import { ValueGenerator } from '../../../ValueGenerator';
 import { buildVariableConstraints } from '../buildConstraints';
 import type { ConstrainedVariable } from '../types';
@@ -38,18 +40,49 @@ function reachedByDraw(
   variable: ConstrainedVariable,
   ranks: number,
 ): Set<string> {
-  const generator = new ValueGenerator(1, TODAY);
   const keys = new Set<string>();
+  for (const value of drawnBySequence(variable, ranks)) {
+    keys.add(valueKey(value));
+  }
+  return keys;
+}
+
+/** The same walk, keeping the values themselves so bounds can be checked. */
+function drawnBySequence(
+  variable: ConstrainedVariable,
+  ranks: number,
+): VariableValue[] {
+  const generator = new ValueGenerator(1, TODAY);
+  const values: VariableValue[] = [];
 
   for (let seq = 0; seq < ranks; seq++) {
-    keys.add(
-      valueKey(
-        generator.generateConstrained(variable, 0, { distinctSeq: seq }),
-      ),
+    values.push(
+      generator.generateConstrained(variable, 0, { distinctSeq: seq }),
     );
   }
 
-  return keys;
+  return values;
+}
+
+/**
+ * A scalar whose bounds were narrowed after its rules were read, as the
+ * comparator machinery narrows them: the schema accepts no `minValue`/
+ * `maxValue` on the type, so a scalar sub-range can only arrive that way.
+ */
+function narrowedScalar(bounds: {
+  minValue: number;
+  maxValue: number;
+}): ConstrainedVariable {
+  const variable = make({
+    id: 'v',
+    name: 'V',
+    type: 'scalar',
+    component: 'VisualAnalogScale',
+  });
+  return {
+    entry: variable.entry,
+    constraints: { ...variable.constraints, ...bounds },
+  };
 }
 
 describe('valueSpaceSize', () => {
@@ -269,19 +302,79 @@ describe('valueSpaceSize', () => {
     expect(valueSpaceSize(variable, 1_000)).toBe(81);
   });
 
-  // Narrower than one grid step, so the draw is pinned to a bound it is clamped
-  // to. Counted as the one value that guarantees, which is under rather than
-  // over what the two clamped ends can reach: a count above what the draw walks
-  // is what lets a `unique` variable pass this analysis and then collide.
-  it('counts a range narrower than one grid step as a single value', () => {
+  // Narrower than one grid step, so every draw rounds out of the range and is
+  // clamped back to whichever bound it passed — which is two values, not one.
+  // Both are inside the range, so the `minValue` and `maxValue` a participant's
+  // form applies accept them; counting one refused a two-entity stage a
+  // protocol could fill.
+  it.each([
+    { min: 10.501, max: 10.509 },
+    { min: 0.001, max: 0.009 },
+    { min: 0.004, max: 0.006 },
+  ])(
+    'counts both clamped ends of [$min, $max], narrower than one grid step',
+    ({ min, max }) => {
+      const variable = make({
+        id: 'v',
+        name: 'V',
+        type: 'number',
+        validation: { minValue: min, maxValue: max },
+      });
+
+      expect(valueSpaceSize(variable, 100)).toBe(2);
+      expect(reachedByDraw(variable, 20)).toEqual(
+        new Set([valueKey(min), valueKey(max)]),
+      );
+    },
+  );
+
+  // A range holding a single value stays a single value: both ends are the
+  // same value, and counting each of them would promise a second draw.
+  it('counts a range pinned to one value as one value', () => {
     const variable = make({
       id: 'v',
       name: 'V',
       type: 'number',
-      validation: { minValue: 10.501, maxValue: 10.509 },
+      validation: { minValue: 0.55, maxValue: 0.55 },
     });
+
     expect(valueSpaceSize(variable, 100)).toBe(1);
+    expect(reachedByDraw(variable, 10)).toEqual(new Set([valueKey(0.55)]));
   });
+
+  // What feasibility spends on a fractional range. It accepts a `unique`
+  // variable once this count reports one value per entity, so every value
+  // counted has to be reachable by a distinct sequence number and none beyond
+  // them — the draw used to ignore the sequence here and re-roll at random,
+  // which exhausted the redraw budget on ranges this analysis had passed.
+  it.each([
+    { min: 0.1, max: 0.9, size: 81 },
+    { min: 0.001, max: 0.099, size: 11 },
+    { min: 10.5, max: 10.7, size: 21 },
+    { min: -3.2, max: -3.1, size: 11 },
+    { min: 0.001, max: 0.009, size: 2 },
+  ])(
+    'reaches every one of the $size values counted for [$min, $max]',
+    ({ min, max, size }) => {
+      const variable = make({
+        id: 'v',
+        name: 'V',
+        type: 'number',
+        validation: { minValue: min, maxValue: max },
+      });
+
+      // Read from the count rather than taken from the table, so the two
+      // describe the same space or this fails whichever of them moved.
+      expect(valueSpaceSize(variable, size + 1)).toBe(size);
+
+      const drawn = drawnBySequence(variable, size * 3);
+      expect(new Set(drawn.map((value) => valueKey(value))).size).toBe(size);
+      for (const value of drawn) {
+        expect(Number(value)).toBeGreaterThanOrEqual(min);
+        expect(Number(value)).toBeLessThanOrEqual(max);
+      }
+    },
+  );
 
   it('treats a number left unbounded on both sides as unbounded', () => {
     expect(
@@ -560,6 +653,45 @@ describe('valueSpaceSize', () => {
         1_000,
       ),
     ).toBe(26);
+  });
+
+  // A scalar is drawn on the same grid with the same clamp as a number in a
+  // fractional range, so it reaches the same clamped ends. It only ever gets
+  // off-grid bounds by being held equal to a number that declares them, which
+  // is the one shape where counting the grid alone was a value or two short.
+  it.each([
+    { min: 0.004, max: 0.006, size: 2 },
+    { min: 0.001, max: 0.014, size: 3 },
+    { min: 0.005, max: 0.025, size: 4 },
+    { min: 0.004, max: 0.5, size: 51 },
+    { min: 0, max: 0.996, size: 101 },
+  ])(
+    'counts the $size values a scalar bounded to [$min, $max] can reach',
+    ({ min, max, size }) => {
+      const variable = narrowedScalar({ minValue: min, maxValue: max });
+
+      expect(valueSpaceSize(variable, size + 1)).toBe(size);
+
+      const drawn = drawnBySequence(variable, size * 2);
+      expect(new Set(drawn.map((value) => valueKey(value))).size).toBe(size);
+      for (const value of drawn) {
+        expect(Number(value)).toBeGreaterThanOrEqual(min);
+        expect(Number(value)).toBeLessThanOrEqual(max);
+      }
+    },
+  );
+
+  // A `unique` scalar is not something the schema permits, but in-progress
+  // protocol state can declare one, and the count is spent on it either way.
+  // The draw ignored its sequence number entirely until this was fixed, so
+  // every redraw was a fresh roll of the same 101 values.
+  it('reaches the whole scale it counts, by distinct sequence number', () => {
+    const variable = make({ id: 'v', name: 'V', type: 'scalar' });
+
+    expect(valueSpaceSize(variable, 1_000)).toBe(101);
+    expect(reachedByDraw(variable, 101).size).toBe(101);
+    // One past the count wraps, so the space holds no further value.
+    expect(reachedByDraw(variable, 202).size).toBe(101);
   });
 
   it('stops counting once the space reaches the ceiling', () => {

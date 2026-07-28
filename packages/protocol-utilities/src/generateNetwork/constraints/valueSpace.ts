@@ -105,14 +105,106 @@ function binomial(n: number, k: number): number {
   return Math.round(result);
 }
 
-/** Grid points at {@link SCALAR_DECIMAL_PLACES} inside `[min, max]`. */
-function gridPointsBetween(min: number, max: number): number {
-  const scale = 10 ** SCALAR_DECIMAL_PLACES;
-  return (
-    Math.floor(max * scale + GRID_TOLERANCE) -
-    Math.ceil(min * scale - GRID_TOLERANCE) +
-    1
+/**
+ * The values a rounded-and-clamped draw can reach between `min` and `max`.
+ *
+ * Every such draw is `clamp(round(somewhere in [min, max]), min, max)`, so what
+ * comes out is a grid point at {@link SCALAR_DECIMAL_PLACES} inside the range —
+ * or, where rounding left the range and the clamp brought it back, exactly the
+ * bound it was clamped to. Both of those bounds are values a participant's own
+ * form accepts, `minValue` and `maxValue` comparing inclusively, so they are
+ * genuinely drawable and genuinely valid. Leaving them out of the count is what
+ * refused a two-entity stage on `[0.001, 0.009]`, whose draw reaches both ends.
+ *
+ * Held as a descriptor rather than a list: `size` is what the count spends and
+ * {@link decimalGridValueAt} is what the draw walks, so neither can believe in
+ * values the other cannot reach. Values are unranked
+ * arithmetically, so nothing is allocated per draw and no cap is needed — the
+ * set is small in any case, since this describes a `number` only where its
+ * range holds no integer (and so spans less than one unit) and a `scalar` only
+ * inside the normalised scale, leaving at most
+ * `10 ** SCALAR_DECIMAL_PLACES + 1` grid points either way.
+ */
+export type DecimalGrid = {
+  min: number;
+  max: number;
+  /** The lowest grid multiple inside the range, in scaled units. */
+  first: number;
+  /** How many grid multiples lie inside the range; zero where none does. */
+  points: number;
+  /** Whether each bound is a value of its own, rather than a grid point. */
+  clampedMin: boolean;
+  clampedMax: boolean;
+  /** How many distinct values {@link decimalGridValueAt} walks. */
+  size: number;
+};
+
+const GRID_SCALE = 10 ** SCALAR_DECIMAL_PLACES;
+
+export function decimalGrid(min: number, max: number): DecimalGrid {
+  const first = Math.ceil(min * GRID_SCALE - GRID_TOLERANCE);
+  const last = Math.floor(max * GRID_SCALE + GRID_TOLERANCE);
+  const points = Math.max(0, last - first + 1);
+
+  // A range holding nothing, or holding one value, is the one value the draw is
+  // pinned to; taking a bound as a value of its own there would promise a
+  // second the draw cannot produce.
+  if (max <= min) {
+    return {
+      min,
+      max,
+      first,
+      points: 0,
+      clampedMin: true,
+      clampedMax: false,
+      size: 1,
+    };
+  }
+
+  // Read against the same tolerance the grid itself is read against, so a bound
+  // this analysis has already treated as sitting on the grid is not then
+  // counted a second time as a value beside it.
+  const onGrid = (bound: number, at: number): boolean =>
+    points > 0 && Math.abs(bound * GRID_SCALE - at) <= GRID_TOLERANCE;
+
+  const clampedMin = !onGrid(min, first);
+  const clampedMax = !onGrid(max, first + points - 1);
+
+  return {
+    min,
+    max,
+    first,
+    points,
+    clampedMin,
+    clampedMax,
+    size: points + (clampedMin ? 1 : 0) + (clampedMax ? 1 : 0),
+  };
+}
+
+/**
+ * The `index`-th value of the grid, ascending, wrapping past the end. A bound
+ * the grid does not already hold takes the position outside it, so values come
+ * out in the order they sit in on the number line — which is what lets a
+ * `unique` slot consume them bottom-up.
+ */
+export function decimalGridValueAt(grid: DecimalGrid, index: number): number {
+  let at = ((index % grid.size) + grid.size) % grid.size;
+
+  if (grid.clampedMin) {
+    if (at === 0) return grid.min;
+    at -= 1;
+  }
+  if (at >= grid.points) return grid.max;
+
+  // Clamped the way the draw clamps. A bound within {@link GRID_TOLERANCE} of
+  // the grid is read as sitting on it, and the grid point standing in for it
+  // can then land a hair outside the bound a participant's form enforces.
+  const value = Number(
+    ((grid.first + at) / GRID_SCALE).toFixed(SCALAR_DECIMAL_PLACES),
   );
+  if (value < grid.min) return grid.min;
+  if (value > grid.max) return grid.max;
+  return value;
 }
 
 /**
@@ -332,9 +424,12 @@ export function valueSpaceSize(
       const integers = Math.floor(max) - Math.ceil(min) + 1;
       if (integers > 0) return cap(integers);
 
-      // Narrower than a single grid step, where the draw is clamped back to a
-      // bound. Counted as the one value that guarantees.
-      return cap(Math.max(1, gridPointsBetween(min, max)));
+      // A range holding no integer spans less than one unit, and the draw falls
+      // back to the rounding grid inside it — plus whichever bound rounding
+      // steps outside and the clamp brings back, which is a value the draw
+      // reaches and the form accepts. Counting only the grid points refused a
+      // two-entity stage on `[0.001, 0.009]`, whose two ends are all it has.
+      return cap(decimalGrid(min, max).size);
     }
 
     case 'datetime': {
@@ -368,6 +463,14 @@ export function valueSpaceSize(
       // this scalar equal to something narrower, and never wider than it. The
       // schema does not permit `unique` on scalar, but in-progress protocol
       // state can still declare it.
+      //
+      // Read through the same descriptor a number's fractional range is:
+      // `resolveValueBounds` gives every scalar the scale itself, and both ends
+      // of it sit on the grid, so this is the plain grid count for any scalar
+      // whose bounds the protocol did not narrow. A scalar held equal to a
+      // number can inherit that number's off-grid bounds, and it is drawn with
+      // the same clamp as the number is — so it reaches the same two ends, and
+      // is counted the same way rather than one value short of them.
       const min = Math.max(
         constraints.minValue ?? SCALAR_DOMAIN.minValue,
         SCALAR_DOMAIN.minValue,
@@ -377,7 +480,7 @@ export function valueSpaceSize(
         SCALAR_DOMAIN.maxValue,
       );
       if (max <= min) return 1;
-      return cap(Math.round((max - min) * 10 ** SCALAR_DECIMAL_PLACES) + 1);
+      return cap(decimalGrid(min, max).size);
     }
 
     case 'text':

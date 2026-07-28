@@ -1547,6 +1547,107 @@ function rosterDateRows(): NcNode[] {
   }));
 }
 
+/**
+ * Number bounds too close together to hold a whole value.
+ *
+ * The generator draws these on its two-decimal rounding grid and clamps back to
+ * whichever bound rounding stepped past, so the set it can produce is that grid
+ * plus the two ends. Feasibility spends that same count on a `unique` variable,
+ * which makes each fixture below an exactly-fitting stage: `narrowPair` has two
+ * values for two people, `narrowGrid` eleven for eleven.
+ *
+ * A count larger than the draw can fill refuses to generate at all, and one
+ * that admitted a value outside the bounds would put invalid data in front of a
+ * participant — which is what this file's validator stack is here to catch.
+ */
+const narrowVariables: Variables = {
+  narrowPair: {
+    name: 'Narrow pair',
+    type: 'number',
+    component: 'Number',
+    validation: {
+      required: true,
+      unique: true,
+      minValue: 0.001,
+      maxValue: 0.009,
+    },
+  },
+  narrowGrid: {
+    name: 'Narrow grid',
+    type: 'number',
+    component: 'Number',
+    validation: { required: true, minValue: 0.001, maxValue: 0.099 },
+  },
+  narrowOther: {
+    name: 'Narrow other',
+    type: 'number',
+    component: 'Number',
+    validation: {
+      required: true,
+      minValue: 0.001,
+      maxValue: 0.099,
+      differentFrom: ref('narrowGrid'),
+    },
+  },
+};
+
+const narrowCodebook: Codebook = {
+  node: {
+    narrow: {
+      name: 'Narrow',
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+      variables: narrowVariables,
+    },
+  },
+};
+
+const narrowStages = [
+  {
+    id: 'stage-narrow',
+    type: 'NameGenerator',
+    label: 'Narrow people',
+    subject: { entity: 'node', type: 'narrow' },
+    prompts: [{ id: 'p1', text: 'Name people' }],
+    form: { title: 'About this person', fields: formFields(narrowVariables) },
+    behaviours: { minNodes: 2, maxNodes: 2 },
+  },
+] as unknown as Stage[];
+
+describe('a number range too narrow to hold a whole value', () => {
+  it('generates values that pass the real form validators, over 50 seeds', async () => {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= 50; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: narrowCodebook,
+        stages: narrowStages,
+        config: { today },
+      });
+
+      if (network.nodes.length !== 2) {
+        failures.push(`seed ${seed}: ${network.nodes.length} nodes, not 2`);
+      }
+
+      const pairs = network.nodes.map(
+        (node) => node[entityAttributesProperty].narrowPair,
+      );
+      if (new Set(pairs).size !== pairs.length) {
+        failures.push(`seed ${seed}: repeated ${JSON.stringify(pairs)}`);
+      }
+
+      failures.push(
+        ...(await collectFailures(narrowCodebook, network, narrowStages)).map(
+          (failure) => `seed ${seed}: ${failure}`,
+        ),
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+});
+
 describe('a roster fixing both ends of a cross-resolution comparator', () => {
   it('draws rows whose values pass the real form validators', async () => {
     const failures: string[] = [];

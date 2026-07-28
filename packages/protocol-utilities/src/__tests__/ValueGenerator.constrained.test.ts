@@ -215,6 +215,72 @@ describe('generateConstrained', () => {
     }
   });
 
+  // A `unique` variable only terminates because each redraw is handed the next
+  // sequence number and lands somewhere the earlier draws did not. The
+  // fractional branch used to ignore that number and roll the random stream
+  // again, so a range feasibility had counted as wide enough could still spend
+  // the whole redraw budget recolliding — and refuse a satisfiable protocol on
+  // whichever seeds happened to collide.
+  it('walks a number range that holds no integer by sequence number', () => {
+    const gen = new ValueGenerator(1);
+    const cases = [
+      { validation: { minValue: 0.001, maxValue: 0.099 }, size: 11 },
+      { validation: { minValue: 0.001, maxValue: 0.009 }, size: 2 },
+      { validation: { minValue: 10.5, maxValue: 10.7 }, size: 21 },
+    ];
+
+    for (const { validation, size } of cases) {
+      const variable = make({ id: 'v', name: 'V', type: 'number', validation });
+      expect(valueSpaceSize(variable, size + 1)).toBe(size);
+
+      const drawn = new Set<string>();
+      for (let seq = 0; seq < size; seq++) {
+        const value = Number(
+          gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+        );
+        expect(value).toBeGreaterThanOrEqual(validation.minValue);
+        expect(value).toBeLessThanOrEqual(validation.maxValue);
+        drawn.add(valueKey(value));
+      }
+
+      expect(drawn.size).toBe(size);
+      // One past the count wraps, so the space holds nothing further.
+      expect(
+        drawn.has(
+          valueKey(gen.generateConstrained(variable, 0, { distinctSeq: size })),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  // The same walk on the same grid, for the same reason: a scalar redraw that
+  // went back to the random stream could recollide until the budget ran out.
+  it('walks a scalar range by sequence number, bounds included', () => {
+    const gen = new ValueGenerator(1);
+    const cases = [
+      { bounds: { minValue: 0, maxValue: 1 }, size: 101 },
+      { bounds: { minValue: 0.001, maxValue: 0.009 }, size: 2 },
+      { bounds: { minValue: 0.004, maxValue: 0.5 }, size: 51 },
+    ];
+
+    for (const { bounds, size } of cases) {
+      const variable = narrowed({ id: 'v', name: 'V', type: 'scalar' }, bounds);
+      expect(valueSpaceSize(variable, size + 1)).toBe(size);
+
+      const drawn = new Set<string>();
+      for (let seq = 0; seq < size; seq++) {
+        const value = Number(
+          gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+        );
+        expect(value).toBeGreaterThanOrEqual(bounds.minValue);
+        expect(value).toBeLessThanOrEqual(bounds.maxValue);
+        drawn.add(valueKey(value));
+      }
+
+      expect(drawn.size).toBe(size);
+    }
+  });
+
   it('stays inside scalar bounds that are off the rounding grid', () => {
     const gen = new ValueGenerator(1);
     const ranges = [

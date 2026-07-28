@@ -681,6 +681,132 @@ describe('scalar comparisons inside the normalised scale', () => {
 });
 
 /**
+ * A `unique` number whose bounds hold no whole value at all. The draw falls
+ * back to the two-decimal grid inside the range and to the bounds themselves
+ * wherever rounding leaves it, and `valueSpaceSize` counts exactly that set —
+ * so what feasibility accepts here is precisely what the draw can fill.
+ *
+ * Both halves of that agreement are load-bearing, and each used to be broken on
+ * its own side. The count left the clamped ends out, which refused two entities
+ * on a range holding two values; the draw ignored the distinct sequence number
+ * and re-rolled at random, which spent the redraw budget recolliding and threw
+ * on a protocol the count had just passed. Fixing either alone makes the other
+ * worse, so both are swept here.
+ */
+describe('a unique number in a range that holds no integer', () => {
+  /** A stage creating exactly `nodes` people, each holding a distinct value. */
+  function narrowRangeProtocol(min: number, max: number, nodes: number) {
+    return {
+      codebook: personCodebook({
+        score: {
+          name: 'Score',
+          type: 'number',
+          validation: {
+            required: true,
+            unique: true,
+            minValue: min,
+            maxValue: max,
+          },
+        },
+      }),
+      stages: [
+        {
+          id: 'stage-1',
+          type: 'NameGenerator',
+          label: 'Name generator',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [{ id: 'p1', text: 'Name people' }],
+          behaviours: { minNodes: nodes, maxNodes: nodes },
+        } as unknown as Stage,
+      ],
+    };
+  }
+
+  /** Everything wrong with one seed's run: a refusal, a repeat, a stray value. */
+  function complaintsFor(
+    seed: number,
+    min: number,
+    max: number,
+    nodes: number,
+  ): string[] {
+    const failures: string[] = [];
+
+    let values: number[];
+    try {
+      const { network } = generateNetwork({
+        seed,
+        ...narrowRangeProtocol(min, max, nodes),
+      });
+      values = network.nodes.map((node) =>
+        Number(node[entityAttributesProperty].score),
+      );
+    } catch (error) {
+      return [
+        `seed ${seed}: [${min}, ${max}] over ${nodes} nodes threw ${
+          error instanceof SyntheticDataConstraintError
+            ? 'SyntheticDataConstraintError'
+            : String(error)
+        }`,
+      ];
+    }
+
+    complain(
+      failures,
+      values.length === nodes,
+      () => `seed ${seed}: ${values.length} nodes, not ${nodes}`,
+    );
+    complain(
+      failures,
+      new Set(values).size === values.length,
+      () =>
+        `seed ${seed}: repeated a unique value in ${JSON.stringify(values)}`,
+    );
+    for (const value of values) {
+      complain(
+        failures,
+        value >= min && value <= max,
+        () => `seed ${seed}: ${value} is outside [${min}, ${max}]`,
+      );
+    }
+
+    return failures;
+  }
+
+  // The shapes a review reported, plus the two that most nearly exhaust their
+  // space: nine values for nine nodes leaves the draw no slack at all, and
+  // eleven nodes on [0.001, 0.099] is only satisfiable because the two clamped
+  // ends are values — which is the count the other half of this fix restored.
+  it.each([
+    { min: 0.001, max: 0.099, nodes: 9 },
+    { min: 0.001, max: 0.099, nodes: 11 },
+    { min: 0.01, max: 0.09, nodes: 9 },
+    { min: 0.1, max: 0.9, nodes: 81 },
+    { min: 0.001, max: 0.009, nodes: 2 },
+    { min: 10.501, max: 10.509, nodes: 2 },
+  ])(
+    `fills [$min, $max] with $nodes distinct values, over ${SEEDS} seeds`,
+    ({ min, max, nodes }) => {
+      const failures: string[] = [];
+      for (let seed = 1; seed <= SEEDS; seed++) {
+        failures.push(...complaintsFor(seed, min, max, nodes));
+      }
+
+      expect(failures).toEqual([]);
+    },
+  );
+
+  // Named in the review that reported the redraw defect. They pass on the
+  // current draw for a reason worth pinning: the space is eleven values rather
+  // than the nine the report assumed, so the random re-roll had slack here.
+  it.each([305, 711, 3332])(
+    'generates nine nodes on [0.001, 0.099] at seed %i',
+    (seed) => {
+      expect(complaintsFor(seed, 0.001, 0.099, 9)).toEqual([]);
+    },
+  );
+});
+
+/**
  * The rules whose satisfaction can only be read off two values at once, swept
  * wide because a comparison that holds for one draw fails for the next: a rule
  * leaves a range, and only part of it breaks.

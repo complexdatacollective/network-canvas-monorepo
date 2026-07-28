@@ -12,8 +12,10 @@ import {
 import type { ConstrainedVariable } from './types';
 import { valueKey } from './uniqueRegistry';
 import {
+  type DecimalGrid,
+  decimalGrid,
+  decimalGridValueAt,
   distinctOptionValues,
-  SCALAR_DECIMAL_PLACES,
   SCALAR_DOMAIN,
   selectionSizeRange,
 } from './valueSpace';
@@ -147,6 +149,26 @@ function enumerateSubsets(
   return subsets;
 }
 
+/**
+ * The grid a scalar is drawn on, inside whatever the normalised scale and the
+ * rules leave it. Read by both the size and the enumeration below, so a
+ * component's tractability is judged against the values it would actually hold.
+ */
+function scalarGrid(
+  constraints: ConstrainedVariable['constraints'],
+): DecimalGrid {
+  return decimalGrid(
+    Math.max(
+      constraints.minValue ?? SCALAR_DOMAIN.minValue,
+      SCALAR_DOMAIN.minValue,
+    ),
+    Math.min(
+      constraints.maxValue ?? SCALAR_DOMAIN.maxValue,
+      SCALAR_DOMAIN.maxValue,
+    ),
+  );
+}
+
 /** A domain's value count, and how many elements those values hold in total. */
 type DomainSize = { count: number; elements: number };
 
@@ -187,21 +209,8 @@ function domainSize(
       return flat(hi - lo + 1);
     }
 
-    case 'scalar': {
-      const unit = 10 ** SCALAR_DECIMAL_PLACES;
-      const min = Math.max(
-        constraints.minValue ?? SCALAR_DOMAIN.minValue,
-        SCALAR_DOMAIN.minValue,
-      );
-      const max = Math.min(
-        constraints.maxValue ?? SCALAR_DOMAIN.maxValue,
-        SCALAR_DOMAIN.maxValue,
-      );
-      if (max <= min) return flat(1);
-      const lo = Math.ceil(min * unit - 1e-6);
-      const hi = Math.floor(max * unit + 1e-6);
-      return flat(hi - lo + 1);
-    }
+    case 'scalar':
+      return flat(scalarGrid(constraints).size);
 
     case 'datetime': {
       const window = constraints.dateWindow;
@@ -235,9 +244,16 @@ function domainSize(
 
 /**
  * Every value the generator can produce for this group, or undefined where the
- * set is unbounded, larger than `cap`, or not faithfully enumerable — a number
- * interval that contains no integer still admits fractional draws, so claiming
- * its enumeration is empty would turn a satisfiable protocol into a refusal.
+ * set is unbounded, larger than `cap`, or deliberately left to the greedy path.
+ *
+ * A number interval holding no integer is the last of those: its draws are
+ * fractional, and claiming its enumeration is empty would turn a satisfiable
+ * protocol into a refusal. `decimalGrid` does now describe that set exactly —
+ * the count and the draw both read it — but the solver is left declining those
+ * components all the same. Declining only ever sends a component to the greedy
+ * draw, while admitting one puts a fresh `unsat` proof behind bounds that
+ * `comparatorSpan` steps in whole units for a number: a component the search
+ * could then refuse is one the greedy path may well satisfy.
  */
 function enumerateDomain(
   variable: ConstrainedVariable,
@@ -267,23 +283,14 @@ function enumerateDomain(
     }
 
     case 'scalar': {
-      const unit = 10 ** SCALAR_DECIMAL_PLACES;
-      const min = Math.max(
-        constraints.minValue ?? SCALAR_DOMAIN.minValue,
-        SCALAR_DOMAIN.minValue,
-      );
-      const max = Math.min(
-        constraints.maxValue ?? SCALAR_DOMAIN.maxValue,
-        SCALAR_DOMAIN.maxValue,
-      );
-      // Mirrors the draw's clamp: an inverted or single-point range collapses
-      // to its floor.
-      if (max <= min) return [min];
-      const lo = Math.ceil(min * unit - 1e-6);
-      const hi = Math.floor(max * unit + 1e-6);
-      if (hi - lo + 1 > cap) return undefined;
-      return integerRange(lo, hi).map((index) =>
-        Number((index / unit).toFixed(SCALAR_DECIMAL_PLACES)),
+      // The same set `valueSpaceSize` counts and the draw walks, in the same
+      // ascending order: an inverted or single-point range collapses to its
+      // floor, and a range whose ends the protocol left off the grid keeps
+      // them, since the draw's clamp reaches them.
+      const grid = scalarGrid(constraints);
+      if (grid.size > cap) return undefined;
+      return Array.from({ length: grid.size }, (_value, index) =>
+        decimalGridValueAt(grid, index),
       );
     }
 

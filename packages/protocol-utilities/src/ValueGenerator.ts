@@ -16,6 +16,8 @@ import type {
 } from './generateNetwork/constraints/types';
 import {
   categoricalSelectionAt,
+  decimalGrid,
+  decimalGridValueAt,
   distinctOptionValues,
   numberDrawBounds,
   SCALAR_DECIMAL_PLACES,
@@ -203,6 +205,15 @@ export class ValueGenerator {
         // require number values to be whole, so draw inside the declared range
         // rather than emitting the nearest integer outside it.
         if (max < min) {
+          // A redraw has to land somewhere the earlier draws did not, and a
+          // fresh random float promises nothing of the kind: a `unique` number
+          // in a fractional range used to spend its whole redraw budget
+          // recolliding, and threw on a protocol `valueSpaceSize` had just
+          // called wide enough. The sequence walks exactly the values that
+          // count describes, in the order a `unique` slot consumes them.
+          const grid = decimalGrid(lowerBound, upperBound);
+          if (seq !== undefined) return decimalGridValueAt(grid, seq);
+
           if (upperBound <= lowerBound) return lowerBound;
           return clamp(
             Number(
@@ -233,6 +244,15 @@ export class ValueGenerator {
           min,
           SCALAR_DOMAIN.maxValue,
         );
+
+        // The same sequence a fractional number walks, for the same reason: a
+        // scalar is drawn on the same grid with the same clamp, so a redraw
+        // that went back to the random stream could recollide until the budget
+        // ran out on a space `valueSpaceSize` had counted as wide enough.
+        if (seq !== undefined) {
+          return decimalGridValueAt(decimalGrid(min, max), seq);
+        }
+
         if (max <= min) return min;
         // Round first: rounding a clamped value can push it back outside the
         // bound it was just brought inside.
