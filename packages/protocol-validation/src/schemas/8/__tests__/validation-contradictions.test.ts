@@ -5120,3 +5120,424 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 2: an abse
     ]);
   });
 });
+
+describe('findValidationContradictions — Twenty-fifth wave: one-sided out-of-window coarse windows model the runtime-synthesized far bound', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: a year picker with only `max: '1800'` is not
+  // half-open at runtime — fresco-ui's DatePicker synthesizes the missing
+  // lower bound a full default-window span below the authored max (roughly
+  // 1694 on a 2026 interview date; 1600 at the model's 2120 horizon), and the
+  // year dropdown offers nothing below it. No offered year is ever strictly
+  // less than a partner pinned to 1600-01-01.
+  it('rejects lessThanVariable from a year picker with only an out-of-window max against a partner pinned below the synthesized window', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1800' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '1600-01-01', max: '1600-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // The mirror direction: a far-future one-sided `min` gets a synthesized
+  // ceiling (min.year + span, through December), so a strict comparator
+  // demanding a value above that ceiling can never be satisfied.
+  it('rejects greaterThanVariable from a year picker with only a far-future min against a partner pinned above the synthesized ceiling', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '3000' },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '3500-01-01', max: '3500-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+  });
+
+  // The false-positive guard that matters most: the synthesized window still
+  // reaches below the partner (1600 < 1750 in the model; 1694 < 1750 even on
+  // a present-day interview), so the comparison is genuinely satisfiable.
+  it('accepts a one-sided out-of-window max whose synthesized window still reaches below the partner', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1800' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '1750-01-01', max: '1750-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A one-sided IN-window coarse bound keeps its half-open reading: the
+  // runtime falls back to the default window's own 1920-01-01 edge there, but
+  // this file has never modelled the coarse default window (a neither-bound
+  // picker contributes no interval at all), and an unbounded side is a strict
+  // superset of the default edge — it can only accept, never falsely reject.
+  // This pairing is therefore a DELIBERATE accept-direction gap (the runtime
+  // offers no year below 1920), asserted here so any future change to it is a
+  // conscious one.
+  it('still accepts a one-sided in-window coarse bound against a partner below the default window', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '2000' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '1900-01-01', max: '1900-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A coarse picker with NEITHER bound authored stays unmodelled (no interval
+  // at all), exactly as before — the runtime's plain default window has never
+  // been modelled for a DatePicker, and this change must not disturb that.
+  it('still accepts a coarse picker with no authored bounds at all', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { min: '1800-01-01', max: '1800-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // FULL resolution stays unmodelled on the missing side even out-of-window:
+  // the runtime's derivation does emit synthesized native `min`/`max`
+  // attributes there too, but a native date input enforces them over a TYPED
+  // value rather than through a closed option list, so modelling them as hard
+  // domain edges could falsely reject an entry the control still accepts.
+  it('leaves a full-resolution one-sided out-of-window bound unmodelled', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '1800-06-15' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { min: '1600-01-01', max: '1600-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Month resolution synthesizes too, and its ceiling runs through DECEMBER
+  // of the extended year (the runtime's `month: 12, day: 31` far edge, read
+  // at its stored instant): 3000-05 + the 200-year horizon span ends at the
+  // period '3200-12', stored instant 3200-12-01. A partner pinned there is
+  // unreachable under a strict comparator; one pinned a day earlier is not.
+  it('rejects a month picker with only a far-future min against a partner pinned at its synthesized December ceiling', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'month', min: '3000-05' },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '3200-12-01', max: '3200-12-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'month', min: '3000-05' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '3200-11-30', max: '3200-11-30' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The out-of-window gate on the max side is date-independent and mirrored
+  // exactly: the runtime synthesizes only when the authored max is strictly
+  // earlier than 1920-01-01, so '1919' synthesizes (lower edge 1719 at the
+  // horizon span) and '1920' does not.
+  it('brackets the lower-edge synthesis gate at exactly the default window minimum', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1919' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '1719-01-01', max: '1719-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1920' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '1719-01-01', max: '1719-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The min side's gate is date-DEPENDENT at runtime (`authoredMin > today`),
+  // so the model synthesizes only when the condition holds on every
+  // in-horizon interview date: a min in 2121 is later than any plausible
+  // "today" and synthesizes, while a min at the 2120 horizon itself could
+  // still flip to the runtime's default today-edge branch on a late-enough
+  // interview date, so it stays half-open — an accept-direction gap forced by
+  // the today-dependence, not an oversight.
+  it('brackets the upper-edge synthesis gate at the plausibility horizon', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2121' },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '2500-01-01', max: '2500-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2120' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: '2500-01-01', max: '2500-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The synthesized side flows into the discrete emission-set machinery too:
+  // with only `max: '1800'` the year picker's window used to be unenumerable
+  // (an open bound), silently skipping the exact-instant check for its whole
+  // group. Closed at the synthesized 1600 lower edge it enumerates to the
+  // 1600-1800 January instants, which overlap the month picker's convex
+  // interval while sharing no instant with its February-November emissions.
+  it('rejects a comparator-forced equality whose synthesized year window shares no instant with a month picker', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1800' },
+        { greaterThanOrEqualToVariable: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'month', min: '1700-02', max: '1700-11' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'the exact dates their pickers can ever emit share no instant',
+    );
+    expect(
+      result[0]?.strips.toSorted((a, b) =>
+        a.variableId.localeCompare(b.variableId),
+      ),
+    ).toEqual([
+      { variableId: 'a', rule: 'greaterThanOrEqualToVariable' },
+      { variableId: 'b', rule: 'greaterThanOrEqualToVariable' },
+    ]);
+
+    // Widening the month window to include a January restores a genuinely
+    // shared instant (1700-01-01) inside the synthesized year window.
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1800' },
+          { greaterThanOrEqualToVariable: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { type: 'month', min: '1700-01', max: '1700-06' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — Twenty-fifth wave: derivation fidelity against fresco-ui DatePicker.tsx', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // A line-for-line mirror of the combined min/max derivation in fresco-ui's
+  // DatePicker.tsx (`parseYmd`, `compareYmd`, `DEFAULT_MIN`, and the
+  // `defaultWindowSpanYears = today.year - DEFAULT_MIN.year` synthesis inside
+  // its `minYmd`/`maxYmd` useMemo). The analyser models the runtime's
+  // "today" at its conservative 2120 horizon, so running THIS mirror with
+  // today pinned there must land on exactly the bounds the analyser uses —
+  // the probes below bracket the analyser's modelled edges to the day. If
+  // fresco-ui's arithmetic ever changes shape (span, rounding, branch
+  // conditions), this mirror and `synthesizedCoarseFarBound` must change
+  // together.
+  type MirrorYmd = { year: number; month: number; day: number };
+
+  const mirrorParseYmd = (value: string): MirrorYmd | null => {
+    const match = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(value);
+    if (!match?.[1]) return null;
+    const year = Number(match[1]);
+    const month = match[2] ? Number(match[2]) : 1;
+    const day = match[3] ? Number(match[3]) : 1;
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
+      return null;
+    }
+    return { year, month, day };
+  };
+
+  const mirrorCompareYmd = (a: MirrorYmd, b: MirrorYmd): number => {
+    if (a.year !== b.year) return a.year - b.year;
+    if (a.month !== b.month) return a.month - b.month;
+    return a.day - b.day;
+  };
+
+  const MIRROR_DEFAULT_MIN: MirrorYmd = { year: 1920, month: 1, day: 1 };
+
+  const mirrorRuntimeWindow = (
+    bounds: { min?: string; max?: string },
+    today: MirrorYmd,
+  ): { min: MirrorYmd; max: MirrorYmd } => {
+    const authoredMin = bounds.min ? mirrorParseYmd(bounds.min) : null;
+    const authoredMax = bounds.max ? mirrorParseYmd(bounds.max) : null;
+    const defaultWindowSpanYears = today.year - MIRROR_DEFAULT_MIN.year;
+    const resolvedMin =
+      authoredMin ??
+      (authoredMax && mirrorCompareYmd(authoredMax, MIRROR_DEFAULT_MIN) < 0
+        ? { year: authoredMax.year - defaultWindowSpanYears, month: 1, day: 1 }
+        : MIRROR_DEFAULT_MIN);
+    const resolvedMax =
+      authoredMax ??
+      (authoredMin && mirrorCompareYmd(authoredMin, today) > 0
+        ? {
+            year: authoredMin.year + defaultWindowSpanYears,
+            month: 12,
+            day: 31,
+          }
+        : today);
+    return { min: resolvedMin, max: resolvedMax };
+  };
+
+  const mirrorFormatYmd = ({ year, month, day }: MirrorYmd): string =>
+    `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  // The latest in-horizon interview date. No wall clock: the fixture is a
+  // constant, and the analyser's own model is date-independent by design.
+  const HORIZON_TODAY: MirrorYmd = { year: 2120, month: 12, day: 31 };
+
+  it('synthesizes exactly the runtime lower bound at the horizon span', () => {
+    const window = mirrorRuntimeWindow({ max: '1800' }, HORIZON_TODAY);
+    expect(window.min).toEqual({ year: 1600, month: 1, day: 1 });
+
+    // Bracket the analyser's modelled lower edge at exactly that day: a
+    // strict lessThanVariable against a partner pinned ON it is infeasible
+    // (no offered instant lies strictly below the window's own floor) ...
+    const pinnedAtSynthesizedMin = mirrorFormatYmd(window.min);
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1800' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', {
+          min: pinnedAtSynthesizedMin,
+          max: pinnedAtSynthesizedMin,
+        }),
+      }),
+    ).toHaveLength(1);
+
+    // ... while one day above it is satisfiable: the synthesized floor's own
+    // stored instant lies strictly below the partner.
+    const pinnedJustAbove = mirrorFormatYmd({ ...window.min, day: 2 });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1800' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: pinnedJustAbove, max: pinnedJustAbove }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('synthesizes exactly the runtime upper bound at the horizon span', () => {
+    const window = mirrorRuntimeWindow({ min: '3000' }, HORIZON_TODAY);
+    expect(window.max).toEqual({ year: 3200, month: 12, day: 31 });
+
+    // A YEAR picker's latest STORED instant inside that window is 1 January
+    // of the ceiling year (twentieth-wave Finding 1's stored-instant
+    // reading of the displayed range): a strict greaterThanVariable against
+    // a partner pinned there is infeasible ...
+    const ceilingStoredInstant = mirrorFormatYmd({
+      year: window.max.year,
+      month: 1,
+      day: 1,
+    });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '3000' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', {
+          min: ceilingStoredInstant,
+          max: ceilingStoredInstant,
+        }),
+      }),
+    ).toHaveLength(1);
+
+    // ... while a partner one day below it is exceeded by that very instant.
+    const pinnedJustBelow = mirrorFormatYmd({
+      year: window.max.year - 1,
+      month: 12,
+      day: 31,
+    });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '3000' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: pinnedJustBelow, max: pinnedJustBelow }),
+      }),
+    ).toEqual([]);
+  });
+});

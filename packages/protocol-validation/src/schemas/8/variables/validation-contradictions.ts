@@ -1062,6 +1062,155 @@ const dateResolutionOf = (variable: unknown): DateResolution => {
 };
 
 /**
+ * The lower edge of the runtime's default DatePicker window — fresco-ui
+ * DatePicker.tsx's `DEFAULT_MIN`, 1920-01-01. Only the YEAR is needed below:
+ * the runtime constant's month and day are both 1, and a parsed authored
+ * bound's missing month/day also default to 1, so the runtime's
+ * `compareYmd(authoredMax, DEFAULT_MIN) < 0` test is exactly `year < 1920`.
+ */
+const DEFAULT_DATE_WINDOW_MIN_YEAR = 1920;
+
+/**
+ * Twenty-fifth wave: the latest plausible interview date the synthesized
+ * coarse-window model below promises to cover. The runtime's synthesized far
+ * bound is "today"-dependent (its span is `today.year - 1920`, so it widens
+ * as the wall clock advances), while this file deliberately contains no wall
+ * clock at all — protocol validity must not depend on when validation runs.
+ * The model therefore uses the span AT THIS HORIZON (200 years), the widest
+ * span any interview run on or before 31 December 2120 can experience, which
+ * makes every modelled window a superset of every window the runtime can
+ * actually offer within the horizon. A superset can only ever ACCEPT more
+ * (the safe direction for the migration's rule-stripping); the sole error
+ * mode is a stripped rule that would have been satisfiable only in an
+ * interview conducted after 2120 — almost a century past any plausible
+ * lifetime of a schema-8 protocol.
+ */
+const COARSE_SYNTHESIS_HORIZON_YEAR = 2120;
+
+/**
+ * The runtime's `defaultWindowSpanYears` (`today.year - DEFAULT_MIN.year`)
+ * evaluated at the horizon — the widest span the model must cover.
+ */
+const COARSE_SYNTHESIS_SPAN_YEARS =
+  COARSE_SYNTHESIS_HORIZON_YEAR - DEFAULT_DATE_WINDOW_MIN_YEAR;
+
+/**
+ * Mirrors fresco-ui DatePicker.tsx's `parseYmd` exactly — grammar
+ * (`YYYY[-MM[-DD]]`) and range checks included — because "is this bound
+ * authored?" must be decided the way the runtime decides it. A string
+ * `parseYmd` rejects is an ABSENT bound to the runtime (its `??` fallbacks
+ * apply), so it must count as absent here too; conversely a string it
+ * accepts suppresses the runtime's synthesis, and treating such a bound as
+ * absent would synthesize a hard edge the runtime never imposes. Deviations
+ * from the runtime grammar therefore matter in BOTH directions, unlike the
+ * deliberately-defensive `parseCoarseBound` (which, e.g., requires a month
+ * picker's bound to carry its month part — a reading that is safely
+ * conservative for enumeration but wrong for this authored-ness test).
+ */
+const RUNTIME_YMD_PATTERN = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
+
+const parseRuntimeYmd = (
+  value: unknown,
+): { year: number; month: number; day: number } | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const match = RUNTIME_YMD_PATTERN.exec(value);
+  if (!match?.[1]) return undefined;
+  const year = Number(match[1]);
+  const month = match[2] === undefined ? 1 : Number(match[2]);
+  const day = match[3] === undefined ? 1 : Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return undefined;
+  return { year, month, day };
+};
+
+/**
+ * Twenty-fifth wave: the far bound the fresco-ui DatePicker SYNTHESIZES for a
+ * coarse (month/year) picker whose author supplied exactly one bound outside
+ * the default 1920-to-today window. The runtime's combined derivation
+ * (DatePicker.tsx's `minYmd`/`maxYmd` useMemo) is:
+ *
+ *   - an absent (or `parseYmd`-unparseable) `min` falls back to 1920-01-01,
+ *     UNLESS the authored `max` is earlier than that default — then the lower
+ *     bound extends BELOW it by the default window's own span
+ *     (`today.year - 1920`): `{ year: max.year - span, month: 1, day: 1 }`;
+ *   - an absent `max` falls back to today, UNLESS the authored `min` is later
+ *     than today — then `{ year: min.year + span, month: 12, day: 31 }`;
+ *   - the extended side always covers full calendar years (January through
+ *     December), never the authored bound's own sub-year month/day;
+ *   - both-authored windows are honoured exactly, and a picker with neither
+ *     bound gets the plain default window.
+ *
+ * For a coarse picker those resolved bounds are as hard as authored ones —
+ * the year/month dropdowns offer nothing beyond them — so a one-sided
+ * out-of-window coarse picker must NOT be modelled as half-open (a required
+ * year picker with only `max: '1800'` offers roughly [1800 - span, 1800];
+ * nothing below that is ever selectable).
+ *
+ * "Today" is modelled conservatively (see `COARSE_SYNTHESIS_HORIZON_YEAR`):
+ *
+ *   - The `max.year < 1920` branch condition is date-independent, so it is
+ *     mirrored exactly; the synthesized lower edge uses the HORIZON span,
+ *     which lies at or below the runtime's `max.year - span(today)` for every
+ *     in-horizon interview date (the span only grows toward the horizon).
+ *   - The `min > today` branch condition IS date-dependent, so synthesis is
+ *     gated on `min.year > horizon` — the condition holding on EVERY
+ *     in-horizon interview date. The synthesized upper edge then uses the
+ *     horizon span, at or above the runtime's `min.year + span(today)`.
+ *     A one-sided `min` between today and the horizon stays half-open: on a
+ *     later in-horizon interview date the runtime's branch flips to the
+ *     default today-edge, so no single synthesized ceiling is right for every
+ *     plausible date, and half-open is the superset of both branches.
+ *
+ * The returned period is the STORED-INSTANT reading of the synthesized edge
+ * (twentieth-wave Finding 1): the far `min` period is the extended window's
+ * first January; the far `max` period is its last year at year resolution and
+ * that year's December at month resolution. One-sided IN-window bounds and
+ * FULL-resolution pickers return `undefined` — in-window fallbacks land on
+ * the default window's own edges, which this file has never modelled for a
+ * DatePicker (half-open is their strict superset), and a full-resolution
+ * picker's derived bounds only feed the native input's `min`/`max`
+ * attributes, whose enforcement of a TYPED date is not the closed option
+ * list a dropdown is, so the accept direction keeps them unmodelled.
+ */
+const synthesizedCoarseFarBound = (
+  parameters: UnknownRecord,
+  resolution: 'month' | 'year',
+): { edge: 'min' | 'max'; period: YearMonth } | undefined => {
+  const authoredMin = parseRuntimeYmd(parameters.min);
+  const authoredMax = parseRuntimeYmd(parameters.max);
+  if (
+    authoredMax &&
+    !authoredMin &&
+    authoredMax.year < DEFAULT_DATE_WINDOW_MIN_YEAR
+  ) {
+    return {
+      edge: 'min',
+      period: {
+        year: authoredMax.year - COARSE_SYNTHESIS_SPAN_YEARS,
+        month: 1,
+      },
+    };
+  }
+  if (
+    authoredMin &&
+    !authoredMax &&
+    authoredMin.year > COARSE_SYNTHESIS_HORIZON_YEAR
+  ) {
+    return {
+      edge: 'max',
+      period: {
+        year: authoredMin.year + COARSE_SYNTHESIS_SPAN_YEARS,
+        month: resolution === 'year' ? 1 : 12,
+      },
+    };
+  }
+  return undefined;
+};
+
+/** The first day of a coarse calendar period, as a UTC day number. */
+const periodStartDayNumber = ({ year, month }: YearMonth): number =>
+  utcDayNumber(year, month - 1, 1);
+
+/**
  * Twentieth-wave Finding 1: the interval a DatePicker's own min/max bounds
  * describe, as the convex hull of the INSTANTS `compareVariables` derives from
  * the values the control can store — not of the days the control can display.
@@ -1089,6 +1238,11 @@ const dateResolutionOf = (variable: unknown): DateResolution => {
  *
  * The min edge is the period start at every resolution, which is already both
  * the earliest emittable day and the coarse stored instant.
+ *
+ * Twenty-fifth wave: a COARSE picker with exactly one authored bound outside
+ * the default 1920-to-today window additionally closes its missing side at
+ * the runtime-synthesized far bound — see `synthesizedCoarseFarBound` and the
+ * inline comment below.
  */
 const dateWindowInterval = (variable: unknown): Interval | undefined => {
   const record = asRecord(variable);
@@ -1123,20 +1277,41 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
   if (record.component == null && isRelativeDatePickerShape(parameters)) {
     return relativeDateWindowInterval(parameters);
   }
-  const min =
+  const resolution = dateResolutionOf(variable);
+  const storesFullDates = resolution === 'full';
+  let min =
     typeof parameters.min === 'string'
       ? dayNumber(parameters.min, 'min')
       : undefined;
-  const storesFullDates = dateResolutionOf(variable) === 'full';
-  const max =
+  let max =
     typeof parameters.max === 'string'
       ? dayNumber(parameters.max, storesFullDates ? 'max' : 'min')
       : undefined;
   if (min === undefined && max === undefined) return undefined;
+  // Twenty-fifth wave: a COARSE picker with exactly one authored bound
+  // outside the default window is not half-open at runtime — fresco-ui
+  // synthesizes the missing side, and the year/month dropdowns are closed
+  // option lists, so the synthesized side restricts the domain as hard as an
+  // authored one. See `synthesizedCoarseFarBound` for the exact derivation,
+  // the conservative handling of its "today" dependence, and why one-sided
+  // IN-window and FULL-resolution windows deliberately stay half-open. The
+  // `undefined` guards keep an authored-but-differently-parsed bound (the
+  // lenient `dayNumber` can read a string the runtime's `parseYmd` rejects)
+  // in charge of its own edge, exactly as before.
+  if (!storesFullDates) {
+    const synthesized = synthesizedCoarseFarBound(parameters, resolution);
+    if (min === undefined && synthesized?.edge === 'min') {
+      min = periodStartDayNumber(synthesized.period);
+    } else if (max === undefined && synthesized?.edge === 'max') {
+      max = periodStartDayNumber(synthesized.period);
+    }
+  }
   // Twenty-third-wave Finding 6: `datePickerParametersSchema` rejects a
   // year-0-or-earlier full-resolution bound, but that gate never runs over
   // raw (pre-schema) migration input — the same floor `relativeDateWindowInterval`
-  // clamps to applies here too.
+  // clamps to applies here too (and a synthesized lower edge derived from a
+  // very early coarse `max` can walk past year zero the same way a
+  // RelativeDatePicker's `anchor - before` can).
   return clampToNativeDateFloor({ min, max, origin: 'fixed' });
 };
 
@@ -1857,8 +2032,9 @@ const coarsePeriodIndex = (
  * `undefined` means the variable is not a coarse DatePicker at all (full
  * resolution, whose OWN convex interval is already exact — see
  * `dateWindowInterval`'s docstring). `'unenumerable'` means it IS coarse but
- * its window cannot be safely enumerated — an open bound (no min or max to
- * enumerate between) or a window wider than
+ * its window cannot be safely enumerated — an open bound (no authored min or
+ * max on that side, and no runtime-synthesized far bound either — see
+ * `synthesizedCoarseFarBound`) or a window wider than
  * `COARSE_INSTANT_ENUMERATION_CAP` — and the caller must fall back to the
  * convex-interval reasoning for the whole group rather than reasoning from a
  * partial, arbitrarily-truncated set.
@@ -1869,13 +2045,31 @@ const coarseInstantsOf = (
   const resolution = dateResolutionOf(variable);
   if (resolution === 'full') return undefined;
   const parameters = asRecord(asRecord(variable)?.parameters);
-  const min = parameters?.min;
-  const max = parameters?.max;
-  if (typeof min !== 'string' || typeof max !== 'string') {
-    return 'unenumerable';
-  }
-  const minPeriod = parseCoarseBound(min, resolution);
-  const maxPeriod = parseCoarseBound(max, resolution);
+  if (!parameters) return 'unenumerable';
+  // Twenty-fifth wave: the far bound the runtime synthesizes for a one-sided
+  // out-of-window coarse window closes that window as hard as an authored
+  // bound does (the dropdowns offer nothing beyond it), so it bounds this
+  // enumeration too. The synthesized periods are a SUPERSET of what the
+  // runtime offers on any in-horizon interview date (see
+  // `synthesizedCoarseFarBound`), which is the safe direction for both
+  // consumers: `discreteInstantsEmpty` only reports once even the superset
+  // intersection is empty, and `roundToCoarseEmission` rounding against
+  // extra periods can only land a LOOSER bound than the runtime-exact one.
+  // In practice only a YEAR-resolution synthesized window fits
+  // `COARSE_INSTANT_ENUMERATION_CAP` (a month one spans ~2,400 periods); the
+  // month case stays 'unenumerable' via the cap below, falling back to the
+  // convex interval that `dateWindowInterval` now also closes.
+  const synthesized = synthesizedCoarseFarBound(parameters, resolution);
+  const minPeriod =
+    (typeof parameters.min === 'string'
+      ? parseCoarseBound(parameters.min, resolution)
+      : undefined) ??
+    (synthesized?.edge === 'min' ? synthesized.period : undefined);
+  const maxPeriod =
+    (typeof parameters.max === 'string'
+      ? parseCoarseBound(parameters.max, resolution)
+      : undefined) ??
+    (synthesized?.edge === 'max' ? synthesized.period : undefined);
   if (!minPeriod || !maxPeriod) return 'unenumerable';
   const minIndex = coarsePeriodIndex(minPeriod, resolution);
   const maxIndex = coarsePeriodIndex(maxPeriod, resolution);
