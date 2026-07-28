@@ -403,6 +403,7 @@ const migrationV7toV8 = createMigration({
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed. Any parameter key other than \`type\`, \`min\`, or \`max\` — e.g. a RelativeDatePicker \`anchor\` left over from a component switch — is also removed.
 - A datetime codebook variable's RelativeDatePicker \`anchor\` must be a real date using a year of 0100 or later — the interview's date arithmetic (\`Date.UTC\`) maps a two-digit year (0-99) onto 1900-1999, so such an anchor already produced a wrong window, while years 0100-0999 round-trip correctly — and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
+- A datetime variable's \`parameters\` must be a plain object; a wrong-typed value (a string, number, list, or null) is removed, reverting the picker to its defaults.
 - Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the variable's type (e.g. \`minValue\` on a text variable, or \`requiredAcceptsNull\` anywhere). A removed \`minValue\`/\`minLength\`/\`minSelected\` still marks the variable required, preserving the old implied-required behaviour. Layout variables take no validation at all; theirs is removed.
 - A variable's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout variables, which have no control, have it removed.
 - Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean variable's option entry that is not a labelled true/false choice is removed; if no entries remain the variable falls back to the standard Yes/No choices.
@@ -1571,6 +1572,19 @@ const migrationV7toV8 = createMigration({
             if (!typedVariable) continue;
 
             if (typedVariable.type !== 'datetime') continue;
+            // A `parameters` value that is not a plain record (a string,
+            // number, array, or null from a hand-edit) fails both v8
+            // parameters strictObjects outright; delete it so the picker
+            // falls back to its defaults. `asRecord` alone is not enough —
+            // it admits arrays.
+            if (
+              'parameters' in typedVariable &&
+              (Array.isArray(typedVariable.parameters) ||
+                asRecord(typedVariable.parameters) === null)
+            ) {
+              delete typedVariable.parameters;
+              continue;
+            }
             const parameters = asRecord(typedVariable.parameters);
             if (!parameters) continue;
             // Nineteenth-wave Finding 1: `component` is OPTIONAL on both

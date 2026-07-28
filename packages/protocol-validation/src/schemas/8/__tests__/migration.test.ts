@@ -5838,4 +5838,51 @@ describe('Migration V7 to V8', () => {
       expect(variables.employed).not.toHaveProperty('options');
     });
   });
+
+  // Fuzz finding (migration-fuzz.test.ts): a datetime `parameters` that is
+  // not a plain object (a hand-edited string, list, or null) fails both v8
+  // parameters strictObjects and blocked the import.
+  describe('wrong-typed datetime parameters record', () => {
+    const migrateDatetime = (parameters: unknown) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: {},
+          ego: {
+            variables: {
+              dob: {
+                name: 'dob',
+                type: 'datetime',
+                component: 'DatePicker',
+                parameters,
+              },
+            },
+          },
+        },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables?.dob;
+    };
+
+    it('removes a string parameters record', () => {
+      expect(migrateDatetime('full')).not.toHaveProperty('parameters');
+    });
+
+    it('removes an array parameters record', () => {
+      expect(migrateDatetime([])).not.toHaveProperty('parameters');
+    });
+
+    it('removes a null parameters record', () => {
+      expect(migrateDatetime(null)).not.toHaveProperty('parameters');
+    });
+  });
 });
