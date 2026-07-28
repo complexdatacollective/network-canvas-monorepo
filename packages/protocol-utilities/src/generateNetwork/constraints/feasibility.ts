@@ -23,6 +23,7 @@ import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
 import {
   edgeCountFor,
   nodeCountFor,
+  pedigreeEdgeValues,
   pedigreeNodeCeiling,
   unwrittenEdgeVariables,
   worstCaseEntityCounts,
@@ -146,59 +147,85 @@ function fixedBy(origins: ReadonlySet<FixedValueOrigin>): {
     : { writers: writer, verb: 'fixes' };
 }
 
+/** Folds one stage's written values into a per-type tally. */
+function recordPinned(
+  byType: Map<string, PromptFixedValues>,
+  type: string,
+  stageIndex: number,
+  pinned: readonly (readonly [string, VariableValue, number])[],
+): void {
+  const forType = byType.get(type) ?? new Map();
+  for (const [variableId, value, carriers] of pinned) {
+    if (carriers === 0) continue;
+    const forVariable = forType.get(variableId) ?? new Map();
+    const key = valueKey(value);
+    const carried = forVariable.get(key);
+    forVariable.set(key, {
+      value,
+      count: (carried?.count ?? 0) + carriers,
+      stampedAt: Math.max(carried?.stampedAt ?? stageIndex, stageIndex),
+    });
+    forType.set(variableId, forVariable);
+  }
+  byType.set(type, forType);
+}
+
 /**
- * The ego flag each FamilyPedigree stage pins, counted like a prompt's fixed
- * values so both reach the same refusal.
+ * The values each FamilyPedigree stage writes rather than draws, counted like a
+ * prompt's fixed values so both reach the same refusal.
  *
- * The interface marks exactly one node of a pedigree as ego and every other
- * node it builds as not-ego, whatever the flag's declared type, so a stage of
- * `n` nodes pins `true` once and `false` `n - 1` times. Both are written rather
- * than drawn: `handleFamilyPedigree` assigns them after generating the rest of
- * the node, so no seed spreads them over more holders or fewer. Counted at the
+ * On its nodes: the interface marks exactly one node of a pedigree as ego and
+ * every other node it builds as not-ego, whatever the flag's declared type, so
+ * a stage of `n` nodes pins `true` once and `false` `n - 1` times. On its
+ * edges: `pedigreeEdgeValues` is written onto every edge the stage builds, and
+ * it builds one per node after the first. All written rather than drawn:
+ * `handleFamilyPedigree` assigns them after generating the rest of the entity,
+ * so no seed spreads a value over more holders or fewer. Counted at the
  * configured ceiling, for the same reason the rest of feasibility counts worst
  * cases, and summed across stages because a `unique` value is claimed once for
  * the whole run.
  *
- * A pedigree writes its nodes without consulting the registry, so every pin is
- * stamped where its stage runs — the tally's `stampedAt`, which is what a
- * roster row carrying the same value is weighed against.
+ * A pedigree writes without consulting the registry, so every pin is stamped
+ * where its stage runs — the tally's `stampedAt`, which is what a roster row
+ * carrying the same value is weighed against.
  */
 function countPedigreeFixedValues(
   stages: Stage[],
   config: ResolvedGenerationConfig,
-): Map<string, PromptFixedValues> {
-  const byType = new Map<string, PromptFixedValues>();
+): {
+  node: Map<string, PromptFixedValues>;
+  edge: Map<string, PromptFixedValues>;
+} {
+  const node = new Map<string, PromptFixedValues>();
+  const edge = new Map<string, PromptFixedValues>();
 
   for (const [stageIndex, stage] of stages.entries()) {
     if (stage.type !== 'FamilyPedigree') continue;
+    const ceiling = pedigreeNodeCeiling(config);
 
     const nodeType = stage.nodeConfig?.type;
     const egoVariable = stage.nodeConfig?.egoVariable;
-    if (nodeType === undefined || egoVariable === undefined) continue;
-
-    const ceiling = pedigreeNodeCeiling(config);
-    const pinned: [boolean, number][] = [
-      [true, Math.min(ceiling, 1)],
-      [false, Math.max(ceiling - 1, 0)],
-    ];
-
-    const forType = byType.get(nodeType) ?? new Map();
-    const forVariable = forType.get(egoVariable) ?? new Map();
-    for (const [value, carriers] of pinned) {
-      if (carriers === 0) continue;
-      const key = valueKey(value);
-      const carried = forVariable.get(key);
-      forVariable.set(key, {
-        value,
-        count: (carried?.count ?? 0) + carriers,
-        stampedAt: Math.max(carried?.stampedAt ?? stageIndex, stageIndex),
-      });
+    if (nodeType !== undefined && egoVariable !== undefined) {
+      recordPinned(node, nodeType, stageIndex, [
+        [egoVariable, true, Math.min(ceiling, 1)],
+        [egoVariable, false, Math.max(ceiling - 1, 0)],
+      ]);
     }
-    forType.set(egoVariable, forVariable);
-    byType.set(nodeType, forType);
+
+    const edgeType = stage.edgeConfig?.type;
+    if (edgeType === undefined) continue;
+    const edges = Math.max(ceiling - 1, 0);
+    recordPinned(
+      edge,
+      edgeType,
+      stageIndex,
+      Object.entries(pedigreeEdgeValues(stage.edgeConfig)).map(
+        ([variableId, value]) => [variableId, value, edges] as const,
+      ),
+    );
   }
 
-  return byType;
+  return { node, edge };
 }
 
 /**
@@ -719,10 +746,14 @@ function analyseEntity(
             members,
             [
               // Only the protocol's own writers name a rule: a roster row is
-              // data the run is handed, and the schema has no key for it.
+              // data the run is handed, and the schema has no key for it. A
+              // pedigree writes node pins through its egoVariable and edge
+              // pins through its edgeConfig, so the label follows the scope.
               'unique',
               ...(origins.has('prompt') ? ['additionalAttributes'] : []),
-              ...(origins.has('pedigree') ? ['egoVariable'] : []),
+              ...(origins.has('pedigree')
+                ? [scope.entity === 'edge' ? 'edgeConfig' : 'egoVariable']
+                : []),
             ],
             `${writers} ${verb} ${members.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${detail}, but unique allows one ${scope.entity} to hold a value`,
           );
@@ -1047,16 +1078,24 @@ export function analyseFeasibility(
 ): ConstraintConflict[] {
   const binOnly = collectBinOnlyVariables(stages);
   // The map the draw judges a roster row against, so a row this pass counts is
-  // one `createNodesForStage` would really build a node from. Per type on
-  // demand: the counter asks only about types a roster stage draws people of,
-  // so a stale bound on an unused type keeps being skipped rather than thrown
-  // on. `binOnly` is load-bearing — the draw builds its constraints with it,
-  // and building without it would exclude rows the draw really does use.
+  // one `createNodesForStage` would really build a node from — read both by the
+  // entity counts and by the collision counter below, which ask the same
+  // question of the same rows. Per type on demand: both readers ask only about
+  // types a stage draws rows of, so a stale bound on an unused type keeps being
+  // skipped rather than thrown on. `binOnly` is load-bearing — the draw builds
+  // its constraints with it, and building without it would exclude rows the draw
+  // really does use.
+  const builtConstraints = new Map<string, EntityConstraints | undefined>();
   const nodeConstraints = (type: string): EntityConstraints | undefined => {
+    if (builtConstraints.has(type)) return builtConstraints.get(type);
+
     const variables = codebook.node?.[type]?.variables;
-    return variables === undefined
-      ? undefined
-      : buildEntityConstraints(variables, config.today, binOnly.get(type));
+    const built =
+      variables === undefined
+        ? undefined
+        : buildEntityConstraints(variables, config.today, binOnly.get(type));
+    builtConstraints.set(type, built);
+    return built;
   };
   const counts = worstCaseEntityCounts(
     stages,
@@ -1066,7 +1105,12 @@ export function analyseFeasibility(
   );
   const promptFixed = countPromptFixedValues(stages, config, externalData);
   const pedigreeFixed = countPedigreeFixedValues(stages, config);
-  const rosterCarried = countRosterCarriedValues(stages, config, externalData);
+  const rosterCarried = countRosterCarriedValues(
+    stages,
+    config,
+    externalData,
+    nodeConstraints,
+  );
   const promptAssignments = collectPromptFixedAssignments(
     stages,
     config,
@@ -1165,7 +1209,7 @@ export function analyseFeasibility(
       worstCaseCountFor: (variableIds) =>
         nodeCountFor(counts.node, type, variableIds),
       fixedValues: promptFixed.get(type) ?? NO_FIXED_VALUES,
-      pedigreeFixedValues: pedigreeFixed.get(type) ?? NO_FIXED_VALUES,
+      pedigreeFixedValues: pedigreeFixed.node.get(type) ?? NO_FIXED_VALUES,
       rosterCarriedValues: rosterCarried.get(type) ?? NO_ROSTER_VALUES,
       fixedAssignments: promptAssignments.get(type) ?? NO_FIXED_ASSIGNMENTS,
     });
@@ -1198,17 +1242,17 @@ export function analyseFeasibility(
       ),
       worstCaseCountFor: (variableIds) =>
         edgeCountFor(counts.edge, type, variableIds),
-      // Nothing writes a value onto an edge that the draw did not choose.
+      // No PROMPT writes a value onto an edge the draw did not choose:
       // `additionalAttributes` belongs to a name-generator prompt, whose subject
-      // is always a node; a census prompt's `edgeVariable` names an edge
-      // variable but supplies no value for it, and `handleDyadCensus` fills it
-      // through `generateEntityAttributes` like any other drawn attribute. So an
-      // edge has no fixed value for a rule to be broken by, and none for the
-      // draw to have to complete around — its rules are settled by the unpinned
-      // analysis alone. Roster rows are nodes, and no stage draws an edge from
-      // one, so they write nothing here either.
+      // is always a node, and a census prompt's `edgeVariable` names an edge
+      // variable but supplies no value for it — `handleDyadCensus` fills it
+      // through `generateEntityAttributes` like any other drawn attribute.
+      // Roster rows are nodes, and no stage draws an edge from one, so they
+      // write nothing here either. A FamilyPedigree, though, writes its
+      // relationship values onto every edge it builds — the one edge-side
+      // writer the draw never chose, counted the same way its ego flag is.
       fixedValues: NO_FIXED_VALUES,
-      pedigreeFixedValues: NO_FIXED_VALUES,
+      pedigreeFixedValues: pedigreeFixed.edge.get(type) ?? NO_FIXED_VALUES,
       rosterCarriedValues: NO_ROSTER_VALUES,
       fixedAssignments: NO_FIXED_ASSIGNMENTS,
     });

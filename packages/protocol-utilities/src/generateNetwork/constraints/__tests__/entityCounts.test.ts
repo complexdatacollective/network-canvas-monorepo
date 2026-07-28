@@ -9,6 +9,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  RELATIONSHIP_TYPE_OPTIONS,
   type VariableValue,
 } from '@codaco/shared-consts';
 
@@ -2288,10 +2289,12 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
 
 /**
  * A FamilyPedigree's own `edgeConfig` names four variables of its edge type,
- * and `handleFamilyPedigree` writes none of them: every edge it creates carries
- * `attributes: {}` for the whole run unless a later stage fills it. Reading
- * those four as naming sites turned away protocols the generator produces
- * without complaint.
+ * and `handleFamilyPedigree` writes two of them onto every edge it creates —
+ * `pedigreeEdgeValues`' relationship type and active flag. The other two carry
+ * gamete semantics the generator's parent-index draw does not model, so it
+ * writes neither, and every edge it creates leaves them undefined for the whole
+ * run unless a later stage fills them. Reading all four as naming sites turned
+ * away protocols the generator produces without complaint.
  */
 describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
   const edgeConfig = {
@@ -2304,62 +2307,127 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
 
   const configuredPedigree = familyPedigree({ edgeConfig });
 
-  const codebook = {
-    node: {
-      relative: { name: 'Relative', color: 'node-color-seq-1', variables: {} },
-    },
-    edge: {
-      kin: {
-        name: 'Kin',
-        color: 'edge-color-seq-1',
-        variables: {
-          verified: {
-            name: 'Verified',
-            type: 'boolean',
-            validation: { unique: true },
+  /** A `unique` boolean on whichever edge variable the test is about. */
+  const uniqueBooleanOn = (
+    variableId: string,
+  ): Parameters<typeof generateNetwork>[0]['codebook'] =>
+    ({
+      node: {
+        relative: {
+          name: 'Relative',
+          color: 'node-color-seq-1',
+          variables: {},
+        },
+      },
+      edge: {
+        kin: {
+          name: 'Kin',
+          color: 'edge-color-seq-1',
+          variables: {
+            [variableId]: {
+              name: 'Verified',
+              type: 'boolean',
+              validation: { unique: true },
+            },
           },
         },
       },
-    },
-  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+    }) as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
 
-  it('counts no pedigree edge for the variables its own edgeConfig names', () => {
+  it('counts its edges for the variables it writes and not for the rest', () => {
     const counts = worstCaseEntityCounts([configuredPedigree], config);
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
-    expect(edgeCountFor(counts.edge, 'kin', ['relationshipType'])).toBe(0);
+    expect(edgeCountFor(counts.edge, 'kin', ['relationshipType'])).toBe(9);
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(9);
     expect(edgeCountFor(counts.edge, 'kin', ['carrier'])).toBe(0);
     expect(edgeCountFor(counts.edge, 'kin', ['gamete'])).toBe(0);
   });
 
-  it('generates, rather than refusing, for a unique variable the config names', () => {
-    // Nine edges and two boolean values. Counting the config as a naming site
-    // refused this for needing nine distinct ones.
+  it('generates, rather than refusing, for a unique variable it leaves unwritten', () => {
+    // Nine edges and two boolean values. Counting the whole config as a naming
+    // site refused this for needing nine distinct ones — and the gamete-side
+    // variables really are unwritten, so the refusal was over a value nothing
+    // in the run ever spends.
     const { network } = generateNetwork({
       seed: 1,
-      codebook,
+      codebook: uniqueBooleanOn('carrier'),
       stages: [configuredPedigree],
     });
 
     expect(network.edges.length).toBeGreaterThan(2);
     expect(
       network.edges.every(
-        (edge) => edge[entityAttributesProperty].verified === undefined,
+        (edge) => edge[entityAttributesProperty].carrier === undefined,
       ),
     ).toBe(true);
   });
 
-  it('still refuses for a pedigree whose edges a later form does fill', () => {
-    // Only the config is carved out. A form naming the same variable after the
-    // pedigree really does put a value on all nine of its edges, and the
-    // ordering that decides which pedigrees a writer reaches is untouched: the
-    // second pedigree runs after the form and keeps its edges empty.
+  it('refuses for a unique variable it writes onto every edge itself', () => {
+    // The other half of the same carve-out: the pedigree really does put its
+    // active flag on all nine edges, so a `unique` boolean there has nine
+    // holders and two values, and no seed can satisfy it.
     const generate = (): unknown =>
       generateNetwork({
         seed: 1,
-        codebook,
+        codebook: uniqueBooleanOn('verified'),
+        stages: [configuredPedigree],
+      });
+
+    expect(generate).toThrow(SyntheticDataConstraintError);
+    expect(generate).toThrow(/up to 9 edges of this type can be generated/);
+  });
+
+  it('refuses a unique relationship type it writes on every edge', () => {
+    // Nine edges all holding the one value the pedigree writes. The value
+    // space is wide enough that counting holders alone accepts this — six
+    // locked options against nine holders passes nothing, but six against
+    // fewer would — and the draw then emits nine identical values. So the
+    // refusal has to come from counting what the pedigree fixes, the same way
+    // its ego flag is counted.
+    const codebook = {
+      node: {
+        relative: {
+          name: 'Relative',
+          color: 'node-color-seq-1',
+          variables: {},
+        },
+      },
+      edge: {
+        kin: {
+          name: 'Kin',
+          color: 'edge-color-seq-1',
+          variables: {
+            relationshipType: {
+              name: 'Relationship',
+              type: 'categorical',
+              options: RELATIONSHIP_TYPE_OPTIONS,
+              validation: { unique: true },
+            },
+          },
+        },
+      },
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+    const generate = (): unknown =>
+      generateNetwork({ seed: 1, codebook, stages: [configuredPedigree] });
+
+    expect(generate).toThrow(SyntheticDataConstraintError);
+    expect(generate).toThrow(
+      /a family pedigree fixes this to .* but unique allows one edge to hold a value/,
+    );
+  });
+
+  it('still refuses for a pedigree whose edges a later form does fill', () => {
+    // The ordering that decides which pedigrees a writer reaches is untouched:
+    // a form naming an unwritten variable after the first pedigree really does
+    // put a value on all nine of its edges, while the second pedigree runs
+    // after the form and leaves that variable undefined on its own.
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 1,
+        codebook: uniqueBooleanOn('carrier'),
         stages: [
           configuredPedigree,
-          alterEdgeForm('verified'),
+          alterEdgeForm('carrier'),
           familyPedigree({ id: 'stage-fp-late', edgeConfig }),
         ],
       });

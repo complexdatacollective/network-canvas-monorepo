@@ -4137,4 +4137,45 @@ describe('two roster rows a caller gave one primary key', () => {
     }
     expect(failures).toEqual([]);
   });
+
+  it(`builds one person per key, over ${SEEDS} seeds`, () => {
+    // Both rows describe someone the protocol allows, and a key names one
+    // person: the roster interface drops every entry sharing a key the moment
+    // one of them is added, and the session reducer refuses a second node
+    // arriving under a key the network already holds. A stage asked for two
+    // people therefore draws one, rather than emitting two nodes a consumer
+    // would read as the same person.
+    const failures: string[] = [];
+    const drawnAges = new Set<number>();
+
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: aged,
+        stages: [rosterStage],
+        externalData: { 'stage-roster': rowsAged([30, 40]) },
+      });
+
+      const keys = network.nodes.map((node) => node[entityPrimaryKeyProperty]);
+      for (const node of network.nodes) {
+        drawnAges.add(Number(node[entityAttributesProperty].age));
+      }
+
+      complain(
+        failures,
+        keys.length === 1,
+        () => `seed ${seed}: ${keys.length} people drawn from one key`,
+      );
+      complain(
+        failures,
+        new Set(keys).size === keys.length,
+        () => `seed ${seed}: keys ${keys.join(', ')} repeat`,
+      );
+    }
+
+    expect(failures).toEqual([]);
+    // Which copy is drawn is the walk's to settle, not the order they arrived
+    // in, so both are reachable across seeds.
+    expect([...drawnAges].toSorted((a, b) => a - b)).toEqual([30, 40]);
+  });
 });

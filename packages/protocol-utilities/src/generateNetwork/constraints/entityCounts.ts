@@ -6,6 +6,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  type RelationshipType,
   type VariableValue,
 } from '@codaco/shared-consts';
 
@@ -50,26 +51,30 @@ type OwnNodeEdges = {
   nodeType: string;
   count: number;
   stageIndex: number;
-  /** Whether the stage fills the edges as it creates them, or leaves them empty. */
-  born: 'filled' | 'empty';
+  /**
+   * Whether the stage fills the edge type's whole attribute set as it creates
+   * them, or only the part of it the stage itself writes.
+   */
+  born: 'whole' | 'partial';
 };
 
 /**
  * How many edges of each type can hold a value, split by what fills them.
  *
- * A FamilyPedigree edge is born with no attributes at all, so whether it can
- * ever hold a value is a question about one variable rather than about its
- * type: a form filling `note` on the same edge type leaves `code` undefined on
- * every one of them. The two sources are therefore counted apart and combined
- * per variable by {@link edgeCountFor}.
+ * A FamilyPedigree edge is born holding only the two values
+ * {@link pedigreeEdgeValues} writes, so whether it can ever hold a value is a
+ * question about one variable rather than about its type: a form filling `note`
+ * on the same edge type leaves `code` undefined on every one of them. The two
+ * sources are therefore counted apart and combined per variable by
+ * {@link edgeCountFor}.
  */
 export type EdgeCounts = {
   /** Edges whose creating stage fills every variable of the type. */
   base: Map<string, number>;
   /**
-   * Edges each FamilyPedigree stage creates, which start empty, kept apart per
-   * stage because whether a writer can reach them depends on where that stage
-   * runs relative to the writer.
+   * Edges each FamilyPedigree stage creates, which start holding only what that
+   * stage writes, kept apart per stage because whether any other writer can
+   * reach them depends on where the pedigree runs relative to that writer.
    */
   pedigree: Map<string, PedigreeEdges[]>;
   /**
@@ -96,13 +101,12 @@ export type EdgeCounts = {
  * on the draft. A pedigree later than every naming site therefore hands its
  * edges to nobody, and they stay as `handleFamilyPedigree` built them: empty.
  *
- * "At or after" rather than "after" is inert today and kept as the safe
- * direction. The one naming site that could ever share a pedigree's own index
- * is that pedigree's `edgeConfig`, and {@link namedEdgeAttributes} now leaves
- * those references out because `handleFamilyPedigree` writes none of them. No
- * other stage can sit at a pedigree's index, so the boundary decides nothing;
- * were a FamilyPedigree ever taught to fill edges as it creates them, reading
- * it as "after" would drop edges that really do hold values.
+ * "At or after" rather than "after" is what lets a pedigree reach its own
+ * edges. The one naming site that shares a pedigree's index is that pedigree's
+ * `edgeConfig`, and the two variables {@link pedigreeEdgeValues} writes are
+ * named from there — written onto the very edges the same stage creates, so
+ * reading the boundary as "after" would drop every one of them and leave a
+ * `unique` relationship type counted as spent by nobody.
  *
  * Edges from every other stage count for every variable, because those stages
  * generate the type's whole attribute set as they create them — a structural
@@ -132,18 +136,18 @@ export function edgeCountFor(
 }
 
 /**
- * The variables of an edge type whose edges are all born empty that no stage
- * can write — the same question {@link edgeCountFor} answers as a number, read
- * as a set so a scope can drop their rules.
+ * The variables of an edge type whose edges are all born part-filled that no
+ * stage can write — the same question {@link edgeCountFor} answers as a number,
+ * read as a set so a scope can drop their rules.
  *
  * Validation rules are a form-field mechanism: they apply where a stage renders
  * a `Field` for the variable, and generation spends a value on it in the same
- * places. `handleFamilyPedigree` renders none and writes none — every edge it
- * builds carries `attributes: {}` — so where a pedigree is an edge type's only
- * source, a variable no later stage names is `undefined` on every edge of the
- * type for the whole run. Analysing its declared rules then refuses a protocol
- * over a value nothing draws and nothing submits, exactly as an unused node
- * type or an unwritten ego variable did.
+ * places. `handleFamilyPedigree` renders no field at all, and writes only the
+ * two values {@link pedigreeEdgeValues} names — so where a pedigree is an edge
+ * type's only source, a variable it does not write and no later stage names is
+ * `undefined` on every edge of the type for the whole run. Analysing its
+ * declared rules then refuses a protocol over a value nothing draws and nothing
+ * submits, exactly as an unused node type or an unwritten ego variable did.
  *
  * Which stages count as writers is not decided here: this reads
  * {@link EdgeCounts.named} through {@link edgeCountFor} itself, so "reached by
@@ -163,16 +167,17 @@ export function edgeCountFor(
  * member keeps every member's rules, so no surviving group loses a reference
  * the exempted ones declared.
  *
- * Held to edge types every one of whose edges starts empty. An edge any other
- * stage creates is born with its type's whole attribute set, so nothing of it
- * is unwritten; and a type the stages name while nothing creates one keeps its
- * rules for the reason the node half does — a form renders its fields whether
- * or not this generator ever builds an entity to fill.
+ * Held to edge types every one of whose edges a pedigree creates. An edge any
+ * other stage creates is born with its type's whole attribute set, so nothing
+ * of it is unwritten; and a type the stages name while nothing creates one
+ * keeps its rules for the reason the node half does — a form renders its fields
+ * whether or not this generator ever builds an entity to fill.
  *
  * What this exempts the draw never asks for, so nothing has to be exempted
- * there to match: `handleFamilyPedigree` writes no edge attribute at all, and
- * every other writer of a pedigree edge names what it writes, which is what put
- * the variable in `named` in the first place.
+ * there to match: every writer of a pedigree edge names what it writes, which
+ * is what put the variable in `named` in the first place — the pedigree's own
+ * two values included, since {@link isUnwrittenPedigreeEdgeReference} keeps
+ * exactly the references it writes.
  */
 export function unwrittenEdgeVariables(
   counts: EdgeCounts,
@@ -565,56 +570,104 @@ export function pedigreeNodeCeiling(config: GenerationConfig): number {
 }
 
 /**
- * Whether a hit is a FamilyPedigree stage's own `edgeConfig` reference — the
- * one place the schema names an edge variable that no part of the generator
- * ever writes.
+ * The relationship every edge `handleFamilyPedigree` builds records.
  *
- * `EdgeConfigSchema` names four variables of the pedigree's edge type
- * (`relationshipTypeVariable`, `isActiveVariable`,
- * `isGestationalCarrierVariable`, `gameteRoleVariable`), and every other
- * reference site this collector reads belongs to a stage that fills what it
- * names. `handleFamilyPedigree` does not: it creates each parent-child edge
- * with `attributes: {}` and writes nothing onto it, ever. Counting those four
- * as held values refuses protocols the generator would have produced without
- * complaint — a ten-node pedigree whose `isActiveVariable` is a `unique`
- * boolean is turned away for needing nine distinct values, when generation puts
- * a value on none of its nine edges.
+ * Fixed rather than drawn from the codebook's options, because the generator's
+ * pedigree is structurally narrower than the interface's. Each of its edges
+ * joins one node to a parent chosen from the nodes before it, so every one is a
+ * parent-child link and `partner` — a locked option the runtime writes on
+ * plenty of real edges — is never legal on one. Of the parent-child
+ * relationships that are, `biological` is the one the generator's random
+ * parent-index draw actually models: `donor`, `surrogate`, `adoptive` and
+ * `social` each answer a question about the family that nothing here asks.
  *
- * This is a divergence rather than a settled contract. The interview DOES write
- * these: `buildChildParentage`, `egoCellTransform`, `siblingCellTransform` and
- * the pedigree wizards put a `relationshipType` (one of `shared-consts`'
- * `RELATIONSHIP_TYPES`) and an `isActive` flag on every edge they commit, and a
- * gamete role or carrier flag on the edges those apply to. Synthetic pedigree
- * edges therefore carry no relationship type at all, which any consumer reading
- * pedigree data sees — `pedigreeAdapter` reads an absent value as `biological`.
- * Teaching the generator to write them is the honest fix and is left as its own
- * change: the values are structurally narrower than the codebook declares (a
- * parent-child link is never `partner`, and two of the four are written on a
- * subset of edges and never as `false`), so the value space a pedigree edge
- * spends would have to narrow with them, which is `valueSpace`'s and
- * `feasibility`'s business rather than this collector's. Until then this counts
- * what the generator does, and the tally is exact rather than merely safe.
+ * It is also the reading every consumer already gives an absent value —
+ * `pedigreeAdapter`'s `readEdge` falls back to `'biological'` — so writing it
+ * changes no downstream inference, only whether the value is there to be
+ * exported.
  */
-function isPedigreeEdgeConfigReference(
+const PEDIGREE_EDGE_RELATIONSHIP_TYPE: RelationshipType = 'biological';
+
+/**
+ * The values `handleFamilyPedigree` writes onto every edge it creates, read off
+ * the stage's own `edgeConfig`.
+ *
+ * Shared between the handler that writes them and the feasibility pass that
+ * counts them, so neither can describe a set of values the other does not.
+ *
+ * Both are runtime-faithful for the edges this generator builds. Every
+ * parent-child edge the interview commits carries an `isActive` of exactly
+ * `true` — `buildChildParentage`, `egoCellTransform`, `siblingCellTransform`,
+ * `buildParentageBatch`, `AddParentWizard` and `PedigreeView` all write the
+ * literal, and the one place the flag is ever `false` is a `partner` edge,
+ * which this generator never creates.
+ *
+ * The other two variables `EdgeConfigSchema` names are deliberately left
+ * unwritten. `isGestationalCarrier` and `gameteRole` are written only where
+ * gamete semantics apply — which parent supplied the egg, which the sperm, who
+ * carried the pregnancy — and the generator's parent-index draw models none of
+ * that. A real pedigree with no such feature carries no such write either, so
+ * writing neither is faithful, while writing either would invent a fact.
+ */
+export function pedigreeEdgeValues(
+  edgeConfig: StageOfType<'FamilyPedigree'>['edgeConfig'],
+): Record<string, VariableValue> {
+  const values: Record<string, VariableValue> = {};
+
+  const relationshipTypeVariable = edgeConfig?.relationshipTypeVariable;
+  if (relationshipTypeVariable) {
+    values[relationshipTypeVariable] = [PEDIGREE_EDGE_RELATIONSHIP_TYPE];
+  }
+
+  const isActiveVariable = edgeConfig?.isActiveVariable;
+  if (isActiveVariable) values[isActiveVariable] = true;
+
+  return values;
+}
+
+/**
+ * Whether a hit is a FamilyPedigree stage's naming of one of its own edge
+ * variables that the generator leaves unwritten.
+ *
+ * `EdgeConfigSchema` names four variables of the pedigree's edge type, and
+ * every other reference site this collector reads belongs to a stage that fills
+ * what it names. A pedigree fills half of them: {@link pedigreeEdgeValues} puts
+ * a relationship type and an active flag on every edge it builds, and those two
+ * are counted like any other naming — at the pedigree's own stage index, which
+ * is exactly where the write happens. The other two it does not, for the reason
+ * `pedigreeEdgeValues` records, and counting them as held values would refuse
+ * protocols the generator produces without complaint: a ten-node pedigree whose
+ * `gameteRoleVariable` is a `unique` categorical would be turned away for
+ * needing nine distinct values, when generation puts a value on none of its
+ * nine edges.
+ *
+ * Read as "a variable this pedigree does not write" rather than as a list of
+ * the two field names, so a protocol pointing two of the four fields at one
+ * codebook variable keeps that variable counted: the write is what decides,
+ * and the write is what {@link pedigreeEdgeValues} answers.
+ */
+function isUnwrittenPedigreeEdgeReference(
   stages: Stage[],
   path: readonly (string | number)[],
+  variableId: string,
 ): boolean {
   const [root, stageIndex, field] = path;
-  return (
-    root === 'stages' &&
-    typeof stageIndex === 'number' &&
-    field === 'edgeConfig' &&
-    stages[stageIndex]?.type === 'FamilyPedigree'
-  );
+  if (root !== 'stages' || typeof stageIndex !== 'number') return false;
+  if (field !== 'edgeConfig') return false;
+
+  const stage = stages[stageIndex];
+  if (stage?.type !== 'FamilyPedigree') return false;
+
+  return !(variableId in pedigreeEdgeValues(stage.edgeConfig));
 }
 
 /**
  * The last stage index naming an attribute of each edge type, per variable id.
  *
- * `handleFamilyPedigree` builds its edges with empty attributes — the interface
- * draws parent-child links and collects nothing on them — so a pedigree edge
- * carries a value only where another stage writes one onto an edge it did not
- * create. `handleAlterEdgeForm` is that stage today: it walks every existing
+ * `handleFamilyPedigree` builds its edges holding only what
+ * {@link pedigreeEdgeValues} names, so a pedigree edge carries any other value
+ * only where a further stage writes one onto an edge it did not create.
+ * `handleAlterEdgeForm` is that stage today: it walks every existing
  * edge of its subject type, pedigree-built ones included, and fills the
  * variables its form renders — and only those, since it passes its field list
  * to `generateEntityAttributes` as `only`. A variable no form lists is
@@ -653,7 +706,10 @@ function isPedigreeEdgeConfigReference(
  * the old wide behaviour until it is deliberately placed.
  *
  * A FamilyPedigree's own `edgeConfig` is the single exception, and
- * {@link isPedigreeEdgeConfigReference} carves it out.
+ * {@link isUnwrittenPedigreeEdgeReference} carves out the half of it the
+ * generator leaves unwritten. The other half stays, recorded at the pedigree's
+ * own index: the stage names those two variables and writes them, on the edges
+ * it creates at that very point in the run.
  */
 function namedEdgeAttributes(
   stages: Stage[],
@@ -662,7 +718,9 @@ function namedEdgeAttributes(
 
   for (const hit of collectEntityAttributeReferences({ stages })) {
     if (hit.subject?.entity !== 'edge') continue;
-    if (isPedigreeEdgeConfigReference(stages, hit.path)) continue;
+    if (isUnwrittenPedigreeEdgeReference(stages, hit.path, hit.variableId)) {
+      continue;
+    }
 
     const [root, stageIndex] = hit.path;
     const namedAt =
@@ -753,8 +811,9 @@ function createsEdges(probability: { min: number; max: number }): boolean {
  * Entities are therefore counted as the value space they spend, not as every
  * entity the run creates, because spending values is the only thing the count
  * is asked about: feasibility measures a `unique` variable's value space
- * against it, and an edge born empty spends none of that space, as do two
- * roster rows carrying one value between them. Both are settled per variable
+ * against it, and an edge born without a value for that variable spends none of
+ * that space, as do two roster rows carrying one value between them. Both are
+ * settled per variable
  * rather than per type — see {@link edgeCountFor} and {@link nodeCountFor},
  * which read the tallies this returns.
  *
@@ -918,7 +977,7 @@ export function worstCaseEntityCounts(
             nodeType,
             count: pairs,
             stageIndex,
-            born: 'filled',
+            born: 'whole',
           });
         }
       }
@@ -961,9 +1020,10 @@ export function worstCaseEntityCounts(
       tallyFor(node, nodeType).fabricated += pedigreeNodeCeiling(config);
 
       const edgeType = stage.edgeConfig?.type;
-      // Tallied apart from the rest because these edges start empty, and only
-      // the variables some stage names ever stop being — see
-      // {@link edgeCountFor}, which decides that per variable.
+      // Tallied apart from the rest because these edges start holding only what
+      // the pedigree writes, and only the variables some stage names ever stop
+      // being undefined — see {@link edgeCountFor}, which decides that per
+      // variable.
       if (edgeType !== undefined) {
         // `handleFamilyPedigree` creates exactly `n - 1` edges (one per node
         // index 1..n-1), never pairwise, so the pair count over-counts by
@@ -974,7 +1034,7 @@ export function worstCaseEntityCounts(
           nodeType,
           count: Math.max(pedigreeNodeCeiling(config) - 1, 0),
           stageIndex,
-          born: 'empty',
+          born: 'partial',
         });
       }
     }
@@ -1015,9 +1075,10 @@ export function worstCaseEntityCounts(
     }
 
     // A composer generates the whole attribute set of every edge it creates, so
-    // its edges join the count for every variable; a pedigree's are born empty
-    // and are kept apart for {@link edgeCountFor} to settle per variable.
-    if (born === 'filled') {
+    // its edges join the count for every variable; a pedigree's hold only what
+    // the pedigree itself writes, and are kept apart for {@link edgeCountFor}
+    // to settle per variable.
+    if (born === 'whole') {
       add(base, edgeType, count);
       continue;
     }

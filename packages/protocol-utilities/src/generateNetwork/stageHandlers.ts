@@ -14,6 +14,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { claimFixedValues, generateAttributesForEntity } from './attributes';
+import { pedigreeEdgeValues } from './constraints/entityCounts';
 import {
   type EntityScopeRef,
   scopeKey,
@@ -568,28 +569,52 @@ function isUniqueSlotVariable(
   return false;
 }
 
+/** Holds one written value back from every `unique` slot that would issue it. */
+function reserveWrittenValue(
+  ctx: GenerationContext,
+  ref: { entity: 'node' | 'edge'; type: string },
+  variableId: string,
+  value: VariableValue,
+): void {
+  const entity = ctx.entityConstraints[ref.entity].get(ref.type);
+  if (entity === undefined) return;
+
+  const registry = scopeKey(ref);
+  for (const [slot, memberIds] of uniqueSlotMembers(entity)) {
+    if (!memberIds.includes(variableId)) continue;
+    ctx.uniqueRegistry.reserve(registry, slot, value);
+  }
+}
+
 /**
- * Holds back the ego flag every FamilyPedigree stage is going to write, for the
- * whole run and before any stage draws.
+ * Holds back the values every FamilyPedigree stage is going to write itself,
+ * for the whole run and before any stage draws.
  *
- * The flag is a value the interface writes rather than one the generator picks,
- * so a `unique` variable carrying it has one value spoken for from the start. A
- * draw that ran earlier knows nothing about it — the flag only reaches the
- * registry when the pedigree's own nodes are built — and a name generator ahead
- * of the pedigree is issued `true` on the first position of the slot's
- * sequence, which the pedigree then writes on its proband as well: the
- * duplicate `unique` forbids, on every seed.
+ * These are values the interface writes rather than ones the generator picks,
+ * so a `unique` variable carrying one has it spoken for from the start. A draw
+ * that ran earlier knows nothing about it — the value only reaches the registry
+ * when the pedigree's own entities are built — and a name generator ahead of
+ * the pedigree is issued `true` on the first position of the slot's sequence,
+ * which the pedigree then writes on its proband as well: the duplicate `unique`
+ * forbids, on every seed. The pedigree's edge values are the same shape, and
+ * are held for the same reason.
  *
- * Only the proband's `true` is held. Every pedigree marks exactly one node ego
- * whatever its node count, while the `false` on the others is written only
- * where the stage builds more than one — and holding both would empty a
- * boolean's domain, where a draw left nothing takes a reserved value anyway and
- * lands back on the collision. A protocol where that `false` is genuinely
- * contested has a pedigree of two or more nodes plus a node from somewhere
- * else, which is more entities than a two-value space covers and is refused
- * before any of this runs.
+ * Only the proband's `true` is held of the ego flag. Every pedigree marks
+ * exactly one node ego whatever its node count, while the `false` on the others
+ * is written only where the stage builds more than one — and holding both would
+ * empty a boolean's domain, where a draw left nothing takes a reserved value
+ * anyway and lands back on the collision. A protocol where that `false` is
+ * genuinely contested has a pedigree of two or more nodes plus a node from
+ * somewhere else, which is more entities than a two-value space covers and is
+ * refused before any of this runs.
+ *
+ * The edge values are held once apiece for the same reason. A pedigree writing
+ * one value onto two or more edges of a `unique` variable is a contradiction no
+ * seed resolves and no reservation helps with, and is feasibility's to refuse
+ * rather than the registry's to work around — the same division the ego flag's
+ * `false` is settled by.
  */
-export function reserveFamilyPedigreeEgoValues(
+export function reserveFamilyPedigreeFixedValues(
   ctx: GenerationContext,
   stages: Stage[],
 ): void {
@@ -598,15 +623,22 @@ export function reserveFamilyPedigreeEgoValues(
 
     const nodeType = stage.nodeConfig?.type;
     const egoVariable = stage.nodeConfig?.egoVariable;
-    if (nodeType === undefined || egoVariable === undefined) continue;
+    if (nodeType !== undefined && egoVariable !== undefined) {
+      reserveWrittenValue(
+        ctx,
+        { entity: 'node', type: nodeType },
+        egoVariable,
+        true,
+      );
+    }
 
-    const registry = scopeKey({ entity: 'node', type: nodeType });
-    const entity = ctx.entityConstraints.node.get(nodeType);
-    if (entity === undefined) continue;
-
-    for (const [slot, memberIds] of uniqueSlotMembers(entity)) {
-      if (!memberIds.includes(egoVariable)) continue;
-      ctx.uniqueRegistry.reserve(registry, slot, true);
+    const edgeType = stage.edgeConfig?.type;
+    if (edgeType === undefined) continue;
+    const ref: EntityScopeRef = { entity: 'edge', type: edgeType };
+    for (const [variableId, value] of Object.entries(
+      pedigreeEdgeValues(stage.edgeConfig),
+    )) {
+      reserveWrittenValue(ctx, ref, variableId, value);
     }
   }
 }
@@ -684,6 +716,22 @@ export function handleFamilyPedigree(
   draft.nodes.push(...familyNodes);
 
   if (edgeType && familyNodes.length > 1) {
+    // The relationship every parent-child edge records, written rather than
+    // drawn — see `pedigreeEdgeValues`, which the feasibility pass counts from
+    // as well. Written AFTER the parent index is drawn and never through the
+    // draw, so the values cost the stage no random numbers and leave every
+    // other value in the run exactly where it was.
+    //
+    // Nothing claims them into the `unique` registry the way a pedigree node's
+    // ego flag is claimed. A claim is what stops a value already in the network
+    // being issued a second time, and `reserveFamilyPedigreeFixedValues`
+    // already holds these back for the whole run — before the first stage and
+    // after the last, since nothing ever gives the hold back. The one thing a
+    // reservation does not survive is a slot with nothing else left, which is a
+    // protocol asking for more distinct values than it has, and feasibility's
+    // to refuse rather than the registry's to work around.
+    const edgeValues = pedigreeEdgeValues(stage.edgeConfig);
+
     for (let childIndex = 1; childIndex < familyNodes.length; childIndex++) {
       const parentIdx = ctx.valueGen.randomInt(
         0,
@@ -694,7 +742,9 @@ export function handleFamilyPedigree(
         type: edgeType,
         from: familyNodes[parentIdx]![entityPrimaryKeyProperty],
         to: familyNodes[childIndex]![entityPrimaryKeyProperty],
-        [entityAttributesProperty]: {},
+        // Its own copy, because a later AlterEdgeForm fills each edge's
+        // attributes in place and would otherwise write through every one.
+        [entityAttributesProperty]: { ...edgeValues },
       };
       draft.edges.push(edge);
     }

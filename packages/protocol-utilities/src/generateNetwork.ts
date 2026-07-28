@@ -43,7 +43,7 @@ import {
   handleOrdinalBin,
   handleSociogram,
   handleTieStrengthCensus,
-  reserveFamilyPedigreeEgoValues,
+  reserveFamilyPedigreeFixedValues,
 } from './generateNetwork/stageHandlers';
 import { ValueGenerator } from './ValueGenerator';
 
@@ -172,9 +172,9 @@ export function generateNetwork(
     ctx,
     countPromptFixedValues(stages, resolvedConfig, externalData),
   );
-  // A pedigree's ego flag is fixed by its stage rather than by a prompt, and is
-  // held back here for the same reason.
-  reserveFamilyPedigreeEgoValues(ctx, stages);
+  // A pedigree's ego flag and its edges' relationship values are fixed by its
+  // stage rather than by a prompt, and are held back here for the same reason.
+  reserveFamilyPedigreeFixedValues(ctx, stages);
   // Roster rows are values the run is handed rather than ones it issues, so the
   // draws that come before their stage are steered off them here too. Each
   // stage's hold is given back once the stage has run.

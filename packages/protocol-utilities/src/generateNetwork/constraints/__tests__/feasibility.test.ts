@@ -1528,6 +1528,157 @@ describe('a value a prompt fixes and a roster row carries', () => {
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.reason).toContain('on up to 2 nodes');
   });
+
+  /**
+   * A row no seed can draw carries nothing into the network, so the value it
+   * holds collides with nothing either. The two ways a row dies are the two the
+   * draw's own pass-over reads: a value its own variable's rules reject, and a
+   * set of values leaving the draw no way to complete the node around them.
+   */
+  describe('a row the rules leave dead', () => {
+    /** The flag, plus an age floor a row can be written below. */
+    const flagAndAge = codebookWith({
+      flagged: {
+        name: 'Flagged',
+        type: 'boolean',
+        validation: { unique: true },
+      },
+      age: { name: 'Age', type: 'number', validation: { minValue: 18 } },
+    });
+
+    /**
+     * The flag, plus a comparator inside a range with no room above 1: a row
+     * carrying `age: 1` breaks no rule of its own and leaves `retired` nowhere
+     * to go, so only the completability half of the verdict turns it away.
+     */
+    const flagAndComparator = codebookWith({
+      flagged: {
+        name: 'Flagged',
+        type: 'boolean',
+        validation: { unique: true },
+      },
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 1 },
+      },
+      retired: {
+        name: 'Retired at',
+        type: 'number',
+        validation: { minValue: 0, maxValue: 1, greaterThanVariable: 'age' },
+      },
+    });
+
+    const stages = [rosterStage, panelStage(true)];
+
+    /** Every value `flagged` holds across the network one seed builds. */
+    function flagsDrawn(
+      codebook: StructuralCodebook,
+      externalData: Record<string, NcNode[]>,
+      seed: number,
+    ) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages,
+        externalData,
+      });
+      return network.nodes.map(
+        (node) => node[entityAttributesProperty].flagged,
+      );
+    }
+
+    it('carries no value its own rules reject', () => {
+      // The row is one no participant's form would have accepted, so the roster
+      // stage draws nobody and the panel's node is the only holder of `true`.
+      const dead = { 'stage-roster': [row('r1', { flagged: true, age: 5 })] };
+
+      expect(analyseFeasibility(flagAndAge, stages, config, dead)).toEqual([]);
+
+      for (let seed = 1; seed <= 20; seed++) {
+        expect(flagsDrawn(flagAndAge, dead, seed), `seed ${seed}`).toEqual([
+          true,
+        ]);
+      }
+    });
+
+    it('still refuses where the same row is one the draw can build', () => {
+      // The other direction: an age the floor admits leaves a live row, and its
+      // value and the prompt's are then two writers of one `unique` value.
+      const live = { 'stage-roster': [row('r1', { flagged: true, age: 21 })] };
+      const conflicts = analyseFeasibility(flagAndAge, stages, config, live);
+
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0]?.reason).toBe(
+        'a prompt and a roster row fix this to true on up to 2 nodes, but unique allows one node to hold a value',
+      );
+    });
+
+    it('carries no value the draw cannot complete a node around', () => {
+      const dead = { 'stage-roster': [row('r1', { flagged: true, age: 1 })] };
+
+      expect(
+        analyseFeasibility(flagAndComparator, stages, config, dead),
+      ).toEqual([]);
+
+      for (let seed = 1; seed <= 20; seed++) {
+        expect(
+          flagsDrawn(flagAndComparator, dead, seed),
+          `seed ${seed}`,
+        ).toEqual([true]);
+      }
+    });
+
+    it('still refuses where the completion the draw needs is there', () => {
+      const live = { 'stage-roster': [row('r1', { flagged: true, age: 0 })] };
+      const conflicts = analyseFeasibility(
+        flagAndComparator,
+        stages,
+        config,
+        live,
+      );
+
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0]?.reason).toBe(
+        'a prompt and a roster row fix this to true on up to 2 nodes, but unique allows one node to hold a value',
+      );
+    });
+
+    it('reads a panel of a fabricating stage the same way', () => {
+      // A name generator handed a panel draws its rows too, and the same rows
+      // die the same way there. What differs is the merge the row is judged by:
+      // the prompt's value wins a collision on this interface, and the roster's
+      // wins on the other.
+      const carrying = {
+        id: 'stage-carry',
+        type: 'NameGenerator',
+        label: 'Carrying panel',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'c-p1', text: 'Name people' }],
+        behaviours: { minNodes: 1, maxNodes: 1 },
+      } as unknown as Stage;
+
+      const dead = { 'stage-carry': [row('c1', { flagged: true, age: 5 })] };
+      const live = { 'stage-carry': [row('c1', { flagged: true, age: 21 })] };
+
+      expect(
+        analyseFeasibility(
+          flagAndAge,
+          [carrying, panelStage(true)],
+          config,
+          dead,
+        ),
+      ).toEqual([]);
+      expect(
+        analyseFeasibility(
+          flagAndAge,
+          [carrying, panelStage(true)],
+          config,
+          live,
+        ),
+      ).toHaveLength(1);
+    });
+  });
 });
 
 /**

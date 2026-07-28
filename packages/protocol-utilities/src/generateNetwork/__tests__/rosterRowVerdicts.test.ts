@@ -102,12 +102,14 @@ beforeEach(() => {
 });
 
 describe('the verdict a roster row is judged by', () => {
-  // Two readers each judge a row exactly once per run: feasibility's drawable
-  // count, which decides how many people the pool can become, and the stage
-  // draw itself. They are separate passes over separate memoisations — the
-  // counter is a pure function with no generation context to hold one — so the
-  // whole-run ceiling is two verdicts per row, not one.
-  const READERS = 2;
+  // Three readers each judge a row at most once per run: feasibility's drawable
+  // count, which decides how many people the pool can become; its roster/prompt
+  // collision counter, which decides whose values can collide with a prompt's;
+  // and the stage draw itself. They are separate passes over separate
+  // memoisations — the two counters are pure functions with no generation
+  // context to hold one — so the whole-run ceiling is three verdicts per row,
+  // not one.
+  const READERS = 3;
 
   it('is reached once per row and reader however many nodes are drawn', () => {
     // Ninety rows the draw cannot complete and ten it can. Every node the stage
@@ -129,16 +131,24 @@ describe('the verdict a roster row is judged by', () => {
   });
 
   it('belongs to the row rather than to its primary key', () => {
-    // Two rows a caller gave one key, one of which the draw can complete. Both
-    // are judged by both readers, whichever of them the walk reaches first: a
-    // verdict standing for the key would answer the second row with the first
-    // row's values, and be reached once per reader.
+    // Two rows a caller gave one key, one of which the draw can complete. Each
+    // is judged on the values it carries, whichever of them the walk reaches
+    // first: a verdict standing for the key would answer the second row with
+    // the first row's values, drawing the row nothing can complete on the seeds
+    // that reach it first and passing over the row the protocol allows on the
+    // rest.
+    //
+    // A ceiling rather than an exact count, because the key is spent once a row
+    // carrying it is drawn: the copy left behind is then off the roster
+    // altogether, and the draw never asks the rules about it.
     for (let seed = 1; seed <= 20; seed++) {
       completability.checks = 0;
       const rows = rowsOf([1, 0], () => 'shared-key');
 
-      expect(draw(seed, 2, rows)).toEqual([0]);
-      expect(completability.checks).toBe(READERS * 2);
+      expect(draw(seed, 2, rows), `seed ${seed}`).toEqual([0]);
+      expect(completability.checks, `seed ${seed}`).toBeLessThanOrEqual(
+        READERS * rows.length,
+      );
     }
   });
 });

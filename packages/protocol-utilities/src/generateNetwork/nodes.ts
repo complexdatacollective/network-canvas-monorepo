@@ -17,12 +17,11 @@ import {
   rosterRowIsDrawable,
 } from './attributes';
 import type { GenerationConfig } from './config';
-import { stepsBetween } from './constraints/dateWindow';
+import { dateValueResolution, stepsBetween } from './constraints/dateWindow';
 import {
   completionCheckFor,
   type EntityScopeRef,
 } from './constraints/generateEntityAttributes';
-import { dateValueResolution } from './constraints/groupConstraints';
 import {
   COMPARATOR_DIRECTION,
   COMPARISON_RULES,
@@ -72,10 +71,14 @@ export type RosterDraw = {
   /**
    * Roster rows already drawn, shared across all prompts and stages.
    *
-   * Keyed by primary key, and read once per call to build that call's drawable
-   * pool. Two rows a caller gave one key are therefore both drawable inside a
-   * single prompt's draw — and the nodes they build share that key — while
-   * drawing either of them keeps both out of every later prompt and stage.
+   * Keyed by primary key, and read both to build a call's drawable pool and
+   * again for every candidate that call judges — so a key drawn earlier in the
+   * same draw turns away the rows repeating it, exactly as a key drawn by an
+   * earlier stage does. One key admits one node per run: the interview's roster
+   * excludes every entry sharing a key the moment one of them is added, and its
+   * session reducer refuses a second node arriving under a key the network
+   * already holds. Which of the rows a caller gave one key is drawn is settled
+   * by the walk rather than by their order — see `createNodesForStage`.
    */
   used: Set<string>;
   /** Whether the stage may fabricate nodes beyond the roster. */
@@ -320,6 +323,58 @@ function variablesEveryPromptFixes(
   return shared ?? new Set();
 }
 
+/** What judging one node type's rows takes: its rules, and the draw's own check. */
+type RowJudge = {
+  constraints: EntityConstraints;
+  canComplete: (fixed: Record<string, VariableValue>) => boolean;
+};
+
+/**
+ * Whether any seed could build a node from a roster row — the half of
+ * `createNodesForStage`'s pass-over the protocol settles, asked here of a row
+ * the draw has not reached yet.
+ *
+ * The assignment judged is the one the node would be written with, merged in
+ * whichever order the stage's interface settles a collision: a roster stage
+ * lets the row's own value win, a name generator drawing a panel lets the
+ * prompt's. Both readings are `fixedValuesFor`'s, and both halves of the
+ * verdict are the primitives its `rulesAllow` composes — a rule the values
+ * break between or within themselves, and a draw left no way to complete the
+ * node around them. Neither consults the network, the registry or the seed, so
+ * a row they reject is one no seed can draw.
+ *
+ * A row is drawable where ANY prompt admits it, because which prompt draws a
+ * row is a seed's business. Prompts the stage's node ceiling leaves nothing for
+ * are read alongside the rest: such a prompt can only keep a row that would
+ * otherwise be excluded, which counts a carrier the run never builds, and that
+ * is the safe direction.
+ */
+function rowCanBeDrawn(
+  stage: PromptedNodeStage,
+  row: NcNode,
+  { constraints, canComplete }: RowJudge,
+): boolean {
+  const rowValues = row[entityAttributesProperty];
+  const additional = stage.prompts.map((prompt) =>
+    getPromptAdditionalAttributes(prompt.additionalAttributes),
+  );
+  // A stage with no prompt creates no node, so the row's own values are all
+  // there would be to judge it by.
+  const assignments = additional.length > 0 ? additional : [{}];
+
+  return assignments.some((fixed) => {
+    const merged: Record<string, VariableValue> =
+      stage.type === 'NameGeneratorRoster'
+        ? { ...fixed, ...rowValues }
+        : { ...rowValues, ...fixed };
+
+    return (
+      ruleBrokenByFixedValues(constraints, merged) === undefined &&
+      canComplete(merged)
+    );
+  });
+}
+
 /**
  * The values roster rows can carry into the network, keyed by node type, with
  * the first stage that can draw a row holding each of them.
@@ -346,14 +401,24 @@ function variablesEveryPromptFixes(
  * already holds and is passed over, which is the interview's own reading of a
  * roster as a pool of candidates rather than a list of people it must add.
  *
- * Rows a run might never draw are counted all the same, and that is the
- * looseness this carries: a row whose values break rules of their own, or that
- * leaves the draw no way to complete the node around them, is passed over at
- * the draw and collides with nothing, but judging that needs the type's whole
- * constraint set, which this collector does not hold. So a roster whose rows
- * could never have been drawn refuses a protocol the run would have completed.
- * That is the direction to err in for `unique`: the other one emits a value two
- * nodes hold, on every seed.
+ * A row the rules leave dead carries nothing, and `nodeConstraints` is what
+ * says so: a row whose merged values break a rule of their own, or leave the
+ * draw no way to complete the node around them, is passed over on every seed,
+ * so no node of the run ever holds them. That is the same static judgement
+ * `createNodesForStage`'s own `rulesAllow` makes, from the same two primitives
+ * over the same merged assignment, so the two cannot disagree about a row.
+ * Without the lookup every row is counted, which over-refuses rather than
+ * under-refuses.
+ *
+ * What stays loose is the order inside a stage. A row is kept where ANY of the
+ * stage's prompts admits it, the prompts the node ceiling leaves nothing for
+ * included: which prompt draws a row is a seed's business, and reading them
+ * together can only keep a row some seed really reaches. So is the dynamic
+ * direction, here as everywhere: a row the network's own values would turn away
+ * when its stage runs is counted, because a different seed draws it before
+ * whatever claimed the value. Both leave a value counted that some run does not
+ * spend, which is the direction to err in for `unique` — the other one emits a
+ * value two nodes hold, on every seed.
  *
  * One carrier per value however many rows carry it, and however many stages
  * offer them — the rows share the group's single `unique` slot, so the second
@@ -365,8 +430,25 @@ export function countRosterCarriedValues(
   stages: Stage[],
   config: GenerationConfig,
   externalData: Record<string, NcNode[]> | undefined,
+  nodeConstraints?: (nodeType: string) => EntityConstraints | undefined,
 ): Map<string, RosterCarriedValues> {
   const byType = new Map<string, RosterCarriedValues>();
+  // `completionCheckFor` resolves a whole type's generation order and solves its
+  // tractable components, so a type's judge is built once rather than once per
+  // stage offering rows of it.
+  const judges = new Map<string, RowJudge | undefined>();
+  const judgeFor = (nodeType: string): RowJudge | undefined => {
+    if (nodeConstraints === undefined) return undefined;
+    if (judges.has(nodeType)) return judges.get(nodeType);
+
+    const constraints = nodeConstraints(nodeType);
+    const judge =
+      constraints === undefined
+        ? undefined
+        : { constraints, canComplete: completionCheckFor(constraints) };
+    judges.set(nodeType, judge);
+    return judge;
+  };
 
   for (const [stageIndex, stage] of stages.entries()) {
     if (!isPromptedNodeStage(stage)) continue;
@@ -382,9 +464,12 @@ export function countRosterCarriedValues(
     if (bounds.maxNodes <= 0) continue;
 
     const settled = variablesEveryPromptFixes(stage, bounds);
+    const judge = judgeFor(nodeType);
     const forType: RosterCarriedValues = byType.get(nodeType) ?? new Map();
 
     for (const row of rows) {
+      if (judge !== undefined && !rowCanBeDrawn(stage, row, judge)) continue;
+
       for (const [variable, value] of Object.entries(
         row[entityAttributesProperty],
       )) {
@@ -1013,8 +1098,20 @@ export function createNodesForStage(
    * one the row never writes — and answers both ways round: a row the network
    * could take is passed over, and a row whose finished node repeats a value
    * the registry has already issued is drawn.
+   *
+   * A key the run has already spent is turned away before any of that. Rows are
+   * data a caller hands in, and hand-built data can put one key on two rows, but
+   * a key names one person: the roster interface drops every entry sharing a key
+   * as soon as one of them is added, and the session reducer refuses a second
+   * node arriving under a key the network holds. Read live rather than folded
+   * into `pool`, so the copy drawn is the one this walk reaches first and is
+   * judged by its own values — the reading the verdict memo above already gives
+   * a repeated key, where a copy the rules reject must not answer for a copy
+   * they accept.
    */
   const rowIsDrawable = (row: NcNode): boolean => {
+    if (roster.used.has(row[entityPrimaryKeyProperty])) return false;
+
     const fixed = fixedValuesFor(row);
     return rosterRowIsDrawable(ctx, scope, fixed) && rulesAllow(row, fixed);
   };
