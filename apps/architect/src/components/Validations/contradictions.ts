@@ -98,19 +98,133 @@ export const buildProspectiveVariables = ({
 };
 
 /**
- * Contradictions a draft would introduce, restricted to those the edited
- * variable participates in — pre-existing conflicts between other variables
- * are not this editor's to report.
+ * `class` + sorted `variableIds` + sorted `variableId:rule` strips: stable
+ * across which analyser run produced a contradiction, and never depends on
+ * variable NAMES (the draft placeholder invents one for a brand new
+ * variable). Mirrors schema.ts's `validateComposerFieldContradictions`
+ * `keyOf`, used there for the identical purpose — telling a contradiction
+ * present in one run apart from an identically-shaped one in another.
+ */
+const contradictionKey = (contradiction: ValidationContradiction): string =>
+  [
+    contradiction.class,
+    [...contradiction.variableIds].toSorted().join(','),
+    contradiction.strips
+      .map((strip) => `${strip.variableId}:${strip.rule}`)
+      .toSorted()
+      .join(','),
+  ].join('|');
+
+/**
+ * Per-`allVariables`-reference cache of the DRAFT-FREE analyser run, keyed
+ * further by `stageEffectiveComponents` (the only other input that changes
+ * its result — see `findDraftContradictions` for why the baseline always
+ * matches the WITH-draft run's own flag rather than a fixed default).
+ * `allVariables` stays the same object reference for as long as a
+ * field-editor dialog is open — react-redux/reselect only hand the caller a
+ * new one once the underlying codebook actually changes, which the dialog's
+ * own local draft never does — so this turns what would otherwise be a
+ * second full analyser pass on every keystroke (`findDraftContradictions`
+ * runs once for the row-level check and once more in the form-level
+ * validate, both re-invoked on every value change) into one pass per dialog
+ * session. A WeakMap needs no explicit invalidation: once the dialog closes
+ * and its `allVariables` snapshot is no longer referenced anywhere, the
+ * cache entry is collected with it.
+ */
+const baselineCache = new WeakMap<
+  UnknownRecord,
+  Map<boolean, ValidationContradiction[]>
+>();
+
+const getBaselineContradictions = (
+  allVariables: UnknownRecord,
+  stageEffectiveComponents: boolean,
+): ValidationContradiction[] => {
+  let byFlag = baselineCache.get(allVariables);
+  if (!byFlag) {
+    byFlag = new Map();
+    baselineCache.set(allVariables, byFlag);
+  }
+  let contradictions = byFlag.get(stageEffectiveComponents);
+  if (!contradictions) {
+    contradictions = findValidationContradictions(allVariables, {
+      stageEffectiveComponents,
+    });
+    byFlag.set(stageEffectiveComponents, contradictions);
+  }
+  return contradictions;
+};
+
+/**
+ * Contradictions a draft would introduce: every contradiction the WITH-draft
+ * analyser run reports where EITHER the edited variable is directly named in
+ * `variableIds` (the original membership check) OR the contradiction's
+ * identity (`contradictionKey`) is absent from a WITHOUT-draft baseline run
+ * over the same `allVariables`.
+ *
+ * Twenty-seventh-wave Finding 2: a draft can make a contradiction infeasible
+ * between TWO OTHER variables it never appears in itself. E.g. required A
+ * declares `A.sameAs = B`; B declares `B.lessThanVariable = C`; required C
+ * has `maxValue: 10`. Widening A's `minValue` to 10 propagates that bound
+ * into B's range through the sameAs equality group, and B's OWN comparator
+ * to C then becomes unsatisfiable against C's committed `maxValue`. The
+ * analyser correctly reports that as a `disjointBounds` contradiction
+ * between B and C — the two ends of the broken comparator — since A
+ * contributed the bound but is not one of its `variableIds`. A PURE
+ * membership filter on the edited variable's id therefore let the dialog
+ * save an edit that protocol-level validation then rejected. Diffing the
+ * WITH-draft run against a WITHOUT-draft baseline catches this: B/C's
+ * contradiction is absent from the baseline (A's old, looser bound left
+ * B < C satisfiable) and so reports as caused by the draft, regardless of
+ * which variables it names.
+ *
+ * The baseline is NOT pure diffing alone, though — it runs WITH the exact
+ * same `stageEffectiveComponents` reading as the WITH-draft run, and the
+ * result is the UNION with the original membership check, not a
+ * replacement for it. Both choices exist to avoid a false positive the
+ * naive "always record-level baseline, diff only" version produces: a
+ * stage-scoped overlay caller (`makeFieldEditorValidate`'s `overlay`
+ * argument) can pass `stageEffectiveComponents: true` on EVERY validate
+ * call regardless of which field is being edited, and `allVariables` (the
+ * whole subject's codebook) can hold a contradiction between two OTHER,
+ * completely unrelated variables that is only provable in that stage-scoped
+ * mode (e.g. two Boolean singletons the CURRENT stage's sibling fields both
+ * still render as `Boolean`). Diffing that pair against a record-level
+ * (`false`) baseline would report it as "new" on every keystroke of an
+ * unrelated field's dialog, since record-level mode can never see it either
+ * way. Matching the baseline's flag to the WITH-draft run's keeps such an
+ * unrelated, already-latent pair OUT of the diff (it is identically present
+ * in both runs), while the ORIGINAL membership check still catches it on
+ * the rare occasion the edited variable IS one of that pair (see the
+ * `stage-effective boolean domains` tests) — matching this function's
+ * pre-existing, still-correct behaviour for that case.
+ *
+ * `draft.allVariables` IS already the correct baseline in both draft shapes
+ * `buildProspectiveVariables` handles: editing an EXISTING variable leaves
+ * its COMMITTED definition in place there (the draft only replaces it in
+ * the WITH-draft copy `buildProspectiveVariables` returns), and a NEW
+ * variable is simply absent from it altogether — no separate baseline
+ * construction is needed.
  */
 export const findDraftContradictions = (
   draft: ProspectiveDraft,
 ): ValidationContradiction[] => {
-  // Same `allVariables` as `buildProspectiveVariables` receives below, so both
-  // derive an identical id for this draft.
   const id = draft.currentVariableId || draftVariableId(draft.allVariables);
-  return findValidationContradictions(buildProspectiveVariables(draft), {
-    stageEffectiveComponents: draft.stageEffectiveComponents ?? false,
-  }).filter((contradiction) => contradiction.variableIds.includes(id));
+  const stageEffectiveComponents = draft.stageEffectiveComponents ?? false;
+  const withDraft = findValidationContradictions(
+    buildProspectiveVariables(draft),
+    { stageEffectiveComponents },
+  );
+  const baselineKeys = new Set(
+    getBaselineContradictions(draft.allVariables, stageEffectiveComponents).map(
+      contradictionKey,
+    ),
+  );
+  return withDraft.filter(
+    (contradiction) =>
+      contradiction.variableIds.includes(id) ||
+      !baselineKeys.has(contradictionKey(contradiction)),
+  );
 };
 
 /**
@@ -441,30 +555,41 @@ const withOverlay = (
  * draft — which composer callers achieve at construction time by the field's
  * array index (eleventh-wave Finding 4; see `buildComposerFieldOverlay`).
  */
-export const makeFieldEditorValidate =
-  (allVariables: UnknownRecord, overlay?: VariableOverlay) =>
-  (values: Record<string, unknown>): Record<string, unknown> => {
+export const makeFieldEditorValidate = (
+  allVariables: UnknownRecord,
+  overlay?: VariableOverlay,
+) => {
+  // Computed once per dialog session, not on every keystroke: `allVariables`
+  // and `overlay` are fixed for the returned validator's whole lifetime, so
+  // recomputing `withOverlay` on every call (as before) only ever produced
+  // an equal-but-freshly-spread object. Hoisting it here gives
+  // `overlaidVariables` a STABLE identity across repeated validate calls,
+  // which is what lets `findDraftContradictions`'s baseline cache (keyed by
+  // that same reference — see `getBaselineContradictions`) actually hit
+  // instead of missing on every keystroke.
+  const overlaidVariables = withOverlay(allVariables, overlay);
+  return (values: Record<string, unknown>): Record<string, unknown> => {
     // A variable that is only a TARGET of another's sameAs/comparator (never
     // configuring rules of its own) can have `values.validation` absent or
     // non-record here — that must not skip the check, since editing this
     // variable's own options/parameters can still break an incoming
-    // relationship. `findDraftContradictions`'s involvement filter still
-    // restricts results to contradictions the edited variable participates
-    // in, so an empty validation map is safe to proceed with.
+    // relationship. `findDraftContradictions` reports contradictions the
+    // draft causes regardless of whether the edited variable is directly
+    // named in one, so an empty validation map is safe to proceed with.
     const validation = isRecord(values.validation) ? values.validation : {};
-    // Nineteenth-wave Finding 2: creating a variable writes the typed DISPLAY
-    // NAME into `variable` as well as `_createNewVariable` (see
+    // Nineteenth-wave Finding 2: creating a variable writes the typed
+    // DISPLAY NAME into `variable` as well as `_createNewVariable` (see
     // withFieldsHandlers' `handleNewVariable`), so a non-empty
-    // `values.variable` is not necessarily a committed codebook id. Reading it
-    // as one bypassed `buildProspectiveVariables`'s collision-free sentinel:
-    // a typed name matching a real codebook id injected the draft OVER that
-    // variable, so the draft's rules against it read as self-references
-    // (a `sameAs` to oneself is vacuously satisfiable and reports nothing) —
-    // then creation assigned a fresh uuid and left a genuinely contradictory
-    // pair for protocol validation to reject.
-    // Truthiness, not mere presence: `handleChangeVariable` resets the flag to
-    // `null` when an existing variable is picked, and both commit handlers
-    // (`withFormHandlers`/`withComposerFormHandlers`) branch on
+    // `values.variable` is not necessarily a committed codebook id. Reading
+    // it as one bypassed `buildProspectiveVariables`'s collision-free
+    // sentinel: a typed name matching a real codebook id injected the draft
+    // OVER that variable, so the draft's rules against it read as
+    // self-references (a `sameAs` to oneself is vacuously satisfiable and
+    // reports nothing) — then creation assigned a fresh uuid and left a
+    // genuinely contradictory pair for protocol validation to reject.
+    // Truthiness, not mere presence: `handleChangeVariable` resets the flag
+    // to `null` when an existing variable is picked, and both commit
+    // handlers (`withFormHandlers`/`withComposerFormHandlers`) branch on
     // `if (!_createNewVariable)`, so a blank flag commits as an EXISTING
     // variable and must be read as one here too.
     const isCreatingVariable =
@@ -474,7 +599,6 @@ export const makeFieldEditorValidate =
       !isCreatingVariable && typeof values.variable === 'string'
         ? values.variable
         : '';
-    const overlaidVariables = withOverlay(allVariables, overlay);
     const existing = currentVariableId
       ? overlaidVariables[currentVariableId]
       : undefined;
@@ -499,14 +623,16 @@ export const makeFieldEditorValidate =
       options: values.options,
       parameters: values.parameters,
       // An `overlay` is only ever built from a stage's OWN composer fields
-      // (`buildComposerFieldOverlay`), so its presence IS the stage-effective
-      // signal: every variable it names carries that field's own RESOLVED
-      // component, and this dialog's own draft component (above) is the
-      // edited field's resolved component too. An overlay-less caller (the
-      // shared FieldFields dialog, FamilyPedigree's NodeConfiguration) has no
-      // stage in scope to resolve any OTHER variable's rendering, so it must
-      // stay in the default, unresolved mode.
+      // (`buildComposerFieldOverlay`), so its presence IS the
+      // stage-effective signal: every variable it names carries that
+      // field's own RESOLVED component, and this dialog's own draft
+      // component (above) is the edited field's resolved component too.
+      // An overlay-less caller (the shared FieldFields dialog,
+      // FamilyPedigree's NodeConfiguration) has no stage in scope to
+      // resolve any OTHER variable's rendering, so it must stay in the
+      // default, unresolved mode.
       stageEffectiveComponents: overlay !== undefined,
     })[0];
     return first ? { validation: first.message } : {};
   };
+};
