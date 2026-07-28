@@ -72,7 +72,11 @@ test('reorders stages via drag and commits one moveStage', async ({
   await timeline.dragStage(first.label, third.label);
 
   await expect
-    .poll(async () => stagesOf(await readProtocolJson(architectPage))[0]?.id)
+    .poll(async () => {
+      const current = stagesOf(await readProtocolJson(architectPage))[0];
+      if (!current) throw new Error('protocol has no stages after drag');
+      return current.id;
+    })
     .not.toBe(first.id);
 });
 
