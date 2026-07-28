@@ -1476,6 +1476,123 @@ describe('date comparators across picker resolutions', () => {
 });
 
 /**
+ * A DatePicker whose declared `min`/`max` are written coarser than the date
+ * its own picker collects — a full-resolution field bounded by a year and a
+ * month, a month-resolution field bounded by two years.
+ *
+ * `buildConstraints` completes each bound to the picker's own resolution
+ * rather than refusing it, because fresco-ui's `compareDateStrings` already
+ * reads a coarse bound this way: it truncates both sides to the shorter
+ * length before comparing, so `min: "2020"` on a full-date field admits every
+ * date from 2020-01-01 and `max: "2022-06"` admits every date up to
+ * 2022-06-30. That argument lives only as a doc comment on
+ * `completeToResolution` in `buildConstraints.ts` until a run actually draws
+ * values under it and checks them against the real validator — which is what
+ * the fixtures below are for.
+ *
+ * The month resolution completes differently from full, and not merely by
+ * degree: `DatePickerField` renders it as a `<select>` built by running each
+ * bound through `ymdPattern`, which defaults a missing component to 1 at
+ * *both* ends. A coarse ceiling therefore caps the offered months at January
+ * rather than December — `max: "2021"` offers only up to January 2021, and a
+ * later month that year would satisfy the same truncating validator without
+ * ever being an option the control rendered.
+ */
+const coarseBoundVariables: Variables = {
+  coarseFullDate: {
+    name: 'Coarse full date',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full', min: '2020', max: '2022-06' },
+    validation: { required: true },
+  },
+  coarseMonthDate: {
+    name: 'Coarse month date',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'month', min: '2020', max: '2021' },
+    validation: { required: true },
+  },
+};
+
+const coarseBoundCodebook: Codebook = {
+  ego: { variables: coarseBoundVariables },
+};
+
+const coarseBoundStages = [
+  {
+    id: 'stage-coarse-bound',
+    type: 'EgoForm',
+    label: 'Coarse dates',
+    form: { fields: formFields(coarseBoundVariables) },
+  },
+] as unknown as Stage[];
+
+describe('a DatePicker bound coarser than its own picker resolution', () => {
+  it('generates values that pass the real form validators, over 25 seeds', async () => {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= 25; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: coarseBoundCodebook,
+        stages: coarseBoundStages,
+        config: { today },
+      });
+
+      failures.push(
+        ...(
+          await collectFailures(coarseBoundCodebook, network, coarseBoundStages)
+        ).map((failure) => `seed ${seed}: ${failure}`),
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  // Passing the real validator is necessary but not sufficient: it truncates
+  // both sides to the shorter length, so it cannot by itself distinguish a
+  // ceiling completed to January from one completed to December. Pinning the
+  // literal window each bound completes to is what proves the completion
+  // itself, not only its downstream effect.
+  it('completes each bound to the window its own picker resolution reads', () => {
+    const wrong: string[] = [];
+
+    for (let seed = 1; seed <= 25; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: coarseBoundCodebook,
+        stages: coarseBoundStages,
+        config: { today },
+      });
+      const attributes = network.ego[entityAttributesProperty];
+
+      const fullDate = attributes.coarseFullDate;
+      if (
+        typeof fullDate !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(fullDate) ||
+        fullDate < '2020-01-01' ||
+        fullDate > '2022-06-30'
+      ) {
+        wrong.push(`seed ${seed}: coarseFullDate=${shown(fullDate)}`);
+      }
+
+      const monthDate = attributes.coarseMonthDate;
+      if (
+        typeof monthDate !== 'string' ||
+        !/^\d{4}-\d{2}$/.test(monthDate) ||
+        monthDate < '2020-01' ||
+        monthDate > '2021-01'
+      ) {
+        wrong.push(`seed ${seed}: coarseMonthDate=${shown(monthDate)}`);
+      }
+    }
+
+    expect(wrong).toEqual([]);
+  });
+});
+
+/**
  * A roster whose rows fix both ends of a cross-resolution comparator.
  *
  * A value a row carries is never drawn — the draw is asked only for what the
@@ -1546,6 +1663,134 @@ function rosterDateRows(): NcNode[] {
     [entityAttributesProperty]: { ...attributes },
   }));
 }
+
+/**
+ * A roster whose rows fix one end of a comparator and leave the other to the
+ * draw.
+ *
+ * The fixtures above pin both ends, which settles the comparison at the row:
+ * two values, one rule, decided before anything is drawn. Pinning one end
+ * settles nothing on its own — the row's value is inside its own bounds, and
+ * the rule names a variable the row leaves out — while still deciding what the
+ * draw can produce. `pinnedAge` at the top of the range asks `drawnRetired` for
+ * a value above 1 out of a range that stops at 1, and the draw is bound to its
+ * own range first, so the row can only build a node the interview rejects.
+ *
+ * Two of the four rows below leave the draw somewhere to go and two do not, so
+ * a run can fill the stage only by passing the second pair over.
+ */
+const rosterPinVariables: Variables = {
+  pinnedAge: {
+    name: 'Pinned age',
+    type: 'number',
+    component: 'Number',
+    validation: { required: true, minValue: 0, maxValue: 1 },
+  },
+  drawnRetired: {
+    name: 'Drawn retired',
+    type: 'number',
+    component: 'Number',
+    validation: {
+      required: true,
+      minValue: 0,
+      maxValue: 1,
+      greaterThanVariable: ref('pinnedAge'),
+    },
+  },
+};
+
+const rosterPinCodebook: Codebook = {
+  node: {
+    rosterPinned: {
+      name: 'Person',
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+      variables: rosterPinVariables,
+    },
+  },
+};
+
+const rosterPinStages = [
+  {
+    id: 'stage-roster-pins',
+    type: 'NameGeneratorRoster',
+    label: 'People',
+    subject: { entity: 'node', type: 'rosterPinned' },
+    prompts: [{ id: 'p1', text: 'Pick people' }],
+    form: {
+      title: 'About this person',
+      fields: formFields(rosterPinVariables),
+    },
+    behaviours: { minNodes: 2, maxNodes: 2 },
+  },
+] as unknown as Stage[];
+
+/** The rows the stage draws from, rebuilt per seed so no run mutates another's. */
+function rosterPinRows(): NcNode[] {
+  return [
+    { pinnedAge: 1 },
+    { pinnedAge: 0 },
+    { pinnedAge: 1 },
+    { pinnedAge: 0 },
+  ].map((attributes, index) => ({
+    [entityPrimaryKeyProperty]: `roster-pin-${index}`,
+    type: 'rosterPinned',
+    [entityAttributesProperty]: { ...attributes },
+  }));
+}
+
+describe('a roster pinning one end of a comparator', () => {
+  it('draws rows whose values pass the real form validators', async () => {
+    const failures: string[] = [];
+
+    for (let seed = 1; seed <= 25; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: rosterPinCodebook,
+        stages: rosterPinStages,
+        externalData: { 'stage-roster-pins': rosterPinRows() },
+        config: { today },
+      });
+
+      if (network.nodes.length !== 2) {
+        failures.push(`seed ${seed}: ${network.nodes.length} nodes, not 2`);
+      }
+
+      failures.push(
+        ...(
+          await collectFailures(rosterPinCodebook, network, rosterPinStages)
+        ).map((failure) => `seed ${seed}: ${failure}`),
+      );
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  // Conformance alone would also be satisfied by a run that drew nothing. The
+  // two rows the draw can complete are the two the stage draws.
+  it('draws exactly the rows the draw can complete', () => {
+    const wrong: string[] = [];
+
+    for (let seed = 1; seed <= 25; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: rosterPinCodebook,
+        stages: rosterPinStages,
+        externalData: { 'stage-roster-pins': rosterPinRows() },
+        config: { today },
+      });
+
+      const drawn = network.nodes
+        .map((node) => shown(node[entityAttributesProperty].pinnedAge))
+        .toSorted()
+        .join(', ');
+
+      if (drawn !== '0, 0') wrong.push(`seed ${seed}: ${drawn}`);
+    }
+
+    expect(wrong).toEqual([]);
+  });
+});
 
 /**
  * Number bounds too close together to hold a whole value.
