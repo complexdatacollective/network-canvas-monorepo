@@ -7046,3 +7046,160 @@ describe('findValidationContradictions — Thirtieth wave Fix 2: one-sided full-
     ).toEqual([]);
   });
 });
+
+describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordinal differentFrom components use the parity machinery', () => {
+  const ordinal = (
+    name: string,
+    values: (string | number)[],
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'ordinal',
+    options: values.map((value) => ({ label: String(value), value })),
+    validation,
+  });
+
+  // The reviewer's own report: three required ordinals sharing the SAME two
+  // distinct option values in an odd differentFrom cycle. The general
+  // k-colourability limitation the parity machinery cites does not apply
+  // here — with every effective domain exactly the same two-value set the
+  // component is satisfiable iff it is two-colourable, and an odd cycle is
+  // not. The strip follows the established single-smallest-keyed-edge
+  // policy.
+  it('rejects the reviewer repro: an odd cycle over one shared two-value domain', () => {
+    const result = findValidationContradictions({
+      a: ordinal('a', [1, 2], { required: true, differentFrom: 'b' }),
+      b: ordinal('b', [1, 2], { required: true, differentFrom: 'c' }),
+      c: ordinal('c', [1, 2], { required: true, differentFrom: 'a' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror direction: the same triangle declared the other way around
+  // still strips exactly one declaration of the smallest-keyed edge.
+  it('rejects the mirror cycle declared in the opposite direction', () => {
+    const result = findValidationContradictions({
+      a: ordinal('a', ['low', 'high'], { differentFrom: 'c' }),
+      b: ordinal('b', ['low', 'high'], { differentFrom: 'a' }),
+      c: ordinal('c', ['low', 'high'], { differentFrom: 'b' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Accept guard: one member holding a THIRD option value bails the whole
+  // component — the assignment a=1, b=2, c=3 satisfies every rule.
+  it('accepts the same cycle when one member offers a third value', () => {
+    expect(
+      findValidationContradictions({
+        a: ordinal('a', [1, 2], { required: true, differentFrom: 'b' }),
+        b: ordinal('b', [1, 2], { required: true, differentFrom: 'c' }),
+        c: ordinal('c', [1, 2, 3], { required: true, differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: two-value domains that DIFFER between members bail too —
+  // a=1, b=2, c=3 satisfies the cycle, so {1,2} beside {2,3} must never be
+  // treated as one two-colourable domain.
+  it('accepts the cycle when two-value domains differ between members', () => {
+    expect(
+      findValidationContradictions({
+        a: ordinal('a', [1, 2], { required: true, differentFrom: 'b' }),
+        b: ordinal('b', [1, 2], { required: true, differentFrom: 'c' }),
+        c: ordinal('c', [2, 3], { required: true, differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: an even cycle is two-colourable — alternating the two
+  // values around it satisfies every rule.
+  it('accepts an even cycle over one shared two-value domain', () => {
+    expect(
+      findValidationContradictions({
+        a: ordinal('a', [1, 2], { differentFrom: 'b' }),
+        b: ordinal('b', [1, 2], { differentFrom: 'c' }),
+        c: ordinal('c', [1, 2], { differentFrom: 'd' }),
+        d: ordinal('d', [1, 2], { differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Singleton-domain members interact with parity exactly as boolean pins
+  // do: `a` (only 1) and `c` (only 2) sit an even number of hops apart, so
+  // any two-colouring of the shared {1,2} domain gives them the SAME value,
+  // yet their domains pin them to opposite ones.
+  it('rejects disagreeing singleton pins across an even-hop path', () => {
+    const result = findValidationContradictions({
+      a: ordinal('a', [1], { required: true, differentFrom: 'b' }),
+      b: ordinal('b', [1, 2], { required: true }),
+      c: ordinal('c', [2], { required: true, differentFrom: 'b' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedDifferentFromParity');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The agreeing-parity mirror stays satisfiable: both singletons pin the
+  // same value an even number of hops apart (a = c = 'yes', b = 'no').
+  it('accepts agreeing singleton pins across an even-hop path', () => {
+    expect(
+      findValidationContradictions({
+        a: ordinal('a', ['yes'], { required: true, differentFrom: 'b' }),
+        b: ordinal('b', ['yes', 'no'], { required: true }),
+        c: ordinal('c', ['yes'], { required: true, differentFrom: 'b' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Categorical variables never enter this machinery, even with exactly two
+  // options: the runtime stores a categorical selection as an ARRAY compared
+  // as an order-insensitive multiset, so a two-option categorical has four
+  // possible stored selections — the odd cycle below is genuinely
+  // satisfiable (e.g. {x}, {y}, {x,y}).
+  it('leaves an odd cycle of two-option categoricals alone', () => {
+    expect(
+      findValidationContradictions({
+        x: {
+          name: 'x',
+          type: 'categorical',
+          options: [
+            { label: 'X', value: 'x' },
+            { label: 'Y', value: 'y' },
+          ],
+          validation: { differentFrom: 'y' },
+        },
+        y: {
+          name: 'y',
+          type: 'categorical',
+          options: [
+            { label: 'X', value: 'x' },
+            { label: 'Y', value: 'y' },
+          ],
+          validation: { differentFrom: 'z' },
+        },
+        z: {
+          name: 'z',
+          type: 'categorical',
+          options: [
+            { label: 'X', value: 'x' },
+            { label: 'Y', value: 'y' },
+          ],
+          validation: { differentFrom: 'x' },
+        },
+      }),
+    ).toEqual([]);
+  });
+});

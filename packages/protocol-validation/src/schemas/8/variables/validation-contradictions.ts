@@ -4012,8 +4012,111 @@ const matchesReferenceAssignment = (pin: SingletonPin): boolean =>
   pin.value === (pin.color === 0);
 
 /**
- * Contradictions in the boolean-only `differentFrom` graph, at
- * equality-group granularity (a `sameAs` group of booleans holds one shared
+ * Thirtieth wave (Fix 3): the shared two-value option domain of an ordinal
+ * `differentFrom` component, with every group's singleton pin BOOLEAN-IZED
+ * against it, or `undefined` whenever the component is not uniformly
+ * two-valued (accept). The general k-colourability limitation the parity
+ * machinery documents does not apply when every effective domain in the
+ * component is exactly the same two-value set: the component is then
+ * satisfiable iff it is two-colourable, which is precisely what the
+ * existing linear boolean bipartite check decides — so an ordinal component
+ * qualifying here is fed through that machinery verbatim, its two domain
+ * values standing in for true/false.
+ *
+ * The mapping is deterministic: the domain pair is sorted by its typeof-
+ * tagged JSON token (the same tagging `pinnedValue`'s categorical keys use)
+ * and the FIRST value is the reference — a singleton pin becomes the
+ * boolean "is the reference value", so `SingletonPin` and
+ * `matchesReferenceAssignment` are reused rather than duplicated, exactly
+ * as boolean pins interact with parity. Every uncertainty bails the WHOLE
+ * component to accept:
+ *
+ *   - a member with no usable `options` array, an empty set, or more than
+ *     two distinct values (the k-colourability limit stands there);
+ *   - two-value domains that differ between members ({1,2} beside {2,3} —
+ *     even though group-intersection reasoning could sometimes pin, the
+ *     conservative accept is deliberate);
+ *   - a singleton value outside the shared pair (its differentFrom edges
+ *     are trivially satisfiable, so treating it as a pin would be wrong);
+ *   - two disagreeing singleton members inside ONE group — that group's own
+ *     option-set emptiness conflict (`optionsDisjoint`), whose repair may
+ *     strip the very grouping edges in play;
+ *   - no two-valued member at all: all-singleton components are either the
+ *     pinned-equal machinery's (equal pins, already claimed) or trivially
+ *     satisfiable, and there is no shared domain to force a colouring
+ *     against.
+ *
+ * Categorical variables are deliberately NOT routed through this model even
+ * when rendered as a single-select control: the runtime stores a
+ * categorical value as an ARRAY and `differentFrom` compares those arrays
+ * as order-insensitive multisets (fresco-ui's `isMatchingValue` — the same
+ * reading `pinnedValue`'s composite set keys encode), so even a two-option
+ * categorical has four possible stored selections, never a comparable
+ * two-value scalar domain.
+ */
+type OrdinalTwoValueDomain = {
+  /** Group id → whether the group's pinned value is the reference value. */
+  pins: Map<string, boolean>;
+};
+
+const ordinalDomainToken = (value: string | number): string =>
+  JSON.stringify([typeof value, String(value)]);
+
+const ordinalComponentTwoValueDomain = (
+  variables: UnknownRecord,
+  groups: string[],
+  membersOf: Map<string, string[]>,
+): OrdinalTwoValueDomain | undefined => {
+  let reference: string | number | undefined;
+  let other: string | number | undefined;
+  const memberValues = new Map<string, Set<string | number>>();
+  for (const group of groups) {
+    for (const member of membersOf.get(group) ?? [group]) {
+      const values = optionValues(variables[member]);
+      if (values === undefined || values.size === 0 || values.size > 2) {
+        return undefined;
+      }
+      memberValues.set(member, values);
+      if (values.size !== 2) continue;
+      const [first, second] = [...values].toSorted((a, b) => {
+        const tokenA = ordinalDomainToken(a);
+        const tokenB = ordinalDomainToken(b);
+        return tokenA < tokenB ? -1 : tokenA > tokenB ? 1 : 0;
+      });
+      if (first === undefined || second === undefined) return undefined;
+      if (reference === undefined) {
+        reference = first;
+        other = second;
+      } else if (reference !== first || other !== second) {
+        return undefined;
+      }
+    }
+  }
+  if (reference === undefined || other === undefined) return undefined;
+  const pins = new Map<string, boolean>();
+  for (const group of groups) {
+    let pinned: string | number | undefined;
+    for (const member of membersOf.get(group) ?? [group]) {
+      const values = memberValues.get(member);
+      if (values?.size !== 1) continue;
+      const [value] = values;
+      if (value === undefined || (value !== reference && value !== other)) {
+        return undefined;
+      }
+      if (pinned === undefined) {
+        pinned = value;
+      } else if (pinned !== value) {
+        return undefined;
+      }
+    }
+    if (pinned !== undefined) pins.set(group, pinned === reference);
+  }
+  return { pins };
+};
+
+/**
+ * Contradictions in the boolean and two-valued-ordinal `differentFrom`
+ * graph, at equality-group granularity (a `sameAs` group holds one shared
  * value, so `differentFrom` edges connect groups, not individual
  * variables). Two independent structural sources are checked per connected
  * component of that graph:
@@ -4028,11 +4131,15 @@ const matchesReferenceAssignment = (pin: SingletonPin): boolean =>
  *     between them — see the dedicated comment further down, where the
  *     colouring is checked against those pins.
  *
- * DELIBERATE LIMIT: only boolean variables are checked here. Ordinal/
- * categorical variables can hold more than two values, so the equivalent
- * question is general k-colourability (for cycles) or arbitrary domain
+ * DELIBERATE LIMIT: boolean variables are always checked here, and —
+ * thirtieth wave (Fix 3) — ordinal variables exactly when their whole
+ * component shares one two-value option domain (see
+ * `ordinalComponentTwoValueDomain`, including why categorical stays out:
+ * its stored value is an array, never a comparable scalar). Larger or
+ * non-uniform ordinal domains still bail to accept: the equivalent question
+ * there is general k-colourability (for cycles) or arbitrary domain
  * propagation (for pins), neither of which has an efficient exact check for
- * an arbitrary domain — that's out of scope here and left to the interview
+ * an arbitrary domain — that remains out of scope and left to the interview
  * runtime's own fill-time enforcement as a backstop.
  *
  * `claimedPairs` (sorted `id\0id` keys) comes from
@@ -4056,9 +4163,10 @@ function oddDifferentFromCycleContradictions(
   const adjacency = new Map<string, Set<string>>();
 
   for (const [id, variable] of Object.entries(variables)) {
-    if (typeOf(variable) !== 'boolean') continue;
-    // `usableReference` guarantees same-typed endpoints, so the target is
-    // necessarily boolean too.
+    const type = typeOf(variable);
+    if (type !== 'boolean' && type !== 'ordinal') continue;
+    // `usableReference` guarantees same-typed endpoints, so the target
+    // shares this variable's type — a component is never mixed-typed.
     const target = usableReference(variables, id, 'differentFrom');
     if (target === undefined) continue;
     const groupA = groupOf.get(id);
@@ -4149,6 +4257,30 @@ function oddDifferentFromCycleContradictions(
       }
     }
 
+    // Thirtieth wave (Fix 3): a component is uniformly typed (every edge and
+    // every equality-group union joins same-typed variables), so its first
+    // member's type decides which domain model applies — the Set is
+    // defensive, matching the rest of the file. An ordinal component is
+    // judged ONLY when `ordinalComponentTwoValueDomain` validates it as one
+    // shared two-value set; any member with a different or larger domain
+    // bails the whole component to accept BEFORE either structural check
+    // below runs, keeping the documented k-colourability limit for genuinely
+    // larger domains.
+    const componentTypes = new Set(
+      queue.flatMap((group) =>
+        (membersOf.get(group) ?? [group]).map((member) =>
+          typeOf(variables[member]),
+        ),
+      ),
+    );
+    const [componentType] = componentTypes;
+    if (componentTypes.size !== 1 || componentType === undefined) continue;
+    const ordinalDomain =
+      componentType === 'ordinal'
+        ? ordinalComponentTwoValueDomain(variables, queue, membersOf)
+        : undefined;
+    if (componentType === 'ordinal' && ordinalDomain === undefined) continue;
+
     if (!bipartite) {
       if (!conflict) continue; // Type-narrowing only: bipartite is only ever
       // set false alongside `conflict ??= {...}` above, so this never fires.
@@ -4195,19 +4327,27 @@ function oddDifferentFromCycleContradictions(
     // sit an EVEN number of hops apart (2, via B), so any single assignment
     // gives them the same value, yet they are pinned to opposite ones.
     //
-    // Reads every group's domain through `sharedBooleanDomain` (itself built
-    // on `booleanDomain`), never `options` directly, so a Toggle-rendered
-    // boolean (or one with no declared component) stays unconditionally
-    // two-valued here exactly as it does everywhere else in this file.
+    // Reads every boolean group's domain through `sharedBooleanDomain`
+    // (itself built on `booleanDomain`), never `options` directly, so a
+    // Toggle-rendered boolean (or one with no declared component) stays
+    // unconditionally two-valued here exactly as it does everywhere else in
+    // this file. An ordinal component's pins were already boolean-ized
+    // against its shared domain's reference value
+    // (`ordinalComponentTwoValueDomain`), so singleton-domain ordinal
+    // members interact with parity through exactly this same machinery.
     const singletonPins: SingletonPin[] = [];
     for (const group of queue) {
-      const domain = sharedBooleanDomain(
-        variables,
-        membersOf.get(group) ?? [group],
-        stageEffectiveComponents,
-      );
-      if (domain?.size !== 1) continue;
-      const [value] = domain;
+      let value: boolean | undefined;
+      if (ordinalDomain) {
+        value = ordinalDomain.pins.get(group);
+      } else {
+        const domain = sharedBooleanDomain(
+          variables,
+          membersOf.get(group) ?? [group],
+          stageEffectiveComponents,
+        );
+        if (domain?.size === 1) [value] = domain;
+      }
       const groupColor = color.get(group);
       if (value === undefined || groupColor === undefined) continue;
       singletonPins.push({ group, value, color: groupColor });
