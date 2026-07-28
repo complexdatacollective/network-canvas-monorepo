@@ -37,64 +37,77 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
-// The contradiction classes the analyser derives from ONE variable's own
-// non-reference rules (`localContradictions` in
-// validation-contradictions.ts): a min/max bound pair inverted against
-// itself, and a `minSelected` above that variable's own option count. Every
-// other class is structural — it reads a reference rule, spans an equality
-// group, or spans a comparator cycle — and stays strictly one-at-a-time.
-const LOCAL_CONTRADICTION_CLASSES = new Set<ContradictionClass>([
-  'invertedBounds',
-  'minSelectedExceedsOptions',
+// `ValidationContradiction.variableIds` is documented as "every variable
+// participating in the contradiction", which is exactly the property batching
+// (below) needs: two contradictions with disjoint `variableIds` cannot affect
+// one another's outcome UNLESS one of them was computed from a variable it
+// never listed. Every class satisfies that except these two:
+//
+//   - `pinnedEqualDifferentFrom`: `pinnedEqualDifferentFromContradictions`
+//     falls back to `propagatedPins` (the chained-bound-propagation closure)
+//     for either endpoint whose own rules don't already pin it. That pin can
+//     be seeded and carried by an entire OTHER comparator chain of variables
+//     the contradiction never lists in `variableIds` — see the doc comment on
+//     `propagatedPins` in validation-contradictions.ts — so stripping one of
+//     those unlisted variables' bounds elsewhere in the same pass can change
+//     the pin without this batching check ever seeing it.
+//   - `disjointBounds`: one class tag covers three different checks, and the
+//     cross-group edge check inside `disjointBoundsContradictions` judges an
+//     edge's two endpoint variables against their whole EQUALITY GROUP's
+//     merged interval (`groupIntervals`, built by intersecting every member's
+//     own bound) — but reports only the edge's two endpoints as
+//     `variableIds`, not the other group members whose bounds may have
+//     supplied the tightest value. The class tag can't distinguish that check
+//     from the group-level and chain-witness checks that share it (both of
+//     which DO report every contributing member), so the whole class stays
+//     one-at-a-time.
+const NON_BATCHABLE_CONTRADICTION_CLASSES = new Set<ContradictionClass>([
+  'pinnedEqualDifferentFrom',
+  'disjointBounds',
 ]);
 
-const REFERENCE_VALIDATION_RULES = new Set<string>(
-  VARIABLE_REFERENCE_VALIDATIONS,
-);
-
 /**
- * The contradictions the strip fixpoint may repair TOGETHER in one pass
- * (thirteenth-wave Finding 4). Repairing strictly one contradiction per pass
- * and re-running the whole analyser is quadratic in the number of independent
- * repairs (measured ~0.16s / 1.56s / 6.68s for 100 / 500 / 1000 variables
- * each carrying an inverted bound pair, with 2000 not finishing), and the
- * one-at-a-time rule only ever existed to protect INTERDEPENDENT
+ * The contradictions the strip fixpoint may repair TOGETHER in one pass.
+ * Repairing strictly one contradiction per pass and re-running the whole
+ * analyser is quadratic in the number of independent repairs (measured
+ * 0.19s / 0.72s / 2.3s for 100 / 200 / 400 disjoint contradiction pairs), and
+ * the one-at-a-time rule only ever existed to protect INTERDEPENDENT
  * contradictions, where one repair takes another off the list before it is
  * ever applied (see the step's own comment).
  *
  * A repair is batchable only when it is provably independent of every other:
  *
- *   - it belongs to a local class, so the analyser computed it from one
- *     variable's own rules and options alone — no other variable's repair can
- *     make it stop (or start) holding;
- *   - it names exactly one variable, and every rule it strips belongs to that
- *     same variable and is not a reference rule (sameAs / differentFrom /
- *     comparators), which are the rules that place a variable in an equality
- *     group or comparator cycle; and
- *   - no earlier member of the batch already claimed that variable, so the
- *     batch's strip variable-sets are pairwise disjoint and two repairs can
- *     never remove rules from one variable off the same pre-strip analysis.
+ *   - its class is not in `NON_BATCHABLE_CONTRADICTION_CLASSES`, so its
+ *     `variableIds` names every variable that could change whether it holds
+ *     (thirteenth-wave Finding 4 batched only two such classes by name;
+ *     every class now qualifies except the two documented above); and
+ *   - no earlier member of the batch already claimed any of its
+ *     `variableIds`, so the batch's variable-id sets are pairwise disjoint —
+ *     two repairs in the batch can never have been computed from rules the
+ *     other one is about to strip.
+ *
+ * This is what keeps genuinely interdependent contradictions safe even
+ * within a single batchable class: a contradiction whose `variableIds`
+ * overlaps an already-claimed set is simply left for a later pass, where it
+ * is re-analysed fresh against the post-strip state (e.g. `A sameAs B` plus
+ * `A differentFrom B` plus `A greaterThanVariable B` reports both a
+ * `conflictingReferencePair` and a `sameAsGroupConflict` over the same
+ * `{A, B}` — only the first-encountered one joins this pass's batch).
  *
  * An empty result means nothing was safely batchable and the caller falls
  * back to applying the single first contradiction, exactly as before.
  */
-const independentLocalRepairs = (
+const independentRepairs = (
   contradictions: ValidationContradiction[],
 ): ValidationContradiction[] => {
   const batch: ValidationContradiction[] = [];
   const claimed = new Set<string>();
   for (const contradiction of contradictions) {
-    if (!LOCAL_CONTRADICTION_CLASSES.has(contradiction.class)) continue;
-    const [owner, ...otherVariableIds] = contradiction.variableIds;
-    if (owner === undefined || otherVariableIds.length > 0) continue;
-    if (claimed.has(owner)) continue;
-    const stripsOwnPlainRulesOnly = contradiction.strips.every(
-      (strip) =>
-        strip.variableId === owner &&
-        !REFERENCE_VALIDATION_RULES.has(strip.rule),
-    );
-    if (!stripsOwnPlainRulesOnly) continue;
-    claimed.add(owner);
+    if (NON_BATCHABLE_CONTRADICTION_CLASSES.has(contradiction.class)) {
+      continue;
+    }
+    if (contradiction.variableIds.some((id) => claimed.has(id))) continue;
+    for (const id of contradiction.variableIds) claimed.add(id);
     batch.push(contradiction);
   }
   return batch;
@@ -1394,12 +1407,15 @@ const migrationV7toV8 = createMigration({
         // resolved contradiction take its dependents off the list before they
         // are ever removed.
         //
-        // Thirteenth-wave Finding 4: that protection is only needed where
-        // contradictions CAN be interdependent. Repairs that are provably
-        // independent — see `independentLocalRepairs` — are applied together
-        // in one pass instead, which takes a protocol of N independently
-        // broken variables from N+1 analyser runs to 2. Anything structural
-        // stays one-at-a-time.
+        // Thirteenth-wave Finding 4, generalised: that protection is only
+        // needed where contradictions CAN be interdependent. Repairs that are
+        // provably independent — see `independentRepairs` — are applied
+        // together in one pass instead, which takes a protocol of N
+        // independently broken variables from N+1 analyser runs to 2. Only
+        // `pinnedEqualDifferentFrom` and `disjointBounds` (see
+        // `NON_BATCHABLE_CONTRADICTION_CLASSES`) stay one-at-a-time
+        // unconditionally; every other class batches whenever its
+        // `variableIds` are pairwise disjoint from the rest of the pass.
         paths: [
           'codebook.node.*.variables',
           'codebook.edge.*.variables',
@@ -1452,7 +1468,7 @@ const migrationV7toV8 = createMigration({
             const contradictions = findValidationContradictions(typedVariables);
             const [firstContradiction] = contradictions;
             if (!firstContradiction) break;
-            const batch = independentLocalRepairs(contradictions);
+            const batch = independentRepairs(contradictions);
             for (const contradiction of batch.length > 0
               ? batch
               : [firstContradiction]) {

@@ -5314,9 +5314,12 @@ describe('Migration V7 to V8', () => {
       expect(variables?.a).toHaveProperty('validation.required', true);
     });
 
-    // Local repairs batch; the structural contradiction in the same protocol
-    // keeps its one-at-a-time treatment, so the strict comparator that only
-    // looked group-internal before the sameAs group was dissolved survives.
+    // Local repairs batch; a/b's sameAs+differentFrom+greaterThanVariable
+    // trio reports two overlapping structural contradictions over the same
+    // {a, b} (a conflictingReferencePair and a sameAsGroupConflict), so
+    // batching's disjointness check still defers one of them to a later
+    // pass — the strict comparator that only looked group-internal before
+    // the sameAs group was dissolved survives.
     it('batches local repairs without changing structural repair behaviour', () => {
       const variables: Record<string, unknown> = {
         a: {
@@ -5354,6 +5357,81 @@ describe('Migration V7 to V8', () => {
           validation: { required: true },
         });
       }
+    });
+
+    // Batching now extends beyond the local classes to every structural
+    // class whose `variableIds` names its full participant set (see
+    // `NON_BATCHABLE_CONTRADICTION_CLASSES` in migration.ts). This exercises
+    // several DISJOINT contradictions spanning different classes —
+    // invertedBounds (n), conflictingReferencePair (r1/r2), and a
+    // strictComparatorCycle (c1/c2) — alongside the classic INTERDEPENDENT
+    // cluster (x/y's sameAs+differentFrom+greaterThanVariable trio, which
+    // reports two contradictions over the same pair and so cannot fully
+    // resolve in the same pass as the disjoint ones). The whole protocol
+    // still migrates to something that validates, with exactly the expected
+    // rules stripped from every group.
+    it('batches disjoint repairs across several structural classes while still resolving an interdependent cluster', () => {
+      const migratedRaw = migrateVariables({
+        n: {
+          name: 'n',
+          type: 'number',
+          validation: { minValue: 10, maxValue: 2, required: true },
+        },
+        r1: {
+          name: 'r1',
+          type: 'text',
+          validation: { sameAs: 'r2', differentFrom: 'r2' },
+        },
+        r2: { name: 'r2', type: 'text' },
+        c1: {
+          name: 'c1',
+          type: 'number',
+          validation: { minValue: 0, greaterThanVariable: 'c2' },
+        },
+        c2: {
+          name: 'c2',
+          type: 'number',
+          validation: { greaterThanVariable: 'c1' },
+        },
+        x: {
+          name: 'x',
+          type: 'number',
+          validation: {
+            sameAs: 'y',
+            differentFrom: 'y',
+            greaterThanVariable: 'y',
+          },
+        },
+        y: { name: 'y', type: 'number' },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+
+      expect(variables?.n).not.toHaveProperty('validation.minValue');
+      expect(variables?.n).not.toHaveProperty('validation.maxValue');
+      expect(variables?.n).toHaveProperty('validation.required', true);
+
+      expect(variables?.r1).not.toHaveProperty('validation.sameAs');
+      expect(variables?.r1).not.toHaveProperty('validation.differentFrom');
+
+      expect(variables?.c1).not.toHaveProperty(
+        'validation.greaterThanVariable',
+      );
+      expect(variables?.c2).not.toHaveProperty(
+        'validation.greaterThanVariable',
+      );
+      expect(variables?.c1).toHaveProperty('validation.minValue', 0);
+
+      expect(variables?.x).not.toHaveProperty('validation.sameAs');
+      expect(variables?.x).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.x).toHaveProperty(
+        'validation.greaterThanVariable',
+        'y',
+      );
     });
   });
 });
