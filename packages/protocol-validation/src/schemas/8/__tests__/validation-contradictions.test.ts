@@ -2832,3 +2832,464 @@ describe('findValidationContradictions — Audit sweep: a boolean domain follows
     expect(result[0]?.class).toBe('disjointBounds');
   });
 });
+
+describe('findValidationContradictions — twenty-first-wave Finding 3: bounds propagate along comparator chains', () => {
+  const number = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'number',
+    validation,
+  });
+
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  const relativePicker = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'RelativeDatePicker',
+    parameters,
+    validation,
+  });
+
+  // The gap this closes: every single hop is feasible on its own because the
+  // middle variable contributes no bound, yet no values satisfy the chain.
+  it('rejects a three-link strict chain whose only bounds sit at its ends', () => {
+    const result = findValidationContradictions({
+      a: number('a', { maxValue: 1, greaterThanVariable: 'b' }),
+      b: number('b', { greaterThanVariable: 'c' }),
+      c: number('c', { minValue: 1 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variables "c", "b", "a" form a comparison chain their value ranges can never satisfy',
+    );
+    expect(result[0]?.variableIds).toEqual(['c', 'b', 'a']);
+  });
+
+  it('rejects a four-link strict chain, reporting it once rather than once per link', () => {
+    const result = findValidationContradictions({
+      a: number('a', { maxValue: 1, greaterThanVariable: 'b' }),
+      b: number('b', { greaterThanVariable: 'c' }),
+      c: number('c', { greaterThanVariable: 'd' }),
+      d: number('d', { minValue: 1 }),
+    });
+    // Propagation derives an infeasible interval at all four nodes; the
+    // bound-owning-pair canonicalisation collapses them to one report.
+    expect(result).toHaveLength(1);
+    expect(result[0]?.variableIds).toEqual(['d', 'c', 'b', 'a']);
+  });
+
+  it('reports two independent chains separately', () => {
+    const result = findValidationContradictions({
+      a: number('a', { maxValue: 1, greaterThanVariable: 'b' }),
+      b: number('b', { greaterThanVariable: 'c' }),
+      c: number('c', { minValue: 1 }),
+      p: number('p', { maxValue: 1, greaterThanVariable: 'q' }),
+      q: number('q', { greaterThanVariable: 'r' }),
+      r: number('r', { minValue: 1 }),
+    });
+    expect(result).toHaveLength(2);
+    expect(result.map((contradiction) => contradiction.variableIds)).toEqual([
+      ['c', 'b', 'a'],
+      ['r', 'q', 'p'],
+    ]);
+  });
+
+  // The strip policy follows `strictComparatorCycle`: a chain has many
+  // symmetric single-rule repairs, so every comparator on the witness goes and
+  // the endpoint bound rules stay.
+  it('strips every comparator on the chain and none of the endpoint bounds', () => {
+    const result = findValidationContradictions({
+      a: number('a', { maxValue: 1, greaterThanVariable: 'b' }),
+      b: number('b', { greaterThanVariable: 'c' }),
+      c: number('c', { greaterThanVariable: 'd' }),
+      d: number('d', { minValue: 1 }),
+    });
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'c', rule: 'greaterThanVariable' },
+      { variableId: 'b', rule: 'greaterThanVariable' },
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+  });
+
+  // `A >= B >= C` with `A.max === C.min` is genuinely satisfiable at
+  // `a = b = c = 1`; only a strict link, or bounds that really do not meet,
+  // make a chain impossible.
+  it('accepts a non-strict chain whose end bounds touch', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', { maxValue: 1, greaterThanOrEqualToVariable: 'b' }),
+        b: number('b', { greaterThanOrEqualToVariable: 'c' }),
+        c: number('c', { minValue: 1 }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('rejects a non-strict chain whose end bounds genuinely do not meet', () => {
+    const result = findValidationContradictions({
+      a: number('a', { maxValue: 0, greaterThanOrEqualToVariable: 'b' }),
+      b: number('b', { greaterThanOrEqualToVariable: 'c' }),
+      c: number('c', { minValue: 1 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'greaterThanOrEqualToVariable' },
+      { variableId: 'a', rule: 'greaterThanOrEqualToVariable' },
+    ]);
+  });
+
+  // A strict step over a whole-numbered quantity advances the bound by exactly
+  // one day, so two strict links need two days of headroom. `number` values
+  // are NOT whole-numbered — the interview runtime coerces a number field with
+  // a bare `Number()` — so the same shape over numbers only opens the bound
+  // and one unit of headroom is enough (the case below).
+  it('rejects a datetime chain with one day of headroom per two strict links', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { max: '2020-01-02' }, { greaterThanVariable: 'b' }),
+      b: datePicker('b', {}, { greaterThanVariable: 'c' }),
+      c: datePicker('c', { min: '2020-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  it('accepts the same datetime chain given two days of headroom', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '2020-01-03' }, { greaterThanVariable: 'b' }),
+        b: datePicker('b', {}, { greaterThanVariable: 'c' }),
+        c: datePicker('c', { min: '2020-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts a real-valued number chain with one unit of headroom', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', { maxValue: 2, greaterThanVariable: 'b' }),
+        b: number('b', { greaterThanVariable: 'c' }),
+        c: number('c', { minValue: 1 }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('propagates calendar bounds along a chain of DatePickers', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { max: '2020-01-01' }, { greaterThanVariable: 'b' }),
+      b: datePicker(
+        'b',
+        { min: '2010-01-01', max: '2030-01-01' },
+        { greaterThanVariable: 'c' },
+      ),
+      c: datePicker('c', { min: '2020-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds).toEqual(['c', 'b', 'a']);
+  });
+
+  it('propagates symbolic interview-date offsets along a chain of anchorless pickers', () => {
+    const result = findValidationContradictions({
+      a: relativePicker(
+        'a',
+        { before: 0, after: 0 },
+        { greaterThanVariable: 'b' },
+      ),
+      b: relativePicker(
+        'b',
+        { before: 180, after: 180 },
+        { greaterThanVariable: 'c' },
+      ),
+      c: relativePicker('c', { before: 0, after: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds).toEqual(['c', 'b', 'a']);
+  });
+
+  // Each origin is propagated on its own, seeded only from its own bounds, so
+  // a member measured against the other origin is a transparent relay. That
+  // manufactures no cross-origin comparison: `A > B > C` gives `A > C` by
+  // transitivity whatever B is measured against.
+  it('relays a fixed-origin chain through an anchorless member', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { max: '2020-01-01' }, { greaterThanVariable: 'b' }),
+      b: relativePicker('b', {}, { greaterThanVariable: 'c' }),
+      c: datePicker('c', { min: '2020-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds).toEqual(['c', 'b', 'a']);
+  });
+
+  it('relays a symbolic-origin chain through a fixed-window member', () => {
+    const result = findValidationContradictions({
+      a: relativePicker(
+        'a',
+        { before: 0, after: 0 },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2010-01-01', max: '2030-01-01' },
+        { greaterThanVariable: 'c' },
+      ),
+      c: relativePicker('c', { before: 0, after: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds).toEqual(['c', 'b', 'a']);
+  });
+
+  it('leaves a mixed-origin chain alone when the shared origin is satisfiable', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '2030-01-01' }, { greaterThanVariable: 'b' }),
+        b: relativePicker('b', {}, { greaterThanVariable: 'c' }),
+        c: datePicker('c', { min: '2020-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The per-edge check declines to judge anything against a group whose own
+  // bounds are already empty ("its strips resolve it first"); propagation
+  // follows that precedent, treating such a group as an unbounded relay rather
+  // than a chain endpoint. Once the sameAs repair splits the group, the
+  // migration's strip fixpoint re-runs the analyser and any chain that is
+  // still impossible surfaces then.
+  it('does not chain off a group whose own bounds are already empty', () => {
+    const result = findValidationContradictions({
+      a: number('a', {
+        maxValue: 5,
+        sameAs: 'b',
+        lessThanOrEqualToVariable: 'x',
+      }),
+      b: number('b', { minValue: 10 }),
+      x: number('x', { lessThanOrEqualToVariable: 'y' }),
+      y: number('y', { maxValue: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" are joined by sameAs but their rules leave no value they can share',
+    );
+  });
+
+  // A single hop is exactly what the per-edge check already reports, and
+  // reports identically, so propagation must not duplicate it.
+  it('leaves a single-hop disjoint comparator to the per-edge report', () => {
+    const result = findValidationContradictions({
+      a: number('a', { maxValue: 1, greaterThanVariable: 'b' }),
+      b: number('b', { minValue: 1 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.message).toBe(
+      'Variable "a": greaterThanVariable "b" can never be satisfied because their value ranges do not overlap',
+    );
+  });
+
+  // The upper bound has to travel DOWN the chain as well as the lower bound
+  // travelling up. Here the tightest lower bound reaching `m2`'s ceiling comes
+  // from `m2` itself one hop away — which the per-edge check already reports —
+  // so the genuinely transitive `m -> x -> ceiling` conflict is only visible
+  // once the ceiling has been pushed back down to `m`.
+  it('reports a transitive chain hidden behind a tighter one-hop neighbour', () => {
+    const result = findValidationContradictions({
+      m: number('m', { minValue: 10, lessThanOrEqualToVariable: 'x' }),
+      x: number('x', { lessThanOrEqualToVariable: 'ceiling' }),
+      m2: number('m2', { minValue: 20, lessThanOrEqualToVariable: 'ceiling' }),
+      ceiling: number('ceiling', { maxValue: 0 }),
+    });
+    expect(result.map((contradiction) => contradiction.class)).toEqual([
+      'disjointBounds',
+      'disjointBounds',
+    ]);
+    expect(result[0]?.message).toBe(
+      'Variable "m2": lessThanOrEqualToVariable "ceiling" can never be satisfied because their value ranges do not overlap',
+    );
+    expect(result[1]?.variableIds).toEqual(['m', 'x', 'ceiling']);
+    expect(result[1]?.strips).toEqual([
+      { variableId: 'm', rule: 'lessThanOrEqualToVariable' },
+      { variableId: 'x', rule: 'lessThanOrEqualToVariable' },
+    ]);
+  });
+
+  // The mirror of the case above, pinning the other pass: here the tightest
+  // CEILING reaching `floor` is one hop away — again already covered per-edge
+  // — so the transitive `floor -> x -> farCeiling` conflict is only visible
+  // once `floor`'s own floor has been carried up the chain.
+  it('reports a transitive chain hidden behind a tighter one-hop ceiling', () => {
+    const result = findValidationContradictions({
+      floor: number('floor', { minValue: 0, lessThanOrEqualToVariable: 'x' }),
+      x: number('x', { lessThanOrEqualToVariable: 'farCeiling' }),
+      farCeiling: number('farCeiling', { maxValue: -10 }),
+      nearCeiling: number('nearCeiling', {
+        maxValue: -20,
+        greaterThanOrEqualToVariable: 'floor',
+      }),
+    });
+    expect(result.map((contradiction) => contradiction.class)).toEqual([
+      'disjointBounds',
+      'disjointBounds',
+    ]);
+    expect(result[0]?.message).toBe(
+      'Variable "nearCeiling": greaterThanOrEqualToVariable "floor" can never be satisfied because their value ranges do not overlap',
+    );
+    expect(result[1]?.variableIds).toEqual(['floor', 'x', 'farCeiling']);
+    expect(result[1]?.strips).toEqual([
+      { variableId: 'floor', rule: 'lessThanOrEqualToVariable' },
+      { variableId: 'x', rule: 'lessThanOrEqualToVariable' },
+    ]);
+  });
+
+  // Groups inside a strict-edge SCC are already reported as
+  // `strictComparatorCycle`, so they are dropped from propagation entirely
+  // rather than surfacing a second time as an impossible chain.
+  it('does not double-report a chain running through a strict comparator cycle', () => {
+    const result = findValidationContradictions({
+      y: number('y', { maxValue: 1, greaterThanVariable: 'a' }),
+      a: number('a', { greaterThanVariable: 'b' }),
+      b: number('b', { greaterThanVariable: 'a' }),
+      z: number('z', { minValue: 1, lessThanVariable: 'b' }),
+    });
+    expect(result.map((contradiction) => contradiction.class)).toEqual([
+      'strictComparatorCycle',
+    ]);
+  });
+
+  it('still reports an unrelated chain alongside a strict comparator cycle', () => {
+    const result = findValidationContradictions({
+      a: number('a', { greaterThanVariable: 'b' }),
+      b: number('b', { greaterThanVariable: 'a' }),
+      p: number('p', { maxValue: 1, greaterThanVariable: 'q' }),
+      q: number('q', { greaterThanVariable: 'r' }),
+      r: number('r', { minValue: 1 }),
+    });
+    expect(
+      result.map((contradiction) => contradiction.class).toSorted(),
+    ).toEqual(['disjointBounds', 'strictComparatorCycle']);
+  });
+
+  // `sameAs(a, b)` plus `a <= c <= b` puts {a,b} and {c} on a group-level
+  // two-cycle although no variable-level cycle exists, so the walk has to
+  // condense it rather than assume a DAG. The condensed node then relays the
+  // chain that runs into it.
+  it('accepts a sameAs-induced group cycle that is satisfiable', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', { sameAs: 'b', lessThanOrEqualToVariable: 'c' }),
+        b: number('b', { maxValue: 5 }),
+        c: number('c', { lessThanOrEqualToVariable: 'b' }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('propagates a chain into a sameAs-induced group cycle', () => {
+    const result = findValidationContradictions({
+      a: number('a', { sameAs: 'b', lessThanOrEqualToVariable: 'c' }),
+      b: number('b', { maxValue: 5 }),
+      c: number('c', { lessThanOrEqualToVariable: 'b' }),
+      e: number('e', {
+        lessThanOrEqualToVariable: 'a',
+        greaterThanOrEqualToVariable: 'f',
+      }),
+      f: number('f', { minValue: 10 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds).toEqual(['f', 'e', 'a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'e', rule: 'greaterThanOrEqualToVariable' },
+      { variableId: 'e', rule: 'lessThanOrEqualToVariable' },
+    ]);
+  });
+
+  it('anchors the schema issue at the first stripped comparator', () => {
+    const result = VariablesSchema.safeParse({
+      a: {
+        name: 'a',
+        type: 'number',
+        validation: { maxValue: 1, greaterThanVariable: 'b' },
+      },
+      b: {
+        name: 'b',
+        type: 'number',
+        validation: { greaterThanVariable: 'c' },
+      },
+      c: { name: 'c', type: 'number', validation: { minValue: 1 } },
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual([
+      'b',
+      'validation',
+      'greaterThanVariable',
+    ]);
+  });
+});
+
+describe('findValidationContradictions — twenty-first-wave Finding 3: large chains', () => {
+  const boundedChainOf = (
+    count: number,
+    rule: string,
+    first: Record<string, unknown>,
+    last: Record<string, unknown>,
+  ): Record<string, unknown> => {
+    const variables: Record<string, unknown> = {};
+    for (let i = 0; i < count; i++) {
+      variables[`v${i}`] = {
+        name: `v${i}`,
+        type: 'number',
+        validation: {
+          ...(i < count - 1 ? { [rule]: `v${i + 1}` } : {}),
+          ...(i === 0 ? first : {}),
+          ...(i === count - 1 ? last : {}),
+        },
+      };
+    }
+    return variables;
+  };
+
+  it('accepts a long chain whose end bounds leave room', () => {
+    // v0 <= v1 <= ... <= v9999, with v0 >= 1 and v9999 <= 100.
+    expect(
+      findValidationContradictions(
+        boundedChainOf(
+          10_000,
+          'lessThanOrEqualToVariable',
+          { minValue: 1 },
+          { maxValue: 100 },
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it('reports a long strict chain whose end bounds do not, exactly once', () => {
+    // v0 > v1 > ... > v9999, with v0 <= 1 and v9999 >= 1.
+    const result = findValidationContradictions(
+      boundedChainOf(
+        10_000,
+        'greaterThanVariable',
+        { maxValue: 1 },
+        { minValue: 1 },
+      ),
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds).toHaveLength(10_000);
+    expect(result[0]?.strips).toHaveLength(9_999);
+  });
+});

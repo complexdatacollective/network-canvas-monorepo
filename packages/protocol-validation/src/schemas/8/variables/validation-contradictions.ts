@@ -262,28 +262,21 @@ function comparatorEdges(variables: UnknownRecord): ComparatorEdge[] {
 }
 
 /**
- * Strongly-connected components of the non-strict canonical comparator
- * subgraph, treating each `{ lower, upper }` edge as directed lower→upper
- * ("lower is at most upper"). A component with more than one member is a set
- * of variables a non-strict comparator cycle forces to hold one shared value
- * — `a >= b` plus `b >= a` is the two-node case; a longer all-non-strict
- * chain back to its start is the same shape. Eleventh-wave Finding 2: Tarjan
- * runs with an explicit frame stack rather than recursion — the analyser runs
- * inside protocol parsing AND the v7→v8 migration, so a large imported
- * protocol must not crash the import with a RangeError. The frames replay the
- * recursive visit order exactly (same neighbour order, same component
- * emission order).
+ * Strongly-connected components of a directed graph given as an adjacency map,
+ * in Tarjan's own emission order (every component is emitted only after all
+ * the components reachable from it). Eleventh-wave Finding 2: Tarjan runs with
+ * an explicit frame stack rather than recursion — the analyser runs inside
+ * protocol parsing AND the v7→v8 migration, so a large imported protocol must
+ * not crash the import with a RangeError. The frames replay the recursive
+ * visit order exactly (same neighbour order, same component emission order).
+ *
+ * Twenty-first-wave Finding 3 lifted this out of
+ * `nonStrictComparatorComponents` so the group-level condensation the chained
+ * bound propagation needs shares one non-recursive walk.
  */
-function nonStrictComparatorComponents(edges: ComparatorEdge[]): string[][] {
-  const adjacency = new Map<string, string[]>();
-  for (const edge of edges) {
-    if (edge.strict) continue;
-    const list = adjacency.get(edge.lower) ?? [];
-    list.push(edge.upper);
-    adjacency.set(edge.lower, list);
-    if (!adjacency.has(edge.upper)) adjacency.set(edge.upper, []);
-  }
-
+function stronglyConnectedComponents(
+  adjacency: Map<string, string[]>,
+): string[][] {
   const index = new Map<string, number>();
   const lowlink = new Map<string, number>();
   const onStack = new Set<string>();
@@ -357,7 +350,29 @@ function nonStrictComparatorComponents(edges: ComparatorEdge[]): string[][] {
     if (!index.has(node)) strongconnect(node);
   }
 
-  return components.filter((component) => component.length > 1);
+  return components;
+}
+
+/**
+ * Strongly-connected components of the non-strict canonical comparator
+ * subgraph, treating each `{ lower, upper }` edge as directed lower→upper
+ * ("lower is at most upper"). A component with more than one member is a set
+ * of variables a non-strict comparator cycle forces to hold one shared value
+ * — `a >= b` plus `b >= a` is the two-node case; a longer all-non-strict
+ * chain back to its start is the same shape.
+ */
+function nonStrictComparatorComponents(edges: ComparatorEdge[]): string[][] {
+  const adjacency = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (edge.strict) continue;
+    const list = adjacency.get(edge.lower) ?? [];
+    list.push(edge.upper);
+    adjacency.set(edge.lower, list);
+    if (!adjacency.has(edge.upper)) adjacency.set(edge.upper, []);
+  }
+  return stronglyConnectedComponents(adjacency).filter(
+    (component) => component.length > 1,
+  );
 }
 
 // Union-find with path compression, shared by the merged equality-group
@@ -535,6 +550,65 @@ function findStrictCycles(
   return results;
 }
 
+type GroupGraph = {
+  edges: ComparatorEdge[];
+  groupOf: Map<string, string>;
+  membersOf: Map<string, string[]>;
+  /**
+   * The group-level comparator dependency graph, keyed upper group → lower
+   * group (an upper "depends on" the lower it must exceed). Parallel edges
+   * between one pair of groups are merged: strictness is the OR of theirs, and
+   * every contributing rule instance is kept so a strip can name it.
+   */
+  dependencies: Map<string, Map<string, GroupEdge>>;
+  /**
+   * Comparator edges whose two ends fall inside ONE equality group, in the
+   * canonical edge order. A strict one is a `sameAsGroupConflict`; a
+   * non-strict one is what a comparator-forced group's emptiness repair
+   * strips.
+   */
+  internalEdges: ComparatorEdge[];
+};
+
+/**
+ * The equality groups and their comparator dependency graph — the one
+ * structure the reference-structure pass (strict cycles, in-group conflicts)
+ * and the bound-disjointness pass (group intervals, chained propagation) both
+ * read. Twenty-first-wave Finding 3 extracted it: the two passes used to build
+ * the same graph twice from the same inputs, and the chained propagation needs
+ * exactly the dependency map the cycle check already had.
+ */
+function buildGroupGraph(variables: UnknownRecord): GroupGraph {
+  const edges = comparatorEdges(variables);
+  const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
+
+  const dependencies = new Map<string, Map<string, GroupEdge>>();
+  const internalEdges: ComparatorEdge[] = [];
+  for (const edge of edges) {
+    const upper = groupOf.get(edge.upper);
+    const lower = groupOf.get(edge.lower);
+    if (upper === undefined || lower === undefined) continue;
+    if (upper === lower) {
+      internalEdges.push(edge);
+      continue;
+    }
+    let bucket = dependencies.get(upper);
+    if (!bucket) {
+      bucket = new Map();
+      dependencies.set(upper, bucket);
+    }
+    const existing = bucket.get(lower);
+    if (existing) {
+      existing.strict = existing.strict || edge.strict;
+      existing.sources.push(...edge.sources);
+    } else {
+      bucket.set(lower, { strict: edge.strict, sources: [...edge.sources] });
+    }
+  }
+
+  return { edges, groupOf, membersOf, dependencies, internalEdges };
+}
+
 function referenceStructureContradictions(
   variables: UnknownRecord,
 ): ValidationContradiction[] {
@@ -562,46 +636,29 @@ function referenceStructureContradictions(
     for (const strip of strips) claimed.add(stripKey(strip));
   }
 
-  const edges = comparatorEdges(variables);
-  const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
+  const { groupOf, membersOf, dependencies, internalEdges } =
+    buildGroupGraph(variables);
 
-  // Group-level comparator dependency graph (upper depends on lower). An edge
-  // whose ends fall inside one group is a class-9 conflict when strict.
-  const dependencies = new Map<string, Map<string, GroupEdge>>();
-  for (const edge of edges) {
+  // A comparator edge whose ends fall inside one group is a class-9 conflict
+  // when strict.
+  for (const edge of internalEdges) {
+    if (!edge.strict) continue;
     const upper = groupOf.get(edge.upper);
-    const lower = groupOf.get(edge.lower);
-    if (upper === undefined || lower === undefined) continue;
-    if (upper === lower) {
-      if (!edge.strict) continue;
-      const [first, ...rest] = edge.sources;
-      if (!first) continue;
-      const ownerName = nameOf(first.variableId, variables[first.variableId]);
-      const otherId = first.variableId === edge.upper ? edge.lower : edge.upper;
-      const message =
-        edge.lower === edge.upper
-          ? `Variable "${ownerName}": ${first.rule} references the variable itself`
-          : `Variable "${ownerName}": ${first.rule} references "${nameOf(otherId, variables[otherId])}", but ${equalityRequirementClause(variables, first.variableId, otherId)}`;
-      found.push({
-        class: 'sameAsGroupConflict',
-        message,
-        variableIds: membersOf.get(upper) ?? [first.variableId],
-        strips: [first, ...rest],
-      });
-      continue;
-    }
-    let bucket = dependencies.get(upper);
-    if (!bucket) {
-      bucket = new Map();
-      dependencies.set(upper, bucket);
-    }
-    const existing = bucket.get(lower);
-    if (existing) {
-      existing.strict = existing.strict || edge.strict;
-      existing.sources.push(...edge.sources);
-    } else {
-      bucket.set(lower, { strict: edge.strict, sources: [...edge.sources] });
-    }
+    if (upper === undefined) continue;
+    const [first, ...rest] = edge.sources;
+    if (!first) continue;
+    const ownerName = nameOf(first.variableId, variables[first.variableId]);
+    const otherId = first.variableId === edge.upper ? edge.lower : edge.upper;
+    const message =
+      edge.lower === edge.upper
+        ? `Variable "${ownerName}": ${first.rule} references the variable itself`
+        : `Variable "${ownerName}": ${first.rule} references "${nameOf(otherId, variables[otherId])}", but ${equalityRequirementClause(variables, first.variableId, otherId)}`;
+    found.push({
+      class: 'sameAsGroupConflict',
+      message,
+      variableIds: membersOf.get(upper) ?? [first.variableId],
+      strips: [first, ...rest],
+    });
   }
 
   // Class 9: differentFrom joining two members of one sameAs group (or the
@@ -1365,31 +1422,428 @@ const sharedBooleanDomain = (
   return intersection;
 };
 
+const INTERVAL_ORIGINS = [
+  'fixed',
+  'interviewDate',
+] as const satisfies readonly IntervalOrigin[];
+
+/**
+ * Variable types whose interval is measured in whole numbers: datetime bounds
+ * are UTC day numbers (and, on the symbolic origin, integer day offsets — see
+ * `relativeDateWindowInterval`), text bounds are string lengths, categorical
+ * bounds are selection counts. `number` and `scalar` are DELIBERATELY absent:
+ * their bounds are integers (`z.number().int()` in validation.ts) but the
+ * VALUES are not — the interview runtime coerces a number field with a bare
+ * `Number()` (`coerceFormValues`), so 1.5 is a legal answer. See
+ * `stepChainBound`, which is the only reader.
+ */
+const INTEGER_QUANTITY_TYPES = new Set(['datetime', 'text', 'categorical']);
+
+/**
+ * One end of a propagated range, carried with enough provenance to name the
+ * chain that produced it.
+ */
+type ChainBound = {
+  value: number;
+  /**
+   * The bound is EXCLUSIVE: the node's value has to lie strictly beyond
+   * `value`. Produced by a strict comparator step over a quantity that is not
+   * known to be whole-numbered.
+   */
+  open: boolean;
+  /** Index of the propagation node whose OWN declared bound seeded this. */
+  root: number;
+  /** The node this bound arrived from; absent at the root. */
+  via: number | undefined;
+  hops: number;
+};
+
+type ChainNode = {
+  variableIds: string[];
+  intervals: GroupIntervals;
+  integral: boolean;
+  /**
+   * The node's own bounds are usable as a seed. A node whose merged interval
+   * is already empty is reported by the group check above (or, for a group of
+   * one, as `invertedBounds`), and the per-edge check below declines to judge
+   * anything against it; propagation follows that precedent and treats it as
+   * an unbounded relay rather than a chain endpoint.
+   */
+  seedable: boolean;
+  outgoing: number[];
+  incoming: number[];
+};
+
+type ChainEdge = {
+  lower: number;
+  upper: number;
+  strict: boolean;
+  sources: VariableRuleRef[];
+};
+
+/**
+ * A candidate bound replaces the incumbent only when it is strictly tighter,
+ * so the first witness of a given tightness is the one kept. Only tightness is
+ * compared: checking the tightest bound at a node is complete, because any
+ * looser one is satisfiable wherever the tightest is.
+ */
+const isTighterMin = (
+  candidate: ChainBound,
+  current: ChainBound | undefined,
+): boolean => {
+  if (!current) return true;
+  if (candidate.value !== current.value) return candidate.value > current.value;
+  return candidate.open && !current.open;
+};
+
+const isTighterMax = (
+  candidate: ChainBound,
+  current: ChainBound | undefined,
+): boolean => {
+  if (!current) return true;
+  if (candidate.value !== current.value) return candidate.value < current.value;
+  return candidate.open && !current.open;
+};
+
+/**
+ * Carries a bound one comparator hop, in `direction` (+1 while pushing a lower
+ * bound up the chain, -1 while pushing an upper bound down it).
+ *
+ * A non-strict hop passes the bound through unchanged. A strict hop needs the
+ * next value to lie strictly beyond it, which is an exact `±1` on a
+ * whole-numbered quantity and an open bound otherwise — the distinction that
+ * makes `A >= B >= C` with `A.max = C.min` stay satisfiable while
+ * `A > B > C` with the same bounds does not.
+ */
+const stepChainBound = (
+  bound: ChainBound,
+  strict: boolean,
+  integral: boolean,
+  direction: 1 | -1,
+  from: number,
+): ChainBound => {
+  const carried = { root: bound.root, via: from, hops: bound.hops + 1 };
+  if (!strict) return { ...carried, value: bound.value, open: bound.open };
+  if (integral && Number.isInteger(bound.value)) {
+    return { ...carried, value: bound.value + direction, open: false };
+  }
+  return { ...carried, value: bound.value, open: true };
+};
+
+const isIntegerQuantity = (variable: unknown): boolean => {
+  const type = typeOf(variable);
+  return type !== undefined && INTEGER_QUANTITY_TYPES.has(type);
+};
+
+/** A node's own declared bound, as the start of a propagation path. */
+const seedChainBound = (
+  node: number,
+  value: number | undefined,
+): ChainBound | undefined =>
+  value === undefined
+    ? undefined
+    : { value, open: false, root: node, via: undefined, hops: 0 };
+
+/**
+ * The witness path a bound travelled, from the node it was observed at back to
+ * the node that seeded it. `via` is written once per relaxation and the node it
+ * names is settled by the time it is followed (each pass propagates out of a
+ * node only after that node's own bound is final), so the walk terminates in
+ * `hops` steps.
+ */
+const chainWitnessPath = (
+  bounds: (ChainBound | undefined)[],
+  start: number,
+): number[] => {
+  const path = [start];
+  let cursor = bounds[start]?.via;
+  let remaining = bounds[start]?.hops ?? 0;
+  while (cursor !== undefined && remaining > 0) {
+    path.push(cursor);
+    cursor = bounds[cursor]?.via;
+    remaining -= 1;
+  }
+  return path;
+};
+
+/**
+ * Twenty-first-wave Finding 3: bounds closed over the whole comparator graph,
+ * not just over each single hop.
+ *
+ * The per-edge check below judges one comparator against the two equality
+ * groups it joins, so `A > B > C` with `A.maxValue: 1`, `C.minValue: 1` and an
+ * unbounded `B` was accepted — each hop looks feasible in isolation because B
+ * contributes no bound of its own — although no values satisfy the whole
+ * chain. Transitivity is what closes that hole: C's floor is also B's floor
+ * and therefore A's, and A's ceiling is likewise B's and C's.
+ *
+ * The pass is linear, with no relaxation loop:
+ *
+ *   - The GROUP dependency graph is condensed by strongly-connected
+ *     component. An SCC carrying a strict edge is exactly a strict comparator
+ *     cycle, already reported as `strictComparatorCycle`; its groups are
+ *     dropped so this never double-reports them. An all-non-strict SCC merely
+ *     forces its groups equal — one shared value satisfies it — so it merges
+ *     into ONE node whose bounds are its members' intersected per origin. The
+ *     group graph really can cycle without any variable-level cycle existing
+ *     (`sameAs(A, B)` plus `A <= C <= B` puts {A,B} and {C} on a two-cycle),
+ *     so the walk is cycle-safe rather than DAG-assuming.
+ *   - The condensation is acyclic by construction, so ONE forward topological
+ *     pass (lower bounds up the chain) and ONE reverse pass (upper bounds down
+ *     it) reach the closure.
+ *
+ * Origins are propagated SEPARATELY, each pass seeded only from that origin's
+ * own local bounds (fourteenth-wave Finding 1 keeps calendar day numbers and
+ * symbolic interview-date offsets incomparable). A node carrying no bound on
+ * the origin being propagated is simply a transparent relay for that pass,
+ * which manufactures no cross-origin comparison: `A > B > C` yields `A > C`
+ * by transitivity alone, whatever B is measured against.
+ *
+ * DELIBERATE LIMIT: numeric and day-number bounds only. Categorical option
+ * sets and boolean domains are not propagated along chains — comparators do
+ * not apply to those types (see `requireType` on the four comparator rules),
+ * and the file's existing `differentFrom` checks declare chained domain
+ * propagation out of scope.
+ */
+function chainedBoundContradictions(
+  variables: UnknownRecord,
+  graph: GroupGraph,
+): ValidationContradiction[] {
+  // Group-level adjacency in the propagation direction, lower → upper.
+  const groupAdjacency = new Map<string, string[]>();
+  for (const [upper, bucket] of graph.dependencies) {
+    if (!groupAdjacency.has(upper)) groupAdjacency.set(upper, []);
+    for (const lower of bucket.keys()) {
+      const list = groupAdjacency.get(lower) ?? [];
+      list.push(upper);
+      groupAdjacency.set(lower, list);
+    }
+  }
+  if (groupAdjacency.size === 0) return [];
+
+  const components = stronglyConnectedComponents(groupAdjacency);
+  const componentOf = new Map<string, number>();
+  for (const [index, component] of components.entries()) {
+    for (const group of component) componentOf.set(group, index);
+  }
+
+  const strictComponents = new Set<number>();
+  for (const [upper, bucket] of graph.dependencies) {
+    const upperComponent = componentOf.get(upper);
+    if (upperComponent === undefined) continue;
+    for (const [lower, edge] of bucket) {
+      if (edge.strict && componentOf.get(lower) === upperComponent) {
+        strictComponents.add(upperComponent);
+      }
+    }
+  }
+
+  const nodes: ChainNode[] = [];
+  const nodeOf = new Map<string, number>();
+  for (const [index, component] of components.entries()) {
+    if (strictComponents.has(index)) continue;
+    const variableIds = component.flatMap(
+      (group) => graph.membersOf.get(group) ?? [],
+    );
+    const intervals = intervalsOfMembers(variables, variableIds);
+    const nodeIndex = nodes.length;
+    for (const group of component) nodeOf.set(group, nodeIndex);
+    nodes.push({
+      variableIds,
+      intervals,
+      integral:
+        variableIds.length > 0 &&
+        variableIds.every((id) => isIntegerQuantity(variables[id])),
+      seedable: !hasEmptyOrigin(intervals),
+      outgoing: [],
+      incoming: [],
+    });
+  }
+
+  const edges: ChainEdge[] = [];
+  const edgeOf = new Map<string, number>();
+  for (const [upper, bucket] of graph.dependencies) {
+    const upperNode = nodeOf.get(upper);
+    if (upperNode === undefined) continue;
+    for (const [lower, edge] of bucket) {
+      const lowerNode = nodeOf.get(lower);
+      if (lowerNode === undefined || lowerNode === upperNode) continue;
+      // Node indices are numbers, so a plain separator cannot collide the way
+      // it could over unrestricted user data.
+      const key = `${lowerNode}:${upperNode}`;
+      const existingIndex = edgeOf.get(key);
+      const existing =
+        existingIndex === undefined ? undefined : edges[existingIndex];
+      if (existing) {
+        existing.strict = existing.strict || edge.strict;
+        existing.sources.push(...edge.sources);
+        continue;
+      }
+      edgeOf.set(key, edges.length);
+      nodes[lowerNode]?.outgoing.push(edges.length);
+      nodes[upperNode]?.incoming.push(edges.length);
+      edges.push({
+        lower: lowerNode,
+        upper: upperNode,
+        strict: edge.strict,
+        sources: [...edge.sources],
+      });
+    }
+  }
+
+  // Kahn's algorithm over the condensation, which is acyclic by construction.
+  const indegree = nodes.map((node) => node.incoming.length);
+  const order: number[] = [];
+  for (const [index, degree] of indegree.entries()) {
+    if (degree === 0) order.push(index);
+  }
+  for (let cursor = 0; cursor < order.length; cursor++) {
+    const index = order[cursor];
+    if (index === undefined) continue;
+    for (const edgeIndex of nodes[index]?.outgoing ?? []) {
+      const edge = edges[edgeIndex];
+      if (!edge) continue;
+      const remaining = (indegree[edge.upper] ?? 0) - 1;
+      indegree[edge.upper] = remaining;
+      if (remaining === 0) order.push(edge.upper);
+    }
+  }
+
+  const found: ValidationContradiction[] = [];
+  const reported = new Set<string>();
+
+  for (const origin of INTERVAL_ORIGINS) {
+    const minBounds = nodes.map((node, index) =>
+      seedChainBound(
+        index,
+        node.seedable ? node.intervals.get(origin)?.min : undefined,
+      ),
+    );
+    for (const index of order) {
+      const bound = minBounds[index];
+      if (!bound) continue;
+      for (const edgeIndex of nodes[index]?.outgoing ?? []) {
+        const edge = edges[edgeIndex];
+        const target = edge && nodes[edge.upper];
+        if (!edge || !target) continue;
+        const candidate = stepChainBound(
+          bound,
+          edge.strict,
+          target.integral,
+          1,
+          index,
+        );
+        if (isTighterMin(candidate, minBounds[edge.upper])) {
+          minBounds[edge.upper] = candidate;
+        }
+      }
+    }
+
+    const maxBounds = nodes.map((node, index) =>
+      seedChainBound(
+        index,
+        node.seedable ? node.intervals.get(origin)?.max : undefined,
+      ),
+    );
+    for (const index of order.toReversed()) {
+      const bound = maxBounds[index];
+      if (!bound) continue;
+      for (const edgeIndex of nodes[index]?.incoming ?? []) {
+        const edge = edges[edgeIndex];
+        const target = edge && nodes[edge.lower];
+        if (!edge || !target) continue;
+        const candidate = stepChainBound(
+          bound,
+          edge.strict,
+          target.integral,
+          -1,
+          index,
+        );
+        if (isTighterMax(candidate, maxBounds[edge.lower])) {
+          maxBounds[edge.lower] = candidate;
+        }
+      }
+    }
+
+    for (const index of order) {
+      const min = minBounds[index];
+      const max = maxBounds[index];
+      if (!min || !max) continue;
+      // A single hop is exactly what the per-edge check already reports, and
+      // reports identically; only genuinely transitive conclusions belong
+      // here. This also excludes the two bounds tracing to ONE node — the
+      // condensation is acyclic, so that can only be a node's own interval,
+      // which is a local or group-level report rather than a chain.
+      if (min.hops + max.hops < 2) continue;
+      const feasible =
+        min.value < max.value ||
+        (min.value === max.value && !min.open && !max.open);
+      if (feasible) continue;
+
+      // Propagation derives an interval at EVERY node along an infeasible
+      // chain, so canonicalise by the pair of bound-owning nodes the chain
+      // runs between and report it once.
+      const key = `${min.root}:${max.root}`;
+      if (reported.has(key)) continue;
+      reported.add(key);
+
+      const chain = [
+        ...chainWitnessPath(minBounds, index).toReversed(),
+        ...chainWitnessPath(maxBounds, index).slice(1),
+      ];
+      // Strip policy follows the `strictComparatorCycle` precedent: a chain
+      // has many symmetric single-rule repairs (either endpoint's bound, or
+      // any one comparator on it), so rather than pick arbitrarily among them
+      // it removes every comparator rule instance along the witness. That
+      // over-strips relative to true minimality, by design.
+      const strips: VariableRuleRef[] = [];
+      const claimed = new Set<string>();
+      for (let step = 0; step + 1 < chain.length; step++) {
+        const edgeIndex = edgeOf.get(`${chain[step]}:${chain[step + 1]}`);
+        const edge = edgeIndex === undefined ? undefined : edges[edgeIndex];
+        for (const source of edge?.sources ?? []) {
+          if (claimed.has(stripKey(source))) continue;
+          claimed.add(stripKey(source));
+          strips.push(source);
+        }
+      }
+      const [first, ...rest] = strips;
+      if (!first) continue;
+
+      const memberIds = chain.flatMap((node) => nodes[node]?.variableIds ?? []);
+      const names = memberIds.map(
+        (memberId) => `"${nameOf(memberId, variables[memberId])}"`,
+      );
+      found.push({
+        class: 'disjointBounds',
+        message: `Variables ${names.join(', ')} form a comparison chain their value ranges can never satisfy`,
+        variableIds: memberIds,
+        strips: [first, ...rest],
+      });
+    }
+  }
+
+  return found;
+}
+
 function disjointBoundsContradictions(
   variables: UnknownRecord,
 ): ValidationContradiction[] {
   const found: ValidationContradiction[] = [];
-  const edges = comparatorEdges(variables);
-  const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
+  const graph = buildGroupGraph(variables);
+  const { edges, groupOf, membersOf } = graph;
 
   // Non-strict comparator edges whose both ends fall inside one equality
   // group, bucketed by that group — the rules a comparator-forced group's
   // emptiness conflict strips (see `groupEqualityStrips`).
   const internalNonStrictEdgesByGroup = new Map<string, ComparatorEdge[]>();
-  for (const edge of edges) {
+  for (const edge of graph.internalEdges) {
     if (edge.strict) continue;
-    const lowerGroup = groupOf.get(edge.lower);
-    const upperGroup = groupOf.get(edge.upper);
-    if (
-      lowerGroup === undefined ||
-      upperGroup === undefined ||
-      lowerGroup !== upperGroup
-    ) {
-      continue;
-    }
-    const bucket = internalNonStrictEdgesByGroup.get(lowerGroup) ?? [];
+    const group = groupOf.get(edge.lower);
+    if (group === undefined) continue;
+    const bucket = internalNonStrictEdgesByGroup.get(group) ?? [];
     bucket.push(edge);
-    internalNonStrictEdgesByGroup.set(lowerGroup, bucket);
+    internalNonStrictEdgesByGroup.set(group, bucket);
   }
 
   // Whether a candidate member list is left unsatisfiable by each of the four
@@ -1560,6 +2014,8 @@ function disjointBoundsContradictions(
       strips: [first, ...rest],
     });
   }
+
+  found.push(...chainedBoundContradictions(variables, graph));
 
   return found;
 }
