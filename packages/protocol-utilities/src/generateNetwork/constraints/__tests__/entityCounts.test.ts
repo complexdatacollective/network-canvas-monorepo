@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Stage } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type Stage,
+  type Variables,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -10,9 +14,11 @@ import {
 
 import { generateNetwork } from '../../../generateNetwork';
 import { resolveGenerationConfig } from '../../config';
+import { buildEntityConstraints } from '../buildConstraints';
 import {
   edgeCountFor,
   nodeCountFor,
+  type NodeConstraintsFor,
   worstCaseEntityCounts,
 } from '../entityCounts';
 import { SyntheticDataConstraintError } from '../error';
@@ -878,6 +884,396 @@ describe('worstCaseEntityCounts across a unique equality group', () => {
     expect(nodeCountFor(counts.node, 'person', ['consented', 'mirror'])).toBe(
       3,
     );
+  });
+});
+
+/**
+ * `createNodesForStage` settles a candidate row two ways, and only one of them
+ * is settled by the protocol. `rosterRowIsDrawable` asks what the network has
+ * already claimed, which the seed decides — a row it turns away on one seed is
+ * drawn on another. `rulesAllow` asks what the type's rules say about the
+ * assignment the node will actually be written with, which nothing decides but
+ * the codebook and the row, so a row it rejects is one no seed can draw.
+ *
+ * These pin that line in both directions: a row the rules reject is out of
+ * every ceiling it used to raise, while every row only the seed would have
+ * passed over keeps being counted.
+ */
+describe('worstCaseEntityCounts with roster rows the rules reject', () => {
+  const TODAY = '2026-07-27';
+
+  /** The lookup `analyseFeasibility` supplies, over a single node type. */
+  function constraintsFor(
+    byType: Record<string, Variables>,
+    unvalidated: ReadonlySet<string> = new Set(),
+  ): NodeConstraintsFor {
+    return (nodeType) => {
+      const variables = byType[nodeType];
+      return variables === undefined
+        ? undefined
+        : buildEntityConstraints(variables, TODAY, unvalidated);
+    };
+  }
+
+  function personConstraints(variables: Variables): NodeConstraintsFor {
+    return constraintsFor({ person: variables });
+  }
+
+  const adult = personConstraints({
+    age: { name: 'Age', type: 'number', validation: { minValue: 18 } },
+  });
+
+  const census = {
+    id: 'stage-census',
+    type: 'DyadCensus',
+    label: 'Census',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [
+      { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+    ],
+  } as unknown as Stage;
+
+  const underage = {
+    'stage-roster': [
+      valuedRow('a', { age: 5 }),
+      valuedRow('b', { age: 6 }),
+      valuedRow('c', { age: 7 }),
+    ],
+  };
+
+  it('counts every row when no constraints are supplied', () => {
+    // The reading before the rules are known, kept as the safe direction: a
+    // caller who cannot say which rows are drawable gets the whole pool.
+    const counts = worstCaseEntityCounts(
+      [rosterStage(), census],
+      config,
+      underage,
+    );
+
+    expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(3);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(3);
+  });
+
+  it('counts no node and no pair for rows the variable’s own bounds reject', () => {
+    // Every row is below the floor `age` declares, so `ruleBrokenByFixedValues`
+    // turns each of them away before any drawing and the stage builds nobody.
+    // Counting them claimed three people and C(3, 2) = 3 pairs, which refused a
+    // two-value `unique` edge domain over edges the run never creates.
+    const counts = worstCaseEntityCounts(
+      [rosterStage(), census],
+      config,
+      underage,
+      adult,
+    );
+
+    expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(0);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(0);
+  });
+
+  it('keeps counting rows whose values their own rules accept', () => {
+    // The same shape with ages the protocol admits. Nothing here is narrowed,
+    // so the refusal this pair of counts stands behind still stands.
+    const counts = worstCaseEntityCounts([rosterStage(), census], config, {
+      'stage-roster': [
+        valuedRow('a', { age: 25 }),
+        valuedRow('b', { age: 30 }),
+        valuedRow('c', { age: 35 }),
+      ],
+    });
+
+    expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(3);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(3);
+  });
+
+  it('counts the rows the rules admit out of a mixed roster', () => {
+    const counts = worstCaseEntityCounts(
+      [rosterStage({ behaviours: { maxNodes: 5 } }), census],
+      config,
+      {
+        'stage-roster': [
+          valuedRow('a', { age: 25 }),
+          valuedRow('b', { age: 6 }),
+          valuedRow('c', { age: 35 }),
+          valuedRow('d', { age: 7 }),
+        ],
+      },
+      adult,
+    );
+
+    expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(2);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
+  });
+
+  it('counts no node for a row breaking a rule between two of its own values', () => {
+    const dated = personConstraints({
+      startYear: { name: 'Start', type: 'number' },
+      endYear: {
+        name: 'End',
+        type: 'number',
+        validation: {
+          greaterThanVariable: asEntityAttributeReference('startYear'),
+        },
+      },
+    });
+
+    const counts = worstCaseEntityCounts(
+      [rosterStage()],
+      config,
+      {
+        'stage-roster': [
+          valuedRow('a', { startYear: 2020, endYear: 2010 }),
+          valuedRow('b', { startYear: 2000, endYear: 2015 }),
+        ],
+      },
+      dated,
+    );
+
+    expect(nodeCountFor(counts.node, 'person', ['endYear'])).toBe(1);
+  });
+
+  it('counts no node for a row leaving the draw no value to complete around', () => {
+    // Nothing the row carries breaks a rule on its own or against another value
+    // it carries: `endYear` is simply pinned where the comparator leaves its
+    // partner nothing under its own ceiling. That is the completability fold
+    // `completionCheckFor` performs, and the draw passes the row over by it.
+    const capped = personConstraints({
+      startYear: { name: 'Start', type: 'number' },
+      endYear: {
+        name: 'End',
+        type: 'number',
+        validation: {
+          maxValue: 2000,
+          greaterThanVariable: asEntityAttributeReference('startYear'),
+        },
+      },
+    });
+
+    const counts = worstCaseEntityCounts(
+      [rosterStage()],
+      config,
+      {
+        'stage-roster': [
+          valuedRow('a', { startYear: 2000 }),
+          valuedRow('b', { startYear: 1990 }),
+        ],
+      },
+      capped,
+    );
+
+    expect(nodeCountFor(counts.node, 'person', ['startYear'])).toBe(1);
+  });
+
+  /**
+   * A roster interface never fabricates, so `fixedValuesFor` spreads the row's
+   * own values over the prompt's rather than the other way round. Which of the
+   * two wins decides whether a row is drawable at all, so the merge is pinned
+   * here rather than left to the rule check to imply.
+   */
+  describe('against the values a prompt fixes', () => {
+    const exclusive = personConstraints({
+      consented: { name: 'Consented', type: 'boolean' },
+      flag: {
+        name: 'Flag',
+        type: 'boolean',
+        validation: {
+          differentFrom: asEntityAttributeReference('consented'),
+        },
+      },
+    });
+
+    function promptedRoster(...additional: string[][]): Stage {
+      return rosterStage({
+        prompts: additional.map((variables, index) => ({
+          id: `p${index + 1}`,
+          text: 'Pick people',
+          additionalAttributes: variables.map((variable) => ({
+            variable,
+            value: true,
+          })),
+        })),
+      });
+    }
+
+    it('judges a row against the assignment its node is written with', () => {
+      // The prompt writes `flag: true` onto every node it builds, and the row
+      // says `consented: true`, which the two cannot both be. Judging the row
+      // on its own would have counted a person the stage never adds.
+      const counts = worstCaseEntityCounts(
+        [promptedRoster(['flag'])],
+        config,
+        { 'stage-roster': [valuedRow('a', { consented: true })] },
+        exclusive,
+      );
+
+      expect(nodeCountFor(counts.node, 'person', ['consented'])).toBe(0);
+    });
+
+    it('lets the row win the collision, as the roster interface does', () => {
+      // The prompt fixes both variables to a pair that cannot stand, and the
+      // row overrides one of them. On a roster stage the row's value is what
+      // the node holds, so the assignment is fine and the row is drawable;
+      // reading the panel's merge instead would have dropped it.
+      const counts = worstCaseEntityCounts(
+        [promptedRoster(['consented', 'flag'])],
+        config,
+        { 'stage-roster': [valuedRow('a', { consented: false })] },
+        exclusive,
+      );
+
+      expect(nodeCountFor(counts.node, 'person', ['consented'])).toBe(1);
+    });
+
+    it('keeps a row any one of the stage’s prompts admits', () => {
+      // Which prompt draws a row is the seed's business, so a row the first
+      // prompt's values turn away is still drawable under the second.
+      const counts = worstCaseEntityCounts(
+        [promptedRoster(['flag'], [])],
+        config,
+        { 'stage-roster': [valuedRow('a', { consented: true })] },
+        exclusive,
+      );
+
+      expect(nodeCountFor(counts.node, 'person', ['consented'])).toBe(1);
+    });
+  });
+
+  /**
+   * The other half of the line. Every rejection below is one the seed settles,
+   * so the rows stay counted exactly as they were before the rules were read.
+   */
+  describe('leaving the seed-settled pass-overs counted', () => {
+    const uniqueNickname = personConstraints({
+      nickname: {
+        name: 'Nickname',
+        type: 'text',
+        validation: { unique: true },
+      },
+    });
+
+    it('counts a row repeating a claimed unique value against the pairs', () => {
+      // The second row is passed over only where the first was drawn first, so
+      // both rows can build a person and both are inside the census's pair set.
+      // What the repeat costs is the value space, which `rosterValueCount`
+      // settles on its own and which the pair count does not read.
+      const counts = worstCaseEntityCounts(
+        [rosterStage(), census],
+        config,
+        {
+          'stage-roster': [
+            valuedRow('a', { nickname: 'Sam' }),
+            valuedRow('b', { nickname: 'Sam' }),
+          ],
+        },
+        uniqueNickname,
+      );
+
+      expect(nodeCountFor(counts.node, 'person', ['nickname'])).toBe(1);
+      expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
+    });
+
+    it('counts every shared row for a later node type', () => {
+      // The narrowing that was declined: an earlier stage with a floor of zero
+      // may consume none of the rows, so the later type really can reach all of
+      // them. Reading the rules changes nothing about it.
+      const shared = ['a', 'b', 'c'].map(rosterRow);
+      const counts = worstCaseEntityCounts(
+        [
+          rosterStage({
+            id: 'roster-person',
+            behaviours: { minNodes: 0, maxNodes: 3 },
+          }),
+          rosterStage({
+            id: 'roster-org',
+            subject: { entity: 'node', type: 'organization' },
+            behaviours: { minNodes: 3, maxNodes: 3 },
+          }),
+        ],
+        config,
+        { 'roster-person': shared, 'roster-org': shared },
+        constraintsFor({
+          person: {},
+          organization: { flag: { name: 'Flag', type: 'boolean' } },
+        }),
+      );
+
+      expect(nodeCountFor(counts.node, 'organization', ['flag'])).toBe(3);
+    });
+  });
+
+  it('keeps a row only a rule the interview never applies would reject', () => {
+    // The constraints read here are the draw's own, so a variable whose rules
+    // nothing applies — a binning stage's, which `buildEntityConstraints`
+    // strips — has no rule for a row to break. Judging the declared rules
+    // instead would pass over a row the draw builds a person from, and
+    // under-count the type against a `unique` variable it really does spend.
+    const counts = worstCaseEntityCounts(
+      [rosterStage()],
+      config,
+      underage,
+      constraintsFor(
+        {
+          person: {
+            age: { name: 'Age', type: 'number', validation: { minValue: 18 } },
+          },
+        },
+        new Set(['age']),
+      ),
+    );
+
+    expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(3);
+  });
+
+  it('draws none of those rows and none of their edges, on any seed', () => {
+    // The proof the zero above is exact rather than merely safe. The same
+    // roster and census, with nothing `unique` for the old count to have
+    // refused: `rosterRowIsDrawable` is never even reached, because
+    // `rulesAllow` turns every row away, so the stage ends without a person and
+    // the census walks no pair.
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            age: { name: 'Age', type: 'number', validation: { minValue: 18 } },
+          },
+        },
+      },
+      edge: {
+        knows: {
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+          variables: { strength: { name: 'Strength', type: 'boolean' } },
+        },
+      },
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+    const drawn = new Set<string>();
+    for (let seed = 1; seed <= 50; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [rosterStage(), census],
+        externalData: underage,
+      });
+      drawn.add(`${network.nodes.length}/${network.edges.length}`);
+    }
+
+    expect([...drawn]).toEqual(['0/0']);
+  });
+
+  it('leaves a fabricating stage’s panel rows alone', () => {
+    // A NameGenerator given a panel fabricates the rest of its people, so its
+    // ceiling is its own whatever the panel holds — and its prompt, not its
+    // row, wins a collision. Nothing about its rows is read here.
+    const counts = worstCaseEntityCounts(
+      [nameGenerator({ behaviours: { maxNodes: 4 } })],
+      config,
+      { 'stage-1': [valuedRow('a', { age: 5 }), valuedRow('b', { age: 6 })] },
+      adult,
+    );
+
+    expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(4);
   });
 });
 

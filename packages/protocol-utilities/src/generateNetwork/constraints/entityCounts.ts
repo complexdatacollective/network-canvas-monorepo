@@ -6,12 +6,19 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  type VariableValue,
 } from '@codaco/shared-consts';
 
 import type { GenerationConfig } from '../config';
 import type { StageOfType } from '../context';
-import { getNodeCountBounds, type NodeCreationStage } from '../nodes';
+import {
+  getNodeCountBounds,
+  type NodeCreationStage,
+  ruleBrokenByFixedValues,
+} from '../nodes';
 import { getSubjectType } from '../subject';
+import { completionCheckFor } from './generateEntityAttributes';
+import type { EntityConstraints } from './types';
 import { valueKey } from './uniqueRegistry';
 
 type WorstCaseCounts = {
@@ -208,8 +215,115 @@ type NodeTally = {
  * key cannot, because the used-set is shared. `copies` is therefore the most
  * any single stage offers, while `rows` is every row seen under the key — the
  * values those nodes could carry, whichever pool they were drawn from.
+ *
+ * Only the rows a run could actually draw reach here — see
+ * {@link drawableRosterRows}.
  */
 type RosterRows = Map<string, { copies: number; rows: NcNode[] }>;
+
+/**
+ * The constraints one node type's values are judged against: the map
+ * `generateNetwork` hands the draw, built over the same `unvalidated` set so a
+ * rule the interview never applies is absent from both. Answering `undefined`
+ * counts that type's rows unfiltered, the same conservative direction as
+ * omitting `externalData` — see {@link worstCaseEntityCounts}.
+ *
+ * Asked per type as it is reached, rather than handed over as a whole map, so
+ * a type nothing draws from is never built. `buildEntityConstraints` refuses a
+ * date bound it cannot read, and a codebook type no stage names should keep
+ * reaching feasibility's own unused-type exemption rather than being refused
+ * over a parameter nothing in the run would have read. This is asked only of a
+ * type some roster stage draws people of, which is exactly where the draw
+ * builds the same map.
+ */
+export type NodeConstraintsFor = (
+  nodeType: string,
+) => EntityConstraints | undefined;
+
+/** Whether the draw can complete a node around one set of fixed values. */
+type CompletionCheck = (fixed: Record<string, VariableValue>) => boolean;
+
+/** What judging one node type's rows takes, built once and kept. */
+type RowJudge = {
+  constraints: EntityConstraints;
+  canComplete: CompletionCheck;
+};
+
+/** The values one prompt writes onto every node it creates. */
+function promptFixedValues(
+  prompt: StageOfType<'NameGeneratorRoster'>['prompts'][number],
+): Record<string, VariableValue> {
+  const fixed: Record<string, VariableValue> = {};
+  for (const { variable, value } of prompt.additionalAttributes ?? []) {
+    fixed[variable] = value;
+  }
+  return fixed;
+}
+
+/**
+ * The rows of one roster stage's pool that the run could build a node from on
+ * some seed.
+ *
+ * `createNodesForStage` judges every candidate row twice, and only one of those
+ * judgements is settled by the protocol. `rosterRowIsDrawable` asks whether the
+ * network can still take the row's `unique` values, which changes as nodes are
+ * built: a row it turns away under one seed is drawn under another, where the
+ * draw reached it before whatever claimed the value. That is not decidable
+ * here, and rows it would pass over stay counted — the same reading by which a
+ * row a `min: 0` stage might have left for a later one keeps being counted for
+ * both.
+ *
+ * The other judgement is `rulesAllow`, and it is settled before any drawing.
+ * Its two halves read nothing but the type's constraints and the assignment the
+ * node will be written with: {@link ruleBrokenByFixedValues} answers whether a
+ * value its own variable's bounds reject, or a pair of the row's own values
+ * breaking a rule spanning them, is present; `completionCheckFor`'s predicate
+ * answers whether those values leave the draw a way to complete the rest of the
+ * node around them. Neither consults the network, the registry or the seed, so
+ * a row they reject is one no seed can draw — counting it claims a node the run
+ * will never build, and with it a pair set and a value spend that nothing
+ * reaches.
+ *
+ * Both halves are asked of exactly what the draw asks them of, rather than of a
+ * second reading of the same rules. The completion check is the very closure
+ * `createNodesForStage` builds, and the constraints are the map it reads, so
+ * this cannot come to a different verdict than the pass-over it describes.
+ *
+ * A row is kept where ANY of the stage's prompts admits it. Which prompt draws
+ * a row is a seed's business, so a row one prompt's `additionalAttributes` break
+ * and another leaves alone is still drawable. Prompts the stage's node ceiling
+ * leaves nothing for are read alongside the rest rather than dropped: a prompt
+ * that cannot draw can only keep a row that would otherwise be excluded, which
+ * over-counts, and that is the safe direction.
+ *
+ * The merge is the roster interface's: a `NameGeneratorRoster` is the one node
+ * stage held to its rows, so its `RosterDraw.allowFabrication` is false and
+ * `fixedValuesFor` spreads the row's own values over the prompt's. A panel on a
+ * fabricating name generator settles a collision the other way round, but its
+ * rows never reach this tally at all — the stage fabricates to its own ceiling,
+ * so narrowing its pool would lower nothing.
+ */
+function drawableRosterRows(
+  stage: StageOfType<'NameGeneratorRoster'>,
+  pool: NcNode[],
+  constraints: EntityConstraints,
+  canComplete: CompletionCheck,
+): NcNode[] {
+  const promptValues = stage.prompts.map(promptFixedValues);
+  // A stage with no prompt creates no node, so the row's own values are all
+  // there would be to judge it by.
+  const assignments = promptValues.length > 0 ? promptValues : [{}];
+
+  return pool.filter((row) =>
+    assignments.some((fixed) => {
+      const merged = { ...fixed, ...row[entityAttributesProperty] };
+      return (
+        ruleBrokenByFixedValues(constraints, merged) === undefined &&
+        canComplete(merged)
+      );
+    }),
+  );
+}
 
 /** Per node type, the tallies {@link nodeCountFor} combines. */
 export type NodeCounts = Map<string, NodeTally>;
@@ -257,11 +371,16 @@ function tallyFor(tallies: NodeCounts, nodeType: string): NodeTally {
 }
 
 /**
- * Folds one stage's roster rows into the rows already counted for its node
- * type. A row another stage also offers is not counted twice — the first stage
- * to draw it puts it in the shared used-set, and every later stage's pool
+ * Folds one stage's drawable roster rows into the rows already counted for its
+ * node type. A row another stage also offers is not counted twice — the first
+ * stage to draw it puts it in the shared used-set, and every later stage's pool
  * excludes it — while a pool repeating one primary key counts each copy,
  * because that single stage can draw them all.
+ *
+ * `pool` is the stage's drawable window rather than its whole roster, so a key
+ * one stage's prompts leave undrawable still arrives from a stage whose prompts
+ * admit it, and the copies counted for a key are the copies that stage could
+ * really build a node from.
  */
 function addRosterRows(rows: RosterRows, pool: NcNode[]): void {
   const copies = new Map<string, number>();
@@ -303,11 +422,10 @@ function totalRows(rows: RosterRows): number {
  * would. Those rows are counted one apiece — capped by the copies a stage can
  * draw, since a key no stage offers twice cannot build two nodes.
  *
- * A row whose values break rules of their own is passed over too (the draw
- * refuses it the same way), but is counted here regardless: judging that needs
- * the type's whole constraint set, and over-counting only leaves a refusal
- * standing that is already standing today, where under-counting would let a
- * `unique` variable pass this check and run out of values mid-draw.
+ * A row whose values break rules of their own never reaches this count at all:
+ * {@link drawableRosterRows} has already left it out of `rows`, because no seed
+ * can draw it. What is counted here is therefore what the drawable rows spend
+ * between them.
  */
 function rosterValueCount(rows: RosterRows, variableId: string): number {
   const distinct = new Set<string>();
@@ -647,15 +765,57 @@ function createsEdges(probability: { min: number; max: number }): boolean {
  * it out therefore reads every roster stage as fabricating, which is the
  * stricter count — a protocol whose rosters are unknown here must still refuse
  * up front rather than run out of values partway through the draw.
+ *
+ * `nodeConstraints` is what tells a row the run could draw from one it could
+ * not: a row whose own values the type's rules already reject builds no node on
+ * any seed, so counting it claims people, pairs and value spends that nothing
+ * reaches — see {@link drawableRosterRows}. It is asked only of the node types
+ * a roster stage draws people of, and omitting it counts every row, in the same
+ * direction as omitting `externalData`.
  */
 export function worstCaseEntityCounts(
   stages: Stage[],
   config: GenerationConfig,
   externalData?: Record<string, NcNode[]>,
+  nodeConstraints?: NodeConstraintsFor,
 ): WorstCaseCounts {
   const base = new Map<string, number>();
   const pedigree = new Map<string, PedigreeEdges[]>();
   const node: NodeCounts = new Map();
+
+  // `completionCheckFor` resolves a whole type's generation order and solves
+  // its tractable components, so a type's judge is built once rather than once
+  // per roster stage reading it.
+  const judges = new Map<string, RowJudge | undefined>();
+  /**
+   * A roster stage's drawable rows, keeping `externalData`'s three-way meaning:
+   * `undefined` is a stage with no roster entry, which fabricates.
+   */
+  const drawableRosterPool = (
+    stage: StageOfType<'NameGeneratorRoster'>,
+    nodeType: string,
+    pool: NcNode[] | undefined,
+  ): NcNode[] | undefined => {
+    if (pool === undefined || nodeConstraints === undefined) return pool;
+
+    let judge = judges.get(nodeType);
+    if (judge === undefined && !judges.has(nodeType)) {
+      const constraints = nodeConstraints(nodeType);
+      judge =
+        constraints === undefined
+          ? undefined
+          : { constraints, canComplete: completionCheckFor(constraints) };
+      judges.set(nodeType, judge);
+    }
+    if (judge === undefined) return pool;
+
+    return drawableRosterRows(
+      stage,
+      pool,
+      judge.constraints,
+      judge.canComplete,
+    );
+  };
 
   // The node types whose whole population is paired for each edge type, and
   // the stages that pair only the people they build themselves.
@@ -711,10 +871,12 @@ export function worstCaseEntityCounts(
       const tally = tallyFor(node, nodeType);
       const { maxNodes } = getNodeCountBounds(stage, config);
       // Only a roster stage is held to its rows. Every other node-creation
-      // stage may fabricate, so a roster it also draws from lowers nothing.
+      // stage may fabricate, so a roster it also draws from lowers nothing. Of
+      // those rows, only the ones the rules admit bound it — a pool none of
+      // them can be drawn from ends the stage exactly as an exhausted one does.
       const pool =
         stage.type === 'NameGeneratorRoster'
-          ? externalData?.[stage.id]
+          ? drawableRosterPool(stage, nodeType, externalData?.[stage.id])
           : undefined;
 
       if (pool === undefined) {
