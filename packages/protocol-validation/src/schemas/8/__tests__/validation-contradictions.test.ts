@@ -5596,16 +5596,23 @@ describe('findValidationContradictions — Twenty-fifth wave: derivation fidelit
     const authoredMin = bounds.min ? mirrorParseYmd(bounds.min) : null;
     const authoredMax = bounds.max ? mirrorParseYmd(bounds.max) : null;
     const defaultWindowSpanYears = today.year - MIRROR_DEFAULT_MIN.year;
+    // Twenty-sixth-wave Finding 3: the runtime clamps its SYNTHESIZED far
+    // bound to the years a coarse control can validly emit (1000 below, 9999
+    // above); the authored side is honoured verbatim.
     const resolvedMin =
       authoredMin ??
       (authoredMax && mirrorCompareYmd(authoredMax, MIRROR_DEFAULT_MIN) < 0
-        ? { year: authoredMax.year - defaultWindowSpanYears, month: 1, day: 1 }
+        ? {
+            year: Math.max(1000, authoredMax.year - defaultWindowSpanYears),
+            month: 1,
+            day: 1,
+          }
         : MIRROR_DEFAULT_MIN);
     const resolvedMax =
       authoredMax ??
       (authoredMin && mirrorCompareYmd(authoredMin, today) > 0
         ? {
-            year: authoredMin.year + defaultWindowSpanYears,
+            year: Math.min(9999, authoredMin.year + defaultWindowSpanYears),
             month: 12,
             day: 31,
           }
@@ -5698,6 +5705,93 @@ describe('findValidationContradictions — Twenty-fifth wave: derivation fidelit
           { greaterThanVariable: 'b' },
         ),
         b: datePicker('b', { min: pinnedJustBelow, max: pinnedJustBelow }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Twenty-sixth-wave Finding 3: the runtime clamps the synthesized side to
+  // the years a coarse control can validly emit, and the model tracks that
+  // clamp exactly. An authored max of 1100 would extend 200 years below to
+  // 900 unclamped; the control floors at year 1000 instead.
+  it('clamps the synthesized lower bound at the coarse control floor', () => {
+    const window = mirrorRuntimeWindow({ max: '1100' }, HORIZON_TODAY);
+    expect(window.min).toEqual({ year: 1000, month: 1, day: 1 });
+
+    // Bracket the clamped edge to the day: a strict lessThanVariable against
+    // a partner pinned ON the clamped floor is infeasible (the unclamped
+    // model, reaching down to 900, would have accepted it) ...
+    const pinnedAtClampedMin = mirrorFormatYmd(window.min);
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1100' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', {
+          min: pinnedAtClampedMin,
+          max: pinnedAtClampedMin,
+        }),
+      }),
+    ).toHaveLength(1);
+
+    // ... while one day above it is satisfiable via the floor year's own
+    // stored instant.
+    const pinnedJustAbove = mirrorFormatYmd({ ...window.min, day: 2 });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', max: '1100' },
+          { lessThanVariable: 'b' },
+        ),
+        b: datePicker('b', { min: pinnedJustAbove, max: pinnedJustAbove }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('clamps the synthesized upper bound at the coarse control ceiling', () => {
+    const window = mirrorRuntimeWindow({ min: '9900' }, HORIZON_TODAY);
+    expect(window.max).toEqual({ year: 9999, month: 12, day: 31 });
+
+    // A year picker's latest STORED instant inside the clamped window is
+    // 1 January of 9999 (the unclamped model's 10100 ceiling would have
+    // accepted this pairing).
+    const ceilingStoredInstant = mirrorFormatYmd({
+      year: window.max.year,
+      month: 1,
+      day: 1,
+    });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '9900' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', {
+          min: ceilingStoredInstant,
+          max: ceilingStoredInstant,
+        }),
+      }),
+    ).toHaveLength(1);
+
+    const pinnedJustBelowCeiling = mirrorFormatYmd({
+      year: window.max.year - 1,
+      month: 12,
+      day: 31,
+    });
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '9900' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', {
+          min: pinnedJustBelowCeiling,
+          max: pinnedJustBelowCeiling,
+        }),
       }),
     ).toEqual([]);
   });

@@ -1095,6 +1095,21 @@ const COARSE_SYNTHESIS_SPAN_YEARS =
   COARSE_SYNTHESIS_HORIZON_YEAR - DEFAULT_DATE_WINDOW_MIN_YEAR;
 
 /**
+ * Twenty-sixth-wave Finding 3: the years a coarse (month/year) control can
+ * validly EMIT — the four-digit-year grammar the truncated stored string
+ * shares with `datePickerParametersSchema`'s own coarse-bound floor
+ * (variable.ts rejects a coarse bound before year 1000). fresco-ui's
+ * DatePicker clamps its SYNTHESIZED far bound to this range (the authored
+ * side is honoured verbatim), so the model's synthesized side clamps
+ * identically — see `synthesizedCoarseFarBound`. The analyser's previously
+ * unclamped synthesis was a safe superset of the clamped runtime window (a
+ * superset can only accept more), so this is a precision improvement, not a
+ * soundness fix.
+ */
+const COARSE_SYNTHESIS_MIN_YEAR = 1000;
+const COARSE_SYNTHESIS_MAX_YEAR = 9999;
+
+/**
  * Mirrors fresco-ui DatePicker.tsx's `parseYmd` exactly — grammar
  * (`YYYY[-MM[-DD]]`) and range checks included — because "is this bound
  * authored?" must be decided the way the runtime decides it. A string
@@ -1136,6 +1151,10 @@ const parseRuntimeYmd = (
  *     than today — then `{ year: min.year + span, month: 12, day: 31 }`;
  *   - the extended side always covers full calendar years (January through
  *     December), never the authored bound's own sub-year month/day;
+ *   - the synthesized (never the authored) side is clamped to the years a
+ *     coarse control can validly emit — 1000 below, 9999 above
+ *     (twenty-sixth-wave Finding 3; see `COARSE_SYNTHESIS_MIN_YEAR` /
+ *     `COARSE_SYNTHESIS_MAX_YEAR`);
  *   - both-authored windows are honoured exactly, and a picker with neither
  *     bound gets the plain default window.
  *
@@ -1177,6 +1196,10 @@ const synthesizedCoarseFarBound = (
 ): { edge: 'min' | 'max'; period: YearMonth } | undefined => {
   const authoredMin = parseRuntimeYmd(parameters.min);
   const authoredMax = parseRuntimeYmd(parameters.max);
+  // Twenty-sixth-wave Finding 3: the SYNTHESIZED side is clamped to the years
+  // a coarse control can validly emit (the runtime applies the same clamp to
+  // its own synthesized bound; the authored side stays untouched) — see
+  // `COARSE_SYNTHESIS_MIN_YEAR`/`COARSE_SYNTHESIS_MAX_YEAR`.
   if (
     authoredMax &&
     !authoredMin &&
@@ -1185,7 +1208,10 @@ const synthesizedCoarseFarBound = (
     return {
       edge: 'min',
       period: {
-        year: authoredMax.year - COARSE_SYNTHESIS_SPAN_YEARS,
+        year: Math.max(
+          COARSE_SYNTHESIS_MIN_YEAR,
+          authoredMax.year - COARSE_SYNTHESIS_SPAN_YEARS,
+        ),
         month: 1,
       },
     };
@@ -1198,7 +1224,10 @@ const synthesizedCoarseFarBound = (
     return {
       edge: 'max',
       period: {
-        year: authoredMin.year + COARSE_SYNTHESIS_SPAN_YEARS,
+        year: Math.min(
+          COARSE_SYNTHESIS_MAX_YEAR,
+          authoredMin.year + COARSE_SYNTHESIS_SPAN_YEARS,
+        ),
         month: resolution === 'year' ? 1 : 12,
       },
     };
