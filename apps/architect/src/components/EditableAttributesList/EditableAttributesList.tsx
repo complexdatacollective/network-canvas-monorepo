@@ -15,7 +15,9 @@ import {
   isVariableUsedBySibling,
 } from '../sections/Form/composerHelpers';
 import { makeFieldEditorValidate } from '../Validations/contradictions';
-import ComposerAttributeFields from './ComposerAttributeFields';
+import ComposerAttributeFields, {
+  COMPOSER_CONTRADICTION_FIELD,
+} from './ComposerAttributeFields';
 
 type EditableAttributesListProps = {
   fieldName: string;
@@ -83,10 +85,21 @@ const EditableAttributesList = ({
               'This variable is already collected by another attribute in this list. Choose a different variable, or edit the existing attribute instead.',
           };
         }
-        return makeFieldEditorValidate(
+        // Eighteenth-wave Finding 2: `makeFieldEditorValidate` keys its
+        // messages at `validation`, which the FieldFields editor renders as a
+        // Validations field — but this editor has none, and redux-form only
+        // fails a submit over errors on REGISTERED fields, so the error was
+        // inert: the dialog saved and `onBeforeSave` wrote the contradictory
+        // edit back to the codebook. Re-key it onto the editor's own
+        // always-rendered contradiction field, which both blocks the save and
+        // shows the researcher why.
+        const { validation, ...rest } = makeFieldEditorValidate(
           allVariables,
           buildComposerFieldOverlay(composerFields, props?.editIndex),
         )(values);
+        return typeof validation === 'string'
+          ? { ...rest, [COMPOSER_CONTRADICTION_FIELD]: validation }
+          : rest;
       },
     [allVariables, composerFields],
   );

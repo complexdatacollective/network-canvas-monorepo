@@ -759,12 +759,47 @@ const relativeDateWindowInterval = (
   return { min: anchor - before, max: anchor + after, origin: 'fixed' };
 };
 
+const RELATIVE_DATE_PICKER_PARAMETER_KEYS = [
+  'anchor',
+  'before',
+  'after',
+] as const;
+const DATE_PICKER_PARAMETER_KEYS = ['type', 'min', 'max'] as const;
+
+/**
+ * Eighteenth-wave Finding 3, mirroring the componentless-DatePicker inference
+ * `dateResolutionOf` already makes for resolution. `component` is OPTIONAL on
+ * the RelativeDatePicker datetime member too (variable.ts's
+ * `dateTimeRelativeDatePickerSchema`), so a schema-valid variable can declare
+ * an anchor/before/after window while leaving the component to the stage that
+ * renders it (a NetworkComposer field inherits the codebook parameter record
+ * via `fieldParameters ?? codebookParameters`). Such a variable used to fall
+ * through to the DatePicker reading below, which finds no min/max and so
+ * contributes NO window at all — losing a window the author really did
+ * declare, and with it the pinning that makes e.g. two fixed single-day
+ * pickers joined by `differentFrom` unsatisfiable.
+ *
+ * The two members' parameters are disjoint strictObjects, so an
+ * anchor/before/after key identifies the relative member unambiguously —
+ * unless a type/min/max key is present too, in which case the record matches
+ * neither member (the schema rejects it, and the analyser also runs over raw
+ * migration input). No inference is safe then, so the pre-existing DatePicker
+ * reading stands.
+ */
+const isRelativeDatePickerShape = (parameters: UnknownRecord): boolean =>
+  RELATIVE_DATE_PICKER_PARAMETER_KEYS.some(
+    (key) => parameters[key] !== undefined,
+  ) && !DATE_PICKER_PARAMETER_KEYS.some((key) => parameters[key] !== undefined);
+
 const dateWindowInterval = (variable: unknown): Interval | undefined => {
   const record = asRecord(variable);
   if (!record) return undefined;
   const parameters = asRecord(record.parameters);
   if (!parameters) return undefined;
-  if (record.component === 'RelativeDatePicker') {
+  if (
+    record.component === 'RelativeDatePicker' ||
+    (record.component === undefined && isRelativeDatePickerShape(parameters))
+  ) {
     return relativeDateWindowInterval(parameters);
   }
   const min =

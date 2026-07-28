@@ -4,6 +4,7 @@ import type { ComponentType } from 'react';
 import { Provider } from 'react-redux';
 import { expect, it, vi } from 'vitest';
 
+import { COMPOSER_CONTRADICTION_FIELD } from '../ComposerAttributeFields';
 import EditableAttributesList from '../EditableAttributesList';
 
 vi.mock('~/components/Form/DialogArrayField', () => ({
@@ -154,6 +155,12 @@ it('allows an empty list (no "at least one item" validation)', () => {
   expect(screen.getByTestId('validated-field').dataset.validationKeys).toBe('');
 });
 
+// PR #1107 eighteenth-wave Finding 2: the contradiction message is re-keyed
+// from `validation` — a field this editor never renders, and therefore never
+// registers, so redux-form let the contradictory save through — onto the
+// editor's own always-rendered contradiction field. It is a plain field, so
+// the message stays a plain string (a FieldArray-backed key would have to be
+// carried on `_error` instead).
 it('wires editorValidate from the entity/type variables so a contradictory draft is rejected', () => {
   renderList();
 
@@ -166,7 +173,8 @@ it('wires editorValidate from the entity/type variables so a contradictory draft
       { label: 'Blue', value: 'blue' },
     ],
   });
-  expect(errors?.validation).toContain('minSelected');
+  expect(errors?.[COMPOSER_CONTRADICTION_FIELD]).toContain('minSelected');
+  expect(errors?.validation).toBeUndefined();
 
   const coherent = capturedEditorValidate?.({
     variable: 'colors',
@@ -256,7 +264,9 @@ it('folds a sibling composer field component/parameters override into editorVali
     component: 'DatePicker',
     parameters: {},
   });
-  expect(mismatched?.validation).toContain('different resolutions');
+  expect(mismatched?.[COMPOSER_CONTRADICTION_FIELD]).toContain(
+    'different resolutions',
+  );
 });
 
 // PR #1107 eleventh-wave Finding 4: reassigning a field from `a` to `b` must
@@ -318,9 +328,9 @@ it('excludes a reassigned id-less field’s own stale overlay entry from editorV
 
   // Mutation guard: without the index exclusion the stale override for `a`
   // stays in the prospective model and reports a false contradiction.
-  expect(capturedEditorValidate?.(draft)?.validation).toContain(
-    'different resolutions',
-  );
+  expect(
+    capturedEditorValidate?.(draft)?.[COMPOSER_CONTRADICTION_FIELD],
+  ).toContain('different resolutions');
 });
 
 // PR #1107 sixteenth-wave Finding 1: ComposerFormSchema rejects a form that

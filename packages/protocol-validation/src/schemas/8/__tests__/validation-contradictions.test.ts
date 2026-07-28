@@ -1692,6 +1692,167 @@ describe('findValidationContradictions — fourteenth-wave Finding 1: anchorless
   });
 });
 
+describe('findValidationContradictions — eighteenth-wave Finding 3: componentless RelativeDatePicker-shaped datetimes keep their window', () => {
+  const componentless = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({ name, type: 'datetime', parameters, validation });
+
+  const relativePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'RelativeDatePicker',
+    parameters,
+    validation,
+  });
+
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // `component` is optional on the RelativeDatePicker datetime member
+  // (variable.ts's `dateTimeRelativeDatePickerSchema`), and an
+  // anchor/before/after parameter record can only be that member's — the
+  // DatePicker member's parameters are a strictObject of type/min/max. Both
+  // variables are pinned to the single day 2020-01-01, so `differentFrom`
+  // between them is unsatisfiable.
+  it('rejects differentFrom between two componentless anchored pickers pinned to the same day', () => {
+    const result = findValidationContradictions({
+      a: componentless(
+        'a',
+        { anchor: '2020-01-01', before: 0, after: 0 },
+        { differentFrom: 'b' },
+      ),
+      b: componentless('b', { anchor: '2020-01-01', before: 0, after: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+  });
+
+  it('accepts differentFrom between two componentless anchored pickers spanning the default window', () => {
+    expect(
+      findValidationContradictions({
+        a: componentless('a', { anchor: '2020-01-01' }, { differentFrom: 'b' }),
+        b: componentless('b', { anchor: '2020-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('rejects differentFrom between two componentless anchorless pickers pinned to the interview date', () => {
+    const result = findValidationContradictions({
+      a: componentless('a', { before: 0, after: 0 }, { differentFrom: 'b' }),
+      b: componentless('b', { before: 0, after: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  // An anchorless window is symbolic: its bounds are day offsets from the
+  // interview date, never absolute calendar bounds. A componentless anchorless
+  // picker must therefore stay incomparable with a pinned calendar day.
+  it('accepts differentFrom between a componentless anchorless picker and a pinned DatePicker', () => {
+    expect(
+      findValidationContradictions({
+        a: componentless('a', { before: 0, after: 0 }, { differentFrom: 'b' }),
+        b: datePicker('b', { min: '2021-01-01', max: '2021-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Both are componentless, so each takes its component from the stage that
+  // renders it — and each parameter shape admits exactly one component. Both
+  // store the full ISO day 2020-01-01, so the pair can never differ.
+  it('rejects differentFrom between a componentless anchored picker and a componentless pinned DatePicker', () => {
+    const result = findValidationContradictions({
+      a: componentless(
+        'a',
+        { anchor: '2020-01-01', before: 0, after: 0 },
+        { differentFrom: 'b' },
+      ),
+      b: componentless('b', { min: '2020-01-01', max: '2020-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  // A DECLARED component always wins: an explicit DatePicker carrying stray
+  // relative parameters keeps the DatePicker reading (no min/max, so no
+  // window), exactly as before.
+  it('leaves a declared DatePicker carrying relative parameters unwindowed', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { anchor: '2020-01-01', before: 0, after: 0 },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker('b', { anchor: '2020-01-01', before: 0, after: 0 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Parameters carrying keys from BOTH members match neither, so no
+  // inference is safe — the pre-existing DatePicker reading stands. Each half
+  // is asserted against a partner the OTHER reading would pin it to, so
+  // neither assertion can pass under the relative reading.
+  it('keeps the DatePicker reading for parameters that mix both shapes', () => {
+    // The relative reading would pin this to its anchor day; the DatePicker
+    // reading finds a lone `min` and pins nothing.
+    expect(
+      findValidationContradictions({
+        a: componentless(
+          'a',
+          { anchor: '2020-01-01', before: 0, after: 0, min: '2019-01-01' },
+          { differentFrom: 'b' },
+        ),
+        b: componentless('b', { min: '2020-01-01', max: '2020-01-01' }),
+      }),
+    ).toEqual([]);
+
+    // ...and the DatePicker reading's own single-day window still pins, even
+    // though the stray anchor names a different day.
+    const result = findValidationContradictions({
+      a: componentless(
+        'a',
+        {
+          anchor: '2019-01-01',
+          before: 0,
+          after: 0,
+          min: '2021-01-01',
+          max: '2021-01-01',
+        },
+        { differentFrom: 'b' },
+      ),
+      b: componentless('b', { min: '2021-01-01', max: '2021-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  it('still pins a declared anchorless RelativeDatePicker to the interview date', () => {
+    const result = findValidationContradictions({
+      a: relativePicker('a', { before: 0, after: 0 }, { differentFrom: 'b' }),
+      b: relativePicker('b', { before: 0, after: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+});
+
 describe('findValidationContradictions — fifteenth-wave Finding 1: equality groups track bounds per origin', () => {
   const relativePicker = (
     name: string,
