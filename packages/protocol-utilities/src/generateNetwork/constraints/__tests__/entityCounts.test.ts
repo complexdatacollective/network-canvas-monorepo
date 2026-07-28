@@ -57,6 +57,26 @@ function alterEdgeForm(...variables: string[]): Stage {
   } as unknown as Stage;
 }
 
+/** The same form, gated on a filter rule testing one edge variable. */
+function filteredAlterEdgeForm(
+  filtered: string,
+  ...variables: string[]
+): Stage {
+  return {
+    ...alterEdgeForm(...variables),
+    filter: {
+      join: 'AND',
+      rules: [
+        {
+          type: 'edge',
+          id: 'rule-1',
+          options: { type: 'kin', attribute: filtered, operator: 'EXISTS' },
+        },
+      ],
+    },
+  } as unknown as Stage;
+}
+
 function networkComposer(overrides: Record<string, unknown> = {}): Stage {
   return {
     id: 'stage-composer',
@@ -222,6 +242,34 @@ describe('worstCaseEntityCounts', () => {
 
     const counts = worstCaseEntityCounts([familyPedigree(), alterForm], config);
     expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
+  });
+
+  it('reads a filter rule as a reader, not a naming site', () => {
+    // A filter tests a value the form does not render, and
+    // `handleAlterEdgeForm` passes only its field list to
+    // `generateEntityAttributes` — so the filtered variable stays undefined on
+    // every pedigree edge. The schema says as much on its own: an
+    // `entityAttributeReference({ subject: 'filterRule' })` resolves no
+    // subject, exactly as an ego filter rule names no ego scope.
+    const filtered = filteredAlterEdgeForm('verified', 'note');
+
+    const counts = worstCaseEntityCounts([familyPedigree(), filtered], config);
+    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(
+      config.familyPedigreeNodeCount.max - 1,
+    );
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
+  });
+
+  it('counts a variable a filter tests and the form also renders', () => {
+    // Reading and writing one variable is writing it. The filter must not be
+    // able to take a form field's own variable back out of the count.
+    const counts = worstCaseEntityCounts(
+      [familyPedigree(), filteredAlterEdgeForm('verified', 'verified')],
+      config,
+    );
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(
+      config.familyPedigreeNodeCount.max - 1,
+    );
   });
 
   it('counts an inverted FamilyPedigree range as the generator draws it', () => {
@@ -1302,6 +1350,39 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
         (edge) => edge[entityAttributesProperty].note !== undefined,
       ),
     ).toBe(true);
+  });
+
+  it('generates when a filter tests the unique variable the form does not fill', () => {
+    // Nine pedigree edges and a `unique` boolean the form never renders.
+    // Counting the filter's reference as a naming site would demand nine
+    // distinct booleans of edges that hold none.
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages: [familyPedigree(), filteredAlterEdgeForm('verified', 'note')],
+    });
+
+    expect(network.edges.length).toBeGreaterThan(2);
+    expect(
+      network.edges.every(
+        (edge) => edge[entityAttributesProperty].verified === undefined,
+      ),
+    ).toBe(true);
+  });
+
+  it('still refuses when the form both filters on and renders that variable', () => {
+    // The guard on the exemption above: a filter cannot excuse a variable the
+    // same form writes to all nine edges.
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook,
+        stages: [
+          familyPedigree(),
+          filteredAlterEdgeForm('verified', 'verified'),
+        ],
+      }),
+    ).toThrow(/up to 9 edges of this type can be generated/);
   });
 
   it('still refuses when the form fills a variable held equal to the unique one', () => {

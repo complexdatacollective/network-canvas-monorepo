@@ -2110,36 +2110,6 @@ describe('a codebook scope no stage names', () => {
     expect(conflicts[0]?.entityTypeName).toBe('Artefact');
   });
 
-  it('keeps an edge type whose edges exist unfilled', () => {
-    // A pedigree edge is born with no attributes, so `code`'s per-variable
-    // count is zero while the edges themselves are created all the same.
-    const pedigree = {
-      id: 'stage-fp',
-      type: 'FamilyPedigree',
-      label: 'Pedigree',
-      nodeConfig: { type: 'person' },
-      edgeConfig: { type: 'kin' },
-      prompts: [],
-    } as unknown as Stage;
-
-    const codebook = {
-      node: { person },
-      edge: {
-        kin: {
-          name: 'Kin',
-          color: 'edge-color-seq-1',
-          variables: { code: contradiction },
-        },
-      },
-    } as unknown as StructuralCodebook;
-
-    const conflicts = analyseFeasibility(codebook, [pedigree], config);
-
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.entity).toBe('edge');
-    expect(conflicts[0]?.entityTypeName).toBe('Kin');
-  });
-
   const egoCodebook = {
     ego: {
       variables: {
@@ -2211,6 +2181,231 @@ describe('a codebook scope no stage names', () => {
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.entity).toBe('ego');
+  });
+});
+
+/**
+ * The edge half of the same question, one level finer. A pedigree edge is the
+ * one entity born with no attributes, so its type is created while a variable
+ * of it may never be written at all — and a rule is applied where a value is
+ * written, not where a type exists. These cover the acceptance and, for each
+ * way a writer can reach the variable, the refusal that has to keep standing.
+ */
+describe('a pedigree edge variable no stage writes', () => {
+  const contradiction = {
+    name: 'Code',
+    type: 'text',
+    validation: { minLength: 10, maxLength: 5 },
+  };
+
+  const person = {
+    name: 'Person',
+    color: 'node-color-seq-1',
+    variables: { name: { name: 'Name', type: 'text' } },
+  };
+
+  const pedigree = {
+    id: 'stage-fp',
+    type: 'FamilyPedigree',
+    label: 'Pedigree',
+    nodeConfig: { type: 'person' },
+    edgeConfig: { type: 'kin' },
+    prompts: [],
+  } as unknown as Stage;
+
+  function edgeForm(...variables: string[]): Stage {
+    return {
+      id: 'stage-aef',
+      type: 'AlterEdgeForm',
+      label: 'About this tie',
+      subject: { entity: 'edge', type: 'kin' },
+      form: {
+        fields: variables.map((variable) => ({ variable, prompt: 'Tell us' })),
+      },
+    } as unknown as Stage;
+  }
+
+  function codebookWithEdgeVariables(
+    variables: Record<string, unknown>,
+  ): StructuralCodebook {
+    return {
+      node: { person },
+      edge: {
+        kin: { name: 'Kin', color: 'edge-color-seq-1', variables },
+      },
+    } as unknown as StructuralCodebook;
+  }
+
+  const codeOnly = codebookWithEdgeVariables({ code: contradiction });
+
+  it('accepts a contradiction nothing writes', () => {
+    // `handleFamilyPedigree` creates every edge with `attributes: {}` and
+    // writes nothing onto one, so no value of `code` is ever drawn or
+    // submitted and the rules on it are never applied.
+    expect(analyseFeasibility(codeOnly, [pedigree], config)).toEqual([]);
+  });
+
+  it('generates that protocol rather than moving the refusal to the draw', () => {
+    // The premise the acceptance rests on: the edges really do exist, and
+    // really do hold nothing.
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook: codeOnly,
+      stages: [pedigree],
+    });
+
+    expect(network.edges.length).toBeGreaterThan(0);
+    expect(
+      network.edges.every(
+        (edge) => edge[entityAttributesProperty].code === undefined,
+      ),
+    ).toBe(true);
+  });
+
+  it('still refuses where a form after the pedigree renders it', () => {
+    const conflicts = analyseFeasibility(
+      codeOnly,
+      [pedigree, edgeForm('code')],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entity).toBe('edge');
+    expect(conflicts[0]?.entityTypeName).toBe('Kin');
+    expect(conflicts[0]?.reason).toBe('minLength 10 exceeds maxLength 5');
+  });
+
+  it('exempts only the variables the form leaves out', () => {
+    // `handleAlterEdgeForm` passes its field list to `generateEntityAttributes`
+    // as `only`, so the exemption is per variable and not per type: the same
+    // edges carry `note` and no `code`.
+    const bothContradict = codebookWithEdgeVariables({
+      code: contradiction,
+      note: { name: 'Note', type: 'text', validation: { minLength: 9 } },
+    });
+
+    const conflicts = analyseFeasibility(
+      bothContradict,
+      [pedigree, edgeForm('note')],
+      config,
+    );
+
+    expect(conflicts).toEqual([]);
+
+    const both = analyseFeasibility(
+      codebookWithEdgeVariables({
+        code: contradiction,
+        note: { ...contradiction, name: 'Note' },
+      }),
+      [pedigree, edgeForm('note')],
+      config,
+    );
+
+    expect(both).toHaveLength(1);
+    expect(both[0]?.variableNames).toEqual(['Note']);
+  });
+
+  it('still refuses where the form renders a variable held equal to it', () => {
+    // The members share one value, so writing `mirror` writes the group's
+    // value: reading the exemption per variable would exempt the very member
+    // carrying the contradiction.
+    const heldEqual = codebookWithEdgeVariables({
+      code: contradiction,
+      mirror: { name: 'Mirror', type: 'text', validation: { sameAs: 'code' } },
+    });
+
+    const conflicts = analyseFeasibility(
+      heldEqual,
+      [pedigree, edgeForm('mirror')],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(2);
+    expect(conflicts[0]?.variableNames).toEqual(['Code']);
+    expect(conflicts[1]?.variableNames).toEqual(['Code', 'Mirror']);
+  });
+
+  it('still refuses where a TieStrengthCensus writes it onto reused edges', () => {
+    // The second writer of edges it did not create: its `edgeVariable` is
+    // filled over the pedigree's edges as well as its own new ones.
+    const census = {
+      id: 'stage-tsc',
+      type: 'TieStrengthCensus',
+      label: 'How close?',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'How close are they?',
+          createEdge: 'kin',
+          edgeVariable: 'closeness',
+          negativeLabel: 'Not close',
+        },
+      ],
+    } as unknown as Stage;
+
+    const conflicts = analyseFeasibility(
+      codebookWithEdgeVariables({
+        closeness: {
+          name: 'Closeness',
+          type: 'ordinal',
+          options: [{ label: 'Close', value: 1 }],
+          validation: { minSelected: 2 },
+        },
+      }),
+      [pedigree, census],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entityTypeName).toBe('Kin');
+  });
+
+  it('still refuses where another stage creates edges of the type filled', () => {
+    // Only a pedigree's edges are born empty. A Sociogram generates the whole
+    // attribute set of every edge it creates, so `code` is on all of them
+    // whether or not a form ever mentions it.
+    const sociogram = {
+      id: 'stage-sociogram',
+      type: 'Sociogram',
+      label: 'Link them',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Who knows who?',
+          layout: { layoutVariable: 'layout' },
+          edges: { create: 'kin' },
+        },
+      ],
+    } as unknown as Stage;
+
+    const conflicts = analyseFeasibility(
+      codeOnly,
+      [nameGenerator, sociogram],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entityTypeName).toBe('Kin');
+  });
+
+  it('keeps an edge type a stage names while no stage creates one', () => {
+    // The node half's rule, unchanged: nothing builds a `kin` edge here, but a
+    // form renders a field for `code`, which is where a rule is applied. Only a
+    // type whose edges are all born empty is exempted.
+    const conflicts = analyseFeasibility(codeOnly, [edgeForm('code')], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entityTypeName).toBe('Kin');
+  });
+
+  it('accepts it where the only form runs before the pedigree', () => {
+    // A form fills the edges standing when it runs, and the pedigree's do not
+    // exist yet — so its edges reach nobody and stay as they were built.
+    expect(
+      analyseFeasibility(codeOnly, [edgeForm('code'), pedigree], config),
+    ).toEqual([]);
   });
 });
 
@@ -2303,6 +2498,16 @@ describe('a text length beyond what a generated value can hold', () => {
       prompts: [],
     } as unknown as Stage;
 
+    // A pedigree edge is born empty, so the floor is only ever asked of one
+    // whose value some later stage writes — see `unwrittenEdgeVariables`.
+    const edgeForm = {
+      id: 'stage-aef',
+      type: 'AlterEdgeForm',
+      label: 'About this tie',
+      subject: { entity: 'edge', type: 'kin' },
+      form: { fields: [{ variable: 'bio', prompt: 'Bio' }] },
+    } as unknown as Stage;
+
     const codebook = {
       node: {
         person: {
@@ -2320,7 +2525,11 @@ describe('a text length beyond what a generated value can hold', () => {
       },
     } as unknown as StructuralCodebook;
 
-    const conflicts = analyseFeasibility(codebook, [pedigree], config);
+    const conflicts = analyseFeasibility(
+      codebook,
+      [pedigree, edgeForm],
+      config,
+    );
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.entity).toBe('edge');

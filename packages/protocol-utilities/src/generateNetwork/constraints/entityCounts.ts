@@ -125,6 +125,66 @@ export function edgeCountFor(
 }
 
 /**
+ * The variables of an edge type whose edges are all born empty that no stage
+ * can write — the same question {@link edgeCountFor} answers as a number, read
+ * as a set so a scope can drop their rules.
+ *
+ * Validation rules are a form-field mechanism: they apply where a stage renders
+ * a `Field` for the variable, and generation spends a value on it in the same
+ * places. `handleFamilyPedigree` renders none and writes none — every edge it
+ * builds carries `attributes: {}` — so where a pedigree is an edge type's only
+ * source, a variable no later stage names is `undefined` on every edge of the
+ * type for the whole run. Analysing its declared rules then refuses a protocol
+ * over a value nothing draws and nothing submits, exactly as an unused node
+ * type or an unwritten ego variable did.
+ *
+ * Which stages count as writers is not decided here: this reads
+ * {@link EdgeCounts.named} through {@link edgeCountFor} itself, so "reached by
+ * a writer" means the same thing to the count and to the analysis. A variable
+ * an AlterEdgeForm renders at or after the pedigree is reached, as is a
+ * TieStrengthCensus' `edgeVariable` over the edges it reuses; a filter rule
+ * naming the variable is not, because its reference resolves no subject — it
+ * reads a value, it does not write one.
+ *
+ * Asked per equality group rather than per variable, for the reason
+ * `edgeCountFor` is: the members share one value, so writing any of them gives
+ * the whole group one, and a variable held equal to one a form renders is
+ * written whether or not the form ever names it. Reading them one at a time
+ * would exempt exactly the member carrying the group's `unique` rule and let a
+ * real contradiction through. Every group is therefore all-or-nothing, which is
+ * also why exempting one cannot disturb another: a group with any written
+ * member keeps every member's rules, so no surviving group loses a reference
+ * the exempted ones declared.
+ *
+ * Held to edge types every one of whose edges starts empty. An edge any other
+ * stage creates is born with its type's whole attribute set, so nothing of it
+ * is unwritten; and a type the stages name while nothing creates one keeps its
+ * rules for the reason the node half does — a form renders its fields whether
+ * or not this generator ever builds an entity to fill.
+ *
+ * What this exempts the draw never asks for, so nothing has to be exempted
+ * there to match: `handleFamilyPedigree` writes no edge attribute at all, and
+ * every other writer of a pedigree edge names what it writes, which is what put
+ * the variable in `named` in the first place.
+ */
+export function unwrittenEdgeVariables(
+  counts: EdgeCounts,
+  type: string,
+  groups: Iterable<readonly string[]>,
+): ReadonlySet<string> {
+  const unwritten = new Set<string>();
+  if ((counts.base.get(type) ?? 0) > 0) return unwritten;
+  if (!counts.pedigree.has(type)) return unwritten;
+
+  for (const members of groups) {
+    if (edgeCountFor(counts, type, members) > 0) continue;
+    for (const id of members) unwritten.add(id);
+  }
+
+  return unwritten;
+}
+
+/**
  * How many nodes of one type the run can build, split by what bounds them.
  *
  * Roster-drawn nodes are counted apart from fabricated ones because their
@@ -451,6 +511,18 @@ function isPedigreeEdgeConfigReference(
  * as `collectBinOnlyVariables` reads them — means a reference site added later
  * counts on its own, without this code being updated, and errs towards
  * refusing up front rather than running out of values partway through a draw.
+ *
+ * Wide, but not indiscriminate: a reference is a naming site only where it
+ * resolves an edge SUBJECT, which is the schema's own account of whose value
+ * the reference is. A filter rule's `attribute` resolves none — the collector
+ * answers `undefined` for `subject: 'filterRule'` — so an AlterEdgeForm
+ * filtering on `verified` while rendering only `note` leaves `verified`
+ * unnamed, exactly as `collectReferencedScopes` leaves an ego filter rule out:
+ * a filter rule reads a value, it does not write one. That distinction is
+ * load-bearing in both directions now. A reader counted as a writer would put
+ * every pedigree edge in a `unique` variable's tally and refuse a protocol
+ * whose edges hold no such value, and would keep the variable's declared rules
+ * analysed where {@link unwrittenEdgeVariables} should have exempted them.
  *
  * Where the reference sits is kept alongside it, because a stage can only write
  * edges that already exist when it runs — see {@link edgeCountFor}. The index

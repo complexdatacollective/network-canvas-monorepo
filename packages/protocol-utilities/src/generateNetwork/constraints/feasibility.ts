@@ -21,6 +21,7 @@ import {
   edgeCountFor,
   nodeCountFor,
   pedigreeNodeCeiling,
+  unwrittenEdgeVariables,
   worstCaseEntityCounts,
 } from './entityCounts';
 import type { ConstraintConflict } from './error';
@@ -200,6 +201,35 @@ function collectReferencedScopes(stages: Stage[]): {
  */
 function stagesWriteEgo(stages: Stage[]): boolean {
   return stages.some((stage) => stage.type === 'EgoForm');
+}
+
+/**
+ * One entity type's variables, gathered into the equality groups `analyseEntity`
+ * holds to a single value — the unit `unwrittenEdgeVariables` asks its question
+ * in.
+ *
+ * Built from the declared rules rather than from the exempted ones, because
+ * this is what decides the exemption. A variable's own `sameAs` is what puts it
+ * in a group, so resolving groups from constraints an exemption had already
+ * stripped would dissolve the group first and then ask about its members one at
+ * a time — which is how the member carrying a group's `unique` rule comes to
+ * look unwritten while the sibling a form renders writes the value it shares.
+ *
+ * `resolveGenerationOrder` is the same grouping `analyseEntity` performs, over
+ * the same variables, so no second notion of a group enters. It runs there
+ * again on the exempted constraints, where the groups can only be these or
+ * finer: a group with any written member is exempted in full or not at all, so
+ * the only ones an exemption can dissolve are groups nothing remains to analyse
+ * in.
+ */
+function equalityGroupsOf(
+  variables: Variables | undefined,
+  today: string,
+): string[][] {
+  const { membersOf } = resolveGenerationOrder(
+    buildEntityConstraints(variables, today),
+  );
+  return [...membersOf.values()];
 }
 
 /**
@@ -936,15 +966,17 @@ export function analyseFeasibility(
   // drawn or submitted, so a rule declared on them is never applied, and
   // analysing it refuses a protocol over a variable the run never reaches — a
   // Person-only interview blocked by an unused type's `minLength` above its
-  // `maxLength`. Whole scopes are dropped rather than individual variables:
-  // every stage that creates an entity generates its type's whole attribute
-  // set, so a type with any carrier has no unpopulated variable to exempt.
+  // `maxLength`. Dropping the whole scope is right wherever a type's entities
+  // are born filled: every stage that creates one generates its type's whole
+  // attribute set, so a type with any carrier has no unpopulated variable to
+  // exempt. A pedigree edge is the one entity born empty, and its type is
+  // exempted per equality group instead — see `unwrittenEdgeVariables`.
   //
   // Asked of the type rather than of the counts, because the zeroes reaching
   // this pass do not all mean the same thing. An edge type's per-variable count
   // is zero for every variable no form fills, while its edges exist all the
-  // same — a pedigree edge is born empty — so reading that zero as "unused"
-  // would drop a contradiction on a type the run really does create.
+  // same, so reading that zero as "unused" would delete the whole type's
+  // analysis on the strength of one unwritten variable.
   //
   // Both readers have to agree the type is absent. The schema's tags and
   // `worstCaseEntityCounts`' own field reads see the same stage list
@@ -991,9 +1023,19 @@ export function analyseFeasibility(
         ? { entityTypeName: definition.name }
         : {}),
       variables: definition.variables,
-      // Both binning stages take a node subject, so no edge variable can be
-      // bin-assigned.
-      unvalidated: NO_UNVALIDATED_VARIABLES,
+      // Both binning stages take a node subject, so no edge variable is
+      // bin-assigned. What an edge type does have is the other half of the same
+      // question: where a FamilyPedigree is its only source, every edge starts
+      // empty and only the variables a later stage writes ever stop being — so
+      // the rest are exempt for the same reason a bin-assigned variable is,
+      // that nothing in the run ever applies their rules. Per group rather than
+      // per type, because a form filling one of them leaves its siblings
+      // undefined on the very same edges.
+      unvalidated: unwrittenEdgeVariables(
+        counts.edge,
+        type,
+        equalityGroupsOf(definition.variables, config.today),
+      ),
       worstCaseCountFor: (variableIds) =>
         edgeCountFor(counts.edge, type, variableIds),
       // Nothing writes a value onto an edge that the draw did not choose.
