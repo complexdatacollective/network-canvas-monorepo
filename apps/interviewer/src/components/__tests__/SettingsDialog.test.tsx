@@ -22,6 +22,13 @@ type ToastAddCall = {
   timeout?: number;
 };
 
+// `useDialog()`'s real `confirm()` accepts a much larger `ConfirmOptions`
+// (title/description/intent/etc.), but these tests only ever need to drive
+// `onConfirm` itself.
+type ConfirmCall = {
+  onConfirm: () => Promise<void> | void;
+};
+
 const {
   mockEstimateStorage,
   mockIsPersisted,
@@ -31,6 +38,8 @@ const {
   mockGenerateSyntheticSessions,
   mockToastAdd,
   mockCountSyntheticSessions,
+  mockDeleteSyntheticSessions,
+  mockConfirm,
 } = vi.hoisted(() => ({
   mockEstimateStorage: vi.fn(),
   mockIsPersisted: vi.fn(),
@@ -40,6 +49,8 @@ const {
   mockGenerateSyntheticSessions: vi.fn(),
   mockToastAdd: vi.fn<(data: ToastAddCall) => string>(),
   mockCountSyntheticSessions: vi.fn<() => Promise<number>>(),
+  mockDeleteSyntheticSessions: vi.fn<() => Promise<number>>(),
+  mockConfirm: vi.fn<(options: ConfirmCall) => Promise<boolean | null>>(),
 }));
 
 vi.mock('~/lib/storage', async () => {
@@ -57,7 +68,7 @@ vi.mock('~/lib/db/api', () => ({
   updateSettings: vi.fn(async () => DEFAULT_SETTINGS),
   listProtocols: mockListProtocols,
   countSyntheticSessions: mockCountSyntheticSessions,
-  deleteSyntheticSessions: vi.fn(async () => 0),
+  deleteSyntheticSessions: mockDeleteSyntheticSessions,
 }));
 
 vi.mock('~/lib/auth/AuthContext', () => ({
@@ -83,7 +94,7 @@ vi.mock('@codaco/fresco-ui/Toast', () => ({
 }));
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
-  default: () => ({ confirm: vi.fn() }),
+  default: () => ({ confirm: mockConfirm }),
 }));
 
 vi.mock('~/lib/synthetic/generate', () => ({
@@ -131,6 +142,20 @@ beforeEach(() => {
   mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
   mockIsPersisted.mockResolvedValue(false);
   mockCountSyntheticSessions.mockResolvedValue(0);
+  mockDeleteSyntheticSessions.mockResolvedValue(0);
+  // Mirrors the real DialogProvider.handleConfirm just enough for these
+  // tests: it runs onConfirm and swallows a rejection rather than letting it
+  // reach handleDeleteSynthetic's `await confirm(...)` — the real provider
+  // catches it internally too (showing it inline in the dialog and keeping
+  // the dialog open for a retry), it never re-throws to the caller.
+  mockConfirm.mockImplementation(async ({ onConfirm }: ConfirmCall) => {
+    try {
+      await onConfirm();
+      return true;
+    } catch {
+      return null;
+    }
+  });
 });
 
 afterEach(() => {
@@ -451,5 +476,179 @@ describe('SettingsDialog synthetic tab — count after a failed generation', () 
     expect(
       await screen.findByText(/currently 10 synthetic sessions/),
     ).toBeInTheDocument();
+  });
+});
+
+describe('SettingsDialog synthetic tab — post-generation refresh failure', () => {
+  it('tells the researcher the screen may be stale, still refreshes the host, and re-enables Generate, when the post-generation refresh rejects', async () => {
+    // The dialog's own open-effect and Synthetic-tab-select effect both call
+    // reloadSynthetic() before Generate is ever clicked (see the "protocol
+    // import race" describe block above) — only the *third* call, made from
+    // handleGenerate's finally block, is the one under test here.
+    let call = 0;
+    mockCountSyntheticSessions.mockImplementation(async () => {
+      call += 1;
+      if (call >= 3) {
+        throw new Error('the database connection was closed');
+      }
+      return 0;
+    });
+    mockGenerateSyntheticSessions.mockResolvedValueOnce(5);
+    const onDataChange = vi.fn();
+    mockListProtocols.mockResolvedValue([makeProtocol('Protocol A', 'hash-1')]);
+
+    const user = userEvent.setup();
+    render(
+      <SettingsDialog open onClose={vi.fn()} onDataChange={onDataChange} />,
+    );
+    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Protocol' })).toHaveValue(
+        'hash-1',
+      );
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Generate' }));
+
+    // Generation itself succeeded and sessions were written...
+    await waitFor(() =>
+      expect(mockToastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Generated 5 synthetic sessions',
+          variant: 'success',
+        }),
+      ),
+    );
+
+    // ...but the post-generation refresh failed. The researcher must be told
+    // this screen's list/count can now be stale, not left looking at silently
+    // outdated numbers.
+    await waitFor(() =>
+      expect(mockToastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Could not refresh synthetic session info',
+          variant: 'destructive',
+          timeout: 0,
+        }),
+      ),
+    );
+
+    // The host is still told data changed even though this dialog's own
+    // refresh failed — the sessions were written to the database regardless.
+    expect(onDataChange).toHaveBeenCalled();
+
+    // The refresh failure must not leave Generate stuck disabled/spinning.
+    expect(
+      await screen.findByRole('button', { name: 'Generate' }),
+    ).toBeEnabled();
+  });
+});
+
+describe('SettingsDialog synthetic tab — delete failure', () => {
+  it('does not report a false success, and still unwinds and notifies the host, when the delete itself fails', async () => {
+    mockCountSyntheticSessions.mockResolvedValue(5);
+    mockDeleteSyntheticSessions.mockRejectedValueOnce(
+      new Error('the database connection was closed'),
+    );
+    const onDataChange = vi.fn();
+
+    const user = userEvent.setup();
+    render(
+      <SettingsDialog open onClose={vi.fn()} onDataChange={onDataChange} />,
+    );
+    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+
+    const deleteButton = await screen.findByRole('button', {
+      name: 'Delete All',
+    });
+    await waitFor(() => expect(deleteButton).toBeEnabled());
+    await user.click(deleteButton);
+
+    await waitFor(() => expect(mockDeleteSyntheticSessions).toHaveBeenCalled());
+
+    // The failed delete is left to this dialog's own built-in async-confirm
+    // error handling (DialogProvider shows it inline on the confirm dialog
+    // and keeps it open for a retry — see the comment in
+    // handleDeleteSynthetic) rather than a second, competing toast. What
+    // SettingsDialog itself must never do is claim a success that didn't
+    // happen.
+    expect(mockToastAdd).not.toHaveBeenCalledWith(
+      expect.objectContaining({ title: expect.stringMatching(/^Deleted/) }),
+    );
+
+    // The host is still told to refresh — a delete that throws partway
+    // through may still have removed some rows, so the host's own view
+    // shouldn't be left stale either.
+    expect(onDataChange).toHaveBeenCalled();
+
+    // isDeleting must unwind even though the delete failed.
+    expect(
+      await screen.findByRole('button', { name: 'Delete All' }),
+    ).toBeEnabled();
+  });
+
+  it('tells the researcher the screen may be stale, still refreshes the host, and re-enables Delete All, when the post-delete refresh rejects', async () => {
+    // Same call-count reasoning as the generate-refresh-failure test above:
+    // the dialog's open-effect and Synthetic-tab-select effect both call
+    // reloadSynthetic() before Delete All is ever clicked, so only the
+    // *third* call — made from handleDeleteSynthetic's finally block — is the
+    // one under test here.
+    let call = 0;
+    mockCountSyntheticSessions.mockImplementation(async () => {
+      call += 1;
+      if (call >= 3) {
+        throw new Error('the database connection was closed');
+      }
+      return 5;
+    });
+    mockDeleteSyntheticSessions.mockResolvedValueOnce(5);
+    const onDataChange = vi.fn();
+
+    const user = userEvent.setup();
+    render(
+      <SettingsDialog open onClose={vi.fn()} onDataChange={onDataChange} />,
+    );
+    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+
+    const deleteButton = await screen.findByRole('button', {
+      name: 'Delete All',
+    });
+    await waitFor(() => expect(deleteButton).toBeEnabled());
+    await user.click(deleteButton);
+
+    // The delete itself succeeded and sessions were removed...
+    await waitFor(() =>
+      expect(mockToastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Deleted 5 synthetic sessions',
+          variant: 'success',
+        }),
+      ),
+    );
+
+    // ...but the post-delete refresh failed. This must be reported as its
+    // own failure, not attributed back to the delete (which succeeded, and
+    // already has its own success toast above) — see the comment in
+    // handleDeleteSynthetic explaining why that distinction matters for this
+    // dialog's built-in confirm/retry handling.
+    await waitFor(() =>
+      expect(mockToastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Could not refresh synthetic session info',
+          variant: 'destructive',
+          timeout: 0,
+        }),
+      ),
+    );
+
+    // The host is still told data changed even though this dialog's own
+    // refresh failed — the sessions were deleted from the database
+    // regardless.
+    expect(onDataChange).toHaveBeenCalled();
+
+    // The refresh failure must not leave Delete All stuck disabled/spinning.
+    expect(
+      await screen.findByRole('button', { name: 'Delete All' }),
+    ).toBeEnabled();
   });
 });
