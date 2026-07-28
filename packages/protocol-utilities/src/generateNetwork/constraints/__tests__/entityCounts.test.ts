@@ -56,6 +56,20 @@ function alterEdgeForm(...variables: string[]): Stage {
   } as unknown as Stage;
 }
 
+function networkComposer(overrides: Record<string, unknown> = {}): Stage {
+  return {
+    id: 'stage-composer',
+    type: 'NetworkComposer',
+    label: 'Compose',
+    subject: { entity: 'node', type: 'person' },
+    quickAdd: 'name',
+    layoutVariable: 'layout',
+    background: { circles: true },
+    edges: [{ id: 'e1', subject: { entity: 'edge', type: 'knows' } }],
+    ...overrides,
+  } as unknown as Stage;
+}
+
 describe('worstCaseEntityCounts', () => {
   it('uses the config node maximum when a stage declares no behaviours', () => {
     const counts = worstCaseEntityCounts([nameGenerator()], config);
@@ -216,6 +230,137 @@ describe('worstCaseEntityCounts', () => {
     // C(4, 2) = 6
     const counts = worstCaseEntityCounts(stages, config);
     expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(6);
+  });
+
+  it('bounds a NetworkComposer edge by the composer own node ceiling', () => {
+    // `handleNetworkComposer` pairs the `newNodes` it just built, so the five
+    // people the name generator added are never among them: C(2, 2) = 1, where
+    // the protocol-wide total would claim C(7, 2) = 21.
+    const twoNodes = resolveGenerationConfig({
+      today: '2026-07-27',
+      nodeCount: { min: 2, max: 2 },
+    });
+
+    const counts = worstCaseEntityCounts(
+      [
+        nameGenerator({ behaviours: { minNodes: 5, maxNodes: 5 } }),
+        networkComposer(),
+      ],
+      twoNodes,
+    );
+    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(1);
+  });
+
+  it('counts an inverted composer node range as the generator draws it', () => {
+    // `randomInt` collapses an inverted range to its `min`, so the composer
+    // builds six people and pairs C(6, 2) = 15 of them. Reading the configured
+    // `max` alone would report a single pair and let a `unique` edge variable
+    // through that the draw then runs out of values for.
+    const inverted = resolveGenerationConfig({
+      today: '2026-07-27',
+      nodeCount: { min: 6, max: 2 },
+    });
+
+    const counts = worstCaseEntityCounts([networkComposer()], inverted);
+    expect(nodeCountFor(counts.node, 'person', 'name')).toBe(6);
+    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(15);
+  });
+
+  it('sums the pairs of every composer creating one edge type', () => {
+    // Each composer pairs only its own people, but a `unique` value is claimed
+    // once for the whole run, so the two stages' pairs add up.
+    const threeNodes = resolveGenerationConfig({
+      today: '2026-07-27',
+      nodeCount: { min: 3, max: 3 },
+    });
+
+    const counts = worstCaseEntityCounts(
+      [networkComposer(), networkComposer({ id: 'second' })],
+      threeNodes,
+    );
+    // C(3, 2) = 3 apiece.
+    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(6);
+  });
+
+  it('leaves a census reading the whole node total, composer people included', () => {
+    // Only the composer is stage-local. A DyadCensus pairs whatever the draft
+    // holds when it runs, so the people a composer added are among its
+    // candidates and narrowing it the same way would under-count it.
+    const twoNodes = resolveGenerationConfig({
+      today: '2026-07-27',
+      nodeCount: { min: 2, max: 2 },
+    });
+
+    const census = {
+      id: 'stage-census',
+      type: 'DyadCensus',
+      label: 'Census',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+      ],
+    } as unknown as Stage;
+
+    const counts = worstCaseEntityCounts(
+      [
+        nameGenerator({ behaviours: { minNodes: 5, maxNodes: 5 } }),
+        networkComposer(),
+        census,
+      ],
+      twoNodes,
+    );
+    // C(7, 2) = 21 for the census over all seven people, plus the composer's
+    // own C(2, 2) = 1.
+    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(22);
+  });
+
+  it('counts nothing for a composer whose subject names no node type', () => {
+    // `handleNetworkComposer` returns before building anything, so neither its
+    // people nor its edges exist.
+    const counts = worstCaseEntityCounts(
+      [networkComposer({ subject: { entity: 'edge', type: 'knows' } })],
+      config,
+    );
+    expect(counts.edge.base.size).toBe(0);
+  });
+
+  it('still counts a filtered census at its unfiltered pair count', () => {
+    // Whether a node passes a stage's filter depends on values no analysis has
+    // drawn yet, so the only sound ceiling is the one where every node passes.
+    // Narrowing this by reading the filter would be an under-count wherever the
+    // reading is wrong, and an under-count lets a `unique` variable through and
+    // runs the draw out of values partway. Deliberately the same number the
+    // same census without a filter reaches.
+    const filtered = {
+      id: 'stage-census',
+      type: 'DyadCensus',
+      label: 'Census',
+      subject: { entity: 'node', type: 'person' },
+      filter: {
+        rules: [
+          {
+            id: 'r1',
+            type: 'node',
+            options: {
+              type: 'person',
+              attribute: 'band',
+              operator: 'EXACTLY',
+              value: 1,
+            },
+          },
+        ],
+      },
+      prompts: [
+        { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+      ],
+    } as unknown as Stage;
+
+    const counts = worstCaseEntityCounts(
+      [nameGenerator({ behaviours: { minNodes: 3, maxNodes: 3 } }), filtered],
+      config,
+    );
+    // C(3, 2) = 3.
+    expect(edgeCountFor(counts.edge, 'knows', 'strength')).toBe(3);
   });
 
   it('returns empty maps for a protocol with no entity-producing stages', () => {
@@ -590,6 +735,198 @@ describe('generateNetwork with a roster-capped unique variable', () => {
     expect(() =>
       generateNetwork({ seed: 1, codebook, stages: [rosterStage()] }),
     ).toThrow(SyntheticDataConstraintError);
+  });
+});
+
+describe('generateNetwork with a unique variable on a composer edge type', () => {
+  const codebook = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        variables: { name: { name: 'Name', type: 'text' } },
+      },
+    },
+    edge: {
+      knows: {
+        name: 'Knows',
+        color: 'edge-color-seq-1',
+        variables: {
+          strength: {
+            name: 'Strength',
+            type: 'boolean',
+            validation: { unique: true },
+          },
+        },
+      },
+    },
+  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+  it('generates when the composer own people cannot exhaust the value space', () => {
+    // Two people the composer builds itself reach one pair, whatever the five
+    // the name generator added before it hold. Reading the protocol-wide total
+    // refused this for needing 21 distinct booleans it never asks for.
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages: [
+        nameGenerator({ behaviours: { minNodes: 5, maxNodes: 5 } }),
+        networkComposer(),
+      ],
+      config: { nodeCount: { min: 2, max: 2 } },
+    });
+
+    expect(network.nodes).toHaveLength(7);
+    expect(network.edges.length).toBeLessThanOrEqual(1);
+  });
+
+  it('still refuses when the composer own people do exhaust it', () => {
+    // Four people pair six ways and two booleans cannot tell six edges apart,
+    // so this has to refuse up front rather than run out partway through the
+    // composer's own pass.
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 1,
+        codebook,
+        stages: [networkComposer()],
+        config: { nodeCount: { min: 4, max: 4 } },
+      });
+
+    expect(generate).toThrow(SyntheticDataConstraintError);
+    expect(generate).toThrow(/up to 6 edges of this type can be generated/);
+  });
+
+  it('still refuses when a later census pairs everyone the composer added', () => {
+    // The census reads the whole draft, composer people included, so the count
+    // that matters there is the protocol-wide one.
+    const census = {
+      id: 'stage-census',
+      type: 'DyadCensus',
+      label: 'Census',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+      ],
+    } as unknown as Stage;
+
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook,
+        stages: [networkComposer(), census],
+        config: { nodeCount: { min: 3, max: 3 } },
+      }),
+    ).toThrow(/up to 6 edges of this type can be generated/);
+  });
+});
+
+describe('generateNetwork with a filtered pair-edge stage', () => {
+  const person = {
+    name: 'Person',
+    color: 'node-color-seq-1',
+    variables: {
+      band: {
+        name: 'Band',
+        type: 'ordinal',
+        options: [
+          { label: 'A', value: 1 },
+          { label: 'B', value: 2 },
+          { label: 'C', value: 3 },
+        ],
+        validation: { unique: true },
+      },
+    },
+  };
+
+  const filteredCensus = {
+    id: 'stage-census',
+    type: 'DyadCensus',
+    label: 'Census',
+    subject: { entity: 'node', type: 'person' },
+    filter: {
+      rules: [
+        {
+          id: 'r1',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'band',
+            operator: 'EXACTLY',
+            value: 1,
+          },
+        },
+      ],
+    },
+    prompts: [
+      { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+    ],
+  } as unknown as Stage;
+
+  const stages = [
+    nameGenerator({ behaviours: { minNodes: 3, maxNodes: 3 } }),
+    filteredCensus,
+  ];
+
+  it('creates no edges at all when the filter admits one node', () => {
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook: {
+        node: { person },
+        edge: {
+          knows: { name: 'Knows', color: 'edge-color-seq-1', variables: {} },
+        },
+      } as unknown as Parameters<typeof generateNetwork>[0]['codebook'],
+      stages,
+      respectSkipLogicAndFiltering: true,
+    });
+
+    expect(network.nodes).toHaveLength(3);
+    expect(network.edges).toHaveLength(0);
+  });
+
+  it('refuses it anyway, counting the pairs the filter is not read to exclude', () => {
+    // A deliberate over-count, and the one the count above proves is wide: this
+    // stage creates no edges at all, yet three pairs are counted against the
+    // two booleans and the protocol is refused.
+    //
+    // Kept because no bound tighter than this is sound. Whether a node passes a
+    // filter depends on values the analysis has not drawn, so the filtered set
+    // is genuinely unknown here; the narrowing this case invites — "the
+    // attribute is `unique`, so one node can hold the value the rule names" —
+    // reads the conclusion of the very check being run, and would silently
+    // become an under-count the moment the `unique` check gains an exemption
+    // (as it has twice already, for roster rows and for bin-assigned
+    // variables). Deferring the capacity check to the draw instead is the same
+    // under-count by another route: the protocol would pass analysis and refuse
+    // partway through, on whichever seeds reached it.
+    //
+    // An over-count costs a refusal that should not stand. An under-count costs
+    // a run that throws mid-draw, which this whole pass exists to prevent.
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 1,
+        codebook: {
+          node: { person },
+          edge: {
+            knows: {
+              name: 'Knows',
+              color: 'edge-color-seq-1',
+              variables: {
+                strength: {
+                  name: 'Strength',
+                  type: 'boolean',
+                  validation: { unique: true },
+                },
+              },
+            },
+          },
+        } as unknown as Parameters<typeof generateNetwork>[0]['codebook'],
+        stages,
+        respectSkipLogicAndFiltering: true,
+      });
+
+    expect(generate).toThrow(SyntheticDataConstraintError);
+    expect(generate).toThrow(/up to 3 edges of this type can be generated/);
   });
 });
 

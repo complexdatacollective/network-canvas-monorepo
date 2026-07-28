@@ -20,6 +20,27 @@ describe('addDays', () => {
   it('handles leap days', () => {
     expect(addDays('2024-02-28', 1)).toBe('2024-02-29');
   });
+
+  // `Date.UTC` maps a year of 0-99 into 1900-1999, so a full date in a low year
+  // — which the native input offers and the protocol schema admits — would be
+  // built around 1999 and step out of its own window by nineteen centuries.
+  it.each([
+    { base: '0099-01-01', days: 0, expected: '0099-01-01' },
+    { base: '0099-12-31', days: 1, expected: '0100-01-01' },
+    { base: '0001-01-01', days: 364, expected: '0001-12-31' },
+    // Year 4 is a leap year in the proleptic Gregorian calendar; 1904, the year
+    // it would be remapped to, happens to be one too, which is what let the
+    // remapping go unnoticed.
+    { base: '0004-02-28', days: 1, expected: '0004-02-29' },
+    // Year 100 is not, and neither is the year 100 that no remapping touches.
+    { base: '0100-02-28', days: 1, expected: '0100-03-01' },
+    { base: '0100-01-01', days: -1, expected: '0099-12-31' },
+  ])(
+    'steps from $base without remapping its year',
+    ({ base, days, expected }) => {
+      expect(addDays(base, days)).toBe(expected);
+    },
+  );
 });
 
 describe('truncateToResolution', () => {
@@ -70,6 +91,15 @@ describe('stepsBetween', () => {
 
   it('returns a negative count for an inverted range', () => {
     expect(stepsBetween('2026', '2024', 'year')).toBe(-2);
+  });
+
+  // The count is what `valueSpaceSize` sizes a window by, so a remapped low
+  // year would report a window nineteen centuries narrower than it is and let
+  // feasibility refuse a range the draw can fill.
+  it('counts days across a low year without remapping it', () => {
+    expect(stepsBetween('0099-01-01', '0099-01-31', 'full')).toBe(30);
+    expect(stepsBetween('0099-12-31', '0100-01-01', 'full')).toBe(1);
+    expect(stepsBetween('0099-01-01', '2020-01-01', 'full')).toBe(701_630);
   });
 });
 

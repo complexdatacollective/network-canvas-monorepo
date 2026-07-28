@@ -24,12 +24,29 @@ function formatYmd(year: number, month: number, day: number): string {
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+/**
+ * Midnight UTC on a date whose year is read literally.
+ *
+ * `Date.UTC` — like the multi-argument `Date` constructor — maps a year of 0-99
+ * into 1900-1999, so `0099-01-01` would be built as 1999-01-01 and every date
+ * derived from it would leave the window the protocol declared. The picker
+ * offers those years: a full-resolution field is a native `<input type="date">`,
+ * whose dates start at year 0001, and the protocol schema admits 0001-0999
+ * there deliberately. `setUTCFullYear` carries no two-digit-year special case,
+ * so it is the only way to build one of them.
+ */
+export function utcDate(year: number, month: number, day: number): Date {
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  return date;
+}
+
 export function addDays(ymd: string, days: number): string {
   const [year, month, day] = ymd.split('-').map(Number);
   if (year === undefined || month === undefined || day === undefined) {
     return ymd;
   }
-  const date = new Date(Date.UTC(year, month - 1, day));
+  const date = utcDate(year, month, day);
   date.setUTCDate(date.getUTCDate() + days);
   return formatYmd(
     date.getUTCFullYear(),
@@ -97,7 +114,7 @@ export function stepsBetween(
   }
 
   const msPerDay = 24 * 60 * 60 * 1000;
-  const fromMs = Date.UTC(a.year, a.month - 1, a.day);
-  const toMs = Date.UTC(b.year, b.month - 1, b.day);
+  const fromMs = utcDate(a.year, a.month, a.day).getTime();
+  const toMs = utcDate(b.year, b.month, b.day).getTime();
   return Math.round((toMs - fromMs) / msPerDay);
 }

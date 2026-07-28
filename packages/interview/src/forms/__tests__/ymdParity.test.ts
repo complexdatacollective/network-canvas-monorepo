@@ -32,6 +32,14 @@ describe('fresco-ui and protocol-utilities date arithmetic agree', () => {
   });
 
   const bases = [
+    // Low years, which the native date input offers from 0001 and the protocol
+    // schema admits at full resolution. `Date.UTC` maps a year of 0-99 into
+    // 1900-1999, so either implementation reaching for it puts its dates an era
+    // away from the other's.
+    '0001-01-01',
+    '0099-01-01',
+    '0099-12-31',
+    '0100-01-01',
     // The earliest date a picker offers, and the era boundaries either side.
     '1920-01-01',
     '1999-12-31',

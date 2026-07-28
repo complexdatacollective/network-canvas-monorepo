@@ -281,6 +281,11 @@ function namedEdgeAttributes(
   return named;
 }
 
+/** Unordered pairs over `count` entities, as `createEdgesForPairs` walks them. */
+function pairCount(count: number): number {
+  return (count * (count - 1)) / 2;
+}
+
 /**
  * The largest number of unordered pairs a subject node type could ever reach.
  *
@@ -288,12 +293,16 @@ function namedEdgeAttributes(
  * an edge is created for a pair of people, whatever values those people hold,
  * so a roster row passed over for repeating one variable's value still pairs
  * with everyone for a stage reading another.
+ *
+ * For the stages that pair whatever the network holds when they run — the
+ * censuses and the Sociogram, which read `getStageFilteredNodes` over the whole
+ * draft. A NetworkComposer pairs only the nodes it built itself, and is counted
+ * from its own ceiling instead.
  */
 function pairsFor(nodeType: string | undefined, node: NodeCounts): number {
   if (nodeType === undefined) return 0;
   const tally = node.get(nodeType);
-  const count = tally === undefined ? 0 : nodeTotal(tally);
-  return (count * (count - 1)) / 2;
+  return pairCount(tally === undefined ? 0 : nodeTotal(tally));
 }
 
 /**
@@ -302,13 +311,14 @@ function pairsFor(nodeType: string | undefined, node: NodeCounts): number {
  * bound, not its actual random draw: name-generator variants and
  * NetworkComposer use `getNodeCountBounds`'s ceiling, FamilyPedigree uses the
  * configured maximum pedigree size. For edges, DyadCensus, TieStrengthCensus,
- * OneToManyDyadCensus, Sociogram, and NetworkComposer bound each prompt (or
- * edge definition) by the pair count over its subject node type — a run
- * creates at most one edge of a type per unordered node pair per prompt, so
- * bounds accumulate per prompt. FamilyPedigree instead bounds its edge type by
- * one less than its node ceiling, the parent-child edges it actually creates.
- * Counts sum across stages producing the same type, since a `unique` constraint
- * spans the whole run.
+ * OneToManyDyadCensus and Sociogram bound each prompt by the pair count over
+ * their subject node type — a run creates at most one edge of a type per
+ * unordered node pair per prompt, so bounds accumulate per prompt. A
+ * NetworkComposer bounds each of its edge definitions by the pairs of its own
+ * node ceiling instead, since it pairs only the people it built itself.
+ * FamilyPedigree bounds its edge type by one less than its node ceiling, the
+ * parent-child edges it actually creates. Counts sum across stages producing
+ * the same type, since a `unique` constraint spans the whole run.
  *
  * Entities are therefore counted as the value space they spend, not as every
  * entity the run creates, because spending values is the only thing the count
@@ -387,7 +397,25 @@ export function worstCaseEntityCounts(
     }
 
     if (stage.type === 'NetworkComposer') {
-      const pairs = pairsFor(getSubjectType(stage.subject, 'node'), node);
+      // `handleNetworkComposer` returns before building anything when its
+      // subject names no node type.
+      if (getSubjectType(stage.subject, 'node') === undefined) continue;
+
+      // Pairs of the stage's own new nodes, not of the type's whole population:
+      // `handleNetworkComposer` hands `createEdgesForPairs` the `newNodes` it
+      // just built, so people an earlier stage added are never among them. The
+      // protocol-wide total would count pairs the handler cannot form — a
+      // five-person name generator ahead of a composer capped at two claims 21
+      // edges for a stage able to create one — and each composer therefore
+      // contributes its own pairs, which sum across stages as every other edge
+      // count does.
+      //
+      // The ceiling is `getNodeCountBounds`'s, which is what
+      // `createNodesForStage` caps the stage at, and it reads an inverted
+      // configured range as the draw does. A composer never draws from a
+      // roster — `handleNetworkComposer` passes no pool and allows fabrication
+      // — so nothing narrows the stage below it.
+      const pairs = pairCount(getNodeCountBounds(stage, config).maxNodes);
       // Mirrors `handleNetworkComposer`'s read exactly (no `entity` check), so
       // this count can never be lower than what the generator produces.
       for (const edgeDef of stage.edges ?? []) {

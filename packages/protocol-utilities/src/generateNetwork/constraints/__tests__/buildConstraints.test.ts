@@ -6,6 +6,7 @@ import {
   buildEntityConstraints,
   buildVariableConstraints,
 } from '../buildConstraints';
+import { addSteps, stepsBetween } from '../dateWindow';
 
 const TODAY = '2026-07-27';
 
@@ -227,6 +228,123 @@ describe('buildVariableConstraints', () => {
     ).toThrow(
       'declares anchor "2020-06", which is coarser than the date its picker collects.',
     );
+  });
+
+  // A full-resolution field is a native `<input type="date">`, whose dates
+  // start at year 0001, and the protocol schema admits 0001-0999 there
+  // deliberately. The window kept the bound verbatim already; what it reached
+  // the draw as was another matter, because `Date.UTC` maps a year of 0-99 into
+  // 1900-1999 and `addDays` emitted `1999-01-01` — outside the declared window,
+  // and not the date the picker offers.
+  it.each([
+    { min: '0099-01-01', max: '0099-12-31' },
+    { min: '0001-01-01', max: '0001-01-02' },
+    { min: '0099-12-31', max: '0100-01-01' },
+  ])(
+    'keeps a full-date window in year $min and draws inside it',
+    (declared) => {
+      const result = buildVariableConstraints(
+        {
+          id: 'v1',
+          name: 'Born',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'full', ...declared },
+        },
+        TODAY,
+      );
+
+      expect(result.dateWindow).toEqual({ resolution: 'full', ...declared });
+
+      // The draw's own arithmetic, held to the window it was handed: every offset
+      // it can take has to land back inside it.
+      const window = result.dateWindow;
+      if (window?.min === undefined || window.max === undefined) {
+        throw new Error('expected a closed window');
+      }
+      const span = stepsBetween(window.min, window.max, 'full');
+      const drawn = [0, span].map((offset) =>
+        addSteps(window.min ?? '', offset, 'full'),
+      );
+
+      expect(drawn).toEqual([declared.min, declared.max]);
+    },
+  );
+
+  // A real, round-tripping ISO date — JavaScript's calendar has a year 0 — but
+  // the native date input's earliest is 0001-01-01, so nothing in the window
+  // could be selected or displayed. The protocol schema refuses it for the same
+  // reason.
+  it.each([
+    { parameter: 'min', value: '0000-01-01' },
+    { parameter: 'max', value: '0000-12-31' },
+  ])('refuses a full-date $parameter in year zero', ({ parameter, value }) => {
+    expect(() =>
+      buildVariableConstraints(
+        {
+          id: 'v1',
+          name: 'Born',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'full', [parameter]: value },
+        },
+        TODAY,
+      ),
+    ).toThrow(
+      `Date variable "Born" (v1) declares ${parameter} "${value}", whose year is earlier than its picker can offer. ` +
+        'Synthetic data generation needs a year of 0001 or later.',
+    );
+  });
+
+  // The year and month pickers are a `<select>` whose options stringify each
+  // year unpadded, so a bound of `0099` lists as `99` and the padded value the
+  // draw writes matches no option at all. The protocol schema floors these two
+  // resolutions at year 1000 for the same reason; only the full-date input
+  // renders a low year.
+  it.each([
+    { parameter: 'min', value: '0099', type: 'year' },
+    { parameter: 'max', value: '0999', type: 'year' },
+    { parameter: 'min', value: '0099-03', type: 'month' },
+  ])(
+    'refuses a $type-picker $parameter of "$value"',
+    ({ parameter, value, type }) => {
+      expect(() =>
+        buildVariableConstraints(
+          {
+            id: 'v1',
+            name: 'Born',
+            type: 'datetime',
+            component: 'DatePicker',
+            parameters: { type, [parameter]: value },
+          },
+          TODAY,
+        ),
+      ).toThrow(
+        `Date variable "Born" (v1) declares ${parameter} "${value}", whose year is earlier than its picker can offer. ` +
+          'Synthetic data generation needs a year of 1000 or later.',
+      );
+    },
+  );
+
+  // Counted in days from the anchor, so the anchor is a full date and takes the
+  // full-date floor with it.
+  it('anchors a RelativeDatePicker in a low year without remapping it', () => {
+    const result = buildVariableConstraints(
+      {
+        id: 'v1',
+        name: 'Last seen',
+        type: 'datetime',
+        component: 'RelativeDatePicker',
+        parameters: { anchor: '0099-06-15', before: 30, after: 5 },
+      },
+      TODAY,
+    );
+
+    expect(result.dateWindow).toEqual({
+      resolution: 'full',
+      min: '0099-05-16',
+      max: '0099-06-20',
+    });
   });
 
   // Bounds are written at the resolution the picker collects, and protocols in
