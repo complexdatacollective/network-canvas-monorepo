@@ -2326,3 +2326,177 @@ describe('validation rules on generated edges', () => {
     expect(attributesOf(si.getNetwork())).toEqual([{}, {}]);
   });
 });
+
+describe('validation rules on the generated ego', () => {
+  // As for nodes and edges: enough seeds that a rule satisfied by luck on one
+  // of them cannot pass. There is only ever one ego, so a seed is the only
+  // repetition available.
+  const SEEDS = [1, 2, 7, 42, 99, 1234, 20260727];
+
+  const egoAttributesOf = (network: NcNetwork) =>
+    network.ego[entityAttributesProperty];
+
+  it('answers a required ego variable rather than leaving it absent', () => {
+    const si = new SyntheticInterview(42);
+    const age = si.addEgoVariable({
+      type: 'number',
+      name: 'age',
+      validation: { required: true, minValue: 18, maxValue: 90 },
+    });
+    si.addStage('EgoForm');
+
+    // `getNetwork` once hard-coded the ego's attributes to `{}`, so a required
+    // ego variable arrived absent and every ego form rendered empty.
+    const attrs = egoAttributesOf(si.getNetwork());
+    expect(attrs).toHaveProperty(age.id);
+    expect(attrs[age.id]).toBeGreaterThanOrEqual(18);
+    expect(attrs[age.id]).toBeLessThanOrEqual(90);
+  });
+
+  it('gives every member of a sameAs pair one value', () => {
+    for (const seed of SEEDS) {
+      const si = new SyntheticInterview(seed);
+      const code = si.addEgoVariable({ type: 'text', name: 'code' });
+      const codeConfirm = si.addEgoVariable({
+        type: 'text',
+        name: 'codeConfirm',
+        validation: { sameAs: code.id },
+      });
+
+      const attrs = egoAttributesOf(si.getNetwork());
+      expect(attrs[codeConfirm.id]).toBe(attrs[code.id]);
+      expect(attrs[code.id]).not.toBeUndefined();
+    }
+  });
+
+  it('orders a comparison rule against the value its counterpart was given', () => {
+    for (const seed of SEEDS) {
+      const si = new SyntheticInterview(seed);
+      const age = si.addEgoVariable({
+        type: 'number',
+        name: 'age',
+        validation: { minValue: 18, maxValue: 65 },
+      });
+      const retirementAge = si.addEgoVariable({
+        type: 'number',
+        name: 'retirementAge',
+        validation: {
+          minValue: 18,
+          maxValue: 90,
+          greaterThanVariable: age.id,
+        },
+      });
+
+      const attrs = egoAttributesOf(si.getNetwork());
+      expect(Number(attrs[retirementAge.id])).toBeGreaterThan(
+        Number(attrs[age.id]),
+      );
+    }
+  });
+
+  it('keeps a differentFrom pair apart', () => {
+    for (const seed of SEEDS) {
+      // A two-option ordinal, so a colliding draw is likely rather than
+      // merely possible.
+      const options = [
+        { label: 'A', value: 1 },
+        { label: 'B', value: 2 },
+      ];
+      const si = new SyntheticInterview(seed);
+      const first = si.addEgoVariable({
+        type: 'ordinal',
+        name: 'first',
+        options,
+      });
+      const second = si.addEgoVariable({
+        type: 'ordinal',
+        name: 'second',
+        options,
+        validation: { differentFrom: first.id },
+      });
+
+      const attrs = egoAttributesOf(si.getNetwork());
+      expect(attrs[second.id]).not.toBe(attrs[first.id]);
+    }
+  });
+
+  it('refuses an ego codebook whose rules leave ego no value', () => {
+    const si = new SyntheticInterview(42);
+    si.addEgoVariable({
+      type: 'text',
+      name: 'bio',
+      validation: { minLength: 10, maxLength: 5 },
+    });
+
+    // Reported without an entity type, because the codebook holds one ego
+    // section rather than a map of named types.
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+    try {
+      si.getNetwork();
+    } catch (error) {
+      expect(error).toBeInstanceOf(SyntheticDataConstraintError);
+      const [conflict] = (error as SyntheticDataConstraintError).conflicts;
+      expect(conflict).toMatchObject({
+        entity: 'ego',
+        variableNames: ['bio'],
+        rules: ['maxLength'],
+      });
+      expect(conflict).not.toHaveProperty('entityType');
+      expect(conflict).not.toHaveProperty('entityTypeName');
+    }
+  });
+
+  it('leaves an interview declaring no ego variables its empty attributes', () => {
+    const si = new SyntheticInterview(42);
+    si.addStage('Sociogram', { initialNodes: { count: 2 } });
+
+    expect(egoAttributesOf(si.getNetwork())).toEqual({});
+  });
+
+  it('draws without disturbing the values its nodes and edges were given', () => {
+    // Ego is drawn after the entities precisely so that adding an ego variable
+    // to a fixture cannot move the node and edge values a story or a snapshot
+    // was built around.
+    const build = (withEgo: boolean) => {
+      const si = new SyntheticInterview(42);
+      if (withEgo) {
+        si.addEgoVariable({ type: 'text', name: 'nickname' });
+        si.addEgoVariable({ type: 'number', name: 'age' });
+      }
+      const nt = si.addNodeType();
+      nt.addVariable({ type: 'number', name: 'closeness' });
+      const et = si.addEdgeType();
+      et.addVariable({ type: 'text', name: 'note' });
+      si.addStage('Sociogram', {
+        subject: { entity: 'node', type: nt.id },
+        initialNodes: { count: 4 },
+      });
+      si.addEdges(
+        [
+          [0, 1],
+          [1, 2],
+          [2, 3],
+        ],
+        et.id,
+      );
+      return si.getNetwork();
+    };
+
+    // Compared as values rather than whole entities: declaring an ego variable
+    // advances the builder's own id counter, so the variable ids the two
+    // networks key their attributes by differ while the drawn values do not.
+    const drawnValues = (network: NcNetwork) => [
+      ...network.nodes.map((node) =>
+        Object.values(node[entityAttributesProperty]),
+      ),
+      ...network.edges.map((edge) =>
+        Object.values(edge[entityAttributesProperty]),
+      ),
+    ];
+
+    const withEgo = build(true);
+    const withoutEgo = build(false);
+    expect(drawnValues(withEgo)).toEqual(drawnValues(withoutEgo));
+    expect(Object.keys(egoAttributesOf(withEgo))).toHaveLength(2);
+  });
+});

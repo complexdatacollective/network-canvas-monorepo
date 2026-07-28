@@ -36,7 +36,8 @@ export function toVariableEntry(id: string, variable: Variable): VariableEntry {
   };
 }
 
-function constraintsFor(
+/** The rules one entity scope draws against, whichever scope it is. */
+export function constraintsFor(
   ctx: GenerationContext,
   ref: EntityScopeRef,
 ): EntityConstraints {

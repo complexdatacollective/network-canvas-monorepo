@@ -25,6 +25,7 @@ import {
 } from './constants';
 import {
   claimFixedValues,
+  constraintsFor,
   generateAttributesForEntity,
 } from './generateNetwork/attributes';
 import { resolveGenerationConfig } from './generateNetwork/config';
@@ -35,6 +36,7 @@ import {
   SyntheticDataConstraintError,
 } from './generateNetwork/constraints/error';
 import {
+  type EntityScopeRef,
   scopeKey,
   uniqueSlotMembers,
 } from './generateNetwork/constraints/generateEntityAttributes';
@@ -1826,10 +1828,37 @@ export class SyntheticInterview {
       };
     });
 
+    // Ego is drawn last. It shares no rule with any node or edge — ego
+    // variables live in their own codebook section and their own registry
+    // scope — so where it sits decides nothing but which part of the value
+    // stream its draws consume, and drawing after the entities leaves every
+    // node and edge value exactly where it was before ego was drawn at all.
+    //
+    // Nothing about ego is fixed: there is one of it, the codebook describes it
+    // entirely, and the builder offers no way to write an attribute onto it. So
+    // there is no manual case either — ego is always drawn, the way a
+    // procedural node is. The fixed-value guard runs against that empty set
+    // regardless, so an ego attribute API added later cannot reach the network
+    // without passing it.
+    const egoExplicit: Record<string, VariableValue> = {};
+    this.refuseContradictoryFixedValues(ctx, { entity: 'ego' }, egoExplicit);
+
+    const drawnEgo = generateAttributesForEntity(ctx, { entity: 'ego' }, 0, {
+      existing: egoExplicit,
+    });
+    this.refuseUndrawableValues(ctx, { entity: 'ego' }, drawnEgo, egoExplicit);
+
+    const egoAttributes: Record<string, VariableValue> = {};
+    for (const [varId, variable] of this.egoVariables) {
+      const value = drawnEgo[varId];
+      egoAttributes[varId] =
+        value === undefined ? ctx.valueGen.neutralForVariable(variable) : value;
+    }
+
     return {
       ego: {
         [entityPrimaryKeyProperty]: `ego-${this.seed}`,
-        [entityAttributesProperty]: {},
+        [entityAttributesProperty]: egoAttributes,
       },
       nodes: ncNodes,
       edges: ncEdges,
@@ -2027,13 +2056,13 @@ export class SyntheticInterview {
    */
   private refuseContradictoryFixedValues(
     ctx: GenerationContext,
-    ref: { entity: 'node' | 'edge'; type: string },
+    ref: EntityScopeRef,
     fixed: Record<string, VariableValue>,
   ): void {
-    const constraints = ctx.entityConstraints[ref.entity].get(ref.type);
-    if (!constraints) return;
-
-    const broken = crossRuleBrokenByFixedValues(constraints, fixed);
+    const broken = crossRuleBrokenByFixedValues(
+      constraintsFor(ctx, ref),
+      fixed,
+    );
     if (broken === undefined) return;
 
     const setTo = broken.values.map((value) => valueKey(value)).join(' and ');
@@ -2070,13 +2099,11 @@ export class SyntheticInterview {
    */
   private refuseUndrawableValues(
     ctx: GenerationContext,
-    ref: { entity: 'node' | 'edge'; type: string },
+    ref: EntityScopeRef,
     drawn: Record<string, VariableValue>,
     fixed: Record<string, VariableValue>,
   ): void {
-    const constraints = ctx.entityConstraints[ref.entity].get(ref.type);
-    if (!constraints) return;
-
+    const constraints = constraintsFor(ctx, ref);
     const reached = reachedByFixedValues(constraints, fixed);
     const judged = Object.fromEntries(
       Object.entries(drawn).filter(([id]) => !reached.has(id)),
@@ -2092,26 +2119,34 @@ export class SyntheticInterview {
     ]);
   }
 
-  /** One conflict, named the way a consumer reading the codebook would name it. */
+  /**
+   * One conflict, named the way a consumer reading the codebook would name it.
+   *
+   * Ego carries no type at all — the codebook holds one ego section rather than
+   * a map of named types — so it is reported without `entityType` or
+   * `entityTypeName`, the same shape generation's own refusals give it.
+   */
   private conflict(
-    ref: { entity: 'node' | 'edge'; type: string },
+    ref: EntityScopeRef,
     variableIds: string[],
     rules: string[],
     { reason }: { reason: string },
   ): ConstraintConflict {
     const entityType =
-      ref.entity === 'node'
-        ? this.nodeTypes.get(ref.type)
-        : this.edgeTypes.get(ref.type);
+      ref.entity === 'ego'
+        ? undefined
+        : ref.entity === 'node'
+          ? this.nodeTypes.get(ref.type)
+          : this.edgeTypes.get(ref.type);
+    const variables =
+      ref.entity === 'ego' ? this.egoVariables : entityType?.variables;
 
     return {
       entity: ref.entity,
-      entityType: ref.type,
+      ...(ref.entity === 'ego' ? {} : { entityType: ref.type }),
       ...(entityType ? { entityTypeName: entityType.name } : {}),
       variableIds,
-      variableNames: variableIds.map(
-        (id) => entityType?.variables.get(id)?.name ?? id,
-      ),
+      variableNames: variableIds.map((id) => variables?.get(id)?.name ?? id),
       rules,
       reason,
     };
