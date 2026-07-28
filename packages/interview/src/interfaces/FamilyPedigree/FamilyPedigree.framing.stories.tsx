@@ -4,6 +4,7 @@ import { expect, screen, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
 
 import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
 import {
@@ -40,15 +41,13 @@ function buildFramingInterview({
     type: 'text',
   });
   const edgeType = si.addEdgeType({ name: 'Family' });
+  // The relationship-type variable is locked to the canonical option set: the
+  // FamilyPedigree superRefine rejects a protocol whose options differ, and the
+  // interface reads and writes exactly these values.
   const relationshipVar = edgeType.addVariable({
     name: 'Relationship',
     type: 'categorical',
-    options: [
-      { label: 'Parent', value: 'parent' },
-      { label: 'Child', value: 'child' },
-      { label: 'Sibling', value: 'sibling' },
-      { label: 'Partner', value: 'partner' },
-    ],
+    options: RELATIONSHIP_TYPE_OPTIONS,
   });
   const isActiveVar = edgeType.addVariable({
     name: 'Is Active',
@@ -124,15 +123,13 @@ function buildFixedFramingInterview(value: FixedFramingMode) {
     type: 'text',
   });
   const edgeType = si.addEdgeType({ name: 'Family' });
+  // The relationship-type variable is locked to the canonical option set: the
+  // FamilyPedigree superRefine rejects a protocol whose options differ, and the
+  // interface reads and writes exactly these values.
   const relationshipVar = edgeType.addVariable({
     name: 'Relationship',
     type: 'categorical',
-    options: [
-      { label: 'Parent', value: 'parent' },
-      { label: 'Child', value: 'child' },
-      { label: 'Sibling', value: 'sibling' },
-      { label: 'Partner', value: 'partner' },
-    ],
+    options: RELATIONSHIP_TYPE_OPTIONS,
   });
   const isActiveVar = edgeType.addVariable({
     name: 'Is Active',
@@ -196,15 +193,13 @@ function buildBoundaryInterview(
     type: 'text',
   });
   const edgeType = si.addEdgeType({ name: 'Family' });
+  // The relationship-type variable is locked to the canonical option set: the
+  // FamilyPedigree superRefine rejects a protocol whose options differ, and the
+  // interface reads and writes exactly these values.
   const relationshipVar = edgeType.addVariable({
     name: 'Relationship',
     type: 'categorical',
-    options: [
-      { label: 'Parent', value: 'parent' },
-      { label: 'Child', value: 'child' },
-      { label: 'Sibling', value: 'sibling' },
-      { label: 'Partner', value: 'partner' },
-    ],
+    options: RELATIONSHIP_TYPE_OPTIONS,
   });
   const isActiveVar = edgeType.addVariable({
     name: 'Is Active',
