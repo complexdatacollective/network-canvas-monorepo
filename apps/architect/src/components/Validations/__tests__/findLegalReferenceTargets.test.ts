@@ -104,7 +104,9 @@ describe('findLegalReferenceTargets: analyser invocation count', () => {
       candidateIds,
     });
 
-    expect(analyser.calls).toBe(1);
+    // One baseline call (Thirtieth-wave Finding 2's candidate-free run,
+    // computed once per invocation) plus one shared batched call.
+    expect(analyser.calls).toBe(2);
     expect(legal.size).toBe(candidateIds.length);
   });
 
@@ -135,11 +137,12 @@ describe('findLegalReferenceTargets: analyser invocation count', () => {
       candidateIds,
     });
 
-    // One shared batch call for every disjoint, unclaimed component (the 50
-    // isolated candidates plus whichever of pairA/pairB claims the batch
-    // first) plus one individual call for the pair member that lost the
-    // race — never one call per candidate (52).
-    expect(analyser.calls).toBeLessThanOrEqual(2);
+    // One baseline call (Thirtieth-wave Finding 2), plus one shared batch
+    // call for every disjoint, unclaimed component (the 50 isolated
+    // candidates plus whichever of pairA/pairB claims the batch first),
+    // plus one individual call for the pair member that lost the race —
+    // never one call per candidate (52).
+    expect(analyser.calls).toBeLessThanOrEqual(3);
     expect(analyser.calls).toBeLessThan(candidateIds.length);
   });
 
@@ -175,7 +178,9 @@ describe('findLegalReferenceTargets: analyser invocation count', () => {
       candidateIds,
     });
 
-    expect(analyser.calls).toBe(candidateIds.length);
+    // Plus one baseline call (Thirtieth-wave Finding 2), computed once
+    // regardless of how many candidates fall back to the individual path.
+    expect(analyser.calls).toBe(candidateIds.length + 1);
   });
 });
 
@@ -224,6 +229,66 @@ describe("findLegalReferenceTargets: batched clone must retain the edited variab
     // through x) and a legal one (10 < a < 100 is satisfiable).
     expect(expected).toEqual(new Set(['farAbove']));
     expect(actual).toEqual(expected);
+  });
+});
+
+describe('findLegalReferenceTargets: candidate legality via baseline-diff, not clone-ID membership', () => {
+  beforeEach(() => {
+    analyser.calls = 0;
+  });
+
+  // Thirtieth-wave Finding 2 / reviewer's demonstration: editing `a` with a
+  // draft `minValue: 10` while choosing a target for `a`'s `sameAs` rule.
+  // Candidate `b` carries no bound of its own on `a`'s side of the picture —
+  // the contradiction choosing it introduces lands entirely on `b`'s OWN
+  // pre-existing `lessThanVariable: 'c'` comparator (a `disjointBounds`
+  // contradiction between `b` and `c`, once `a`'s minValue propagates onto
+  // `b` through the candidate `sameAs` edge), never naming `b` itself, its
+  // batched clone (`a::b`), or `a`. The prior clone-ID-membership check
+  // therefore waved `b` through, and Architect offered a target whose
+  // selection immediately produced an unsavable inline error. `d` is a
+  // genuinely legal candidate — unconnected to anything — batched into the
+  // very same shared analyser call as `b`, to confirm the fix attributes the
+  // introduced contradiction to the right candidate rather than
+  // disqualifying every candidate the batch happens to contain.
+  it("excludes a candidate whose OWN pre-existing comparator breaks once the draft's bound propagates through it, while a genuinely legal candidate in the same batch stays offered", () => {
+    const allVariables: Record<string, unknown> = {
+      a: { name: 'a', type: 'number', validation: {} },
+      b: { name: 'b', type: 'number', validation: { lessThanVariable: 'c' } },
+      c: {
+        name: 'c',
+        type: 'number',
+        validation: { required: true, maxValue: 10 },
+      },
+      d: { name: 'd', type: 'number', validation: {} },
+    };
+    const candidateIds = ['b', 'd'];
+    const input: ReferenceTargetLegalityInput = {
+      allVariables,
+      currentVariableId: 'a',
+      variableType: 'number',
+      validation: { required: true, minValue: 10 },
+      ruleKey: 'sameAs',
+      candidateIds,
+    };
+
+    const expected = legalTargetsOneCallPerCandidate(input);
+    // Reset before the call under test: the oracle above makes its own
+    // analyser calls (one `findDraftContradictions` pass per candidate),
+    // which must not be counted against `findLegalReferenceTargets`'s own
+    // budget below.
+    analyser.calls = 0;
+    const actual = findLegalReferenceTargets(input);
+
+    // Confirms the fixture exercises both the illegal candidate (b, via its
+    // own comparator to c) and a genuinely legal one (d) in the same call.
+    expect(expected).toEqual(new Set(['d']));
+    expect(actual).toEqual(expected);
+    // One baseline call (computed once per invocation, not once per
+    // candidate) plus one shared batched call covering both b and d, which
+    // are disjoint from `a` and from each other — never a fallback to one
+    // call per candidate just to get this right.
+    expect(analyser.calls).toBe(2);
   });
 });
 

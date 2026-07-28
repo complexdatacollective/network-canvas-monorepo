@@ -130,13 +130,16 @@ describe('Validations: rule-type gating batches per rule, not per candidate', ()
     });
 
     // Every candidate is isolated, so each of the 6 reference rules resolves
-    // in a single shared batch call — never one call per candidate (which
-    // would be 6 * 20 = 120). A generous allowance covers any extra
-    // React re-render without hiding a regression back to per-candidate
-    // scaling: the assertion that matters is the strict bound below
-    // `existingVariables`'s size.
+    // in one candidate-free baseline pass (Thirtieth-wave Finding 2) plus a
+    // single shared batch call — never one call per candidate (which would
+    // be 6 * 20 = 120). A generous allowance covers any extra React
+    // re-render without hiding a regression back to per-candidate scaling:
+    // the assertion that matters is the strict bound against that
+    // per-candidate-per-rule worst case below.
     expect(analyser.calls).toBeGreaterThan(0);
-    expect(analyser.calls).toBeLessThanOrEqual(REFERENCE_RULE_COUNT * 3);
-    expect(analyser.calls).toBeLessThan(Object.keys(existingVariables).length);
+    expect(analyser.calls).toBeLessThanOrEqual(REFERENCE_RULE_COUNT * 2 * 4);
+    expect(analyser.calls).toBeLessThan(
+      REFERENCE_RULE_COUNT * Object.keys(existingVariables).length,
+    );
   });
 });

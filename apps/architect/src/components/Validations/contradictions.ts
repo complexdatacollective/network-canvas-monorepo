@@ -333,6 +333,44 @@ export type ReferenceTargetLegalityInput = {
  * every candidate — not only the ones that would introduce a NEW shared
  * component — is routed through the individual, fully-pruned path so that
  * neighbour's constraint is never silently dropped.
+ *
+ * Thirtieth-wave Finding 2: a candidate's legality used to be decided by
+ * whether ITS OWN id (or, in the batched path, its disposable clone id) was
+ * among a contradiction's `variableIds` — the same membership-only mistake
+ * `findDraftContradictions` (twenty-seventh-wave Finding 2) and
+ * `validateComposerFieldContradictions` (thirtieth-wave Finding 1) made and
+ * fixed the same way. A draft's OTHER, already-committed rule can propagate
+ * through the chosen candidate into a completely different pair: editing
+ * `A` with a draft `minValue: 10`, testing candidate `B` for `A.sameAs`,
+ * where `B.lessThanVariable = C` and `C`'s `maxValue` is `10` — choosing `B`
+ * makes B's OWN comparator against C infeasible, reported with
+ * `variableIds: [B, C]`. Neither `B` nor a batched clone of `A` is named,
+ * so the membership check waved the candidate through; Architect then
+ * offered a target whose selection immediately produced an unsavable
+ * inline error.
+ *
+ * Legality is now a set-difference, computed once for every candidate of
+ * this call: a BASELINE analyser run over `graph` (the edited variable's
+ * row exactly as committed/drafted, with the rule under test absent — the
+ * question is "does ADDING this reference introduce a contradiction", so
+ * the baseline must already carry every OTHER draft change) against each
+ * candidate's WITH-candidate run. A contradiction is candidate-caused, and
+ * makes that candidate illegal, when its `contradictionKey` is absent from
+ * the baseline — regardless of whether the candidate's id, its clone, or
+ * neither appears in `variableIds`. The baseline intentionally differs from
+ * `findDraftContradictions`'s (which diffs against the fully UNDRAFTED
+ * record): a contradiction the OTHER draft edits alone already cause,
+ * independent of which target this rule picks, must not disqualify every
+ * candidate in the picker, so it stays baselined in rather than diffed out.
+ * The baseline record — and therefore its analyser run — does not depend on
+ * the candidate at all, so it is computed exactly once per invocation, not
+ * once per candidate; both the batched and individual loops below diff
+ * against the same `baselineContradictionKeys`. In the batched run, a new
+ * contradiction is attributed to whichever candidate's pre-existing
+ * component (or clone id) it names — always exactly one, since batched
+ * candidates' components are pairwise disjoint from each other and from
+ * `id`'s own by construction (see `usedRoots` and
+ * `editedVariableHasExternalReferences` above).
  */
 export const findLegalReferenceTargets = ({
   allVariables,
@@ -397,6 +435,17 @@ export const findLegalReferenceTargets = ({
     }
   }
 
+  // The candidate-free baseline (Thirtieth-wave Finding 2 — see the function
+  // comment): `graph` already carries `id`'s row exactly as committed/drafted
+  // with the rule under test absent, so one analyser pass over it, run here
+  // ONCE regardless of how many candidates follow, is every candidate's
+  // "before" state to diff against.
+  const baselineContradictionKeys = new Set(
+    findValidationContradictions(graph, { stageEffectiveComponents }).map(
+      contradictionKey,
+    ),
+  );
+
   const idRoot = unionFind.find(id);
   // Twenty-eighth-wave Finding: a batched clone (below) represents `id`
   // ONLY by its own baseline validation, keyed under a synthetic
@@ -451,13 +500,15 @@ export const findLegalReferenceTargets = ({
     if (currentVariableId) {
       delete batchRecord[currentVariableId];
     }
-    const clones: { candidateId: string; cloneId: string }[] = [];
+    const clones: { candidateId: string; cloneId: string; root: string }[] = [];
     for (const candidateId of batched) {
       let cloneId = `${id}::${candidateId}`;
       while (Object.hasOwn(batchRecord, cloneId)) {
         cloneId = `${cloneId}:`;
       }
-      clones.push({ candidateId, cloneId });
+      const candidateRoot =
+        candidateId in graph ? unionFind.find(candidateId) : candidateId;
+      clones.push({ candidateId, cloneId, root: candidateRoot });
       batchRecord[cloneId] = draftEntry({
         ...baseline,
         [ruleKey]: candidateId,
@@ -466,11 +517,29 @@ export const findLegalReferenceTargets = ({
     const contradictions = findValidationContradictions(batchRecord, {
       stageEffectiveComponents,
     });
-    for (const { candidateId, cloneId } of clones) {
-      const hasContradiction = contradictions.some((contradiction) =>
-        contradiction.variableIds.includes(cloneId),
+    // Contradictions absent from the candidate-free baseline are introduced
+    // by ADDING one of this call's candidate rules — never by anything
+    // already present without them — so every one of them is attributable
+    // to exactly one candidate: batched candidates' pre-existing components
+    // are pairwise disjoint from each other (`usedRoots`, above), and the
+    // only new edge each clone adds runs from that clone into its own
+    // candidate's component, never into another candidate's.
+    const introducedContradictions = contradictions.filter(
+      (contradiction) =>
+        !baselineContradictionKeys.has(contradictionKey(contradiction)),
+    );
+    for (const { candidateId, cloneId, root } of clones) {
+      const candidateScope = new Set(
+        componentMembers.get(root) ?? [candidateId],
       );
-      if (!hasContradiction) {
+      candidateScope.add(cloneId);
+      const hasIntroducedContradiction = introducedContradictions.some(
+        (contradiction) =>
+          contradiction.variableIds.some((variableId) =>
+            candidateScope.has(variableId),
+          ),
+      );
+      if (!hasIntroducedContradiction) {
         legal.add(candidateId);
       }
     }
@@ -494,10 +563,16 @@ export const findLegalReferenceTargets = ({
     const contradictions = findValidationContradictions(pruned, {
       stageEffectiveComponents,
     });
-    const hasContradiction = contradictions.some((contradiction) =>
-      contradiction.variableIds.includes(id),
+    // Every contradiction `pruned` can produce is already scoped to `id`'s
+    // and this candidate's components, so — unlike the batched run above,
+    // which shares one baseline across many disjoint candidates — anything
+    // here absent from the baseline is this candidate's doing without
+    // needing a separate attribution check.
+    const hasIntroducedContradiction = contradictions.some(
+      (contradiction) =>
+        !baselineContradictionKeys.has(contradictionKey(contradiction)),
     );
-    if (!hasContradiction) {
+    if (!hasIntroducedContradiction) {
       legal.add(candidateId);
     }
   }
