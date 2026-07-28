@@ -4078,20 +4078,31 @@ const matchesReferenceAssignment = (pin: SingletonPin): boolean =>
  * and the FIRST value is the reference — a singleton pin becomes the
  * boolean "is the reference value", so `SingletonPin` and
  * `matchesReferenceAssignment` are reused rather than duplicated, exactly
- * as boolean pins interact with parity. Every uncertainty bails the WHOLE
- * component to accept:
+ * as boolean pins interact with parity.
  *
- *   - a member with no usable `options` array, an empty set, or more than
- *     two distinct values (the k-colourability limit stands there);
- *   - two-value domains that differ between members ({1,2} beside {2,3} —
- *     even though group-intersection reasoning could sometimes pin, the
- *     conservative accept is deliberate);
+ * Thirty-second wave (Fix 2): domains are judged at GROUP granularity — each
+ * equality group's option-value INTERSECTION (`sharedOptionValues`, the same
+ * group-level read the emptiness checks and `sameAsGroupDerivedPin`'s
+ * ordinal arm already make), not each member's raw option set. A `sameAs`
+ * group can only ever store a value EVERY member offers, so a group joining
+ * a three-valued member to a two-valued partner has an effective two-value
+ * domain — the wave-30 per-member read bailed on the wider member and
+ * accepted an odd cycle over three such groups. A group intersection of
+ * size 1 is likewise the GROUP's pin, however many values its widest member
+ * would offer alone. Every uncertainty bails the WHOLE component to accept:
+ *
+ *   - a group touching `unsatisfiableGroupMemberIds` — an empty option
+ *     intersection (`optionsDisjoint`, which is also where two disagreeing
+ *     singleton members inside one group land) is the emptiness machinery's
+ *     own report, whose repair may strip the very grouping edges in play;
+ *   - a member with no usable `options` array, or a group intersection that
+ *     is empty (defensive alongside the poisoned-group guard) or holds more
+ *     than two distinct values (the k-colourability limit stands there);
+ *   - two-value group domains that differ between groups ({1,2} beside
+ *     {2,3});
  *   - a singleton value outside the shared pair (its differentFrom edges
  *     are trivially satisfiable, so treating it as a pin would be wrong);
- *   - two disagreeing singleton members inside ONE group — that group's own
- *     option-set emptiness conflict (`optionsDisjoint`), whose repair may
- *     strip the very grouping edges in play;
- *   - no two-valued member at all: all-singleton components are either the
+ *   - no two-valued group at all: all-singleton components are either the
  *     pinned-equal machinery's (equal pins, already claimed) or trivially
  *     satisfiable, and there is no shared domain to force a colouring
  *     against.
@@ -4119,50 +4130,49 @@ const ordinalComponentTwoValueDomain = (
   variables: UnknownRecord,
   groups: string[],
   membersOf: Map<string, string[]>,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
 ): ComponentTwoValueDomain | undefined => {
   let reference: string | number | undefined;
   let other: string | number | undefined;
-  const memberValues = new Map<string, Set<string | number>>();
+  const groupValues = new Map<string, Set<string | number>>();
   for (const group of groups) {
-    for (const member of membersOf.get(group) ?? [group]) {
-      const values = optionValues(variables[member]);
-      if (values === undefined || values.size === 0 || values.size > 2) {
-        return undefined;
-      }
-      memberValues.set(member, values);
-      if (values.size !== 2) continue;
-      const [first, second] = [...values].toSorted((a, b) => {
-        const tokenA = ordinalDomainToken(a);
-        const tokenB = ordinalDomainToken(b);
-        return tokenA < tokenB ? -1 : tokenA > tokenB ? 1 : 0;
-      });
-      if (first === undefined || second === undefined) return undefined;
-      if (reference === undefined) {
-        reference = first;
-        other = second;
-      } else if (reference !== first || other !== second) {
-        return undefined;
-      }
+    const members = membersOf.get(group) ?? [group];
+    if (members.some((member) => unsatisfiableGroupMemberIds.has(member))) {
+      return undefined;
+    }
+    const shared = sharedOptionValues(variables, members);
+    if (
+      shared?.type !== 'ordinal' ||
+      shared.values.size === 0 ||
+      shared.values.size > 2
+    ) {
+      return undefined;
+    }
+    groupValues.set(group, shared.values);
+    if (shared.values.size !== 2) continue;
+    const [first, second] = [...shared.values].toSorted((a, b) => {
+      const tokenA = ordinalDomainToken(a);
+      const tokenB = ordinalDomainToken(b);
+      return tokenA < tokenB ? -1 : tokenA > tokenB ? 1 : 0;
+    });
+    if (first === undefined || second === undefined) return undefined;
+    if (reference === undefined) {
+      reference = first;
+      other = second;
+    } else if (reference !== first || other !== second) {
+      return undefined;
     }
   }
   if (reference === undefined || other === undefined) return undefined;
   const pins = new Map<string, boolean>();
   for (const group of groups) {
-    let pinned: string | number | undefined;
-    for (const member of membersOf.get(group) ?? [group]) {
-      const values = memberValues.get(member);
-      if (values?.size !== 1) continue;
-      const [value] = values;
-      if (value === undefined || (value !== reference && value !== other)) {
-        return undefined;
-      }
-      if (pinned === undefined) {
-        pinned = value;
-      } else if (pinned !== value) {
-        return undefined;
-      }
+    const values = groupValues.get(group);
+    if (values?.size !== 1) continue;
+    const [value] = values;
+    if (value === undefined || (value !== reference && value !== other)) {
+      return undefined;
     }
-    if (pinned !== undefined) pins.set(group, pinned === reference);
+    pins.set(group, value === reference);
   }
   return { pins };
 };
@@ -4404,7 +4414,13 @@ const categoricalComponentTwoValueDomain = (
  * post-`tightenToSurvivingInstantHull`, post-`pruneToPinnedDisequalityHull`
  * interval every downstream feasibility consumer reads, so synthesized
  * bounds, default floors, group-derived pins, and pruned pinned
- * disequalities have all already been applied. That makes the pruning
+ * disequalities have all already been applied. That interval is ALREADY the
+ * equality-group intersection Fix 2 requires of the ordinal and categorical
+ * qualifications: `intervalsOfMembers` intersects every member's own window
+ * into the group interval, and `enumerableFixedDomain` intersects every
+ * coarse member's emission set across the group, so a group joining a
+ * three-instant member to a two-instant partner qualifies on the shared two
+ * instants with no raw per-member domain read anywhere in this path. That makes the pruning
  * ordering the file's established one, not a second convention: a domain
  * whose ENDPOINT the pruning removed re-enumerates two-valued here (its
  * tightened hull moved), while an interior exclusion is invisible to the
@@ -4696,7 +4712,12 @@ function oddDifferentFromCycleContradictions(
     if (componentTypes.size !== 1 || componentType === undefined) continue;
     const ordinalDomain =
       componentType === 'ordinal'
-        ? ordinalComponentTwoValueDomain(variables, queue, membersOf)
+        ? ordinalComponentTwoValueDomain(
+            variables,
+            queue,
+            membersOf,
+            unsatisfiableGroupMemberIds,
+          )
         : undefined;
     if (componentType === 'ordinal' && ordinalDomain === undefined) continue;
     const datetimeDomain =

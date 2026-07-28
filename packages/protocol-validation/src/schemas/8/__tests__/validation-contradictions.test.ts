@@ -7960,3 +7960,221 @@ describe('findValidationContradictions — Thirty-second wave Fix 1: exactly-two
     ).toEqual([]);
   });
 });
+
+describe('findValidationContradictions — Thirty-second wave Fix 2: ordinal parity qualifies on equality-group intersected option domains', () => {
+  const ordinal = (
+    name: string,
+    values: (string | number)[],
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'ordinal',
+    options: values.map((value) => ({ label: String(value), value })),
+    validation,
+  });
+
+  // The reviewer's own report: three sameAs groups, each joining a
+  // three-valued ordinal to a two-valued partner, connected in an odd
+  // differentFrom triangle. Each group can only STORE 1 or 2 (the sameAs
+  // intersection), so the component's effective domains are all the same
+  // two-value set and the odd cycle is unsatisfiable — but the wave-30
+  // per-member read bailed on each three-valued member and accepted it.
+  it('rejects the reviewer repro: an odd cycle over group-intersected two-value domains', () => {
+    const result = findValidationContradictions({
+      a1: ordinal('a1', [1, 2, 3], {
+        required: true,
+        sameAs: 'a2',
+        differentFrom: 'b1',
+      }),
+      a2: ordinal('a2', [1, 2]),
+      b1: ordinal('b1', [1, 2, 3], {
+        required: true,
+        sameAs: 'b2',
+        differentFrom: 'c1',
+      }),
+      b2: ordinal('b2', [1, 2]),
+      c1: ordinal('c1', [1, 2, 3], {
+        required: true,
+        sameAs: 'c2',
+        differentFrom: 'a1',
+      }),
+      c2: ordinal('c2', [1, 2]),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual([
+      'a1',
+      'a2',
+      'b1',
+      'b2',
+      'c1',
+      'c2',
+    ]);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a1', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror direction: the same triangle declared the other way around
+  // still strips exactly one declaration of the smallest-keyed edge.
+  it('rejects the mirror cycle declared in the opposite direction', () => {
+    const result = findValidationContradictions({
+      a1: ordinal('a1', ['low', 'high', 'other'], {
+        sameAs: 'a2',
+        differentFrom: 'c1',
+      }),
+      a2: ordinal('a2', ['low', 'high']),
+      b1: ordinal('b1', ['low', 'high', 'other'], {
+        sameAs: 'b2',
+        differentFrom: 'a1',
+      }),
+      b2: ordinal('b2', ['low', 'high']),
+      c1: ordinal('c1', ['low', 'high', 'other'], {
+        sameAs: 'c2',
+        differentFrom: 'b1',
+      }),
+      c2: ordinal('c2', ['low', 'high']),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b1', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Accept guard just outside the boundary: a partner offering the same
+  // three values leaves that group's intersection three-valued, so the
+  // component bails — a1 = 1, b1 = 2, c1 = 3 satisfies every rule.
+  it('accepts the cycle when one group intersection is still three-valued', () => {
+    expect(
+      findValidationContradictions({
+        a1: ordinal('a1', [1, 2, 3], {
+          required: true,
+          sameAs: 'a2',
+          differentFrom: 'b1',
+        }),
+        a2: ordinal('a2', [1, 2, 3]),
+        b1: ordinal('b1', [1, 2], {
+          required: true,
+          differentFrom: 'c1',
+        }),
+        c1: ordinal('c1', [1, 2], {
+          required: true,
+          differentFrom: 'a1',
+        }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: an EMPTY group intersection stays with the existing
+  // group-conflict class — `optionsDisjoint` reports it once and poisons
+  // the group, so the parity machinery bails rather than folding the same
+  // conflict into a second report.
+  it('reports an empty group intersection via the existing group class only', () => {
+    const result = findValidationContradictions({
+      a1: ordinal('a1', [1, 2], {
+        sameAs: 'a2',
+        differentFrom: 'b1',
+      }),
+      a2: ordinal('a2', [3, 4]),
+      b1: ordinal('b1', [1, 2], { differentFrom: 'c1' }),
+      c1: ordinal('c1', [1, 2], { differentFrom: 'a1' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain('but share no option values');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a1', 'a2']);
+    expect(result[0]?.strips).toEqual([{ variableId: 'a1', rule: 'sameAs' }]);
+  });
+
+  // A singleton GROUP intersection pins the group even though its widest
+  // member offers three values alone: `a`'s group can only store 1 and `c`'s
+  // only 2, an even number of hops apart through two-valued `b` — the same
+  // disagreeing-pin parity the per-member read could never see.
+  it('rejects disagreeing group-intersection pins across an even-hop path', () => {
+    const result = findValidationContradictions({
+      a1: ordinal('a1', [1, 2, 3], {
+        required: true,
+        sameAs: 'a2',
+        differentFrom: 'b1',
+      }),
+      a2: ordinal('a2', [1]),
+      b1: ordinal('b1', [1, 2], { required: true }),
+      c1: ordinal('c1', [2, 3], {
+        required: true,
+        sameAs: 'c2',
+        differentFrom: 'b1',
+      }),
+      c2: ordinal('c2', [1, 2]),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedDifferentFromParity');
+    expect(result[0]?.variableIds.toSorted()).toEqual([
+      'a1',
+      'a2',
+      'b1',
+      'c1',
+      'c2',
+    ]);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a1', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Fix 2's verification of the thirty-first wave's datetime qualification:
+  // its enumeration already reads the group's TIGHTENED merged interval
+  // (`intervalsOfMembers` intersects every member window before
+  // `enumerableFixedDomain` enumerates it), so a group joining a
+  // three-instant member to a two-instant partner qualifies on the shared
+  // two instants with no code change — the analogous odd triangle rejects.
+  it('rejects the datetime analogue: sameAs-intersected two-instant windows in an odd cycle', () => {
+    const datePicker = (
+      name: string,
+      parameters: Record<string, unknown>,
+      validation: Record<string, unknown> = {},
+    ) => ({
+      name,
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters,
+      validation: { required: true, ...validation },
+    });
+    const wide = { min: '2020-01-01', max: '2020-01-03' };
+    const narrow = { min: '2020-01-01', max: '2020-01-02' };
+    const result = findValidationContradictions({
+      a1: datePicker('a1', wide, { sameAs: 'a2', differentFrom: 'b1' }),
+      a2: datePicker('a2', narrow),
+      b1: datePicker('b1', wide, { sameAs: 'b2', differentFrom: 'c1' }),
+      b2: datePicker('b2', narrow),
+      c1: datePicker('c1', wide, { sameAs: 'c2', differentFrom: 'a1' }),
+      c2: datePicker('c2', narrow),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual([
+      'a1',
+      'a2',
+      'b1',
+      'b2',
+      'c1',
+      'c2',
+    ]);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a1', rule: 'differentFrom' },
+    ]);
+
+    // The bracketing accept: widening one partner to the full three-day
+    // window leaves that group's merged domain three-instant, bailing the
+    // component.
+    expect(
+      findValidationContradictions({
+        a1: datePicker('a1', wide, { sameAs: 'a2', differentFrom: 'b1' }),
+        a2: datePicker('a2', wide),
+        b1: datePicker('b1', wide, { sameAs: 'b2', differentFrom: 'c1' }),
+        b2: datePicker('b2', narrow),
+        c1: datePicker('c1', wide, { sameAs: 'c2', differentFrom: 'a1' }),
+        c2: datePicker('c2', narrow),
+      }),
+    ).toEqual([]);
+  });
+});
