@@ -24,6 +24,7 @@ import {
   worstCaseEntityCounts,
 } from './entityCounts';
 import type { ConstraintConflict } from './error';
+import { comparatorFoldEmptied } from './generateEntityAttributes';
 import {
   differentFromGroups,
   emptyGroupBounds,
@@ -712,8 +713,8 @@ function analyseEntity(
   // call, over the same components, pinned the way `completionCheckFor` pins
   // them — so the three cannot come to different conclusions about one set of
   // rules. Only a proven `unsat` refuses: an oversized component, an
-  // unenumerable domain and an exhausted budget all leave the protocol accepted,
-  // exactly as they leave the draw to its greedy path.
+  // unenumerable domain and an exhausted budget all leave the search with
+  // nothing to say, and the fold below is what then speaks for the draw.
   for (const assignment of scope.fixedAssignments) {
     const pins = new Map<string, VariableValue>();
     for (const [id, value] of Object.entries(assignment)) {
@@ -726,6 +727,30 @@ function analyseEntity(
     }
     if (pins.size === 0) continue;
 
+    /**
+     * What this assignment states about the variables of these groups, named
+     * from the codebook entry rather than keyed by it: an Architect-authored
+     * protocol keys its variables by UUID, and a message built from those keys
+     * names nothing its author would recognise.
+     */
+    const statedIn = (groupIds: readonly string[]): string[] => {
+      const inComponent = new Set(groupIds);
+      const stated: string[] = [];
+      for (const [id, variable] of entity) {
+        const value = assignment[id];
+        if (value === null || value === undefined) continue;
+        if (!inComponent.has(groupOf.get(id) ?? id)) continue;
+        stated.push(`"${variable.entry.name}" to ${String(value)}`);
+      }
+      return stated;
+    };
+
+    // Groups a `sat` proof has already answered for. A completion the search
+    // found is one the fold below cannot contradict — some value satisfies
+    // every comparison there, so no fold of theirs is empty — and skipping them
+    // keeps the second pass off the path the first one settled.
+    const settled = new Set<string>();
+
     for (const component of components) {
       const { tractable } = component;
       if (tractable === undefined) continue;
@@ -735,25 +760,73 @@ function analyseEntity(
       // Whether those values may stand together is what `ruleBrokenByFixedValues`
       // above already answered, and answering it twice could only disagree.
       if (component.groups.every((group) => pins.has(group))) continue;
-      if (solveComponent(tractable, { pins }).kind !== 'unsat') continue;
+
+      const verdict = solveComponent(tractable, { pins });
+      if (verdict.kind === 'sat') {
+        for (const group of component.groups) settled.add(group);
+        continue;
+      }
+      if (verdict.kind !== 'unsat') continue;
 
       const ids = idsInGroups(component.groups);
-      // Named from the codebook entry rather than keyed by it: an
-      // Architect-authored protocol keys its variables by UUID, and a message
-      // built from those keys names nothing its author would recognise.
-      const componentGroups = new Set(component.groups);
-      const stated: string[] = [];
-      for (const [id, variable] of entity) {
-        const value = assignment[id];
-        if (value === null || value === undefined) continue;
-        if (!componentGroups.has(groupOf.get(id) ?? id)) continue;
-        stated.push(`"${variable.entry.name}" to ${String(value)}`);
-      }
+      const stated = statedIn(component.groups);
 
       report(
         ids,
         [...solvedComponentRules(entity, ids), 'additionalAttributes'],
         `a prompt fixes ${stated.join(' and ')}, and no combination of values these rules allow can complete the rest around ${stated.length > 1 ? 'them' : 'it'}`,
+      );
+    }
+
+    // What the draw does where the search declined to answer.
+    //
+    // A component with an unenumerable domain — a number left without a bound
+    // on one side is enough — is never handed to the search, so the loop above
+    // passes over it and hands the assignment to the greedy path unexamined.
+    // That path is not undecided about it: it folds each remaining group's
+    // comparators against the fixed values, and where the fold leaves the range
+    // empty it clamps back inside the group's own bounds and draws there. So
+    // the value it emits is settled, and it is one the folded comparison has
+    // already been pushed past.
+    //
+    // Asked of `comparatorFoldEmptied` — the draw's own arithmetic, shared with
+    // the roster check rather than restated here — and asked only of groups no
+    // `sat` proof settled, so the two passes cannot disagree. An empty fold is
+    // not a second opinion about satisfiability: `tighten` only raises floors
+    // and lowers ceilings, so a floor above the ceiling at that point is an
+    // exact statement that every value the draw can still produce for the group
+    // breaks one of the comparisons folded in. A comparator whose counterpart
+    // this prompt leaves unfixed contributes no bound, a fold left open on one
+    // side cannot be empty, and a group with no comparators is never read — all
+    // three keep accepting, which is what stops this refusing a protocol that
+    // generates.
+    for (const component of comparatorComponents(edges)) {
+      if (component.some((group) => implicated.has(group))) continue;
+      if (!component.some((group) => pins.has(group))) continue;
+
+      const emptied = component.filter((group) => {
+        if (pins.has(group) || settled.has(group)) return false;
+        const variable = propagated.get(group);
+        if (variable === undefined) return false;
+        return comparatorFoldEmptied(
+          variable,
+          group,
+          { edges, membersOf },
+          assignment,
+        );
+      });
+      if (emptied.length === 0) continue;
+
+      const ids = idsInGroups(component);
+      const stated = statedIn(component);
+      const drawn = namesOf(entity, idsInGroups(emptied)).map(
+        (name) => `"${name}"`,
+      );
+
+      report(
+        ids,
+        [...solvedComponentRules(entity, ids), 'additionalAttributes'],
+        `a prompt fixes ${stated.join(' and ')}, and every value the draw can give ${drawn.join(' and ')} breaks a comparison against ${stated.length > 1 ? 'them' : 'it'}`,
       );
     }
   }

@@ -470,6 +470,27 @@ function applyComparatorBounds(
 }
 
 /**
+ * Whether folding a group's comparators against the values an entity already
+ * holds empties its range — the {@link FoldedBounds.crossed} judgement on its
+ * own, for readers that want the verdict and not the bounds.
+ *
+ * Exported so the feasibility pass asks the draw's own arithmetic rather than
+ * repeating it. The two readings of a fixed value are made for different
+ * reasons — a roster row is passed over, a prompt's value refuses the protocol
+ * — but the question underneath them is one question, and a second copy of this
+ * fold that drifted from this one could only disagree with the draw it is
+ * supposed to describe.
+ */
+export function comparatorFoldEmptied(
+  variable: ConstrainedVariable,
+  group: string,
+  context: ComparatorContext,
+  resolved: Record<string, VariableValue>,
+): boolean {
+  return applyComparatorBounds(variable, group, context, resolved).crossed;
+}
+
+/**
  * The range `ValueGenerator` falls back to when a number variable leaves a side
  * open, mirrored here. A realistic default is only usable while it fits under
  * what is known: a variable that declares no bounds of its own but is required
@@ -715,10 +736,7 @@ export function completionCheckFor(
       if (pins.has(group) || settled.has(group)) continue;
       const variable = propagated.get(group);
       if (variable === undefined) continue;
-      if (
-        applyComparatorBounds(variable, group, { edges, membersOf }, fixed)
-          .crossed
-      ) {
+      if (comparatorFoldEmptied(variable, group, { edges, membersOf }, fixed)) {
         return false;
       }
     }

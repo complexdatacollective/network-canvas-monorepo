@@ -1803,23 +1803,91 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
     ).toEqual([]);
   });
 
-  it('accepts a component the search declines to analyse', () => {
-    // `age` declares no floor, so its domain cannot be enumerated and the
-    // component is never handed to the search. The pin does make the pair
-    // unsatisfiable — `retired` must be above 1 and at or under 0 — but only a
-    // proven `unsat` refuses, and this one is never proven.
-    const codebook = codebookWith({
+  // A component the search declines to analyse is not thereby a component
+  // nothing is known about. The search declining says only that no proof was
+  // found; the draw still has to produce a value, and its own arithmetic says
+  // outright what it can produce. These two hold that line from both sides — an
+  // undecidable component whose fold the pin empties is refused, and one whose
+  // fold survives is accepted — and only the pair states it. Either alone reads
+  // as a rule that could be applied everywhere.
+  //
+  // The codebooks differ in one rule. `retired` carries a ceiling of 0 in the
+  // first and none in the second; `age` is unbounded in both, which is what
+  // keeps the domain unenumerable and the search silent either way.
+  const unenumerable = (
+    validation: Record<string, unknown>,
+  ): StructuralCodebook =>
+    codebookWith({
       age: { name: 'Age', type: 'number' },
-      retired: {
-        name: 'Retired',
-        type: 'number',
-        validation: { maxValue: 0, greaterThanVariable: 'age' },
-      },
+      retired: { name: 'Retired', type: 'number', validation },
     });
 
-    expect(
-      analyseFeasibility(codebook, [pinning([{ age: true }])], config),
-    ).toEqual([]);
+  it('refuses a component the search declines to analyse whose fold the pin empties', () => {
+    // Nothing is proven here and nothing needs to be. Folding `retired`'s
+    // comparator against the pinned `age` puts its floor at 2 while its own
+    // ceiling holds at 0, so the range handed to the draw is empty before the
+    // clamp pulls it back — and the clamped value is one the comparison has
+    // already been pushed past. Confirmed before this refusal existed: every
+    // seed emitted `{ age: true, retired: 0 }` on every node, which the
+    // interview's own `greaterThanVariable` validator rejects. No seed reaches
+    // anything else and no roster row stands to be skipped, so the protocol is
+    // turned away rather than left to generate data it cannot use.
+    const codebook = unenumerable({
+      maxValue: 0,
+      greaterThanVariable: 'age',
+    });
+    const stages = [
+      {
+        id: 'stage-pin',
+        type: 'NameGenerator',
+        label: 'Name generator',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          {
+            id: 'p1',
+            text: 'Name people',
+            additionalAttributes: [{ variable: 'age', value: true }],
+          },
+        ],
+        behaviours: { minNodes: 2, maxNodes: 2 },
+      } as unknown as Stage,
+    ];
+
+    const conflicts = analyseFeasibility(codebook, stages, config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['Age', 'Retired']);
+    expect(conflicts[0]?.rules).toContain('greaterThanVariable');
+    expect(conflicts[0]?.rules).toContain('maxValue');
+    expect(conflicts[0]?.rules).toContain('additionalAttributes');
+    expect(conflicts[0]?.reason).toBe(
+      'a prompt fixes "Age" to true, and every value the draw can give "Retired" breaks a comparison against it',
+    );
+
+    expect(() => generateNetwork({ codebook, stages, seed: 1 })).toThrow(
+      SyntheticDataConstraintError,
+    );
+  });
+
+  it('accepts a component the search declines to analyse whose fold survives', () => {
+    // The same unenumerable pair without the ceiling. The pin puts `retired`'s
+    // floor at 2 and leaves its ceiling open, so the fold is a range with
+    // values in it and the draw has somewhere to go. Refusing here would block
+    // a protocol that generates, which is the failure this pass has to avoid
+    // more than any other — so the emitted network is read back to show the
+    // acceptance was earned rather than lucky.
+    const codebook = unenumerable({ greaterThanVariable: 'age' });
+    const stages = [pinning([{ age: true }])];
+
+    expect(analyseFeasibility(codebook, stages, config)).toEqual([]);
+
+    const { network } = generateNetwork({ codebook, stages, seed: 1 });
+    expect(network.nodes.length).toBeGreaterThan(0);
+    for (const node of network.nodes) {
+      const attributes = node[entityAttributesProperty];
+      expect(attributes.age).toBe(true);
+      expect(Number(attributes.retired)).toBeGreaterThan(1);
+    }
   });
 
   it('judges each prompt of a stage on its own', () => {
@@ -2285,57 +2353,5 @@ describe('a text length beyond what a generated value can hold', () => {
     });
 
     expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
-  });
-});
-
-describe('REPRO-SCRATCH', () => {
-  it('emits a violating pair on every seed', () => {
-    const codebook = {
-      node: {
-        person: {
-          name: 'Person',
-          color: 'node-color-seq-1',
-          variables: {
-            age: { name: 'Age', type: 'number' },
-            retired: {
-              name: 'Retired',
-              type: 'number',
-              validation: { maxValue: 0, greaterThanVariable: 'age' },
-            },
-          },
-        },
-      },
-    } as unknown as StructuralCodebook;
-
-    const stage = {
-      id: 'stage-repro',
-      type: 'NameGenerator',
-      label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
-      prompts: [
-        {
-          id: 'p1',
-          text: 'Name people',
-          additionalAttributes: [{ variable: 'age', value: true }],
-        },
-      ],
-      behaviours: { minNodes: 2, maxNodes: 2 },
-    } as unknown as Stage;
-
-    // eslint-disable-next-line no-console
-    console.log(
-      'CONFLICTS',
-      JSON.stringify(analyseFeasibility(codebook, [stage], config)),
-    );
-
-    for (const seed of [1, 2, 3, 4, 5]) {
-      const { network } = generateNetwork({ codebook, stages: [stage], seed });
-      // eslint-disable-next-line no-console
-      console.log(
-        'SEED',
-        seed,
-        JSON.stringify(network.nodes.map((n) => n[entityAttributesProperty])),
-      );
-    }
   });
 });
