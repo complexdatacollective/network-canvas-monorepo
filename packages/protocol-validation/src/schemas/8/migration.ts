@@ -16,6 +16,7 @@ import {
   DATE_RESOLUTION,
   isIsoDate,
   isValidDateAtResolution,
+  VARIABLE_TYPE_COMPONENTS,
   VARIABLE_TYPE_VALIDATIONS,
 } from './variables/variable.ts';
 
@@ -38,13 +39,15 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
-// A string-keyed view of the per-type rule record, so migration steps
-// (which read raw, untyped v7 JSON) can index it with a plain string
+// String-keyed views of the per-type rule and control records, so migration
+// steps (which read raw, untyped v7 JSON) can index them with a plain string
 // without asserting the variable's `type` is a known member first.
 const VALIDATION_RULES_BY_TYPE: Record<
   string,
   Partial<Record<string, true>>
 > = VARIABLE_TYPE_VALIDATIONS;
+const COMPONENTS_BY_TYPE: Record<string, readonly string[]> =
+  VARIABLE_TYPE_COMPONENTS;
 
 // The value kind each v8 validation rule requires. Together these cover every
 // key of the v8 `validations` record; anything else is an unknown rule.
@@ -401,6 +404,7 @@ const migrationV7toV8 = createMigration({
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed. Any parameter key other than \`type\`, \`min\`, or \`max\` — e.g. a RelativeDatePicker \`anchor\` left over from a component switch — is also removed.
 - A datetime codebook variable's RelativeDatePicker \`anchor\` must be a real date using a year of 0100 or later — the interview's date arithmetic (\`Date.UTC\`) maps a two-digit year (0-99) onto 1900-1999, so such an anchor already produced a wrong window, while years 0100-0999 round-trip correctly — and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
 - Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the variable's type (e.g. \`minValue\` on a text variable, or \`requiredAcceptsNull\` anywhere). A removed \`minValue\`/\`minLength\`/\`minSelected\` still marks the variable required, preserving the old implied-required behaviour. Layout variables take no validation at all; theirs is removed.
+- A variable's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout variables, which have no control, have it removed.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -521,6 +525,55 @@ const migrationV7toV8 = createMigration({
                 delete validation[rule];
               }
             }
+          }
+          return variables;
+        },
+      },
+      {
+        // A variable's `component` (input control) must be one its own type
+        // can render — the v8 variable union has no member pairing e.g.
+        // `text` with `Number`, so a hand-edited or legacy pairing fails
+        // every union member and blocks the import. Replace an unrecognised
+        // or mismatched control with the type's standard one (the first
+        // `VARIABLE_TYPE_COMPONENTS` entry; for datetime, chosen by the
+        // parameters shape so the DatePicker/RelativeDatePicker routing
+        // below sees a consistent pairing). Layout and location variables
+        // have no participant-facing control at all, so theirs is removed.
+        // Replacing rather than deleting matters for form-referenced
+        // variables: a componentless variable in a form field is rejected by
+        // the pre-existing form-field component check.
+        paths: [
+          'codebook.node.*.variables',
+          'codebook.edge.*.variables',
+          'codebook.ego.variables',
+        ],
+        fn: <V>(variables: V) => {
+          const typedVariables = asRecord(variables);
+          if (!typedVariables) return variables;
+          for (const variable of Object.values(typedVariables)) {
+            const typedVariable = asRecord(variable);
+            if (!typedVariable || !('component' in typedVariable)) continue;
+            const type = typedVariable.type;
+            if (typeof type !== 'string') continue;
+            const legal = COMPONENTS_BY_TYPE[type];
+            if (!legal) continue;
+            const component = typedVariable.component;
+            if (typeof component === 'string' && legal.includes(component)) {
+              continue;
+            }
+            if (legal.length === 0) {
+              delete typedVariable.component;
+              continue;
+            }
+            if (type === 'datetime') {
+              const parameters = asRecord(typedVariable.parameters);
+              typedVariable.component =
+                parameters && isRelativeDatePickerShape(parameters)
+                  ? 'RelativeDatePicker'
+                  : 'DatePicker';
+              continue;
+            }
+            typedVariable.component = legal[0];
           }
           return variables;
         },

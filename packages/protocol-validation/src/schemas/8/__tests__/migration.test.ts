@@ -5670,4 +5670,70 @@ describe('Migration V7 to V8', () => {
       expect(variables.pos).not.toHaveProperty('validation');
     });
   });
+
+  // Fuzz finding (migration-fuzz.test.ts): the v8 variable union has no
+  // member pairing a variable type with a control it cannot render, so a
+  // hand-edited or legacy pairing (or an unrecognised control name) failed
+  // every union member and blocked the import.
+  describe('component normalisation', () => {
+    const migrateEgoVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: { variables } },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables ?? {};
+    };
+
+    it("replaces a component that cannot render the variable's type with the type's standard control", () => {
+      const variables = migrateEgoVariables({
+        nickname: { name: 'nickname', type: 'text', component: 'Number' },
+      });
+      expect(variables.nickname).toHaveProperty('component', 'Text');
+    });
+
+    it("routes a datetime replacement by its parameters' shape", () => {
+      const variables = migrateEgoVariables({
+        lastSeen: {
+          name: 'lastSeen',
+          type: 'datetime',
+          component: 'Text',
+          parameters: { anchor: '2024-06-01', before: 180, after: 0 },
+        },
+        dob: {
+          name: 'dob',
+          type: 'datetime',
+          component: 'Toggle',
+          parameters: { type: 'year', min: '1950', max: '2026' },
+        },
+      });
+      expect(variables.lastSeen).toHaveProperty(
+        'component',
+        'RelativeDatePicker',
+      );
+      expect(variables.dob).toHaveProperty('component', 'DatePicker');
+    });
+
+    it('replaces a non-string component', () => {
+      const variables = migrateEgoVariables({
+        age: { name: 'age', type: 'number', component: 5 },
+      });
+      expect(variables.age).toHaveProperty('component', 'Number');
+    });
+
+    it('removes a component from a layout variable', () => {
+      const variables = migrateEgoVariables({
+        pos: { name: 'pos', type: 'layout', component: 'Text' },
+      });
+      expect(variables.pos).not.toHaveProperty('component');
+    });
+  });
 });
