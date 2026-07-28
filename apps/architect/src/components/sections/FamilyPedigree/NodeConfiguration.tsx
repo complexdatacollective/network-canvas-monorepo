@@ -189,6 +189,12 @@ const NodeConfigurationInner = ({
   const roleMap = useSelector(getVariableRoleMap);
   // Backs makeFieldEditorValidate's save-time gate: a form field may not pick
   // a variable some bin/highlight/census/etc. elsewhere already writes.
+  // Identical wiring shape to Form.tsx (direct `makeFieldEditorValidate(...)`
+  // passthrough, no wrapping closure) — mount-level coverage of this exact
+  // shape (real role-map subscription, real roleMapKey subject scoping, the
+  // escape) lives in Form/__tests__/Form.crossClassGate.test.tsx rather than
+  // being duplicated here; only the subject derivation differs (`nodeType`
+  // from this stage's own form value vs. Form.tsx's `withSubject`).
   const hasUnvalidatedUse = useCallback(
     (variableId: string) =>
       !!nodeVariablesSubject &&

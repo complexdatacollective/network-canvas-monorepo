@@ -9,6 +9,8 @@ import {
 } from 'redux-form';
 import { describe, expect, it, vi } from 'vitest';
 
+import type * as SelectorsIndexes from '~/selectors/indexes';
+
 // PR #1107 eighteenth-wave Finding 2: `makeFieldEditorValidate` keys its
 // contradiction messages at `validation`, but the composer attribute editor
 // has no validation field at all — and redux-form only fails a submit over
@@ -80,13 +82,15 @@ vi.mock('~/selectors/codebook', () => ({
 
 // The Task 9 cross-class gate's hasUnvalidatedUse closure reads
 // getVariableRoleMap; a conflict-free stub keeps this file's contradiction-
-// gate coverage unaffected (the gate itself is covered in
-// contradictions.test.ts and EditableAttributesList.test.tsx's own
-// cross-class-specific tests). Partially mocked — `~/ducks/modules/protocol/
+// gate coverage unaffected. The gate itself is covered in
+// contradictions.test.ts (pure-function level) and in
+// EditableAttributesList.crossClassGate.test.tsx (mount level, with a REAL
+// role map and NOT this neutralized stub — that file intentionally leaves
+// this module unmocked). Partially mocked here — `~/ducks/modules/protocol/
 // codebook` (imported transitively) also needs this module's real
 // `getVariableIndex`.
 vi.mock('~/selectors/indexes', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('~/selectors/indexes')>();
+  const actual = await importOriginal<typeof SelectorsIndexes>();
   return { ...actual, getVariableRoleMap: () => ({}) };
 });
 
