@@ -230,26 +230,43 @@ export const ConsanguineousUnionRepresentation: Story = {
       );
 
       // Relationship types stored as single-element arrays (categorical variable).
+      //
+      // Every variable the edge type declares is set on every edge, including
+      // isGestCarrierVar. A variable the fixture leaves unset is not absent:
+      // SyntheticInterview draws a value for it, so a `true` could land on a
+      // parent edge and record a gestational carriage this pedigree does not
+      // mean. Nobody here carried for anybody, so the flag is pinned false
+      // throughout — which is what an absent value already resolved to.
       si.setEdgeAttribute(0, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(0, isActiveVar.id, true);
+      si.setEdgeAttribute(0, isGestCarrierVar.id, false);
       si.setEdgeAttribute(1, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(1, isActiveVar.id, true);
+      si.setEdgeAttribute(1, isGestCarrierVar.id, false);
       si.setEdgeAttribute(2, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(2, isActiveVar.id, true);
+      si.setEdgeAttribute(2, isGestCarrierVar.id, false);
       si.setEdgeAttribute(3, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(3, isActiveVar.id, true);
+      si.setEdgeAttribute(3, isGestCarrierVar.id, false);
       si.setEdgeAttribute(4, relationshipVar.id, ['partner']);
       si.setEdgeAttribute(4, isActiveVar.id, true);
+      si.setEdgeAttribute(4, isGestCarrierVar.id, false);
       si.setEdgeAttribute(5, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(5, isActiveVar.id, true);
+      si.setEdgeAttribute(5, isGestCarrierVar.id, false);
       si.setEdgeAttribute(6, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(6, isActiveVar.id, true);
+      si.setEdgeAttribute(6, isGestCarrierVar.id, false);
       si.setEdgeAttribute(7, relationshipVar.id, ['partner']);
       si.setEdgeAttribute(7, isActiveVar.id, true);
+      si.setEdgeAttribute(7, isGestCarrierVar.id, false);
       si.setEdgeAttribute(8, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(8, isActiveVar.id, true);
+      si.setEdgeAttribute(8, isGestCarrierVar.id, false);
       si.setEdgeAttribute(9, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(9, isActiveVar.id, true);
+      si.setEdgeAttribute(9, isGestCarrierVar.id, false);
 
       return si;
     };
@@ -380,20 +397,29 @@ export const ConsanguineousUnionCreationViaWizard: Story = {
         edgeType.id,
       );
 
+      // As above: every declared edge variable is set, so nothing about these
+      // edges is left to the generator to draw.
       si.setEdgeAttribute(0, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(0, isActiveVar.id, true);
+      si.setEdgeAttribute(0, isGestCarrierVar.id, false);
       si.setEdgeAttribute(1, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(1, isActiveVar.id, true);
+      si.setEdgeAttribute(1, isGestCarrierVar.id, false);
       si.setEdgeAttribute(2, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(2, isActiveVar.id, true);
+      si.setEdgeAttribute(2, isGestCarrierVar.id, false);
       si.setEdgeAttribute(3, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(3, isActiveVar.id, true);
+      si.setEdgeAttribute(3, isGestCarrierVar.id, false);
       si.setEdgeAttribute(4, relationshipVar.id, ['partner']);
       si.setEdgeAttribute(4, isActiveVar.id, true);
+      si.setEdgeAttribute(4, isGestCarrierVar.id, false);
       si.setEdgeAttribute(5, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(5, isActiveVar.id, true);
+      si.setEdgeAttribute(5, isGestCarrierVar.id, false);
       si.setEdgeAttribute(6, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(6, isActiveVar.id, true);
+      si.setEdgeAttribute(6, isGestCarrierVar.id, false);
 
       return si;
     };
