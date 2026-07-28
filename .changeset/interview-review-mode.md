@@ -1,5 +1,5 @@
 ---
-"@codaco/interview": patch
+"@codaco/interview": minor
 ---
 
 The interview Shell now supports a review mode that stops before the finish
