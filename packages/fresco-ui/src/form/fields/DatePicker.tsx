@@ -130,29 +130,43 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     ...rest
   } = props;
 
-  // Twenty-third-wave Findings 4 and 5: an authored bound outside the default
-  // 1920-to-today window must not collapse the resolvable range to nothing.
-  // An absent (or unparseable) min falls back to the default lower bound
-  // UNLESS the authored max is earlier than that default, in which case the
-  // lower bound extends down to meet it; an absent max falls back to today
-  // UNLESS the authored min is later than today, in which case the upper
-  // bound extends up to meet it. When both bounds are authored, both are
-  // honoured exactly. Every consumer of the range — the year loop, the month
-  // filtering at boundary years, and the full-resolution input's min/max
-  // attributes — reads from this single derivation so they cannot disagree.
+  // Twenty-third-wave Findings 4, 5, and 8: an authored bound outside the
+  // default 1920-to-today window must not collapse the resolvable range to
+  // nothing OR to a single point. An absent (or unparseable) min falls back
+  // to the default lower bound UNLESS the authored max is earlier than that
+  // default, in which case the lower bound extends BELOW it by the default
+  // window's own span (today's year minus 1920) so the picker still offers a
+  // genuine range rather than pinning the variable to one value; an absent
+  // max falls back to today UNLESS the authored min is later than today, in
+  // which case the upper bound extends ABOVE it by the same span. The
+  // extended bound reuses DEFAULT_MIN's month/day convention (a full
+  // calendar year, January 1 through December 31) rather than the authored
+  // bound's own month/day, so a partial month/year authored bound doesn't
+  // leak an arbitrary sub-year boundary onto the far, unconstrained end.
+  // When both bounds are authored, both are honoured exactly. Every consumer
+  // of the range — the year loop, the month filtering at boundary years, and
+  // the full-resolution input's min/max attributes — reads from this single
+  // derivation so they cannot disagree.
   const { minYmd, maxYmd } = useMemo(() => {
     const authoredMin = min ? parseYmd(min) : null;
     const authoredMax = max ? parseYmd(max) : null;
     const today = todayYmd();
+    const defaultWindowSpanYears = today.year - DEFAULT_MIN.year;
 
     const resolvedMin =
       authoredMin ??
       (authoredMax && compareYmd(authoredMax, DEFAULT_MIN) < 0
-        ? authoredMax
+        ? { year: authoredMax.year - defaultWindowSpanYears, month: 1, day: 1 }
         : DEFAULT_MIN);
     const resolvedMax =
       authoredMax ??
-      (authoredMin && compareYmd(authoredMin, today) > 0 ? authoredMin : today);
+      (authoredMin && compareYmd(authoredMin, today) > 0
+        ? {
+            year: authoredMin.year + defaultWindowSpanYears,
+            month: 12,
+            day: 31,
+          }
+        : today);
 
     return { minYmd: resolvedMin, maxYmd: resolvedMax };
   }, [min, max]);

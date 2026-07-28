@@ -345,7 +345,9 @@ export const OutOfDefaultWindowBound: Story = {
             className="mt-1 text-xs text-current opacity-70"
           >
             An authored max below the default 1920 lower bound extends the range
-            down to meet it, instead of producing an empty dropdown. Selected:{' '}
+            down by the default window&apos;s own span, so it still offers a
+            genuine multi-year range (1800 stays selectable as the maximum
+            instead of becoming the only option). Selected:{' '}
             {belowDefault || 'none'}
           </Paragraph>
         </div>
@@ -365,7 +367,8 @@ export const OutOfDefaultWindowBound: Story = {
             className="mt-1 text-xs text-current opacity-70"
           >
             An authored min above today&apos;s default upper bound extends the
-            range up to meet it. Selected: {aboveToday || 'none'}
+            range up by the same span, mirroring the case above. Selected:{' '}
+            {aboveToday || 'none'}
           </Paragraph>
         </div>
       </div>
@@ -375,7 +378,7 @@ export const OutOfDefaultWindowBound: Story = {
     docs: {
       description: {
         story:
-          'When only one bound is authored and it falls outside the default 1920-to-today window, the range extends to include it rather than collapsing to an empty, unanswerable control.',
+          "When only one bound is authored and it falls outside the default 1920-to-today window, the range extends by the default window's own span rather than collapsing to an empty control or to the authored bound alone as a single, unanswerable option.",
       },
     },
   },
