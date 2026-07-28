@@ -11,7 +11,6 @@ import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequ
 import withSubject from '../../enhancers/withSubject';
 import PromptFields from './PromptFields';
 import PromptPreview from './PromptPreview';
-import withFormUsedVariableIndex from './withFormUsedVariableIndex';
 const notEmpty = (value: unknown) =>
   value && Array.isArray(value) && value.length > 0
     ? undefined
@@ -21,14 +20,12 @@ type SociogramPromptsProps = StageEditorSectionProps & {
   type?: string;
   disabled?: boolean;
   disabledMessage?: string;
-  usedVariableIndex?: Record<string, unknown>;
 };
 const SociogramPrompts = ({
   entity,
   type,
   disabled,
   disabledMessage,
-  usedVariableIndex,
 }: SociogramPromptsProps) => (
   <Section
     disabled={disabled}
@@ -52,7 +49,7 @@ const SociogramPrompts = ({
         editorFieldsComponent: PromptFields,
         editorTitle: 'Edit Prompt',
         itemLabel: 'prompt',
-        editorProps: { entity, type, usedVariableIndex },
+        editorProps: { entity, type },
         requestedEditFormName: 'editable-list-form',
         sortable: true,
       }}
@@ -61,6 +58,5 @@ const SociogramPrompts = ({
 );
 export default compose<SociogramPromptsProps, StageEditorSectionProps>(
   withSubject,
-  withFormUsedVariableIndex,
   withDisabledSubjectRequired,
 )(SociogramPrompts);

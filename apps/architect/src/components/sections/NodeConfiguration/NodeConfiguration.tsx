@@ -20,6 +20,7 @@ import type { StageEditorSectionProps } from '~/components/StageEditor/Interface
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
+import { excludeValidatedUses } from '~/selectors/roleFilters';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import withComposerFormHandlers from '../Form/withComposerFormHandlers';
@@ -248,13 +249,30 @@ const withLayoutOptions = connect(
   }),
 );
 const withCategoricalOptions = connect(
-  (state: RootState, { entity, type }: OwnProps) => ({
-    categoricalVariablesForSubject: type
-      ? getVariableOptionsForSubject(state, { entity, type }).filter(
-          ({ type: variableType }) => variableType === 'categorical',
-        )
-      : [],
-  }),
+  (state: RootState, { entity, type, form }: OwnProps) => {
+    if (!type) {
+      return { categoricalVariablesForSubject: [] };
+    }
+    const subject = { entity, type };
+    const convexHullVariable = formValueSelector(form)(
+      state,
+      'convexHullVariable',
+    ) as string | undefined;
+    const categoricalOptions = getVariableOptionsForSubject(
+      state,
+      subject,
+    ).filter(({ type: variableType }) => variableType === 'categorical');
+    // convexHullVariable is an UNVALIDATED writer: drop options a form
+    // elsewhere already validates.
+    return {
+      categoricalVariablesForSubject: excludeValidatedUses(
+        state,
+        subject,
+        categoricalOptions,
+        convexHullVariable,
+      ),
+    };
+  },
 );
 const withQuickAddOptions = connect(
   (state: RootState, { entity, type }: OwnProps) => ({
