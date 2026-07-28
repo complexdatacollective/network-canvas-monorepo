@@ -10,6 +10,7 @@ import {
   entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
+  type VariableValue,
 } from '@codaco/shared-consts';
 
 import { claimFixedValues, generateAttributesForEntity } from './attributes';
@@ -19,6 +20,7 @@ import {
   uniqueSlotMembers,
 } from './constraints/generateEntityAttributes';
 import type { EntityConstraints } from './constraints/types';
+import { valueKey } from './constraints/uniqueRegistry';
 import type { GenerationContext, NetworkDraft, StageOfType } from './context';
 import { createEdgesForPairs } from './edges';
 import { getStageFilteredEdges, getStageFilteredNodes } from './filtering';
@@ -204,6 +206,102 @@ export function handleTieStrengthCensus(
   }
 }
 
+/**
+ * The variables each node holds a value for that the `unique` registry did not
+ * issue it — today a binning stage's prompt variable, the only attribute
+ * written outside a form that a `unique` rule can reach (layout and location
+ * variables take no validation at all).
+ *
+ * Read where a node is regenerated: the release a redraw makes gives back the
+ * value the registry issued that node, and a value listed here is not one of
+ * them.
+ *
+ * Keyed by the node itself rather than threaded through {@link
+ * GenerationContext}, so it lives exactly as long as the nodes of the run that
+ * wrote it. Every entry is unreachable once its run's network is, and the only
+ * other entry point that builds a context — `SyntheticInterview`'s direct draw —
+ * runs no stage handler and so has nothing to carry.
+ */
+const outOfBandWrites = new WeakMap<NcNode, Set<string>>();
+
+/** The `unique` slot a node variable's value is issued from, if any. */
+function uniqueSlotFor(
+  ctx: GenerationContext,
+  nodeType: string,
+  variableId: string,
+): { slot: string; memberIds: string[] } | undefined {
+  const entity = ctx.entityConstraints.node.get(nodeType);
+  if (entity === undefined) return undefined;
+
+  for (const [slot, memberIds] of uniqueSlotMembers(entity)) {
+    if (memberIds.includes(variableId)) return { slot, memberIds };
+  }
+
+  return undefined;
+}
+
+/**
+ * Writes the value a binning stage's interaction decides onto a node, and
+ * squares the `unique` registry with it.
+ *
+ * The value is not claimed. Neither binning interface renders a form field for
+ * its prompt variable — OrdinalBin renders no `Field` at all, CategoricalBin one
+ * only for a prompt's `otherVariable` — so the interview never validates it, and
+ * two nodes sharing a bin is an arrangement the interface offers rather than a
+ * duplicate to be prevented (49142e017).
+ *
+ * What the write does do is take off the node whatever the registry issued it
+ * for that variable, and two things follow from that. The displaced value is
+ * given back, because no node holds it any more and leaving it claimed drains a
+ * space feasibility sized against the entity count. And the variable is recorded
+ * as one the registry did not issue: a later form regenerating it is handed the
+ * value the node currently holds, and would otherwise release a claim that is
+ * not this node's — where two bin assignments collided, releasing that value for
+ * the second node frees the first node's claim and the draw can issue it a
+ * second time.
+ */
+function assignBinValue(
+  ctx: GenerationContext,
+  node: NcNode,
+  scope: EntityScopeRef,
+  variableId: string,
+  value: VariableValue,
+  uniqueSlot: { slot: string; memberIds: string[] } | undefined,
+): void {
+  const attrs = node[entityAttributesProperty];
+  const previous = attrs[variableId];
+  attrs[variableId] = value;
+
+  if (uniqueSlot === undefined) return;
+
+  const written = outOfBandWrites.get(node) ?? new Set<string>();
+  // A value an earlier bin wrote was never issued to this node, so there is
+  // nothing of this node's for this write to displace.
+  const wasIssued = previous !== undefined && !written.has(variableId);
+
+  // A bin landing on the value the node already carried displaces nothing: the
+  // registry's claim still describes what the node holds, and the redraw a later
+  // form makes should give it back as it always did.
+  if (wasIssued && valueKey(value) === valueKey(previous)) return;
+
+  written.add(variableId);
+  outOfBandWrites.set(node, written);
+
+  if (!wasIssued) return;
+
+  // A `sameAs` sibling still carrying the issued value leaves the node holding
+  // it, so the claim stays; dropping this variable from a later regeneration's
+  // `existing` is what points the redraw's release at the sibling.
+  const previousKey = valueKey(previous);
+  const stillHeld = uniqueSlot.memberIds.some((id) => {
+    const held = attrs[id];
+    return held !== undefined && valueKey(held) === previousKey;
+  });
+  if (stillHeld) return;
+
+  ctx.uniqueRegistry.release(scopeKey(scope), uniqueSlot.slot, previous);
+}
+
 export function handleOrdinalBin(
   ctx: GenerationContext,
   draft: NetworkDraft,
@@ -214,6 +312,7 @@ export function handleOrdinalBin(
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
   const nodeTypeDef = ctx.codebook.node?.[subjectType];
+  const scope: EntityScopeRef = { entity: 'node', type: subjectType };
 
   for (const prompt of stage.prompts) {
     const varDef = nodeTypeDef?.variables?.[prompt.variable];
@@ -222,10 +321,18 @@ export function handleOrdinalBin(
     const variableOptions = 'options' in varDef ? (varDef.options ?? []) : [];
     if (variableOptions.length === 0) continue;
 
+    const uniqueSlot = uniqueSlotFor(ctx, subjectType, prompt.variable);
+
     for (const node of subjectNodes) {
       const optionIndex = ctx.valueGen.randomInt(0, variableOptions.length - 1);
-      node[entityAttributesProperty][prompt.variable] =
-        variableOptions[optionIndex]!.value;
+      assignBinValue(
+        ctx,
+        node,
+        scope,
+        prompt.variable,
+        variableOptions[optionIndex]!.value,
+        uniqueSlot,
+      );
     }
   }
 }
@@ -240,6 +347,7 @@ export function handleCategoricalBin(
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
   const nodeTypeDef = ctx.codebook.node?.[subjectType];
+  const scope: EntityScopeRef = { entity: 'node', type: subjectType };
 
   for (const prompt of stage.prompts) {
     const varDef = nodeTypeDef?.variables?.[prompt.variable];
@@ -250,6 +358,8 @@ export function handleCategoricalBin(
         ? (varDef.options?.filter((o) => typeof o.value !== 'boolean') ?? [])
         : [];
     if (variableOptions.length === 0) continue;
+
+    const uniqueSlot = uniqueSlotFor(ctx, subjectType, prompt.variable);
 
     for (const node of subjectNodes) {
       const count = ctx.valueGen.randomInt(
@@ -263,7 +373,7 @@ export function handleCategoricalBin(
           variableOptions[(startIdx + c) % variableOptions.length]!.value,
         );
       }
-      node[entityAttributesProperty][prompt.variable] = picked;
+      assignBinValue(ctx, node, scope, prompt.variable, picked, uniqueSlot);
     }
   }
 }
@@ -276,6 +386,47 @@ export function handleEgoForm(
     draft.egoAttributes,
     generateAttributesForEntity(ctx, { entity: 'ego' }, 0),
   );
+}
+
+/**
+ * The values a regeneration resolves against, with the ones a stage wrote out of
+ * band dropped from the variables being redrawn.
+ *
+ * A redraw gives a `unique` slot's value back before drawing the replacement,
+ * and reads that value from `existing`. That is right for a value the registry
+ * issued this entity, and wrong for one a binning stage wrote: the registry's
+ * claim on such a value, if it holds one at all, belongs to whichever entity was
+ * issued it, so handing it back frees a value somebody else still carries. A
+ * variable being redrawn contributes nothing else through `existing` — a
+ * comparison or `differentFrom` rule resolves against the *other* variables'
+ * values — so dropping it costs the draw nothing.
+ */
+function existingForRegeneration(
+  node: NcNode,
+  regenerated: ReadonlySet<string>,
+): Record<string, VariableValue> {
+  const attrs = node[entityAttributesProperty];
+  const written = outOfBandWrites.get(node);
+  if (written === undefined) return attrs;
+
+  const dropped = [...written].filter((id) => regenerated.has(id));
+  if (dropped.length === 0) return attrs;
+
+  const existing = { ...attrs };
+  for (const id of dropped) delete existing[id];
+  return existing;
+}
+
+/** Marks regenerated variables as the registry's again, now it has issued them. */
+function clearOutOfBandWrites(
+  node: NcNode,
+  regenerated: ReadonlySet<string>,
+): void {
+  const written = outOfBandWrites.get(node);
+  if (written === undefined) return;
+
+  for (const id of regenerated) written.delete(id);
+  if (written.size === 0) outOfBandWrites.delete(node);
 }
 
 export function handleAlterForm(
@@ -293,16 +444,20 @@ export function handleAlterForm(
   const formVarIds = new Set(form.fields.map((field) => field.variable));
 
   for (let nodeIndex = 0; nodeIndex < subjectNodes.length; nodeIndex++) {
-    const attrs = subjectNodes[nodeIndex]![entityAttributesProperty];
+    const node = subjectNodes[nodeIndex]!;
     Object.assign(
-      attrs,
+      node[entityAttributesProperty],
       generateAttributesForEntity(
         ctx,
         { entity: 'node', type: subjectType },
         nodeIndex,
-        { existing: attrs, only: formVarIds },
+        {
+          existing: existingForRegeneration(node, formVarIds),
+          only: formVarIds,
+        },
       ),
     );
+    clearOutOfBandWrites(node, formVarIds);
   }
 }
 
