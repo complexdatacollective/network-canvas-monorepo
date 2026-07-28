@@ -62,6 +62,13 @@ export default function useInterviewNavigation(
   const [forceNavigationDisabled, setForceNavigationDisabled] = useState(false);
   const [beforeNextHandlerCount, setBeforeNextHandlerCount] = useState(0);
   const [reviewBoundaryReached, setReviewBoundaryReached] = useState(false);
+  // Whether any navigation has been attempted since the displayed stage
+  // mounted. A registered beforeNext handler only keeps Back enabled past the
+  // interview start once this is true: a freshly-mounted stage is at its
+  // internal starting position, so stage-internal Back has nothing to step
+  // back to yet.
+  const [hasAttemptedStageNavigation, setHasAttemptedStageNavigation] =
+    useState(false);
 
   // `showStage` toggles the rendered stage in/out of the JSX entirely so that
   // AnimatePresence sees "no child" during a transition (rather than a child
@@ -175,6 +182,7 @@ export default function useInterviewNavigation(
 
   const moveForward = useCallback(async () => {
     setForceNavigationDisabled(true);
+    setHasAttemptedStageNavigation(true);
 
     try {
       const stageAllowsNavigation = await canNavigate('forwards', 'step');
@@ -225,6 +233,7 @@ export default function useInterviewNavigation(
 
   const moveBackward = useCallback(async () => {
     setForceNavigationDisabled(true);
+    setHasAttemptedStageNavigation(true);
 
     try {
       const stageAllowsNavigation = await canNavigate('backwards', 'step');
@@ -245,6 +254,12 @@ export default function useInterviewNavigation(
         currentStepRef.current,
       );
       const previousStep = navigation.previousValidStageIndex;
+      // No earlier stage on the active route: there is nowhere to go, so bail
+      // out before clearing handlers — a same-step setStep never remounts the
+      // stage, and clearing would permanently detach its beforeNext handlers.
+      if (previousStep === currentStepRef.current) {
+        return;
+      }
       const meta = getInterviewProgress(protocolStages, previousStep);
       setProgress(meta.progress);
       registerBeforeNext(null);
@@ -273,6 +288,7 @@ export default function useInterviewNavigation(
       }
 
       setForceNavigationDisabled(true);
+      setHasAttemptedStageNavigation(true);
 
       try {
         const direction: Direction =
@@ -354,6 +370,7 @@ export default function useInterviewNavigation(
     beforeNextHandlers.current.clear();
     setBeforeNextHandlerCount(0);
     setReviewBoundaryReached(false);
+    setHasAttemptedStageNavigation(false);
     setShowStage(true);
   }, [commitDisplayedStep, dispatch]);
 
@@ -432,7 +449,7 @@ export default function useInterviewNavigation(
       forceNavigationDisabled ||
       isTransitioning ||
       ((!canMoveBackward || (isFirstPrompt && !hasPreviousAvailableStage)) &&
-        beforeNextHandlers.current.size === 0),
+        (beforeNextHandlerCount === 0 || !hasAttemptedStageNavigation)),
     pulseNext:
       (!isAtReviewEnd ||
         (beforeNextHandlerCount > 0 && !reviewBoundaryReached)) &&
