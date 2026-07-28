@@ -484,6 +484,68 @@ describe('useInterviewNavigation targeted skip routes', () => {
   });
 });
 
+describe('useInterviewNavigation Back at the interview start', () => {
+  it('keeps Back disabled on a fresh first stage even when a beforeNext handler registers', () => {
+    const { result } = renderStatefulNavigation(makeStages(2), 0);
+
+    act(() => {
+      result.current.registerBeforeNext(() => false);
+    });
+
+    expect(result.current.disableMoveBackward).toBe(true);
+  });
+
+  it('enables Back once the participant has attempted navigation on a handler stage', async () => {
+    const { result } = renderStatefulNavigation(makeStages(2), 0);
+
+    act(() => {
+      // Consumes the step internally, like a census moving intro -> first pair.
+      result.current.registerBeforeNext(() => false);
+    });
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(result.current.disableMoveBackward).toBe(false);
+  });
+
+  it('keeps Back disabled on a handler stage when every earlier screen is off the active route', () => {
+    const stages = makeStages(3);
+    stages[0]!.skipLogic = ALWAYS_SKIPPED;
+    const { result } = renderStatefulNavigation(stages, 1);
+
+    act(() => {
+      result.current.registerBeforeNext(() => false);
+    });
+
+    expect(result.current.disableMoveBackward).toBe(true);
+  });
+
+  it('leaves beforeNext handlers registered when Back has nowhere to go', async () => {
+    const { result, onStepChange } = renderStatefulNavigation(makeStages(2), 0);
+    const handler = vi.fn(() => true);
+
+    act(() => {
+      result.current.registerBeforeNext(handler);
+    });
+
+    await act(async () => {
+      await result.current.moveBackward();
+    });
+
+    // No previous stage: nothing to navigate to, and the stage's handler must
+    // survive so it still intercepts the next Forward.
+    expect(onStepChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
   it('jumps directly to a non-skipped stage', async () => {
     const { result, onStepChange } = renderStatefulNavigation(makeStages(4), 0);
