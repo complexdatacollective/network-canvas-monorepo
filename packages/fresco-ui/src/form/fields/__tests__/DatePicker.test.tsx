@@ -550,4 +550,25 @@ describe('DatePickerField ceiling with no max', () => {
 
     expect(optionValues(yearSelect)[0]).toBe('2026');
   });
+
+  // That ceiling belongs to the two dropdowns, which have to list the dates
+  // they offer and so need an end to count from. Full resolution is a native
+  // date input, which offers whatever its `max` attribute allows: with none
+  // declared its range is open, and a date after today is one a participant can
+  // select and submit. Synthetic data generation depends on the difference —
+  // protocol-utilities' `resolveDateWindow` refuses a month or year field whose
+  // floor sits above today as an empty range, and raises the ceiling of a
+  // full-date one to meet that floor instead.
+  it('leaves the native full-date input unbounded above', () => {
+    const { container } = render(
+      <DatePickerField type="full" name="date" value="2030-01-01" />,
+    );
+    const input = container.querySelector('input[name="date"]');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('date input not rendered');
+    }
+
+    expect(input).not.toHaveAttribute('max');
+    expect(input).toHaveValue('2030-01-01');
+  });
 });

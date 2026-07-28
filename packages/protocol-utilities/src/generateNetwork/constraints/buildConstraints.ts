@@ -13,6 +13,7 @@ import {
   addDays,
   type DateResolution,
   type DateWindow,
+  EARLIEST_OFFERED_DATE,
   truncateToResolution,
   utcDate,
 } from './dateWindow';
@@ -58,21 +59,14 @@ const RESOLUTION_SHAPE = {
 const RESOLUTIONS: readonly DateResolution[] = ['year', 'month', 'full'];
 
 /**
- * The earliest year each picker can offer.
- *
- * A full-resolution field is a native `<input type="date">`, whose dates begin
- * at year 0001; the protocol schema admits 0001-0999 there deliberately, and a
- * zero-padded `YYYY-MM-DD` round-trips at every one of them. A year- or
- * month-resolution field is a `<select>` whose options are built by counting
- * down from its ceiling and stringifying each year unpadded, so year 99 lists
- * as `99` while the bound written here is `0099`: the two never compare equal,
- * and the generated year is one the control shows as nothing selected at all.
+ * The earliest year each picker can offer, read from the one table that states
+ * it. A bound the protocol *declares* is refused below this year; a floor the
+ * generator *derives* is clamped to it. Those are separate escapes, but they
+ * are the same fact about the control, so they are not written down twice.
  */
-const EARLIEST_OFFERED_YEAR = {
-  full: 1,
-  month: 1000,
-  year: 1000,
-} as const satisfies Record<DateResolution, number>;
+function earliestOfferedYear(resolution: DateResolution): number {
+  return Number(EARLIEST_OFFERED_DATE[resolution].slice(0, 4));
+}
 
 /**
  * The resolution a bound is written at, or `undefined` where it names no date.
@@ -149,6 +143,17 @@ function requireCalendarBound(
     );
   }
 
+  // Only a bound coarser than its own picker is refused. One written at the
+  // picker's own resolution is kept verbatim on purpose: `DatePickerField`
+  // parses `YYYY`, `YYYY-MM` and `YYYY-MM-DD` alike (its `ymdPattern` defaults
+  // the missing components to 1), and its `<select>` stringifies each year and
+  // month from the parsed parts, so `min: "2030"` on a year picker really does
+  // offer 2030 and `min: "2030-05"` on a month picker really does offer May
+  // (fresco-ui's DatePicker tests, "year mode — partial YYYY bounds" and
+  // "month mode — partial YYYY-MM bounds"). Protocols in the wild carry these:
+  // `transnational-networks` declares `min: "1940"` on a year picker. Refusing
+  // them would turn a field that works today into a protocol generation cannot
+  // preview.
   if (RESOLUTION_SHAPE[written].length < RESOLUTION_SHAPE[resolution].length) {
     throw new Error(
       `Date variable "${entry.name}" (${entry.id}) declares ${parameter} "${value}", which is coarser than the date its picker collects. ` +
@@ -156,7 +161,7 @@ function requireCalendarBound(
     );
   }
 
-  const earliest = EARLIEST_OFFERED_YEAR[resolution];
+  const earliest = earliestOfferedYear(resolution);
   if (Number(value.slice(0, 4)) < earliest) {
     throw new Error(
       `Date variable "${entry.name}" (${entry.id}) declares ${parameter} "${value}", whose year is earlier than its picker can offer. ` +
@@ -214,27 +219,47 @@ function resolveDateWindow(
           resolution,
         )
       : undefined;
-  const latestOffered = truncateToResolution(today, resolution);
-
   // DatePicker offers no date after today when the protocol declares no maximum
   // (its own `maxYmd` fallback), and the draw already ceilings an open window
   // there. Closing the window here rather than at the draw is what lets
   // `valueSpaceSize` count it: the count has to stay a pure function of the
   // descriptor, or a seeded run would stop reproducing across midnight.
   //
-  // The ceiling holds under a floor the protocol declares later than today,
-  // leaving the window inverted rather than raising it to meet that floor. The
-  // field lists the dates it offers from this ceiling down to its floor, so a
-  // floor above it leaves the control with nothing to offer at all: raising the
-  // ceiling would generate the one date nobody can select or display. Left
-  // inverted, feasibility reports the empty range under the variable's own name.
+  // Where the protocol declares a floor later than today, what that ceiling
+  // does next is the one thing the three resolutions disagree about, because
+  // only two of them render a control that stops at today.
+  //
+  // A month- or year-resolution field is a `<select>`, whose options are built
+  // by counting years down from the ceiling to the floor: a floor above it
+  // leaves the control offering nothing at all, so the ceiling holds and the
+  // window is left inverted. Raising it would generate the one date nobody can
+  // select or display. Left inverted, feasibility reports the empty range under
+  // the variable's own name.
+  //
+  // A full-resolution field is a native `<input type="date">`, handed the
+  // declared bound verbatim: with no maximum declared it carries no `max`
+  // attribute, and `buildDatePickerBoundProps` gives the interview's validators
+  // none either, so every date from the floor onward is one a participant can
+  // select and submit. Refusing such a field as an empty range would block a
+  // preview of a protocol nothing is wrong with, so the floor raises the
+  // ceiling to meet it. It rises exactly that far and no further because that
+  // is where the draw stops: `ValueGenerator` ceilings an open window at today
+  // too, so a floor above today leaves it a span of zero and the floor itself
+  // is the only date it writes. A wider window would be a count of values
+  // nothing can reach, and this descriptor's window is the one the draw walks.
+  const latestOffered = truncateToResolution(today, resolution);
+  const openCeiling =
+    resolution === 'full' && min !== undefined && min > latestOffered
+      ? min
+      : latestOffered;
+
   const max =
     declared.max !== undefined
       ? truncateToResolution(
           requireCalendarBound(entry, 'max', declared.max, resolution),
           resolution,
         )
-      : latestOffered;
+      : openCeiling;
 
   return {
     resolution,

@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
+import {
+  type Stage,
+  type StructuralCodebook,
+  VARIABLE_REFERENCE_VALIDATIONS,
+} from '@codaco/protocol-validation';
 
+import { resolveGenerationConfig } from '../../config';
 import {
   buildEntityConstraints,
   buildVariableConstraints,
 } from '../buildConstraints';
 import { addSteps, stepsBetween } from '../dateWindow';
+import { analyseFeasibility } from '../feasibility';
 
 const TODAY = '2026-07-27';
 
@@ -133,6 +139,33 @@ describe('buildVariableConstraints', () => {
       resolution: 'year',
       min: '2030',
       max: '2026',
+    });
+  });
+
+  // The full resolution is the one control that does not stop at today: a
+  // native `<input type="date">` is handed the declared bound verbatim, so with
+  // no maximum declared it carries no `max` attribute, and the interview
+  // validates none either. Every date from the floor onward is one a
+  // participant can submit, so the floor raises the ceiling to meet it rather
+  // than leaving an empty range that refuses the field. It rises exactly that
+  // far: the draw ceilings an open window at today too, so the floor is the
+  // only date it can write.
+  it('raises a full-date ceiling to a floor declared later than today', () => {
+    const result = buildVariableConstraints(
+      {
+        id: 'v1',
+        name: 'Due',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'full', min: '2030-01-01' },
+      },
+      TODAY,
+    );
+
+    expect(result.dateWindow).toEqual({
+      resolution: 'full',
+      min: '2030-01-01',
+      max: '2030-01-01',
     });
   });
 
@@ -444,6 +477,71 @@ describe('buildVariableConstraints', () => {
       min: '2026-01-28',
       max: '2026-07-27',
     });
+  });
+});
+
+// What the open ceiling is for, read through the pass that acts on it. A
+// full-date field whose floor is later than today is one the native input
+// offers and the interview accepts, so refusing it would block a preview of a
+// protocol nothing is wrong with. The year picker beside it is the control that
+// genuinely stops at today, and stays refused.
+describe('a date field whose floor is later than today, through feasibility', () => {
+  type DatePickerParameters = {
+    type: 'full' | 'month' | 'year';
+    min?: string;
+    max?: string;
+  };
+
+  const config = resolveGenerationConfig({ today: TODAY });
+
+  const nameGenerator: Stage = {
+    id: 'stage-1',
+    type: 'NameGenerator',
+    label: 'Name generator',
+    subject: { entity: 'node', type: 'person' },
+    form: { title: 'About this person', fields: [] },
+    prompts: [{ id: 'p1', text: 'Name people' }],
+    behaviours: { maxNodes: 4 },
+  };
+
+  function codebookWith(parameters: DatePickerParameters): StructuralCodebook {
+    return {
+      node: {
+        person: {
+          color: 'node-color-seq-1',
+          variables: {
+            due: {
+              name: 'Due',
+              type: 'datetime',
+              component: 'DatePicker',
+              parameters,
+            },
+          },
+        },
+      },
+    };
+  }
+
+  it('reports no conflict for a full-date picker', () => {
+    const conflicts = analyseFeasibility(
+      codebookWith({ type: 'full', min: '2030-01-01' }),
+      [nameGenerator],
+      config,
+    );
+
+    expect(conflicts).toEqual([]);
+  });
+
+  it('reports the empty range for a year picker', () => {
+    const conflicts = analyseFeasibility(
+      codebookWith({ type: 'year', min: '2030' }),
+      [nameGenerator],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['Due']);
+    expect(conflicts[0]?.reason).toContain('2030 to 2026');
   });
 });
 
