@@ -352,8 +352,11 @@ export function markSessionUnfinished(
     if (!existingRow?.finishedAt) return;
 
     const existing = await decryptSession(existingRow);
-    const currentStep =
-      getLastAvailableAuthoredStageIndex(stages, existing.network) ?? 0;
+    const lastAvailableStage = getLastAvailableAuthoredStageIndex(
+      stages,
+      existing.network,
+    );
+    const currentStep = lastAvailableStage ?? 0;
     const { progress } = getInterviewProgress(stages, currentStep);
 
     await db.transaction('rw', db.sessions, async () => {
@@ -366,6 +369,8 @@ export function markSessionUnfinished(
         finishedAt: null,
         currentStep,
         progress,
+        resumeStageOverrideIndex:
+          lastAvailableStage === undefined && stages.length > 0 ? 0 : undefined,
         lastUpdatedAt: now,
       });
     });

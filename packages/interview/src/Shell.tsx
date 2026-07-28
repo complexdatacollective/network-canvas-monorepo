@@ -244,6 +244,10 @@ type ShellProps = {
   analytics: InterviewAnalyticsMetadata;
   posthogClient?: PostHog;
   disableAnalytics?: boolean;
+  /**
+   * Host-specific explanation shown in the finish confirmation dialog.
+   */
+  finishConfirmationDescription?: string;
   onExit?: () => void;
   /**
    * Adapt the Shell for reviewing an existing interview: stop at the final
@@ -287,6 +291,7 @@ const Shell = ({
   analytics,
   posthogClient,
   disableAnalytics = false,
+  finishConfirmationDescription,
   onExit,
   reviewMode,
   hideNavigation,
@@ -394,6 +399,7 @@ const Shell = ({
           onFinish={onFinish}
           onRequestAsset={onRequestAsset}
           flags={flags}
+          finishConfirmationDescription={finishConfirmationDescription}
         >
           <CurrentStepProvider
             currentStep={reviewEntry.currentStep}

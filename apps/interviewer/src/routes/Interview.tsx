@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -65,6 +65,8 @@ const discardFinish: FinishHandler = () => Promise.resolve();
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [, navigate] = useLocation();
+  const search = useSearch();
+  const reviewRequested = new URLSearchParams(search).get('mode') === 'review';
   const {
     requireFreshUnlock,
     getAuthorizedInterviewId,
@@ -146,14 +148,17 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         },
       };
       if (!active) return;
-      const readOnly = session.finishedAt !== null;
+      const readOnly = reviewRequested || session.finishedAt !== null;
       const lastAvailableStage = getLastAvailableAuthoredStageIndex(
         protocol.protocol.stages,
         session.network,
       );
       const hasNoAvailableAuthoredStage =
         lastAvailableStage === undefined && protocol.protocol.stages.length > 0;
-      const initialStep = hasNoAvailableAuthoredStage
+      const shouldOverrideUnavailableStage =
+        hasNoAvailableAuthoredStage &&
+        (readOnly || session.resumeStageOverrideIndex === 0);
+      const initialStep = shouldOverrideUnavailableStage
         ? 0
         : readOnly && session.currentStep >= protocol.protocol.stages.length
           ? (lastAvailableStage ?? 0)
@@ -166,9 +171,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         payload,
         resolver: makeAssetResolver(session.protocolHash, protocol.importedAt),
         readOnly,
-        initialStageOverrideIndex: hasNoAvailableAuthoredStage ? 0 : undefined,
+        initialStageOverrideIndex: shouldOverrideUnavailableStage
+          ? 0
+          : undefined,
       });
-      if (session.finishedAt === null) {
+      if (!readOnly) {
         void updateSettings({
           lastActiveSessionId: session.id,
           lastActiveProtocolHash: session.protocolHash,
@@ -185,6 +192,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     requireFreshUnlock,
     getAuthorizedInterviewId,
     setAuthorizedInterviewId,
+    reviewRequested,
   ]);
 
   const { client: posthogClient, enabled: analyticsEnabled } = useAnalytics();
@@ -233,6 +241,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       void updateSession(sessionId, {
         currentStep: step,
         progress: meta.progress,
+        resumeStageOverrideIndex: undefined,
       });
     },
     [readOnly, sessionId],
@@ -311,6 +320,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         disableAnalytics={readOnly || !analyticsEnabled}
         reviewMode={readOnly}
         initialStageOverrideIndex={state.initialStageOverrideIndex}
+        finishConfirmationDescription="Finishing ends this interview. A researcher can mark it unfinished later if changes are needed."
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
         navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}

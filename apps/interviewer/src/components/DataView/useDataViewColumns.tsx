@@ -201,7 +201,9 @@ export function useDataViewColumns({
                   variant="text"
                   color="primary"
                   icon={<Eye aria-hidden />}
-                  onClick={() => navigate(`/interview/${session.id}`)}
+                  onClick={() =>
+                    navigate(`/interview/${session.id}?mode=review`)
+                  }
                   data-testid="data-review"
                 >
                   Review

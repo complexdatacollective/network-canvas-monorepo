@@ -360,6 +360,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
     expect(session?.exportedAt).not.toBeNull();
     expect(session?.currentStep).toBe(3);
     expect(session?.progress).toBe(80);
+    expect(session?.resumeStageOverrideIndex).toBeUndefined();
 
     const list = await listSessions();
     expect(list[0]?.statusKind).toBe('in-progress');
@@ -382,6 +383,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
     expect(session?.finishedAt).toBeNull();
     expect(session?.currentStep).toBe(0);
     expect(session?.progress).toBe(20);
+    expect(session?.resumeStageOverrideIndex).toBeUndefined();
   });
 
   it('resumes at the route-controlling stage when no authored stage is active', async () => {
@@ -400,6 +402,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
     expect(session?.finishedAt).toBeNull();
     expect(session?.currentStep).toBe(0);
     expect(session?.progress).toBe(20);
+    expect(session?.resumeStageOverrideIndex).toBe(0);
   });
 
   it('does not reset an interview that is already unfinished', async () => {

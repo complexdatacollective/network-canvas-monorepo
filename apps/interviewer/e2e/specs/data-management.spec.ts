@@ -184,7 +184,7 @@ test.describe('interview data management', () => {
     await page.getByRole('button', { name: /^Complete ·/ }).click();
 
     await page.getByTestId('data-review').first().click();
-    await expect(page).toHaveURL(/\/interview\//);
+    await expect(page).toHaveURL(/\/interview\/.+\?mode=review$/);
     await expect(page.getByText('Read-only review')).toBeVisible();
     await expect(page.locator('[data-stage-step]')).toHaveAttribute(
       'data-stage-step',

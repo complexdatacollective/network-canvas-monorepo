@@ -100,7 +100,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
         ).toBeVisible();
         await expect(
           dialog.getByText(
-            'Your responses cannot be changed after you finish the interview.',
+            'Finish this interview only when you are satisfied with your responses.',
           ),
         ).toBeVisible();
 

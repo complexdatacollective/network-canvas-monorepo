@@ -4,8 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionPayload } from '@codaco/interview';
 
 const navigateMock = vi.fn();
+const useSearchMock = vi.fn(() => '');
 vi.mock('wouter', () => ({
   useLocation: () => ['/interview/s1', navigateMock],
+  useSearch: () => useSearchMock(),
 }));
 
 const requireFreshUnlockMock = vi.fn();
@@ -53,6 +55,7 @@ vi.mock('~/lib/installationId', () => ({
 type CapturedShellProps = {
   currentStep: number;
   disableAnalytics: boolean;
+  finishConfirmationDescription: string;
   initialStageOverrideIndex?: number;
   onExit: () => void;
   onFinish: (id: string) => Promise<void>;
@@ -169,6 +172,7 @@ beforeEach(() => {
   getProtocolByHashMock.mockResolvedValue(makeProtocol());
   requireFreshUnlockMock.mockResolvedValue({ ok: true });
   getAuthorizedInterviewIdMock.mockReturnValue(null);
+  useSearchMock.mockReturnValue('');
 });
 
 describe('InterviewRoute enter gate', () => {
@@ -359,12 +363,31 @@ describe('InterviewRoute finish flow', () => {
     expect(lastShellProps().currentStep).toBe(3);
     expect(lastShellProps().disableAnalytics).toBe(true);
     expect(lastShellProps().reviewMode).toBe(true);
+    expect(lastShellProps().finishConfirmationDescription).toBe(
+      'Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.',
+    );
     expect(screen.queryByText('Interview complete')).not.toBeInTheDocument();
   });
 
-  it('forces the route-controlling stage when no authored stage is active', async () => {
+  it('preserves the finish step for an ordinary unfinished session', async () => {
     getProtocolByHashMock.mockResolvedValue(
       makeProtocolWithNoActiveAuthoredStage(),
+    );
+    getSessionMock.mockResolvedValue(makeSession({ currentStep: 4 }));
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().currentStep).toBe(4);
+    expect(lastShellProps().initialStageOverrideIndex).toBeUndefined();
+  });
+
+  it('forces the route-controlling stage after marking a session unfinished', async () => {
+    getProtocolByHashMock.mockResolvedValue(
+      makeProtocolWithNoActiveAuthoredStage(),
+    );
+    getSessionMock.mockResolvedValue(
+      makeSession({ currentStep: 0, resumeStageOverrideIndex: 0 }),
     );
 
     render(<InterviewRoute sessionId="s1" />);
@@ -372,6 +395,45 @@ describe('InterviewRoute finish flow', () => {
     expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
     expect(lastShellProps().currentStep).toBe(0);
     expect(lastShellProps().initialStageOverrideIndex).toBe(0);
+  });
+
+  it('clears the mark-unfinished stage override after navigation', async () => {
+    getSessionMock.mockResolvedValue(
+      makeSession({ currentStep: 0, resumeStageOverrideIndex: 0 }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    updateSessionMock.mockClear();
+
+    act(() => {
+      lastShellProps().onStepChange(1, { progress: 50, totalSteps: 4 });
+    });
+
+    expect(updateSessionMock).toHaveBeenCalledWith('s1', {
+      currentStep: 1,
+      progress: 50,
+      resumeStageOverrideIndex: undefined,
+    });
+  });
+
+  it('honours explicit review intent when the stored session is unfinished', async () => {
+    useSearchMock.mockReturnValue('mode=review');
+
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const { onFinish, onStepChange, onSync } = lastShellProps();
+
+    await act(async () => {
+      await onSync('s1', makeSyncPayload());
+      onStepChange(2, { progress: 75, totalSteps: 4 });
+      await onFinish('s1');
+    });
+
+    expect(lastShellProps().reviewMode).toBe(true);
+    expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(markSessionFinishedMock).not.toHaveBeenCalled();
+    expect(updateSettingsMock).not.toHaveBeenCalled();
   });
 
   it('suppresses every session write while reviewing a finished session', async () => {
