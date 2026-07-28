@@ -2342,6 +2342,53 @@ describe('findValidationContradictions — large comparator graphs', () => {
   });
 });
 
+// Twenty-first-wave Finding 2: the odd-cycle bipartite BFS over the boolean
+// `differentFrom` graph used `queue.shift()`, which is O(n) per call — a
+// star-shaped component (one hub `differentFrom`-linked to thousands of
+// leaves, which is entirely satisfiable: colour the hub true and every leaf
+// false) made the whole walk quadratic in the leaf count, even though the
+// graph contains no contradiction. Mirrors the "large comparator graphs"
+// block above; the timing assertion is deliberately generous (wall-clock
+// checks are flaky) — it exists to catch a regression back to quadratic
+// behaviour, not to enforce a specific budget.
+describe('findValidationContradictions — large boolean differentFrom graphs', () => {
+  const starOf = (leafCount: number): Record<string, unknown> => {
+    const variables: Record<string, unknown> = {
+      hub: { name: 'hub', type: 'boolean', validation: {} },
+    };
+    for (let i = 0; i < leafCount; i++) {
+      variables[`leaf${i}`] = {
+        name: `leaf${i}`,
+        type: 'boolean',
+        validation: { differentFrom: 'hub' },
+      };
+    }
+    return variables;
+  };
+
+  it('handles a 30,000-leaf star with no contradiction', () => {
+    const result = findValidationContradictions(starOf(30_000));
+    expect(result).toEqual([]);
+  });
+
+  it('handles a 50,000-leaf star with no contradiction', () => {
+    const result = findValidationContradictions(starOf(50_000));
+    expect(result).toEqual([]);
+  });
+
+  // Guards the bipartite queue against a regression to `Array.shift()`, whose
+  // O(n) compaction makes this star shape quadratic. Deliberately NOT a
+  // ratio between two timings: that compares one noisy measurement against
+  // another and goes flaky the moment the machine is busy. Instead this
+  // asserts the RESULT at a size the quadratic form cannot reach in time —
+  // measured at roughly 18s for 400,000 leaves under `shift()`, against
+  // ~1-2s for the linear form — so the timeout below fails a regression by a
+  // wide margin while leaving ample headroom on a loaded machine.
+  it('stays linear on a very large star', { timeout: 12_000 }, () => {
+    expect(findValidationContradictions(starOf(400_000))).toEqual([]);
+  });
+});
+
 describe('findValidationContradictions — twentieth-wave Finding 1: coarse date bounds compare at their stored instant', () => {
   const datePicker = (
     name: string,
@@ -3291,5 +3338,103 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: large ch
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.variableIds).toHaveLength(10_000);
     expect(result[0]?.strips).toHaveLength(9_999);
+  });
+});
+
+// Twenty-first-wave investigation (reviewer finding on booleanDomain): the
+// audit sweep above already makes the STAGE-EFFECTIVE overlay check
+// (schema.ts's `validateComposerFieldContradictions`) correctly unpin a
+// Toggle-rendered singleton-boolean pair — see "does not pin a
+// singleton-options boolean rendered by a Toggle" above. The reviewer's
+// report is that `rejectValidationContradictions` (variable.ts), chained
+// directly onto the codebook's `VariablesSchema`, runs BEFORE any stage
+// exists and therefore never sees a composer field's `component` override at
+// all: it only ever sees the bare codebook variable, which — because a
+// componentless boolean is renderable ONLY by a NetworkComposer field
+// (confirmed: every shared-form-field path routes through schema.ts's
+// `validateFormFieldVariable`, which rejects a componentless variable
+// outright) — carries no reliable signal either way.
+//
+// This is reproduced below at the full protocol level to confirm it is a
+// real, current gap rather than a hypothetical one. Closing it would
+// require `booleanDomain` to stop trusting `options` for a null/undefined
+// (or explicit `'Boolean'`) `component`, which is EXACTLY the input shape
+// the fifth-wave Finding 5 tests above use for a still-genuine detection
+// (a singleton-boolean pair that is never composer-Toggle-rendered) — so
+// making that change here would silently flip those tests from reject to
+// accept. Per instruction, that decision is surfaced rather than made
+// silently: no behaviour changed, and this test documents the current,
+// known limitation rather than a desired outcome.
+describe('findValidationContradictions — Twenty-first-wave investigation: codebook-level check has no stage context', () => {
+  it('documents a known false rejection: a componentless singleton-true boolean pair rendered exclusively as Toggle by NetworkComposer fields is still rejected at the codebook layer', () => {
+    const base = structuredClone(createBaseProtocol()) as ReturnType<
+      typeof createBaseProtocol
+    > & {
+      codebook: {
+        node: { person: { variables: Record<string, unknown> } };
+      };
+    };
+    const protocol = {
+      ...base,
+      codebook: {
+        ...base.codebook,
+        node: {
+          ...base.codebook.node,
+          person: {
+            ...base.codebook.node.person,
+            variables: {
+              ...base.codebook.node.person.variables,
+              boolA: {
+                name: 'BoolA',
+                type: 'boolean',
+                options: [{ label: 'Yes', value: true }],
+                validation: { differentFrom: 'boolB' },
+              },
+              boolB: {
+                name: 'BoolB',
+                type: 'boolean',
+                options: [{ label: 'Yes', value: true }],
+              },
+            },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 'nc1',
+          label: 'Build the network',
+          type: 'NetworkComposer',
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          layoutVariable: 'layoutPosition',
+          background: { concentricCircles: 4 },
+          nodeForm: {
+            fields: [
+              { variable: 'boolA', component: 'Toggle', label: 'A?' },
+              { variable: 'boolB', component: 'Toggle', label: 'B?' },
+            ],
+          },
+        },
+      ],
+    };
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+
+    // Still rejected today: this is the documented limitation, not the
+    // desired end state. If this ever starts passing, the codebook-level
+    // gap has been closed elsewhere and this test (and its surrounding
+    // comment, and the JSDoc "Twenty-first-wave investigation" paragraph on
+    // `booleanDomain`) should be revisited rather than left stale.
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((candidate) =>
+        candidate.message.includes('must differ but their rules pin both'),
+      );
+      expect(issue).toBeDefined();
+      // Anchored at the codebook variable, not at the NetworkComposer field
+      // — confirming the rejection comes from the protocol-context-free
+      // record-level check, not the (already-correct) stage overlay.
+      expect(issue?.path.slice(0, 2)).toEqual(['codebook', 'node']);
+    }
   });
 });

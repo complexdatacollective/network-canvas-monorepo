@@ -1073,6 +1073,61 @@ const hasEmptyOrigin = (group: GroupIntervals): boolean =>
  * satisfiable `differentFrom` look unsatisfiable. An ABSENT (or null, per this
  * same sweep) component still reads `options`: with no override, the codebook
  * default IS the rendering, and BooleanField is the choice control.
+ *
+ * Twenty-first-wave investigation: the audit sweep above fixes every call
+ * site that can supply an EFFECTIVE component — schema.ts's
+ * `validateComposerFieldContradictions` overlay always sets `component:
+ * field.component` for a variable a NetworkComposer field writes, so that
+ * check already treats a Toggle-rendered singleton-boolean pair as
+ * unpinned. It does NOT fix `rejectValidationContradictions`
+ * (variable.ts), chained directly onto `VariablesSchema` /
+ * `EdgeVariablesSchema` / `EgoVariablesSchema` and run while parsing the
+ * CODEBOOK alone, with no `stages` in scope. Confirmed by construction: (1)
+ * fresco-ui's ToggleField (packages/fresco-ui/src/form/fields/ToggleField.tsx)
+ * takes no `options` prop at all — a Toggle is unconditionally two-valued;
+ * (2) every non-NetworkComposer field path (`AlterForm`, `AlterEdgeForm`,
+ * `EgoForm`, `NameGenerator`'s form, `FamilyPedigree`'s `nodeConfig.form` —
+ * all built on the shared `FormFieldSchema`) resolves through schema.ts's
+ * `validateFormFieldVariable`, which REJECTS a variable used there unless
+ * the CODEBOOK itself declares an explicit `component` — so a componentless
+ * boolean is renderable ONLY by a NetworkComposer field, never by a shared
+ * form field; (3) `ComposerFormFieldSchema.component` is required and drawn
+ * from every control `VARIABLE_TYPE_COMPONENTS['boolean']` lists (`Boolean`
+ * and `Toggle`), independent of what the codebook variable declares, so a
+ * composer field can override an EXPLICIT codebook `component: 'Boolean'`
+ * to `Toggle` too. A protocol reproducing the reviewer's exact report —
+ * two singleton-`true` boolean node variables, `differentFrom` between
+ * them, both rendered by NetworkComposer fields with `component: 'Toggle'`
+ * — was confirmed (via `ProtocolSchemaV8.safeParse`) to still be rejected at
+ * HEAD, anchored at `codebook.node.person.variables.<id>.validation.
+ * differentFrom`, i.e. at the codebook layer, not the overlay.
+ *
+ * This function cannot close that gap: `rejectValidationContradictions`
+ * calls `findValidationContradictions` with the bare codebook variables,
+ * so a componentless (or explicit-`'Boolean'`) singleton-boolean pair
+ * reaches `booleanDomain` in EXACTLY the shape the fifth-wave Finding 5
+ * tests below use (no `component` key at all) — there is no signal on the
+ * object itself to tell "this pair will only ever render via a
+ * NetworkComposer Toggle override" apart from "this pair might render via
+ * a form field that honours `options` exactly as declared", which the
+ * fifth-wave tests deliberately hold onto as a genuine detection. Making
+ * `booleanDomain` stop trusting `options` for a null/undefined (or
+ * explicit `'Boolean'`) component would flip the fifth-wave "rejects two
+ * true-only booleans joined by differentFrom" / "still treats a singleton
+ * options array as a pinned value" tests from reject to accept, and doing
+ * that without deliberate sign-off is exactly the "STOP and report, don't
+ * silently edit" case: those tests encode a real, still-reachable detection
+ * (a componentless/`'Boolean'` singleton-boolean pair used nowhere but a
+ * shared form field, or a NetworkComposer field that keeps `component:
+ * 'Boolean'`) that this function cannot distinguish from the reviewer's
+ * false-rejection case without protocol context — and threading that
+ * context into a record-level schema is exactly what this wave was told
+ * to avoid. No code changed here as a result: this residual false
+ * rejection — a codebook-only componentless (or `'Boolean'`-declared)
+ * singleton-boolean `differentFrom` pair intended for EXCLUSIVE
+ * NetworkComposer Toggle rendering — is a documented, deliberate
+ * limitation of the record-level check, pinned by the tests immediately
+ * below.
  */
 const booleanDomain = (variable: unknown): Set<boolean> => {
   const record = asRecord(variable);
@@ -2217,7 +2272,15 @@ function oddDifferentFromCycleContradictions(
   for (const start of adjacency.keys()) {
     if (visited.has(start)) continue;
     const parent = new Map<string, string>();
+    // Twenty-first-wave Finding 2: a plain array with an advancing head
+    // index, not `queue.shift()`. `shift()` is O(n) (every remaining element
+    // is copied down one slot), so a star-shaped component — one hub joined
+    // by `differentFrom` to thousands of leaves — made this BFS quadratic in
+    // the leaf count even though the graph has no contradiction at all. The
+    // array is never spliced, so `queue[head]` stays valid for every
+    // enqueued node.
     const queue: string[] = [start];
+    let head = 0;
     visited.add(start);
     color.set(start, 0);
     let bipartite = true;
@@ -2231,8 +2294,9 @@ function oddDifferentFromCycleContradictions(
     // `start`s never re-enter it with a fresh, incommensurate colouring.
     let conflict: { node: string; neighbor: string } | undefined;
 
-    while (queue.length > 0) {
-      const node = queue.shift();
+    while (head < queue.length) {
+      const node = queue[head];
+      head++;
       if (node === undefined) break;
       const nodeColor = color.get(node);
       if (nodeColor === undefined) continue;
