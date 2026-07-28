@@ -524,13 +524,16 @@ describe('Validations', () => {
   });
 
   // Audit sweep: the schema requires a RelativeDatePicker anchor of
-  // 1000-01-01 or later, and Architect had no matching editor rule — the
+  // 0100-01-01 or later, and Architect had no matching editor rule — the
   // dialog saved, then protocol validation threw a blocking invalid-protocol
-  // dialog offering to revert the whole edit.
+  // dialog offering to revert the whole edit. Twenty-first-wave Finding 4:
+  // the floor is 0100, not 1000 — fresco-ui's `addDays` runtime arithmetic
+  // (`Date.UTC`) only two-digit-coerces a year in 0-99 onto 1900-1999, so
+  // years 0100-0999 round-trip correctly and must not be rejected.
   describe('minDate()', () => {
     const errorMessage =
-      'Anchor date must use a four-digit year of 1000 or later';
-    const subject = minDate('1000-01-01', errorMessage);
+      'Anchor date must use a year of 0100 or later — Date.UTC maps years 0-99 onto 1900-1999';
+    const subject = minDate('0100-01-01', errorMessage);
 
     it('passes for an empty value', () => {
       expect(subject(null)).toBe(undefined);
@@ -539,15 +542,16 @@ describe('Validations', () => {
     });
 
     it('passes on or after the floor', () => {
-      expect(subject('1000-01-01')).toBe(undefined);
-      expect(subject('1000-01-02')).toBe(undefined);
+      expect(subject('0100-01-01')).toBe(undefined);
+      expect(subject('0100-01-02')).toBe(undefined);
+      expect(subject('0999-12-31')).toBe(undefined);
       expect(subject('2024-06-15')).toBe(undefined);
     });
 
     it('fails below the floor', () => {
-      expect(subject('0999-12-31')).toBe(errorMessage);
-      expect(subject('0500-01-01')).toBe(errorMessage);
-      expect(subject('0001-01-01')).toBe(errorMessage);
+      expect(subject('0099-12-31')).toBe(errorMessage);
+      expect(subject('0050-01-01')).toBe(errorMessage);
+      expect(subject('0000-01-01')).toBe(errorMessage);
     });
 
     it('ignores non-string values', () => {

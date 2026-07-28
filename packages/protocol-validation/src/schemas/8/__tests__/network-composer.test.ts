@@ -317,12 +317,56 @@ describe('ComposerFormFieldSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  // Ninth-wave Finding 6, consistent with the wave-8 coarse-resolution year
-  // floor: fresco-ui's runtime ymd arithmetic still two-digit-coerces a
-  // small year, so a RelativeDatePicker anchor below 1000 would already
-  // produce a wrong window even though it is a real, round-tripping ISO
-  // date.
-  it('rejects an edge form RelativeDatePicker field with an anchor year below 1000', () => {
+  // Twenty-first-wave Finding 4, correcting ninth-wave Finding 6: the anchor
+  // floor is 0100, not 1000. fresco-ui's runtime ymd arithmetic (`addDays`,
+  // built on `Date.UTC`) only two-digit-coerces a year in 0-99 onto
+  // 1900-1999 — years 0100-0999 round-trip correctly, so only a year below
+  // 0100 produces a wrong window.
+  it('rejects an edge form RelativeDatePicker field with an anchor year below 100', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'met_date',
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { anchor: '0099-12-31' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts an edge form RelativeDatePicker field with an anchor year at exactly 100', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'met_date',
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { anchor: '0100-01-01' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts an edge form RelativeDatePicker field with an anchor year in the previously-rejected 0100-0999 range', () => {
     const result = networkComposerStage.safeParse({
       ...baseStageWithComponent,
       edges: [
@@ -335,28 +379,6 @@ describe('ComposerFormFieldSchema', () => {
                 variable: 'met_date',
                 component: ComponentTypes.RelativeDatePicker,
                 parameters: { anchor: '0999-12-31' },
-              },
-            ],
-          },
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('accepts an edge form RelativeDatePicker field with an anchor year at exactly 1000', () => {
-    const result = networkComposerStage.safeParse({
-      ...baseStageWithComponent,
-      edges: [
-        {
-          id: 'e1',
-          subject: { entity: 'edge', type: 'knows' },
-          form: {
-            fields: [
-              {
-                variable: 'met_date',
-                component: ComponentTypes.RelativeDatePicker,
-                parameters: { anchor: '1000-01-01' },
               },
             ],
           },

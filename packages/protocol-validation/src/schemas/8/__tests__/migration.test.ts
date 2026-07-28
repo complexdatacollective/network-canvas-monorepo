@@ -4507,13 +4507,17 @@ describe('Migration V7 to V8', () => {
       expect(variables?.a).toHaveProperty('parameters.before', 30);
     });
 
-    it('removes a RelativeDatePicker anchor whose year is below 1000', () => {
+    // Twenty-first-wave Finding 4, correcting ninth-wave Finding 6: the floor
+    // is 0100, not 1000 — fresco-ui's `addDays` runtime arithmetic
+    // (`Date.UTC`) only two-digit-coerces a year in 0-99 onto 1900-1999, so
+    // only an anchor below 0100 already produced a wrong runtime window.
+    it('removes a RelativeDatePicker anchor whose year is below 100', () => {
       const migratedRaw = migrateVariables({
         a: {
           name: 'relative',
           type: 'datetime',
           component: 'RelativeDatePicker',
-          parameters: { anchor: '0500-01-01', before: 30 },
+          parameters: { anchor: '0099-12-31', before: 30 },
         },
       });
       const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
@@ -4521,6 +4525,28 @@ describe('Migration V7 to V8', () => {
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.anchor');
       expect(variables?.a).toHaveProperty('parameters.before', 30);
+    });
+
+    it('preserves a RelativeDatePicker anchor whose year is in the previously-rejected 0100-0999 range', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'relative_100',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '0100-01-01', before: 30 },
+        },
+        b: {
+          name: 'relative_999',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '0999-12-31', before: 30 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.anchor', '0100-01-01');
+      expect(variables?.b).toHaveProperty('parameters.anchor', '0999-12-31');
     });
 
     it('removes negative and non-integer RelativeDatePicker offsets', () => {
@@ -4573,7 +4599,7 @@ describe('Migration V7 to V8', () => {
         a: {
           name: 'relative_small_year',
           type: 'datetime',
-          parameters: { anchor: '0500-01-01', before: -2 },
+          parameters: { anchor: '0050-01-01', before: -2 },
         },
         b: {
           name: 'relative_valid_anchor',
@@ -4617,7 +4643,7 @@ describe('Migration V7 to V8', () => {
           name: 'declared_relative',
           type: 'datetime',
           component: 'RelativeDatePicker',
-          parameters: { anchor: '0500-01-01', before: -2 },
+          parameters: { anchor: '0050-01-01', before: -2 },
         },
       });
       const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
@@ -4661,12 +4687,12 @@ describe('Migration V7 to V8', () => {
           name: 'null_component_relative',
           type: 'datetime',
           component: null,
-          parameters: { anchor: '0500-01-01', before: -2 },
+          parameters: { anchor: '0050-01-01', before: -2 },
         },
         b: {
           name: 'null_member_key_relative',
           type: 'datetime',
-          parameters: { anchor: '0500-01-01', after: -3, min: null },
+          parameters: { anchor: '0050-01-01', after: -3, min: null },
         },
       });
       const variables = (

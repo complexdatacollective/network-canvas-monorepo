@@ -279,12 +279,14 @@ const greaterThanOrEqualTo =
 
 /**
  * Audit sweep: a lower bound on an ISO date field. The protocol schema
- * requires a RelativeDatePicker `anchor` of 1000-01-01 or later (a smaller
- * year is a typo the date arithmetic silently two-digit-coerces), and
- * Architect had no matching editor rule: the dialog saved and protocol
- * validation then threw a blocking invalid-protocol dialog offering to revert
- * the edit. Bounds authored in the picker's `parameters` configure its range,
- * they do not validate the committed value.
+ * requires a RelativeDatePicker `anchor` of 0100-01-01 or later — fresco-ui's
+ * `addDays` runtime arithmetic builds `Date.UTC(year, ...)`, which two-digit-
+ * coerces only a year in 0-99 onto 1900-1999, so a smaller year is the actual
+ * hazard, not any year below 1000 (twenty-first-wave Finding 4, correcting an
+ * over-aggressive 1000 floor) — and Architect had no matching editor rule: the
+ * dialog saved and protocol validation then threw a blocking invalid-protocol
+ * dialog offering to revert the edit. Bounds authored in the picker's
+ * `parameters` configure its range, they do not validate the committed value.
  *
  * ISO dates written at one resolution order lexicographically, so comparing
  * the strings is exact — the paired `ISODate` rule has already rejected
