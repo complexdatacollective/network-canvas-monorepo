@@ -1,44 +1,13 @@
-// YYYY-MM-DD string helpers. Arithmetic runs in UTC so derived bounds are
-// stable regardless of the runtime timezone — critical because the form's
-// min/max validators compare YYYY-MM-DD strings lexically; any drift would
-// introduce off-by-one-day validation errors near DST transitions or across
-// timezone boundaries.
+// YYYY-MM-DD string helpers. `todayYmd` reads the clock in UTC so it names
+// the same calendar day regardless of the runtime timezone — critical because
+// `RelativeDatePickerField` and `buildDatePickerBoundProps` both default an
+// undeclared anchor to it, and the form's min/max validators compare
+// YYYY-MM-DD strings lexically; a local-time read would put this field's
+// ceiling a day either side of every other date-aware part of the system near
+// a DST transition or a timezone boundary.
 
 function formatYmd(year: number, month: number, day: number): string {
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-// `Date.UTC`, like the multi-argument `Date` constructor, maps a year of 0-99
-// into 1900-1999. This input accepts dates from year 0001, so a bound derived
-// from an anchor such as '0099-01-01' would otherwise be built around 1999 —
-// and the generator, which keeps its own copy of this arithmetic, would place
-// its dates a whole era away from the window this field validates against.
-// `setUTCFullYear` reads the year literally.
-function utcDate(year: number, month: number, day: number): Date {
-  const date = new Date(0);
-  date.setUTCFullYear(year, month - 1, day);
-  return date;
-}
-
-// Left published rather than deleted now that RelativeDatePickerField derives
-// its window through `dateWithinPickerRange` instead: this is a subpath export
-// of the design system, so a host outside this repo may be counting days with
-// it, and @codaco/interview holds it to the generator's own copy
-// (src/forms/__tests__/ymdParity.test.ts) — which is what keeps the two UTC
-// implementations, and so the dates either side derives, from drifting apart.
-export function addDays(ymd: string, days: number): string {
-  const parts = ymd.split('-').map(Number);
-  const [year, month, day] = parts;
-  if (year === undefined || month === undefined || day === undefined) {
-    return ymd;
-  }
-  const date = utcDate(year, month, day);
-  date.setUTCDate(date.getUTCDate() + days);
-  return formatYmd(
-    date.getUTCFullYear(),
-    date.getUTCMonth() + 1,
-    date.getUTCDate(),
-  );
 }
 
 export function todayYmd(): string {

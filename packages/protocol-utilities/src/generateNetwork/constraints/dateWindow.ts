@@ -61,17 +61,31 @@ export type DateWindow = {
   resolution: DateResolution;
 };
 
-// Deliberately duplicated from fresco-ui's form/utils/ymd, which this package
-// cannot depend on (protocol-utilities must stay free of UI dependencies).
-// Arithmetic runs in UTC so bounds are stable regardless of runtime timezone;
-// the runtime's min/max validators compare these strings lexically, so any
-// drift would produce off-by-one-day failures near DST boundaries. The
-// duplication is verified rather than trusted: @codaco/interview depends on
-// both packages and holds the two implementations to the same results
-// (src/forms/__tests__/ymdParity.test.ts). What those fields and this package
-// have to *agree* on is not duplicated at all — the constants they share and
-// the clamp that holds a derived bound inside the calendar live in
-// @codaco/shared-consts, which this package already depends on.
+// A second, independent copy of the UTC arithmetic @codaco/shared-consts
+// keeps privately in date-fields.ts for `dateWithinPickerRange`. That export
+// only derives a *window's* two ends; `addSteps` and `stepsBetween` below use
+// this copy to step and measure a date at an arbitrary offset *inside* an
+// already-derived window instead — drawing a value, or moving a bound by one
+// step to make a comparator strict — which shared-consts has no exported
+// entry point for. Arithmetic runs in UTC so results are stable regardless of
+// runtime timezone; the runtime's min/max validators compare these strings
+// lexically, so a drift between the two copies would produce off-by-one-day
+// failures near a DST boundary, or a value drawn outside the window it was
+// meant to land in.
+//
+// Nothing compares the two implementations against each other directly any
+// more: shared-consts never exported its copy past date-fields.ts, this
+// package's copy is no longer re-exported from its own public entry point
+// either now that nothing outside the package consumes it, and fresco-ui's
+// copy — the one @codaco/interview's ymdParity.test.ts used to hold this to —
+// is gone now that RelativeDatePickerField derives its window through
+// `dateWithinPickerRange` instead. The pairing is instead verified
+// behaviourally: @codaco/interview's relativeDateWindowParity.test.tsx draws
+// real values through this file's `addSteps` and confirms every one lands
+// inside the window `dateWithinPickerRange` derived for the same parameters,
+// across low-year and calendar-edge cases — so a drift between the two copies
+// would surface there as a generated value outside the window the interview
+// validates.
 function formatYmd(year: number, month: number, day: number): string {
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
