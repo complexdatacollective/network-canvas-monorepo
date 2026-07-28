@@ -41,7 +41,11 @@ const variableHandlers = withHandlers<HandlerProps, Record<string, unknown>>({
         createVariable({
           entity,
           type,
-          configuration: { type: 'text', name },
+          configuration: {
+            type: 'text',
+            name,
+            validation: { required: true },
+          },
         }),
       ).unwrap();
       const { variable } = result;
