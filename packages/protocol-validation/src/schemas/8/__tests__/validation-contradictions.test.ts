@@ -5702,3 +5702,117 @@ describe('findValidationContradictions — Twenty-fifth wave: derivation fidelit
     ).toEqual([]);
   });
 });
+
+describe('findValidationContradictions — Twenty-sixth-wave Finding 2: unbounded full-resolution DatePickers floor at the native date input minimum', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> | undefined,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    ...(parameters !== undefined ? { parameters } : {}),
+    validation: { required: true, ...validation },
+  });
+
+  // The earliest value the native `<input type="date">` grammar can express:
+  // there is no year 0000 and no negative year, whatever the control's
+  // min/max attributes say.
+  const NATIVE_FLOOR = '0001-01-01';
+
+  // The reviewer's repro: a required full-resolution DatePicker with no
+  // authored bounds contributed NO interval, so a strict lessThanVariable
+  // against a partner pinned AT the native floor was accepted although no
+  // enterable date lies strictly before 0001-01-01.
+  it('rejects a bound-less full DatePicker strictly below a partner pinned at the native floor', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', {}, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // Same picker with the `parameters` record absent altogether — the control
+  // rendered is identical, so the floor applies the same way.
+  it('rejects the same shape when the picker has no parameters record at all', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', undefined, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  // The upper edge stays unbounded: strictly ABOVE the floor-pinned partner
+  // is satisfiable by any later date.
+  it('accepts the mirror direction against the unbounded upper edge', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', {}, { greaterThanVariable: 'b' }),
+        b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A componentless variable with no parameters identifies no control at all
+  // and stays unjudged — the floor is scoped to windows the existing routing
+  // already reads as a full-resolution DatePicker.
+  it('leaves a componentless datetime with no parameters unjudged', () => {
+    expect(
+      findValidationContradictions({
+        a: {
+          name: 'a',
+          type: 'datetime',
+          validation: { required: true, lessThanVariable: 'b' },
+        },
+        b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A componentless variable whose parameter shape already routes to the
+  // full-resolution DatePicker reading gets the same floor.
+  it('floors a componentless datetime whose parameter shape routes to the full-resolution reading', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'datetime',
+        parameters: {},
+        validation: { required: true, lessThanVariable: 'b' },
+      },
+      b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  // Authored-bounds cases are untouched: a one-sided authored window keeps
+  // its pre-existing half-open reading on the unauthored side (see the
+  // twenty-fifth wave's full-resolution stance), so this stays accepted.
+  it('keeps a one-sided authored full-resolution window half-open below', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '0001-06-01' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A coarse picker with no authored bounds stays unmodelled — its default
+  // 1920-to-today dropdown window has never been modelled, and the floor is
+  // scoped to full resolution.
+  it('leaves a bound-less coarse picker unjudged by the floor', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { type: 'year' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
+      }),
+    ).toEqual([]);
+  });
+});

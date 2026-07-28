@@ -1270,7 +1270,16 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
   if (record.component === 'RelativeDatePicker') {
     return relativeDateWindowInterval(parameters ?? {});
   }
-  if (!parameters) return undefined;
+  // Twenty-sixth-wave Finding 2: an explicit DatePicker with no parameters
+  // record at all is a full-resolution picker with no authored bounds — the
+  // same native-floor window the no-authored-bounds branch below models. A
+  // COMPONENTLESS variable with no parameters stays unjudged: with neither a
+  // component nor a parameter shape, no control can be identified at all.
+  if (!parameters) {
+    return record.component === 'DatePicker'
+      ? { min: NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER, origin: 'fixed' }
+      : undefined;
+  }
   // Audit sweep: a null `component` is an absent one (see `dateResolutionOf`),
   // and testing `=== undefined` here dropped the shape inference entirely,
   // losing the relative window rather than merely mis-reading it.
@@ -1287,7 +1296,27 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
     typeof parameters.max === 'string'
       ? dayNumber(parameters.max, storesFullDates ? 'max' : 'min')
       : undefined;
-  if (min === undefined && max === undefined) return undefined;
+  // Twenty-sixth-wave Finding 2: a FULL-resolution picker with no authored
+  // bound on either side is still not unbounded below — the native
+  // `<input type="date">` grammar has no year 0000 or negative years, so
+  // nothing before 0001-01-01 can ever be typed or selected whatever the
+  // control's `min`/`max` attributes say (see
+  // `NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER`). Contributing the floor closes the
+  // reviewer's repro (a bound-less required DatePicker `lessThanVariable` a
+  // partner pinned AT the floor has no strictly-earlier instant to offer,
+  // yet was accepted) while the upper edge stays unbounded. This is a hard
+  // FORMAT bound shared by every datetime control, so it holds whichever
+  // control a composer field ultimately renders. A ONE-SIDED authored window
+  // deliberately keeps its pre-existing half-open reading (no change for
+  // authored-bounds cases), and a coarse picker with no authored bounds
+  // stays unmodelled exactly as before — its default 1920-to-today dropdown
+  // window has never been modelled, and half-open is that window's strict
+  // superset.
+  if (min === undefined && max === undefined) {
+    return storesFullDates
+      ? { min: NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER, origin: 'fixed' }
+      : undefined;
+  }
   // Twenty-fifth wave: a COARSE picker with exactly one authored bound
   // outside the default window is not half-open at runtime — fresco-ui
   // synthesizes the missing side, and the year/month dropdowns are closed
