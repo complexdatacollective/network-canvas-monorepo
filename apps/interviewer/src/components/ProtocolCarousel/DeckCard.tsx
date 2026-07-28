@@ -25,7 +25,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { protocolDataViewPath } from '~/components/DataView/dataViewUrlState';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
-import { cardBase } from './cardStyles';
+import { cardBase, cardHeadingSizeClass } from './cardStyles';
 
 function Pill({
   children,
@@ -72,22 +72,6 @@ function withUnderscoreBreaks(name: string): ReactNode[] {
   return parts.flatMap((part, index) =>
     index < parts.length - 1 ? [`${part}_`, <wbr key={index} />] : [part],
   );
-}
-
-// Step the heading size down as names get longer so multi-line names stay
-// inside the heading's flex region instead of squeezing the description and
-// footer. Thresholds are pre-wrap character counts — crude, but stable: no
-// measurement loop, no reflow jitter, and the classes are static literals
-// so Tailwind's scanner emits them. Names are identifiers (machine-style
-// names often differ only at the END), so shrinking is preferred over
-// truncation; the fitted line clamp below is only a backstop for
-// pathological lengths. Each tier carries a pixel floor so the name stays
-// legible on the smallest cards — when text stops shrinking, the budget
-// hook trades description lines away instead.
-function headingSizeClass(name: string): string {
-  if (name.length <= 24) return 'text-[max(20px,8cqi)]';
-  if (name.length <= 48) return 'text-[max(18px,6.5cqi)]';
-  return 'text-[max(16px,5cqi)]';
 }
 
 // Ceiling on the description even when space allows — beyond this it trails
@@ -581,7 +565,7 @@ export function DeckCard(props: DeckCardProps) {
                   title={protocol.name}
                   className={cx(
                     'w-full text-left font-black wrap-break-word hyphens-auto',
-                    headingSizeClass(protocol.name),
+                    cardHeadingSizeClass(protocol.name),
                   )}
                   // line-height must be inline: leading-* utilities lose to
                   // the Heading component's own typography classes, so a

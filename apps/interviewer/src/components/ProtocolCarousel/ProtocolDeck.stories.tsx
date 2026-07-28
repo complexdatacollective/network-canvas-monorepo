@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useCallback, useRef, useState } from 'react';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolWithCounts } from '~/lib/db/types';
@@ -174,6 +174,42 @@ export const ChevronAndDotNavigation: Story = {
     await waitFor(() =>
       expect(dots[2]).toHaveAttribute('aria-current', 'true'),
     );
+  },
+};
+
+export const FileDragActivatesImportCard: Story = {
+  render: () => <DeckHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dots = await canvas.findAllByLabelText(/Go to card/);
+    const importDot = dots[dots.length - 1];
+    if (!importDot) throw new Error('Import card navigation dot not found');
+
+    await expect(dots[0]).toHaveAttribute('aria-current', 'true');
+
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(
+      new File(['netcanvas'], 'study.netcanvas', {
+        type: 'application/x-netcanvas',
+      }),
+    );
+    const dragEvent = (type: string) =>
+      new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      });
+
+    await fireEvent(document.body, dragEvent('dragenter'));
+
+    await waitFor(() =>
+      expect(importDot).toHaveAttribute('aria-current', 'true'),
+    );
+    await expect(canvas.getByRole('status')).toHaveTextContent(
+      'Import a protocol card selected',
+    );
+
+    await fireEvent(document.body, dragEvent('dragleave'));
   },
 };
 
