@@ -3548,6 +3548,25 @@ type DisjointBoundsResult = ChainedBoundResult & {
    * only ever strip comparator rules, which a `sameAs`-forced pin survives.
    */
   unsatisfiableGroupMemberIds: Set<string>;
+  /**
+   * Thirty-first wave: each variable's equality group's tightened intervals
+   * — the exact per-group maps the per-edge and chain checks judge against
+   * (post-`tightenToSurvivingInstantHull`,
+   * post-`pruneToPinnedDisequalityHull`), keyed by MEMBER id so the parity
+   * pass can look them up from its own equality-group construction without
+   * coupling to this pass's group-root labels. Every member of one group
+   * shares one `GroupIntervals` reference.
+   */
+  groupIntervalsByMember: Map<string, GroupIntervals>;
+  /**
+   * Thirty-first wave: every member of an equality group whose enumerable
+   * fixed domain `pruneToPinnedDisequalityHull` emptied outright (the
+   * multi-exclusion report). The datetime parity check bails any component
+   * touching one of these — the emptiness report's strip may remove the very
+   * `differentFrom` edges the parity graph is built from, and a second
+   * report would double-strip one conflict.
+   */
+  disequalityEmptiedMemberIds: Set<string>;
 };
 
 function disjointBoundsContradictions(
@@ -3745,6 +3764,8 @@ function disjointBoundsContradictions(
   // untightened intervals and are unaffected. A domain the pruning empties
   // outright is reported here instead of tightening.
   const groupIntervals = new Map<string, GroupIntervals>();
+  const groupIntervalsByMember = new Map<string, GroupIntervals>();
+  const disequalityEmptiedMemberIds = new Set<string>();
   for (const [group, members] of membersOf) {
     const intervals = intervalsOfMembers(variables, members);
     tightenToSurvivingInstantHull(variables, members, intervals);
@@ -3756,8 +3777,12 @@ function disjointBoundsContradictions(
       pinOf,
       unsatisfiableGroupMemberIds,
     );
-    if (emptiedDomain) found.push(emptiedDomain);
+    if (emptiedDomain) {
+      found.push(emptiedDomain);
+      for (const member of members) disequalityEmptiedMemberIds.add(member);
+    }
     groupIntervals.set(group, intervals);
+    for (const member of members) groupIntervalsByMember.set(member, intervals);
   }
 
   for (const edge of edges) {
@@ -3813,6 +3838,8 @@ function disjointBoundsContradictions(
     contradictions: found,
     propagatedPins: chained.propagatedPins,
     unsatisfiableGroupMemberIds,
+    groupIntervalsByMember,
+    disequalityEmptiedMemberIds,
   };
 }
 
@@ -4077,7 +4104,7 @@ const matchesReferenceAssignment = (pin: SingletonPin): boolean =>
  * categorical has four possible stored selections, never a comparable
  * two-value scalar domain.
  */
-type OrdinalTwoValueDomain = {
+type ComponentTwoValueDomain = {
   /** Group id → whether the group's pinned value is the reference value. */
   pins: Map<string, boolean>;
 };
@@ -4089,7 +4116,7 @@ const ordinalComponentTwoValueDomain = (
   variables: UnknownRecord,
   groups: string[],
   membersOf: Map<string, string[]>,
-): OrdinalTwoValueDomain | undefined => {
+): ComponentTwoValueDomain | undefined => {
   let reference: string | number | undefined;
   let other: string | number | undefined;
   const memberValues = new Map<string, Set<string | number>>();
@@ -4138,11 +4165,137 @@ const ordinalComponentTwoValueDomain = (
 };
 
 /**
- * Contradictions in the boolean and two-valued-ordinal `differentFrom`
- * graph, at equality-group granularity (a `sameAs` group holds one shared
- * value, so `differentFrom` edges connect groups, not individual
- * variables). Two independent structural sources are checked per connected
- * component of that graph:
+ * Thirty-first wave: the datetime analogue of
+ * `ordinalComponentTwoValueDomain` above — the shared two-instant domain of
+ * a datetime `differentFrom` component, with every group's singleton pin
+ * BOOLEAN-IZED against it, or `undefined` whenever the component is not
+ * uniformly two-instant (accept). Three required full-resolution pickers
+ * each windowed to exactly `2020-01-01`–`2020-01-02` in an odd
+ * `differentFrom` triangle demand three pairwise-different stored values
+ * from two enumerable instants, which is exactly the two-colourability
+ * question the boolean bipartite machinery already decides.
+ *
+ * Domain enumeration reuses the twenty-eighth wave's exact seam
+ * (`enumerableFixedDomain`: coarse emission sets via `coarseInstantsOf`,
+ * integer-day enumeration otherwise, `COARSE_INSTANT_ENUMERATION_CAP`
+ * included) against the group's TIGHTENED fixed interval — the same
+ * post-`tightenToSurvivingInstantHull`, post-`pruneToPinnedDisequalityHull`
+ * interval every downstream feasibility consumer reads, so synthesized
+ * bounds, default floors, group-derived pins, and pruned pinned
+ * disequalities have all already been applied. That makes the pruning
+ * ordering the file's established one, not a second convention: a domain
+ * whose ENDPOINT the pruning removed re-enumerates two-valued here (its
+ * tightened hull moved), while an interior exclusion is invisible to the
+ * hull and leaves the modelled domain a SUPERSET — the safe direction, since
+ * a superset can only widen a group past two values (bail, accept) or hide a
+ * pin (fewer parity conflicts, accept), never invent one.
+ *
+ * "Same two-value set" is judged in STORED-value space at the members' own
+ * resolution: the component must be uniformly ONE resolution (a mixed
+ * component bails — cross-resolution stored strings never compare equal
+ * under `isMatchingValue`, and cross-resolution equality is the
+ * mixed-resolution machinery's territory, so no cross-resolution set can
+ * ever qualify as "the same"), and every enumerated instant must have a
+ * canonical stored encoding at that resolution (`storedPinKeyAtDay`). Under
+ * one shared resolution the day-number sets and the stored-string sets are
+ * in bijection, so a uniformly coarse component (say, two year pickers
+ * spanning exactly 2020–2021) participates exactly as a full-resolution one
+ * does — its stored-string pair {'2020', '2021'} is compared through the
+ * same period-start day numbers `coarseInstantsOf` emits.
+ *
+ * Beyond `ordinalComponentTwoValueDomain`'s bail conditions (unenumerable
+ * or over-two-instant domains, differing pairs, out-of-set singletons, no
+ * two-instant member), every uncertainty specific to datetime also bails
+ * the WHOLE component to accept:
+ *
+ *   - any member of a group one of the group-level emptiness checks already
+ *     reported (`unsatisfiableGroupMemberIds`) — the "never judge against an
+ *     already-empty group" precedent;
+ *   - any member of a group whose domain `pruneToPinnedDisequalityHull`
+ *     emptied outright (`disequalityEmptiedMemberIds`) — that conflict is
+ *     the pruning pass's own report, whose strip may remove the very
+ *     `differentFrom` edges in play here, and reporting both would
+ *     double-strip one conflict;
+ *   - an interview-date-origin or windowless member, which
+ *     `enumerableFixedDomain` already refuses to place on the fixed
+ *     calendar (fixed-origin instants are the only enumerable ones).
+ */
+const datetimeComponentTwoInstantDomain = (
+  variables: UnknownRecord,
+  groups: string[],
+  membersOf: Map<string, string[]>,
+  groupIntervalsByMember: ReadonlyMap<string, GroupIntervals>,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
+  disequalityEmptiedMemberIds: ReadonlySet<string>,
+): ComponentTwoValueDomain | undefined => {
+  let resolution: DateResolution | undefined;
+  for (const group of groups) {
+    for (const member of membersOf.get(group) ?? [group]) {
+      if (
+        unsatisfiableGroupMemberIds.has(member) ||
+        disequalityEmptiedMemberIds.has(member)
+      ) {
+        return undefined;
+      }
+      const memberResolution = dateResolutionOf(variables[member]);
+      resolution ??= memberResolution;
+      if (memberResolution !== resolution) return undefined;
+    }
+  }
+  if (resolution === undefined) return undefined;
+
+  let reference: number | undefined;
+  let other: number | undefined;
+  const groupDomains = new Map<string, Set<number>>();
+  for (const group of groups) {
+    const members = membersOf.get(group) ?? [group];
+    const [anyMember] = members;
+    const intervals =
+      anyMember === undefined
+        ? undefined
+        : groupIntervalsByMember.get(anyMember);
+    const domain = enumerableFixedDomain(
+      variables,
+      members,
+      intervals?.get('fixed'),
+    );
+    if (domain === undefined || domain.size === 0 || domain.size > 2) {
+      return undefined;
+    }
+    for (const day of domain) {
+      if (storedPinKeyAtDay(day, resolution) === undefined) return undefined;
+    }
+    groupDomains.set(group, domain);
+    if (domain.size !== 2) continue;
+    const [first, second] = [...domain].toSorted((dayA, dayB) => dayA - dayB);
+    if (first === undefined || second === undefined) return undefined;
+    if (reference === undefined) {
+      reference = first;
+      other = second;
+    } else if (reference !== first || other !== second) {
+      return undefined;
+    }
+  }
+  if (reference === undefined || other === undefined) return undefined;
+  const pins = new Map<string, boolean>();
+  for (const group of groups) {
+    const domain = groupDomains.get(group);
+    if (domain?.size !== 1) continue;
+    const [day] = domain;
+    if (day === undefined || (day !== reference && day !== other)) {
+      return undefined;
+    }
+    pins.set(group, day === reference);
+  }
+  return { pins };
+};
+
+/**
+ * Contradictions in the boolean, two-valued-ordinal, and two-instant-datetime
+ * `differentFrom` graph, at equality-group granularity (a `sameAs` group
+ * holds one shared value, so `differentFrom` edges connect groups, not
+ * individual variables). Two independent structural sources are checked per
+ * connected component of that graph:
  *
  *   - An ODD CYCLE (not 2-colourable) is provably unsatisfiable regardless
  *     of which value is chosen: `A ≠ B`, `B ≠ C`, `C ≠ A` forces three
@@ -4154,16 +4307,19 @@ const ordinalComponentTwoValueDomain = (
  *     between them — see the dedicated comment further down, where the
  *     colouring is checked against those pins.
  *
- * DELIBERATE LIMIT: boolean variables are always checked here, and —
- * thirtieth wave (Fix 3) — ordinal variables exactly when their whole
- * component shares one two-value option domain (see
- * `ordinalComponentTwoValueDomain`, including why categorical stays out:
- * its stored value is an array, never a comparable scalar). Larger or
- * non-uniform ordinal domains still bail to accept: the equivalent question
- * there is general k-colourability (for cycles) or arbitrary domain
- * propagation (for pins), neither of which has an efficient exact check for
- * an arbitrary domain — that remains out of scope and left to the interview
- * runtime's own fill-time enforcement as a backstop.
+ * DELIBERATE LIMIT: boolean variables are always checked here; ordinal
+ * variables — thirtieth wave (Fix 3) — exactly when their whole component
+ * shares one two-value option domain (see `ordinalComponentTwoValueDomain`,
+ * including why categorical stays out: its stored value is an array, never a
+ * comparable scalar); and datetime variables — thirty-first wave — exactly
+ * when their whole component shares one exactly-enumerable two-instant
+ * stored-value domain at one resolution (see
+ * `datetimeComponentTwoInstantDomain`). Larger or non-uniform domains still
+ * bail to accept: the equivalent question there is general k-colourability
+ * (for cycles) or arbitrary domain propagation (for pins), neither of which
+ * has an efficient exact check for an arbitrary domain — that remains out of
+ * scope and left to the interview runtime's own fill-time enforcement as a
+ * backstop.
  *
  * `claimedPairs` (sorted `id\0id` keys) comes from
  * `pinnedEqualDifferentFromContradictions`, run once by the caller over ALL
@@ -4176,6 +4332,9 @@ function oddDifferentFromCycleContradictions(
   variables: UnknownRecord,
   claimedPairs: Set<string>,
   stageEffectiveComponents: boolean,
+  groupIntervalsByMember: ReadonlyMap<string, GroupIntervals>,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
+  disequalityEmptiedMemberIds: ReadonlySet<string>,
 ): ValidationContradiction[] {
   const edges = comparatorEdges(variables);
   const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
@@ -4187,7 +4346,9 @@ function oddDifferentFromCycleContradictions(
 
   for (const [id, variable] of Object.entries(variables)) {
     const type = typeOf(variable);
-    if (type !== 'boolean' && type !== 'ordinal') continue;
+    if (type !== 'boolean' && type !== 'ordinal' && type !== 'datetime') {
+      continue;
+    }
     // `usableReference` guarantees same-typed endpoints, so the target
     // shares this variable's type — a component is never mixed-typed.
     const target = usableReference(variables, id, 'differentFrom');
@@ -4285,10 +4446,12 @@ function oddDifferentFromCycleContradictions(
     // member's type decides which domain model applies — the Set is
     // defensive, matching the rest of the file. An ordinal component is
     // judged ONLY when `ordinalComponentTwoValueDomain` validates it as one
-    // shared two-value set; any member with a different or larger domain
-    // bails the whole component to accept BEFORE either structural check
-    // below runs, keeping the documented k-colourability limit for genuinely
-    // larger domains.
+    // shared two-value set, and — thirty-first wave — a datetime component
+    // ONLY when `datetimeComponentTwoInstantDomain` validates it as one
+    // shared exactly-enumerable two-instant set; any member with a
+    // different, larger, or unenumerable domain bails the whole component to
+    // accept BEFORE either structural check below runs, keeping the
+    // documented k-colourability limit for genuinely larger domains.
     const componentTypes = new Set(
       queue.flatMap((group) =>
         (membersOf.get(group) ?? [group]).map((member) =>
@@ -4303,6 +4466,19 @@ function oddDifferentFromCycleContradictions(
         ? ordinalComponentTwoValueDomain(variables, queue, membersOf)
         : undefined;
     if (componentType === 'ordinal' && ordinalDomain === undefined) continue;
+    const datetimeDomain =
+      componentType === 'datetime'
+        ? datetimeComponentTwoInstantDomain(
+            variables,
+            queue,
+            membersOf,
+            groupIntervalsByMember,
+            unsatisfiableGroupMemberIds,
+            disequalityEmptiedMemberIds,
+          )
+        : undefined;
+    if (componentType === 'datetime' && datetimeDomain === undefined) continue;
+    const twoValueDomain = ordinalDomain ?? datetimeDomain;
 
     if (!bipartite) {
       if (!conflict) continue; // Type-narrowing only: bipartite is only ever
@@ -4354,15 +4530,17 @@ function oddDifferentFromCycleContradictions(
     // (itself built on `booleanDomain`), never `options` directly, so a
     // Toggle-rendered boolean (or one with no declared component) stays
     // unconditionally two-valued here exactly as it does everywhere else in
-    // this file. An ordinal component's pins were already boolean-ized
-    // against its shared domain's reference value
-    // (`ordinalComponentTwoValueDomain`), so singleton-domain ordinal
-    // members interact with parity through exactly this same machinery.
+    // this file. An ordinal or datetime component's pins were already
+    // boolean-ized against its shared domain's reference value
+    // (`ordinalComponentTwoValueDomain` /
+    // `datetimeComponentTwoInstantDomain`), so singleton-domain ordinal and
+    // datetime members interact with parity through exactly this same
+    // machinery.
     const singletonPins: SingletonPin[] = [];
     for (const group of queue) {
       let value: boolean | undefined;
-      if (ordinalDomain) {
-        value = ordinalDomain.pins.get(group);
+      if (twoValueDomain) {
+        value = twoValueDomain.pins.get(group);
       } else {
         const domain = sharedBooleanDomain(
           variables,
@@ -4443,6 +4621,8 @@ export function findValidationContradictions(
     contradictions: disjointBoundsResults,
     propagatedPins,
     unsatisfiableGroupMemberIds,
+    groupIntervalsByMember,
+    disequalityEmptiedMemberIds,
   } = disjointBoundsContradictions(variables, stageEffectiveComponents);
   const { contradictions: pinnedEqualContradictions, claimedPairs } =
     pinnedEqualDifferentFromContradictions(
@@ -4461,6 +4641,9 @@ export function findValidationContradictions(
       variables,
       claimedPairs,
       stageEffectiveComponents,
+      groupIntervalsByMember,
+      unsatisfiableGroupMemberIds,
+      disequalityEmptiedMemberIds,
     ),
   ];
 }

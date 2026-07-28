@@ -7413,3 +7413,308 @@ describe('findValidationContradictions — Thirtieth wave Fix 4: coarse DatePick
     ]);
   });
 });
+
+describe('findValidationContradictions — Thirty-first wave: two-instant datetime differentFrom components use the parity machinery', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: three required full-resolution pickers each
+  // windowed to exactly two enumerable instants — the SAME two — in an odd
+  // differentFrom triangle. Three pairwise-different stored values cannot be
+  // drawn from two dates; with every effective domain exactly the same
+  // two-instant set the component is satisfiable iff it is two-colourable,
+  // and an odd cycle is not. The strip follows the established
+  // single-smallest-keyed-edge policy.
+  it('rejects the reviewer repro: an odd cycle over one shared two-instant window', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // A uniformly coarse component participates the same way: two year
+  // dropdowns are two enumerable stored strings ('2020'/'2021'), compared
+  // through the same period-start instants `coarseInstantsOf` emits.
+  it('rejects an odd cycle of year pickers spanning exactly two years', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2021' },
+        { differentFrom: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { type: 'year', min: '2020', max: '2021' },
+        { differentFrom: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Accept guard: an even cycle is two-colourable — alternating the two
+  // instants around it satisfies every rule.
+  it('accepts an even cycle over one shared two-instant window', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'd' },
+        ),
+        d: datePicker(
+          'd',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: one member enumerating a THIRD instant bails the whole
+  // component — a = Jan 1, b = Jan 2, c = Jan 3 satisfies every rule.
+  it('accepts the same cycle when one member enumerates a third instant', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2020-01-03' },
+          { differentFrom: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: two-instant windows that DIFFER between members bail too —
+  // a = Jan 1, b = Jan 2, c = Jan 3 satisfies the cycle, so {Jan 1, Jan 2}
+  // beside {Jan 2, Jan 3} must never be treated as one two-colourable
+  // domain.
+  it('accepts the cycle when two-instant windows differ between members', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-02', max: '2020-01-03' },
+          { differentFrom: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: a mixed-resolution component bails. Cross-resolution
+  // stored strings never compare equal ('2021' is not '2020-01-01'), so no
+  // cross-resolution set can qualify as "the same" — that equality question
+  // belongs to the mixed-resolution machinery, and the cycle here is
+  // genuinely satisfiable (a = Jan 1, b = Jan 2, c = '2021').
+  it('accepts the cycle when one member stores at a coarser resolution', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { type: 'year', min: '2020', max: '2021' },
+          { differentFrom: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: a member whose window lives on the symbolic interview-date
+  // origin has no enumerable fixed-calendar instants at all, so the
+  // component bails — fixed-origin windows are the only ones the domain
+  // model may enumerate.
+  it('accepts the cycle when one member is an anchorless relative picker', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        c: {
+          name: 'c',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          validation: { required: true, differentFrom: 'a' },
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  // Singleton-domain members interact with parity exactly as boolean and
+  // ordinal pins do — including singletons the disequality PRUNING derives:
+  // `b` loses Jan 1 to `a`'s pin and `d` loses Jan 2 to `e`'s, so `d` is
+  // forced to Jan 1 while the path parity through `c` forces it to Jan 2.
+  it('rejects disagreeing pins that the pruned two-instant chain forces together', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { min: '2020-01-01', max: '2020-01-01' }),
+      b: datePicker(
+        'b',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'a' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'b' },
+      ),
+      d: datePicker(
+        'd',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'c' },
+      ),
+      e: datePicker(
+        'e',
+        { min: '2020-01-02', max: '2020-01-02' },
+        { differentFrom: 'd' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedDifferentFromParity');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The agreeing-parity mirror stays satisfiable: with `e` pinned to Jan 1
+  // instead, alternating Jan 1 / Jan 2 down the chain satisfies every rule
+  // (a = Jan 1, b = Jan 2, c = Jan 1, d = Jan 2, e = Jan 1).
+  it('accepts the same chain when the pruned pins agree with the path parity', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { min: '2020-01-01', max: '2020-01-01' }),
+        b: datePicker(
+          'b',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'a' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'b' },
+        ),
+        d: datePicker(
+          'd',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { differentFrom: 'c' },
+        ),
+        e: datePicker(
+          'e',
+          { min: '2020-01-01', max: '2020-01-01' },
+          { differentFrom: 'd' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Pruning-interplay guard: a two-instant domain the disequality pruning
+  // empties outright is that pass's own report (twenty-eighth wave), whose
+  // strip removes one of the very differentFrom edges in play here — the
+  // parity check must bail rather than fold the SAME conflict into a second
+  // report and double-strip it.
+  it('reports a pruning-emptied domain exactly once', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { min: '2020-01-01', max: '2020-01-01' },
+        { differentFrom: 'b' },
+      ),
+      b: datePicker(
+        'b',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { differentFrom: 'e' },
+      ),
+      e: datePicker('e', { min: '2020-01-02', max: '2020-01-02' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toBe(
+      'Variable "b": differentFrom rules against pinned variables "a", "e" leave no selectable date',
+    );
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+});
