@@ -360,15 +360,28 @@ function stronglyConnectedComponents(
  * of variables a non-strict comparator cycle forces to hold one shared value
  * — `a >= b` plus `b >= a` is the two-node case; a longer all-non-strict
  * chain back to its start is the same shape.
+ *
+ * `labelOf` maps each endpoint to the graph node it contributes to before the
+ * edge is added — the default is "one node per variable", but
+ * `buildEqualityGroups` (Twenty-first-wave Finding 6) passes a union-find's
+ * `find` so the SCC search runs on the CONTRACTED graph instead. An edge
+ * whose two ends already share a label becomes a harmless self-loop (it
+ * cannot inflate a component past size 1 on its own), so no special-casing is
+ * needed for it here.
  */
-function nonStrictComparatorComponents(edges: ComparatorEdge[]): string[][] {
+function nonStrictComparatorComponents(
+  edges: ComparatorEdge[],
+  labelOf: (id: string) => string = (id) => id,
+): string[][] {
   const adjacency = new Map<string, string[]>();
   for (const edge of edges) {
     if (edge.strict) continue;
-    const list = adjacency.get(edge.lower) ?? [];
-    list.push(edge.upper);
-    adjacency.set(edge.lower, list);
-    if (!adjacency.has(edge.upper)) adjacency.set(edge.upper, []);
+    const lower = labelOf(edge.lower);
+    const upper = labelOf(edge.upper);
+    const list = adjacency.get(lower) ?? [];
+    list.push(upper);
+    adjacency.set(lower, list);
+    if (!adjacency.has(upper)) adjacency.set(upper, []);
   }
   return stronglyConnectedComponents(adjacency).filter(
     (component) => component.length > 1,
@@ -421,6 +434,34 @@ const createUnionFind = (
  * resolution check is the one exception: it scopes to sameAs-connected
  * components, not these merged groups — see
  * `mixedResolutionSameAsContradictions` (tenth-wave Finding 5).
+ *
+ * Twenty-first-wave Finding 6: a non-strict comparator cycle can close ONLY
+ * once its endpoints are already unioned. `A.sameAs = C` plus `A >= B` and
+ * `B >= C` forces `A = B = C`: on the RAW variable graph those two comparator
+ * edges are just an acyclic chain `C → B → A` (`nonStrictComparatorComponents`
+ * finds nothing), but once `A` and `C` are contracted into one node by
+ * `sameAs`, the same two edges close a 2-cycle between `B` and that node.
+ * Computing the comparator SCCs once, on the raw graph, before folding in
+ * `sameAs`, missed exactly this. The fix re-derives the non-strict comparator
+ * SCCs on the CURRENT union-find partition — `nonStrictComparatorComponents`
+ * takes `find` as its node-labelling function — and repeats: merging a
+ * comparator SCC can turn two edges that used to land on two different groups
+ * into edges on the same pair of (now coarser) groups, closing a cycle that
+ * did not exist before that merge.
+ *
+ * This loop is guaranteed to terminate, and in fact converges in at most one
+ * substantive round: contracting a directed graph's strongly-connected
+ * components always yields an ACYCLIC condensation (a standard graph-theory
+ * fact — if components stayed cyclic with each other after contraction, their
+ * members would already have been mutually reachable before it, so Tarjan
+ * would have merged them into one SCC to begin with). So the round
+ * immediately following the first one that finds anything is mathematically
+ * guaranteed to find nothing, and the `components.length === 0` check stops
+ * it there. The `round < ids.length` bound is a second, independent guard —
+ * every round that does not stop must union at least two previously-distinct
+ * groups, strictly shrinking the group count, which is bounded below by 1 and
+ * starts at `ids.length`, so the loop cannot spin even if some future change
+ * to this function broke that monotonicity.
  */
 function buildEqualityGroups(
   variables: UnknownRecord,
@@ -429,22 +470,27 @@ function buildEqualityGroups(
   groupOf: Map<string, string>;
   membersOf: Map<string, string[]>;
 } {
-  const { find, union } = createUnionFind(Object.keys(variables));
+  const ids = Object.keys(variables);
+  const { find, union } = createUnionFind(ids);
 
-  for (const id of Object.keys(variables)) {
+  for (const id of ids) {
     const target = usableReference(variables, id, 'sameAs');
     if (target !== undefined) union(target, id);
   }
 
-  for (const component of nonStrictComparatorComponents(edges)) {
-    const [anchor] = component;
-    if (anchor === undefined) continue;
-    for (const member of component.slice(1)) union(anchor, member);
+  for (let round = 0; round < ids.length; round++) {
+    const components = nonStrictComparatorComponents(edges, find);
+    if (components.length === 0) break;
+    for (const component of components) {
+      const [anchor] = component;
+      if (anchor === undefined) continue;
+      for (const member of component.slice(1)) union(anchor, member);
+    }
   }
 
   const groupOf = new Map<string, string>();
   const membersOf = new Map<string, string[]>();
-  for (const id of Object.keys(variables)) {
+  for (const id of ids) {
     const root = find(id);
     groupOf.set(id, root);
     const members = membersOf.get(root) ?? [];

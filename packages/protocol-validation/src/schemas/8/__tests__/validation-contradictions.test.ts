@@ -690,6 +690,109 @@ describe('findValidationContradictions — Finding E: comparator-forced equality
   });
 });
 
+describe('findValidationContradictions — Twenty-first-wave Finding 6: comparator cycles closed only by sameAs contraction', () => {
+  const number = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'number',
+    validation,
+  });
+
+  // The reviewer's own example: `a.sameAs = c` plus `a >= b` and `b >= c`
+  // squeezes every value equal (`a = b = c`), even though the two comparator
+  // edges alone are just an acyclic chain `c -> b -> a` on the RAW variable
+  // graph — the cycle only exists once `a` and `c` are contracted into one
+  // node by `sameAs`. `b.differentFrom = c` then names two variables the rest
+  // of the rules already force equal.
+  it('rejects a non-strict comparator cycle that only closes once sameAs contracts its endpoints', () => {
+    const result = findValidationContradictions({
+      a: number('a', { sameAs: 'c', greaterThanOrEqualToVariable: 'b' }),
+      b: number('b', {
+        greaterThanOrEqualToVariable: 'c',
+        differentFrom: 'c',
+      }),
+      c: number('c'),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('sameAsGroupConflict');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.message).toBe(
+      'Variable "b": differentFrom references "c", but the comparison rules already require them to be equal',
+    );
+    // The differentFrom edge itself is what a class-9 group conflict always
+    // strips; removing it leaves `a.sameAs = c`, `a >= b >= c` satisfiable
+    // (e.g. a = b = c), so this genuinely resolves the contradiction rather
+    // than merely relocating it.
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Drop the differentFrom: the same three rules force `a = b = c`, but
+  // nothing requires them to differ, so one shared value satisfies
+  // everything.
+  it('still accepts the same three comparator/sameAs rules without differentFrom', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', { sameAs: 'c', greaterThanOrEqualToVariable: 'b' }),
+        b: number('b', { greaterThanOrEqualToVariable: 'c' }),
+        c: number('c'),
+      }),
+    ).toEqual([]);
+  });
+
+  // A one-way non-strict chain with nothing closing it into a cycle — no
+  // sameAs, no reverse edge — must never be read as forcing equality. This is
+  // the false-rejection guard for the fix: enlarging equality groups can only
+  // ever ADD rejections, so a chain that stays a chain must stay accepted.
+  it('still accepts a one-way non-strict chain with no sameAs to close it', () => {
+    expect(
+      findValidationContradictions({
+        p: number('p', { greaterThanOrEqualToVariable: 'q' }),
+        q: number('q', { greaterThanOrEqualToVariable: 'r' }),
+        r: number('r'),
+      }),
+    ).toEqual([]);
+  });
+
+  // A longer contraction: `w.sameAs = z` plus the three-hop chain
+  // `w >= x >= y >= z` closes a FOUR-member cycle, not just the two-variable
+  // case above — every member of the closing SCC must be unioned, not just
+  // the first pair `stronglyConnectedComponents` happens to return.
+  // `x.differentFrom = y` then names two variables from the middle of the
+  // chain, neither of which carries a `sameAs` edge itself.
+  it('merges every member of a longer cycle closed by sameAs contraction', () => {
+    const result = findValidationContradictions({
+      w: number('w', { sameAs: 'z', greaterThanOrEqualToVariable: 'x' }),
+      x: number('x', {
+        greaterThanOrEqualToVariable: 'y',
+        differentFrom: 'y',
+      }),
+      y: number('y', { greaterThanOrEqualToVariable: 'z' }),
+      z: number('z'),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('sameAsGroupConflict');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['w', 'x', 'y', 'z']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'x', rule: 'differentFrom' },
+    ]);
+  });
+
+  // No test exercises a genuine SECOND round of contraction, because none
+  // can be constructed: contracting a directed graph's strongly-connected
+  // components always yields an acyclic condensation (a standard
+  // graph-theory fact — if two contracted components still closed a cycle
+  // with each other, their members would already have been mutually
+  // reachable before contraction, so Tarjan would have merged them into one
+  // SCC on the first pass). `buildEqualityGroups` seeds every `sameAs` union
+  // before the first SCC pass runs, so that first pass already sees the
+  // fully sameAs-contracted graph; any further round is mathematically
+  // guaranteed to find nothing. The loop still runs generally (bounded by
+  // the variable count, stopping the instant a round finds no new
+  // component) rather than hard-coding "at most one round", so it stays
+  // correct if a future change feeds it a second, non-sameAs seed relation.
+});
+
 describe('findValidationContradictions — second-wave Finding 4: odd boolean differentFrom cycles', () => {
   const boolean = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
