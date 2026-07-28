@@ -53,6 +53,7 @@ vi.mock('~/lib/installationId', () => ({
 type CapturedShellProps = {
   currentStep: number;
   disableAnalytics: boolean;
+  initialStageOverrideIndex?: number;
   onExit: () => void;
   onFinish: (id: string) => Promise<void>;
   onSync: (id: string, session: SessionPayload) => Promise<void>;
@@ -66,12 +67,16 @@ type CapturedShellProps = {
 const { shellMock } = vi.hoisted(() => ({
   shellMock: vi.fn<(props: CapturedShellProps) => void>(),
 }));
-vi.mock('@codaco/interview', () => ({
-  Shell: (props: CapturedShellProps) => {
-    shellMock(props);
-    return <div data-testid="shell-mounted" />;
-  },
-}));
+vi.mock('@codaco/interview', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@codaco/interview')>();
+  return {
+    ...actual,
+    Shell: (props: CapturedShellProps) => {
+      shellMock(props);
+      return <div data-testid="shell-mounted" />;
+    },
+  };
+});
 
 import { InterviewRoute } from '../Interview';
 
@@ -104,6 +109,29 @@ function makeProtocol() {
         { id: 'stage-4' },
       ],
       codebook: { node: {}, edge: {}, ego: {} },
+    },
+  };
+}
+
+function makeProtocolWithNoActiveAuthoredStage() {
+  const base = makeProtocol();
+  return {
+    ...base,
+    protocol: {
+      ...base.protocol,
+      stages: [
+        {
+          id: 'stage-1',
+          skipLogic: {
+            action: 'SKIP',
+            filter: { join: 'AND', rules: [] },
+            destination: { type: 'finish' },
+          },
+        },
+        { id: 'stage-2' },
+        { id: 'stage-3' },
+        { id: 'stage-4' },
+      ],
     },
   };
 }
@@ -332,6 +360,18 @@ describe('InterviewRoute finish flow', () => {
     expect(lastShellProps().disableAnalytics).toBe(true);
     expect(lastShellProps().reviewMode).toBe(true);
     expect(screen.queryByText('Interview complete')).not.toBeInTheDocument();
+  });
+
+  it('forces the route-controlling stage when no authored stage is active', async () => {
+    getProtocolByHashMock.mockResolvedValue(
+      makeProtocolWithNoActiveAuthoredStage(),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().currentStep).toBe(0);
+    expect(lastShellProps().initialStageOverrideIndex).toBe(0);
   });
 
   it('suppresses every session write while reviewing a finished session', async () => {

@@ -214,6 +214,19 @@ describe('getLastAvailableAuthoredStageIndex', () => {
       ),
     ).toBe(0);
   });
+
+  it('returns undefined when the active route has no authored stage', () => {
+    expect(
+      getLastAvailableAuthoredStageIndex(
+        [
+          stage('s0', alwaysSkipped({ type: 'finish' })),
+          stage('s1'),
+          stage('s2'),
+        ],
+        network,
+      ),
+    ).toBeUndefined();
+  });
 });
 
 describe('resolveRecoveryStep', () => {

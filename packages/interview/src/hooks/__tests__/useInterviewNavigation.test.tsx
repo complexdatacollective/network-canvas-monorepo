@@ -100,6 +100,7 @@ function renderStatefulNavigation(
   stages: TestStage[],
   initialStep = 0,
   initialStageOverrideIndex?: number,
+  reviewMode = false,
 ) {
   const store = makeStore(stages);
   const onStepChange = vi.fn();
@@ -122,7 +123,7 @@ function renderStatefulNavigation(
   }
 
   const { result } = renderHook(
-    () => useInterviewNavigation(initialStageOverrideIndex),
+    () => useInterviewNavigation(initialStageOverrideIndex, reviewMode),
     { wrapper: Wrapper },
   );
   return { result, onStepChange, store };
@@ -288,6 +289,47 @@ describe('useInterviewNavigation targeted skip routes', () => {
     });
 
     expect(onStepChange).toHaveBeenLastCalledWith(3, expect.anything());
+  });
+
+  it('keeps the current authored stage when a review edit changes its route to finish', async () => {
+    const stages = makeStages(3);
+    stages[0]!.skipLogic = skipWhenDeclined({ type: 'finish' });
+    const { result, onStepChange, store } = renderStatefulNavigation(
+      stages,
+      0,
+      undefined,
+      true,
+    );
+
+    act(() => {
+      result.current.registerBeforeNext(async () => {
+        await store.dispatch(updateEgo({ agrees: false }));
+        return true;
+      });
+    });
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(result.current.currentStep).toBe(0);
+    expect(result.current.canRenderStage).toBe(true);
+    expect(result.current.disableMoveForward).toBe(true);
+  });
+
+  it('still recovers backward from an untargeted hidden review stage', () => {
+    const stages = makeStages(3);
+    stages[2]!.skipLogic = ALWAYS_SKIPPED;
+    const { result, onStepChange } = renderStatefulNavigation(
+      stages,
+      2,
+      undefined,
+      true,
+    );
+
+    expect(result.current.canRenderStage).toBe(false);
+    expect(onStepChange).toHaveBeenLastCalledWith(1, expect.anything());
   });
 
   it('returns Back to the decision screen and reopens the range when the answer changes', async () => {

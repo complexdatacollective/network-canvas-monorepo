@@ -78,6 +78,20 @@ const stagesWithFinishRoute: CurrentProtocol['stages'] = [
   informationStage('stage-3'),
 ];
 
+const stagesWithNoActiveAuthoredStage: CurrentProtocol['stages'] = [
+  {
+    ...informationStage('stage-0'),
+    skipLogic: {
+      action: 'SKIP',
+      filter: { join: 'AND', rules: [] },
+      destination: { type: 'finish' },
+    },
+  },
+  informationStage('stage-1'),
+  informationStage('stage-2'),
+  informationStage('stage-3'),
+];
+
 describe('sessions repo — encryption at boundary', () => {
   beforeEach(async () => {
     await db.sessions.clear();
@@ -363,6 +377,24 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
     await markSessionFinished(created.id);
 
     await markSessionUnfinished(created.id, stagesWithFinishRoute);
+
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).toBeNull();
+    expect(session?.currentStep).toBe(0);
+    expect(session?.progress).toBe(20);
+  });
+
+  it('resumes at the route-controlling stage when no authored stage is active', async () => {
+    const created = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+    await updateSession(created.id, { currentStep: 4, progress: 100 });
+    await markSessionFinished(created.id);
+
+    await markSessionUnfinished(created.id, stagesWithNoActiveAuthoredStage);
 
     const session = await getSession(created.id);
     expect(session?.finishedAt).toBeNull();

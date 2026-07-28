@@ -348,21 +348,34 @@ const Shell = ({
     trackerRef.current = next;
   }, []);
 
-  const reviewCurrentStep = useMemo(() => {
+  const reviewEntry = useMemo(() => {
     if (
       reviewMode !== true ||
       currentStep === undefined ||
       currentStep < payload.protocol.stages.length
     ) {
-      return currentStep;
+      return {
+        currentStep,
+        initialStageOverrideIndex,
+      };
     }
 
-    return getLastAvailableAuthoredStageIndex(
+    const lastAvailableStage = getLastAvailableAuthoredStageIndex(
       payload.protocol.stages,
       payload.session.network,
     );
+    const hasAuthoredStage = payload.protocol.stages.length > 0;
+
+    return {
+      currentStep: lastAvailableStage ?? 0,
+      initialStageOverrideIndex:
+        lastAvailableStage === undefined && hasAuthoredStage
+          ? 0
+          : initialStageOverrideIndex,
+    };
   }, [
     currentStep,
+    initialStageOverrideIndex,
     payload.protocol.stages,
     payload.session.network,
     reviewMode,
@@ -383,7 +396,7 @@ const Shell = ({
           flags={flags}
         >
           <CurrentStepProvider
-            currentStep={reviewCurrentStep}
+            currentStep={reviewEntry.currentStep}
             onStepChange={onStepChange}
           >
             <Interview
@@ -395,7 +408,7 @@ const Shell = ({
                 allowStageNavigation &&
                 (currentStep === undefined || onStepChange !== undefined)
               }
-              initialStageOverrideIndex={initialStageOverrideIndex}
+              initialStageOverrideIndex={reviewEntry.initialStageOverrideIndex}
               reviewMode={reviewMode}
             />
           </CurrentStepProvider>

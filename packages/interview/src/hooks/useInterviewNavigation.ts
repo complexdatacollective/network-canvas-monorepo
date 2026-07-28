@@ -356,17 +356,40 @@ export default function useInterviewNavigation(
         previousValidStageIndex: currentNavigation.previousValidStageIndex,
         nextValidStageIndex: currentNavigation.nextValidStageIndex,
       });
+      if (reviewMode && recoveryStep >= protocolStages.length) {
+        setForcedStep(currentStep);
+        return;
+      }
       setStep(recoveryStep, getInterviewProgress(protocolStages, recoveryStep));
     }
-  }, [setStep, currentNavigation, currentStep, forcedStep, protocolStages]);
+  }, [
+    setStep,
+    currentNavigation,
+    currentStep,
+    forcedStep,
+    protocolStages,
+    reviewMode,
+  ]);
 
   const { canMoveForward, canMoveBackward } =
     useStageSelector(getNavigationInfo);
   const isTransitioning = currentStep !== displayedStep;
   const hasPreviousAvailableStage =
     currentNavigation.previousValidStageIndex !== currentStep;
+  const displayedRecoveryStep = resolveRecoveryStep({
+    currentStep: displayedStep,
+    currentAvailability: displayedNavigation.currentAvailability,
+    previousValidStageIndex: displayedNavigation.previousValidStageIndex,
+    nextValidStageIndex: displayedNavigation.nextValidStageIndex,
+  });
+  const isReviewRecoveryBoundary =
+    reviewMode &&
+    !displayedNavigation.isCurrentStepValid &&
+    displayedRecoveryStep >= protocolStages.length;
   const canRenderDisplayedStage =
-    displayedNavigation.isCurrentStepValid || displayedStep === forcedStep;
+    displayedNavigation.isCurrentStepValid ||
+    displayedStep === forcedStep ||
+    isReviewRecoveryBoundary;
   const isAtReviewEnd =
     reviewMode &&
     currentNavigation.nextValidStageIndex >= protocolStages.length &&

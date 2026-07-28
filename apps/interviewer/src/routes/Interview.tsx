@@ -14,6 +14,7 @@ import {
   Shell,
   type StepChangeHandler,
   type SyncHandler,
+  getLastAvailableAuthoredStageIndex,
 } from '@codaco/interview';
 import { InterviewComplete } from '~/components/InterviewComplete';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
@@ -55,6 +56,7 @@ type LoadState =
       payload: InterviewPayload;
       resolver: (id: string) => Promise<string>;
       readOnly: boolean;
+      initialStageOverrideIndex?: number;
     };
 
 const discardSessionChanges: SyncHandler = () => Promise.resolve();
@@ -145,12 +147,17 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       };
       if (!active) return;
       const readOnly = session.finishedAt !== null;
-      const initialStep = readOnly
-        ? Math.min(
-            session.currentStep ?? 0,
-            Math.max(0, protocol.protocol.stages.length - 1),
-          )
-        : (session.currentStep ?? 0);
+      const lastAvailableStage = getLastAvailableAuthoredStageIndex(
+        protocol.protocol.stages,
+        session.network,
+      );
+      const hasNoAvailableAuthoredStage =
+        lastAvailableStage === undefined && protocol.protocol.stages.length > 0;
+      const initialStep = hasNoAvailableAuthoredStage
+        ? 0
+        : readOnly && session.currentStep >= protocol.protocol.stages.length
+          ? (lastAvailableStage ?? 0)
+          : session.currentStep;
       setCurrentStep(initialStep);
       currentStepRef.current = initialStep;
       setAllowStageNavigation(settings.allowStageNavigation);
@@ -159,6 +166,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         payload,
         resolver: makeAssetResolver(session.protocolHash, protocol.importedAt),
         readOnly,
+        initialStageOverrideIndex: hasNoAvailableAuthoredStage ? 0 : undefined,
       });
       if (session.finishedAt === null) {
         void updateSettings({
@@ -302,6 +310,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         posthogClient={posthogClient ?? undefined}
         disableAnalytics={readOnly || !analyticsEnabled}
         reviewMode={readOnly}
+        initialStageOverrideIndex={state.initialStageOverrideIndex}
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
         navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
