@@ -52,6 +52,7 @@ vi.mock('~/lib/installationId', () => ({
 
 type CapturedShellProps = {
   currentStep: number;
+  disableAnalytics: boolean;
   onExit: () => void;
   onFinish: (id: string) => Promise<void>;
   onSync: (id: string, session: SessionPayload) => Promise<void>;
@@ -59,6 +60,7 @@ type CapturedShellProps = {
     step: number,
     meta: { progress: number; totalSteps: number },
   ) => void;
+  reviewMode: boolean;
 };
 
 const { shellMock } = vi.hoisted(() => ({
@@ -327,6 +329,8 @@ describe('InterviewRoute finish flow', () => {
       ),
     ).toBeInTheDocument();
     expect(lastShellProps().currentStep).toBe(3);
+    expect(lastShellProps().disableAnalytics).toBe(true);
+    expect(lastShellProps().reviewMode).toBe(true);
     expect(screen.queryByText('Interview complete')).not.toBeInTheDocument();
   });
 

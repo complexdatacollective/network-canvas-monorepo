@@ -10,6 +10,7 @@ import type {
   ProtocolWithCounts,
   SessionQueryParams,
   SessionQueryResult,
+  SessionResumeState,
   StoredAsset,
   StoredProtocol,
   StoredSession,
@@ -105,8 +106,11 @@ export async function markSessionFinished(id: string): Promise<void> {
   return dexieSessions.markSessionFinished(id);
 }
 
-export async function markSessionUnfinished(id: string): Promise<void> {
-  return dexieSessions.markSessionUnfinished(id);
+export async function markSessionUnfinished(
+  id: string,
+  resumeState: SessionResumeState,
+): Promise<void> {
+  return dexieSessions.markSessionUnfinished(id, resumeState);
 }
 
 export async function markSessionsExported(ids: string[]): Promise<void> {

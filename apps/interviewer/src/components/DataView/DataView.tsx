@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import Button from '@codaco/fresco-ui/Button';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { getInterviewProgress } from '@codaco/interview';
-import type { ProtocolWithCounts } from '~/lib/db/types';
+import type { ProtocolWithCounts, SessionResumeState } from '~/lib/db/types';
 
 import { DataViewToolbar } from './DataViewToolbar';
 import { useDataViewColumns } from './useDataViewColumns';
@@ -70,15 +70,23 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   // protocol hash, for the progress column's "step X of Y" label. Derived via
   // getInterviewProgress so the host never hard-codes the +1 for the finish
   // stage.
-  const protocolTotalSteps = useMemo(() => {
-    const map = new Map<string, number>();
+  const { protocolTotalSteps, protocolResumeStates } = useMemo(() => {
+    const totalSteps = new Map<string, number>();
+    const resumeStates = new Map<string, SessionResumeState>();
     for (const protocol of protocols) {
-      map.set(
-        protocol.hash,
-        getInterviewProgress(protocol.protocol.stages ?? [], 0).totalSteps,
-      );
+      const stages = protocol.protocol.stages ?? [];
+      const currentStep = Math.max(0, stages.length - 1);
+      const progress = getInterviewProgress(stages, currentStep);
+      totalSteps.set(protocol.hash, progress.totalSteps);
+      resumeStates.set(protocol.hash, {
+        currentStep,
+        progress: progress.progress,
+      });
     }
-    return map;
+    return {
+      protocolTotalSteps: totalSteps,
+      protocolResumeStates: resumeStates,
+    };
   }, [protocols]);
 
   const protocolOptions = useMemo(() => {
@@ -153,7 +161,13 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
     allOnPageSelected,
     someOnPageSelected,
     markingUnfinishedId,
-    onMarkUnfinished: (session) => void handleMarkUnfinished(session),
+    onMarkUnfinished: (session) => {
+      const resumeState = protocolResumeStates.get(session.protocolHash) ?? {
+        currentStep: Math.max(0, session.currentStep - 1),
+        progress: 0,
+      };
+      void handleMarkUnfinished(session, resumeState);
+    },
   });
 
   const table = useReactTable({

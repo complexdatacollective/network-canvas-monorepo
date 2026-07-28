@@ -144,18 +144,24 @@ describe('useSessionMutations — mark unfinished', () => {
     const { result } = makeHook();
 
     await act(async () => {
-      await result.current.handleMarkUnfinished({
-        id: 's1',
-        caseId: 'case-1',
-      });
+      await result.current.handleMarkUnfinished(
+        {
+          id: 's1',
+          caseId: 'case-1',
+        },
+        { currentStep: 3, progress: 80 },
+      );
     });
 
     expect(openDialog).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'Mark case-1 as unfinished?',
+        title: 'Mark unfinished?',
       }),
     );
-    expect(markSessionUnfinished).toHaveBeenCalledWith('s1');
+    expect(markSessionUnfinished).toHaveBeenCalledWith('s1', {
+      currentStep: 3,
+      progress: 80,
+    });
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Interview marked unfinished' }),
     );
@@ -166,10 +172,13 @@ describe('useSessionMutations — mark unfinished', () => {
     const { result } = makeHook();
 
     await act(async () => {
-      await result.current.handleMarkUnfinished({
-        id: 's1',
-        caseId: 'case-1',
-      });
+      await result.current.handleMarkUnfinished(
+        {
+          id: 's1',
+          caseId: 'case-1',
+        },
+        { currentStep: 3, progress: 80 },
+      );
     });
 
     expect(markSessionUnfinished).not.toHaveBeenCalled();

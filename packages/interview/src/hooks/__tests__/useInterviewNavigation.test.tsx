@@ -128,7 +128,11 @@ function renderStatefulNavigation(
   return { result, onStepChange, store };
 }
 
-function renderNavigation(stageCount: number, currentStep: number) {
+function renderNavigation(
+  stageCount: number,
+  currentStep: number,
+  reviewMode = false,
+) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -174,9 +178,12 @@ function renderNavigation(stageCount: number, currentStep: number) {
     );
   }
 
-  const { result } = renderHook(() => useInterviewNavigation(), {
-    wrapper: Wrapper,
-  });
+  const { result } = renderHook(
+    () => useInterviewNavigation(undefined, reviewMode),
+    {
+      wrapper: Wrapper,
+    },
+  );
   return { result, onStepChange, store };
 }
 
@@ -208,6 +215,18 @@ describe('useInterviewNavigation step-change meta', () => {
       progress: 100,
       totalSteps: 3,
     });
+  });
+
+  it('stops review mode at the final authored stage', async () => {
+    const { result, onStepChange } = renderNavigation(2, 1, true);
+
+    expect(result.current.disableMoveForward).toBe(true);
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(onStepChange).not.toHaveBeenCalled();
   });
 });
 

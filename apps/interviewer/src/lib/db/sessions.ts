@@ -11,6 +11,7 @@ import {
 import type {
   SessionQueryParams,
   SessionQueryResult,
+  SessionResumeState,
   SessionStatusKind,
   StoredSession,
   StoredSessionLite,
@@ -338,7 +339,10 @@ export function markSessionFinished(id: string): Promise<void> {
   });
 }
 
-export function markSessionUnfinished(id: string): Promise<void> {
+export function markSessionUnfinished(
+  id: string,
+  resumeState: SessionResumeState,
+): Promise<void> {
   return enqueueSessionMutation(id, async () => {
     const existing = await db.sessions.get(id);
     if (!existing) return;
@@ -346,6 +350,7 @@ export function markSessionUnfinished(id: string): Promise<void> {
     await db.sessions.put({
       ...existing,
       finishedAt: null,
+      ...resumeState,
       lastUpdatedAt: now,
     });
   });

@@ -74,6 +74,7 @@ function Interview({
   navigationClassnames,
   allowStageNavigation,
   initialStageOverrideIndex,
+  reviewMode,
 }: {
   onExit?: () => void;
   hideNavigation?: boolean;
@@ -81,6 +82,7 @@ function Interview({
   navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
   initialStageOverrideIndex?: number;
+  reviewMode?: boolean;
 }) {
   const {
     stage,
@@ -98,7 +100,7 @@ function Interview({
     disableMoveBackward,
     pulseNext,
     progress,
-  } = useInterviewNavigation(initialStageOverrideIndex);
+  } = useInterviewNavigation(initialStageOverrideIndex, reviewMode);
 
   useStageNavigationAnalytics({
     stage_index: displayedStep,
@@ -203,6 +205,7 @@ function Interview({
               forwardButtonRef={forwardButtonRef}
               backButtonRef={backButtonRef}
               onExit={onExit}
+              reviewMode={reviewMode}
             />
           )}
           {/*
@@ -242,6 +245,13 @@ type ShellProps = {
   disableAnalytics?: boolean;
   onExit?: () => void;
   /**
+   * Adapt the Shell for reviewing an existing interview: stop at the final
+   * authored stage, use review-specific exit messaging, and suppress interview
+   * analytics. The host remains responsible for supplying non-persisting sync
+   * and finish handlers.
+   */
+  reviewMode?: boolean;
+  /**
    * Render the interview without the Navigation rail/bar so the stage fills
    * the viewport. Used by screenshot-capture stories; not intended for
    * production interviews.
@@ -277,6 +287,7 @@ const Shell = ({
   posthogClient,
   disableAnalytics = false,
   onExit,
+  reviewMode,
   hideNavigation,
   navigationOrientation,
   navigationClassnames,
@@ -340,7 +351,7 @@ const Shell = ({
     <AnalyticsProvider
       analytics={analytics}
       posthogClient={posthogClient}
-      disableAnalytics={disableAnalytics}
+      disableAnalytics={disableAnalytics || reviewMode === true}
       payload={payload}
       onTrackerChange={onTrackerChange}
     >
@@ -364,6 +375,7 @@ const Shell = ({
                 (currentStep === undefined || onStepChange !== undefined)
               }
               initialStageOverrideIndex={initialStageOverrideIndex}
+              reviewMode={reviewMode}
             />
           </CurrentStepProvider>
         </ContractProvider>

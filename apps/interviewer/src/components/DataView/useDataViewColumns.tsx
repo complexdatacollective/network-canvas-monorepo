@@ -4,15 +4,10 @@ import { motion } from 'motion/react';
 import { useMemo } from 'react';
 import { useLocation } from 'wouter';
 
-import Button, { IconButton } from '@codaco/fresco-ui/Button';
+import Button from '@codaco/fresco-ui/Button';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@codaco/fresco-ui/Tooltip';
 import { updateSettings } from '~/lib/db/api';
 import type { StoredSessionLite } from '~/lib/db/types';
 
@@ -211,23 +206,19 @@ export function useDataViewColumns({
                 >
                   Review
                 </Button>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <IconButton
-                        size="sm"
-                        variant="text"
-                        color="dynamic"
-                        icon={<RotateCcw aria-hidden />}
-                        aria-label={`Mark ${session.caseId} unfinished`}
-                        disabled={markingUnfinishedId !== null}
-                        onClick={() => onMarkUnfinished(session)}
-                        data-testid="data-mark-unfinished"
-                      />
-                    }
-                  />
-                  <TooltipContent>Mark unfinished</TooltipContent>
-                </Tooltip>
+                <Button
+                  size="sm"
+                  variant="text"
+                  color="dynamic"
+                  icon={<RotateCcw aria-hidden />}
+                  aria-label={`Mark ${session.caseId} unfinished`}
+                  disabled={markingUnfinishedId !== null}
+                  onClick={() => onMarkUnfinished(session)}
+                  className="min-w-max"
+                  data-testid="data-mark-unfinished"
+                >
+                  Mark unfinished
+                </Button>
               </div>
             );
           }

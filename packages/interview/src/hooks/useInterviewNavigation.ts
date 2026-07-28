@@ -40,6 +40,7 @@ import { useStageSelector } from './useStageSelector';
 
 export default function useInterviewNavigation(
   initialStageOverrideIndex?: number,
+  reviewMode = false,
 ) {
   const dispatch = useDispatch();
   const interviewStore = useStore<RootState>();
@@ -193,6 +194,9 @@ export default function useInterviewNavigation(
         currentStepRef.current,
       );
       const nextStep = navigation.nextValidStageIndex;
+      if (reviewMode && nextStep >= protocolStages.length) {
+        return;
+      }
       const meta = getInterviewProgress(protocolStages, nextStep);
       setProgress(meta.progress);
       registerBeforeNext(null);
@@ -208,6 +212,7 @@ export default function useInterviewNavigation(
     promptIndex,
     registerBeforeNext,
     protocolStages,
+    reviewMode,
     setStep,
     interviewStore,
   ]);
@@ -362,6 +367,10 @@ export default function useInterviewNavigation(
     currentNavigation.previousValidStageIndex !== currentStep;
   const canRenderDisplayedStage =
     displayedNavigation.isCurrentStepValid || displayedStep === forcedStep;
+  const isAtReviewEnd =
+    reviewMode &&
+    currentNavigation.nextValidStageIndex >= protocolStages.length &&
+    isLastPrompt;
 
   return {
     // Stage rendering
@@ -380,13 +389,16 @@ export default function useInterviewNavigation(
     moveBackward,
     goToStage,
     disableMoveForward:
-      forceNavigationDisabled || isTransitioning || !canMoveForward,
+      forceNavigationDisabled ||
+      isTransitioning ||
+      !canMoveForward ||
+      isAtReviewEnd,
     disableMoveBackward:
       forceNavigationDisabled ||
       isTransitioning ||
       ((!canMoveBackward || (isFirstPrompt && !hasPreviousAvailableStage)) &&
         beforeNextHandlers.current.size === 0),
-    pulseNext: isReadyForNextStage,
+    pulseNext: !isAtReviewEnd && isReadyForNextStage,
     progress,
   };
 }

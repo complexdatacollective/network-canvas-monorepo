@@ -300,7 +300,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         onRequestAsset={state.resolver}
         analytics={analytics}
         posthogClient={posthogClient ?? undefined}
-        disableAnalytics={!analyticsEnabled}
+        disableAnalytics={readOnly || !analyticsEnabled}
+        reviewMode={readOnly}
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
         navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}

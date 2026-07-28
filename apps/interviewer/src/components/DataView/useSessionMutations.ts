@@ -10,7 +10,7 @@ import {
   markSessionUnfinished,
   markSessionsExported,
 } from '~/lib/db/api';
-import type { StoredSessionLite } from '~/lib/db/types';
+import type { SessionResumeState, StoredSessionLite } from '~/lib/db/types';
 import {
   buildExportOptions,
   type ExportProgress,
@@ -238,11 +238,14 @@ export function useSessionMutations({
   ]);
 
   const handleMarkUnfinished = useCallback(
-    async (session: Pick<StoredSessionLite, 'id' | 'caseId'>) => {
+    async (
+      session: Pick<StoredSessionLite, 'id' | 'caseId'>,
+      resumeState: SessionResumeState,
+    ) => {
       if (markingUnfinishedId !== null) return;
       const confirmed = await dialog.openDialog({
         type: 'choice',
-        title: `Mark ${session.caseId} as unfinished?`,
+        title: 'Mark unfinished?',
         description:
           'This interview will become editable and can be resumed. Its existing responses and export history will be kept.',
         intent: 'warning',
@@ -254,7 +257,7 @@ export function useSessionMutations({
       if (confirmed !== true) return;
       setMarkingUnfinishedId(session.id);
       try {
-        await markSessionUnfinished(session.id);
+        await markSessionUnfinished(session.id, resumeState);
         toast.add({
           title: 'Interview marked unfinished',
           description: `${session.caseId} can now be resumed.`,

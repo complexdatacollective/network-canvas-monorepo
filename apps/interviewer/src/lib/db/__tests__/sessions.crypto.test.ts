@@ -298,18 +298,24 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
+    await updateSession(created.id, { currentStep: 4, progress: 100 });
     await markSessionFinished(created.id);
     await markSessionsExported([created.id]);
 
-    await markSessionUnfinished(created.id);
+    await markSessionUnfinished(created.id, {
+      currentStep: 3,
+      progress: 80,
+    });
 
     const session = await getSession(created.id);
     expect(session?.finishedAt).toBeNull();
     expect(session?.exportedAt).not.toBeNull();
+    expect(session?.currentStep).toBe(3);
+    expect(session?.progress).toBe(80);
 
     const list = await listSessions();
     expect(list[0]?.statusKind).toBe('in-progress');
-    expect(list[0]?.progressPercent).toBe(0);
+    expect(list[0]?.progressPercent).toBe(80);
   });
 });
 

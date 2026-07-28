@@ -209,5 +209,14 @@ test.describe('interview data management', () => {
     await expect(page.getByTestId('data-resume')).toHaveCount(0);
     await page.getByRole('button', { name: /^In progress ·/ }).click();
     await expect(page.getByTestId('data-resume').first()).toBeVisible();
+    await page.getByTestId('data-resume').first().click();
+    await expect(page).toHaveURL(/\/interview\//);
+    await expect(page.locator('[data-stage-step]')).toHaveAttribute(
+      'data-stage-step',
+      '3',
+    );
+    await expect(
+      page.getByRole('heading', { name: 'Finish Interview' }),
+    ).not.toBeVisible();
   });
 });
