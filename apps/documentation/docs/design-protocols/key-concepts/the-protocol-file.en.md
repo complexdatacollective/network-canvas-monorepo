@@ -26,7 +26,7 @@ To look inside a protocol, rename it so that it ends in `.zip`, and then unzip i
 
 ## Authoring Protocol Files
 
-Architect creates your protocol for you when you start a new one. In **Architect** (the browser app), your changes are saved automatically to the browser library as you work — there is no Save button, and you **Download** a `.netcanvas` file when you want a copy. In **<Term name="architect-classic">Architect Classic</Term>**, Architect creates the `.netcanvas` file and prompts you to save your changes as you add stages, edit content, or upload resources. Either way, your changes are stored within the protocol.
+Architect creates your protocol for you when you start a new one. In **Architect** (the browser app), your changes are saved automatically to the browser library as you work — there is no Save button, and you **Download** a `.netcanvas` file when you want a copy. In **Architect Classic**, Architect creates the `.netcanvas` file and prompts you to save your changes as you add stages, edit content, or upload resources. Either way, your changes are stored within the protocol.
 
 Once you deploy your protocol to other applications, however, be aware that making changes effectively makes your protocol a new version. If you find that you need to make changes after deploying it, you have two options. It is recommended to save a copy of your protocol with a new name after making changes, and to import the new version to Interviewer. The other option is to remove the existing protocol (and any interview data) from Interviewer or Fresco and upload the newer version. This is necessary to ensure compatibility across tools.
 

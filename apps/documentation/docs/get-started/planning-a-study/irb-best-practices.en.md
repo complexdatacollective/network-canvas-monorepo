@@ -22,15 +22,15 @@ This page summarizes the practical best practices for each tool. For a comprehen
 
 <TipBox>
 
-**<Term name="interviewer-classic">Interviewer Classic</Term>** is fully offline. **Interviewer** stores interview data locally in the same way, but some schema-8 interfaces (e.g. [Geospatial](/en/design-protocols/interface-documentation/geospatial)) require an internet connection and contact third-party services during the interview — factor this into your risk assessment if you use them.
+**Interviewer Classic** is fully offline. **Interviewer** stores interview data locally in the same way, but some schema-8 interfaces (e.g. [Geospatial](/en/design-protocols/interface-documentation/geospatial)) require an internet connection and contact third-party services during the interview — factor this into your risk assessment if you use them.
 
 </TipBox>
 
-<Term name="interviewer-classic">Interviewer Classic</Term> and <Term name="architect-classic">Architect Classic</Term> are fully offline tools designed to run on researcher-controlled devices, and the browser-based Interviewer stores its data on the device in the same way. Our data security approach for these apps focuses on data transfer, since we work on the assumption that the devices running them will be fully controlled by researchers. This means that **data transfer (exporting data off the device) is the most vulnerable step in the workflow.**
+Interviewer Classic and Architect Classic are fully offline tools designed to run on researcher-controlled devices, and the browser-based Interviewer stores its data on the device in the same way. Our data security approach for these apps focuses on data transfer, since we work on the assumption that the devices running them will be fully controlled by researchers. This means that **data transfer (exporting data off the device) is the most vulnerable step in the workflow.**
 
 ### Data storage
 
-The data collected in the field is yours, and is only ever stored on your devices. We never receive, transmit, or store participant data, and no participant data leaves the device unless you manually export it. Interviewer sends optional anonymous usage and error analytics — never participant data — which are on by default and can be disabled at any time in Settings → Privacy; <Term name="interviewer-classic">Interviewer Classic</Term> sends none. We do not use cookies or other tracking tokens of any kind within Network Canvas.
+The data collected in the field is yours, and is only ever stored on your devices. We never receive, transmit, or store participant data, and no participant data leaves the device unless you manually export it. Interviewer sends optional anonymous usage and error analytics — never participant data — which are on by default and can be disabled at any time in Settings → Privacy; Interviewer Classic sends none. We do not use cookies or other tracking tokens of any kind within Network Canvas.
 
 ### What data is stored where
 
@@ -38,15 +38,15 @@ When assessing risk, it helps to know exactly what these apps keep on the device
 
 - **Protocols** — alongside the structure of your interview, a protocol can embed any datasets needed to conduct it. For example, a study in a school may include a roster of the names of classmates.
 - **Session data** — participant response data, which may include sensitive personal information (especially in domains such as healthcare), plus metadata such as the date a session was conducted, which may reveal participant whereabouts.
-- **App configuration and metadata** — application settings and protocol metadata, such as display preferences in <Term name="interviewer-classic">Interviewer Classic</Term> or which protocol was last edited in <Term name="architect-classic">Architect Classic</Term>.
+- **App configuration and metadata** — application settings and protocol metadata, such as display preferences in Interviewer Classic or which protocol was last edited in Architect Classic.
 
-Where this data lives differs by app generation. The browser-based **Architect** and **Interviewer** store their data in your web browser's local storage on the device you use, while **<Term name="architect-classic">Architect Classic</Term>** and **<Term name="interviewer-classic">Interviewer Classic</Term>** store their data within the app on the device. In both cases, the device-level protections described below — disk encryption, strong passwords, and automatic locking — are what keep this data safe. For information about data storage and security in Fresco, see the [Fresco FAQ](/en/collect-data/fresco/faq#is-fresco-gdpr-compliant) and the Fresco section below.
+Where this data lives differs by app generation. The browser-based **Architect** and **Interviewer** store their data in your web browser's local storage on the device you use, while **Architect Classic** and **Interviewer Classic** store their data within the app on the device. In both cases, the device-level protections described below — disk encryption, strong passwords, and automatic locking — are what keep this data safe. For information about data storage and security in Fresco, see the [Fresco FAQ](/en/collect-data/fresco/faq#is-fresco-gdpr-compliant) and the Fresco section below.
 
 ### Security best practices
 
 Since the onus of data storage and device security is on the researcher, we suggest the following best practices to ensure the security of your Network Canvas study data:
 
-- **Turn on full-disk encryption (OS).** Whichever app you use, enable FileVault (macOS), BitLocker / Device encryption (Windows), or your platform's equivalent. <Term name="interviewer-classic">Interviewer Classic</Term> and <Term name="architect-classic">Architect Classic</Term> do not encrypt their data stores, so device encryption is their only protection at rest. Interviewer additionally encrypts its on-device data at rest when you set up an app lock, keyed to the same authentication that unlocks the app — treat this as defense in depth, not a substitute for device encryption.
+- **Turn on full-disk encryption (OS).** Whichever app you use, enable FileVault (macOS), BitLocker / Device encryption (Windows), or your platform's equivalent. Interviewer Classic and Architect Classic do not encrypt their data stores, so device encryption is their only protection at rest. Interviewer additionally encrypts its on-device data at rest when you set up an app lock, keyed to the same authentication that unlocks the app — treat this as defense in depth, not a substitute for device encryption.
 - **Use strong passwords/passcodes on devices.** Implement user access controls to prevent multi-user systems from granting access to data from other user accounts.
 - **Restrict physical access to devices.** The use of 'kiosk' modes (or similar), along with full constant supervision of the interview, prevents research participants from accessing data within the app.
 - **Minimize time study data remains on field devices.** Uploading data to designated secured storage locations as regularly as possible, and then deleting it from field devices, helps limit risk of breach (e.g. a device being stolen).
