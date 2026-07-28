@@ -652,6 +652,123 @@ describe('makeFieldEditorValidate', () => {
     });
   });
 
+  // Thirty-fifth-wave finding: a variable a DIFFERENT NetworkComposer form
+  // renders with its own control must be dropped from the checked set unless
+  // the current form determines its rendering — mirroring schema.ts's
+  // `unknownRenderingFor`. `a`/`b` are sameAs-joined, both full-resolution
+  // DatePickers in the codebook; `crossFormRendered` marks the partner as
+  // rendered elsewhere (there, as a year picker), so judging it through its
+  // unused codebook default invented a mixed-resolution contradiction the
+  // saved protocol does not have.
+  describe('variables another composer form renders (cross-form omission)', () => {
+    const fullResolutionPair = {
+      a: {
+        name: 'a',
+        type: 'datetime',
+        component: 'DatePicker',
+        validation: { sameAs: 'b' },
+      },
+      b: {
+        name: 'b',
+        type: 'datetime',
+        component: 'DatePicker',
+        validation: {},
+      },
+    };
+
+    it('accepts a year draft whose sameAs partner another composer form renders', () => {
+      const validate = makeFieldEditorValidate(
+        fullResolutionPair,
+        buildComposerFieldOverlay([], undefined),
+        new Set(['b']),
+      );
+      const errors = validate({
+        variable: 'a',
+        validation: { sameAs: 'b' },
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+      });
+      expect(errors).toEqual({});
+    });
+
+    it('keeps a partner THIS form’s sibling field renders, and judges by that sibling', () => {
+      // b appears in the cross-form set AND as a committed sibling of the
+      // current form (at full resolution): the sibling overlay owns its
+      // rendering here, so the year draft still contradicts it.
+      const validate = makeFieldEditorValidate(
+        fullResolutionPair,
+        buildComposerFieldOverlay(
+          [{ variable: 'b', component: 'DatePicker', parameters: {} }],
+          undefined,
+        ),
+        new Set(['b']),
+      );
+      const errors = validate({
+        variable: 'a',
+        validation: { sameAs: 'b' },
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+      });
+      expect(errors.validation).toContain('different resolutions');
+    });
+
+    it('never omits the edited variable itself', () => {
+      // Another stage also renders `a`, but THIS dialog's draft is `a`'s
+      // rendering in this form — it must stay visible and be judged against
+      // the sibling's year override of `b`.
+      const validate = makeFieldEditorValidate(
+        fullResolutionPair,
+        buildComposerFieldOverlay(
+          [
+            {
+              variable: 'b',
+              component: 'DatePicker',
+              parameters: { type: 'year' },
+            },
+          ],
+          undefined,
+        ),
+        new Set(['a']),
+      );
+      const errors = validate({
+        variable: 'a',
+        validation: { sameAs: 'b' },
+        component: 'DatePicker',
+        parameters: {},
+      });
+      expect(errors.validation).toContain('different resolutions');
+    });
+
+    it('omits a reassigned row’s old variable once another form is its only renderer', () => {
+      // The row at index 0 committed a year override for `b`; the edit
+      // reassigns it to `a`. Post-save this form no longer writes `b`, and
+      // the cross-form set says another stage renders it — so `b` is
+      // dropped rather than read at its full-resolution codebook default,
+      // and the year draft for `a` saves.
+      const validate = makeFieldEditorValidate(
+        fullResolutionPair,
+        buildComposerFieldOverlay(
+          [
+            {
+              variable: 'b',
+              component: 'DatePicker',
+              parameters: { type: 'year' },
+            },
+          ],
+          0,
+        ),
+        new Set(['b']),
+      );
+      const errors = validate({
+        variable: 'a',
+        validation: { sameAs: 'b' },
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+      });
+      expect(errors).toEqual({});
+    });
+  });
+
   // Twenty-seventh-wave Finding 2: a draft can make a contradiction
   // infeasible between TWO OTHER variables it never appears in itself. A is
   // required and `sameAs` B; B declares `B.lessThanVariable = C`; required C

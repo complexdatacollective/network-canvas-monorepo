@@ -4,6 +4,7 @@ import {
   buildComposerFieldOverlay,
   composerDraftValues,
   composerNormalizeField,
+  crossFormRenderedVariables,
   isVariableUsedBySibling,
 } from '../composerHelpers';
 
@@ -114,6 +115,101 @@ describe('isVariableUsedBySibling', () => {
   it('reports nothing for a blank variable or a non-array value', () => {
     expect(isVariableUsedBySibling(fields, '')).toBe(false);
     expect(isVariableUsedBySibling(undefined, 'age')).toBe(false);
+  });
+});
+
+// Thirty-fifth-wave finding: the editor-side counterpart of schema.ts's
+// `collectComposerFieldOverrides` + `unknownRenderingFor` — which of a
+// subject's variables some OTHER composer stage's form renders with its own
+// control, so `makeFieldEditorValidate` can drop them from its checked set.
+describe('crossFormRenderedVariables', () => {
+  const stages = [
+    {
+      id: 'stage-1',
+      type: 'NetworkComposer',
+      subject: { entity: 'node', type: 'person' },
+      nodeForm: {
+        fields: [
+          { variable: 'age', component: 'Number' },
+          { component: 'Text' },
+        ],
+      },
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: { fields: [{ variable: 'closeness', component: 'Number' }] },
+        },
+      ],
+    },
+    {
+      id: 'stage-2',
+      type: 'NetworkComposer',
+      subject: { entity: 'node', type: 'person' },
+      nodeForm: {
+        fields: [{ variable: 'birth_date', component: 'DatePicker' }],
+      },
+    },
+    {
+      id: 'stage-3',
+      type: 'NetworkComposer',
+      subject: { entity: 'node', type: 'place' },
+      nodeForm: { fields: [{ variable: 'visited', component: 'Toggle' }] },
+    },
+    {
+      id: 'stage-4',
+      type: 'NameGenerator',
+      subject: { entity: 'node', type: 'person' },
+      form: { fields: [{ variable: 'nickname' }] },
+    },
+  ];
+
+  it('collects node-form variables of the subject across all other stages', () => {
+    expect(
+      crossFormRenderedVariables(stages, { entity: 'node', type: 'person' }),
+    ).toEqual(new Set(['age', 'birth_date']));
+  });
+
+  it('collects edge-form variables by their edge subject', () => {
+    expect(
+      crossFormRenderedVariables(stages, { entity: 'edge', type: 'knows' }),
+    ).toEqual(new Set(['closeness']));
+    expect(
+      crossFormRenderedVariables(stages, { entity: 'edge', type: 'likes' }),
+    ).toEqual(new Set());
+  });
+
+  it('ignores other subjects and non-NetworkComposer stages', () => {
+    // stage-3 is another node type; stage-4's shared FormFieldSchema fields
+    // carry no component of their own, so they never render anything.
+    expect(
+      crossFormRenderedVariables(stages, { entity: 'node', type: 'place' }),
+    ).toEqual(new Set(['visited']));
+    expect(
+      crossFormRenderedVariables(stages, {
+        entity: 'node',
+        type: 'person',
+      }).has('nickname'),
+    ).toBe(false);
+  });
+
+  it('excludes the stage being edited', () => {
+    expect(
+      crossFormRenderedVariables(
+        stages,
+        { entity: 'node', type: 'person' },
+        'stage-1',
+      ),
+    ).toEqual(new Set(['birth_date']));
+  });
+
+  it('returns an empty set for missing stages or a type-less subject', () => {
+    expect(
+      crossFormRenderedVariables(undefined, { entity: 'node', type: 'person' }),
+    ).toEqual(new Set());
+    expect(
+      crossFormRenderedVariables(stages, { entity: 'node', type: null }),
+    ).toEqual(new Set());
   });
 });
 

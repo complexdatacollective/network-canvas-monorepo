@@ -87,6 +87,21 @@ const codebookVariables = {
     options: [{ label: 'Yes', value: true }],
     validation: {},
   },
+  // A sameAs-joined pair whose CODEBOOK definitions are both full-resolution
+  // DatePickers, for the cross-form rendering cases below (thirty-fifth-wave
+  // finding): only composer stage fields render them coarser.
+  beginFull: {
+    name: 'beginFull',
+    type: 'datetime',
+    component: 'DatePicker',
+    validation: { sameAs: 'finishFull' },
+  },
+  finishFull: {
+    name: 'finishFull',
+    type: 'datetime',
+    component: 'DatePicker',
+    validation: {},
+  },
 };
 
 vi.mock('~/selectors/codebook', () => ({
@@ -188,18 +203,33 @@ const ReduxHarness = reduxForm<Record<string, unknown>, OwnProps>({
 const renderEditor = ({
   composerFields,
   draft,
+  protocolStages = [],
+  stageId,
 }: {
   composerFields: Record<string, unknown>[];
   draft: Record<string, unknown>;
+  /** The committed protocol's stages, for the cross-form rendering scan. */
+  protocolStages?: Record<string, unknown>[];
+  /** The edited stage's id, carried on the stage draft like StageEditor's. */
+  stageId?: string;
 }) => {
+  const protocolState = { present: { stages: protocolStages } };
   const store = configureStore({
-    reducer: { form: formReducer },
+    reducer: {
+      form: formReducer,
+      // The committed protocol the cross-form rendering scan reads through
+      // getProtocol (only `present.stages` is consulted).
+      activeProtocol: (state = protocolState) => state,
+    },
     // The stage form holding this list's committed attributes, which
     // `editorValidate` closes over for its sibling overlay and duplicate gate.
     preloadedState: {
       form: {
         'edit-stage': {
-          values: { nodeForm: { fields: composerFields } },
+          values: {
+            ...(stageId !== undefined ? { id: stageId } : {}),
+            nodeForm: { fields: composerFields },
+          },
           // Nothing registers into the stage form here — it is only read
           // through `formValueSelector`.
           registeredFields: [],
@@ -421,5 +451,82 @@ describe('stage-effective boolean domains', () => {
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(screen.queryByText(/must differ/)).not.toBeInTheDocument();
+  });
+});
+
+// Thirty-fifth-wave finding: `beginFull`/`finishFull` are sameAs-joined and
+// both full-resolution in the codebook, but each is rendered as a YEAR picker
+// by a DIFFERENT NetworkComposer stage — a protocol schema.ts accepts, because
+// its per-stage view drops variables whose rendering another form owns
+// (`unknownRenderingFor`). The editor used to read the partner through its
+// unused codebook default and falsely block the save of either field; it must
+// mirror the schema's omission instead.
+describe('variables another composer stage renders', () => {
+  const yearPickerFieldFor = (variable: string) => ({
+    variable,
+    component: 'DatePicker',
+    parameters: { type: 'year' },
+  });
+  const composerStage = (id: string, fieldVariable: string) => ({
+    id,
+    type: 'NetworkComposer',
+    subject: { entity: 'node', type: 'person' },
+    nodeForm: { fields: [yearPickerFieldFor(fieldVariable)] },
+  });
+  const yearDraftForBeginFull = {
+    variable: 'beginFull',
+    component: 'DatePicker',
+    parameters: { type: 'year' },
+    validation: { sameAs: 'finishFull' },
+  };
+
+  it('saves a year draft whose sameAs partner a different composer stage renders as a year picker', () => {
+    const { onSubmit } = renderEditor({
+      composerFields: [],
+      protocolStages: [composerStage('other-stage', 'finishFull')],
+      draft: yearDraftForBeginFull,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(screen.queryByText(/different resolutions/)).not.toBeInTheDocument();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores the edited stage’s own committed copy when deciding what renders elsewhere', () => {
+    // The committed protocol still holds THIS stage with a finishFull year
+    // field the draft has since removed. Post-save nothing renders
+    // finishFull, so its full-resolution codebook default is effective again
+    // and the year draft for beginFull is genuinely contradictory.
+    const { onSubmit } = renderEditor({
+      composerFields: [],
+      stageId: 'this-stage',
+      protocolStages: [composerStage('this-stage', 'finishFull')],
+      draft: yearDraftForBeginFull,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText(/different resolutions/)).toBeInTheDocument();
+  });
+
+  it('still judges the partner by THIS form’s sibling field when both render it', () => {
+    // A sibling field of the current form renders finishFull at full
+    // resolution; another stage renders it as a year picker. The current
+    // form's own field determines the rendering here, so the year draft
+    // still contradicts it.
+    const { onSubmit } = renderEditor({
+      composerFields: [
+        { variable: 'finishFull', component: 'DatePicker', parameters: {} },
+      ],
+      protocolStages: [composerStage('other-stage', 'finishFull')],
+      draft: yearDraftForBeginFull,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText(/different resolutions/)).toBeInTheDocument();
   });
 });

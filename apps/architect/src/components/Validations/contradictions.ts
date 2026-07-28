@@ -664,10 +664,27 @@ const withOverlay = (
  * edited — its pre-draft committed value would otherwise shadow the live
  * draft — which composer callers achieve at construction time by the field's
  * array index (eleventh-wave Finding 4; see `buildComposerFieldOverlay`).
+ *
+ * `crossFormRendered` (thirty-fifth-wave finding) names the subject's
+ * variables some OTHER NetworkComposer form renders with its own control
+ * (see composerHelpers.ts's `crossFormRenderedVariables`). This validator's
+ * view is per-form, so — mirroring schema.ts's `unknownRenderingFor` — a
+ * variable in that set whose rendering the CURRENT form does not determine
+ * (no sibling overlay entry, and not the variable being edited) is dropped
+ * from the checked set entirely rather than being read through its unused
+ * codebook default: two codebook-full datetimes joined by `sameAs`, each
+ * rendered as a year picker by a different composer stage, otherwise
+ * falsely report a mixed-resolution contradiction from BOTH stages'
+ * editors even though both runtime controls store years. Dropping the
+ * variable makes references to it unusable and leaves the pair unjudged —
+ * the same deliberate missed-detection-over-false-block trade the schema
+ * documents. Only stage-scoped (`overlay`-passing) callers supply it; a
+ * plain codebook dialog makes no rendering claim and omits it.
  */
 export const makeFieldEditorValidate = (
   allVariables: UnknownRecord,
   overlay?: VariableOverlay,
+  crossFormRendered?: ReadonlySet<string>,
 ) => {
   // Computed once per dialog session, not on every keystroke: `allVariables`
   // and `overlay` are fixed for the returned validator's whole lifetime, so
@@ -678,6 +695,15 @@ export const makeFieldEditorValidate = (
   // that same reference — see `getBaselineContradictions`) actually hit
   // instead of missing on every keystroke.
   const overlaidVariables = withOverlay(allVariables, overlay);
+  // Cross-form-rendered variables the current form's committed siblings do
+  // NOT write. Only the per-call check against the edited variable itself
+  // remains: the draft may reassign the row to (or away from) one of these
+  // ids mid-session, so that last exclusion cannot be settled here.
+  const unknownRenderingCandidates = [...(crossFormRendered ?? [])].filter(
+    (id) =>
+      !(overlay !== undefined && Object.hasOwn(overlay, id)) &&
+      Object.hasOwn(overlaidVariables, id),
+  );
   return (values: Record<string, unknown>): Record<string, unknown> => {
     // A variable that is only a TARGET of another's sameAs/comparator (never
     // configuring rules of its own) can have `values.validation` absent or
@@ -724,8 +750,23 @@ export const makeFieldEditorValidate = (
       .map(([ruleKey, ruleValue]) => floorIssue(ruleKey, ruleValue))
       .find((message): message is string => message !== undefined);
     if (floor) return { validation: floor };
+    // The edited variable's rendering IS determined by this form (the draft's
+    // own component/parameters, layered on by `buildProspectiveVariables`),
+    // so it always stays visible; every other cross-form-rendered variable is
+    // dropped — post-save, this form makes no claim about how it renders.
+    const unknownRendering = unknownRenderingCandidates.filter(
+      (id) => id !== currentVariableId,
+    );
+    let visibleVariables = overlaidVariables;
+    if (unknownRendering.length > 0) {
+      const filtered = { ...overlaidVariables };
+      for (const id of unknownRendering) {
+        delete filtered[id];
+      }
+      visibleVariables = filtered;
+    }
     const first = findDraftContradictions({
-      allVariables: overlaidVariables,
+      allVariables: visibleVariables,
       currentVariableId,
       variableType,
       validation,
