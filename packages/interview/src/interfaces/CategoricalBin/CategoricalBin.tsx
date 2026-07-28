@@ -20,7 +20,14 @@ import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { makeGetCodebookForNodeType } from '../../selectors/protocol';
+import {
+  selectFieldMetadataFromVariables,
+  validationPropsFor,
+} from '../../selectors/forms';
+import {
+  getCodebookVariablesForSubjectType,
+  makeGetCodebookForNodeType,
+} from '../../selectors/protocol';
 import {
   getNodeColorSelector,
   getNodeTypeDefinition,
@@ -165,6 +172,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const nodeColor = useStageSelector(getNodeColorSelector);
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
+  const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
 
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
@@ -191,6 +199,21 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt } = prompt;
+
+      // Derive the other variable's validation props from its codebook
+      // definition, exactly as useProtocolForm does for form fields — the
+      // other-input is a validated writer, not a special case. A variable
+      // with no validation rules renders a genuinely optional field.
+      const otherVariableDefinition = stageVariables[otherVariable];
+      const [otherFieldMetadata] = otherVariableDefinition
+        ? selectFieldMetadataFromVariables(stageVariables, [
+            { variable: otherVariable, prompt: otherVariablePrompt ?? '' },
+          ])
+        : [];
+      const otherValidationProps = otherFieldMetadata
+        ? validationPropsFor(otherFieldMetadata)
+        : {};
+
       const result = await openDialog({
         type: 'form',
         title: 'Specify other',
@@ -215,7 +238,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               placeholder="Enter your response here..."
               component={InputField}
               name="otherVariable"
-              required
+              {...otherValidationProps}
               autoFocus
             />
           </div>
