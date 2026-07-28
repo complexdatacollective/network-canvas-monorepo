@@ -670,7 +670,9 @@ function buildGroupGraph(variables: UnknownRecord): GroupGraph {
  * instant) can satisfy it without ever matching as stored values. Extracted
  * so the class-9 `differentFrom` check below (Twenty-second-wave Finding 3)
  * can ask the same "is this forced by an actual sameAs edge" question
- * without deriving a second, independent scoping mechanism.
+ * without deriving a second, independent scoping mechanism. The
+ * twenty-fourth-wave pin-inheritance pass (`sameAsInheritedPins`) scopes to
+ * these same components for the same reason.
  */
 function sameAsOnlyUnionFind(variables: UnknownRecord) {
   const unionFind = createUnionFind(Object.keys(variables));
@@ -1439,6 +1441,108 @@ const pinnedValue = (
 };
 
 /**
+ * Twenty-fourth-wave Finding 1: the pinned value a variable INHERITS through
+ * its sameAs-only component, for the pinned-equal `differentFrom` check
+ * below. `pinnedValue` reads one variable's OWN rules, so a variable with no
+ * bounds of its own but `sameAs`-joined to a pinned member was judged
+ * unpinned — `A` pinned to 0 with `A.sameAs = C`, plus `C.differentFrom = D`
+ * with `D` pinned to 0, reported nothing although `sameAs` forces C to store
+ * A's only value. A pin may travel a `sameAs` edge because `sameAs` forces
+ * the two STORED values identical (fresco-ui's `isMatchingValue` — the same
+ * distinction `sameAsOnlyUnionFind` documents); it must NOT travel a
+ * non-strict comparator edge for this check, because a comparator SCC only
+ * forces `compareVariables` equality — for datetime, two stored-distinct
+ * strings can compare equal through `new Date(...)`, and `differentFrom`
+ * compares stored values. Pin keys are carried VERBATIM (origin-tagged
+ * datetime keys, JSON-framed categorical set keys), never re-derived at the
+ * inheriting member, so two origins or resolutions are never conflated.
+ *
+ * Every ambiguity falls back to "no pin" (accept):
+ *   - a component whose pinned members DISAGREE contributes nothing — that
+ *     conflict is the existing group machinery's to report, and judging a
+ *     `differentFrom` against either candidate would double-report it;
+ *   - a component touching a group the group-level emptiness checks reported
+ *     (`unsatisfiableGroupMemberIds`) contributes nothing — that report's
+ *     repair may strip the very sameAs edges the pin would travel, after
+ *     which the freed member's `differentFrom` is satisfiable again (the
+ *     same "don't judge against an already-empty group" precedent the
+ *     per-edge bound check follows);
+ *   - a member whose `sameAs` and `differentFrom` name one target is
+ *     class 7's (`conflictingReferencePair`), whose repair strips that
+ *     sameAs edge, so its component contributes nothing;
+ *   - a datetime component with MIXED resolutions contributes nothing — the
+ *     mixed-resolution check strips its cross-resolution sameAs edges, and a
+ *     pin key inherited across resolutions could match a coarse partner the
+ *     freed member can genuinely differ from;
+ *   - boolean components contribute nothing: boolean pins against the
+ *     `differentFrom` graph belong to the domain-aware parity check, which
+ *     already reads pins at merged-group granularity via
+ *     `sharedBooleanDomain`, so inheriting here would only re-class its
+ *     reports.
+ */
+function sameAsInheritedPins(
+  variables: UnknownRecord,
+  sameAsFind: (id: string) => string,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
+): Map<string, string | number | boolean> {
+  const membersOf = new Map<string, string[]>();
+  for (const id of Object.keys(variables)) {
+    const root = sameAsFind(id);
+    const members = membersOf.get(root) ?? [];
+    members.push(id);
+    membersOf.set(root, members);
+  }
+
+  const inherited = new Map<string, string | number | boolean>();
+  for (const members of membersOf.values()) {
+    if (members.length < 2) continue;
+    if (
+      members.some((member) => unsatisfiableGroupMemberIds.has(member)) ||
+      members.some((member) => {
+        const sameAs = referenceRule(variables[member], 'sameAs');
+        return (
+          sameAs !== undefined &&
+          sameAs === referenceRule(variables[member], 'differentFrom')
+        );
+      })
+    ) {
+      continue;
+    }
+    // `usableReference` only ever unions same-typed variables, so the Set is
+    // defensive, matching the rest of the file.
+    const types = new Set(members.map((member) => typeOf(variables[member])));
+    const [onlyType] = types;
+    if (types.size !== 1 || onlyType === undefined || onlyType === 'boolean') {
+      continue;
+    }
+    if (
+      onlyType === 'datetime' &&
+      new Set(members.map((member) => dateResolutionOf(variables[member])))
+        .size > 1
+    ) {
+      continue;
+    }
+
+    let pin: string | number | boolean | undefined;
+    let disagreement = false;
+    const unpinned: string[] = [];
+    for (const member of members) {
+      const own = pinnedValue(variables[member]);
+      if (own === undefined) {
+        unpinned.push(member);
+      } else if (pin === undefined) {
+        pin = own;
+      } else if (pin !== own) {
+        disagreement = true;
+      }
+    }
+    if (pin === undefined || disagreement) continue;
+    for (const member of unpinned) inherited.set(member, pin);
+  }
+  return inherited;
+}
+
+/**
  * `differentFrom` edges (same-typed endpoints, per `usableReference`) whose
  * two ends are each individually pinned (`pinnedValue`) to the SAME runtime
  * value — unsatisfiable regardless of the rest of the validation graph, since
@@ -1462,21 +1566,42 @@ const pinnedValue = (
  * Threading the ALREADY-COMPUTED closure through, rather than re-deriving it,
  * avoids running the propagation pass twice; see `findValidationContradictions`
  * for the plumbing.
+ *
+ * Twenty-fourth-wave Finding 1: `sameAsInheritedPins` (above) is the second
+ * fallback — a pin forced onto a variable by a `sameAs` edge to a pinned
+ * group member. Inherited pins only ever apply across two DISTINCT sameAs
+ * components: a `differentFrom` whose both ends share one component is
+ * class 9's (`sameAsGroupConflict`), and judging it here too would
+ * double-report a single rule.
  */
 function pinnedEqualDifferentFromContradictions(
   variables: UnknownRecord,
   propagatedPins: Map<string, string | number>,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
 ): {
   contradictions: ValidationContradiction[];
   claimedPairs: Set<string>;
 } {
+  const { find: sameAsFind } = sameAsOnlyUnionFind(variables);
+  const inheritedPins = sameAsInheritedPins(
+    variables,
+    sameAsFind,
+    unsatisfiableGroupMemberIds,
+  );
   const conflicts = new Map<string, VariableRuleRef[]>();
 
   for (const [id, variable] of Object.entries(variables)) {
     const target = usableReference(variables, id, 'differentFrom');
     if (target === undefined || target === id) continue;
-    const valueA = pinnedValue(variable) ?? propagatedPins.get(id);
-    const valueB = pinnedValue(variables[target]) ?? propagatedPins.get(target);
+    const crossComponent = sameAsFind(id) !== sameAsFind(target);
+    const valueA =
+      pinnedValue(variable) ??
+      (crossComponent ? inheritedPins.get(id) : undefined) ??
+      propagatedPins.get(id);
+    const valueB =
+      pinnedValue(variables[target]) ??
+      (crossComponent ? inheritedPins.get(target) : undefined) ??
+      propagatedPins.get(target);
     if (valueA === undefined || valueB === undefined || valueA !== valueB) {
       continue;
     }
@@ -2378,10 +2503,23 @@ function chainedBoundContradictions(
   return { contradictions: found, propagatedPins };
 }
 
+type DisjointBoundsResult = ChainedBoundResult & {
+  /**
+   * Twenty-fourth-wave Finding 1: every member of an equality group one of
+   * the GROUP-LEVEL emptiness checks below reported. Such a report's repair
+   * (`groupEqualityStrips`) may strip the group's `sameAs` edges, so
+   * `sameAsInheritedPins` must never carry a pin across them — per-edge and
+   * chain reports are deliberately NOT recorded here, since their repairs
+   * only ever strip comparator rules, which a `sameAs`-forced pin survives.
+   */
+  unsatisfiableGroupMemberIds: Set<string>;
+};
+
 function disjointBoundsContradictions(
   variables: UnknownRecord,
-): ChainedBoundResult {
+): DisjointBoundsResult {
   const found: ValidationContradiction[] = [];
+  const unsatisfiableGroupMemberIds = new Set<string>();
   const graph = buildGroupGraph(variables);
   const { edges, groupOf, membersOf } = graph;
 
@@ -2446,6 +2584,9 @@ function disjointBoundsContradictions(
       clause: string,
       isEmptyFor: (subset: string[]) => boolean,
     ): void => {
+      // Recorded before the strip computation: even a conflict the policy
+      // cannot repair must keep pin inheritance away from this group.
+      for (const member of members) unsatisfiableGroupMemberIds.add(member);
       const strips = groupEqualityStrips(
         variables,
         members,
@@ -2585,7 +2726,11 @@ function disjointBoundsContradictions(
   const chained = chainedBoundContradictions(variables, graph);
   found.push(...chained.contradictions);
 
-  return { contradictions: found, propagatedPins: chained.propagatedPins };
+  return {
+    contradictions: found,
+    propagatedPins: chained.propagatedPins,
+    unsatisfiableGroupMemberIds,
+  };
 }
 
 /**
@@ -3052,10 +3197,17 @@ export function findValidationContradictions(
   // array position of its own contradictions is unaffected, only the order
   // these two are CALLED in (spread order below still matches every other
   // pass).
-  const { contradictions: disjointBoundsResults, propagatedPins } =
-    disjointBoundsContradictions(variables);
+  const {
+    contradictions: disjointBoundsResults,
+    propagatedPins,
+    unsatisfiableGroupMemberIds,
+  } = disjointBoundsContradictions(variables);
   const { contradictions: pinnedEqualContradictions, claimedPairs } =
-    pinnedEqualDifferentFromContradictions(variables, propagatedPins);
+    pinnedEqualDifferentFromContradictions(
+      variables,
+      propagatedPins,
+      unsatisfiableGroupMemberIds,
+    );
   return [
     ...localContradictions(variables),
     ...referenceStructureContradictions(variables),

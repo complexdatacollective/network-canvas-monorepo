@@ -4789,3 +4789,221 @@ describe('findValidationContradictions — Twenty-third-wave Finding 6: relative
     expect(result[0]?.class).toBe('disjointBounds');
   });
 });
+
+describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs groups propagate pinned values into differentFrom', () => {
+  const number = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'number',
+    validation,
+  });
+
+  const monthPicker = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // The reviewer's own report: `c` carries no bounds of its own, but
+  // `a.sameAs = c` forces `c` to store `a`'s only value (stored-value
+  // equality, fresco-ui's `isMatchingValue`), and `d`'s own window admits
+  // exactly that same value — so `c.differentFrom = d` can never be
+  // satisfied. `pinnedValue` reads one variable's OWN rules only, so the pin
+  // has to travel the sameAs edge to be seen at all.
+  it('rejects a differentFrom whose owner inherits its pin through a sameAs group', () => {
+    const result = findValidationContradictions({
+      a: number('a', { required: true, minValue: 0, maxValue: 0, sameAs: 'c' }),
+      c: number('c', { differentFrom: 'd' }),
+      d: number('d', { minValue: 0, maxValue: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['c', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'c', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror: the inherited pin sits on the TARGET's group instead.
+  it('rejects when the differentFrom TARGET inherits its pin through a sameAs group', () => {
+    const result = findValidationContradictions({
+      a: number('a', { minValue: 3, maxValue: 3, differentFrom: 'd' }),
+      d: number('d', { sameAs: 'e' }),
+      e: number('e', { minValue: 3, maxValue: 3 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The false-positive guard that matters most: the counterpart's own window
+  // still admits a second value, so nothing is pinned-equal.
+  it('accepts when the counterpart can still hold a second value', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', { minValue: 0, maxValue: 0, sameAs: 'c' }),
+        c: number('c', { differentFrom: 'd' }),
+        d: number('d', { minValue: 0, maxValue: 1 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // A group whose pinned members disagree is the existing group-conflict
+  // machinery's to report (its repair strips the sameAs edges), so no pin may
+  // be inherited from it — whichever candidate were chosen, stripping the
+  // differentFrom would not restore satisfiability, only lose a rule the
+  // group repair rescues.
+  it('does not emit this class from a group whose pinned members disagree', () => {
+    const result = findValidationContradictions({
+      a: number('a', { minValue: 0, maxValue: 0, sameAs: 'c' }),
+      b: number('b', { minValue: 1, maxValue: 1, sameAs: 'c' }),
+      c: number('c', { differentFrom: 'd' }),
+      d: number('d', { minValue: 0, maxValue: 0 }),
+    });
+    expect(result.map((item) => item.class)).not.toContain(
+      'pinnedEqualDifferentFrom',
+    );
+    expect(result.map((item) => item.class)).toContain('disjointBounds');
+  });
+
+  // A pin travels sameAs edges ONLY — never a non-strict comparator cycle.
+  // `sameAs` forces stored-value equality, while a comparator SCC forces only
+  // `compareVariables` equality (for datetime, two stored-distinct strings
+  // can compare equal through `new Date(...)`), and `differentFrom` compares
+  // stored values — so this check stays scoped to what it can prove.
+  it('does not carry a pin across a comparator-forced equality', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', {
+          minValue: 0,
+          maxValue: 0,
+          greaterThanOrEqualToVariable: 'c',
+        }),
+        c: number('c', {
+          greaterThanOrEqualToVariable: 'a',
+          differentFrom: 'd',
+        }),
+        d: number('d', { minValue: 0, maxValue: 0 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Categorical pins propagate as their full JSON-framed composite set key,
+  // never re-derived at the inheriting member: `c` is forced to store `a`'s
+  // only possible selection {x}, which is also `d`'s only possible selection.
+  it('propagates a categorical pinned set with its full composite key', () => {
+    const result = findValidationContradictions({
+      a: {
+        name: 'a',
+        type: 'categorical',
+        options: [{ label: 'X', value: 'x' }],
+        validation: { sameAs: 'c' },
+      },
+      c: {
+        name: 'c',
+        type: 'categorical',
+        options: [
+          { label: 'X', value: 'x' },
+          { label: 'Y', value: 'y' },
+        ],
+        validation: { differentFrom: 'd' },
+      },
+      d: {
+        name: 'd',
+        type: 'categorical',
+        options: [{ label: 'X', value: 'x' }],
+      },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'c', rule: 'differentFrom' },
+    ]);
+  });
+
+  // A coarse datetime pin propagates at its stored-string key
+  // (`datetime:month:2020-05`), so it still matches a partner pinned to the
+  // same stored string at the same resolution.
+  it('propagates a coarse datetime pin at its stored-string key', () => {
+    const result = findValidationContradictions({
+      a: monthPicker(
+        'a',
+        { type: 'month', min: '2020-05', max: '2020-05' },
+        { sameAs: 'c' },
+      ),
+      c: monthPicker('c', { type: 'month' }, { differentFrom: 'd' }),
+      d: monthPicker('d', { type: 'month', min: '2020-05', max: '2020-05' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'c', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Datetime pin keys stay origin-tagged through inheritance: `a` pins the
+  // CALENDAR day 1970-01-01 (fixed-origin day number 0), while `d` pins the
+  // symbolic interview-date offset 0 — numerically identical, semantically
+  // unrelated, so the pair must stay accepted.
+  it('keeps origin-tagged datetime pin keys distinct when propagated', () => {
+    expect(
+      findValidationContradictions({
+        a: {
+          name: 'a',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '1970-01-01', before: 0, after: 0 },
+          validation: { sameAs: 'c' },
+        },
+        c: {
+          name: 'c',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: {},
+          validation: { differentFrom: 'd' },
+        },
+        d: {
+          name: 'd',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { before: 0, after: 0 },
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  // A mixed-resolution sameAs component is the mixed-resolution check's to
+  // report (its repair strips the cross-resolution sameAs edge, freeing `c`),
+  // so the coarse pin must not be inherited into the full-resolution member —
+  // without the guard, `c` would inherit `datetime:month:2020-05` and falsely
+  // match `d`'s own coarse pin.
+  it('does not carry a coarse pin into a member at a different resolution', () => {
+    const result = findValidationContradictions({
+      a: monthPicker(
+        'a',
+        { type: 'month', min: '2020-05', max: '2020-05' },
+        { sameAs: 'c' },
+      ),
+      c: {
+        name: 'c',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: {},
+        validation: { differentFrom: 'd' },
+      },
+      d: monthPicker('d', { type: 'month', min: '2020-05', max: '2020-05' }),
+    });
+    expect(result.map((item) => item.class)).not.toContain(
+      'pinnedEqualDifferentFrom',
+    );
+    expect(result.map((item) => item.class)).toContain('disjointBounds');
+  });
+});
