@@ -4049,3 +4049,214 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
     }
   });
 });
+
+describe('findValidationContradictions — Twenty-second-wave Finding 1: propagated bounds inform pinned-equality', () => {
+  const number = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'number',
+    validation,
+  });
+
+  // The reviewer's own report: neither `a` nor `d` is pinned by its OWN
+  // rules alone (`a` only carries a `maxValue`; `d`'s own window is [0, 1]),
+  // but `d <= a` forces both to exactly 0 once the bounds are combined —
+  // detectable only once the chain-propagation pass's tightened bounds feed
+  // the pinned-equality check.
+  it('rejects a differentFrom pair pinned equal only once propagated bounds combine', () => {
+    const result = findValidationContradictions({
+      a: number('a', { maxValue: 0, differentFrom: 'd' }),
+      d: number('d', {
+        minValue: 0,
+        maxValue: 1,
+        lessThanOrEqualToVariable: 'a',
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'd']);
+  });
+
+  // The false-positive guard: genuine headroom on `a` means the propagated
+  // windows never collapse to a single point, so nothing is pinned.
+  it('accepts the same shape with genuine headroom so the propagated windows do not collapse', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', { maxValue: 2, differentFrom: 'd' }),
+        d: number('d', {
+          minValue: 0,
+          maxValue: 1,
+          lessThanOrEqualToVariable: 'a',
+        }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The second false-positive guard: a strict hop over `number` never
+  // tightens its raw VALUE, only its openness — `number` values are not
+  // known to be whole-numbered (the interview runtime coerces a number field
+  // with a bare `Number()`), unlike datetime day-numbers. An integer-epsilon
+  // reading would (wrongly) bump `b`'s pinned 4 up to a closed 5 and read
+  // `a` as pinned there too; `a`'s real domain given `a > b` and `a <= 5` is
+  // the open range (4, 5], which is not a single value, so this must stay
+  // accepted.
+  it('accepts a fractional-domain chain an integer-epsilon reading would wrongly pin', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', {
+          maxValue: 5,
+          greaterThanVariable: 'b',
+          differentFrom: 'd',
+        }),
+        b: number('b', { minValue: 4, maxValue: 4 }),
+        d: number('d', { minValue: 5, maxValue: 5 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Scope guard, exercised on RAW (pre-schema) migration input: comparator
+  // rules only ever apply to number/datetime/scalar at the schema level
+  // (`requireType`), but this analyser also runs before the schema has
+  // rejected anything, so a stray comparator on a text pair still reaches
+  // the chain-propagation pass. Propagating LENGTH collapses `a` and `d`'s
+  // windows to the same length (3) exactly like the numeric case above, but
+  // a shared length does not mean a shared STRING — "abc" and "xyz" both
+  // satisfy this and genuinely differ — so text (and, by the same
+  // token, categorical's selection-count window) must never feed the
+  // pinned-equality check.
+  it('does not pin text variables by a propagated LENGTH window', () => {
+    expect(
+      findValidationContradictions({
+        a: {
+          name: 'a',
+          type: 'text',
+          validation: { maxLength: 3, differentFrom: 'd' },
+        },
+        d: {
+          name: 'd',
+          type: 'text',
+          validation: {
+            minLength: 3,
+            maxLength: 5,
+            lessThanOrEqualToVariable: 'a',
+          },
+        },
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — Twenty-second-wave Finding 2: chain propagation respects coarse emissions', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: `b` (a year picker) can only ever emit
+  // January 1st of some year, so `c <= b` really forces `b` into
+  // {2021, 2022} — but propagating the convex day-number bound alone carries
+  // March 2020 through `b` as though it were selectable, leaving `a > b`
+  // looking satisfiable when no year actually makes it so.
+  it('rejects a chain through a year picker whose coarse emissions cannot satisfy both ends', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanVariable: 'b' },
+      ),
+      b: datePicker('b', { type: 'year', min: '2020', max: '2022' }),
+      c: datePicker(
+        'c',
+        { min: '2020-03-01', max: '2020-03-01' },
+        { lessThanOrEqualToVariable: 'b' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  // The false-positive guard, and the one that matters most: widening `a`
+  // and `b`'s own ranges leaves a genuine solution (`b` = 2021, `a` = 2022),
+  // so rounding to actual emissions must not invent a rejection.
+  it('accepts the same shape once the coarse emissions actually admit a solution', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2022' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { type: 'year', min: '2020', max: '2022' }),
+        c: datePicker(
+          'c',
+          { min: '2020-03-01', max: '2020-03-01' },
+          { lessThanOrEqualToVariable: 'b' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // A tighter variant of the same guard: `c` is pinned exactly ON one of
+  // `b`'s own achievable instants (2020-01-01), so rounding must treat that
+  // boundary as INCLUSIVE (`c <= b` is satisfied by `b = 2020` itself, not
+  // only by the next later year) and let `a = 2021, b = 2020` through. A
+  // rounding bug that always excludes the boundary instant (an off-by-one
+  // that treats every candidate as open) would push `b` to 2021 and, from
+  // there, find no year for `a`, wrongly rejecting a satisfiable protocol.
+  it('accepts a solution that sits exactly on a coarse boundary instant', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2021' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { type: 'year', min: '2020', max: '2021' }),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2020-01-01' },
+          { lessThanOrEqualToVariable: 'b' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // A chain running entirely through full-resolution pickers is unaffected —
+  // rounding only ever engages when a propagated bound's TARGET is coarse.
+  it('leaves a chain through a full-resolution picker unchanged', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { max: '2020-01-02' }, { greaterThanVariable: 'b' }),
+      b: datePicker('b', {}, { greaterThanVariable: 'c' }),
+      c: datePicker('c', { min: '2020-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  // Beyond the enumeration cap, rounding falls back to the pre-existing
+  // convex propagation rather than reporting — the same DoS-avoidance
+  // trade-off `discreteInstantsEmpty` already makes for equality groups.
+  it('falls back to convex propagation once a coarse window exceeds the enumeration cap', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2021' },
+          { greaterThanVariable: 'b' },
+        ),
+        b: datePicker('b', { type: 'year', min: '1000', max: '3000' }),
+        c: datePicker(
+          'c',
+          { min: '2020-03-01', max: '2020-03-01' },
+          { lessThanOrEqualToVariable: 'b' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+});

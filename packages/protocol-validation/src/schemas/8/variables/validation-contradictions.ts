@@ -1368,8 +1368,22 @@ const pinnedValue = (
  * Also returns the claimed variable-id pairs so `oddDifferentFromCycleContradictions`
  * can exclude them from its boolean bipartite graph — a pair already reported
  * here must not ALSO surface as (or be folded into) an odd-cycle report.
+ *
+ * Twenty-second-wave Finding 1: `propagatedPins` — the chain-propagation
+ * pass's own tightened-bound closure (`chainedBoundContradictions`) — is
+ * consulted as a FALLBACK once a variable's OWN `pinnedValue` comes up
+ * undefined. `pinnedValue` only ever looks at a variable's own rules, so a
+ * pair each individually unpinned but forced to one shared value by a
+ * comparator chain plus the other's own bound (the reviewer's `A.maxValue =
+ * 0`, `D.minValue = 0`, `D.maxValue = 1`, `D <= A` shape) was invisible here.
+ * Threading the ALREADY-COMPUTED closure through, rather than re-deriving it,
+ * avoids running the propagation pass twice; see `findValidationContradictions`
+ * for the plumbing.
  */
-function pinnedEqualDifferentFromContradictions(variables: UnknownRecord): {
+function pinnedEqualDifferentFromContradictions(
+  variables: UnknownRecord,
+  propagatedPins: Map<string, string | number>,
+): {
   contradictions: ValidationContradiction[];
   claimedPairs: Set<string>;
 } {
@@ -1378,8 +1392,8 @@ function pinnedEqualDifferentFromContradictions(variables: UnknownRecord): {
   for (const [id, variable] of Object.entries(variables)) {
     const target = usableReference(variables, id, 'differentFrom');
     if (target === undefined || target === id) continue;
-    const valueA = pinnedValue(variable);
-    const valueB = pinnedValue(variables[target]);
+    const valueA = pinnedValue(variable) ?? propagatedPins.get(id);
+    const valueB = pinnedValue(variables[target]) ?? propagatedPins.get(target);
     if (valueA === undefined || valueB === undefined || valueA !== valueB) {
       continue;
     }
@@ -1794,6 +1808,22 @@ type ChainEdge = {
   sources: VariableRuleRef[];
 };
 
+type ChainedBoundResult = {
+  contradictions: ValidationContradiction[];
+  /**
+   * Twenty-second-wave Finding 1: every variable a propagated bound pins to
+   * one exact value, keyed by variable id, encoded exactly like
+   * `pinnedValue`'s own return value (a raw number for `number`, or
+   * `pinnedValue`'s `datetime:${origin}:${value}` tag for a full-resolution
+   * datetime) so the two are directly comparable. Consulted only as a
+   * FALLBACK by `pinnedEqualDifferentFromContradictions` — a variable's own
+   * `pinnedValue` always wins when it applies. Populated below, once per
+   * origin, from nodes whose propagated min and max collapse to one CLOSED
+   * point.
+   */
+  propagatedPins: Map<string, string | number>;
+};
+
 /**
  * A candidate bound replaces the incumbent only when it is strictly tighter,
  * so the first witness of a given tightness is the one kept. Only tightness is
@@ -1880,6 +1910,81 @@ const chainWitnessPath = (
 };
 
 /**
+ * Twenty-second-wave Finding 2: rounds a bound landing on a coarse
+ * (month/year) DatePicker node to that picker's nearest ACTUAL emission,
+ * reusing the discrete-instant helpers `coarseInstantsOf` and
+ * `intersectInstantSets` twenty-first-wave Finding 2 added for equality
+ * groups, rather than inventing a second notion of "what a coarse picker can
+ * emit". Without this, a bound carried in from a neighbour lands as a raw
+ * day number the target can never actually store — `dateWindowInterval`'s
+ * convex `[min, max]` is only a SUPERSET of a coarse picker's true
+ * emissions (see its own docstring) — so a chain infeasible against the
+ * picker's real discrete choices was accepted as though every day in its
+ * convex window were selectable.
+ *
+ * `direction` mirrors the caller's propagation direction: +1 while carrying
+ * a MIN bound forward rounds UP to the smallest achievable instant at or
+ * beyond the candidate (strictly beyond it when the candidate is open), and
+ * -1 while carrying a MAX bound backward rounds DOWN to the largest
+ * achievable instant at or before it. Once selected, the instant is itself
+ * achievable, so the result is always closed — same reasoning as
+ * `pinnedValue`'s coarse branch, which pins a collapsed coarse window
+ * outright because exactly one option remains.
+ *
+ * Falls back to the candidate UNCHANGED — never invents a tighter OR looser
+ * bound of its own — whenever exact rounding is not possible: the target is
+ * not uniformly one coarse-resolution datetime (a mixed or full-resolution
+ * node is left to the existing convex handling), some member's window
+ * cannot be safely enumerated (an open bound, or wider than
+ * `COARSE_INSTANT_ENUMERATION_CAP`), or no member instant satisfies the
+ * direction at all. This is the same fallback discipline
+ * `discreteInstantsEmpty` uses: an inexact case is left to the pre-existing
+ * (looser but safe) convex reasoning rather than risking a false rejection
+ * or an unbounded enumeration.
+ */
+const roundToCoarseEmission = (
+  variables: UnknownRecord,
+  targetVariableIds: string[],
+  candidate: ChainBound,
+  direction: 1 | -1,
+): ChainBound => {
+  if (
+    targetVariableIds.length === 0 ||
+    targetVariableIds.some((id) => typeOf(variables[id]) !== 'datetime')
+  ) {
+    return candidate;
+  }
+  const resolutions = new Set(
+    targetVariableIds.map((id) => dateResolutionOf(variables[id])),
+  );
+  const [resolution] = resolutions;
+  if (resolutions.size !== 1 || resolution === 'full') return candidate;
+
+  let instants: Set<number> | undefined;
+  for (const id of targetVariableIds) {
+    const coarse = coarseInstantsOf(variables[id]);
+    if (coarse === 'unenumerable' || coarse === undefined) return candidate;
+    instants =
+      instants === undefined ? coarse : intersectInstantSets(instants, coarse);
+  }
+  if (instants === undefined || instants.size === 0) return candidate;
+
+  const sorted = [...instants].toSorted((a, b) => a - b);
+  const rounded =
+    direction === 1
+      ? sorted.find((value) =>
+          candidate.open ? value > candidate.value : value >= candidate.value,
+        )
+      : sorted
+          .toReversed()
+          .find((value) =>
+            candidate.open ? value < candidate.value : value <= candidate.value,
+          );
+  if (rounded === undefined) return candidate;
+  return { ...candidate, value: rounded, open: false };
+};
+
+/**
  * Twenty-first-wave Finding 3: bounds closed over the whole comparator graph,
  * not just over each single hop.
  *
@@ -1921,7 +2026,7 @@ const chainWitnessPath = (
 function chainedBoundContradictions(
   variables: UnknownRecord,
   graph: GroupGraph,
-): ValidationContradiction[] {
+): ChainedBoundResult {
   // Group-level adjacency in the propagation direction, lower → upper.
   const groupAdjacency = new Map<string, string[]>();
   for (const [upper, bucket] of graph.dependencies) {
@@ -1932,7 +2037,9 @@ function chainedBoundContradictions(
       groupAdjacency.set(lower, list);
     }
   }
-  if (groupAdjacency.size === 0) return [];
+  if (groupAdjacency.size === 0) {
+    return { contradictions: [], propagatedPins: new Map() };
+  }
 
   const components = stronglyConnectedComponents(groupAdjacency);
   const componentOf = new Map<string, number>();
@@ -2024,6 +2131,7 @@ function chainedBoundContradictions(
 
   const found: ValidationContradiction[] = [];
   const reported = new Set<string>();
+  const propagatedPins = new Map<string, string | number>();
 
   for (const origin of INTERVAL_ORIGINS) {
     const minBounds = nodes.map((node, index) =>
@@ -2039,12 +2147,21 @@ function chainedBoundContradictions(
         const edge = edges[edgeIndex];
         const target = edge && nodes[edge.upper];
         if (!edge || !target) continue;
-        const candidate = stepChainBound(
+        const stepped = stepChainBound(
           bound,
           edge.strict,
           target.integral,
           1,
           index,
+        );
+        // Twenty-second-wave Finding 2: a bound landing on a coarse
+        // DatePicker's node may not itself be one of that picker's actual
+        // emissions — round it to the nearest one it can genuinely reach.
+        const candidate = roundToCoarseEmission(
+          variables,
+          target.variableIds,
+          stepped,
+          1,
         );
         if (isTighterMin(candidate, minBounds[edge.upper])) {
           minBounds[edge.upper] = candidate;
@@ -2065,12 +2182,18 @@ function chainedBoundContradictions(
         const edge = edges[edgeIndex];
         const target = edge && nodes[edge.lower];
         if (!edge || !target) continue;
-        const candidate = stepChainBound(
+        const stepped = stepChainBound(
           bound,
           edge.strict,
           target.integral,
           -1,
           index,
+        );
+        const candidate = roundToCoarseEmission(
+          variables,
+          target.variableIds,
+          stepped,
+          -1,
         );
         if (isTighterMax(candidate, maxBounds[edge.lower])) {
           maxBounds[edge.lower] = candidate;
@@ -2082,6 +2205,39 @@ function chainedBoundContradictions(
       const min = minBounds[index];
       const max = maxBounds[index];
       if (!min || !max) continue;
+
+      // Twenty-second-wave Finding 1: a node whose propagated min and max
+      // collapse to one CLOSED point pins every member to that value, even
+      // when neither bound is the node's own — `pinnedEqualDifferentFromContradictions`
+      // reads this map as a fallback once a variable's own rules don't
+      // already pin it. Scoped to `number` and full-resolution `datetime`:
+      // those are the only types a comparator edge ever connects (see
+      // `requireType` on the four comparator rules) whose bound also
+      // identifies the runtime VALUE rather than a length or count — a
+      // coarse picker's day-number window shares that same encoding, but a
+      // raw day number does not identify a coarse picker's STORED string the
+      // way `pinnedValue`'s own coarse branch keys it, so that case is left
+      // alone here. `!min.open && !max.open` is the fractional-domain guard:
+      // a strict hop only ever leaves a bound open when its quantity is not
+      // known to be whole-numbered (`stepChainBound`), so an open collapse
+      // means the node's true window excludes its one candidate point (a
+      // provably EMPTY domain, always caught elsewhere as an infeasibility)
+      // rather than a pinned one.
+      if (min.value === max.value && !min.open && !max.open) {
+        const node = nodes[index];
+        for (const variableId of node?.variableIds ?? []) {
+          const type = typeOf(variables[variableId]);
+          if (type === 'number') {
+            propagatedPins.set(variableId, min.value);
+          } else if (
+            type === 'datetime' &&
+            dateResolutionOf(variables[variableId]) === 'full'
+          ) {
+            propagatedPins.set(variableId, `datetime:${origin}:${min.value}`);
+          }
+        }
+      }
+
       // A single hop is exactly what the per-edge check already reports, and
       // reports identically; only genuinely transitive conclusions belong
       // here. This also excludes the two bounds tracing to ONE node — the
@@ -2136,12 +2292,12 @@ function chainedBoundContradictions(
     }
   }
 
-  return found;
+  return { contradictions: found, propagatedPins };
 }
 
 function disjointBoundsContradictions(
   variables: UnknownRecord,
-): ValidationContradiction[] {
+): ChainedBoundResult {
   const found: ValidationContradiction[] = [];
   const graph = buildGroupGraph(variables);
   const { edges, groupOf, membersOf } = graph;
@@ -2343,9 +2499,10 @@ function disjointBoundsContradictions(
     });
   }
 
-  found.push(...chainedBoundContradictions(variables, graph));
+  const chained = chainedBoundContradictions(variables, graph);
+  found.push(...chained.contradictions);
 
-  return found;
+  return { contradictions: found, propagatedPins: chained.propagatedPins };
 }
 
 /**
@@ -2640,12 +2797,19 @@ function oddDifferentFromCycleContradictions(
 export function findValidationContradictions(
   variables: UnknownRecord,
 ): ValidationContradiction[] {
+  // Twenty-second-wave Finding 1: computed first so its `propagatedPins`
+  // closure can feed `pinnedEqualDifferentFromContradictions` below — the
+  // array position of its own contradictions is unaffected, only the order
+  // these two are CALLED in (spread order below still matches every other
+  // pass).
+  const { contradictions: disjointBoundsResults, propagatedPins } =
+    disjointBoundsContradictions(variables);
   const { contradictions: pinnedEqualContradictions, claimedPairs } =
-    pinnedEqualDifferentFromContradictions(variables);
+    pinnedEqualDifferentFromContradictions(variables, propagatedPins);
   return [
     ...localContradictions(variables),
     ...referenceStructureContradictions(variables),
-    ...disjointBoundsContradictions(variables),
+    ...disjointBoundsResults,
     ...mixedResolutionSameAsContradictions(variables),
     ...pinnedEqualContradictions,
     ...oddDifferentFromCycleContradictions(variables, claimedPairs),
