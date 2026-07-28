@@ -182,10 +182,12 @@ that are unsatisfiable independent of the graph's shape.
 ### Schema wiring
 
 - `VariablesSchema`, `EdgeVariablesSchema` and `EgoVariablesSchema` each gain a
-  thin `.superRefine` adapter — the `rejectEgoUnique` slot — that calls the
-  analyser and emits one issue per contradiction. Classes 1–4 live only here,
-  not duplicated on individual variable schemas: one home, and the record
-  level is the only path real protocols take.
+  thin `.superRefine` adapter — `rejectValidationContradictions` — that calls
+  the analyser and emits one issue per contradiction. (The pre-existing
+  `rejectEgoUnique` check, which bans the `unique` rule on ego variables, stays
+  a separate ego-only refinement and continues to run independently.) Classes
+  1–4 live only here, not duplicated on individual variable schemas: one home,
+  and the record level is the only path real protocols take.
 - R1 floors go directly on the fields in
   `packages/protocol-validation/src/schemas/8/variables/validation.ts` as
   `.min(0)`/`.min(1)`.
