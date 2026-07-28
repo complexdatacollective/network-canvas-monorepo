@@ -5389,22 +5389,21 @@ describe('findValidationContradictions — Twenty-fifth wave: one-sided out-of-w
     ]);
   });
 
-  // Thirtieth wave (Fix 2) consciously revised this recorded stance: the
-  // runtime's derivation emits the resolved native `min`/`max` attributes for
-  // a one-sided FULL-resolution window too, so the missing side is now
-  // modelled at the resolved bound (here the extension floor 1600-01-01 —
-  // the shared arithmetic without the coarse 1000-clamp). No instant lies
-  // strictly below a partner pinned exactly on that floor.
-  it('models a full-resolution one-sided out-of-window bound at its resolved floor', () => {
-    const result = findValidationContradictions({
-      a: datePicker('a', { max: '1800-06-15' }, { lessThanVariable: 'b' }),
-      b: datePicker('b', { min: '1600-01-01', max: '1600-01-01' }),
-    });
-    expect(result).toHaveLength(1);
-    expect(result[0]?.class).toBe('disjointBounds');
-    expect(result[0]?.strips).toEqual([
-      { variableId: 'a', rule: 'lessThanVariable' },
-    ]);
+  // Thirty-fourth wave (Fix 1) flipped the thirtieth wave's Fix 2 verdict
+  // here: the resolved extension floor (1600-01-01 for this max) exists only
+  // as a native `min` attribute the `noValidate` form never enforces, and
+  // useProtocolForm forwards only the AUTHORED `max` into the submission
+  // validators — a typed 1599-12-31 passes that authored-max check and the
+  // comparator at runtime, so the pairing is genuinely satisfiable. Only the
+  // COARSE dropdowns (the rest of this block) keep their synthesized floors
+  // as hard domains.
+  it('leaves a full-resolution one-sided out-of-window window submission-open below', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '1800-06-15' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { min: '1600-01-01', max: '1600-01-01' }),
+      }),
+    ).toEqual([]);
   });
 
   // Month resolution synthesizes too, and its ceiling runs through DECEMBER
@@ -5910,12 +5909,14 @@ describe('findValidationContradictions — Twenty-sixth-wave Finding 2: unbounde
     expect(result[0]?.class).toBe('disjointBounds');
   });
 
-  // Thirtieth wave (Fix 2) consciously revised the one-sided stance this
-  // block used to record: the resolved lower bound is modelled now, and for
-  // an authored max this far out of window the extension arithmetic reaches
-  // past year 1 and lands on the same native floor — so no instant lies
-  // strictly below a partner pinned there.
-  it('floors a one-sided authored full-resolution window at its resolved lower edge', () => {
+  // Thirty-fourth wave (Fix 1) re-justified this reject: the thirtieth
+  // wave's resolved-attribute extension arithmetic is gone (native
+  // attributes are not submission bounds under a `noValidate` form), but a
+  // max-only window is still floored at the native FORMAT floor — the HTML
+  // date grammar has no year 0000 or negative years, so a typed value below
+  // 0001-01-01 never parses into a submittable value at all — and no
+  // instant lies strictly below a partner pinned there.
+  it('floors a one-sided authored full-resolution window at the native format floor', () => {
     const result = findValidationContradictions({
       a: datePicker('a', { max: '0001-06-01' }, { lessThanVariable: 'b' }),
       b: datePicker('b', { min: NATIVE_FLOOR, max: NATIVE_FLOOR }),
@@ -6945,7 +6946,13 @@ describe('findValidationContradictions — Thirtieth wave Fix 1: categorical sam
   });
 });
 
-describe('findValidationContradictions — Thirtieth wave Fix 2: one-sided full-resolution windows model the resolved opposite bound', () => {
+describe('findValidationContradictions — Thirtieth wave Fix 2, corrected by the thirty-fourth (Fix 1): one-sided full-resolution windows model the submission far bound', () => {
+  // Wave 30 modelled the RESOLVED native `min`/`max` attributes here; wave
+  // 34's reject-direction correction re-derives every verdict from the
+  // SUBMISSION domain instead (the native attributes are never enforced
+  // under fresco-ui's `noValidate` form — only the authored side reaches
+  // the Zod validators). Each flipped verdict below records its runtime
+  // witness.
   const datePicker = (
     name: string,
     parameters: Record<string, unknown>,
@@ -6958,42 +6965,33 @@ describe('findValidationContradictions — Thirtieth wave Fix 2: one-sided full-
     validation: { required: true, ...validation },
   });
 
-  // The reviewer's own report: a required full-resolution picker with only
-  // `min: '2000-01-01'` is not half-open at runtime — fresco-ui resolves and
-  // passes BOTH native bounds whenever either is authored, capping the input
-  // at today (or, before the authored min has passed, at the extended
-  // ceiling). The modelled ceiling is 31 December of
-  // max(horizon, min.year + span) = 2200, far below a partner pinned at
-  // 9999-01-01, so the strict comparison can never be satisfied.
-  it('rejects greaterThanVariable from a min-only full picker against a partner pinned beyond the resolved ceiling', () => {
-    const result = findValidationContradictions({
-      a: datePicker('a', { min: '2000-01-01' }, { greaterThanVariable: 'b' }),
-      b: datePicker('b', { min: '9999-01-01', max: '9999-01-01' }),
-    });
-    expect(result).toHaveLength(1);
-    expect(result[0]?.class).toBe('disjointBounds');
-    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
-    expect(result[0]?.strips).toEqual([
-      { variableId: 'a', rule: 'greaterThanVariable' },
-    ]);
+  // FLIPPED by the thirty-fourth wave: wave 30 rejected this via the
+  // resolved 2200-12-31 ceiling, but that ceiling is a native attribute
+  // only. Typing 9999-01-02 passes the authored-min validator (lexically
+  // above '2000-01-01') and the strict comparator against the 9999-01-01
+  // pin, so the pairing is satisfiable and the min-only window runs to the
+  // grammar ceiling 9999-12-31.
+  it('accepts greaterThanVariable from a min-only full picker against a partner pinned below the grammar ceiling', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { min: '2000-01-01' }, { greaterThanVariable: 'b' }),
+        b: datePicker('b', { min: '9999-01-01', max: '9999-01-01' }),
+      }),
+    ).toEqual([]);
   });
 
-  // The mirror direction: an in-window max-only picker is floored at the
-  // runtime's stable default lower edge 1920-01-01 (both the branch
-  // condition and the resolved value are date-independent, so the model is
-  // exact) — no instant lies strictly below a partner pinned on the floor,
-  // while one pinned a single day above it is still exceeded from below.
-  it('floors a max-only full picker at the stable default lower edge', () => {
-    const result = findValidationContradictions({
-      a: datePicker('a', { max: '2100-01-01' }, { lessThanVariable: 'b' }),
-      b: datePicker('b', { min: '1920-01-01', max: '1920-01-01' }),
-    });
-    expect(result).toHaveLength(1);
-    expect(result[0]?.class).toBe('disjointBounds');
-    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
-    expect(result[0]?.strips).toEqual([
-      { variableId: 'a', rule: 'lessThanVariable' },
-    ]);
+  // FLIPPED by the thirty-fourth wave: the stable default lower edge
+  // 1920-01-01 was equally native-attribute-only — typing 1919-12-31 passes
+  // the authored-max validator and lands strictly below the partner's pin,
+  // so a max-only window is submission-open down to the format floor. The
+  // one-day-above variant stays accepted as before.
+  it('leaves a max-only full picker submission-open below the default lower edge', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '2100-01-01' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { min: '1920-01-01', max: '1920-01-01' }),
+      }),
+    ).toEqual([]);
 
     expect(
       findValidationContradictions({
@@ -7003,12 +7001,13 @@ describe('findValidationContradictions — Thirtieth wave Fix 2: one-sided full-
     ).toEqual([]);
   });
 
-  // A future-dated authored min extends PAST the horizon exactly as the
-  // runtime does (`min.year + span`, December 31): a literal 2120 ceiling
-  // would have inverted this window and falsely rejected the satisfiable
-  // pairing below. The bracket's reject side sits exactly on the extended
-  // ceiling.
-  it('brackets the extended ceiling of a future-dated authored min', () => {
+  // Wave 30's extended per-min ceiling (min.year + span) is gone: the
+  // submission ceiling is the grammar's own 9999-12-31 whatever the
+  // authored min. The wave-30 reject side of this bracket (a partner pinned
+  // at 2300-12-31) FLIPS — typing 2301-01-01 passes the authored-min
+  // validator and the comparator — and the grammar-ceiling bracket itself
+  // lives in the thirty-fourth-wave block.
+  it('accepts partners far above a future-dated authored min, up to the grammar ceiling', () => {
     expect(
       findValidationContradictions({
         a: datePicker('a', { min: '2100-01-01' }, { greaterThanVariable: 'b' }),
@@ -7016,19 +7015,17 @@ describe('findValidationContradictions — Thirtieth wave Fix 2: one-sided full-
       }),
     ).toEqual([]);
 
-    const result = findValidationContradictions({
-      a: datePicker('a', { min: '2100-01-01' }, { greaterThanVariable: 'b' }),
-      b: datePicker('b', { min: '2300-12-31', max: '2300-12-31' }),
-    });
-    expect(result).toHaveLength(1);
-    expect(result[0]?.class).toBe('disjointBounds');
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { min: '2100-01-01' }, { greaterThanVariable: 'b' }),
+        b: datePicker('b', { min: '2300-12-31', max: '2300-12-31' }),
+      }),
+    ).toEqual([]);
   });
 
-  // The modelled ceiling for a past authored min is a SUPERSET of every
-  // in-horizon today-cap (Dec 31 of min.year + span here, above the horizon
-  // itself), so a partner just inside it stays accepted — the deliberate
-  // accept direction of the no-wall-clock model.
-  it('accepts a partner inside the superset ceiling of a past authored min', () => {
+  // Unchanged accept: a partner below the (now wider) ceiling was
+  // satisfiable under both models.
+  it('accepts a partner inside the ceiling of a past authored min', () => {
     expect(
       findValidationContradictions({
         a: datePicker('a', { min: '2000-01-01' }, { greaterThanVariable: 'b' }),
@@ -7037,20 +7034,19 @@ describe('findValidationContradictions — Thirtieth wave Fix 2: one-sided full-
     ).toEqual([]);
   });
 
-  // The coarse 1000 FLOOR does NOT apply at full resolution: that clamp
-  // exists only on the dropdowns' coarse pair, so an out-of-window authored
-  // max of 1100 resolves a floor of 0900-01-01 here (a coarse year picker
-  // with the same max floors at 1000 — see the twenty-sixth-wave fidelity
-  // block). The synthesized CEILING is different: the thirty-second wave
-  // caps it at year 9999 on both paths, mirroring fresco-ui's clamp of the
-  // resolved native max.
-  it('extends a full-resolution out-of-window floor without the coarse floor clamp', () => {
-    const result = findValidationContradictions({
-      a: datePicker('a', { max: '1100-06-15' }, { lessThanVariable: 'b' }),
-      b: datePicker('b', { min: '0900-01-01', max: '0900-01-01' }),
-    });
-    expect(result).toHaveLength(1);
-    expect(result[0]?.class).toBe('disjointBounds');
+  // FLIPPED by the thirty-fourth wave: wave 30's out-of-window extension
+  // floor (0900-01-01 for this max) was a native attribute; typing
+  // 0899-12-31 passes the authored-max validator and submits, so both
+  // partners below the authored max are reachable from below. The only
+  // remaining full-resolution floor is the year-1 FORMAT floor (see the
+  // twenty-sixth-wave native-floor block).
+  it('leaves a full-resolution out-of-window max submission-open below the extension floor', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '1100-06-15' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { min: '0900-01-01', max: '0900-01-01' }),
+      }),
+    ).toEqual([]);
 
     expect(
       findValidationContradictions({
@@ -7060,8 +7056,8 @@ describe('findValidationContradictions — Thirtieth wave Fix 2: one-sided full-
     ).toEqual([]);
   });
 
-  // A picker with NEITHER authored bound is untouched: the runtime passes no
-  // native attributes at all there, so the upper edge stays genuinely
+  // A picker with NEITHER authored bound is untouched: no submission
+  // validators exist at all there, so the upper edge stays genuinely
   // unbounded and the twenty-sixth wave's floor-only interval stands.
   it('keeps a neither-authored full picker unbounded above', () => {
     expect(
@@ -8181,7 +8177,7 @@ describe('findValidationContradictions — Thirty-second wave Fix 2: ordinal par
   });
 });
 
-describe('findValidationContradictions — Thirty-second wave Fix 3: the synthesized full-resolution far bound clamps at year 9999', () => {
+describe('findValidationContradictions — Thirty-second wave Fix 3, re-justified by the thirty-fourth (Fix 1): the full-resolution submission ceiling is 9999-12-31', () => {
   const datePicker = (
     name: string,
     parameters: Record<string, unknown>,
@@ -8194,11 +8190,12 @@ describe('findValidationContradictions — Thirty-second wave Fix 3: the synthes
     validation: { required: true, ...validation },
   });
 
-  // The reviewer's own report: fresco-ui clamps the resolved native max at
-  // 9999-12-31 (the form validator's compareDateStrings is
-  // four-digit-lexical, so five-digit years are unusable), so a
-  // full-resolution picker authored with only `min: '9999-12-31'` models
-  // the exact single-day window [9999-12-31, 9999-12-31] — pinned through
+  // Kept under the thirty-fourth wave's submission-domain model, re-justified
+  // by the LEXICAL argument rather than the native attribute: the only
+  // submission check on a min-only picker is the authored-min validator, and
+  // `compareDateStrings` is lexical over the fixed-width four-digit
+  // `YYYY-MM-DD` grammar — no in-grammar day sorts above '9999-12-31', so
+  // the submission window collapses to that exact single day, pinned through
   // the existing min === max datetime path, equal to the partner's pin. The
   // unclamped wave-30 ceiling (Dec 31 of 10199) modelled a multi-day window
   // and accepted this.
@@ -8247,13 +8244,13 @@ describe('findValidationContradictions — Thirty-second wave Fix 3: the synthes
     ).toEqual([]);
   });
 
-  // Derivation fidelity: a far-future authored min whose unclamped
-  // extension (9900 + 200 = 10100) overshoots the ceiling models its far
-  // bound at exactly 9999-12-31 — a strict greaterThanVariable against a
-  // partner pinned ON the clamped ceiling is infeasible (the unclamped
-  // model accepted it), while one pinned a single day below it is exceeded
-  // by the ceiling's own instant.
-  it('brackets the clamped ceiling of a far-future authored min to the day', () => {
+  // Derivation fidelity, now uniform for EVERY authored min under the
+  // thirty-fourth wave: the submission ceiling is the grammar's own
+  // 9999-12-31 — a strict greaterThanVariable against a partner pinned ON
+  // that ceiling is infeasible (no in-grammar day sorts above it for the
+  // authored-min validator to admit), while one pinned a single day below
+  // it is exceeded by the ceiling's own instant.
+  it('brackets the grammar ceiling of a far-future authored min to the day', () => {
     const result = findValidationContradictions({
       a: datePicker('a', { min: '9900-01-01' }, { greaterThanVariable: 'b' }),
       b: datePicker('b', { min: '9999-12-31', max: '9999-12-31' }),
@@ -8273,17 +8270,18 @@ describe('findValidationContradictions — Thirty-second wave Fix 3: the synthes
     ).toEqual([]);
   });
 
-  // The below-1920 extension side is unaffected: it only ever walks
-  // DOWNWARD from an early authored max, where the native year-1 floor
-  // (not the coarse 1000 floor, and not this ceiling) governs — the
-  // wave-30 out-of-window floor behaviour is unchanged.
-  it('leaves the downward extension of an early authored max unclamped by the ceiling', () => {
-    const result = findValidationContradictions({
-      a: datePicker('a', { max: '1100-06-15' }, { lessThanVariable: 'b' }),
-      b: datePicker('b', { min: '0900-01-01', max: '0900-01-01' }),
-    });
-    expect(result).toHaveLength(1);
-    expect(result[0]?.class).toBe('disjointBounds');
+  // FLIPPED by the thirty-fourth wave: the wave-30 downward extension this
+  // test used to pin was a native attribute — a typed 0899-12-31 passes the
+  // authored-max validator under the `noValidate` form and submits — so a
+  // max-only window is submission-open all the way down to the year-1
+  // FORMAT floor, and this pairing is satisfiable.
+  it('leaves an early authored max submission-open below its former extension floor', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '1100-06-15' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { min: '0900-01-01', max: '0900-01-01' }),
+      }),
+    ).toEqual([]);
   });
 });
 
@@ -8459,5 +8457,145 @@ describe("findValidationContradictions — Thirty-third wave: scalar chains resp
       );
       expect(issue).toBeDefined();
     }
+  });
+});
+
+// Thirty-fourth wave (Fix 1): a one-sided full-resolution DatePicker's
+// missing side is bounded by what the SUBMISSION pipeline enforces, not by
+// the resolved native `min`/`max` attributes waves 30/32 modelled. The
+// verified chain: fresco-ui's form element is `noValidate`, the resolved
+// attributes land only on the native input, and useProtocolForm forwards
+// only the AUTHORED `params.min`/`params.max` into the Zod validators — so
+// a min-only window runs to the four-digit grammar's own last day
+// (`compareDateStrings` is lexical over the fixed-width `YYYY-MM-DD`
+// grammar, where lexical order is chronological order) and a max-only
+// window is open down to the year-1 FORMAT floor (a typed year 0000 or
+// below never parses, regardless of `noValidate`). Coarse dropdowns and
+// RelativeDatePickers are deliberately untouched — the former admit no
+// typed input, the latter's window IS precomputed into the submission
+// validators.
+describe('findValidationContradictions — Thirty-fourth wave Fix 1: one-sided full-resolution date bounds are submission bounds, not native attributes', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own repro: under the resolved-attribute model, `a`'s
+  // min-only window capped at 2120-12-31 (max(2120, 1900 + 200) evaluated
+  // through the horizon formula), so a partner pinned at 2200-01-01 was
+  // rejected — yet typing 2201-01-01 passes the authored-min validator (the
+  // only submission check `a` has) and the strict comparator at runtime.
+  it('accepts the reviewer repro: a min-only picker against a partner pinned beyond the former resolved ceiling', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { min: '1900-01-01' }, { greaterThanVariable: 'b' }),
+        b: datePicker('b', { min: '2200-01-01', max: '2200-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The true ceiling for EVERY authored min is the grammar's last day: a
+  // partner pinned ON 9999-12-31 leaves no in-grammar day sorting above it
+  // for the authored-min validator to admit, while one pinned a single day
+  // below is exceeded by the ceiling's own instant. (This is the wave-32
+  // bracket, now holding for a PAST authored min too.)
+  it('brackets the submission ceiling of a past authored min to the day', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { min: '1900-01-01' }, { greaterThanVariable: 'b' }),
+      b: datePicker('b', { min: '9999-12-31', max: '9999-12-31' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { min: '1900-01-01' }, { greaterThanVariable: 'b' }),
+        b: datePicker('b', { min: '9999-12-30', max: '9999-12-30' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // The mirror side: the 1920 default floor was native-attribute-only, so a
+  // max-only picker reaches below it — typing 1899-12-31 passes the
+  // authored-max validator and sits strictly below the partner's pin.
+  it('accepts a max-only picker against a partner pinned below the former default floor', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { max: '1950-06-01' }, { lessThanVariable: 'b' }),
+        b: datePicker('b', { min: '1900-01-01', max: '1900-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // ...but only down to the FORMAT floor, which no typed value can pass:
+  // the HTML date grammar has no year 0000 or negative years, so nothing
+  // lies strictly below a partner pinned at 0001-01-01.
+  it('keeps rejecting lessThanVariable against a partner pinned on the format floor', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', { max: '1950-06-01' }, { lessThanVariable: 'b' }),
+      b: datePicker('b', { min: '0001-01-01', max: '0001-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // The asymmetry boundary: a COARSE picker's synthesized/default bounds
+  // remain hard — its closed dropdowns admit no typed input at all — so the
+  // same below-the-default-floor pairing stays rejected at year resolution.
+  it('keeps the coarse default floor hard where the full-resolution floor opened', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', max: '1950' },
+        { lessThanVariable: 'b' },
+      ),
+      b: datePicker('b', { min: '1900-01-01', max: '1900-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // The other untouched control: an anchored RelativeDatePicker's window IS
+  // submission-enforced (useProtocolForm precomputes its absolute min/max
+  // into the same Zod validators), so its lower edge still rejects a
+  // partner pinned exactly there and accepts one pinned a day above.
+  it('keeps an anchored RelativeDatePicker window submission-hard on both sides', () => {
+    const relative = (validation: Record<string, unknown>) => ({
+      name: 'a',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { anchor: '2020-06-15', before: 10, after: 0 },
+      validation: { required: true, ...validation },
+    });
+    const result = findValidationContradictions({
+      a: relative({ lessThanVariable: 'b' }),
+      b: datePicker('b', { min: '2020-06-05', max: '2020-06-05' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+
+    expect(
+      findValidationContradictions({
+        a: relative({ lessThanVariable: 'b' }),
+        b: datePicker('b', { min: '2020-06-06', max: '2020-06-06' }),
+      }),
+    ).toEqual([]);
   });
 });

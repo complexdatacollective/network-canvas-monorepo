@@ -1106,14 +1106,12 @@ const COARSE_SYNTHESIS_SPAN_YEARS =
  * superset can only accept more), so this is a precision improvement, not a
  * soundness fix.
  *
- * Thirty-second wave (Fix 3): the MAX side of this range also caps the
- * FULL-resolution synthesized far bound — fresco-ui clamps the resolved
- * native `max` attribute at 9999-12-31 for the same four-digit-year reason
- * (the form validator's `compareDateStrings` compares lexically over the
- * fixed-width YYYY grammar, so a five-digit year is unusable) — see
- * `synthesizedFullResolutionResolvedBound`. The 1000 floor stays
- * coarse-only: the native input floors at year 1 instead
- * (`clampToNativeDateFloor`).
+ * Thirty-fourth wave (Fix 1): the MAX side of this range is also the top of
+ * the fixed-width four-digit `YYYY-MM-DD` grammar every authored bound, every
+ * schema-valid stored value, and this file's own day-number arithmetic share,
+ * which is why it doubles as the FULL-resolution submission ceiling — see
+ * `fullResolutionSubmissionFarBound`. The 1000 floor stays coarse-only: the
+ * native input floors at year 1 instead (`clampToNativeDateFloor`).
  */
 const COARSE_SYNTHESIS_MIN_YEAR = 1000;
 const COARSE_SYNTHESIS_MAX_YEAR = 9999;
@@ -1204,9 +1202,10 @@ const parseRuntimeYmd = (
  * (twentieth-wave Finding 1). At most one edge is ever returned — the
  * missing side that can be modelled without a wall clock — and both-authored
  * windows return `undefined`. FULL-resolution pickers return `undefined`
- * too: their one-sided resolved bounds are modelled by
- * `synthesizedFullResolutionResolvedBound` below (thirtieth-wave Fix 2), not
- * here.
+ * too: their one-sided submission far bounds are modelled by
+ * `fullResolutionSubmissionFarBound` below (thirty-fourth-wave Fix 1), not
+ * here — a native input under a `noValidate` form enforces nothing, unlike
+ * these closed dropdowns.
  */
 const synthesizedCoarseMissingSideBound = (
   parameters: UnknownRecord,
@@ -1259,94 +1258,105 @@ const periodStartDayNumber = ({ year, month }: YearMonth): number =>
   utcDayNumber(year, month - 1, 1);
 
 /**
- * Thirtieth wave (Fix 2): the RESOLVED opposite bound a one-sided
- * full-resolution DatePicker carries at runtime. fresco-ui resolves and
- * passes BOTH native `min`/`max` attributes whenever EITHER bound is
- * authored (DatePicker.tsx's `hasAuthoredBound` gate over the shared
- * `minYmd`/`maxYmd` derivation), so a picker with only `min` is capped at
- * the resolved upper edge (today, or the extended `min.year + span` ceiling
- * while the authored min still lies beyond today) and a picker with only
- * `max` is floored at the resolved lower edge (1920-01-01, or the extended
- * `max.year - span` floor when the authored max lies before it). The
- * twenty-fifth wave declined to model these because a native input enforces
- * a TYPED value more weakly than a closed dropdown, but the reviewer's
- * demonstration (a required min-only picker `greaterThanVariable` a partner
- * pinned at 9999-01-01, never reachable under the resolved today-cap) shows
- * that accept-direction gap rejecting real defects, so the resolved bounds
- * are modelled now, under `synthesizedCoarseMissingSideBound`'s same no-wall-clock
- * discipline:
+ * The last day of the fixed-width four-digit `YYYY-MM-DD` grammar — the
+ * ceiling of a one-sided full-resolution SUBMISSION window (see
+ * `fullResolutionSubmissionFarBound`).
+ */
+const FOUR_DIGIT_GRAMMAR_CEILING_DAY_NUMBER = utcDayNumber(
+  COARSE_SYNTHESIS_MAX_YEAR,
+  11,
+  31,
+);
+
+/**
+ * Thirty-fourth wave (Fix 1), correcting the thirtieth wave's Fix 2 and the
+ * thirty-second wave's Fix 3: the far bound of a one-sided FULL-resolution
+ * DatePicker's SUBMISSION domain. The earlier waves modelled the RESOLVED
+ * native `min`/`max` attributes (fresco-ui resolves and passes both
+ * whenever either bound is authored — DatePicker.tsx's `hasAuthoredBound`
+ * gate), but the reviewer demonstrates those attributes are not submission
+ * bounds. The verified runtime chain:
  *
- *   - authored max at or after 1920-01-01 (the `parseYmd` month/day
- *     defaults make that exactly `max.year >= 1920`) ⇒ modelled min at the
- *     runtime's stable default floor, 1920-01-01 — branch condition and
- *     result are both date-independent, so the model is exact;
- *   - authored max before 1920-01-01 ⇒ the out-of-window extension:
- *     modelled min at 1 January of `max.year` minus the horizon span. The
- *     full-resolution path shares the coarse extension arithmetic but NOT
- *     the coarse 1000 floor — that floor exists only on the
- *     `coarseMinYmd`/`coarseMaxYmd` pair the dropdowns read, never on the
- *     native input's attributes. An extension reaching before year 1 falls
- *     to the native input floor via `clampToNativeDateFloor`, which is
- *     exactly where the control lands when its negative-year `min`
- *     attribute fails the native grammar;
- *   - authored min ⇒ modelled max at 31 December of
- *     `min(9999, max(horizon, min.year + span))`. The runtime's upper edge
- *     is `today` once the authored min has passed and the full-year
- *     extension `min.year + span(today)` while it has not; the LATER of the
- *     horizon's December and the horizon-span extension covers both
- *     branches on every in-horizon interview date (`today <= horizon` and
- *     `span(today) <= span(horizon)`), so the modelled window is a superset
- *     of every runtime window — supersets only ever accept more. A literal
- *     horizon ceiling alone would UNDER-cover a future-dated authored min
- *     (the runtime extends past the horizon there), inverting the modelled
- *     window into a false rejection. Thirty-second wave (Fix 3): the outer
- *     year-9999 cap mirrors fresco-ui's own clamp of the resolved native
- *     `max` at 9999-12-31 — the form validator's `compareDateStrings`
- *     compares four-digit-lexically, so a five-digit year is unusable and
- *     the runtime window truncates there — keeping the model a superset
- *     WITHIN that ceiling rather than modelling days the control never
- *     admits. An authored `min: '9999-12-31'` therefore collapses the
- *     window to that exact single day, which the existing pinning path
- *     (`dateWindowInterval` min === max) treats as pinned;
+ *   - the resolved/synthesized side exists ONLY as a native
+ *     `<input type="date">` `min`/`max` attribute (DatePicker.tsx's
+ *     full-resolution return path), and fresco-ui's form element is
+ *     `noValidate` (Form.tsx), so the browser never blocks submission on it;
+ *   - the interview runtime forwards only the AUTHORED `params.min`/
+ *     `params.max` strings into the Zod submission validators
+ *     (useProtocolForm.tsx's DatePicker branch → fresco-ui's `min`/`max`
+ *     validation functions), so a keyboard-typed date beyond the native
+ *     attribute still validates against the authored side alone. (A
+ *     RelativeDatePicker is DIFFERENT: useProtocolForm PRE-COMPUTES its
+ *     absolute min/max and hands them to those same validators, so
+ *     `relativeDateWindowInterval`'s window really is submission-enforced —
+ *     unchanged here.)
+ *
+ * The reviewer's repro: `min: '1900-01-01'` alone, `greaterThanVariable` a
+ * partner pinned at 2200-01-01 — rejected under the resolved-attribute
+ * model (ceiling 2120-12-31), yet typing 2201-01-01 passes the authored-min
+ * validator and the comparator at runtime. A modelled window NARROWER than
+ * the submission domain rejects satisfiable protocols, which the v7 import
+ * turns into silent rule-stripping — the worst failure this module has. The
+ * submission-domain model, per side:
+ *
+ *   - authored min only ⇒ modelled max at 9999-12-31, the top of the
+ *     four-digit grammar. The submission comparator (`compareDateStrings`)
+ *     is LEXICAL over the fixed-width `YYYY-MM-DD` grammar (both operands
+ *     truncated to the shorter length), and within that grammar every
+ *     string is 10 characters, so lexical order IS chronological order:
+ *     every four-digit-grammar day at or after the authored min passes the
+ *     only submission check that exists, all the way up to the grammar's
+ *     own last day. The wave-32 single-day pin survives under this
+ *     derivation: an authored `min: '9999-12-31'` admits exactly one
+ *     in-grammar day (nothing sorts above it), collapsing the window to a
+ *     pin exactly as before. MODEL BOUNDARY, stated for honesty: a
+ *     keyboard-typed FIVE-digit year is outside this grammar — the
+ *     truncating comparator orders such strings incoherently against a
+ *     four-digit bound (some sort below it, some above), fresco-ui's own
+ *     NATIVE_MAX_YEAR comment records five-digit years as unusable, and the
+ *     analyser deliberately reasons over the shared four-digit grammar
+ *     only, exactly as wave 32 committed;
+ *   - authored max only ⇒ modelled min at the native FORMAT floor,
+ *     0001-01-01 (`NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER`). The thirtieth
+ *     wave's 1920 default floor (and its below-1920 extension) was
+ *     native-attribute-only: a typed 1900-01-01 passes an authored
+ *     `max: '1950-…'` validator and submits. The format floor is real
+ *     regardless of `noValidate` — the HTML date grammar has no year 0000
+ *     or negative years, so a typed year below 1 never parses into a value
+ *     at all — and it is the same floor a bound-less picker already
+ *     contributes;
+ *   - COARSE (month/year) resolutions are UNCHANGED and deliberately
+ *     asymmetric: their closed dropdowns admit no typed input, so the
+ *     default floor, synthesized far bounds, and clamps of waves 25-32
+ *     (`synthesizedCoarseMissingSideBound`) remain true hard domains there.
+ *
+ * Both replaced bounds only ever WIDEN the modelled window, so every
+ * downstream consumer (chain seeds, group intersections, parity
+ * qualification, disequality pruning) moves in the accept direction; the
+ * one behavioural knock-on is that a window which was enumerable only
+ * BECAUSE of the removed bound (still finite now, but wider — an
+ * authored-min-only window is [min, 9999-12-31]) can exceed
+ * `COARSE_INSTANT_ENUMERATION_CAP` and make an enumeration-backed check
+ * bail to accept where it previously judged — accept-safe by construction.
  *
  * Authoredness is judged by `parseRuntimeYmd` — the runtime's own grammar —
  * exactly as `synthesizedCoarseMissingSideBound` judges it, and the call site's
  * `undefined` guards keep a bound the lenient `dayNumber` reads but the
  * runtime rejects in charge of its own edge. A picker with NEITHER authored
- * bound is untouched — the runtime passes no attributes at all there
- * (commit-recorded twenty-sixth-wave behaviour), so its native-floor-only
- * interval stays exactly as modelled — and a both-authored window is
- * honoured verbatim as before.
+ * bound is untouched — no validators exist at all there, so its
+ * native-floor-only interval stays exactly as modelled — and a
+ * both-authored window is honoured verbatim as before.
  */
-const synthesizedFullResolutionResolvedBound = (
+const fullResolutionSubmissionFarBound = (
   parameters: UnknownRecord,
 ): { edge: 'min' | 'max'; day: number } | undefined => {
   const authoredMin = parseRuntimeYmd(parameters.min);
   const authoredMax = parseRuntimeYmd(parameters.max);
   if (authoredMax && !authoredMin) {
-    return {
-      edge: 'min',
-      day:
-        authoredMax.year < DEFAULT_DATE_WINDOW_MIN_YEAR
-          ? utcDayNumber(authoredMax.year - COARSE_SYNTHESIS_SPAN_YEARS, 0, 1)
-          : utcDayNumber(DEFAULT_DATE_WINDOW_MIN_YEAR, 0, 1),
-    };
+    return { edge: 'min', day: NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER };
   }
   if (authoredMin && !authoredMax) {
-    return {
-      edge: 'max',
-      day: utcDayNumber(
-        Math.min(
-          COARSE_SYNTHESIS_MAX_YEAR,
-          Math.max(
-            COARSE_SYNTHESIS_HORIZON_YEAR,
-            authoredMin.year + COARSE_SYNTHESIS_SPAN_YEARS,
-          ),
-        ),
-        11,
-        31,
-      ),
-    };
+    return { edge: 'max', day: FOUR_DIGIT_GRAMMAR_CEILING_DAY_NUMBER };
   }
   return undefined;
 };
@@ -1462,15 +1472,17 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
   // window is floored at the stable 1920 default exactly as the runtime
   // floors it, while the date-dependent today side stays unbounded. See
   // `synthesizedCoarseMissingSideBound` for the exact derivation and the
-  // conservative handling of its "today" dependence. Thirtieth wave (Fix 2):
-  // a one-sided FULL-resolution window closes its missing side at the
-  // RESOLVED bound the runtime passes to the native input whenever either
-  // bound is authored — see `synthesizedFullResolutionResolvedBound`. In
-  // both arms the `undefined` guards keep an authored-but-differently-parsed
-  // bound (the lenient `dayNumber` can read a string the runtime's `parseYmd`
-  // rejects) in charge of its own edge, exactly as before.
+  // conservative handling of its "today" dependence. Thirty-fourth wave
+  // (Fix 1): a one-sided FULL-resolution window closes its missing side at
+  // the far bound of its SUBMISSION domain — the four-digit grammar ceiling
+  // above an authored min, the native format floor below an authored max —
+  // NOT at the resolved native attribute, which a `noValidate` form never
+  // enforces (see `fullResolutionSubmissionFarBound`). In both arms the
+  // `undefined` guards keep an authored-but-differently-parsed bound (the
+  // lenient `dayNumber` can read a string the runtime's `parseYmd` rejects)
+  // in charge of its own edge, exactly as before.
   if (storesFullDates) {
-    const synthesized = synthesizedFullResolutionResolvedBound(parameters);
+    const synthesized = fullResolutionSubmissionFarBound(parameters);
     if (min === undefined && synthesized?.edge === 'min') {
       min = synthesized.day;
     } else if (max === undefined && synthesized?.edge === 'max') {
