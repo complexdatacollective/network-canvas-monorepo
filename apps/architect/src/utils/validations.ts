@@ -251,6 +251,52 @@ const greaterThan =
     return undefined;
   };
 
+/**
+ * Audit sweep: the equality-permitting sibling of `greaterThan`. The protocol
+ * schema only rejects `min > max` on a DatePicker's bounds, so a collapsed
+ * single-day window (`min === max`) is a legal configuration — and exactly the
+ * shape the contradiction analyser reasons about when it pins such a variable
+ * to one value. Gating the editor with `greaterThan` refused to author it.
+ */
+const greaterThanOrEqualTo =
+  (fieldPath: string, message: ValidationMessage): Validator =>
+  (value, allValues) => {
+    if (!hasValue(value)) {
+      return undefined;
+    }
+    const otherValue = get(allValues, fieldPath);
+    if (!hasValue(otherValue)) {
+      return undefined;
+    }
+    if ((value as number) < (otherValue as number)) {
+      return messageWithDefault(
+        message,
+        'Must be greater than or equal to the other field',
+      );
+    }
+    return undefined;
+  };
+
+/**
+ * Audit sweep: a lower bound on an ISO date field. The protocol schema
+ * requires a RelativeDatePicker `anchor` of 1000-01-01 or later (a smaller
+ * year is a typo the date arithmetic silently two-digit-coerces), and
+ * Architect had no matching editor rule: the dialog saved and protocol
+ * validation then threw a blocking invalid-protocol dialog offering to revert
+ * the edit. Bounds authored in the picker's `parameters` configure its range,
+ * they do not validate the committed value.
+ *
+ * ISO dates written at one resolution order lexicographically, so comparing
+ * the strings is exact — the paired `ISODate` rule has already rejected
+ * anything not in `YYYY-MM-DD` form.
+ */
+const minDate =
+  (min: string, message: ValidationMessage): Validator =>
+  (value) =>
+    typeof value === 'string' && value !== '' && value < min
+      ? messageWithDefault(message, `Date must be ${min} or later`)
+      : undefined;
+
 // Variables and option values must respect NMTOKEN rules so that
 // they are compatable with XML export formats
 const allowedVariableName =
@@ -278,12 +324,14 @@ const validRegExp =
 
 export const validations = {
   greaterThan,
+  greaterThanOrEqualTo,
   ISODate,
   allowedVariableName,
   allowedNMToken: allowedVariableName,
   maxLength,
   maxSelected,
   maxValue,
+  minDate,
   minLength,
   minSelected,
   minValue,

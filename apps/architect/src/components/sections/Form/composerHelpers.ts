@@ -123,14 +123,24 @@ export const buildComposerFieldOverlay = (
 /**
  * The live draft values for the composer attribute editor, with the same null
  * reset read as inheritance. Feeds `makeFieldEditorValidate`, whose
- * `buildProspectiveVariables` layers `component`/`parameters` over the
- * codebook variable only when they are not `undefined`.
+ * `buildProspectiveVariables` layers `component`/`options`/`parameters` over
+ * the codebook variable only when they are not `undefined`.
+ *
+ * Audit sweep: `options` belongs in that list too. `handleChangeComponent`
+ * nulls it whenever a boolean row switches between Toggle and Boolean (see
+ * withFieldsHandlers), and for a composer field `options` stays on the
+ * CODEBOOK variable — `COMPOSER_CODEBOOK_PROPERTIES` above keeps it there, and
+ * the stage commit prunes the null away. Passing the raw null through
+ * installed it OVER the codebook list, so `booleanDomain` fell back to the
+ * unrestricted {true, false} and the editor missed a contradiction the real
+ * options create.
  */
 export const composerDraftValues = (
   values: Record<string, unknown>,
 ): Record<string, unknown> => ({
   ...values,
   component: inheritWhenNull(values.component),
+  options: inheritWhenNull(values.options),
   parameters: inheritWhenNull(values.parameters),
 });
 

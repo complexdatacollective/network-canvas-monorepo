@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildComposerFieldOverlay,
+  composerDraftValues,
   composerNormalizeField,
   isVariableUsedBySibling,
 } from '../composerHelpers';
@@ -113,5 +114,46 @@ describe('isVariableUsedBySibling', () => {
   it('reports nothing for a blank variable or a non-array value', () => {
     expect(isVariableUsedBySibling(fields, '')).toBe(false);
     expect(isVariableUsedBySibling(undefined, 'age')).toBe(false);
+  });
+});
+
+// Audit sweep: `handleChangeComponent` nulls `options` when a boolean row
+// switches between Toggle and Boolean (withFieldsHandlers), and for a composer
+// field — where `options` stays on the CODEBOOK variable, not the field — that
+// null means "inherit", exactly as it already does for component/parameters.
+// Passing the raw null through installed it over the codebook options and made
+// `booleanDomain` fall back to the unrestricted {true, false}, so the editor
+// missed a contradiction the codebook options really do create.
+describe('composerDraftValues', () => {
+  it('reads a null options reset as inheritance', () => {
+    expect(
+      composerDraftValues({
+        variable: 'consented',
+        component: 'Boolean',
+        options: null,
+      }),
+    ).toEqual({
+      variable: 'consented',
+      component: 'Boolean',
+      options: undefined,
+      parameters: undefined,
+    });
+  });
+
+  it('keeps a real options array as an override', () => {
+    const options = [{ label: 'Yes', value: true }];
+    expect(
+      composerDraftValues({ variable: 'consented', options }).options,
+    ).toBe(options);
+  });
+
+  it('still reads null component and parameters as inheritance', () => {
+    const draft = composerDraftValues({
+      variable: 'birth_date',
+      component: null,
+      parameters: null,
+    });
+    expect(draft.component).toBeUndefined();
+    expect(draft.parameters).toBeUndefined();
   });
 });

@@ -4,6 +4,8 @@ import { getValidations, getValidator, validations } from '../validations';
 
 const {
   greaterThan,
+  greaterThanOrEqualTo,
+  minDate,
   ISODate,
   allowedVariableName,
   maxLength,
@@ -469,6 +471,87 @@ describe('Validations', () => {
       expect(subject(0, { parameters: { min: 0 } })).toBe(errorMessage);
       expect(subject(0, { parameters: { min: 1 } })).toBe(errorMessage);
       expect(subject(1, { parameters: { min: 0 } })).toBe(undefined);
+    });
+  });
+
+  // Audit sweep: the equality-permitting sibling of greaterThan. The protocol
+  // schema only rejects `min > max`, so a collapsed single-day DatePicker
+  // window (min === max) is legal and must stay authorable.
+  describe('greaterThanOrEqualTo()', () => {
+    const errorMessage = 'End date must not be before start date';
+    const subject = greaterThanOrEqualTo('parameters.min', errorMessage);
+
+    it('passes when either side is empty', () => {
+      expect(subject(null, { parameters: { min: '2024-01-01' } })).toBe(
+        undefined,
+      );
+      expect(subject('2024-12-31', { parameters: { min: null } })).toBe(
+        undefined,
+      );
+      expect(subject('2024-12-31', { parameters: {} })).toBe(undefined);
+    });
+
+    it('passes when value is greater than the other field', () => {
+      expect(subject('2024-12-31', { parameters: { min: '2024-01-01' } })).toBe(
+        undefined,
+      );
+      expect(subject('2025', { parameters: { min: '2024' } })).toBe(undefined);
+      expect(subject(100, { parameters: { min: 50 } })).toBe(undefined);
+    });
+
+    it('passes when value equals the other field', () => {
+      expect(subject('2024-06-15', { parameters: { min: '2024-06-15' } })).toBe(
+        undefined,
+      );
+      expect(subject('2024-06', { parameters: { min: '2024-06' } })).toBe(
+        undefined,
+      );
+      expect(subject('2024', { parameters: { min: '2024' } })).toBe(undefined);
+      expect(subject(50, { parameters: { min: 50 } })).toBe(undefined);
+      expect(subject(0, { parameters: { min: 0 } })).toBe(undefined);
+    });
+
+    it('fails when value is less than the other field', () => {
+      expect(subject('2024-01-01', { parameters: { min: '2024-12-31' } })).toBe(
+        errorMessage,
+      );
+      expect(subject('2023', { parameters: { min: '2024' } })).toBe(
+        errorMessage,
+      );
+      expect(subject(25, { parameters: { min: 50 } })).toBe(errorMessage);
+      expect(subject(0, { parameters: { min: 1 } })).toBe(errorMessage);
+    });
+  });
+
+  // Audit sweep: the schema requires a RelativeDatePicker anchor of
+  // 1000-01-01 or later, and Architect had no matching editor rule — the
+  // dialog saved, then protocol validation threw a blocking invalid-protocol
+  // dialog offering to revert the whole edit.
+  describe('minDate()', () => {
+    const errorMessage =
+      'Anchor date must use a four-digit year of 1000 or later';
+    const subject = minDate('1000-01-01', errorMessage);
+
+    it('passes for an empty value', () => {
+      expect(subject(null)).toBe(undefined);
+      expect(subject(undefined)).toBe(undefined);
+      expect(subject('')).toBe(undefined);
+    });
+
+    it('passes on or after the floor', () => {
+      expect(subject('1000-01-01')).toBe(undefined);
+      expect(subject('1000-01-02')).toBe(undefined);
+      expect(subject('2024-06-15')).toBe(undefined);
+    });
+
+    it('fails below the floor', () => {
+      expect(subject('0999-12-31')).toBe(errorMessage);
+      expect(subject('0500-01-01')).toBe(errorMessage);
+      expect(subject('0001-01-01')).toBe(errorMessage);
+    });
+
+    it('ignores non-string values', () => {
+      expect(subject(5)).toBe(undefined);
     });
   });
 

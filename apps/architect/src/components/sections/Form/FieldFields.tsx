@@ -296,7 +296,16 @@ const PromptFields = ({
         }
         existingVariables={omit(existingVariables, variable)}
         allVariables={existingVariables}
-        currentVariableId={typeof variable === 'string' ? variable : ''}
+        // Audit sweep: `handleNewVariable` writes the typed DISPLAY NAME into
+        // `variable` as well as `_createNewVariable`, so a non-empty
+        // `variable` is only a committed codebook id once the variable
+        // exists. Commit 02f3e9cbe taught the form-level validator this; the
+        // row-level check kept the conflation, so a typed name colliding with
+        // a real codebook id let the row offer a reference rule the dialog
+        // then rejected on save.
+        currentVariableId={
+          !isNewVariable && typeof variable === 'string' ? variable : ''
+        }
       />
     </>
   );
