@@ -14,7 +14,11 @@ import { expect, type Page } from '@playwright/test';
 // an `additionalItems` entry gated on that route); `finished-editing` only
 // renders in the stage editor once there are unsaved changes.
 export class Toolbar {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   button(id: string) {
     // ActionToolbar (SegmentedToolbar) renders items with aria-label = label

@@ -38,7 +38,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p e2e/tsconfig.json --noEmit",
     "test": "vitest run --project=units",
     "test:storybook": "vitest run --project=storybook",
     "test:e2e": "./e2e/scripts/run.sh",

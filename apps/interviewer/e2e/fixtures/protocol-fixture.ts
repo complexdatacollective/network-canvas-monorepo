@@ -4,7 +4,11 @@ import { expect } from '@playwright/test';
 // Drives the real protocol-import UI: sets the hidden dropzone file input, then
 // waits for the deck card to appear. Deletion goes through the confirm dialog.
 export class ProtocolFixture {
-  constructor(private page: Page) {}
+  private page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   async import(filePath: string, expectName?: string): Promise<void> {
     await this.page.goto('/');

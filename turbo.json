@@ -338,7 +338,13 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
         "src/**",
+        "e2e/**/*.ts",
+        "e2e/**/*.tsx",
+        "e2e/tsconfig.json",
+        ".storybook/**/*.ts",
+        ".storybook/**/*.tsx",
         "scripts/**",
+        "*.config.ts",
         "vite.config.*",
         "tsconfig*.json",
         "package.json"
@@ -352,7 +358,13 @@
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
         "src/**",
+        "e2e/**/*.ts",
+        "e2e/**/*.tsx",
+        "e2e/tsconfig.json",
+        ".storybook/**/*.ts",
+        ".storybook/**/*.tsx",
         "scripts/**",
+        "*.config.ts",
         "vite.config.*",
         "tsconfig*.json",
         "package.json"
@@ -436,7 +448,17 @@
     },
     "typecheck": {
       "dependsOn": ["^topo"],
-      "inputs": ["src/**", "tsconfig*.json", "package.json"],
+      "inputs": [
+        "src/**",
+        "e2e/**/*.ts",
+        "e2e/**/*.tsx",
+        "e2e/tsconfig.json",
+        ".storybook/**/*.ts",
+        ".storybook/**/*.tsx",
+        "*.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
       "env": ["NODE_ENV"],
       "outputs": []
     }

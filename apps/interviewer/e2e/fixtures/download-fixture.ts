@@ -5,7 +5,11 @@ import JSZip from 'jszip';
 // Access + Web Share entry points) so page.waitForEvent('download') fires, then
 // captures + unzips the exported archive into decoded text entries.
 export class DownloadFixture {
-  constructor(private page: Page) {}
+  private page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   async installStubs(): Promise<void> {
     await this.page.addInitScript(() => {

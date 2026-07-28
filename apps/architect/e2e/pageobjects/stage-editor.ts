@@ -29,7 +29,11 @@ import { expect, type Locator, type Page } from '@playwright/test';
 //   and the commit actually runs — so `waitForURL` after the click is a
 //   genuine round-trip assertion, not just a click-and-hope.
 export class StageEditor {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   async createNew(type: string, insertAtIndex = 0): Promise<void> {
     await this.page.goto(

@@ -5,7 +5,11 @@ import { expect } from '@playwright/test';
 // flow (runs generateNetwork + createSession, honest encryption path). A
 // protocol must be installed first (the generator needs a protocolHash).
 export class SeedFixture {
-  constructor(private page: Page) {}
+  private page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   async synthetic(count: number): Promise<void> {
     await this.page.getByTestId('settings-trigger').click();

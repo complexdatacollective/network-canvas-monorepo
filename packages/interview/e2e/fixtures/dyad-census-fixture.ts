@@ -2,7 +2,9 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
 
-// `window.__interviewStore` typing lives in ./dyad-census-window.d.ts.
+// `window.__interviewStore` typing comes from Shell.tsx's global augmentation,
+// which is in this program because the e2e tsconfig resolves @codaco/interview
+// to the package source.
 
 /**
  * Fixture for DyadCensus stages.
