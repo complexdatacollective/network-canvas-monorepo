@@ -89,11 +89,13 @@ export type EdgeCounts = {
  * on the draft. A pedigree later than every naming site therefore hands its
  * edges to nobody, and they stay as `handleFamilyPedigree` built them: empty.
  *
- * "At or after" rather than "after", because a FamilyPedigree's own
- * `edgeConfig` names four edge variables of its type
- * (`relationshipTypeVariable` and friends), and a stage naming a variable of
- * the edges it is itself creating is exactly the case this must not narrow
- * away.
+ * "At or after" rather than "after" is inert today and kept as the safe
+ * direction. The one naming site that could ever share a pedigree's own index
+ * is that pedigree's `edgeConfig`, and {@link namedEdgeAttributes} now leaves
+ * those references out because `handleFamilyPedigree` writes none of them. No
+ * other stage can sit at a pedigree's index, so the boundary decides nothing;
+ * were a FamilyPedigree ever taught to fill edges as it creates them, reading
+ * it as "after" would drop edges that really do hold values.
  *
  * Edges from every other stage count for every variable, because those stages
  * generate the type's whole attribute set as they create them — a structural
@@ -385,6 +387,50 @@ export function pedigreeNodeCeiling(config: GenerationConfig): number {
 }
 
 /**
+ * Whether a hit is a FamilyPedigree stage's own `edgeConfig` reference — the
+ * one place the schema names an edge variable that no part of the generator
+ * ever writes.
+ *
+ * `EdgeConfigSchema` names four variables of the pedigree's edge type
+ * (`relationshipTypeVariable`, `isActiveVariable`,
+ * `isGestationalCarrierVariable`, `gameteRoleVariable`), and every other
+ * reference site this collector reads belongs to a stage that fills what it
+ * names. `handleFamilyPedigree` does not: it creates each parent-child edge
+ * with `attributes: {}` and writes nothing onto it, ever. Counting those four
+ * as held values refuses protocols the generator would have produced without
+ * complaint — a ten-node pedigree whose `isActiveVariable` is a `unique`
+ * boolean is turned away for needing nine distinct values, when generation puts
+ * a value on none of its nine edges.
+ *
+ * This is a divergence rather than a settled contract. The interview DOES write
+ * these: `buildChildParentage`, `egoCellTransform`, `siblingCellTransform` and
+ * the pedigree wizards put a `relationshipType` (one of `shared-consts`'
+ * `RELATIONSHIP_TYPES`) and an `isActive` flag on every edge they commit, and a
+ * gamete role or carrier flag on the edges those apply to. Synthetic pedigree
+ * edges therefore carry no relationship type at all, which any consumer reading
+ * pedigree data sees — `pedigreeAdapter` reads an absent value as `biological`.
+ * Teaching the generator to write them is the honest fix and is left as its own
+ * change: the values are structurally narrower than the codebook declares (a
+ * parent-child link is never `partner`, and two of the four are written on a
+ * subset of edges and never as `false`), so the value space a pedigree edge
+ * spends would have to narrow with them, which is `valueSpace`'s and
+ * `feasibility`'s business rather than this collector's. Until then this counts
+ * what the generator does, and the tally is exact rather than merely safe.
+ */
+function isPedigreeEdgeConfigReference(
+  stages: Stage[],
+  path: readonly (string | number)[],
+): boolean {
+  const [root, stageIndex, field] = path;
+  return (
+    root === 'stages' &&
+    typeof stageIndex === 'number' &&
+    field === 'edgeConfig' &&
+    stages[stageIndex]?.type === 'FamilyPedigree'
+  );
+}
+
+/**
  * The last stage index naming an attribute of each edge type, per variable id.
  *
  * `handleFamilyPedigree` builds its edges with empty attributes — the interface
@@ -415,6 +461,9 @@ export function pedigreeNodeCeiling(config: GenerationConfig): number {
  * out of values: only stage references are collected here, so nothing produces
  * such a hit today, and a reference site added somewhere else later should keep
  * the old wide behaviour until it is deliberately placed.
+ *
+ * A FamilyPedigree's own `edgeConfig` is the single exception, and
+ * {@link isPedigreeEdgeConfigReference} carves it out.
  */
 function namedEdgeAttributes(
   stages: Stage[],
@@ -423,6 +472,7 @@ function namedEdgeAttributes(
 
   for (const hit of collectEntityAttributeReferences({ stages })) {
     if (hit.subject?.entity !== 'edge') continue;
+    if (isPedigreeEdgeConfigReference(stages, hit.path)) continue;
 
     const [root, stageIndex] = hit.path;
     const namedAt =

@@ -1808,3 +1808,171 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
     ).toThrow(/up to 3 edges of this type can be generated/);
   });
 });
+
+/**
+ * A FamilyPedigree's own `edgeConfig` names four variables of its edge type,
+ * and `handleFamilyPedigree` writes none of them: every edge it creates carries
+ * `attributes: {}` for the whole run unless a later stage fills it. Reading
+ * those four as naming sites turned away protocols the generator produces
+ * without complaint.
+ */
+describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
+  const edgeConfig = {
+    type: 'kin',
+    relationshipTypeVariable: 'relationshipType',
+    isActiveVariable: 'verified',
+    isGestationalCarrierVariable: 'carrier',
+    gameteRoleVariable: 'gamete',
+  };
+
+  const configuredPedigree = familyPedigree({ edgeConfig });
+
+  const codebook = {
+    node: {
+      relative: { name: 'Relative', color: 'node-color-seq-1', variables: {} },
+    },
+    edge: {
+      kin: {
+        name: 'Kin',
+        color: 'edge-color-seq-1',
+        variables: {
+          verified: {
+            name: 'Verified',
+            type: 'boolean',
+            validation: { unique: true },
+          },
+        },
+      },
+    },
+  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+  it('counts no pedigree edge for the variables its own edgeConfig names', () => {
+    const counts = worstCaseEntityCounts([configuredPedigree], config);
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
+    expect(edgeCountFor(counts.edge, 'kin', ['relationshipType'])).toBe(0);
+    expect(edgeCountFor(counts.edge, 'kin', ['carrier'])).toBe(0);
+    expect(edgeCountFor(counts.edge, 'kin', ['gamete'])).toBe(0);
+  });
+
+  it('generates, rather than refusing, for a unique variable the config names', () => {
+    // Nine edges and two boolean values. Counting the config as a naming site
+    // refused this for needing nine distinct ones.
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages: [configuredPedigree],
+    });
+
+    expect(network.edges.length).toBeGreaterThan(2);
+    expect(
+      network.edges.every(
+        (edge) => edge[entityAttributesProperty].verified === undefined,
+      ),
+    ).toBe(true);
+  });
+
+  it('still refuses for a pedigree whose edges a later form does fill', () => {
+    // Only the config is carved out. A form naming the same variable after the
+    // pedigree really does put a value on all nine of its edges, and the
+    // ordering that decides which pedigrees a writer reaches is untouched: the
+    // second pedigree runs after the form and keeps its edges empty.
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 1,
+        codebook,
+        stages: [
+          configuredPedigree,
+          alterEdgeForm('verified'),
+          familyPedigree({ id: 'stage-fp-late', edgeConfig }),
+        ],
+      });
+
+    expect(generate).toThrow(SyntheticDataConstraintError);
+    expect(generate).toThrow(/up to 9 edges of this type can be generated/);
+  });
+});
+
+/**
+ * Roster rows are drawn without replacement across the whole run — one shared
+ * `usedRosterUids` set, whatever node type a stage builds — so a stage can be
+ * left with fewer rows than its pool holds. These pin why the tallies still
+ * keep roster keys inside each node type rather than assigning each key to the
+ * first stage offering it: an earlier stage is not guaranteed to draw anything,
+ * so a later type really can reach every shared row.
+ */
+describe('worstCaseEntityCounts with roster rows shared across node types', () => {
+  const sharedRows = ['a', 'b', 'c'].map(rosterRow);
+
+  function orgRoster(overrides: Record<string, unknown> = {}): Stage {
+    return rosterStage({
+      id: 'roster-org',
+      subject: { entity: 'node', type: 'organization' },
+      behaviours: { minNodes: 3, maxNodes: 3 },
+      ...overrides,
+    });
+  }
+
+  const codebook = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        variables: { name: { name: 'Name', type: 'text' } },
+      },
+      organization: {
+        name: 'Organization',
+        color: 'node-color-seq-2',
+        variables: { flag: { name: 'Flag', type: 'boolean' } },
+      },
+    },
+  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+  const externalData = {
+    'roster-person': sharedRows,
+    'roster-org': sharedRows,
+  };
+
+  it('counts every shared row for a later node type', () => {
+    const counts = worstCaseEntityCounts(
+      [
+        rosterStage({
+          id: 'roster-person',
+          behaviours: { minNodes: 0, maxNodes: 3 },
+        }),
+        orgRoster(),
+      ],
+      config,
+      externalData,
+    );
+
+    expect(nodeCountFor(counts.node, 'organization', ['flag'])).toBe(3);
+  });
+
+  it('draws every shared row as organizations on some seed', () => {
+    // The proof the count above is not merely safe but reachable: the person
+    // stage may draw none of the three rows, and then all three build
+    // organizations. Assigning each key to the first stage offering it would
+    // count nothing for this type and let a `unique` variable through that runs
+    // out of values partway through this very draw.
+    const drawn = new Set<number>();
+    for (let seed = 1; seed <= 50; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [
+          rosterStage({
+            id: 'roster-person',
+            behaviours: { minNodes: 0, maxNodes: 3 },
+          }),
+          orgRoster(),
+        ],
+        externalData,
+      });
+      drawn.add(
+        network.nodes.filter((node) => node.type === 'organization').length,
+      );
+    }
+
+    expect(Math.max(...drawn)).toBe(3);
+  });
+});
