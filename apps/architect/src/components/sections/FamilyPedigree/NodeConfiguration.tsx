@@ -257,7 +257,13 @@ const NodeConfigurationInner = ({
     [roleMap, nodeVariablesSubject, draftSlotVariables],
   );
   const editorValidate = useMemo(
-    () => makeFieldEditorValidate(allVariables, undefined, hasUnvalidatedUse),
+    () =>
+      makeFieldEditorValidate(
+        allVariables,
+        undefined,
+        undefined,
+        hasUnvalidatedUse,
+      ),
     [allVariables, hasUnvalidatedUse],
   );
   // Save-time cross-class gate for a nodeConfig slot (an UNVALIDATED writer):

@@ -77,7 +77,13 @@ const Form = ({
     [roleMap, subject],
   );
   const editorValidate = useMemo(
-    () => makeFieldEditorValidate(allVariables, undefined, hasUnvalidatedUse),
+    () =>
+      makeFieldEditorValidate(
+        allVariables,
+        undefined,
+        undefined,
+        hasUnvalidatedUse,
+      ),
     [allVariables, hasUnvalidatedUse],
   );
 

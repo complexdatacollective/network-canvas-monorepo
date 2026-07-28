@@ -116,7 +116,12 @@ vi.mock('~/selectors/indexes', async (importOriginal) => {
   return { ...actual, getVariableRoleMap: () => ({}) };
 });
 
-const store = configureStore({ reducer: () => ({}) });
+// Every store carries an empty committed protocol: the cross-form rendering
+// scan (thirty-fifth-wave finding) reads `activeProtocol.present.stages`
+// through getProtocol, and these tests exercise the single-stage behaviours.
+const store = configureStore({
+  reducer: () => ({ activeProtocol: { present: null } }),
+});
 
 const listTree = () => (
   <Provider store={store}>
@@ -141,6 +146,7 @@ const renderListWithComposerFields = (fields: Record<string, unknown>[]) =>
     <Provider
       store={configureStore({
         reducer: () => ({
+          activeProtocol: { present: null },
           form: { 'edit-stage': { values: { nodeForm: { fields } } } },
         }),
       })}
@@ -228,6 +234,7 @@ it('keeps editorValidate referentially stable across a re-render with unchanged 
 it('folds a sibling composer field component/parameters override into editorValidate', () => {
   const storeWithSibling = configureStore({
     reducer: () => ({
+      activeProtocol: { present: null },
       form: {
         'edit-stage': {
           values: {
@@ -298,6 +305,7 @@ it('folds a sibling composer field component/parameters override into editorVali
 it('excludes a reassigned id-less field’s own stale overlay entry from editorValidate', () => {
   const storeWithReassignedField = configureStore({
     reducer: () => ({
+      activeProtocol: { present: null },
       form: {
         'edit-stage': {
           values: {

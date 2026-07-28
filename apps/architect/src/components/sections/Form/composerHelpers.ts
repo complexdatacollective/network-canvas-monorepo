@@ -120,6 +120,81 @@ export const buildComposerFieldOverlay = (
   return overlay;
 };
 
+const composerFormFieldVariables = (form: unknown): string[] => {
+  if (!isRecord(form) || !Array.isArray(form.fields)) return [];
+  return form.fields
+    .filter(isRecord)
+    .map((field) => field.variable)
+    .filter(
+      (variable): variable is string =>
+        typeof variable === 'string' && variable !== '',
+    );
+};
+
+/**
+ * Thirty-fifth-wave finding: the ids of `subject`'s variables that a
+ * NetworkComposer form in some OTHER stage renders with its own control —
+ * the editor-side counterpart of schema.ts's `collectComposerFieldOverrides`
+ * + `unknownRenderingFor` (twentieth-wave Finding 3). The composer attribute
+ * editor's prospective view is a PER-FORM view: a variable this form does
+ * not write, but another composer form overrides, renders at that other
+ * form's control, so reading it through its unused codebook default invents
+ * cross-form mismatches — two codebook-full datetimes joined by `sameAs`,
+ * each rendered as a year picker by a different stage, falsely blocked the
+ * save of either field. `makeFieldEditorValidate` drops these variables from
+ * its checked set unless the current form itself determines their rendering
+ * (a sibling overlay entry, or the edited draft's own variable).
+ *
+ * `excludeStageId` is the stage being edited: its committed copy in the
+ * protocol is superseded wholesale by the redux-form draft, whose fields the
+ * caller already accounts for. Within one NetworkComposer stage no two forms
+ * share a subject (nodeForm's subject is a node type; edge types are unique
+ * per stage), so the draft's OTHER forms can never contribute here.
+ * `stages` is `unknown` in keeping with this module's defensive reads of
+ * redux state (`buildComposerFieldOverlay` treats `fields` the same way).
+ */
+export const crossFormRenderedVariables = (
+  stages: unknown,
+  subject: { entity: 'node' | 'edge'; type: string | null },
+  excludeStageId?: string,
+): ReadonlySet<string> => {
+  const rendered = new Set<string>();
+  if (!Array.isArray(stages) || subject.type === null) return rendered;
+  for (const stage of stages) {
+    if (!isRecord(stage) || stage.type !== 'NetworkComposer') continue;
+    if (excludeStageId !== undefined && stage.id === excludeStageId) continue;
+    if (subject.entity === 'node') {
+      const stageSubject = stage.subject;
+      if (
+        isRecord(stageSubject) &&
+        stageSubject.entity === 'node' &&
+        stageSubject.type === subject.type
+      ) {
+        for (const variable of composerFormFieldVariables(stage.nodeForm)) {
+          rendered.add(variable);
+        }
+      }
+      continue;
+    }
+    if (!Array.isArray(stage.edges)) continue;
+    for (const edge of stage.edges) {
+      if (!isRecord(edge)) continue;
+      const edgeSubject = edge.subject;
+      if (
+        !isRecord(edgeSubject) ||
+        edgeSubject.entity !== 'edge' ||
+        edgeSubject.type !== subject.type
+      ) {
+        continue;
+      }
+      for (const variable of composerFormFieldVariables(edge.form)) {
+        rendered.add(variable);
+      }
+    }
+  }
+  return rendered;
+};
+
 /**
  * The live draft values for the composer attribute editor, with the same null
  * reset read as inheritance. Feeds `makeFieldEditorValidate`, whose

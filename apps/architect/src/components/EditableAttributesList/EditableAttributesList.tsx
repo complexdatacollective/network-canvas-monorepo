@@ -7,6 +7,7 @@ import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubjectSelector } from '~/selectors/codebook';
 import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import { getProtocol } from '~/selectors/protocol';
 
 import ComposerFieldPreview from '../sections/Form/ComposerFieldPreview';
 import {
@@ -14,6 +15,7 @@ import {
   composerDraftValues,
   composerItemSelector,
   composerNormalizeField,
+  crossFormRenderedVariables,
   isVariableUsedBySibling,
 } from '../sections/Form/composerHelpers';
 import { makeFieldEditorValidate } from '../Validations/contradictions';
@@ -67,6 +69,27 @@ const EditableAttributesList = ({
       (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0,
     [roleMap, subject],
   );
+  // Thirty-fifth-wave finding: this subject's variables that a composer form
+  // in some OTHER stage renders with its own control. The stage being edited
+  // is excluded by the id its draft carries (`initialValues = stage` in
+  // StageEditor) — its committed copy in the protocol is superseded wholesale
+  // by the redux-form draft `composerFields` already reflects. A new stage's
+  // draft has no id yet, and has no committed copy to exclude either.
+  const committedStages = useSelector(
+    (state: RootState) => getProtocol(state)?.stages,
+  );
+  const draftStageId = useSelector((state: RootState): unknown =>
+    formValueSelector(form)(state, 'id'),
+  );
+  const crossFormRendered = useMemo(
+    () =>
+      crossFormRenderedVariables(
+        committedStages,
+        { entity, type },
+        typeof draftStageId === 'string' ? draftStageId : undefined,
+      ),
+    [committedStages, entity, type, draftStageId],
+  );
   // Eleventh-wave Finding 4: the overlay is built per validate call so the
   // edited row itself — identified by the array index DialogArrayField
   // surfaces as validate's `editIndex` prop — can be excluded at
@@ -108,16 +131,21 @@ const EditableAttributesList = ({
         // `component`/`parameters` null reset as inheritance, matching the
         // runtime's `fieldParameters ?? codebookParameters` — the overlay
         // builder does the same for the committed siblings.
+        // Thirty-fifth-wave finding: `crossFormRendered` lets the validator
+        // drop variables whose rendering another composer form owns, instead
+        // of misreading their unused codebook defaults as this stage's
+        // effective controls (see makeFieldEditorValidate's doc comment).
         const { validation, ...rest } = makeFieldEditorValidate(
           allVariables,
           buildComposerFieldOverlay(composerFields, props?.editIndex),
+          crossFormRendered,
           hasUnvalidatedUse,
         )(composerDraftValues(values), props);
         return typeof validation === 'string'
           ? { ...rest, [COMPOSER_CONTRADICTION_FIELD]: validation }
           : rest;
       },
-    [allVariables, composerFields, hasUnvalidatedUse],
+    [allVariables, composerFields, crossFormRendered, hasUnvalidatedUse],
   );
 
   return (
