@@ -44,7 +44,10 @@ export const ComposerFormFieldSchema = z
     // OrderedList / motion Reorder keying survives reorder + delete; it is
     // persisted, so the schema must tolerate it.
     id: z.string().optional(),
-    variable: entityAttributeReference({ subject: 'stageSubject' }),
+    variable: entityAttributeReference({
+      subject: 'stageSubject',
+      usage: 'validatedAttribute',
+    }),
     component: ComposerComponentSchema,
     parameters: z.record(z.string(), z.unknown()).optional(),
     label: z.string().optional(),
@@ -124,9 +127,15 @@ export const networkComposerStage = baseStageSchema.extend({
   subject: NodeStageSubjectSchema,
   // The text variable populated by the inline quick-add name field when a node
   // is added from the tool palette.
-  quickAdd: entityAttributeReference({ subject: 'stageSubject' }),
+  quickAdd: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+  }),
   // The layout variable that stores each node's { x, y } position.
-  layoutVariable: entityAttributeReference({ subject: 'stageSubject' }),
+  layoutVariable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+  }),
   // Attribute form shown in the inspector when a node is selected.
   nodeForm: ComposerFormSchema.optional(),
   // The categorical variable whose values are drawn as convex hulls.
@@ -135,6 +144,7 @@ export const networkComposerStage = baseStageSchema.extend({
   // the automatic layout's group-cohesion force.
   convexHullVariable: entityAttributeReference({
     subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
   }).optional(),
   background: imageOrCirclesBackgroundSchema,
   behaviours: z

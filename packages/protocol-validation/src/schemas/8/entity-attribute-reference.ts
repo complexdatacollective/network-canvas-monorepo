@@ -14,9 +14,20 @@ export type SubjectResolution =
   | 'filterRule'
   | { sibling: string; entity: 'node' | 'edge' };
 
+export type AttributeWriterUsage =
+  | 'validatedAttribute'
+  | 'unvalidatedAttribute';
+
 export type EntityAttributeReferenceDescriptor = {
   subject: SubjectResolution;
   requireType?: readonly VariableType[];
+  /**
+   * How the interview writes through this reference: via the form system
+   * (codebook validation applies) or via a direct dispatch (it does not).
+   * Absent on read-only references. Static schema metadata — never stored in
+   * protocols; the collector's hits inherit it from the matching site.
+   */
+  usage?: AttributeWriterUsage;
 };
 
 export const entityAttributeReference = (

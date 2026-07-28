@@ -38,7 +38,10 @@ export type BasePrompt = z.infer<typeof promptSchema>;
 
 const AdditionalAttributesSchema = z.array(
   z.strictObject({
-    variable: entityAttributeReference({ subject: 'stageSubject' }),
+    variable: entityAttributeReference({
+      subject: 'stageSubject',
+      usage: 'unvalidatedAttribute',
+    }),
     value: z.boolean(),
   }),
 );
@@ -57,6 +60,7 @@ const sociogramHighlightSchema = z
     allowHighlighting: z.boolean().optional(),
     variable: entityAttributeReference({
       subject: 'stageSubject',
+      usage: 'unvalidatedAttribute',
     }).optional(),
   })
   .superRefine((highlight, ctx) => {
@@ -74,12 +78,16 @@ const sociogramHighlightSchema = z
       z.union([
         z.strictObject({
           allowHighlighting: z.literal(true),
-          variable: entityAttributeReference({ subject: 'stageSubject' }),
+          variable: entityAttributeReference({
+            subject: 'stageSubject',
+            usage: 'unvalidatedAttribute',
+          }),
         }),
         z.strictObject({
           allowHighlighting: z.literal(false).optional(),
           variable: entityAttributeReference({
             subject: 'stageSubject',
+            usage: 'unvalidatedAttribute',
           }).optional(),
         }),
       ]),
@@ -92,6 +100,7 @@ export const sociogramPromptSchema = promptSchema
     layout: z.strictObject({
       layoutVariable: entityAttributeReference({
         subject: 'stageSubject',
+        usage: 'unvalidatedAttribute',
       }),
     }),
     edges: z
@@ -126,6 +135,7 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
   edgeVariable: entityAttributeReference({
     subject: { sibling: 'createEdge', entity: 'edge' },
     requireType: ['ordinal'],
+    usage: 'unvalidatedAttribute',
   }),
   negativeLabel: z.string().min(1),
 });
@@ -147,7 +157,10 @@ export const ordinalColorSequence = [
 ] as const;
 
 export const ordinalBinPromptSchema = promptSchema.extend({
-  variable: entityAttributeReference({ subject: 'stageSubject' }),
+  variable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+  }),
   bucketSortOrder: SortOrderSchema.optional(),
   binSortOrder: SortOrderSchema.optional(),
   color: z.enum(ordinalColorSequence),
@@ -156,6 +169,7 @@ export const ordinalBinPromptSchema = promptSchema.extend({
 const categoricalBinPromptFields = {
   variable: entityAttributeReference({
     subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
   }),
   bucketSortOrder: SortOrderSchema.optional(),
   binSortOrder: SortOrderSchema.optional(),
@@ -172,6 +186,7 @@ export const categoricalBinPromptSchema = promptSchema
     ...categoricalBinPromptFields,
     otherVariable: entityAttributeReference({
       subject: 'stageSubject',
+      usage: 'validatedAttribute',
     }).optional(),
     otherVariablePrompt: z.string().optional(),
     otherOptionLabel: z.string().optional(),
@@ -225,6 +240,7 @@ export const categoricalBinPromptSchema = promptSchema
           ...categoricalBinPromptFields,
           otherVariable: entityAttributeReference({
             subject: 'stageSubject',
+            usage: 'validatedAttribute',
           }),
           otherVariablePrompt: z.string().min(1),
           otherOptionLabel: z.string().min(1),
@@ -246,9 +262,15 @@ export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
 });
 
 export const geospatialPromptSchema = promptSchema.extend({
-  variable: entityAttributeReference({ subject: 'stageSubject' }),
+  variable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+  }),
 });
 
 export const familyPedigreeNominationPromptSchema = promptSchema.extend({
-  variable: entityAttributeReference({ subject: 'stageSubject' }),
+  variable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+  }),
 });
