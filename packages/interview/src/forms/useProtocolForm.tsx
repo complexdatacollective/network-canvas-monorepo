@@ -306,7 +306,14 @@ export default function useProtocolForm({
       if (typeof params.maxLabel === 'string') props.maxLabel = params.maxLabel;
     }
 
-    // Handle DatePicker parameters
+    // Handle DatePicker parameters. Unlike RelativeDatePicker, an absent
+    // record here needs no fallback: with no authored min/max, fresco-ui's
+    // DatePickerField deliberately leaves a full-resolution input unbounded
+    // (see 35ff5dfd1) rather than falling back to its 1920-to-today default
+    // window, and month/year resolution renders closed dropdown lists that
+    // can't accept an out-of-window typed value in the first place. So props
+    // stay unset for an absent (or empty) record either way, matching the
+    // control exactly — no separate precompute is needed.
     if (field.component === 'DatePicker' && field.parameters) {
       const params = field.parameters;
       if (typeof params.min === 'string') props.min = params.min;
@@ -319,9 +326,15 @@ export default function useProtocolForm({
     // absolute min/max here so the Field-level min/max validators fire on
     // submission. Without this, RelativeDatePicker's internally-computed
     // min/max would only constrain the native picker UI — keyboard-typed
-    // out-of-range values would pass through validation.
-    if (field.component === 'RelativeDatePicker' && field.parameters) {
-      const params = field.parameters;
+    // out-of-range values would pass through validation. An absent
+    // `parameters` record renders identically to an empty one — fresco-ui's
+    // RelativeDatePickerField defaults before=180, after=0, and resolves a
+    // missing anchor to today's date regardless of whether the record itself
+    // is present — so the precompute must run for both (mirrors
+    // @codaco/protocol-validation's dateWindowInterval, which models the same
+    // absent-record default).
+    if (field.component === 'RelativeDatePicker') {
+      const params = field.parameters ?? {};
       const paramAnchor =
         typeof params.anchor === 'string' ? params.anchor : undefined;
       const paramBefore =
