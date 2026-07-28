@@ -2376,17 +2376,19 @@ describe('findValidationContradictions — large boolean differentFrom graphs', 
     expect(result).toEqual([]);
   });
 
-  // Guards the bipartite queue against a regression to `Array.shift()`, whose
-  // O(n) compaction makes this star shape quadratic. Deliberately NOT a
-  // ratio between two timings: that compares one noisy measurement against
-  // another and goes flaky the moment the machine is busy. Instead this
-  // asserts the RESULT at a size the quadratic form cannot reach in time —
-  // measured at roughly 18s for 400,000 leaves under `shift()`, against
-  // ~1-2s for the linear form — so the timeout below fails a regression by a
-  // wide margin while leaving ample headroom on a loaded machine.
-  it('stays linear on a very large star', { timeout: 12_000 }, () => {
-    expect(findValidationContradictions(starOf(400_000))).toEqual([]);
-  });
+  // The bipartite queue advances a head index rather than calling
+  // `Array.shift()`, whose O(n) compaction makes this star shape quadratic.
+  // That property is deliberately NOT pinned by a timing assertion. Two were
+  // tried and both proved unreliable: a ratio between two measurements goes
+  // flaky whenever the machine is busy, and an absolute budget large enough
+  // to be safe locally still timed out on a slower CI runner. Reported
+  // timings for the quadratic form varied by an order of magnitude across
+  // machines (~2.4s vs ~0.5s at 30,000 leaves), so no threshold separates
+  // the two forms reliably everywhere. A test that fails for reasons
+  // unrelated to the defect is worse than no test, so the guard here is the
+  // two result assertions above — they exercise the queue at scale — plus
+  // this note. Reintroduce a timing pin only with a deterministic counter,
+  // never a wall clock.
 });
 
 describe('findValidationContradictions — twentieth-wave Finding 1: coarse date bounds compare at their stored instant', () => {
