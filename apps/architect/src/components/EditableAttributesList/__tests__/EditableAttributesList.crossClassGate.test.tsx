@@ -191,13 +191,41 @@ describe('EditableAttributesList cross-class gate (real role-map wiring)', () =>
       expect(errors).toEqual({});
     });
 
-    it('escapes when the field’s own unchanged pick happens to match a sibling draft pick', () => {
+    // Controller-requested consistency check: this row-level escape already
+    // implements the same rule the composer-level gate's check (b) escape
+    // implements — a pre-existing committed pair must never block a re-save
+    // that changes neither side of it. `siblingUnvalidatedVariableIds`
+    // reflects quickAdd/convexHullVariable's CURRENT draft pick, which for an
+    // untouched sibling field equals its own committed value — so an
+    // unchanged row (via the existing `props.initialValues` escape) already
+    // never blocks on a pair that was this way at commit time.
+    it('does not block re-saving this row when quickAdd/convexHullVariable’s committed pick already matches it, unchanged on both sides', () => {
+      // Both this row and the sibling writer are "unchanged": the row's own
+      // pre-edit value and quickAdd's current (also-unchanged) draft pick are
+      // the SAME already-committed pair, exactly as NodeConfiguration.
+      // crossClassGate.test.tsx's saved-document escape cases construct it.
       const editorValidate = renderList(['label']);
       const errors = editorValidate(
         { variable: 'label', validation: {}, component: 'Text' },
         { initialValues: { variable: 'label', component: 'Text' } },
       );
       expect(errors).toEqual({});
+    });
+
+    it('still blocks a NEW pair this row’s own edit introduces, even if a sibling committed pick is otherwise unrelated', () => {
+      // The row is being reassigned from a different variable ('other') to
+      // 'label', which quickAdd's CURRENT pick already claims — this row's
+      // own change is what creates the pair, so it blocks regardless of
+      // whether quickAdd itself changed.
+      const editorValidate = renderList(['label']);
+      const errors = editorValidate(
+        { variable: 'label', validation: {}, component: 'Text' },
+        { initialValues: { variable: 'other', component: 'Text' } },
+      );
+      expect(errors).toEqual({
+        variable:
+          '"Label" is written without validation by another stage, so it cannot be used as a form field',
+      });
     });
   });
 });

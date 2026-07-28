@@ -39,15 +39,15 @@ import { getLayoutVariablesForSubject } from '../SociogramPrompts/selectors';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-// The variable ids this draft's OWN nodeForm.fields[] currently write —
-// intra-editor siblings of quickAdd/convexHullVariable within the SAME
-// unsaved stage draft, not anything committed. Neither side has a "pre-edit"
-// value to escape against here: two live draft fields simply cannot name the
-// same variable while one validates it and the other does not.
-const draftNodeFormVariables = (
-  allValues: Record<string, unknown> | undefined,
+// The variable ids a nodeForm.fields[] list writes — used against BOTH the
+// live draft (allValues, from a field-level validator) and the stage's
+// committed initial values (getFormInitialValues), so the intra-editor
+// pair-collision check below can tell a pair the draft just created apart
+// from one that already existed in the saved document.
+const nodeFormFieldVariables = (
+  values: Record<string, unknown> | undefined,
 ): string[] => {
-  const nodeForm = isRecord(allValues) ? allValues.nodeForm : undefined;
+  const nodeForm = isRecord(values) ? values.nodeForm : undefined;
   const fields =
     isRecord(nodeForm) && Array.isArray(nodeForm.fields) ? nodeForm.fields : [];
   return fields
@@ -157,6 +157,19 @@ export const NodeConfigurationComponent = ({
     typeof stageInitialValues.convexHullVariable === 'string'
       ? stageInitialValues.convexHullVariable
       : '';
+  // The stage's COMMITTED nodeForm.fields variable set, for check (b)'s
+  // escape below: a pre-existing conflict (already present in the saved
+  // document) must never block a re-save that changes neither side of it —
+  // that is the timeline alert's job, not this gate's. Only a pair this
+  // draft actually introduces (either side changed away from its own
+  // committed value) still blocks with no escape.
+  const committedNodeFormVariableIds = useMemo(
+    () =>
+      nodeFormFieldVariables(
+        isRecord(stageInitialValues) ? stageInitialValues : undefined,
+      ),
+    [stageInitialValues],
+  );
   const makeCrossClassValidate = useCallback(
     (originalVariableId: string) =>
       (
@@ -173,14 +186,22 @@ export const NodeConfigurationComponent = ({
           message: validatedElsewhereMessage,
         });
         if (savedDocIssue) return savedDocIssue;
-        if (draftNodeFormVariables(allValues).includes(variableId)) {
-          return validatedElsewhereMessage(
-            variableDisplayName(allVariables, variableId),
-          );
+        if (nodeFormFieldVariables(allValues).includes(variableId)) {
+          // Escape: this exact pair (this field AND a nodeForm.fields entry
+          // both naming `variableId`) already existed in the committed
+          // stage — neither side changed to create it just now.
+          const pairAlreadyCommitted =
+            variableId === originalVariableId &&
+            committedNodeFormVariableIds.includes(variableId);
+          if (!pairAlreadyCommitted) {
+            return validatedElsewhereMessage(
+              variableDisplayName(allVariables, variableId),
+            );
+          }
         }
         return undefined;
       },
-    [hasValidatedUseForSubject, allVariables],
+    [hasValidatedUseForSubject, allVariables, committedNodeFormVariableIds],
   );
   const quickAddCrossClassValidate = useMemo(
     () => makeCrossClassValidate(originalQuickAdd),

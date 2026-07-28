@@ -211,12 +211,30 @@ describe('NodeConfiguration (NetworkComposer) cross-class gate', () => {
       );
     });
 
-    it('has no saved-doc escape for the intra-draft collision (neither side is committed)', () => {
+    it('still blocks when quickAdd is unchanged but nodeForm.fields is the side that newly adds the pair', () => {
       const conflictFree = { ...PROTOCOL_WITH_FORM_CONFLICTS, stages: [] };
-      // Even though quickAdd's OWN original committed value is 'label', a
-      // draft field ALSO picking 'label' is still an intra-editor conflict —
-      // the committed-value escape only applies to (a), never to (b).
+      // quickAdd's OWN original committed value is 'label', but nodeForm.fields
+      // did NOT have 'label' committed — this draft's nodeForm side is what
+      // newly creates the pair, so it still blocks: the escape requires BOTH
+      // sides to have already carried this exact pair in the committed stage.
       renderComponent(conflictFree, { quickAdd: 'label' });
+      const errors = crossClassValidatorFor('quickAdd')('label', {
+        nodeForm: { fields: [{ variable: 'label', component: 'Text' }] },
+      });
+      expect(errors).toBe(
+        '"Label" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+      );
+    });
+
+    it('still blocks when nodeForm.fields already had the variable but quickAdd is the side that newly picks it', () => {
+      const conflictFree = { ...PROTOCOL_WITH_FORM_CONFLICTS, stages: [] };
+      // The committed stage's nodeForm.fields already wrote 'label', but
+      // quickAdd's OWN committed value was something else — quickAdd's fresh
+      // pick of 'label' is what creates the pair here, so it still blocks.
+      renderComponent(conflictFree, {
+        quickAdd: 'other',
+        nodeForm: { fields: [{ variable: 'label', component: 'Text' }] },
+      });
       const errors = crossClassValidatorFor('quickAdd')('label', {
         nodeForm: { fields: [{ variable: 'label', component: 'Text' }] },
       });
@@ -230,6 +248,43 @@ describe('NodeConfiguration (NetworkComposer) cross-class gate', () => {
       renderComponent(conflictFree);
       const errors = crossClassValidatorFor('quickAdd')('label', {
         nodeForm: { fields: [{ variable: 'other', component: 'Text' }] },
+      });
+      expect(errors).toBeUndefined();
+    });
+  });
+
+  // Controller-requested refinement: a pre-existing conflict already present
+  // in the SAVED document must never block re-saving unchanged — that is the
+  // timeline alert's job, not this gate's. Only a pair this draft actually
+  // introduces (either side changed away from its own committed value)
+  // still blocks with no escape (covered above).
+  describe('(b) escape for a pre-existing identical pair already in the saved document', () => {
+    it('quickAdd re-saves cleanly when the committed stage already had this exact pair, unchanged', () => {
+      renderComponent(
+        { ...PROTOCOL_WITH_FORM_CONFLICTS, stages: [] },
+        {
+          quickAdd: 'label',
+          nodeForm: { fields: [{ variable: 'label', component: 'Text' }] },
+        },
+      );
+      const errors = crossClassValidatorFor('quickAdd')('label', {
+        nodeForm: { fields: [{ variable: 'label', component: 'Text' }] },
+      });
+      expect(errors).toBeUndefined();
+    });
+
+    it('convexHullVariable re-saves cleanly when the committed stage already had this exact pair, unchanged', () => {
+      renderComponent(
+        { ...PROTOCOL_WITH_FORM_CONFLICTS, stages: [] },
+        {
+          convexHullVariable: 'cat',
+          nodeForm: {
+            fields: [{ variable: 'cat', component: 'CheckboxGroup' }],
+          },
+        },
+      );
+      const errors = crossClassValidatorFor('convexHullVariable')('cat', {
+        nodeForm: { fields: [{ variable: 'cat', component: 'CheckboxGroup' }] },
       });
       expect(errors).toBeUndefined();
     });
