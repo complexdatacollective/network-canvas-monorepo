@@ -1842,6 +1842,7 @@ export class SyntheticInterview {
     // without passing it.
     const egoExplicit: Record<string, VariableValue> = {};
     this.refuseContradictoryFixedValues(ctx, { entity: 'ego' }, egoExplicit);
+    this.refuseUnsupportedEgoConstraints(ctx);
 
     const drawnEgo = generateAttributesForEntity(ctx, { entity: 'ego' }, 0, {
       existing: egoExplicit,
@@ -2073,6 +2074,36 @@ export class SyntheticInterview {
         }),
       ],
       "this interview fixes values that its protocol's rules do not allow",
+    );
+  }
+
+  /**
+   * Refuses `unique` on an ego variable.
+   *
+   * Ego has exactly one instance, so `unique` is trivially satisfiable and
+   * the draw below would happily emit it — there is only ever one value to
+   * place, so nothing here would ever collide. But the runtime `unique`
+   * validator invariants on `stageSubject.entity !== 'ego'` and throws the
+   * moment an EgoForm submits one (see `unique` in
+   * `packages/fresco-ui/src/form/validation/functions.ts`), and
+   * `generateNetwork`'s own feasibility pass refuses the same declaration
+   * before drawing anything for the same reason (see `analyseEntity` in
+   * `generateNetwork/constraints/feasibility.ts`). Mirrored here, before the
+   * draw, so a builder that declares this fails at construction instead of
+   * producing a schema-valid payload that crashes an EgoForm on submit.
+   */
+  private refuseUnsupportedEgoConstraints(ctx: GenerationContext): void {
+    const offending = [...ctx.entityConstraints.ego].filter(
+      ([, { constraints }]) => constraints.unique,
+    );
+    if (offending.length === 0) return;
+
+    throw new SyntheticDataConstraintError(
+      offending.map(([id]) =>
+        this.conflict({ entity: 'ego' }, [id], ['unique'], {
+          reason: 'unique is not supported on ego variables',
+        }),
+      ),
     );
   }
 

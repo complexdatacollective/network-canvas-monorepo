@@ -2499,4 +2499,52 @@ describe('validation rules on the generated ego', () => {
     expect(drawnValues(withEgo)).toEqual(drawnValues(withoutEgo));
     expect(Object.keys(egoAttributesOf(withEgo))).toHaveLength(2);
   });
+
+  it('refuses unique on an ego variable', () => {
+    // Unlike a node or edge type, ego has exactly one instance, so `unique`
+    // is trivially satisfiable and the draw below would happily emit it —
+    // but the runtime `unique` validator invariants on `stageSubject.entity
+    // !== 'ego'` and throws the moment an EgoForm submits one (see `unique`
+    // in packages/fresco-ui/src/form/validation/functions.ts), and
+    // generateNetwork's own feasibility pass refuses the same declaration
+    // before drawing anything (see `analyseEntity` in
+    // generateNetwork/constraints/feasibility.ts). This builder must refuse
+    // it the same way, at construction, rather than handing a schema-valid
+    // payload to an EgoForm that crashes on submit.
+    const si = new SyntheticInterview(42);
+    si.addEgoVariable({
+      type: 'text',
+      name: 'ssn',
+      validation: { unique: true },
+    });
+    si.addStage('EgoForm');
+
+    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
+    try {
+      si.getNetwork();
+    } catch (error) {
+      expect(error).toBeInstanceOf(SyntheticDataConstraintError);
+      const [conflict] = (error as SyntheticDataConstraintError).conflicts;
+      expect(conflict).toMatchObject({
+        entity: 'ego',
+        variableNames: ['ssn'],
+        rules: ['unique'],
+        reason: 'unique is not supported on ego variables',
+      });
+      expect(conflict).not.toHaveProperty('entityType');
+      expect(conflict).not.toHaveProperty('entityTypeName');
+    }
+  });
+
+  it('still generates an ego variable that does not declare unique', () => {
+    // Guards the refusal above against being too broad: a plain ego
+    // variable, with no `unique`, must keep drawing normally.
+    const si = new SyntheticInterview(42);
+    const nickname = si.addEgoVariable({ type: 'text', name: 'nickname' });
+    si.addStage('EgoForm');
+
+    const attrs = egoAttributesOf(si.getNetwork());
+    expect(attrs).toHaveProperty(nickname.id);
+    expect(typeof attrs[nickname.id]).toBe('string');
+  });
 });
