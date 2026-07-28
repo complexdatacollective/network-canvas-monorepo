@@ -8793,3 +8793,84 @@ describe('findValidationContradictions — Thirty-fourth wave Fix 2: comparator-
     expect(result[0]?.class).toBe('disjointBounds');
   });
 });
+
+// Thirty-fourth wave (Fix 3): the singleton pins the chain propagation
+// derives (`propagatedPins`) qualify the datetime two-instant parity
+// domains. Propagation already collapses comparator-forced groups to one
+// day, and the parity pass runs strictly after the chain pass, so consuming
+// its output read-only introduces no fixpoint — unlike the disequality
+// pruning, which deliberately refuses the same map because its hulls FEED
+// the chain pass.
+describe('findValidationContradictions — Thirty-fourth wave Fix 3: comparator-forced singleton pins feed the date parity pass', () => {
+  const datePicker = (
+    name: string,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { min: '2020-01-02', max: '2020-01-03' },
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own repro: the strict comparator forces B to Jan 2 and
+  // C to Jan 3 (the propagated singletons), so A — two hops from each on
+  // the differentFrom graph — must differ from BOTH values of its
+  // two-value domain. The pre-propagation intervals showed no pin
+  // anywhere, so this was accepted.
+  it('rejects the reviewer repro: a variable differentFrom both comparator-forced values of its two-instant domain', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a'),
+      b: datePicker('b', { differentFrom: 'a' }),
+      c: datePicker('c', { differentFrom: 'a', greaterThanVariable: 'b' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedDifferentFromParity');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toHaveLength(1);
+    expect(result[0]?.strips[0]?.rule).toBe('differentFrom');
+  });
+
+  // Accept guard: the propagated pins AGREE with a consistent colouring —
+  // the forced Jan 2 and Jan 3 sit one differentFrom hop apart, which is
+  // exactly what the comparator already demands (B = Jan 2 ≠ Jan 3 = C).
+  it('accepts pins agreeing with a consistent colouring', () => {
+    expect(
+      findValidationContradictions({
+        b: datePicker('b'),
+        c: datePicker('c', { differentFrom: 'b', greaterThanVariable: 'b' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: the even-cycle mirror — a four-cycle through the two
+  // comparator-forced pins keeps them at odd distance, so the colouring
+  // that assigns Jan 2 and Jan 3 alternately satisfies every edge
+  // (b = Jan 2, c = Jan 3, y = Jan 2, z = Jan 3).
+  it('accepts an even differentFrom cycle whose propagated pins are consistent', () => {
+    expect(
+      findValidationContradictions({
+        b: datePicker('b', { differentFrom: 'z' }),
+        c: datePicker('c', { differentFrom: 'b', greaterThanVariable: 'b' }),
+        y: datePicker('y', { differentFrom: 'c' }),
+        z: datePicker('z', { differentFrom: 'y' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: non-singleton propagated ranges are ignored — a
+  // NON-strict comparator tightens nothing, no singleton exists, and the
+  // shape is genuinely satisfiable (B = C = Jan 2, A = Jan 3).
+  it('accepts the repro shape under a non-strict comparator that forces no singleton', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a'),
+        b: datePicker('b', { differentFrom: 'a' }),
+        c: datePicker('c', {
+          differentFrom: 'a',
+          greaterThanOrEqualToVariable: 'b',
+        }),
+      }),
+    ).toEqual([]);
+  });
+});

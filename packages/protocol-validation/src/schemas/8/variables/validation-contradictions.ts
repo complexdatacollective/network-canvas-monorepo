@@ -4701,6 +4701,33 @@ const categoricalComponentTwoValueDomain = (
  *   - an interview-date-origin or windowless member, which
  *     `enumerableFixedDomain` already refuses to place on the fixed
  *     calendar (fixed-origin instants are the only enumerable ones).
+ *
+ * Thirty-fourth wave (Fix 3): the chain pass's `propagatedPins` NARROW each
+ * group's enumerated domain before the two-instant judgement. The
+ * reviewer's repro: three full pickers each windowed to Jan 2–3, with
+ * `B differentFrom A`, `C differentFrom A`, and `C greaterThanVariable B` —
+ * propagation collapses B to Jan 2 and C to Jan 3 (singletons
+ * `chainedBoundContradictions` already records), so A must differ from
+ * BOTH values of its two-value domain, yet this pass received only the
+ * pre-propagation intervals and saw no pin anywhere. A propagated
+ * singleton constrains its group exactly as an own or inherited singleton
+ * does (it is the group's whole reachable domain under the comparator
+ * closure), and the pin keys are origin- and resolution-encoded by the
+ * chain pass itself, so key equality against `storedPinKeyAtDay` is the
+ * same resolution-honest comparison the disequality pruning uses; a pin
+ * whose key matches no enumerated day (another origin, or a collapse the
+ * enumerated window cannot see) bails the whole component to accept.
+ *
+ * ORDERING: `pruneToPinnedDisequalityHull` deliberately refuses to consult
+ * propagated pins — its pruned hulls FEED the chain pass, so reading the
+ * pass's own output there would demand a second analyser iteration (no
+ * fixpoint, by design). This consumer sits on the other side of that
+ * boundary: the parity pass runs strictly AFTER the chain pass, reads
+ * `propagatedPins` read-only, and emits only contradiction reports that
+ * feed nothing back into any interval — the same downstream position from
+ * which `pinnedEqualDifferentFromContradictions` already consumes the
+ * identical map — so no cycle is introduced and the pruning pass's
+ * discipline is untouched.
  */
 const datetimeComponentTwoInstantDomain = (
   variables: UnknownRecord,
@@ -4709,6 +4736,7 @@ const datetimeComponentTwoInstantDomain = (
   groupIntervalsByMember: ReadonlyMap<string, GroupIntervals>,
   unsatisfiableGroupMemberIds: ReadonlySet<string>,
   disequalityEmptiedMemberIds: ReadonlySet<string>,
+  propagatedPins: ReadonlyMap<string, string | number>,
 ): ComponentTwoValueDomain | undefined => {
   let resolution: DateResolution | undefined;
   for (const group of groups) {
@@ -4747,9 +4775,25 @@ const datetimeComponentTwoInstantDomain = (
     for (const day of domain) {
       if (storedPinKeyAtDay(day, resolution) === undefined) return undefined;
     }
-    groupDomains.set(group, domain);
-    if (domain.size !== 2) continue;
-    const [first, second] = [...domain].toSorted((dayA, dayB) => dayA - dayB);
+    // Thirty-fourth wave (Fix 3): a comparator-forced singleton recorded by
+    // the chain pass narrows this group's domain exactly as an own bound
+    // would — see the ORDERING note in the doc comment above. A pin whose
+    // key matches no enumerated day bails the component (accept).
+    let narrowed = domain;
+    for (const member of members) {
+      const pin = propagatedPins.get(member);
+      if (pin === undefined) continue;
+      const matching = new Set(
+        [...narrowed].filter(
+          (day) => storedPinKeyAtDay(day, resolution) === pin,
+        ),
+      );
+      if (matching.size === 0) return undefined;
+      narrowed = matching;
+    }
+    groupDomains.set(group, narrowed);
+    if (narrowed.size !== 2) continue;
+    const [first, second] = [...narrowed].toSorted((dayA, dayB) => dayA - dayB);
     if (first === undefined || second === undefined) return undefined;
     if (reference === undefined) {
       reference = first;
@@ -4820,6 +4864,7 @@ function oddDifferentFromCycleContradictions(
   groupIntervalsByMember: ReadonlyMap<string, GroupIntervals>,
   unsatisfiableGroupMemberIds: ReadonlySet<string>,
   disequalityEmptiedMemberIds: ReadonlySet<string>,
+  propagatedPins: ReadonlyMap<string, string | number>,
 ): ValidationContradiction[] {
   const edges = comparatorEdges(variables);
   const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
@@ -4973,6 +5018,7 @@ function oddDifferentFromCycleContradictions(
             groupIntervalsByMember,
             unsatisfiableGroupMemberIds,
             disequalityEmptiedMemberIds,
+            propagatedPins,
           )
         : undefined;
     if (componentType === 'datetime' && datetimeDomain === undefined) continue;
@@ -5154,6 +5200,11 @@ export function findValidationContradictions(
       groupIntervalsByMember,
       unsatisfiableGroupMemberIds,
       disequalityEmptiedMemberIds,
+      // Thirty-fourth wave (Fix 3): the chain pass's singleton collapses
+      // qualify the datetime two-instant parity domains — a strictly
+      // downstream, read-only consumption (see the ORDERING note on
+      // `datetimeComponentTwoInstantDomain`).
+      propagatedPins,
     ),
   ];
 }
