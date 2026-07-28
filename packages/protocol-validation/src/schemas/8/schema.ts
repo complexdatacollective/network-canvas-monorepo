@@ -46,6 +46,7 @@ import {
   ComponentTypes,
   NON_RENDERABLE_VARIABLE_TYPES,
   type Variable,
+  VARIABLE_REFERENCE_VALIDATIONS,
   VARIABLE_TYPE_COMPONENTS,
 } from './variables/index.ts';
 import {
@@ -291,6 +292,65 @@ const validateComposerFieldComponents = (
   });
 };
 
+const REFERENCE_RULE_NAMES: ReadonlySet<string> = new Set<string>(
+  VARIABLE_REFERENCE_VALIDATIONS,
+);
+
+/**
+ * Variable ids reference-connected to any of `seedIds` within `variables`,
+ * following the canonical reference-rule list in either direction (seeds
+ * included). Used by `validateComposerFieldContradictions` to anchor an
+ * overlay-introduced contradiction none of whose participants is itself a
+ * field of the form: every analyser pass only ever relates variables along
+ * an explicit reference-rule edge, so the causing field's variable is always
+ * in this set. The overlay never touches `validation` (only
+ * component/parameters), so connectivity over the bare visible subset equals
+ * the overlaid view's.
+ */
+const referenceConnectedIds = (
+  variables: Record<string, Variable>,
+  seedIds: readonly string[],
+): ReadonlySet<string> => {
+  const adjacency = new Map<string, Set<string>>();
+  const link = (from: string, to: string): void => {
+    const neighbours = adjacency.get(from);
+    if (neighbours) {
+      neighbours.add(to);
+    } else {
+      adjacency.set(from, new Set([to]));
+    }
+  };
+  for (const [id, variable] of Object.entries(variables)) {
+    if (!('validation' in variable) || variable.validation === undefined) {
+      continue;
+    }
+    const validation: Record<string, unknown> = variable.validation;
+    for (const [rule, target] of Object.entries(validation)) {
+      if (
+        !REFERENCE_RULE_NAMES.has(rule) ||
+        typeof target !== 'string' ||
+        !(target in variables)
+      ) {
+        continue;
+      }
+      link(id, target);
+      link(target, id);
+    }
+  }
+  const connected = new Set(seedIds);
+  const queue = [...seedIds];
+  while (queue.length > 0) {
+    const current = queue.pop();
+    if (current === undefined) break;
+    for (const neighbour of adjacency.get(current) ?? []) {
+      if (connected.has(neighbour)) continue;
+      connected.add(neighbour);
+      queue.push(neighbour);
+    }
+  }
+  return connected;
+};
+
 /**
  * NetworkComposer stage-effective-overlay contradiction check (seventh-wave
  * Finding 2; direction fix ninth-wave Finding 2; widened from the narrow
@@ -328,6 +388,25 @@ const validateComposerFieldComponents = (
  * record-level check anchors those at the codebook rule. Each remaining
  * contradiction is anchored at the FIRST field (in field-array order) whose
  * variable participates in it.
+ *
+ * Thirtieth-wave Finding 1: an override can break a pair it never names —
+ * pinning A's floor where A declares `sameAs: B` propagates that bound into
+ * B through the equality group, and B's OWN comparator against a pinned C
+ * becomes infeasible; the analyser reports participants [B, C] only. The
+ * participant-membership anchor then finds no field and used to drop the
+ * contradiction outright, accepting a stage whose form is unusable. Whether
+ * such a no-participant contradiction is the OVERLAY's doing is decided by a
+ * SECOND baseline over the same visible subset, run in the same
+ * stage-effective mode as the overlaid run (mirroring Architect's
+ * findDraftContradictions diff): those two runs differ only in the overlay
+ * entries, so a key absent from that baseline is overlay-introduced no
+ * matter which variables it names, and is reported — anchored at the first
+ * field whose variable is reference-connected to the participants (see
+ * `referenceConnectedIds`), or defensively at the fields node itself. A key
+ * present in BOTH stage-effective runs is a latent flag-only pair among
+ * variables this form never renders (e.g. two singleton-domain Booleans no
+ * composer field anywhere overrides) and stays unreported here, exactly as
+ * the membership filter always declined it.
  *
  * Twentieth-wave Finding 3: this is a PER-STAGE view, so it may only reason
  * over variables whose effective rendering it actually knows. A variable this
@@ -403,6 +482,10 @@ const validateComposerFieldContradictions = (
   // the baseline keys, so it reports here, anchored at a participating field.
   const baseKeys = new Set(findValidationContradictions(visible).map(keyOf));
 
+  // Thirtieth-wave Finding 1 (see the function comment): computed lazily —
+  // only a new contradiction with no participating field ever needs it.
+  let stageEffectiveBaseKeys: Set<string> | undefined;
+
   for (const contradiction of findValidationContradictions(overlaid, {
     stageEffectiveComponents: true,
   })) {
@@ -411,12 +494,45 @@ const validateComposerFieldContradictions = (
       contradiction.variableIds.includes(field.variable),
     );
     const anchorField = fieldIndex === -1 ? undefined : fields[fieldIndex];
-    if (!anchorField) continue;
-    const anchorName =
-      codebookVariables[anchorField.variable]?.name ?? anchorField.variable;
+    if (anchorField) {
+      const anchorName =
+        codebookVariables[anchorField.variable]?.name ?? anchorField.variable;
+      addIssue({
+        message: `NetworkComposer field overrides for "${anchorName}" make its validation contradictory: ${contradiction.message}`,
+        path: [...fieldsPath, fieldIndex, 'parameters'],
+      });
+      continue;
+    }
+
+    // No reported participant is a field of this form. Diff against the
+    // stage-effective no-overlay baseline: absent means the overlay entries
+    // introduced it (the two runs differ in nothing else); present means a
+    // latent flag-only pair this form never renders, which is not this
+    // stage's to report.
+    stageEffectiveBaseKeys ??= new Set(
+      findValidationContradictions(visible, {
+        stageEffectiveComponents: true,
+      }).map(keyOf),
+    );
+    if (stageEffectiveBaseKeys.has(keyOf(contradiction))) continue;
+
+    const connected = referenceConnectedIds(visible, contradiction.variableIds);
+    const causeIndex = fields.findIndex((field) =>
+      connected.has(field.variable),
+    );
+    const causeField = causeIndex === -1 ? undefined : fields[causeIndex];
+    if (!causeField) {
+      addIssue({
+        message: `NetworkComposer field overrides on this form make validation contradictory: ${contradiction.message}`,
+        path: fieldsPath,
+      });
+      continue;
+    }
+    const causeName =
+      codebookVariables[causeField.variable]?.name ?? causeField.variable;
     addIssue({
-      message: `NetworkComposer field overrides for "${anchorName}" make its validation contradictory: ${contradiction.message}`,
-      path: [...fieldsPath, fieldIndex, 'parameters'],
+      message: `NetworkComposer field overrides for "${causeName}" propagate through its validation rules and make its linked variables contradictory: ${contradiction.message}`,
+      path: [...fieldsPath, causeIndex, 'parameters'],
     });
   }
 };
