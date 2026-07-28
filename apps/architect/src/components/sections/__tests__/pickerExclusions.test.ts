@@ -19,9 +19,15 @@ const stateWith = (protocol: unknown): RootState =>
 
 // Same shape as the Task 7 role-map fixture: `cat` is written both by a form
 // field (validated) and a CategoricalBin prompt (unvalidated), on the same
-// node-type subject. `qa` extends this for the two quickAdd sites below: a
-// text variable written both by a form field (validated) and by
-// NetworkComposer's own quickAdd (unvalidated), on the same subject.
+// node-type subject. `qa` extends this for the two VALIDATED quickAdd sites
+// below: a text variable written both by a form field (validated, s1) and by
+// FamilyPedigree's nodeLabelVariable (unvalidated, s3), on the same subject.
+//
+// Composer scope-change consequentials: NetworkComposer's OWN quickAdd used
+// to stand in for `qa`'s unvalidated hit here, but it is now a VALIDATED
+// writer (network-composer.ts), so it can no longer produce one — s3 is
+// FamilyPedigree's nodeLabelVariable instead, the same text-typed unvalidated
+// writer NodeConfiguration.crossClassGate.test.tsx uses for the same reason.
 const protocol = {
   schemaVersion: 8,
   codebook: {
@@ -69,10 +75,9 @@ const protocol = {
     },
     {
       id: 's3',
-      type: 'NetworkComposer',
-      label: 'C',
-      subject: { entity: 'node', type: 'person' },
-      quickAdd: 'qa',
+      type: 'FamilyPedigree',
+      label: 'P',
+      nodeConfig: { type: 'person', nodeLabelVariable: 'qa' },
     },
   ],
 };
@@ -160,64 +165,59 @@ describe('a conflict-free variable is never dropped in either direction', () => 
   });
 });
 
-// Fix round 1 introduced the two follow-up sites (NetworkComposer's own
-// quickAdd, and NameGeneratorQuickAdd's quickAdd), reusing `qa` — a text
-// variable written both by a form field (validated, stage s1) and by
-// NetworkComposer's own quickAdd (unvalidated, stage s3) on the same subject.
-//
-// Fix round 2: testing each site against the combined (both-hit) `protocol`
-// fixture cannot tell a correct implementation from one with the exclusion
-// direction swapped — `cat`/`qa` carry BOTH a validated and an unvalidated
-// hit, so either direction drops them. Single-hit fixture variants below
-// (mirroring the `formOnly`/`binOnly` pattern above) isolate each hit kind so
-// a swapped `excludeValidatedUses`/`excludeUnvalidatedUses` call fails.
+// Fix round 1 introduced the follow-up quickAdd sites; testing each against
+// the combined (both-hit) `protocol` fixture cannot tell a correct
+// implementation from one with the exclusion direction swapped — `qa`
+// carries BOTH a validated and an unvalidated hit, so either direction drops
+// it. The single-hit fixture variant below (mirroring the `formOnly`/
+// `binOnly` pattern above) isolates each hit kind so a swapped
+// `excludeValidatedUses`/`excludeUnvalidatedUses` call fails.
 const validatedOnly = { ...protocol, stages: [protocol.stages[0]] }; // s1 only: cat + qa validated, neither unvalidated
-const catUnvalidatedOnly = { ...protocol, stages: [protocol.stages[1]] }; // s2 only: cat unvalidated, not validated; qa has no hits at all
-const qaUnvalidatedOnly = { ...protocol, stages: [protocol.stages[2]] }; // s3 only: qa unvalidated, not validated; cat has no hits at all
+const qaUnvalidatedOnly = { ...protocol, stages: [protocol.stages[2]] }; // s3 only: qa unvalidated (FamilyPedigree nodeLabelVariable), not validated; cat has no hits at all
 
-describe('getConvexHullOptionsForSubject (NodeConfiguration convexHull picker, UNVALIDATED writer)', () => {
-  it('drops a categorical variable a form elsewhere already writes', () => {
-    const result = getConvexHullOptionsForSubject(
-      stateWith(validatedOnly),
-      subject,
-    );
-
-    expect(result.map((o) => o.value)).not.toContain('cat');
-  });
-
-  it('keeps a categorical variable only an unvalidated writer elsewhere claims', () => {
-    const result = getConvexHullOptionsForSubject(
-      stateWith(catUnvalidatedOnly),
-      subject,
-    );
+// Composer scope-change consequentials: convexHullVariable lost its usage tag
+// entirely (network-composer.ts) — a grouping/display slot, not an attribute
+// writer — so its picker must never restrict, or be restricted by, a
+// variable's use elsewhere. Every categorical variable for the subject is
+// offered unconditionally, regardless of the role map.
+describe('getConvexHullOptionsForSubject (NodeConfiguration convexHull picker, UNTAGGED — unrestricted)', () => {
+  it('never drops a categorical variable, even one both validated and unvalidated elsewhere', () => {
+    const result = getConvexHullOptionsForSubject(stateWith(protocol), {
+      entity: subject.entity,
+      type: subject.type,
+    });
 
     expect(result.map((o) => o.value)).toContain('cat');
   });
 
-  it('keeps the dropped option when it is the currently-selected value', () => {
-    const result = getConvexHullOptionsForSubject(
-      stateWith(validatedOnly),
-      subject,
-      'cat',
-    );
+  it('returns every categorical variable for the subject, unfiltered by role', () => {
+    const result = getConvexHullOptionsForSubject(stateWith(validatedOnly), {
+      entity: subject.entity,
+      type: subject.type,
+    });
 
-    expect(result.map((o) => o.value)).toContain('cat');
+    expect(result.map((o) => o.value)).toEqual(['cat']);
   });
 });
 
-describe('getComposerQuickAddOptionsForSubject (NetworkComposer quickAdd picker, UNVALIDATED writer)', () => {
-  it('drops a text variable a form elsewhere already writes', () => {
+// Composer scope-change consequentials: NetworkComposer's own quickAdd is now
+// a VALIDATED writer (its interview input honours codebook validation —
+// network-composer.ts), so its picker flips to `excludeUnvalidatedUses` and
+// mirrors NameGeneratorQuickAdd's `getQuickAddOptionsForSubject` block below
+// exactly.
+describe('getComposerQuickAddOptionsForSubject (NetworkComposer quickAdd picker, VALIDATED writer)', () => {
+  it('drops a text variable an unvalidated writer elsewhere already claims', () => {
     const result = getComposerQuickAddOptionsForSubject(
-      stateWith(validatedOnly),
+      stateWith(qaUnvalidatedOnly),
       subject,
     );
 
     expect(result.map((o) => o.value)).not.toContain('qa');
   });
 
-  it('keeps a text variable only an unvalidated writer elsewhere claims', () => {
+  it('keeps a text variable only a form elsewhere already writes', () => {
     const result = getComposerQuickAddOptionsForSubject(
-      stateWith(qaUnvalidatedOnly),
+      stateWith(validatedOnly),
       subject,
     );
 
@@ -226,7 +226,7 @@ describe('getComposerQuickAddOptionsForSubject (NetworkComposer quickAdd picker,
 
   it('keeps the dropped option when it is the currently-selected value', () => {
     const result = getComposerQuickAddOptionsForSubject(
-      stateWith(validatedOnly),
+      stateWith(qaUnvalidatedOnly),
       subject,
       'qa',
     );

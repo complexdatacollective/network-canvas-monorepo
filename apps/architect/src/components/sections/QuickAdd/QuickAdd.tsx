@@ -76,8 +76,12 @@ const QuickAdd = ({
           options,
           // NameGeneratorQuickAdd's quickAdd is a VALIDATED writer (see
           // `withOptions.tsx`), so a variable created here should require a
-          // value from the start, unlike NetworkComposer's own quickAdd
-          // (`NodeConfiguration.tsx`), which stays unvalidated.
+          // value from the start. NetworkComposer's own quickAdd
+          // (`NodeConfiguration.tsx`) is ALSO a validated writer now, but its
+          // creation path is deliberately left unseeded (a separate decision
+          // from validated-vs-unvalidated classification) — see that file's
+          // `handleCreateVariable(value, 'text', 'quickAdd')` call, which
+          // omits this fourth argument.
           onCreateOption: (value: string) =>
             handleCreateVariable(value, 'text', 'quickAdd', {
               required: true,

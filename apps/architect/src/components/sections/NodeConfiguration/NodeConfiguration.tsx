@@ -19,8 +19,7 @@ import NewVariableWindow, {
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
   crossClassPickIssue,
-  validatedElsewhereMessage,
-  variableDisplayName,
+  unvalidatedElsewhereMessage,
 } from '~/components/Validations/contradictions';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
@@ -30,7 +29,7 @@ import {
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
 import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
+import { excludeUnvalidatedUses } from '~/selectors/roleFilters';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import withComposerFormHandlers from '../Form/withComposerFormHandlers';
@@ -39,22 +38,6 @@ import { getLayoutVariablesForSubject } from '../SociogramPrompts/selectors';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-// The variable ids a nodeForm.fields[] list writes — used against BOTH the
-// live draft (allValues, from a field-level validator) and the stage's
-// committed initial values (getFormInitialValues), so the intra-editor
-// pair-collision check below can tell a pair the draft just created apart
-// from one that already existed in the saved document.
-const nodeFormFieldVariables = (
-  values: Record<string, unknown> | undefined,
-): string[] => {
-  const nodeForm = isRecord(values) ? values.nodeForm : undefined;
-  const fields =
-    isRecord(nodeForm) && Array.isArray(nodeForm.fields) ? nodeForm.fields : [];
-  return fields
-    .filter(isRecord)
-    .map((field) => field.variable)
-    .filter((variable): variable is string => typeof variable === 'string');
-};
 type LayoutVariableOption = {
   isUsed?: boolean;
   label: string;
@@ -117,16 +100,15 @@ export const NodeConfigurationComponent = ({
       dispatch(change(form, 'behaviours.automaticLayout', true));
     }
   }, [rawAutomaticLayout, dispatch, form]);
-  // NetworkComposer is the one stage carrying both writer classes at once
-  // (an unvalidated `quickAdd`/`convexHullVariable` alongside a validated
-  // `nodeForm.fields` form) directly on the SAME draft, so an intra-editor
-  // pick the pickers can't see (Task 8's exclusions only compare each picker
-  // to the COMMITTED protocol) can still create a cross-class pair here.
-  // This mount's save-time gate below covers both halves: (a) the SAVED
-  // document's role map, mirroring the other unvalidated-writer gates
-  // (Bin/TSC/Sociogram/Nomination), with the same committed-value escape;
-  // and (b) the live DRAFT's own `nodeForm.fields` list, which the saved-doc
-  // role map cannot see until this stage is actually saved.
+  // quickAdd is a VALIDATED writer (its interview input now honours the
+  // target variable's codebook validation — see network-composer.ts), so it
+  // gets the same save-time gate Form.tsx's form fields do: a saved-document
+  // role-map check rejecting a pick some bin/highlight/census/etc. elsewhere
+  // already writes without validation, with the usual committed-value escape.
+  // convexHullVariable is UNTAGGED (a grouping/display slot, not an attribute
+  // writer — see network-composer.ts) and nodeForm.fields is itself a
+  // validated writer, so no cross-class pair can exist within this stage's
+  // OWN draft any more — quickAdd's gate below covers the only surface left.
   const nodeVariablesSubject = useMemo(
     () => (type ? { entity: entity === 'ego' ? 'node' : entity, type } : null),
     [entity, type],
@@ -137,11 +119,11 @@ export const NodeConfigurationComponent = ({
       : EMPTY_VARIABLES,
   );
   const roleMap = useAppSelector(getVariableRoleMap);
-  const hasValidatedUseForSubject = useCallback(
+  const hasUnvalidatedUseForSubject = useCallback(
     (variableId: string) =>
       !!nodeVariablesSubject &&
-      (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.validated ?? 0) >
-        0,
+      (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.unvalidated ??
+        0) > 0,
     [roleMap, nodeVariablesSubject],
   );
   const stageInitialValues = useAppSelector((state: RootState) =>
@@ -152,82 +134,19 @@ export const NodeConfigurationComponent = ({
     typeof stageInitialValues.quickAdd === 'string'
       ? stageInitialValues.quickAdd
       : '';
-  const originalConvexHullVariable =
-    isRecord(stageInitialValues) &&
-    typeof stageInitialValues.convexHullVariable === 'string'
-      ? stageInitialValues.convexHullVariable
-      : '';
-  // The stage's COMMITTED nodeForm.fields variable set, for check (b)'s
-  // escape below: a pre-existing conflict (already present in the saved
-  // document) must never block a re-save that changes neither side of it —
-  // that is the timeline alert's job, not this gate's. Only a pair this
-  // draft actually introduces (either side changed away from its own
-  // committed value) still blocks with no escape.
-  const committedNodeFormVariableIds = useMemo(
-    () =>
-      nodeFormFieldVariables(
-        isRecord(stageInitialValues) ? stageInitialValues : undefined,
-      ),
-    [stageInitialValues],
-  );
-  const makeCrossClassValidate = useCallback(
-    (originalVariableId: string) =>
-      (
-        value: unknown,
-        allValues?: Record<string, unknown>,
-      ): string | undefined => {
-        const variableId = typeof value === 'string' ? value : '';
-        if (!variableId) return undefined;
-        const savedDocIssue = crossClassPickIssue({
-          variableId,
-          originalVariableId,
-          hasConflictingUse: hasValidatedUseForSubject,
-          allVariables,
-          message: validatedElsewhereMessage,
-        });
-        if (savedDocIssue) return savedDocIssue;
-        if (nodeFormFieldVariables(allValues).includes(variableId)) {
-          // Escape: this exact pair (this field AND a nodeForm.fields entry
-          // both naming `variableId`) already existed in the committed
-          // stage — neither side changed to create it just now.
-          const pairAlreadyCommitted =
-            variableId === originalVariableId &&
-            committedNodeFormVariableIds.includes(variableId);
-          if (!pairAlreadyCommitted) {
-            return validatedElsewhereMessage(
-              variableDisplayName(allVariables, variableId),
-            );
-          }
-        }
-        return undefined;
-      },
-    [hasValidatedUseForSubject, allVariables, committedNodeFormVariableIds],
-  );
-  const quickAddCrossClassValidate = useMemo(
-    () => makeCrossClassValidate(originalQuickAdd),
-    [makeCrossClassValidate, originalQuickAdd],
-  );
-  const convexHullCrossClassValidate = useMemo(
-    () => makeCrossClassValidate(originalConvexHullVariable),
-    [makeCrossClassValidate, originalConvexHullVariable],
-  );
-  // Mirror check: this stage's OWN unvalidated writers' CURRENT draft picks,
-  // handed to the nodeForm.fields editor so it rejects a variable quickAdd/
-  // convexHullVariable already claim in the SAME draft, symmetric with the
-  // check above (which reads nodeForm.fields' current draft picks the same
-  // way, via the `allValues` a field-level validator receives).
-  const quickAddValue = useAppSelector((state: RootState) =>
-    formValueSelector(form)(state, 'quickAdd'),
-  );
-  const convexHullVariableValue = useAppSelector((state: RootState) =>
-    formValueSelector(form)(state, 'convexHullVariable'),
-  );
-  const siblingUnvalidatedVariableIds = useMemo(
-    () =>
-      [quickAddValue, convexHullVariableValue].filter(
-        (value): value is string => typeof value === 'string' && value !== '',
-      ),
-    [quickAddValue, convexHullVariableValue],
+  const quickAddCrossClassValidate = useCallback(
+    (value: unknown): string | undefined => {
+      const variableId = typeof value === 'string' ? value : '';
+      if (!variableId) return undefined;
+      return crossClassPickIssue({
+        variableId,
+        originalVariableId: originalQuickAdd,
+        hasConflictingUse: hasUnvalidatedUseForSubject,
+        allVariables,
+        message: unvalidatedElsewhereMessage,
+      });
+    },
+    [originalQuickAdd, hasUnvalidatedUseForSubject, allVariables],
   );
   const newVariableWindowInitialProps = {
     entity: (entity === 'ego' ? 'node' : entity) as Entity,
@@ -343,7 +262,7 @@ export const NodeConfigurationComponent = ({
           <ValidatedField
             name="convexHullVariable"
             component={VariablePicker}
-            validation={{ crossClassPick: convexHullCrossClassValidate }}
+            validation={{}}
             componentProps={{
               label: 'Create or select a categorical variable for grouping',
               type,
@@ -371,7 +290,6 @@ export const NodeConfigurationComponent = ({
           editFormName="node-attr-edit"
           title="Edit attribute"
           handleChangeFields={handleChangeFields}
-          siblingUnvalidatedVariableIds={siblingUnvalidatedVariableIds}
         />
       </Subsection>
 
@@ -395,26 +313,26 @@ const withLayoutOptions = connect(
   }),
 );
 /**
- * convexHullVariable is an UNVALIDATED writer: drop options a form elsewhere
- * already validates. Exported (alongside its quickAdd sibling below) so both
- * directions can be pinned directly in `pickerExclusions.test.ts`, the same
- * way `getHighlightVariablesForSubject` is.
+ * convexHullVariable is UNTAGGED — a grouping/display slot, not an attribute
+ * writer (see network-composer.ts) — so it must never restrict, or be
+ * restricted by, a variable's use elsewhere. Every categorical variable for
+ * the subject is offered, unconditionally. Exported (alongside its quickAdd
+ * sibling below) so this stays pinned directly in `pickerExclusions.test.ts`.
  */
 export const getConvexHullOptionsForSubject = (
   state: RootState,
   subject: { entity: 'node' | 'edge' | 'ego'; type: string },
-  currentValue?: string,
-) => {
-  const categoricalOptions = getVariableOptionsForSubject(
-    state,
-    subject,
-  ).filter(({ type: variableType }) => variableType === 'categorical');
-  return excludeValidatedUses(state, subject, categoricalOptions, currentValue);
-};
+) =>
+  getVariableOptionsForSubject(state, subject).filter(
+    ({ type: variableType }) => variableType === 'categorical',
+  );
 
 /**
- * NetworkComposer's own quickAdd (distinct from NameGeneratorQuickAdd's) is an
- * UNVALIDATED writer: drop options a form elsewhere already validates.
+ * NetworkComposer's own quickAdd (distinct from NameGeneratorQuickAdd's) is a
+ * VALIDATED writer (its interview input now honours the target variable's
+ * codebook validation — see network-composer.ts): drop options an
+ * unvalidated writer elsewhere already claims. Mirrors
+ * `QuickAdd/withOptions.tsx`'s `getQuickAddOptionsForSubject`.
  */
 export const getComposerQuickAddOptionsForSubject = (
   state: RootState,
@@ -424,24 +342,19 @@ export const getComposerQuickAddOptionsForSubject = (
   const textOptions = getVariableOptionsForSubject(state, subject).filter(
     ({ type: variableType }) => variableType === 'text',
   );
-  return excludeValidatedUses(state, subject, textOptions, currentValue);
+  return excludeUnvalidatedUses(state, subject, textOptions, currentValue);
 };
 
 const withCategoricalOptions = connect(
-  (state: RootState, { entity, type, form }: OwnProps) => {
+  (state: RootState, { entity, type }: OwnProps) => {
     if (!type) {
       return { categoricalVariablesForSubject: [] };
     }
-    const convexHullVariable = formValueSelector(form)(
-      state,
-      'convexHullVariable',
-    ) as string | undefined;
     return {
-      categoricalVariablesForSubject: getConvexHullOptionsForSubject(
-        state,
-        { entity, type },
-        convexHullVariable,
-      ),
+      categoricalVariablesForSubject: getConvexHullOptionsForSubject(state, {
+        entity,
+        type,
+      }),
     };
   },
 );
