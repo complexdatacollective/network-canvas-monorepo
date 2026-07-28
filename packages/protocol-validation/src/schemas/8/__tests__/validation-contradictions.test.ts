@@ -1325,6 +1325,157 @@ describe('findValidationContradictions — fifth-wave Finding 3: fixed-anchor Re
   });
 });
 
+describe('findValidationContradictions — fourteenth-wave Finding 1: anchorless RelativeDatePickers share the interview-date origin', () => {
+  const relativePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'RelativeDatePicker',
+    parameters,
+    validation,
+  });
+
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  it('rejects differentFrom between two anchorless RelativeDatePickers both pinned to the interview date', () => {
+    const result = findValidationContradictions({
+      a: relativePicker(
+        'a',
+        { before: 0, after: 0 },
+        { required: true, differentFrom: 'b' },
+      ),
+      b: relativePicker('b', { before: 0, after: 0 }, { required: true }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.message).toBe(
+      'Variables "a", "b" must differ but their rules pin both to the same value',
+    );
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  it('accepts differentFrom between two anchorless RelativeDatePickers spanning the default window', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker('a', {}, { required: true, differentFrom: 'b' }),
+        b: relativePicker('b', {}, { required: true }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts differentFrom between an anchorless and a fixed-anchor RelativeDatePicker', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker('a', { before: 0, after: 0 }, { differentFrom: 'b' }),
+        b: relativePicker('b', {
+          anchor: '2020-01-01',
+          before: 0,
+          after: 0,
+        }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts differentFrom between an anchorless RelativeDatePicker and a pinned DatePicker', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker('a', { before: 0, after: 0 }, { differentFrom: 'b' }),
+        b: datePicker('b', { min: '2021-01-01', max: '2021-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // `before`/`after` are both non-negative (relativeDatePickerParametersSchema),
+  // so every symbolic window spans [-before, +after] and therefore contains the
+  // interview date itself — two symbolic windows can never be disjoint, and a
+  // sameAs between them is always satisfiable. A STRICT comparator is the
+  // reachable symbolic-vs-symbolic infeasibility: two pickers pinned to the
+  // same offset cannot be ordered.
+  it('rejects a strict comparator between two anchorless RelativeDatePickers pinned to the interview date', () => {
+    const result = findValidationContradictions({
+      a: relativePicker(
+        'a',
+        { before: 0, after: 0 },
+        { greaterThanVariable: 'b' },
+      ),
+      b: relativePicker('b', { before: 0, after: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+  });
+
+  it('accepts a strict comparator between an anchorless and a fixed-anchor RelativeDatePicker', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker(
+          'a',
+          { before: 0, after: 0 },
+          { greaterThanVariable: 'b' },
+        ),
+        b: relativePicker('b', {
+          anchor: '2020-01-01',
+          before: 0,
+          after: 0,
+        }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts sameAs between two anchorless RelativeDatePickers pinned to the interview date', () => {
+    expect(
+      findValidationContradictions({
+        a: relativePicker('a', { before: 0, after: 0 }, { sameAs: 'b' }),
+        b: relativePicker('b', { before: 0, after: 0 }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('rejects the record schema for the pinned anchorless differentFrom pair', () => {
+    const result = VariablesSchema.safeParse({
+      a: {
+        name: 'a',
+        type: 'datetime',
+        component: 'RelativeDatePicker',
+        parameters: { before: 0, after: 0 },
+        validation: { required: true, differentFrom: 'b' },
+      },
+      b: {
+        name: 'b',
+        type: 'datetime',
+        component: 'RelativeDatePicker',
+        parameters: { before: 0, after: 0 },
+        validation: { required: true },
+      },
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((candidate) =>
+        candidate.message.includes('pin both to the same value'),
+      );
+      expect(issue?.path).toEqual(['a', 'validation', 'differentFrom']);
+    }
+  });
+});
+
 describe('record schema conformance — contradiction refinement', () => {
   it('rejects a node variables record with inverted bounds, anchored at the offending rule', () => {
     const result = VariablesSchema.safeParse({

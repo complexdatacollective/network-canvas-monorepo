@@ -644,7 +644,20 @@ function referenceStructureContradictions(
   return found;
 }
 
-type Interval = { min?: number; max?: number };
+/**
+ * What an interval's bounds are measured against. Fourteenth-wave Finding 1:
+ * most bounds are absolute quantities (a count, a length, a calendar day
+ * number) and share the single implicit `'fixed'` origin. An anchorless
+ * RelativeDatePicker's bounds are day OFFSETS from the interview date, which
+ * is unknown at validation time but IDENTICAL for every such picker in a
+ * protocol — so those bounds are real and mutually comparable, just not
+ * against a calendar. `'mixed'` is the absorbing result of intersecting two
+ * incomparable origins; it carries no bounds, so every downstream check skips
+ * it conservatively.
+ */
+type IntervalOrigin = 'fixed' | 'interviewDate' | 'mixed';
+
+type Interval = { min?: number; max?: number; origin: IntervalOrigin };
 
 const DATE_PART_PATTERN = /^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/;
 
@@ -696,23 +709,31 @@ const RELATIVE_DATE_PICKER_DEFAULT_BEFORE = 180;
 const RELATIVE_DATE_PICKER_DEFAULT_AFTER = 0;
 
 /**
- * A RelativeDatePicker's selectable window, when it has one. Fifth-wave
- * Finding 3: a RelativeDatePicker with no `anchor` is genuinely anchored to
- * the (unknown at validation time) interview date and contributes no static
- * bounds — that exclusion stays. But an author-pinned `anchor` (a valid ISO
- * date) makes the window exactly as static as a DatePicker's own min/max:
- * `[anchor - before, anchor + after]` in days.
+ * A RelativeDatePicker's selectable window. An author-pinned `anchor` (a valid
+ * ISO date) makes the window exactly as static as a DatePicker's own min/max:
+ * `[anchor - before, anchor + after]` in days, on the fixed calendar origin
+ * (fifth-wave Finding 3).
+ *
+ * Fourteenth-wave Finding 1 corrects what an ABSENT anchor means. The fifth
+ * wave returned `undefined` for it, reading "the interview date is unknown at
+ * validation time" as "no bounds at all". That is right for ABSOLUTE bounds —
+ * an anchorless picker can never be compared against a calendar window — but
+ * wrong for RELATIVE ones: the interview runtime resolves EVERY anchorless
+ * picker in a form against the same `todayYmd()` (see the interview package's
+ * `useProtocolForm` and fresco-ui's `RelativeDatePicker`), so two anchorless
+ * pickers are pinned to the same day whenever their offsets say so, for every
+ * possible interview date. Such a window is therefore reported on the symbolic
+ * `'interviewDate'` origin, with its bounds expressed as day offsets; only
+ * intervals sharing an origin are ever compared, so protocol validity stays
+ * independent of when the interview actually runs.
+ *
+ * An anchor that IS a string but not a valid ISO date stays excluded: the
+ * runtime forwards such a string verbatim into its date arithmetic rather than
+ * falling back to the interview date, so neither origin models it.
  */
 const relativeDateWindowInterval = (
   parameters: UnknownRecord,
 ): Interval | undefined => {
-  if (typeof parameters.anchor !== 'string' || !isIsoDate(parameters.anchor)) {
-    return undefined;
-  }
-  // `anchor` is a full YYYY-MM-DD ISO date, so 'min' vs 'max' expansion is
-  // moot — both edges resolve to the same single day.
-  const anchor = dayNumber(parameters.anchor, 'min');
-  if (anchor === undefined) return undefined;
   const before =
     typeof parameters.before === 'number'
       ? parameters.before
@@ -721,7 +742,15 @@ const relativeDateWindowInterval = (
     typeof parameters.after === 'number'
       ? parameters.after
       : RELATIVE_DATE_PICKER_DEFAULT_AFTER;
-  return { min: anchor - before, max: anchor + after };
+  if (typeof parameters.anchor !== 'string') {
+    return { min: -before, max: after, origin: 'interviewDate' };
+  }
+  if (!isIsoDate(parameters.anchor)) return undefined;
+  // `anchor` is a full YYYY-MM-DD ISO date, so 'min' vs 'max' expansion is
+  // moot — both edges resolve to the same single day.
+  const anchor = dayNumber(parameters.anchor, 'min');
+  if (anchor === undefined) return undefined;
+  return { min: anchor - before, max: anchor + after, origin: 'fixed' };
 };
 
 const dateWindowInterval = (variable: unknown): Interval | undefined => {
@@ -741,7 +770,7 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
       ? dayNumber(parameters.max, 'max')
       : undefined;
   if (min === undefined && max === undefined) return undefined;
-  return { min, max };
+  return { min, max, origin: 'fixed' };
 };
 
 const intervalOf = (variable: unknown): Interval | undefined => {
@@ -750,16 +779,19 @@ const intervalOf = (variable: unknown): Interval | undefined => {
       return {
         min: numberRule(variable, 'minValue'),
         max: numberRule(variable, 'maxValue'),
+        origin: 'fixed',
       };
     case 'text':
       return {
         min: numberRule(variable, 'minLength'),
         max: numberRule(variable, 'maxLength'),
+        origin: 'fixed',
       };
     case 'categorical':
       return {
         min: numberRule(variable, 'minSelected'),
         max: numberRule(variable, 'maxSelected'),
+        origin: 'fixed',
       };
     case 'datetime':
       return dateWindowInterval(variable);
@@ -768,12 +800,21 @@ const intervalOf = (variable: unknown): Interval | undefined => {
   }
 };
 
+/**
+ * Bounds only intersect meaningfully on a shared origin: an anchorless
+ * RelativeDatePicker's interview-date offsets and a calendar day number have
+ * no known relationship at validation time. Mismatched origins collapse to a
+ * bound-less `'mixed'` interval, which is absorbing — a later same-origin
+ * member cannot resurrect bounds the fold has already established as
+ * incomparable.
+ */
 const intersect = (
   a: Interval | undefined,
   b: Interval | undefined,
 ): Interval | undefined => {
   if (!a) return b;
   if (!b) return a;
+  if (a.origin !== b.origin) return { origin: 'mixed' };
   return {
     min:
       a.min === undefined
@@ -787,6 +828,7 @@ const intersect = (
         : b.max === undefined
           ? a.max
           : Math.min(a.max, b.max),
+    origin: a.origin,
   };
 };
 
@@ -857,7 +899,10 @@ const dateResolutionOf = (variable: unknown): DateResolution => {
  *     — but ONLY at full resolution. A month/year-resolution DatePicker's
  *     equal-looking min/max (e.g. both '2020') still leaves every day in
  *     that month/year selectable, so it is not a pinned value the way a
- *     full-resolution equal window is.
+ *     full-resolution equal window is. The value is keyed by the window's
+ *     origin (fourteenth-wave Finding 1) so an anchorless
+ *     RelativeDatePicker's interview-date offset can only ever match another
+ *     anchorless picker's, never a calendar day number.
  *   - ordinal (tenth-wave Finding 2): single-select, so a variable whose
  *     options expose exactly ONE distinct value (duplicate-value entries
  *     collapse, per `optionValues`) can only ever hold that value — and
@@ -895,9 +940,13 @@ const pinnedValue = (
     case 'datetime': {
       if (dateResolutionOf(variable) !== 'full') return undefined;
       const window = dateWindowInterval(variable);
-      return window?.min !== undefined && window.min === window.max
-        ? window.min
-        : undefined;
+      if (window?.min === undefined || window.min !== window.max) {
+        return undefined;
+      }
+      // Origin-tagged like the categorical composite below: a symbolic
+      // interview-date offset and a calendar day number are different values
+      // even when the two numbers coincide (fourteenth-wave Finding 1).
+      return `datetime:${window.origin}:${window.min}`;
     }
     case 'ordinal': {
       const values = optionValues(variable);
@@ -1230,6 +1279,8 @@ function disjointBoundsContradictions(
     if (upperInterval?.max === undefined || lowerInterval?.min === undefined) {
       continue;
     }
+    // Fourteenth-wave Finding 1: only same-origin bounds are comparable.
+    if (upperInterval.origin !== lowerInterval.origin) continue;
     const infeasible = edge.strict
       ? upperInterval.max <= lowerInterval.min
       : upperInterval.max < lowerInterval.min;
