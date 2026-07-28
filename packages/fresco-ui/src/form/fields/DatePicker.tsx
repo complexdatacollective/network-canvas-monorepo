@@ -91,6 +91,23 @@ const DEFAULT_MIN: Ymd = { year: 1920, month: 1, day: 1 };
 const COARSE_MIN_YEAR = 1000;
 const COARSE_MAX_YEAR = 9999;
 
+// The full-resolution native <input type="date"> is a different concern
+// from the coarse dropdowns above: `formatYmd` always zero-pads to four
+// digits, so it can mechanically represent any magnitude. But a year below 1
+// formats with a leading '-' (not a valid HTML date string, so the browser
+// drops the attribute entirely), and a year above 9999 is native-input-legal
+// yet unreachable through `useProtocolForm`'s min/max validation, which
+// compares the typed value against the AUTHORED bound string using
+// four-digit LEXICAL comparison (`compareDateStrings`) — a five-digit
+// synthesized year like "10105" sorts *before* a four-digit "9999"
+// character-by-character, so every value between the authored bound and the
+// synthesized one fails validation despite being pickable. These bracket the
+// synthesized (non-authored) side of minYmd/maxYmd to the four-digit year
+// range (0001-9999) so the native input never offers a value the validator
+// can't accept.
+const NATIVE_MIN_YEAR = 1;
+const NATIVE_MAX_YEAR = 9999;
+
 const months: SelectOption[] = [
   { value: '01', label: 'January' },
   { value: '02', label: 'February' },
@@ -155,22 +172,24 @@ export default function DatePickerField(props: DatePickerFieldProps) {
   // (only once at least one bound is authored — see `hasAuthoredBound` below;
   // a fully unbounded full-resolution DatePicker must stay genuinely
   // unbounded, matching how @codaco/protocol-validation's contradiction
-  // analyser models it as contributing no interval). `formatYmd` always
-  // zero-pads to four digits, so a native input min/max like "0894-01-01" is
-  // still a schema-valid full-resolution date — this pair is intentionally
-  // left unclamped.
+  // analyser models it as contributing no interval). They're bracketed by
+  // NATIVE_MIN_YEAR/NATIVE_MAX_YEAR (see that constant's comment) on the
+  // SYNTHESIZED side only — an authored bound is left exactly as authored,
+  // the schema's own job to validate — bounded by the authored opposite side
+  // so the clamp can never invert the range (an authored `min: '9999-12-31'`
+  // alone clamps its synthesized max to '9999-12-31' too, collapsing to a
+  // genuine single-day domain rather than inverting past it).
   //
-  // `coarseMinYmd`/`coarseMaxYmd` additionally bracket the SYNTHESIZED
+  // `coarseMinYmd`/`coarseMaxYmd` separately bracket the SYNTHESIZED
   // (non-authored) side to the four-digit year range (1000-9999) the coarse
   // year/month dropdowns can round-trip: those controls store `y.toString()`
   // with no zero-padding, so an unclamped synthesized edge like 894 would
   // offer a three-digit "894" the schema's YYYY/YYYY-MM coarse values can
-  // never represent. An authored bound is left exactly as authored — its own
-  // validity against the schema is the schema's job, not this derivation's —
-  // and the clamp is bounded by that authored opposite side so it can never
-  // invert the range (a `max: '1000'` clamps its synthesized lower bound to
-  // 1000 too, yielding a genuine, if single-year, domain). The year loop and
-  // the month filtering at boundary years read this pair.
+  // never represent. This is a different concern from the native clamp
+  // above (dropdown storage grammar vs. native-input/validator legality), so
+  // the two pairs clamp to different bounds and are computed independently
+  // from the same raw resolvedMin/resolvedMax. The year loop and the month
+  // filtering at boundary years read the coarse pair.
   const { minYmd, maxYmd, coarseMinYmd, coarseMaxYmd, hasAuthoredBound } =
     useMemo(() => {
       const authoredMin = min ? parseYmd(min) : null;
@@ -197,6 +216,23 @@ export default function DatePickerField(props: DatePickerFieldProps) {
             }
           : today);
 
+      const nativeMin =
+        authoredMin === null && resolvedMin.year < NATIVE_MIN_YEAR
+          ? {
+              year: Math.min(NATIVE_MIN_YEAR, resolvedMax.year),
+              month: 1,
+              day: 1,
+            }
+          : resolvedMin;
+      const nativeMax =
+        authoredMax === null && resolvedMax.year > NATIVE_MAX_YEAR
+          ? {
+              year: Math.max(NATIVE_MAX_YEAR, resolvedMin.year),
+              month: 12,
+              day: 31,
+            }
+          : resolvedMax;
+
       const coarseMin =
         authoredMin === null && resolvedMin.year < COARSE_MIN_YEAR
           ? {
@@ -215,8 +251,8 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           : resolvedMax;
 
       return {
-        minYmd: resolvedMin,
-        maxYmd: resolvedMax,
+        minYmd: nativeMin,
+        maxYmd: nativeMax,
         coarseMinYmd: coarseMin,
         coarseMaxYmd: coarseMax,
         hasAuthoredBound: authoredMin !== null || authoredMax !== null,

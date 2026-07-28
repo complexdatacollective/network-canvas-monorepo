@@ -598,12 +598,16 @@ describe('DatePickerField — clamping the synthesized coarse year to the four-d
     ]);
   });
 
-  // The full-resolution native input is deliberately NOT clamped: it stores
-  // (and its min/max attrs express) zero-padded four-digit years via
-  // `formatYmd` regardless of magnitude, so a synthesized year like 894 is
-  // still schema-valid there ("0894-01-01") — only the unpadded coarse
-  // dropdown value can fall outside the schema's representable range.
-  it('leaves the full-resolution native input min/max unclamped past the four-digit range', () => {
+  // The full-resolution native input is NOT clamped by the coarse dropdowns'
+  // 1000-9999 grammar concern: it stores (and its min/max attrs express)
+  // zero-padded four-digit years via `formatYmd`, so a synthesized year like
+  // 894 is still schema-valid there ("0894-01-01") even though it falls
+  // outside the coarse dropdown's own representable range. It is separately
+  // clamped to the wider 0001-9999 native/validator-legal range — see the
+  // "clamping the synthesized native year" describe block below — but 894
+  // never approaches that boundary, so this case is unaffected by either
+  // clamp.
+  it('leaves the full-resolution native input min/max unclamped by the coarse four-digit grammar', () => {
     const { container } = render(
       <DatePickerField type="full" name="date" max="1000-01-01" />,
     );
@@ -615,6 +619,84 @@ describe('DatePickerField — clamping the synthesized coarse year to the four-d
     const extendedYear = (1000 - span).toString().padStart(4, '0');
     expect(input).toHaveAttribute('min', `${extendedYear}-01-01`);
     expect(input).toHaveAttribute('max', '1000-01-01');
+  });
+});
+
+describe('DatePickerField — clamping the synthesized native year to the four-digit range (Twenty-eighth-wave)', () => {
+  // The reviewer's demonstration: a full-resolution picker with only
+  // `min: "9999-12-31"` authored synthesizes a native maximum around year
+  // 10105 (min.year + the default window's span). The native input happily
+  // accepts five-digit years, but `useProtocolForm`'s min/max validation
+  // compares against the authored bound using four-digit LEXICAL comparison
+  // (`compareDateStrings`), under which "10000" through "10105" all sort
+  // *before* "9999-12-31" — so every value in that synthesized window is
+  // reachable in the picker but fails validation, and "9999-12-31" itself is
+  // the only value that can ever be submitted. Clamped, the synthesized
+  // max can go no higher than the authored min itself, so the resolved
+  // window collapses to that single genuinely-submittable day rather than
+  // extending into the trap.
+  it('clamps the synthesized max to 9999-12-31 when only an authored min sits at the four-digit ceiling', () => {
+    const { container } = render(
+      <DatePickerField type="full" name="date" min="9999-12-31" />,
+    );
+    const input = container.querySelector('input[type="date"]');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('date input not rendered');
+    }
+    expect(input).toHaveAttribute('min', '9999-12-31');
+    expect(input).toHaveAttribute('max', '9999-12-31');
+  });
+
+  // Regression guard: an authored min in the future still synthesizes a max
+  // (min.year + the default window's span), and a mid-range synthesized
+  // span that never crosses the four-digit range (2200 + span stays
+  // comfortably below 9999) must resolve exactly as it did before this
+  // clamp existed.
+  it('leaves a mid-range synthesized max untouched when it never crosses the four-digit range', () => {
+    const { container } = render(
+      <DatePickerField type="full" name="date" min="2200-01-01" />,
+    );
+    const input = container.querySelector('input[type="date"]');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('date input not rendered');
+    }
+    const span = defaultWindowSpanYears();
+    expect(input).toHaveAttribute('min', '2200-01-01');
+    expect(input).toHaveAttribute('max', `${2200 + span}-12-31`);
+  });
+
+  // The mirror direction: an authored max near the native floor (year 0001)
+  // would synthesize a lower bound below year 1 (e.g. `max: "0002-01-01"`
+  // synthesizes a min at 2 minus the default window's span — negative for
+  // any plausible test-run date, since the span alone is already well over
+  // a century), which `formatYmd` renders with a leading '-' — not a valid
+  // HTML date string, so an unclamped native input would silently drop the
+  // `min` attribute rather than constrain the picker. Clamped, the
+  // synthesized min can go no lower than year 1, distinct from the
+  // authored max (year 2) so this also demonstrates the clamp does not
+  // simply mirror the opposite bound.
+  it('clamps the synthesized min to 0001-01-01 when only an authored max sits near the native floor', () => {
+    const { container } = render(
+      <DatePickerField type="full" name="date" max="0002-01-01" />,
+    );
+    const input = container.querySelector('input[type="date"]');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('date input not rendered');
+    }
+    expect(input).toHaveAttribute('min', '0001-01-01');
+    expect(input).toHaveAttribute('max', '0002-01-01');
+  });
+
+  // The coarse year/month dropdowns clamp independently to their own
+  // 1000-9999 storage grammar and must be unaffected by the wider
+  // 0001-9999 native clamp above: an authored `min: "9999"` still collapses
+  // the coarse dropdown to the single year "9999", exactly as before this
+  // change.
+  it('leaves the coarse year dropdown clamped to its own 1000-9999 range, unaffected by the native clamp', () => {
+    render(<DatePickerField type="year" name="date" min="9999" />);
+    const yearSelect = screen.getByRole('combobox');
+    const years = optionValues(yearSelect);
+    expect(years).toEqual(['9999']);
   });
 });
 

@@ -1105,6 +1105,13 @@ const COARSE_SYNTHESIS_SPAN_YEARS =
  * unclamped synthesis was a safe superset of the clamped runtime window (a
  * superset can only accept more), so this is a precision improvement, not a
  * soundness fix.
+ *
+ * Thirty-fourth wave (Fix 1): the MAX side of this range is also the top of
+ * the fixed-width four-digit `YYYY-MM-DD` grammar every authored bound, every
+ * schema-valid stored value, and this file's own day-number arithmetic share,
+ * which is why it doubles as the FULL-resolution submission ceiling — see
+ * `fullResolutionSubmissionFarBound`. The 1000 floor stays coarse-only: the
+ * native input floors at year 1 instead (`clampToNativeDateFloor`).
  */
 const COARSE_SYNTHESIS_MIN_YEAR = 1000;
 const COARSE_SYNTHESIS_MAX_YEAR = 9999;
@@ -1195,9 +1202,10 @@ const parseRuntimeYmd = (
  * (twentieth-wave Finding 1). At most one edge is ever returned — the
  * missing side that can be modelled without a wall clock — and both-authored
  * windows return `undefined`. FULL-resolution pickers return `undefined`
- * too: their one-sided resolved bounds are modelled by
- * `synthesizedFullResolutionResolvedBound` below (thirtieth-wave Fix 2), not
- * here.
+ * too: their one-sided submission far bounds are modelled by
+ * `fullResolutionSubmissionFarBound` below (thirty-fourth-wave Fix 1), not
+ * here — a native input under a `noValidate` form enforces nothing, unlike
+ * these closed dropdowns.
  */
 const synthesizedCoarseMissingSideBound = (
   parameters: UnknownRecord,
@@ -1250,83 +1258,105 @@ const periodStartDayNumber = ({ year, month }: YearMonth): number =>
   utcDayNumber(year, month - 1, 1);
 
 /**
- * Thirtieth wave (Fix 2): the RESOLVED opposite bound a one-sided
- * full-resolution DatePicker carries at runtime. fresco-ui resolves and
- * passes BOTH native `min`/`max` attributes whenever EITHER bound is
- * authored (DatePicker.tsx's `hasAuthoredBound` gate over the shared
- * `minYmd`/`maxYmd` derivation), so a picker with only `min` is capped at
- * the resolved upper edge (today, or the extended `min.year + span` ceiling
- * while the authored min still lies beyond today) and a picker with only
- * `max` is floored at the resolved lower edge (1920-01-01, or the extended
- * `max.year - span` floor when the authored max lies before it). The
- * twenty-fifth wave declined to model these because a native input enforces
- * a TYPED value more weakly than a closed dropdown, but the reviewer's
- * demonstration (a required min-only picker `greaterThanVariable` a partner
- * pinned at 9999-01-01, never reachable under the resolved today-cap) shows
- * that accept-direction gap rejecting real defects, so the resolved bounds
- * are modelled now, under `synthesizedCoarseMissingSideBound`'s same no-wall-clock
- * discipline:
+ * The last day of the fixed-width four-digit `YYYY-MM-DD` grammar — the
+ * ceiling of a one-sided full-resolution SUBMISSION window (see
+ * `fullResolutionSubmissionFarBound`).
+ */
+const FOUR_DIGIT_GRAMMAR_CEILING_DAY_NUMBER = utcDayNumber(
+  COARSE_SYNTHESIS_MAX_YEAR,
+  11,
+  31,
+);
+
+/**
+ * Thirty-fourth wave (Fix 1), correcting the thirtieth wave's Fix 2 and the
+ * thirty-second wave's Fix 3: the far bound of a one-sided FULL-resolution
+ * DatePicker's SUBMISSION domain. The earlier waves modelled the RESOLVED
+ * native `min`/`max` attributes (fresco-ui resolves and passes both
+ * whenever either bound is authored — DatePicker.tsx's `hasAuthoredBound`
+ * gate), but the reviewer demonstrates those attributes are not submission
+ * bounds. The verified runtime chain:
  *
- *   - authored max at or after 1920-01-01 (the `parseYmd` month/day
- *     defaults make that exactly `max.year >= 1920`) ⇒ modelled min at the
- *     runtime's stable default floor, 1920-01-01 — branch condition and
- *     result are both date-independent, so the model is exact;
- *   - authored max before 1920-01-01 ⇒ the out-of-window extension:
- *     modelled min at 1 January of `max.year` minus the horizon span. The
- *     full-resolution path shares the coarse extension arithmetic but NOT
- *     the coarse 1000-9999 clamp — that clamp exists only on the
- *     `coarseMinYmd`/`coarseMaxYmd` pair the dropdowns read, never on the
- *     native input's attributes. An extension reaching before year 1 falls
- *     to the native input floor via `clampToNativeDateFloor`, which is
- *     exactly where the control lands when its negative-year `min`
- *     attribute fails the native grammar;
- *   - authored min ⇒ modelled max at 31 December of
- *     `max(horizon, min.year + span)`. The runtime's upper edge is `today`
- *     once the authored min has passed and the full-year extension
- *     `min.year + span(today)` while it has not; the LATER of the horizon's
- *     December and the horizon-span extension covers both branches on every
- *     in-horizon interview date (`today <= horizon` and
- *     `span(today) <= span(horizon)`), so the modelled window is a superset
- *     of every runtime window — supersets only ever accept more. A literal
- *     horizon ceiling alone would UNDER-cover a future-dated authored min
- *     (the runtime extends past the horizon there), inverting the modelled
- *     window into a false rejection.
+ *   - the resolved/synthesized side exists ONLY as a native
+ *     `<input type="date">` `min`/`max` attribute (DatePicker.tsx's
+ *     full-resolution return path), and fresco-ui's form element is
+ *     `noValidate` (Form.tsx), so the browser never blocks submission on it;
+ *   - the interview runtime forwards only the AUTHORED `params.min`/
+ *     `params.max` strings into the Zod submission validators
+ *     (useProtocolForm.tsx's DatePicker branch → fresco-ui's `min`/`max`
+ *     validation functions), so a keyboard-typed date beyond the native
+ *     attribute still validates against the authored side alone. (A
+ *     RelativeDatePicker is DIFFERENT: useProtocolForm PRE-COMPUTES its
+ *     absolute min/max and hands them to those same validators, so
+ *     `relativeDateWindowInterval`'s window really is submission-enforced —
+ *     unchanged here.)
+ *
+ * The reviewer's repro: `min: '1900-01-01'` alone, `greaterThanVariable` a
+ * partner pinned at 2200-01-01 — rejected under the resolved-attribute
+ * model (ceiling 2120-12-31), yet typing 2201-01-01 passes the authored-min
+ * validator and the comparator at runtime. A modelled window NARROWER than
+ * the submission domain rejects satisfiable protocols, which the v7 import
+ * turns into silent rule-stripping — the worst failure this module has. The
+ * submission-domain model, per side:
+ *
+ *   - authored min only ⇒ modelled max at 9999-12-31, the top of the
+ *     four-digit grammar. The submission comparator (`compareDateStrings`)
+ *     is LEXICAL over the fixed-width `YYYY-MM-DD` grammar (both operands
+ *     truncated to the shorter length), and within that grammar every
+ *     string is 10 characters, so lexical order IS chronological order:
+ *     every four-digit-grammar day at or after the authored min passes the
+ *     only submission check that exists, all the way up to the grammar's
+ *     own last day. The wave-32 single-day pin survives under this
+ *     derivation: an authored `min: '9999-12-31'` admits exactly one
+ *     in-grammar day (nothing sorts above it), collapsing the window to a
+ *     pin exactly as before. MODEL BOUNDARY, stated for honesty: a
+ *     keyboard-typed FIVE-digit year is outside this grammar — the
+ *     truncating comparator orders such strings incoherently against a
+ *     four-digit bound (some sort below it, some above), fresco-ui's own
+ *     NATIVE_MAX_YEAR comment records five-digit years as unusable, and the
+ *     analyser deliberately reasons over the shared four-digit grammar
+ *     only, exactly as wave 32 committed;
+ *   - authored max only ⇒ modelled min at the native FORMAT floor,
+ *     0001-01-01 (`NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER`). The thirtieth
+ *     wave's 1920 default floor (and its below-1920 extension) was
+ *     native-attribute-only: a typed 1900-01-01 passes an authored
+ *     `max: '1950-…'` validator and submits. The format floor is real
+ *     regardless of `noValidate` — the HTML date grammar has no year 0000
+ *     or negative years, so a typed year below 1 never parses into a value
+ *     at all — and it is the same floor a bound-less picker already
+ *     contributes;
+ *   - COARSE (month/year) resolutions are UNCHANGED and deliberately
+ *     asymmetric: their closed dropdowns admit no typed input, so the
+ *     default floor, synthesized far bounds, and clamps of waves 25-32
+ *     (`synthesizedCoarseMissingSideBound`) remain true hard domains there.
+ *
+ * Both replaced bounds only ever WIDEN the modelled window, so every
+ * downstream consumer (chain seeds, group intersections, parity
+ * qualification, disequality pruning) moves in the accept direction; the
+ * one behavioural knock-on is that a window which was enumerable only
+ * BECAUSE of the removed bound (still finite now, but wider — an
+ * authored-min-only window is [min, 9999-12-31]) can exceed
+ * `COARSE_INSTANT_ENUMERATION_CAP` and make an enumeration-backed check
+ * bail to accept where it previously judged — accept-safe by construction.
  *
  * Authoredness is judged by `parseRuntimeYmd` — the runtime's own grammar —
  * exactly as `synthesizedCoarseMissingSideBound` judges it, and the call site's
  * `undefined` guards keep a bound the lenient `dayNumber` reads but the
  * runtime rejects in charge of its own edge. A picker with NEITHER authored
- * bound is untouched — the runtime passes no attributes at all there
- * (commit-recorded twenty-sixth-wave behaviour), so its native-floor-only
- * interval stays exactly as modelled — and a both-authored window is
- * honoured verbatim as before.
+ * bound is untouched — no validators exist at all there, so its
+ * native-floor-only interval stays exactly as modelled — and a
+ * both-authored window is honoured verbatim as before.
  */
-const synthesizedFullResolutionResolvedBound = (
+const fullResolutionSubmissionFarBound = (
   parameters: UnknownRecord,
 ): { edge: 'min' | 'max'; day: number } | undefined => {
   const authoredMin = parseRuntimeYmd(parameters.min);
   const authoredMax = parseRuntimeYmd(parameters.max);
   if (authoredMax && !authoredMin) {
-    return {
-      edge: 'min',
-      day:
-        authoredMax.year < DEFAULT_DATE_WINDOW_MIN_YEAR
-          ? utcDayNumber(authoredMax.year - COARSE_SYNTHESIS_SPAN_YEARS, 0, 1)
-          : utcDayNumber(DEFAULT_DATE_WINDOW_MIN_YEAR, 0, 1),
-    };
+    return { edge: 'min', day: NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER };
   }
   if (authoredMin && !authoredMax) {
-    return {
-      edge: 'max',
-      day: utcDayNumber(
-        Math.max(
-          COARSE_SYNTHESIS_HORIZON_YEAR,
-          authoredMin.year + COARSE_SYNTHESIS_SPAN_YEARS,
-        ),
-        11,
-        31,
-      ),
-    };
+    return { edge: 'max', day: FOUR_DIGIT_GRAMMAR_CEILING_DAY_NUMBER };
   }
   return undefined;
 };
@@ -1442,15 +1472,17 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
   // window is floored at the stable 1920 default exactly as the runtime
   // floors it, while the date-dependent today side stays unbounded. See
   // `synthesizedCoarseMissingSideBound` for the exact derivation and the
-  // conservative handling of its "today" dependence. Thirtieth wave (Fix 2):
-  // a one-sided FULL-resolution window closes its missing side at the
-  // RESOLVED bound the runtime passes to the native input whenever either
-  // bound is authored — see `synthesizedFullResolutionResolvedBound`. In
-  // both arms the `undefined` guards keep an authored-but-differently-parsed
-  // bound (the lenient `dayNumber` can read a string the runtime's `parseYmd`
-  // rejects) in charge of its own edge, exactly as before.
+  // conservative handling of its "today" dependence. Thirty-fourth wave
+  // (Fix 1): a one-sided FULL-resolution window closes its missing side at
+  // the far bound of its SUBMISSION domain — the four-digit grammar ceiling
+  // above an authored min, the native format floor below an authored max —
+  // NOT at the resolved native attribute, which a `noValidate` form never
+  // enforces (see `fullResolutionSubmissionFarBound`). In both arms the
+  // `undefined` guards keep an authored-but-differently-parsed bound (the
+  // lenient `dayNumber` can read a string the runtime's `parseYmd` rejects)
+  // in charge of its own edge, exactly as before.
   if (storesFullDates) {
-    const synthesized = synthesizedFullResolutionResolvedBound(parameters);
+    const synthesized = fullResolutionSubmissionFarBound(parameters);
     if (min === undefined && synthesized?.edge === 'min') {
       min = synthesized.day;
     } else if (max === undefined && synthesized?.edge === 'max') {
@@ -1503,6 +1535,27 @@ const intervalOf = (variable: unknown): Interval | undefined => {
       };
     case 'datetime':
       return dateWindowInterval(variable);
+    // Thirty-third wave: a scalar response always lives on the visual analog
+    // scale's fixed normalised range. Unlike boolean — where Boolean and
+    // Toggle render different domains, so `booleanDomain` must gate on the
+    // stage-effective component — the scalar rendering is DETERMINED at every
+    // layer, which is what licenses a record-level interval:
+    // `VARIABLE_TYPE_COMPONENTS['scalar']` lists exactly ONE legal control
+    // (`VisualAnalogScale`, variable.ts), the scalar schema's own `component`
+    // enum admits only that control, a shared form field requires the
+    // codebook component outright (schema.ts's `validateFormFieldVariable`),
+    // and a NetworkComposer field's override is drawn from the same
+    // single-entry list (`validateComposerFieldComponents`) — so no override
+    // can ever change the rendered control, and a componentless scalar is as
+    // determined as an explicit one. The control's range is equally fixed:
+    // fresco-ui's VisualAnalogScaleField defaults `min = 0, max = 1`, the
+    // interview forwards only `minLabel`/`maxLabel` from `parameters`
+    // (useProtocolForm.tsx), and the scalar `parameters` schema can author
+    // nothing else — no protocol configuration reaches `min`/`max`/`step`.
+    // The step quantisation this range carries is modelled separately, in
+    // the chain pass — see `SCALAR_CHAIN_QUANTUM`.
+    case 'scalar':
+      return { min: 0, max: 1, origin: 'fixed' };
     default:
       return undefined;
   }
@@ -2118,6 +2171,101 @@ function sameAsInheritedPins(
 }
 
 /**
+ * Thirty-fourth wave (Fix 2): the pinned value a NUMBER variable inherits
+ * through its comparator-MERGED equality group. The reviewer's repro: `B`
+ * pinned to 2, `C` spanning [2, 3], mutual non-strict comparators forcing
+ * `B = C`, and `C differentFrom A` with `A` pinned to 2 — `C` is forced to
+ * hold exactly 2, yet neither existing pin source sees it:
+ * `sameAsInheritedPins` scopes to sameAs-only components (no sameAs edge
+ * joins B and C), and `chainedBoundContradictions` builds propagation nodes
+ * only for groups on CROSS-group comparator edges (its adjacency comes from
+ * `graph.dependencies`), so a merged group whose comparators are all
+ * internal never receives a propagated pin.
+ *
+ * A pin may travel a non-strict comparator SCC for NUMBER variables only,
+ * by the same per-type argument class 9's carve-out records
+ * (`referenceStructureContradictions`, twenty-second-wave Finding 3): the
+ * comparator equality the SCC forces is `compareVariables`' `Number()`
+ * equality, and a number has no second textual representation of the same
+ * quantity, so comparator-equal IS stored-equal — exactly what
+ * `differentFrom`'s `isMatchingValue` compares. Every other type stays out:
+ *
+ *   - datetime keeps its sameAs-only inheritance — comparator equality runs
+ *     through `new Date(...)`, which tolerates stored-string divergence
+ *     across resolutions ('2021' and '2021-01-01' compare equal yet store
+ *     differently), and the chain pass already records ON-chain datetime
+ *     collapses resolution-aware in `propagatedPins`;
+ *   - scalar's comparator equality would be equally exact, but its
+ *     validation pick carries no `differentFrom`/`sameAs` and no value
+ *     bounds, and `pinnedValue` never pins one, so there is nothing to
+ *     derive (the chain pass records nothing for scalar collapses for the
+ *     same no-consumer reason);
+ *   - text/boolean/ordinal/categorical have no comparator rules at all
+ *     (`requireType` on the four comparator rules), so comparator-merged
+ *     groups of those types cannot exist.
+ *
+ * The derivation and guards mirror `sameAsInheritedPins` exactly: a group
+ * touching `unsatisfiableGroupMemberIds` contributes nothing (its
+ * emptiness repair may strip the very edges the pin would travel), a
+ * member whose `sameAs` and `differentFrom` name one target keeps its
+ * group out (class 7's repair strips that sameAs edge), disagreeing member
+ * pins derive nothing (the group machinery's conflict to report), and with
+ * no member pinned the group's INTERSECTED interval collapsing to a point
+ * pins every member (`sameAsGroupDerivedPin`'s number arm). The consumer
+ * below applies these pins only across two DISTINCT merged groups — a
+ * `differentFrom` inside one merged group is class 9's report.
+ */
+function comparatorMergedGroupInheritedPins(
+  variables: UnknownRecord,
+  membersOf: Map<string, string[]>,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
+  stageEffectiveComponents: boolean,
+): Map<string, number> {
+  const inherited = new Map<string, number>();
+  for (const members of membersOf.values()) {
+    if (members.length < 2) continue;
+    if (
+      members.some((member) => unsatisfiableGroupMemberIds.has(member)) ||
+      members.some((member) => {
+        const sameAs = referenceRule(variables[member], 'sameAs');
+        return (
+          sameAs !== undefined &&
+          sameAs === referenceRule(variables[member], 'differentFrom')
+        );
+      })
+    ) {
+      continue;
+    }
+    const types = new Set(members.map((member) => typeOf(variables[member])));
+    const [onlyType] = types;
+    if (types.size !== 1 || onlyType !== 'number') continue;
+
+    let pin: number | undefined;
+    let disagreement = false;
+    const unpinned: string[] = [];
+    for (const member of members) {
+      const own = pinnedValue(variables[member], stageEffectiveComponents);
+      if (own === undefined) {
+        unpinned.push(member);
+      } else if (typeof own !== 'number') {
+        // A number variable's own pin is always numeric; anything else is
+        // outside the model, so the group derives nothing (defensive).
+        disagreement = true;
+      } else if (pin === undefined) {
+        pin = own;
+      } else if (pin !== own) {
+        disagreement = true;
+      }
+    }
+    if (disagreement) continue;
+    const derived = pin ?? sameAsGroupDerivedPin(variables, members, 'number');
+    if (typeof derived !== 'number') continue;
+    for (const member of unpinned) inherited.set(member, derived);
+  }
+  return inherited;
+}
+
+/**
  * `differentFrom` edges (same-typed endpoints, per `usableReference`) whose
  * two ends are each individually pinned (`pinnedValue`) to the SAME runtime
  * value — unsatisfiable regardless of the rest of the validation graph, since
@@ -2148,6 +2296,13 @@ function sameAsInheritedPins(
  * components: a `differentFrom` whose both ends share one component is
  * class 9's (`sameAsGroupConflict`), and judging it here too would
  * double-report a single rule.
+ *
+ * Thirty-fourth wave (Fix 2): `comparatorMergedGroupInheritedPins` (above)
+ * is the third fallback — a pin forced onto a NUMBER variable by its
+ * comparator-merged equality group's member pins or collapsed intersected
+ * interval. It applies only across two DISTINCT merged groups for the same
+ * no-double-report reason: a `differentFrom` inside one merged group —
+ * whether joined by sameAs or by a comparator SCC — is class 9's report.
  */
 function pinnedEqualDifferentFromContradictions(
   variables: UnknownRecord,
@@ -2165,19 +2320,31 @@ function pinnedEqualDifferentFromContradictions(
     unsatisfiableGroupMemberIds,
     stageEffectiveComponents,
   );
+  const { groupOf: mergedGroupOf, membersOf: mergedMembersOf } =
+    buildEqualityGroups(variables, comparatorEdges(variables));
+  const mergedPins = comparatorMergedGroupInheritedPins(
+    variables,
+    mergedMembersOf,
+    unsatisfiableGroupMemberIds,
+    stageEffectiveComponents,
+  );
   const conflicts = new Map<string, VariableRuleRef[]>();
 
   for (const [id, variable] of Object.entries(variables)) {
     const target = usableReference(variables, id, 'differentFrom');
     if (target === undefined || target === id) continue;
     const crossComponent = sameAsFind(id) !== sameAsFind(target);
+    const crossMergedGroup =
+      mergedGroupOf.get(id) !== mergedGroupOf.get(target);
     const valueA =
       pinnedValue(variable, stageEffectiveComponents) ??
       (crossComponent ? inheritedPins.get(id) : undefined) ??
+      (crossMergedGroup ? mergedPins.get(id) : undefined) ??
       propagatedPins.get(id);
     const valueB =
       pinnedValue(variables[target], stageEffectiveComponents) ??
       (crossComponent ? inheritedPins.get(target) : undefined) ??
+      (crossMergedGroup ? mergedPins.get(target) : undefined) ??
       propagatedPins.get(target);
     if (valueA === undefined || valueB === undefined || valueA !== valueB) {
       continue;
@@ -2963,13 +3130,61 @@ const INTERVAL_ORIGINS = [
  * Variable types whose interval is measured in whole numbers: datetime bounds
  * are UTC day numbers (and, on the symbolic origin, integer day offsets — see
  * `relativeDateWindowInterval`), text bounds are string lengths, categorical
- * bounds are selection counts. `number` and `scalar` are DELIBERATELY absent:
- * their bounds are integers (`z.number().int()` in validation.ts) but the
- * VALUES are not — the interview runtime coerces a number field with a bare
- * `Number()` (`coerceFormValues`), so 1.5 is a legal answer. See
- * `stepChainBound`, which is the only reader.
+ * bounds are selection counts. `number` is DELIBERATELY absent: its bounds
+ * are integers (`z.number().int()` in validation.ts) but the VALUES are not —
+ * the interview runtime coerces a number field with a bare `Number()`
+ * (`coerceFormValues`), so 1.5 is a legal answer. `scalar` is absent for a
+ * different reason: its values ARE quantised, but on the visual analog
+ * scale's 0.001 grid rather than the integer one — see
+ * `SCALAR_CHAIN_QUANTUM`. Read only by `chainNodeQuantum`.
  */
 const INTEGER_QUANTITY_TYPES = new Set(['datetime', 'text', 'categorical']);
+
+/**
+ * A provably quantised chain-node value domain: every value the node's
+ * variables can hold is a multiple of `step`. `decimals` is `step`'s exact
+ * decimal precision, so grid arithmetic can be normalised through `toFixed` —
+ * repeated binary-float addition of 0.001 would drift off the grid within a
+ * few hops, and both the grid-membership test and the strict-hop step must
+ * stay exact for the strict-edge tightening to be sound. The integer grid
+ * keeps its `Number.isInteger`/plain-addition fast path, byte-identical to
+ * the behaviour it had when `ChainNode` carried a boolean `integral` flag.
+ */
+type ChainQuantum = { step: number; decimals: number };
+
+const INTEGER_CHAIN_QUANTUM: ChainQuantum = { step: 1, decimals: 0 };
+
+/**
+ * Thirty-third wave: the visual analog scale's quantisation.
+ * `VisualAnalogScaleField` (fresco-ui) renders base-ui's Slider with
+ * `min = 0, max = 1, step = 0.001`, and every path a value can leave the
+ * control by is step-aligned: a pointer drag rounds through base-ui's
+ * `roundValueToStep` (SliderControl) and clamps to the range, a keyboard move
+ * first rounds the current value to the step and then adds ±step/±largeStep
+ * with decimal-exact `toFixed` arithmetic (SliderThumb; Home/End emit the
+ * endpoints themselves), and the untouched-commit fallback writes the
+ * midpoint 0.5. A scalar can therefore only ever store one of the 1001 grid
+ * values k/1000 — which is exactly what makes a strict comparator chain of
+ * more than 1001 scalars infeasible: consecutive strictly-ordered grid values
+ * differ by at least the step. See `intervalOf`'s scalar case for why the
+ * control (and with it this grid) is determined for every scalar variable,
+ * explicit-component and componentless alike.
+ */
+const SCALAR_CHAIN_QUANTUM: ChainQuantum = { step: 0.001, decimals: 3 };
+
+const isOnQuantumGrid = (value: number, quantum: ChainQuantum): boolean =>
+  quantum.decimals === 0
+    ? Number.isInteger(value)
+    : Number(value.toFixed(quantum.decimals)) === value;
+
+const stepAlongQuantumGrid = (
+  value: number,
+  quantum: ChainQuantum,
+  direction: 1 | -1,
+): number =>
+  quantum.decimals === 0
+    ? value + direction
+    : Number((value + direction * quantum.step).toFixed(quantum.decimals));
 
 /**
  * One end of a propagated range, carried with enough provenance to name the
@@ -2980,7 +3195,7 @@ type ChainBound = {
   /**
    * The bound is EXCLUSIVE: the node's value has to lie strictly beyond
    * `value`. Produced by a strict comparator step over a quantity that is not
-   * known to be whole-numbered.
+   * provably quantised.
    */
   open: boolean;
   /** Index of the propagation node whose OWN declared bound seeded this. */
@@ -2993,7 +3208,8 @@ type ChainBound = {
 type ChainNode = {
   variableIds: string[];
   intervals: GroupIntervals;
-  integral: boolean;
+  /** The node's provably quantised value grid, when it has one. */
+  quantum: ChainQuantum | undefined;
   /**
    * The node's own bounds are usable as a seed. A node whose merged interval
    * is already empty is reported by the group check above (or, for a group of
@@ -3061,22 +3277,28 @@ const isTighterMax = (
  * bound up the chain, -1 while pushing an upper bound down it).
  *
  * A non-strict hop passes the bound through unchanged. A strict hop needs the
- * next value to lie strictly beyond it, which is an exact `±1` on a
- * whole-numbered quantity and an open bound otherwise — the distinction that
+ * next value to lie strictly beyond it, which is an exact `±step` when the
+ * target's domain is a provably quantised grid the bound itself sits on
+ * (integer quantities step by 1, scalars by the visual analog scale's 0.001 —
+ * see `ChainQuantum`) and an open bound otherwise — the distinction that
  * makes `A >= B >= C` with `A.max = C.min` stay satisfiable while
  * `A > B > C` with the same bounds does not.
  */
 const stepChainBound = (
   bound: ChainBound,
   strict: boolean,
-  integral: boolean,
+  quantum: ChainQuantum | undefined,
   direction: 1 | -1,
   from: number,
 ): ChainBound => {
   const carried = { root: bound.root, via: from, hops: bound.hops + 1 };
   if (!strict) return { ...carried, value: bound.value, open: bound.open };
-  if (integral && Number.isInteger(bound.value)) {
-    return { ...carried, value: bound.value + direction, open: false };
+  if (quantum !== undefined && isOnQuantumGrid(bound.value, quantum)) {
+    return {
+      ...carried,
+      value: stepAlongQuantumGrid(bound.value, quantum, direction),
+      open: false,
+    };
   }
   return { ...carried, value: bound.value, open: true };
 };
@@ -3084,6 +3306,27 @@ const stepChainBound = (
 const isIntegerQuantity = (variable: unknown): boolean => {
   const type = typeOf(variable);
   return type !== undefined && INTEGER_QUANTITY_TYPES.has(type);
+};
+
+/**
+ * The quantised grid a condensation node's values provably live on, if any.
+ * A node mixing grids gets none: an equality group can only mix types through
+ * raw migration input (`usableReference` joins same-typed variables), and a
+ * mixed node's domain is not provably any single grid — `undefined` falls
+ * back to the open-bound (accept-direction) strict hop exactly as before.
+ */
+const chainNodeQuantum = (
+  variables: UnknownRecord,
+  variableIds: string[],
+): ChainQuantum | undefined => {
+  if (variableIds.length === 0) return undefined;
+  if (variableIds.every((id) => isIntegerQuantity(variables[id]))) {
+    return INTEGER_CHAIN_QUANTUM;
+  }
+  if (variableIds.every((id) => typeOf(variables[id]) === 'scalar')) {
+    return SCALAR_CHAIN_QUANTUM;
+  }
+  return undefined;
 };
 
 /** A node's own declared bound, as the start of a propagation path. */
@@ -3299,9 +3542,7 @@ function chainedBoundContradictions(
     nodes.push({
       variableIds,
       intervals,
-      integral:
-        variableIds.length > 0 &&
-        variableIds.every((id) => isIntegerQuantity(variables[id])),
+      quantum: chainNodeQuantum(variables, variableIds),
       seedable: !hasEmptyOrigin(intervals),
       outgoing: [],
       incoming: [],
@@ -3378,7 +3619,7 @@ function chainedBoundContradictions(
         const stepped = stepChainBound(
           bound,
           edge.strict,
-          target.integral,
+          target.quantum,
           1,
           index,
         );
@@ -3413,7 +3654,7 @@ function chainedBoundContradictions(
         const stepped = stepChainBound(
           bound,
           edge.strict,
-          target.integral,
+          target.quantum,
           -1,
           index,
         );
@@ -3438,10 +3679,13 @@ function chainedBoundContradictions(
       // collapse to one CLOSED point pins every member to that value, even
       // when neither bound is the node's own — `pinnedEqualDifferentFromContradictions`
       // reads this map as a fallback once a variable's own rules don't
-      // already pin it. Scoped to `number` and `datetime`: those are the
-      // only types a comparator edge ever connects (see `requireType` on
-      // the four comparator rules) whose bound also identifies the runtime
-      // VALUE rather than a length or count. A full-resolution datetime
+      // already pin it. Scoped to `number` and `datetime`: text/categorical
+      // bounds are lengths and counts rather than values, and a SCALAR
+      // collapse (thirty-third wave) deliberately records nothing — scalar's
+      // validation pick carries no `differentFrom`/`sameAs` (variable.ts),
+      // and the pinned-equal check is this map's only reader, so a scalar
+      // pin could never be consumed; raw migration input carrying such a
+      // rule stays accept-direction. A full-resolution datetime
       // records the same origin-tagged day-number key `pinnedValue` derives;
       // a COARSE (month/year) member additionally records its pin
       // (twenty-seventh-wave Finding 2) whenever the collapsed day is
@@ -3454,7 +3698,7 @@ function chainedBoundContradictions(
       // canonical four-digit stored form records nothing (accept).
       // `!min.open && !max.open` is the fractional-domain guard:
       // a strict hop only ever leaves a bound open when its quantity is not
-      // known to be whole-numbered (`stepChainBound`), so an open collapse
+      // provably quantised (`stepChainBound`), so an open collapse
       // means the node's true window excludes its one candidate point (a
       // provably EMPTY domain, always caught elsewhere as an infeasibility)
       // rather than a pinned one.
@@ -4078,31 +4322,45 @@ const matchesReferenceAssignment = (pin: SingletonPin): boolean =>
  * and the FIRST value is the reference — a singleton pin becomes the
  * boolean "is the reference value", so `SingletonPin` and
  * `matchesReferenceAssignment` are reused rather than duplicated, exactly
- * as boolean pins interact with parity. Every uncertainty bails the WHOLE
- * component to accept:
+ * as boolean pins interact with parity.
  *
- *   - a member with no usable `options` array, an empty set, or more than
- *     two distinct values (the k-colourability limit stands there);
- *   - two-value domains that differ between members ({1,2} beside {2,3} —
- *     even though group-intersection reasoning could sometimes pin, the
- *     conservative accept is deliberate);
+ * Thirty-second wave (Fix 2): domains are judged at GROUP granularity — each
+ * equality group's option-value INTERSECTION (`sharedOptionValues`, the same
+ * group-level read the emptiness checks and `sameAsGroupDerivedPin`'s
+ * ordinal arm already make), not each member's raw option set. A `sameAs`
+ * group can only ever store a value EVERY member offers, so a group joining
+ * a three-valued member to a two-valued partner has an effective two-value
+ * domain — the wave-30 per-member read bailed on the wider member and
+ * accepted an odd cycle over three such groups. A group intersection of
+ * size 1 is likewise the GROUP's pin, however many values its widest member
+ * would offer alone. Every uncertainty bails the WHOLE component to accept:
+ *
+ *   - a group touching `unsatisfiableGroupMemberIds` — an empty option
+ *     intersection (`optionsDisjoint`, which is also where two disagreeing
+ *     singleton members inside one group land) is the emptiness machinery's
+ *     own report, whose repair may strip the very grouping edges in play;
+ *   - a member with no usable `options` array, or a group intersection that
+ *     is empty (defensive alongside the poisoned-group guard) or holds more
+ *     than two distinct values (the k-colourability limit stands there);
+ *   - two-value group domains that differ between groups ({1,2} beside
+ *     {2,3});
  *   - a singleton value outside the shared pair (its differentFrom edges
  *     are trivially satisfiable, so treating it as a pin would be wrong);
- *   - two disagreeing singleton members inside ONE group — that group's own
- *     option-set emptiness conflict (`optionsDisjoint`), whose repair may
- *     strip the very grouping edges in play;
- *   - no two-valued member at all: all-singleton components are either the
+ *   - no two-valued group at all: all-singleton components are either the
  *     pinned-equal machinery's (equal pins, already claimed) or trivially
  *     satisfiable, and there is no shared domain to force a colouring
  *     against.
  *
- * Categorical variables are deliberately NOT routed through this model even
- * when rendered as a single-select control: the runtime stores a
- * categorical value as an ARRAY and `differentFrom` compares those arrays
- * as order-insensitive multisets (fresco-ui's `isMatchingValue` — the same
- * reading `pinnedValue`'s composite set keys encode), so even a two-option
- * categorical has four possible stored selections, never a comparable
- * two-value scalar domain.
+ * Categorical variables do not share this model's per-VALUE reading: the
+ * runtime stores a categorical value as an ARRAY and `differentFrom`
+ * compares those arrays as order-insensitive multisets (fresco-ui's
+ * `isMatchingValue` — the same reading `pinnedValue`'s composite set keys
+ * encode), so an unconstrained two-option categorical has four possible
+ * stored selections, never a comparable two-value scalar domain. The
+ * thirty-second wave (Fix 1) instead admits a categorical component at
+ * SELECTION granularity — see `categoricalComponentTwoValueDomain` below —
+ * exactly when every group's effective selection domain is the same two
+ * multiset selections.
  */
 type ComponentTwoValueDomain = {
   /** Group id → whether the group's pinned value is the reference value. */
@@ -4116,50 +4374,268 @@ const ordinalComponentTwoValueDomain = (
   variables: UnknownRecord,
   groups: string[],
   membersOf: Map<string, string[]>,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
 ): ComponentTwoValueDomain | undefined => {
   let reference: string | number | undefined;
   let other: string | number | undefined;
-  const memberValues = new Map<string, Set<string | number>>();
+  const groupValues = new Map<string, Set<string | number>>();
   for (const group of groups) {
-    for (const member of membersOf.get(group) ?? [group]) {
-      const values = optionValues(variables[member]);
-      if (values === undefined || values.size === 0 || values.size > 2) {
-        return undefined;
-      }
-      memberValues.set(member, values);
-      if (values.size !== 2) continue;
-      const [first, second] = [...values].toSorted((a, b) => {
-        const tokenA = ordinalDomainToken(a);
-        const tokenB = ordinalDomainToken(b);
-        return tokenA < tokenB ? -1 : tokenA > tokenB ? 1 : 0;
-      });
-      if (first === undefined || second === undefined) return undefined;
-      if (reference === undefined) {
-        reference = first;
-        other = second;
-      } else if (reference !== first || other !== second) {
-        return undefined;
-      }
+    const members = membersOf.get(group) ?? [group];
+    if (members.some((member) => unsatisfiableGroupMemberIds.has(member))) {
+      return undefined;
+    }
+    const shared = sharedOptionValues(variables, members);
+    if (
+      shared?.type !== 'ordinal' ||
+      shared.values.size === 0 ||
+      shared.values.size > 2
+    ) {
+      return undefined;
+    }
+    groupValues.set(group, shared.values);
+    if (shared.values.size !== 2) continue;
+    const [first, second] = [...shared.values].toSorted((a, b) => {
+      const tokenA = ordinalDomainToken(a);
+      const tokenB = ordinalDomainToken(b);
+      return tokenA < tokenB ? -1 : tokenA > tokenB ? 1 : 0;
+    });
+    if (first === undefined || second === undefined) return undefined;
+    if (reference === undefined) {
+      reference = first;
+      other = second;
+    } else if (reference !== first || other !== second) {
+      return undefined;
     }
   }
   if (reference === undefined || other === undefined) return undefined;
   const pins = new Map<string, boolean>();
   for (const group of groups) {
-    let pinned: string | number | undefined;
-    for (const member of membersOf.get(group) ?? [group]) {
-      const values = memberValues.get(member);
-      if (values?.size !== 1) continue;
-      const [value] = values;
-      if (value === undefined || (value !== reference && value !== other)) {
-        return undefined;
+    const values = groupValues.get(group);
+    if (values?.size !== 1) continue;
+    const [value] = values;
+    if (value === undefined || (value !== reference && value !== other)) {
+      return undefined;
+    }
+    pins.set(group, value === reference);
+  }
+  return { pins };
+};
+
+/**
+ * Thirty-second wave (Fix 1): the largest categorical selection domain the
+ * parity admission below will derive exactly. Only a domain of at most TWO
+ * selections can ever qualify (a shared two-selection pair, or a singleton
+ * pin), so the cap exists purely to bound the arithmetic and the enumeration
+ * on the way to that answer — a handful comfortably covers every qualifying
+ * shape while keeping the worst case a small, constant amount of work per
+ * equality group, the same discipline `COARSE_INSTANT_ENUMERATION_CAP`
+ * applies to coarse date windows.
+ */
+const CATEGORICAL_SELECTION_ENUMERATION_CAP = 4;
+
+/**
+ * How many distinct selections a categorical effective domain admits — the
+ * number of subsets of `optionCount` distinct values whose size lies within
+ * `[lo, hi]` — computed arithmetically with an early exit past `cap`
+ * (returning `cap + 1`), so a wide cardinality window over many options is
+ * never enumerated combinatorially. Each binomial is built through its
+ * symmetric form (`k' = min(k, n - k)`), whose intermediate factors are
+ * themselves monotonically increasing binomial coefficients, so the early
+ * exit can never abandon a term that would have come back under the cap.
+ */
+const selectionCountWithinWindow = (
+  optionCount: number,
+  lo: number,
+  hi: number,
+  cap: number,
+): number => {
+  let total = 0;
+  for (let size = lo; size <= hi; size++) {
+    const symmetric = Math.min(size, optionCount - size);
+    let binomial = 1;
+    for (let factor = 0; factor < symmetric; factor++) {
+      binomial = (binomial * (optionCount - factor)) / (factor + 1);
+      if (binomial > cap) return cap + 1;
+    }
+    total += binomial;
+    if (total > cap) return cap + 1;
+  }
+  return total;
+};
+
+/**
+ * Every selection of a size within `[lo, hi]` over `values`, each encoded as
+ * its canonical `categoricalSetPinKey` (order-insensitive and typeof-tagged,
+ * so two selections holding the same values always share one key — the
+ * multiset reading `isMatchingValue` applies to stored categorical arrays).
+ * Only ever called once `selectionCountWithinWindow` has vouched the count
+ * is trivially small, so the lexicographic index walk below is bounded by
+ * that same cap; it is iterative (no recursion), matching the file's
+ * import-time stack discipline (eleventh-wave Finding 2).
+ */
+const enumerateSelectionKeys = (
+  values: (string | number)[],
+  lo: number,
+  hi: number,
+): string[] => {
+  const keys: string[] = [];
+  for (let size = lo; size <= hi; size++) {
+    if (size < 1 || size > values.length) continue;
+    const indices: number[] = [];
+    for (let index = 0; index < size; index++) indices.push(index);
+    for (;;) {
+      const selection = new Set<string | number>();
+      for (const index of indices) {
+        const value = values[index];
+        if (value !== undefined) selection.add(value);
       }
-      if (pinned === undefined) {
-        pinned = value;
-      } else if (pinned !== value) {
-        return undefined;
+      keys.push(categoricalSetPinKey(selection));
+      // Advance to the successor combination in lexicographic index order:
+      // bump the rightmost index that still has headroom, then re-pack every
+      // index after it consecutively.
+      let cursor = size - 1;
+      while (cursor >= 0) {
+        const current = indices[cursor];
+        if (
+          current !== undefined &&
+          current < values.length - (size - cursor)
+        ) {
+          break;
+        }
+        cursor -= 1;
+      }
+      if (cursor < 0) break;
+      const bumped = (indices[cursor] ?? 0) + 1;
+      for (let index = cursor; index < size; index++) {
+        indices[index] = bumped + (index - cursor);
       }
     }
-    if (pinned !== undefined) pins.set(group, pinned === reference);
+  }
+  return keys;
+};
+
+/**
+ * Thirty-second wave (Fix 1): one equality group's EFFECTIVE categorical
+ * selection domain — every selection its members can all store, each as its
+ * canonical `categoricalSetPinKey` — or `undefined` when the domain cannot
+ * be derived exactly (accept). The group's shared value must be a subset of
+ * the members' INTERSECTED distinct option values (`sharedOptionValues`, the
+ * same group-level read the emptiness checks and `sameAsGroupDerivedPin`'s
+ * categorical arm already use) whose size lies inside the members' MERGED
+ * minSelected/maxSelected window (the fixed-origin categorical interval,
+ * intersected across members exactly as `optionShortfall` reads it).
+ * Selections are non-empty — the entered-value convention `pinnedValue`'s
+ * categorical arm documents (`required` owns emptiness) — and the domain is
+ * enumerated only once `selectionCountWithinWindow` proves it trivially
+ * small; anything wider bails to accept rather than enumerating
+ * combinatorially. A non-integral window edge (raw migration input) and an
+ * empty merged interval (the group-emptiness machinery's own report) bail
+ * the same way.
+ */
+const categoricalGroupSelectionDomain = (
+  variables: UnknownRecord,
+  members: string[],
+): string[] | undefined => {
+  const shared = sharedOptionValues(variables, members);
+  if (shared?.type !== 'categorical' || shared.values.size === 0) {
+    return undefined;
+  }
+  const intervals = intervalsOfMembers(variables, members);
+  if (hasEmptyOrigin(intervals)) return undefined;
+  const window = intervals.get('fixed');
+  const lo = Math.max(1, window?.min ?? 1);
+  const hi = Math.min(shared.values.size, window?.max ?? shared.values.size);
+  if (!Number.isInteger(lo) || !Number.isInteger(hi) || lo > hi) {
+    return undefined;
+  }
+  const count = selectionCountWithinWindow(
+    shared.values.size,
+    lo,
+    hi,
+    CATEGORICAL_SELECTION_ENUMERATION_CAP,
+  );
+  if (count > CATEGORICAL_SELECTION_ENUMERATION_CAP) return undefined;
+  return enumerateSelectionKeys([...shared.values], lo, hi);
+};
+
+/**
+ * Thirty-second wave (Fix 1): the categorical refinement of the thirtieth
+ * wave's parity exclusion. That wave kept categorical out on the proof "a
+ * two-option categorical has four stored selections" — true of an
+ * UNCONSTRAINED two-option variable, but the effective SELECTION domain is
+ * what `differentFrom` actually ranges over, and a merged
+ * `minSelected: 1`/`maxSelected: 1` window over two shared options leaves
+ * exactly TWO storable selections ([x] or [y]), so a three-variable
+ * `differentFrom` triangle over them is exactly as unsatisfiable as the
+ * boolean one. A component every one of whose groups admits the SAME two
+ * selections is satisfiable iff it is two-colourable — the question the
+ * boolean bipartite machinery already decides — with selections compared as
+ * order-insensitive multisets exactly as the runtime compares stored arrays
+ * (fresco-ui's `isMatchingValue`; the canonical `categoricalSetPinKey`
+ * encoding, never re-derived, so option ORDER differences between members
+ * never split one selection into two). Domains are read at GROUP granularity
+ * — each equality group's intersected option set under its merged
+ * cardinality window (Fix 2's principle; see
+ * `categoricalGroupSelectionDomain`) — and a singleton effective domain pins
+ * its group exactly as the boolean/ordinal/datetime singletons do. Every
+ * uncertainty bails the WHOLE component to accept:
+ *
+ *   - a group touching `unsatisfiableGroupMemberIds` — an empty option
+ *     intersection (`optionsDisjoint`), an inverted merged cardinality
+ *     window (`intervalsEmpty`), or a shortfall (`optionsBelowMinSelected`)
+ *     are all the emptiness machinery's own reports, whose repairs may strip
+ *     the very grouping edges in play (two disagreeing singleton members
+ *     inside one group land here too, as an empty intersection);
+ *   - a domain that cannot be derived or enumerated exactly
+ *     (`categoricalGroupSelectionDomain`'s own bails, the enumeration cap
+ *     included), or that admits more than two selections;
+ *   - two-selection domains that differ between groups;
+ *   - a singleton selection outside the shared pair (its differentFrom edges
+ *     are trivially satisfiable, so treating it as a pin would be wrong);
+ *   - no two-selection group at all: all-singleton components are either the
+ *     pinned-equal machinery's (equal pins, already claimed) or trivially
+ *     satisfiable, and there is no shared domain to force a colouring
+ *     against.
+ */
+const categoricalComponentTwoValueDomain = (
+  variables: UnknownRecord,
+  groups: string[],
+  membersOf: Map<string, string[]>,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
+): ComponentTwoValueDomain | undefined => {
+  let reference: string | undefined;
+  let other: string | undefined;
+  const groupDomains = new Map<string, string[]>();
+  for (const group of groups) {
+    const members = membersOf.get(group) ?? [group];
+    if (members.some((member) => unsatisfiableGroupMemberIds.has(member))) {
+      return undefined;
+    }
+    const domain = categoricalGroupSelectionDomain(variables, members);
+    if (domain === undefined || domain.length === 0 || domain.length > 2) {
+      return undefined;
+    }
+    groupDomains.set(group, domain);
+    if (domain.length !== 2) continue;
+    const [first, second] = domain.toSorted();
+    if (first === undefined || second === undefined) return undefined;
+    if (reference === undefined) {
+      reference = first;
+      other = second;
+    } else if (reference !== first || other !== second) {
+      return undefined;
+    }
+  }
+  if (reference === undefined || other === undefined) return undefined;
+  const pins = new Map<string, boolean>();
+  for (const group of groups) {
+    const domain = groupDomains.get(group);
+    if (domain?.length !== 1) continue;
+    const [key] = domain;
+    if (key === undefined || (key !== reference && key !== other)) {
+      return undefined;
+    }
+    pins.set(group, key === reference);
   }
   return { pins };
 };
@@ -4182,7 +4658,13 @@ const ordinalComponentTwoValueDomain = (
  * post-`tightenToSurvivingInstantHull`, post-`pruneToPinnedDisequalityHull`
  * interval every downstream feasibility consumer reads, so synthesized
  * bounds, default floors, group-derived pins, and pruned pinned
- * disequalities have all already been applied. That makes the pruning
+ * disequalities have all already been applied. That interval is ALREADY the
+ * equality-group intersection Fix 2 requires of the ordinal and categorical
+ * qualifications: `intervalsOfMembers` intersects every member's own window
+ * into the group interval, and `enumerableFixedDomain` intersects every
+ * coarse member's emission set across the group, so a group joining a
+ * three-instant member to a two-instant partner qualifies on the shared two
+ * instants with no raw per-member domain read anywhere in this path. That makes the pruning
  * ordering the file's established one, not a second convention: a domain
  * whose ENDPOINT the pruning removed re-enumerates two-valued here (its
  * tightened hull moved), while an interior exclusion is invisible to the
@@ -4219,6 +4701,33 @@ const ordinalComponentTwoValueDomain = (
  *   - an interview-date-origin or windowless member, which
  *     `enumerableFixedDomain` already refuses to place on the fixed
  *     calendar (fixed-origin instants are the only enumerable ones).
+ *
+ * Thirty-fourth wave (Fix 3): the chain pass's `propagatedPins` NARROW each
+ * group's enumerated domain before the two-instant judgement. The
+ * reviewer's repro: three full pickers each windowed to Jan 2–3, with
+ * `B differentFrom A`, `C differentFrom A`, and `C greaterThanVariable B` —
+ * propagation collapses B to Jan 2 and C to Jan 3 (singletons
+ * `chainedBoundContradictions` already records), so A must differ from
+ * BOTH values of its two-value domain, yet this pass received only the
+ * pre-propagation intervals and saw no pin anywhere. A propagated
+ * singleton constrains its group exactly as an own or inherited singleton
+ * does (it is the group's whole reachable domain under the comparator
+ * closure), and the pin keys are origin- and resolution-encoded by the
+ * chain pass itself, so key equality against `storedPinKeyAtDay` is the
+ * same resolution-honest comparison the disequality pruning uses; a pin
+ * whose key matches no enumerated day (another origin, or a collapse the
+ * enumerated window cannot see) bails the whole component to accept.
+ *
+ * ORDERING: `pruneToPinnedDisequalityHull` deliberately refuses to consult
+ * propagated pins — its pruned hulls FEED the chain pass, so reading the
+ * pass's own output there would demand a second analyser iteration (no
+ * fixpoint, by design). This consumer sits on the other side of that
+ * boundary: the parity pass runs strictly AFTER the chain pass, reads
+ * `propagatedPins` read-only, and emits only contradiction reports that
+ * feed nothing back into any interval — the same downstream position from
+ * which `pinnedEqualDifferentFromContradictions` already consumes the
+ * identical map — so no cycle is introduced and the pruning pass's
+ * discipline is untouched.
  */
 const datetimeComponentTwoInstantDomain = (
   variables: UnknownRecord,
@@ -4227,6 +4736,7 @@ const datetimeComponentTwoInstantDomain = (
   groupIntervalsByMember: ReadonlyMap<string, GroupIntervals>,
   unsatisfiableGroupMemberIds: ReadonlySet<string>,
   disequalityEmptiedMemberIds: ReadonlySet<string>,
+  propagatedPins: ReadonlyMap<string, string | number>,
 ): ComponentTwoValueDomain | undefined => {
   let resolution: DateResolution | undefined;
   for (const group of groups) {
@@ -4265,9 +4775,25 @@ const datetimeComponentTwoInstantDomain = (
     for (const day of domain) {
       if (storedPinKeyAtDay(day, resolution) === undefined) return undefined;
     }
-    groupDomains.set(group, domain);
-    if (domain.size !== 2) continue;
-    const [first, second] = [...domain].toSorted((dayA, dayB) => dayA - dayB);
+    // Thirty-fourth wave (Fix 3): a comparator-forced singleton recorded by
+    // the chain pass narrows this group's domain exactly as an own bound
+    // would — see the ORDERING note in the doc comment above. A pin whose
+    // key matches no enumerated day bails the component (accept).
+    let narrowed = domain;
+    for (const member of members) {
+      const pin = propagatedPins.get(member);
+      if (pin === undefined) continue;
+      const matching = new Set(
+        [...narrowed].filter(
+          (day) => storedPinKeyAtDay(day, resolution) === pin,
+        ),
+      );
+      if (matching.size === 0) return undefined;
+      narrowed = matching;
+    }
+    groupDomains.set(group, narrowed);
+    if (narrowed.size !== 2) continue;
+    const [first, second] = [...narrowed].toSorted((dayA, dayB) => dayA - dayB);
     if (first === undefined || second === undefined) return undefined;
     if (reference === undefined) {
       reference = first;
@@ -4291,8 +4817,9 @@ const datetimeComponentTwoInstantDomain = (
 };
 
 /**
- * Contradictions in the boolean, two-valued-ordinal, and two-instant-datetime
- * `differentFrom` graph, at equality-group granularity (a `sameAs` group
+ * Contradictions in the boolean, two-valued-ordinal, two-instant-datetime,
+ * and two-selection-categorical `differentFrom` graph, at equality-group
+ * granularity (a `sameAs` group
  * holds one shared value, so `differentFrom` edges connect groups, not
  * individual variables). Two independent structural sources are checked per
  * connected component of that graph:
@@ -4309,12 +4836,14 @@ const datetimeComponentTwoInstantDomain = (
  *
  * DELIBERATE LIMIT: boolean variables are always checked here; ordinal
  * variables — thirtieth wave (Fix 3) — exactly when their whole component
- * shares one two-value option domain (see `ordinalComponentTwoValueDomain`,
- * including why categorical stays out: its stored value is an array, never a
- * comparable scalar); and datetime variables — thirty-first wave — exactly
- * when their whole component shares one exactly-enumerable two-instant
- * stored-value domain at one resolution (see
- * `datetimeComponentTwoInstantDomain`). Larger or non-uniform domains still
+ * shares one two-value option domain (see `ordinalComponentTwoValueDomain`);
+ * datetime variables — thirty-first wave — exactly when their whole
+ * component shares one exactly-enumerable two-instant stored-value domain at
+ * one resolution (see `datetimeComponentTwoInstantDomain`); and categorical
+ * variables — thirty-second wave (Fix 1) — exactly when every group's
+ * effective SELECTION domain (its intersected option set under its merged
+ * cardinality window) is the same two multiset selections (see
+ * `categoricalComponentTwoValueDomain`). Larger or non-uniform domains still
  * bail to accept: the equivalent question there is general k-colourability
  * (for cycles) or arbitrary domain propagation (for pins), neither of which
  * has an efficient exact check for an arbitrary domain — that remains out of
@@ -4335,6 +4864,7 @@ function oddDifferentFromCycleContradictions(
   groupIntervalsByMember: ReadonlyMap<string, GroupIntervals>,
   unsatisfiableGroupMemberIds: ReadonlySet<string>,
   disequalityEmptiedMemberIds: ReadonlySet<string>,
+  propagatedPins: ReadonlyMap<string, string | number>,
 ): ValidationContradiction[] {
   const edges = comparatorEdges(variables);
   const { groupOf, membersOf } = buildEqualityGroups(variables, edges);
@@ -4346,7 +4876,12 @@ function oddDifferentFromCycleContradictions(
 
   for (const [id, variable] of Object.entries(variables)) {
     const type = typeOf(variable);
-    if (type !== 'boolean' && type !== 'ordinal' && type !== 'datetime') {
+    if (
+      type !== 'boolean' &&
+      type !== 'ordinal' &&
+      type !== 'datetime' &&
+      type !== 'categorical'
+    ) {
       continue;
     }
     // `usableReference` guarantees same-typed endpoints, so the target
@@ -4446,12 +4981,15 @@ function oddDifferentFromCycleContradictions(
     // member's type decides which domain model applies — the Set is
     // defensive, matching the rest of the file. An ordinal component is
     // judged ONLY when `ordinalComponentTwoValueDomain` validates it as one
-    // shared two-value set, and — thirty-first wave — a datetime component
-    // ONLY when `datetimeComponentTwoInstantDomain` validates it as one
-    // shared exactly-enumerable two-instant set; any member with a
-    // different, larger, or unenumerable domain bails the whole component to
-    // accept BEFORE either structural check below runs, keeping the
-    // documented k-colourability limit for genuinely larger domains.
+    // shared two-value set; a datetime component — thirty-first wave — ONLY
+    // when `datetimeComponentTwoInstantDomain` validates it as one shared
+    // exactly-enumerable two-instant set; and a categorical component —
+    // thirty-second wave (Fix 1) — ONLY when
+    // `categoricalComponentTwoValueDomain` validates it as one shared
+    // two-selection set. Any member with a different, larger, or
+    // unenumerable domain bails the whole component to accept BEFORE any
+    // structural check below runs, keeping the documented k-colourability
+    // limit for genuinely larger domains.
     const componentTypes = new Set(
       queue.flatMap((group) =>
         (membersOf.get(group) ?? [group]).map((member) =>
@@ -4463,7 +5001,12 @@ function oddDifferentFromCycleContradictions(
     if (componentTypes.size !== 1 || componentType === undefined) continue;
     const ordinalDomain =
       componentType === 'ordinal'
-        ? ordinalComponentTwoValueDomain(variables, queue, membersOf)
+        ? ordinalComponentTwoValueDomain(
+            variables,
+            queue,
+            membersOf,
+            unsatisfiableGroupMemberIds,
+          )
         : undefined;
     if (componentType === 'ordinal' && ordinalDomain === undefined) continue;
     const datetimeDomain =
@@ -4475,10 +5018,23 @@ function oddDifferentFromCycleContradictions(
             groupIntervalsByMember,
             unsatisfiableGroupMemberIds,
             disequalityEmptiedMemberIds,
+            propagatedPins,
           )
         : undefined;
     if (componentType === 'datetime' && datetimeDomain === undefined) continue;
-    const twoValueDomain = ordinalDomain ?? datetimeDomain;
+    const categoricalDomain =
+      componentType === 'categorical'
+        ? categoricalComponentTwoValueDomain(
+            variables,
+            queue,
+            membersOf,
+            unsatisfiableGroupMemberIds,
+          )
+        : undefined;
+    if (componentType === 'categorical' && categoricalDomain === undefined) {
+      continue;
+    }
+    const twoValueDomain = ordinalDomain ?? datetimeDomain ?? categoricalDomain;
 
     if (!bipartite) {
       if (!conflict) continue; // Type-narrowing only: bipartite is only ever
@@ -4530,12 +5086,12 @@ function oddDifferentFromCycleContradictions(
     // (itself built on `booleanDomain`), never `options` directly, so a
     // Toggle-rendered boolean (or one with no declared component) stays
     // unconditionally two-valued here exactly as it does everywhere else in
-    // this file. An ordinal or datetime component's pins were already
-    // boolean-ized against its shared domain's reference value
+    // this file. An ordinal, datetime, or categorical component's pins were
+    // already boolean-ized against its shared domain's reference value
     // (`ordinalComponentTwoValueDomain` /
-    // `datetimeComponentTwoInstantDomain`), so singleton-domain ordinal and
-    // datetime members interact with parity through exactly this same
-    // machinery.
+    // `datetimeComponentTwoInstantDomain` /
+    // `categoricalComponentTwoValueDomain`), so singleton-domain members of
+    // those types interact with parity through exactly this same machinery.
     const singletonPins: SingletonPin[] = [];
     for (const group of queue) {
       let value: boolean | undefined;
@@ -4644,6 +5200,11 @@ export function findValidationContradictions(
       groupIntervalsByMember,
       unsatisfiableGroupMemberIds,
       disequalityEmptiedMemberIds,
+      // Thirty-fourth wave (Fix 3): the chain pass's singleton collapses
+      // qualify the datetime two-instant parity domains — a strictly
+      // downstream, read-only consumption (see the ORDERING note on
+      // `datetimeComponentTwoInstantDomain`).
+      propagatedPins,
     ),
   ];
 }
