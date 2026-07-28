@@ -956,7 +956,12 @@ describe('findValidationContradictions — second-wave Finding 4: odd boolean di
     validation,
   });
 
-  it('rejects a three-variable differentFrom triangle over booleans', () => {
+  // Twenty-third-wave Finding 1: removing any ONE edge from an odd cycle
+  // makes the remainder bipartite, so a minimal-strip repair only needs to
+  // strip that one edge's declarations — not every edge in the cycle (the
+  // old over-strip behaviour, which discarded two otherwise-valid authored
+  // constraints alongside the truly contradictory one).
+  it('rejects a three-variable differentFrom triangle over booleans, stripping exactly one edge', () => {
     const result = findValidationContradictions({
       a: boolean('a', { differentFrom: 'b' }),
       b: boolean('b', { differentFrom: 'c' }),
@@ -971,10 +976,24 @@ describe('findValidationContradictions — second-wave Finding 4: odd boolean di
     expect(result[0]?.message).toContain(
       'their differentFrom rules cannot all be satisfied with only two possible values',
     );
-    expect(result[0]?.strips).toHaveLength(3);
+    expect(result[0]?.strips).toHaveLength(1);
     expect(
       result[0]?.strips.every((strip) => strip.rule === 'differentFrom'),
     ).toBe(true);
+    // The repair is genuinely minimal: applying just this one strip resolves
+    // the contradiction (the graph becomes satisfiable), and it is chosen
+    // deterministically — by the edge's own canonical sorted key — so it is
+    // stable across runs.
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+    expect(
+      findValidationContradictions({
+        a: boolean('a', {}),
+        b: boolean('b', { differentFrom: 'c' }),
+        c: boolean('c', { differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
   });
 
   it('accepts a mutual two-cycle (one edge, not a cycle) over booleans', () => {
@@ -1033,12 +1052,243 @@ describe('findValidationContradictions — third-wave Finding 1: odd-cycle strip
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('oddDifferentFromCycle');
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
-    expect(result[0]?.strips).toHaveLength(3);
+    // Twenty-third-wave Finding 1: only ONE edge of the triangle is
+    // stripped now, not all three — d's branch rule was already untouched
+    // (it never closed a loop of its own), and now two of the triangle's
+    // three edges also survive.
+    expect(result[0]?.strips).toHaveLength(1);
     expect(
       result[0]?.strips.every(
         (strip) => strip.rule === 'differentFrom' && strip.variableId !== 'd',
       ),
     ).toBe(true);
+  });
+});
+
+describe('findValidationContradictions — Twenty-third-wave Finding 1: minimal odd-cycle strips', () => {
+  const boolean = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'boolean',
+    validation,
+  });
+
+  it('strips exactly one edge from a longer (five-node) odd cycle, leaving a satisfiable graph', () => {
+    const result = findValidationContradictions({
+      a: boolean('a', { differentFrom: 'b' }),
+      b: boolean('b', { differentFrom: 'c' }),
+      c: boolean('c', { differentFrom: 'd' }),
+      d: boolean('d', { differentFrom: 'e' }),
+      e: boolean('e', { differentFrom: 'a' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+      'e',
+    ]);
+    expect(result[0]?.strips).toHaveLength(1);
+    const stripped = result[0]?.strips[0];
+    expect(stripped?.rule).toBe('differentFrom');
+    // Applying the reported strip (deleting that one rule) must leave the
+    // rest of the five-cycle satisfiable.
+    expect(stripped).toBeDefined();
+    if (!stripped) throw new Error('unreachable');
+    const repaired: Record<string, ReturnType<typeof boolean>> = {
+      a: boolean('a', { differentFrom: 'b' }),
+      b: boolean('b', { differentFrom: 'c' }),
+      c: boolean('c', { differentFrom: 'd' }),
+      d: boolean('d', { differentFrom: 'e' }),
+      e: boolean('e', { differentFrom: 'a' }),
+    };
+    delete repaired[stripped.variableId]?.validation[stripped.rule];
+    expect(findValidationContradictions(repaired)).toEqual([]);
+  });
+
+  it('strips both declarations of a chosen edge when it is declared from both endpoints (via a multi-member equality group)', () => {
+    // Three equality groups form a triangle: {p, q} (via sameAs), {r, s}
+    // (via sameAs), and {t}. The p-r edge is declared from BOTH sides — p
+    // (its group's "own" declaration) and s (the other group's member
+    // declaring the same edge back) — so its bucket carries two sources.
+    // Sorting the three edge keys ("p\0r" < "p\0t" < "r\0t") deterministically
+    // picks the p-r edge, so both p's and s's differentFrom must be stripped
+    // together.
+    const variables = {
+      p: boolean('p', { differentFrom: 'r' }),
+      q: boolean('q', { sameAs: 'p' }),
+      r: boolean('r', { differentFrom: 't' }),
+      s: boolean('s', { sameAs: 'r', differentFrom: 'q' }),
+      t: boolean('t', { differentFrom: 'p' }),
+    };
+    const result = findValidationContradictions(variables);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.strips).toHaveLength(2);
+    expect(new Set(result[0]?.strips.map((strip) => strip.variableId))).toEqual(
+      new Set(['p', 's']),
+    );
+    expect(
+      result[0]?.strips.every((strip) => strip.rule === 'differentFrom'),
+    ).toBe(true);
+
+    // Applying both strips leaves q's sameAs, r's differentFrom, s's sameAs
+    // and t's differentFrom intact, and the graph satisfiable.
+    const repaired = structuredClone(variables);
+    delete repaired.p.validation.differentFrom;
+    delete repaired.s.validation.differentFrom;
+    expect(findValidationContradictions(repaired)).toEqual([]);
+    expect(repaired.q.validation.sameAs).toBe('p');
+    expect(repaired.s.validation.sameAs).toBe('r');
+    expect(repaired.r.validation.differentFrom).toBe('t');
+    expect(repaired.t.validation.differentFrom).toBe('p');
+  });
+});
+
+describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-aware bipartite colouring', () => {
+  const pinnedBoolean = (
+    name: string,
+    validation: Record<string, unknown> = {},
+    options?: { label: string; value: boolean }[],
+    component = 'Boolean',
+  ) => ({
+    name,
+    type: 'boolean',
+    component,
+    validation,
+    ...(options !== undefined ? { options } : {}),
+  });
+
+  const trueOnly = [{ label: 'Yes', value: true }];
+  const falseOnly = [{ label: 'No', value: false }];
+  const bothValues = [
+    { label: 'Yes', value: true },
+    { label: 'No', value: false },
+  ];
+
+  // Applies every reported strip and re-analyses, confirming a MINIMAL
+  // repair actually resolves the contradiction — the same "is it genuinely
+  // satisfiable afterwards" bar Finding 1's tests hold the odd-cycle repair
+  // to.
+  const applyStripsAndReanalyse = (
+    variables: Record<
+      string,
+      { name: string; validation: Record<string, unknown> }
+    >,
+    strips: readonly { variableId: string; rule: string }[],
+  ) => {
+    const repaired = structuredClone(variables);
+    for (const strip of strips) {
+      delete repaired[strip.variableId]?.validation[strip.rule];
+    }
+    return findValidationContradictions(repaired);
+  };
+
+  it("reports the reviewer's A={true}, B={true,false}, C={false} chain as unsatisfiable", () => {
+    // The graph is bipartite (a-b-c is a simple path, not a cycle), but a
+    // and c are pinned to opposite values 2 hops apart — an EVEN distance,
+    // which forces them to the SAME value under either of the component's
+    // two valid colourings.
+    const variables = {
+      a: pinnedBoolean('a', { required: true, differentFrom: 'b' }, trueOnly),
+      b: pinnedBoolean('b', { required: true, differentFrom: 'c' }),
+      c: pinnedBoolean('c', { required: true }, falseOnly),
+    };
+    const result = findValidationContradictions(variables);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedDifferentFromParity');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips.length).toBeGreaterThan(0);
+    expect(
+      result[0]?.strips.every((strip) => strip.rule === 'differentFrom'),
+    ).toBe(true);
+    expect(applyStripsAndReanalyse(variables, result[0]?.strips ?? [])).toEqual(
+      [],
+    );
+  });
+
+  it('accepts the same chain once C also admits both values', () => {
+    expect(
+      findValidationContradictions({
+        a: pinnedBoolean('a', { required: true, differentFrom: 'b' }, trueOnly),
+        b: pinnedBoolean('b', { required: true, differentFrom: 'c' }),
+        c: pinnedBoolean('c', { required: true }, bothValues),
+      }),
+    ).toEqual([]);
+  });
+
+  // False-rejection guard: fewer than two pinned members in a component must
+  // never be flagged, regardless of the graph's shape.
+  it('accepts a chain with no singleton domains at all', () => {
+    expect(
+      findValidationContradictions({
+        a: pinnedBoolean('a', { differentFrom: 'b' }),
+        b: pinnedBoolean('b', { differentFrom: 'c' }),
+        c: pinnedBoolean('c', {}),
+      }),
+    ).toEqual([]);
+  });
+
+  // False-rejection guard: two singletons an EVEN number of hops apart are
+  // required to hold the SAME value — pinning them to matching values is
+  // exactly what satisfies that, and must stay accepted.
+  it('accepts two singletons at even distance pinned to agreeing values', () => {
+    expect(
+      findValidationContradictions({
+        a: pinnedBoolean('a', { differentFrom: 'b' }, trueOnly),
+        b: pinnedBoolean('b', { differentFrom: 'c' }),
+        c: pinnedBoolean('c', {}, trueOnly),
+      }),
+    ).toEqual([]);
+  });
+
+  // Two singletons an ODD number of hops apart are required to hold
+  // DIFFERENT values (the chain's alternation forces it); pinning them to
+  // the SAME value instead is unsatisfiable. Distance 3 (not 1) so this
+  // exercises the chain-parity check rather than the directly-adjacent case
+  // `pinnedEqualDifferentFromContradictions` already reports on its own.
+  it('reports two singletons at odd distance pinned to the same value', () => {
+    const variables = {
+      a: pinnedBoolean('a', { differentFrom: 'b' }, trueOnly),
+      b: pinnedBoolean('b', { differentFrom: 'c' }),
+      c: pinnedBoolean('c', { differentFrom: 'd' }),
+      d: pinnedBoolean('d', {}, trueOnly),
+    };
+    const result = findValidationContradictions(variables);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedDifferentFromParity');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c', 'd']);
+    expect(applyStripsAndReanalyse(variables, result[0]?.strips ?? [])).toEqual(
+      [],
+    );
+  });
+
+  // Twenty-first-wave Finding 1 / this file's `booleanDomain`: `options` only
+  // pins a domain when the EFFECTIVE component is the choice control.
+  // Singleton detection must go through `booleanDomain` (via
+  // `sharedBooleanDomain`), not read `options` directly, so a
+  // Toggle-rendered boolean stays unconditionally two-valued here exactly as
+  // it does everywhere else in this file — reproducing the reviewer's shape
+  // but rendered by Toggle must NOT be flagged.
+  it('treats a Toggle-rendered singleton-options boolean as a full domain', () => {
+    expect(
+      findValidationContradictions({
+        a: pinnedBoolean(
+          'a',
+          { required: true, differentFrom: 'b' },
+          trueOnly,
+          'Toggle',
+        ),
+        b: pinnedBoolean(
+          'b',
+          { required: true, differentFrom: 'c' },
+          undefined,
+          'Toggle',
+        ),
+        c: pinnedBoolean('c', { required: true }, falseOnly, 'Toggle'),
+      }),
+    ).toEqual([]);
   });
 });
 
@@ -2312,6 +2562,43 @@ describe('record schema conformance — contradiction refinement', () => {
       },
     });
     expect(result.success).toBe(true);
+  });
+
+  // Twenty-third-wave Finding 2: the schema-level refinement is generic over
+  // every contradiction class, but this confirms the new
+  // `pinnedDifferentFromParity` class actually reaches it end-to-end — the
+  // reviewer's report was that the SCHEMA accepted this shape, not just that
+  // the analyser missed it.
+  it('rejects a node variables record with pinned booleans whose differentFrom parity is unsatisfiable', () => {
+    const result = VariablesSchema.safeParse({
+      a: {
+        name: 'a',
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+        validation: { differentFrom: 'b' },
+      },
+      b: {
+        name: 'b',
+        type: 'boolean',
+        component: 'Boolean',
+        validation: { differentFrom: 'c' },
+      },
+      c: {
+        name: 'c',
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'No', value: false }],
+        validation: {},
+      },
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((candidate) =>
+        candidate.message.includes('pinned values and differentFrom rules'),
+      );
+      expect(issue).toBeDefined();
+    }
   });
 });
 

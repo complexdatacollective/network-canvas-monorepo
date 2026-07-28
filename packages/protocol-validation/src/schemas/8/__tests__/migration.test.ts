@@ -5026,7 +5026,15 @@ describe('Migration V7 to V8', () => {
       );
     });
 
-    it('strips every differentFrom edge in an odd boolean cycle via the fixpoint loop', () => {
+    // Twenty-third-wave Finding 1: removing any ONE edge from an odd cycle
+    // makes the remainder bipartite, so the fixpoint loop's single-pass
+    // strip only needs to remove that one edge's declarations — not every
+    // edge in the triangle (the old over-strip behaviour, which discarded
+    // two otherwise-valid authored constraints alongside the truly
+    // contradictory one). The edge is chosen deterministically by its own
+    // canonical sorted key, which — for this authoring order, with no
+    // sameAs grouping — picks a's declaration.
+    it('strips only one differentFrom edge from an odd boolean cycle, keeping the rest satisfiable', () => {
       const migratedRaw = migrateVariables({
         a: {
           name: 'a',
@@ -5048,8 +5056,8 @@ describe('Migration V7 to V8', () => {
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.differentFrom');
-      expect(variables?.b).not.toHaveProperty('validation.differentFrom');
-      expect(variables?.c).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.b).toHaveProperty('validation.differentFrom', 'c');
+      expect(variables?.c).toHaveProperty('validation.differentFrom', 'a');
       expect(variables?.a).toHaveProperty('validation.required', true);
       expect(variables?.b).toHaveProperty('validation.required', true);
       expect(variables?.c).toHaveProperty('validation.required', true);
@@ -5057,8 +5065,9 @@ describe('Migration V7 to V8', () => {
 
     // Third-wave Finding 1: a triangle plus a branch rule hanging off one of
     // its members. The old whole-component strip removed d's differentFrom
-    // too; the fix reconstructs only the triangle itself.
-    it('keeps a branch differentFrom rule hanging off an odd boolean cycle', () => {
+    // too; the fix reconstructs only the triangle itself. Twenty-third-wave
+    // Finding 1 additionally keeps two of the triangle's own three edges.
+    it('keeps a branch differentFrom rule and two of the triangle edges hanging off an odd boolean cycle', () => {
       const migratedRaw = migrateVariables({
         a: {
           name: 'a',
@@ -5085,9 +5094,58 @@ describe('Migration V7 to V8', () => {
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.differentFrom');
-      expect(variables?.b).not.toHaveProperty('validation.differentFrom');
-      expect(variables?.c).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.b).toHaveProperty('validation.differentFrom', 'c');
+      expect(variables?.c).toHaveProperty('validation.differentFrom', 'a');
       expect(variables?.d).toHaveProperty('validation.differentFrom', 'a');
+    });
+
+    // Twenty-third-wave Finding 1: the migration end-to-end test the finding
+    // asked for — a triangle among a/b/c plus TWO unrelated, satisfiable
+    // constraints elsewhere (e/f's own differentFrom pair, and g's own
+    // bounds) all survive the same migration pass that repairs the triangle.
+    it('keeps unrelated constraints untouched while repairing an odd boolean cycle end-to-end', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'boolean',
+          validation: { differentFrom: 'b' },
+        },
+        b: {
+          name: 'b',
+          type: 'boolean',
+          validation: { differentFrom: 'c' },
+        },
+        c: {
+          name: 'c',
+          type: 'boolean',
+          validation: { differentFrom: 'a' },
+        },
+        e: {
+          name: 'e',
+          type: 'boolean',
+          validation: { differentFrom: 'f' },
+        },
+        f: { name: 'f', type: 'boolean', validation: {} },
+        g: {
+          name: 'g',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 10 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      // Exactly one edge of the triangle is gone; two survive.
+      expect(variables?.a).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.b).toHaveProperty('validation.differentFrom', 'c');
+      expect(variables?.c).toHaveProperty('validation.differentFrom', 'a');
+      // Wholly unrelated constraints are untouched.
+      expect(variables?.e).toHaveProperty('validation.differentFrom', 'f');
+      expect(variables?.g).toHaveProperty('validation.minValue', 0);
+      expect(variables?.g).toHaveProperty('validation.maxValue', 10);
     });
 
     // Third-wave Finding 4: A sameAs B (also stated as differentFrom, making

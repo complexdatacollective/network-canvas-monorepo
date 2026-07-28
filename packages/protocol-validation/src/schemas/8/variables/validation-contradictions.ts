@@ -11,7 +11,8 @@ export type ContradictionClass =
   | 'sameAsGroupConflict'
   | 'disjointBounds'
   | 'oddDifferentFromCycle'
-  | 'pinnedEqualDifferentFrom';
+  | 'pinnedEqualDifferentFrom'
+  | 'pinnedDifferentFromParity';
 
 export type VariableRuleRef = {
   variableId: string;
@@ -2614,28 +2615,145 @@ const pathToRoot = (parent: Map<string, string>, from: string): string[] => {
 };
 
 /**
- * Odd cycles in the boolean-only `differentFrom` graph, at equality-group
- * granularity (a `sameAs` group of booleans holds one shared value, so
- * `differentFrom` edges connect groups, not individual variables).
+ * The BFS-tree path between two nodes of the SAME connected component, via
+ * their lowest common ancestor. Both `pathToRoot` calls necessarily
+ * terminate at the same root (one BFS per component), so the first node from
+ * `a`'s path that also appears in `b`'s path is their LCA. Twenty-third-wave
+ * Finding 2 extracted this from the odd-cycle reconstruction below so the
+ * domain-aware parity check further down can reuse it to connect two
+ * disagreeing pinned nodes that need not be directly adjacent.
+ */
+const pathBetween = (
+  parent: Map<string, string>,
+  a: string,
+  b: string,
+): string[] => {
+  const pathFromA = pathToRoot(parent, a);
+  const pathFromB = pathToRoot(parent, b);
+  const bAncestors = new Set(pathFromB);
+  const lcaIndex = pathFromA.findIndex((candidate) =>
+    bAncestors.has(candidate),
+  );
+  const lca = pathFromA[lcaIndex];
+  if (lca === undefined) return [];
+  const sideFromA = pathFromA.slice(0, lcaIndex + 1); // a..lca
+  const lcaIndexInB = pathFromB.indexOf(lca);
+  const sideFromB = pathFromB.slice(0, lcaIndexInB).toReversed(); // (lca's child)..b
+  return [...sideFromA, ...sideFromB];
+};
+
+const booleanDifferentFromEdgeKey = (edge: BooleanDifferentFromEdge): string =>
+  `${edge.groupA}${KEY_SEPARATOR}${edge.groupB}`;
+
+/**
+ * The `differentFrom` edges between consecutive groups along a walk over the
+ * canonical `edgesByKey` buckets built below. `closeLoop` wraps the last
+ * group back to the first, matching the cycle shape the odd-cycle
+ * reconstruction needs; without it, the walk is the simple (non-wrapping)
+ * path the domain-aware parity check (Finding 2) connects two disagreeing
+ * pinned nodes with.
+ */
+const edgesAlongWalk = (
+  edgesByKey: Map<string, BooleanDifferentFromEdge>,
+  groups: string[],
+  closeLoop: boolean,
+): BooleanDifferentFromEdge[] => {
+  const edges: BooleanDifferentFromEdge[] = [];
+  const hops = closeLoop ? groups.length : groups.length - 1;
+  for (let index = 0; index < hops; index++) {
+    const a = groups[index];
+    const b = groups[(index + 1) % groups.length];
+    if (a === undefined || b === undefined) continue;
+    const [lower, upper] = [a, b].toSorted();
+    const edge = edgesByKey.get(`${lower}${KEY_SEPARATOR}${upper}`);
+    if (edge) edges.push(edge);
+  }
+  return edges;
+};
+
+/**
+ * Twenty-third-wave Finding 1: the single edge a minimal-strip repair
+ * removes from a candidate walk — the odd cycle itself, or (Finding 2 below)
+ * the path connecting two disagreeing pinned nodes. Removing any ONE edge
+ * from an odd cycle makes the remainder bipartite, and removing any ONE edge
+ * from a connecting path disconnects the two nodes it forced into a
+ * relationship — either walk only ever needs a single edge stripped, never
+ * all of them. `edgesAlongWalk` already returns each DISTINCT edge once
+ * (`edgesByKey` bucketed every declaration of a given group pair together
+ * when the graph was built — see `oddDifferentFromCycleContradictions`
+ * below), so the edge chosen here is picked by its own canonical (sorted
+ * `groupA`/`groupB`) key for a stable, run-independent result — the same
+ * sorted-key convention `findStrictCycles`'s cycle-dedup key above already
+ * uses. `edge.sources` already collects EVERY declaration of that specific
+ * edge (both endpoints may declare it, and a group with more than one member
+ * can supply more than one), so stripping the chosen edge's sources removes
+ * every duplicate of it too.
  *
- * DELIBERATE LIMIT: only boolean variables are checked here. A boolean has
- * exactly two possible values, so an odd cycle — not 2-colourable — is
- * provably unsatisfiable regardless of which value is chosen: `A ≠ B`,
- * `B ≠ C`, `C ≠ A` forces three pairwise-distinct values out of a two-value
- * domain. Ordinal/categorical variables can hold more than two values, so the
- * equivalent question is general k-colourability, which has no efficient
- * exact check for arbitrary k — that's out of scope here and left to the
- * interview runtime's own fill-time enforcement as a backstop.
+ * Deliberately NOT extended to `strictComparatorCycle` (`findStrictCycles`
+ * above), which keeps stripping every edge of ITS cycle unchanged by this
+ * wave. That policy is a separate, established choice this fix does not
+ * revisit; see the accompanying report for the analysis of whether it
+ * should also move to a single-edge repair.
+ */
+const smallestKeyedEdge = (
+  edges: BooleanDifferentFromEdge[],
+): BooleanDifferentFromEdge | undefined =>
+  edges.toSorted((edgeA, edgeB) => {
+    const keyA = booleanDifferentFromEdgeKey(edgeA);
+    const keyB = booleanDifferentFromEdgeKey(edgeB);
+    return keyA < keyB ? -1 : keyA > keyB ? 1 : 0;
+  })[0];
+
+// Twenty-third-wave Finding 2: a group pinned to a single boolean value
+// (`sharedBooleanDomain` collapses to size 1), tagged with its BFS colour so
+// the domain-aware parity check below can compare the two.
+type SingletonPin = { group: string; value: boolean; color: 0 | 1 };
+
+const byPinGroup = (a: SingletonPin, b: SingletonPin): number =>
+  a.group < b.group ? -1 : a.group > b.group ? 1 : 0;
+
+/**
+ * Whether a pin is consistent with the reference assignment "colour 0 =
+ * true" — i.e. whether its colour and required value agree. A component's
+ * two-colouring admits exactly two globally-consistent assignments (this
+ * one, or its mirror image "colour 0 = false"); the component is
+ * satisfiable only if every pin agrees with ONE of them, so every pin must
+ * either all match this reference or all mismatch it (the mirrored
+ * assignment) — never a mix of both.
+ */
+const matchesReferenceAssignment = (pin: SingletonPin): boolean =>
+  pin.value === (pin.color === 0);
+
+/**
+ * Contradictions in the boolean-only `differentFrom` graph, at
+ * equality-group granularity (a `sameAs` group of booleans holds one shared
+ * value, so `differentFrom` edges connect groups, not individual
+ * variables). Two independent structural sources are checked per connected
+ * component of that graph:
+ *
+ *   - An ODD CYCLE (not 2-colourable) is provably unsatisfiable regardless
+ *     of which value is chosen: `A ≠ B`, `B ≠ C`, `C ≠ A` forces three
+ *     pairwise-distinct values out of a two-value domain.
+ *   - Twenty-third-wave Finding 2: even a bipartite (cycle-free) component
+ *     can be unsatisfiable when two or more of its members are individually
+ *     PINNED to a single boolean value (see `sharedBooleanDomain`) and their
+ *     required values disagree with the parity the graph's shape forces
+ *     between them — see the dedicated comment further down, where the
+ *     colouring is checked against those pins.
+ *
+ * DELIBERATE LIMIT: only boolean variables are checked here. Ordinal/
+ * categorical variables can hold more than two values, so the equivalent
+ * question is general k-colourability (for cycles) or arbitrary domain
+ * propagation (for pins), neither of which has an efficient exact check for
+ * an arbitrary domain — that's out of scope here and left to the interview
+ * runtime's own fill-time enforcement as a backstop.
  *
  * `claimedPairs` (sorted `id\0id` keys) comes from
  * `pinnedEqualDifferentFromContradictions`, run once by the caller over ALL
  * types: a boolean pair already reported there — both ends pinned to the same
  * value (fifth-wave Finding 5, generalised by sixth-wave Finding 2) — is
- * excluded from the bipartite graph below so it isn't ALSO folded into an
- * odd-cycle report. DELIBERATE LIMIT: domain propagation through chains (a
- * pinned value forcing a neighbour's effective domain, cascading to a third
- * variable) is left to the interview runtime's own fill-time enforcement as a
- * backstop, same as the k-colourability limit above.
+ * excluded from the bipartite graph below so it isn't ALSO folded into a
+ * report here.
  */
 function oddDifferentFromCycleContradictions(
   variables: UnknownRecord,
@@ -2743,51 +2861,101 @@ function oddDifferentFromCycleContradictions(
       }
     }
 
-    if (bipartite || !conflict) continue;
+    if (!bipartite) {
+      if (!conflict) continue; // Type-narrowing only: bipartite is only ever
+      // set false alongside `conflict ??= {...}` above, so this never fires.
 
-    // Reconstruct ONE odd cycle: the conflict edge plus the two BFS-tree
-    // paths from its endpoints up to their lowest common ancestor. Both
-    // paths necessarily terminate at the same root (one BFS per component),
-    // so the first node from `node`'s path that also appears in
-    // `neighbor`'s path is their LCA.
-    const pathFromNode = pathToRoot(parent, conflict.node);
-    const pathFromNeighbor = pathToRoot(parent, conflict.neighbor);
-    const neighborAncestors = new Set(pathFromNeighbor);
-    const lcaIndex = pathFromNode.findIndex((candidate) =>
-      neighborAncestors.has(candidate),
-    );
-    const lca = pathFromNode[lcaIndex];
-    if (lca === undefined) continue;
-    const sideFromNode = pathFromNode.slice(0, lcaIndex + 1); // node..lca
-    const lcaIndexInNeighborPath = pathFromNeighbor.indexOf(lca);
-    const sideFromNeighbor = pathFromNeighbor
-      .slice(0, lcaIndexInNeighborPath)
-      .toReversed(); // (lca's child)..neighbor
-    const cycleGroups = [...sideFromNode, ...sideFromNeighbor];
+      // Reconstruct ONE odd cycle: the conflict edge plus the BFS-tree path
+      // between its two endpoints.
+      const cycleGroups = pathBetween(parent, conflict.node, conflict.neighbor);
+      if (cycleGroups.length === 0) continue;
 
-    const cycleEdges: BooleanDifferentFromEdge[] = [];
-    for (let index = 0; index < cycleGroups.length; index++) {
-      const a = cycleGroups[index];
-      const b = cycleGroups[(index + 1) % cycleGroups.length];
-      if (a === undefined || b === undefined) continue;
-      const [lower, upper] = [a, b].toSorted();
-      const edge = edgesByKey.get(`${lower}${KEY_SEPARATOR}${upper}`);
-      if (edge) cycleEdges.push(edge);
+      const cycleEdges = edgesAlongWalk(edgesByKey, cycleGroups, true);
+      const chosenEdge = smallestKeyedEdge(cycleEdges);
+      if (!chosenEdge) continue;
+      const [first, ...rest] = chosenEdge.sources;
+      if (!first) continue;
+      const memberIds = [...new Set(cycleGroups)].flatMap(
+        (group) => membersOf.get(group) ?? [],
+      );
+      const names = memberIds.map(
+        (memberId) => `"${nameOf(memberId, variables[memberId])}"`,
+      );
+      found.push({
+        class: 'oddDifferentFromCycle',
+        message: `Variables ${names.join(', ')}: their differentFrom rules cannot all be satisfied with only two possible values`,
+        variableIds: memberIds,
+        strips: [first, ...rest],
+      });
+      continue;
     }
-    const sources = cycleEdges.flatMap((edge) => edge.sources);
-    const [first, ...rest] = sources;
-    if (!first) continue;
-    const memberIds = [...new Set(cycleGroups)].flatMap(
+
+    // Twenty-third-wave Finding 2: this component IS bipartite, but that
+    // alone does not mean it is satisfiable. Its two-colouring admits
+    // exactly two globally-consistent value assignments — "colour 0 = true,
+    // colour 1 = false", or the mirror image — and nothing about
+    // bipartiteness picks WHICH one. A member whose own domain is a
+    // SINGLETON (booleanDomain/sharedBooleanDomain collapse it to one of
+    // {true, false} — e.g. a `component: 'Boolean'` field whose `options`
+    // expose only one value) additionally FIXES that choice for the whole
+    // component: reading its colour back against its required value says
+    // which of the two assignments the component must use. A second,
+    // independent singleton elsewhere in the SAME component is only
+    // consistent with the first if it implies the SAME assignment — the
+    // reviewer's `A={true}`, `B={true,false}`, `C={false}` with
+    // `A differentFrom B` and `B differentFrom C` is exactly this: A and C
+    // sit an EVEN number of hops apart (2, via B), so any single assignment
+    // gives them the same value, yet they are pinned to opposite ones.
+    //
+    // Reads every group's domain through `sharedBooleanDomain` (itself built
+    // on `booleanDomain`), never `options` directly, so a Toggle-rendered
+    // boolean (or one with no declared component) stays unconditionally
+    // two-valued here exactly as it does everywhere else in this file.
+    const singletonPins: SingletonPin[] = [];
+    for (const group of queue) {
+      const domain = sharedBooleanDomain(
+        variables,
+        membersOf.get(group) ?? [group],
+      );
+      if (domain?.size !== 1) continue;
+      const [value] = domain;
+      const groupColor = color.get(group);
+      if (value === undefined || groupColor === undefined) continue;
+      singletonPins.push({ group, value, color: groupColor });
+    }
+    if (singletonPins.length < 2) continue;
+
+    const agreeing = singletonPins
+      .filter(matchesReferenceAssignment)
+      .toSorted(byPinGroup);
+    const disagreeing = singletonPins
+      .filter((pin) => !matchesReferenceAssignment(pin))
+      .toSorted(byPinGroup);
+    if (agreeing.length === 0 || disagreeing.length === 0) continue;
+
+    // Deterministic representative pair: the alphabetically-smallest pinned
+    // group on each side of the disagreement.
+    const [pinA] = agreeing;
+    const [pinB] = disagreeing;
+    if (!pinA || !pinB) continue;
+    const conflictGroups = pathBetween(parent, pinA.group, pinB.group);
+    if (conflictGroups.length === 0) continue;
+    const conflictEdges = edgesAlongWalk(edgesByKey, conflictGroups, false);
+    const chosenConflictEdge = smallestKeyedEdge(conflictEdges);
+    if (!chosenConflictEdge) continue;
+    const [conflictFirst, ...conflictRest] = chosenConflictEdge.sources;
+    if (!conflictFirst) continue;
+    const conflictMemberIds = [...new Set(conflictGroups)].flatMap(
       (group) => membersOf.get(group) ?? [],
     );
-    const names = memberIds.map(
+    const conflictNames = conflictMemberIds.map(
       (memberId) => `"${nameOf(memberId, variables[memberId])}"`,
     );
     found.push({
-      class: 'oddDifferentFromCycle',
-      message: `Variables ${names.join(', ')}: their differentFrom rules cannot all be satisfied with only two possible values`,
-      variableIds: memberIds,
-      strips: [first, ...rest],
+      class: 'pinnedDifferentFromParity',
+      message: `Variables ${conflictNames.join(', ')}: their pinned values and differentFrom rules cannot all be satisfied together`,
+      variableIds: conflictMemberIds,
+      strips: [conflictFirst, ...conflictRest],
     });
   }
 
