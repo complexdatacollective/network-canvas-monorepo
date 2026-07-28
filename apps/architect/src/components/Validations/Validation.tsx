@@ -1,6 +1,6 @@
 import { map } from 'es-toolkit/compat';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
-import { useEffect, useId, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useMemo, useState, type KeyboardEvent } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
@@ -40,6 +40,16 @@ type ValidationProps = {
   existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
   isBeingEdited?: boolean;
   checkDraft?: (key: string, value: unknown, replacingKey?: string) => string[];
+  // Twenty-third-wave Finding 3: the legal-target set for a reference rule's
+  // candidates, computed in one shared analysis pass — see
+  // findLegalReferenceTargets. Kept as a separate prop from `checkDraft`
+  // (which still judges one candidate value at a time for `draftIssues`)
+  // since the two answer different questions.
+  findLegalTargets?: (
+    ruleKey: string,
+    candidateIds: string[],
+    replacingKey?: string,
+  ) => Set<string>;
   uniqueValueCount?: number;
 };
 
@@ -122,6 +132,7 @@ const Validation = ({
   existingVariables,
   isBeingEdited = false,
   checkDraft,
+  findLegalTargets,
   uniqueValueCount,
 }: ValidationProps) => {
   const isNewItem = itemKey === '';
@@ -191,17 +202,40 @@ const Validation = ({
       value: variableKey,
     }),
   );
+  // Twenty-third-wave Finding 3: candidate ids are derived from the stable
+  // `existingVariables` prop (not the freshly-mapped `existingVariableOptions`
+  // array above) so this memo only recomputes when the candidate set itself
+  // changes, not on every render.
+  const referenceCandidateIds = useMemo(
+    () => Object.keys(existingVariables),
+    [existingVariables],
+  );
+  // Legal targets for the whole candidate set, computed in one shared
+  // analysis pass rather than one `checkDraft` call per candidate — see
+  // findLegalReferenceTargets.
+  const legalReferenceTargets = useMemo(() => {
+    if (
+      !findLegalTargets ||
+      !draftKey ||
+      !isValidationWithListValue(draftKey)
+    ) {
+      return null;
+    }
+    return findLegalTargets(
+      draftKey,
+      referenceCandidateIds,
+      itemKey || undefined,
+    );
+  }, [findLegalTargets, draftKey, itemKey, referenceCandidateIds]);
   // Offer only targets that would not create a contradiction. The currently
   // selected target stays offered so an existing (legal) rule renders intact.
-  const referenceTargetOptions =
-    checkDraft && draftKey && isValidationWithListValue(draftKey)
-      ? existingVariableOptions.filter(
-          (option) =>
-            option.value === draftValue ||
-            checkDraft(draftKey, option.value, itemKey || undefined).length ===
-              0,
-        )
-      : existingVariableOptions;
+  const referenceTargetOptions = legalReferenceTargets
+    ? existingVariableOptions.filter(
+        (option) =>
+          option.value === draftValue ||
+          legalReferenceTargets.has(option.value),
+      )
+    : existingVariableOptions;
 
   if (!isBeingEdited) {
     const label = getValidationLabel(itemKey);

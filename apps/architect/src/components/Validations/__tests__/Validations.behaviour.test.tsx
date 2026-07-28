@@ -125,6 +125,40 @@ describe('Validations behaviour', () => {
     expect(optionLabels).not.toContain('A');
   });
 
+  // Twenty-third-wave Finding 3: the currently selected target must stay
+  // offered even when the live legality check would filter it out, so an
+  // existing row always renders its committed value. Here `a` is ALREADY the
+  // saved target of the row being edited, and it forms the same strict cycle
+  // as the test above — but as the committed value, not a fresh candidate.
+  it('keeps the currently selected target offered even once the live check would filter it out', () => {
+    setup({
+      variableType: 'number',
+      entity: 'node',
+      currentVariableId: 'b',
+      allVariables: {
+        a: { name: 'A', type: 'number', validation: { lessThanVariable: 'b' } },
+        b: { name: 'B', type: 'number', validation: { lessThanVariable: 'a' } },
+      },
+      existingVariables: {
+        a: { name: 'A', type: 'number' },
+      },
+      validation: { lessThanVariable: 'a' },
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Edit Less than validation rule' }),
+    );
+
+    const selects = screen.getAllByRole('combobox');
+    const targetSelect = selects[1];
+    if (!targetSelect) throw new Error('Expected a reference-target select');
+    const optionLabels = within(targetSelect)
+      .getAllByRole('option')
+      .map((option) => option.textContent);
+
+    expect(optionLabels).toContain('A');
+  });
+
   it('disables a reference rule in the rule-type dropdown once it has zero legal targets', () => {
     // The only candidate ("a") already requires a < b, so every value b could
     // pick for "less than" would close a cycle — the rule itself is unusable

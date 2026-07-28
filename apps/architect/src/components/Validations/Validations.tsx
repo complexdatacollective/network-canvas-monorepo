@@ -13,7 +13,11 @@ import Button from '@codaco/fresco-ui/Button';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import type { Variable } from '@codaco/protocol-validation';
 
-import { findDraftContradictions, floorIssue } from './contradictions';
+import {
+  findDraftContradictions,
+  findLegalReferenceTargets,
+  floorIssue,
+} from './contradictions';
 import { isValidationWithListValue } from './options';
 import Validation from './Validation';
 
@@ -242,6 +246,42 @@ const Validations = ({
     ],
   );
 
+  // Twenty-third-wave Finding 3: the reference-target dropdown needs the
+  // legal candidates for one rule, not just one candidate at a time — see
+  // findLegalReferenceTargets for why that can be answered in one shared
+  // analysis pass instead of one `checkDraft` call per candidate.
+  const findLegalTargets = useMemo(
+    () =>
+      (
+        ruleKey: string,
+        candidateIds: string[],
+        replacingKey?: string,
+      ): Set<string> => {
+        const isPassphrase = variableType === 'passphrase';
+        return findLegalReferenceTargets({
+          allVariables: isPassphrase ? {} : (allVariables ?? {}),
+          currentVariableId: currentVariableId ?? '',
+          variableType: isPassphrase ? 'text' : (variableType ?? ''),
+          validation: value,
+          ruleKey,
+          replacingKey,
+          candidateIds,
+          options: draftOptions,
+          component: draftComponent,
+          parameters: draftParameters,
+        });
+      },
+    [
+      value,
+      allVariables,
+      currentVariableId,
+      variableType,
+      draftOptions,
+      draftComponent,
+      draftParameters,
+    ],
+  );
+
   // A reference rule (e.g. "Same as") is disabled in the dropdown once no
   // existing variable could legally serve as its target.
   const availableOptions = getOptionsWithUsedDisabled(
@@ -302,6 +342,7 @@ const Validations = ({
         onEditKey={setEditingKey}
         validate={validate}
         checkDraft={checkDraft}
+        findLegalTargets={findLegalTargets}
         uniqueValueCount={uniqueValueCount}
       >
         {addNew && (
@@ -312,6 +353,7 @@ const Validations = ({
             options={availableOptions}
             existingVariables={existingVariables}
             checkDraft={checkDraft}
+            findLegalTargets={findLegalTargets}
             uniqueValueCount={uniqueValueCount}
           />
         )}

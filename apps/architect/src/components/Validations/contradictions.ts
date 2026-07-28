@@ -1,5 +1,6 @@
 import {
   findValidationContradictions,
+  VARIABLE_REFERENCE_VALIDATIONS,
   type ValidationContradiction,
 } from '@codaco/protocol-validation';
 import { getTypeForComponent } from '~/config/variables';
@@ -94,6 +95,234 @@ export const findDraftContradictions = (
   return findValidationContradictions(buildProspectiveVariables(draft)).filter(
     (contradiction) => contradiction.variableIds.includes(id),
   );
+};
+
+/**
+ * Path-compressing union-find over variable ids, used only to decide which
+ * candidates in `findLegalReferenceTargets` are reference-connected to each
+ * other — never fed to the analyser itself.
+ */
+class UnionFind {
+  private readonly parent = new Map<string, string>();
+
+  find(id: string): string {
+    if (!this.parent.has(id)) {
+      this.parent.set(id, id);
+      return id;
+    }
+    let root = id;
+    while (true) {
+      const next = this.parent.get(root);
+      if (next === undefined || next === root) break;
+      root = next;
+    }
+    let current = id;
+    while (current !== root) {
+      const next = this.parent.get(current);
+      if (next === undefined) break;
+      this.parent.set(current, root);
+      current = next;
+    }
+    return root;
+  }
+
+  union(a: string, b: string): void {
+    const rootA = this.find(a);
+    const rootB = this.find(b);
+    if (rootA !== rootB) {
+      this.parent.set(rootA, rootB);
+    }
+  }
+}
+
+const referenceTargetOf = (
+  entry: unknown,
+  rule: string,
+): string | undefined => {
+  if (!isRecord(entry)) return undefined;
+  const entryValidation = entry.validation;
+  if (!isRecord(entryValidation)) return undefined;
+  const target = entryValidation[rule];
+  return typeof target === 'string' ? target : undefined;
+};
+
+export type ReferenceTargetLegalityInput = {
+  allVariables: UnknownRecord;
+  currentVariableId: string;
+  variableType: string;
+  /** The row's own COMMITTED rule map (before the candidate under test is applied). */
+  validation: UnknownRecord;
+  /** The reference-type rule being edited (e.g. `sameAs`). */
+  ruleKey: string;
+  /** The row's PRE-draft key, when its type is mid-change. */
+  replacingKey?: string;
+  /** Candidate target ids to evaluate — typically every id in `existingVariables`. */
+  candidateIds: string[];
+  component?: unknown;
+  options?: unknown;
+  parameters?: unknown;
+};
+
+/**
+ * Twenty-third-wave Finding 3: `referenceTargetOptions` (Validation.tsx) used
+ * to call `findDraftContradictions` once per candidate target, and each call
+ * re-ran the analyser over the WHOLE variable record — quadratic in variable
+ * count (1,000 simple variables took ~4.7s, 2,000 took ~19s). Every one of the
+ * analyser's passes (bound propagation, equality groups, cycle detection)
+ * only ever discovers a relationship along an EXPLICIT reference edge
+ * (`sameAs`/`differentFrom`/the four comparators), so a variable outside the
+ * edited variable's reference-connected component can never affect its
+ * contradiction status. Candidates in components disjoint from both the
+ * edited variable's component AND each other are therefore provably
+ * independent and can be tested together in ONE shared analyser call, each
+ * against its own disposable clone of the edited variable (no other variable
+ * ever references a clone's synthetic id, and a clone only ever references
+ * its own candidate — see the "isolated" candidates in the tests below).
+ * Candidates that already share the edited variable's component (e.g. a
+ * third variable whose OWN rule already targets it — the strict-cycle case
+ * covered in Validations.behaviour.test.tsx) keep a one-call-per-candidate
+ * path, pruned to just the relevant component so it stays cheap.
+ */
+export const findLegalReferenceTargets = ({
+  allVariables,
+  currentVariableId,
+  variableType,
+  validation,
+  ruleKey,
+  replacingKey,
+  candidateIds,
+  component,
+  options,
+  parameters,
+}: ReferenceTargetLegalityInput): Set<string> => {
+  const id = currentVariableId || draftVariableId(allVariables);
+
+  const baseline: UnknownRecord = { ...validation };
+  if (replacingKey && replacingKey !== ruleKey) {
+    delete baseline[replacingKey];
+  }
+  delete baseline[ruleKey];
+
+  const draftEntry = (draftValidation: UnknownRecord): UnknownRecord => {
+    const existing = allVariables[id];
+    const base = isRecord(existing)
+      ? existing
+      : { name: 'this variable', type: variableType };
+    return {
+      ...base,
+      type: variableType,
+      validation: draftValidation,
+      ...(component !== undefined ? { component } : {}),
+      ...(options !== undefined ? { options } : {}),
+      ...(parameters !== undefined ? { parameters } : {}),
+    };
+  };
+
+  // The graph used only to decide, per candidate, whether it is safe to
+  // share a batched analyser call — never itself fed to the analyser. `id`
+  // carries the baseline (no edge for the rule under test yet), so a third
+  // party's FIXED edge into `id` (e.g. `a.lessThanVariable = id`) is already
+  // visible here, before any candidate has been chosen.
+  const graph: UnknownRecord = { ...allVariables, [id]: draftEntry(baseline) };
+  const unionFind = new UnionFind();
+  for (const sourceId of Object.keys(graph)) {
+    for (const rule of VARIABLE_REFERENCE_VALIDATIONS) {
+      const target = referenceTargetOf(graph[sourceId], rule);
+      if (target !== undefined && target in graph) {
+        unionFind.union(sourceId, target);
+      }
+    }
+  }
+
+  const componentMembers = new Map<string, string[]>();
+  for (const memberId of Object.keys(graph)) {
+    const root = unionFind.find(memberId);
+    const members = componentMembers.get(root);
+    if (members) {
+      members.push(memberId);
+    } else {
+      componentMembers.set(root, [memberId]);
+    }
+  }
+
+  const idRoot = unionFind.find(id);
+  const usedRoots = new Set<string>();
+  const batched: string[] = [];
+  const individual: string[] = [];
+  for (const candidateId of candidateIds) {
+    const root =
+      candidateId in graph ? unionFind.find(candidateId) : candidateId;
+    // A candidate sharing the edited variable's component is already
+    // reference-connected to it through some OTHER, fixed relationship — its
+    // legality can depend on that wider component, so it needs its own call.
+    // A candidate whose component another candidate already claimed for the
+    // batch is routed the same way: attaching a second clone to that
+    // component would let the two hypothetical choices interact with each
+    // other, which never happens when `id` can only hold one candidate at a
+    // time.
+    if (root === idRoot || usedRoots.has(root)) {
+      individual.push(candidateId);
+      continue;
+    }
+    usedRoots.add(root);
+    batched.push(candidateId);
+  }
+
+  const legal = new Set<string>();
+
+  if (batched.length > 0) {
+    const batchRecord: UnknownRecord = { ...allVariables };
+    if (currentVariableId) {
+      delete batchRecord[currentVariableId];
+    }
+    const clones: { candidateId: string; cloneId: string }[] = [];
+    for (const candidateId of batched) {
+      let cloneId = `${id}::${candidateId}`;
+      while (Object.hasOwn(batchRecord, cloneId)) {
+        cloneId = `${cloneId}:`;
+      }
+      clones.push({ candidateId, cloneId });
+      batchRecord[cloneId] = draftEntry({
+        ...baseline,
+        [ruleKey]: candidateId,
+      });
+    }
+    const contradictions = findValidationContradictions(batchRecord);
+    for (const { candidateId, cloneId } of clones) {
+      const hasContradiction = contradictions.some((contradiction) =>
+        contradiction.variableIds.includes(cloneId),
+      );
+      if (!hasContradiction) {
+        legal.add(candidateId);
+      }
+    }
+  }
+
+  for (const candidateId of individual) {
+    const candidateRoot =
+      candidateId in graph ? unionFind.find(candidateId) : candidateId;
+    const pruned: UnknownRecord = {};
+    for (const memberId of componentMembers.get(idRoot) ?? [id]) {
+      pruned[memberId] = graph[memberId];
+    }
+    if (candidateRoot !== idRoot) {
+      for (const memberId of componentMembers.get(candidateRoot) ?? [
+        candidateId,
+      ]) {
+        pruned[memberId] = graph[memberId] ?? allVariables[memberId];
+      }
+    }
+    pruned[id] = draftEntry({ ...baseline, [ruleKey]: candidateId });
+    const contradictions = findValidationContradictions(pruned);
+    const hasContradiction = contradictions.some((contradiction) =>
+      contradiction.variableIds.includes(id),
+    );
+    if (!hasContradiction) {
+      legal.add(candidateId);
+    }
+  }
+
+  return legal;
 };
 
 // R1 (schema shape) rejects a rule value below these floors with a generic
