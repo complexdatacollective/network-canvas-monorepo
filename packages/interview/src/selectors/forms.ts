@@ -139,16 +139,59 @@ export const selectFieldMetadataFromVariables = (
 ) => createFieldMetadata(variables, fields);
 
 /**
+ * The subset of field/variable data `validationPropsFor` actually reads:
+ * the attribute name, its `type` (needed only to tag
+ * greaterThanVariable/lessThanVariable-style comparisons), and the raw
+ * `validation` block. Deliberately excludes `component` — `FieldMetadata` is
+ * still assignable here (it's a strict superset), so useProtocolForm's real
+ * form fields pass through unchanged.
+ */
+type ValidationSource = {
+  variable: string;
+  type: Variable['type'];
+  validation?: unknown;
+};
+
+/**
+ * Build a writer's validation-only metadata directly from a codebook
+ * variable, bypassing `createFieldMetadata`/component resolution entirely.
+ * For writers that render their OWN input and only ever need `.validation`
+ * — CategoricalBin's "other" dialog and QuickNodeForm's quick-add field —
+ * routing through `createFieldMetadata` would trip its "Missing component"
+ * invariant on a component-less variable, which the schema permits and which
+ * Architect's "Create New Variable" dialog produces by default. Returns
+ * `undefined` when the variable isn't in the codebook, matching
+ * `createFieldMetadata`'s "Missing codebook entry" guard.
+ */
+export function selectValidationMetadataForVariable(
+  variables: Record<string, Variable>,
+  variable: string,
+): ValidationSource | undefined {
+  const codebookEntry = variables[variable];
+  if (!codebookEntry) {
+    return undefined;
+  }
+
+  return {
+    variable,
+    type: codebookEntry.type,
+    validation:
+      'validation' in codebookEntry ? codebookEntry.validation : undefined,
+  };
+}
+
+/**
  * Derive a Field's validation props (required, maxLength, sameAs, etc.) from
  * a codebook variable's `validation` block. Shared by useProtocolForm (the
  * main form system) and any other writer that renders a single ad-hoc Field
  * for a codebook variable outside the form system (e.g. CategoricalBin's
- * "other" dialog), so every writer honours the same rules from one mapping.
- * A variable with no `validation` block returns an empty object — there is
- * no runtime fallback to `required`.
+ * "other" dialog, QuickNodeForm's quick-add field — see
+ * `selectValidationMetadataForVariable`), so every writer honours the same
+ * rules from one mapping. A variable with no `validation` block returns an
+ * empty object — there is no runtime fallback to `required`.
  */
 export function validationPropsFor(
-  field: FieldMetadata,
+  field: ValidationSource,
 ): Partial<ValidationPropsCatalogue> {
   const props: Partial<ValidationPropsCatalogue> = {};
 

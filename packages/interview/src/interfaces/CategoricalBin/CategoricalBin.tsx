@@ -23,7 +23,7 @@ import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   getValidationContext,
-  selectFieldMetadataFromVariables,
+  selectValidationMetadataForVariable,
   validationPropsFor,
 } from '../../selectors/forms';
 import {
@@ -206,18 +206,18 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt } = prompt;
 
-      // Derive the other variable's validation props from its codebook
-      // definition, exactly as useProtocolForm does for form fields — the
-      // other-input is a validated writer, not a special case. A variable
-      // with no validation rules renders a genuinely optional field.
-      const otherVariableDefinition = stageVariables[otherVariable];
-      const [otherFieldMetadata] = otherVariableDefinition
-        ? selectFieldMetadataFromVariables(stageVariables, [
-            { variable: otherVariable, prompt: otherVariablePrompt ?? '' },
-          ])
-        : [];
-      const otherValidationProps = otherFieldMetadata
-        ? validationPropsFor(otherFieldMetadata)
+      // Derive the other variable's validation props directly from its
+      // codebook definition — the other-input renders its own Field/component
+      // and only ever needs `.validation`, so this skips component
+      // resolution entirely (see selectValidationMetadataForVariable). A
+      // variable with no validation rules renders a genuinely optional
+      // field.
+      const otherValidationMetadata = selectValidationMetadataForVariable(
+        stageVariables,
+        otherVariable,
+      );
+      const otherValidationProps = otherValidationMetadata
+        ? validationPropsFor(otherValidationMetadata)
         : {};
 
       // Context-dependent rules (unique, sameAs, differentFrom,

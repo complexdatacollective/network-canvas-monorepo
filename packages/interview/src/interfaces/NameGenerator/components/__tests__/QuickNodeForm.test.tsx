@@ -32,7 +32,14 @@ const TARGET_VARIABLE = 'name';
 const STAGE_ID = 'quick-add-stage';
 const PROMPT_ID = 'prompt-1';
 
-function buildCodebook(validation?: Validation): Codebook {
+function buildCodebook(
+  validation?: Validation,
+  // Architect's "Create New Variable" dialog never sets `component` on a
+  // variable created there — the schema permits this — so a component-less
+  // quickAdd target is the realistic (not synthetic-only) case the
+  // regression test below exercises.
+  omitComponent = false,
+): Codebook {
   return {
     node: {
       [NODE_TYPE]: {
@@ -44,7 +51,7 @@ function buildCodebook(validation?: Validation): Codebook {
           [TARGET_VARIABLE]: {
             name: 'Name',
             type: 'text',
-            component: 'Text',
+            ...(omitComponent ? {} : { component: 'Text' }),
             ...(validation ? { validation } : {}),
           },
         },
@@ -91,7 +98,10 @@ function buildSession(existingNodes: NcNode[] = []): SessionState {
   };
 }
 
-function buildProtocol(validation?: Validation): ProtocolPayload {
+function buildProtocol(
+  validation?: Validation,
+  omitComponent = false,
+): ProtocolPayload {
   return {
     id: 'protocol',
     hash: 'hash',
@@ -99,17 +109,19 @@ function buildProtocol(validation?: Validation): ProtocolPayload {
     assets: [],
     name: 'Test protocol',
     schemaVersion: 8,
-    codebook: buildCodebook(validation),
+    codebook: buildCodebook(validation, omitComponent),
     stages: [buildStage()],
   };
 }
 
 function renderQuickNodeForm({
   validation,
+  omitComponent,
   existingNodes,
   addNode,
 }: {
   validation?: Validation;
+  omitComponent?: boolean;
   existingNodes?: NcNode[];
   addNode: (
     attributes: NcNode[typeof entityAttributesProperty],
@@ -119,7 +131,7 @@ function renderQuickNodeForm({
     reducer: { session, protocol, ui },
     preloadedState: {
       session: buildSession(existingNodes),
-      protocol: buildProtocol(validation),
+      protocol: buildProtocol(validation, omitComponent),
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
@@ -215,5 +227,31 @@ describe('QuickNodeForm honours codebook validation', () => {
 
     await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
     expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: 'Bob' });
+  });
+
+  it('still enforces validation for a component-less target variable (e.g. one created via Architect\'s "Create New Variable" dialog, which never sets `component`), without crashing', async () => {
+    const addNode = vi.fn(async () => {});
+    renderQuickNodeForm({
+      validation: { required: true },
+      omitComponent: true,
+      addNode,
+    });
+
+    const input = await openField();
+
+    // Empty (violates required): rejected, node not created — proving
+    // validation still applies even though the codebook variable carries no
+    // `component`.
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(input).not.toBeDisabled());
+    expect(addNode).not.toHaveBeenCalled();
+
+    // A valid value is accepted.
+    await userEvent.type(input, 'Alice');
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
+    expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: 'Alice' });
   });
 });

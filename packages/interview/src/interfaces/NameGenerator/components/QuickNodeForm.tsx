@@ -6,13 +6,12 @@ import type {
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   getValidationContext,
-  selectFieldMetadataFromVariables,
+  selectValidationMetadataForVariable,
   validationPropsFor,
 } from '../../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
@@ -51,23 +50,19 @@ const QuickNodeForm = ({
 }: QuickNodeFormProps) => {
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
 
-  // Derive the target variable's validation props from its codebook
-  // definition, exactly as useProtocolForm does for form fields — quick-add
-  // is a validated writer, not a special case. A variable with no validation
-  // rules renders a genuinely optional field, and an empty submission creates
-  // the node (no runtime fallback to required).
+  // Derive the target variable's validation props directly from its
+  // codebook definition — quick-add renders its own QuickAddField and only
+  // ever needs `.validation`, so this skips component resolution entirely
+  // (see selectValidationMetadataForVariable). A variable with no validation
+  // rules renders a genuinely optional field, and an empty submission
+  // creates the node (no runtime fallback to required).
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
-  const targetVariableDefinition = stageVariables[targetVariable];
-  const [targetFieldMetadata] = targetVariableDefinition
-    ? selectFieldMetadataFromVariables(stageVariables, [
-        {
-          variable: asEntityAttributeReference(targetVariable),
-          prompt: '',
-        },
-      ])
-    : [];
-  const validationProps = targetFieldMetadata
-    ? validationPropsFor(targetFieldMetadata)
+  const targetValidationMetadata = selectValidationMetadataForVariable(
+    stageVariables,
+    targetVariable,
+  );
+  const validationProps = targetValidationMetadata
+    ? validationPropsFor(targetValidationMetadata)
     : {};
 
   // Context-dependent rules (unique, sameAs, differentFrom,

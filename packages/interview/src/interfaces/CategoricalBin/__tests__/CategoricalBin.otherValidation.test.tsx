@@ -98,7 +98,14 @@ const node: NcNode = {
   [entityAttributesProperty]: { [NOTE_VARIABLE]: RESERVED_NOTE_VALUE },
 };
 
-function buildCodebook(otherValidation?: Validation): Codebook {
+function buildCodebook(
+  otherValidation?: Validation,
+  // Architect's "Create New Variable" dialog never sets `component` on a
+  // variable created there — the schema permits this — so a component-less
+  // otherVariable is the realistic (not synthetic-only) case the regression
+  // test below exercises.
+  omitOtherComponent = false,
+): Codebook {
   return {
     node: {
       [NODE_TYPE]: {
@@ -121,7 +128,7 @@ function buildCodebook(otherValidation?: Validation): Codebook {
           [OTHER_VARIABLE]: {
             name: 'Other reason',
             type: 'text',
-            component: 'Text',
+            ...(omitOtherComponent ? {} : { component: 'Text' }),
             ...(otherValidation ? { validation: otherValidation } : {}),
           },
           [NOTE_VARIABLE]: {
@@ -176,7 +183,10 @@ function buildSession(): SessionState {
   };
 }
 
-function buildProtocol(otherValidation?: Validation): ProtocolPayload {
+function buildProtocol(
+  otherValidation?: Validation,
+  omitOtherComponent = false,
+): ProtocolPayload {
   return {
     id: 'protocol',
     hash: 'hash',
@@ -184,7 +194,7 @@ function buildProtocol(otherValidation?: Validation): ProtocolPayload {
     assets: [],
     name: 'Test protocol',
     schemaVersion: 8,
-    codebook: buildCodebook(otherValidation),
+    codebook: buildCodebook(otherValidation, omitOtherComponent),
     stages: [buildStage()],
   };
 }
@@ -201,12 +211,15 @@ function CaptureDndStore({
   return null;
 }
 
-function renderCategoricalBin(otherValidation?: Validation) {
+function renderCategoricalBin(
+  otherValidation?: Validation,
+  omitOtherComponent = false,
+) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
       session: buildSession(),
-      protocol: buildProtocol(otherValidation),
+      protocol: buildProtocol(otherValidation, omitOtherComponent),
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
@@ -354,6 +367,36 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     expect(getOtherAttribute(store)).toBeUndefined();
 
     // A distinct value is accepted and written.
+    fireEvent.change(input, { target: { value: 'a genuinely new reason' } });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('dialog-submit')).not.toBeInTheDocument();
+    });
+
+    expect(getOtherAttribute(store)).toBe('a genuinely new reason');
+  });
+
+  it('still enforces validation for a component-less otherVariable (e.g. one created via Architect\'s "Create New Variable" dialog, which never sets `component`), without crashing', async () => {
+    const { store, getDndStore } = renderCategoricalBin(
+      { required: true },
+      true,
+    );
+
+    await dropNodeIntoOtherBin(getDndStore);
+
+    const input = await screen.findByRole('textbox');
+
+    // Empty (violates required): rejected, dialog stays open, nothing
+    // written — proving validation still applies even though the codebook
+    // variable carries no `component`.
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await screen.findByTestId('otherVariable-field-error');
+    expect(screen.getByTestId('dialog-submit')).toBeInTheDocument();
+    expect(getOtherAttribute(store)).toBeUndefined();
+
+    // A valid value is accepted and written.
     fireEvent.change(input, { target: { value: 'a genuinely new reason' } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
