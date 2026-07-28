@@ -175,6 +175,12 @@ const DialogEditor = ({
   const editFormName =
     requestedEditFormName ??
     `${form}-${arrayName.replaceAll(/[^a-zA-Z0-9]+/g, '-')}-item-editor`;
+  // Eleventh-wave Finding 4: an existing item's committed array index. A new
+  // item is not in the committed array yet, so it has no index to report.
+  // Seventeenth-wave follow-up: derived once because both the validate props
+  // and the fields component need the same value — the editor's pickers must
+  // scope themselves to exactly the row the validate is judging.
+  const editIndex = isNewItem || index === null ? undefined : index;
   const initialValues = isRecord(selectedItem)
     ? selectedItem
     : stripManagedProperties(item);
@@ -253,17 +259,16 @@ const DialogEditor = ({
         id={editFormName}
         onSubmit={handleSave}
         initialValues={initialValues}
-        // Eleventh-wave Finding 4: an existing item's committed array index,
-        // surfaced to `editorValidate` via redux-form's (values, props)
-        // validate signature. A new item is not in the committed array yet,
-        // so it has no index to report.
-        editIndex={isNewItem || index === null ? undefined : index}
+        // Surfaced to `editorValidate` via redux-form's (values, props)
+        // validate signature.
+        editIndex={editIndex}
         validate={editorValidate}
       >
         <Layout>
           {createElement(editorFieldsComponent, {
             ...initialValues,
             ...editorProps,
+            editIndex,
             form: editFormName,
           })}
         </Layout>

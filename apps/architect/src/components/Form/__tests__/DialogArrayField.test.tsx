@@ -52,7 +52,15 @@ const TextInput = ({ input }: WrappedFieldProps) => (
   <input aria-label="Item label" {...input} />
 );
 
-const EditorFields = () => <Field name="label" component={TextInput} />;
+let capturedEditorFieldsProps: Record<string, unknown> | undefined;
+const EditorFields = (props: Record<string, unknown>) => {
+  capturedEditorFieldsProps = props;
+  return <Field name="label" component={TextInput} />;
+};
+// Read through a call so control-flow analysis keeps the declared type: the
+// only writes happen inside EditorFields, which CFA cannot see, so a direct
+// read after `capturedEditorFieldsProps = undefined` narrows to `never`.
+const editorFieldsProps = () => capturedEditorFieldsProps;
 
 type OwnProps = {
   editorValidate?: (
@@ -323,6 +331,49 @@ describe('DialogArrayField', () => {
     expect(editorValidate.mock.calls.at(-1)?.[1]).toMatchObject({
       editIndex: undefined,
     });
+  });
+
+  // Seventeenth-wave follow-up: the fields component gets the SAME index the
+  // validate does, so an editor's pickers can scope themselves to exactly the
+  // row the validate is judging (e.g. offering only variables no sibling has
+  // claimed). If the two ever disagree, a picker hides something the validate
+  // accepts, or offers something it rejects.
+  it('gives the fields component the same edited-row index as editorValidate', async () => {
+    const editorValidate = vi.fn<
+      (
+        values: Record<string, unknown>,
+        props?: { editIndex?: number },
+      ) => Record<string, unknown>
+    >(() => ({}));
+    capturedEditorFieldsProps = undefined;
+    setup({
+      initialItems: [
+        { id: 'item-1', label: 'First' },
+        { id: 'item-2', label: 'Second' },
+      ],
+      editorValidate,
+    });
+
+    const secondEditButton = screen.getAllByRole('button', {
+      name: 'Edit item',
+    })[1];
+    if (!secondEditButton) throw new Error('Expected two edit buttons');
+    fireEvent.click(secondEditButton);
+    await waitFor(() => {
+      expect(editorFieldsProps()).toBeDefined();
+    });
+    expect(editorFieldsProps()?.editIndex).toBe(1);
+    expect(editorFieldsProps()?.editIndex).toBe(
+      editorValidate.mock.calls.at(-1)?.[1]?.editIndex,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    capturedEditorFieldsProps = undefined;
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    await waitFor(() => {
+      expect(editorFieldsProps()).toBeDefined();
+    });
+    expect(editorFieldsProps()?.editIndex).toBeUndefined();
   });
 
   it('prevents duplicate saves and dismissal while pre-save work is pending', async () => {

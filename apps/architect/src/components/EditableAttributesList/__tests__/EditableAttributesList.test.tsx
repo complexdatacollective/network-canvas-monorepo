@@ -21,6 +21,7 @@ let capturedEditorValidate:
       props?: { editIndex?: number },
     ) => Record<string, unknown>)
   | undefined;
+let capturedEditorProps: Record<string, unknown> | undefined;
 
 vi.mock('~/components/Form/ValidatedFieldArray', () => ({
   default: ({
@@ -36,6 +37,9 @@ vi.mock('~/components/Form/ValidatedFieldArray', () => ({
   }) => {
     capturedEditorValidate = componentProps?.editorValidate as
       | typeof capturedEditorValidate
+      | undefined;
+    capturedEditorProps = componentProps?.editorProps as
+      | Record<string, unknown>
       | undefined;
     return (
       <div
@@ -353,6 +357,20 @@ it('blocks reassigning an existing field onto a sibling’s variable', () => {
       { editIndex: 0 },
     )?.variable,
   ).toContain('already collected by another attribute');
+});
+
+// Seventeenth-wave follow-up: the editor's variable picker filters on the same
+// committed sibling list editorValidate gates on, so it must actually receive
+// it. Without this hop the picker still offers a variable another attribute
+// collects, and the researcher only learns on save.
+it('hands the committed sibling fields to the attribute editor', () => {
+  const fields = [
+    { variable: 'a', component: 'DatePicker' },
+    { variable: 'b', component: 'DatePicker' },
+  ];
+  renderListWithComposerFields(fields);
+
+  expect(capturedEditorProps?.composerFields).toEqual(fields);
 });
 
 it('still allows editing a field that keeps its own variable', () => {

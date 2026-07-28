@@ -34,11 +34,18 @@ type ComposerAttributeFieldsProps = {
   form: string;
   entity?: string | null;
   type?: string | null;
+  // The stage's committed composer fields and this row's index within them,
+  // supplied by DialogArrayField/EditableAttributesList so the variable picker
+  // can drop what a sibling attribute already collects.
+  composerFields?: unknown;
+  editIndex?: number;
 };
 const ComposerAttributeFields = ({
   form,
   entity = null,
   type = null,
+  composerFields,
+  editIndex,
 }: ComposerAttributeFieldsProps) => {
   const {
     variable,
@@ -56,6 +63,8 @@ const ComposerAttributeFields = ({
     form,
     entity: entity ?? '',
     type: type ?? '',
+    siblingFields: composerFields,
+    editIndex,
   });
   const lockedOptions = getLockedOptions(existingVariables, variable);
   return (

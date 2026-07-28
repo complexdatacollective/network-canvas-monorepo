@@ -100,7 +100,11 @@ const EditableAttributesList = ({
       componentProps={{
         addTitle: title,
         editorFieldsComponent: ComposerAttributeFields,
-        editorProps: { type, entity },
+        // Seventeenth-wave follow-up: the editor's variable picker takes the
+        // same committed sibling list `editorValidate` gates on, so a variable
+        // another attribute already collects is never offered in the first
+        // place rather than being offered and then rejected on save.
+        editorProps: { type, entity, composerFields },
         editorTitle: title,
         editorValidate,
         itemLabel: 'attribute',
