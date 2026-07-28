@@ -11,6 +11,7 @@ import {
 import type { VariableEntry } from '../../types';
 import { toVariableEntry } from '../attributes';
 import {
+  boundResolution,
   type DateResolution,
   type DateWindow,
   EARLIEST_OFFERED_DATE,
@@ -43,9 +44,6 @@ function readBoolean(
   return source?.[key] === true;
 }
 
-/** `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, before the calendar is consulted. */
-const CALENDAR_BOUND = /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/;
-
 /**
  * How a date is written at each resolution. The length doubles as the ordering:
  * a shorter bound is a coarser one.
@@ -55,8 +53,6 @@ const RESOLUTION_SHAPE = {
   month: 'YYYY-MM',
   full: 'YYYY-MM-DD',
 } as const satisfies Record<DateResolution, string>;
-
-const RESOLUTIONS: readonly DateResolution[] = ['year', 'month', 'full'];
 
 /** Which end of a window a declared bound closes. */
 type BoundEnd = 'floor' | 'ceiling';
@@ -69,31 +65,6 @@ type BoundEnd = 'floor' | 'ceiling';
  */
 function earliestOfferedYear(resolution: DateResolution): number {
   return Number(EARLIEST_OFFERED_DATE[resolution].slice(0, 4));
-}
-
-/**
- * The resolution a bound is written at, or `undefined` where it names no date.
- */
-function boundResolution(value: string): DateResolution | undefined {
-  if (!CALENDAR_BOUND.test(value)) return undefined;
-
-  const [year, month = '01', day = '01'] = value.split('-');
-  const date = utcDate(Number(year), Number(month), Number(day));
-  // A day the calendar does not hold rolls forward rather than failing, so the
-  // parsed date is compared back against what was written — the year included,
-  // which is what distinguishes a real leap day in a low year from one the
-  // calendar refuses.
-  if (
-    date.getUTCFullYear() !== Number(year) ||
-    date.getUTCMonth() !== Number(month) - 1 ||
-    date.getUTCDate() !== Number(day)
-  ) {
-    return undefined;
-  }
-
-  return RESOLUTIONS.find(
-    (candidate) => RESOLUTION_SHAPE[candidate].length === value.length,
-  );
 }
 
 /**

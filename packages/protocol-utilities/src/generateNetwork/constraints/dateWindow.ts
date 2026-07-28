@@ -139,6 +139,95 @@ export function truncateToResolution(
   return value.slice(0, 10);
 }
 
+/** `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, before the calendar is consulted. */
+const DATE_SHAPE = /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/;
+
+/** The resolution each written length belongs to. */
+const RESOLUTION_OF_LENGTH: Record<number, DateResolution> = {
+  4: 'year',
+  7: 'month',
+  10: 'full',
+};
+
+/**
+ * The resolution a value's length would name, or `undefined` where the string
+ * is not even shaped like a date. Shared by both calendar-validating readers
+ * below, neither of which has anything to validate until it has this to build
+ * a candidate date from.
+ */
+function dateShapeResolution(value: string): DateResolution | undefined {
+  if (!DATE_SHAPE.test(value)) return undefined;
+  return RESOLUTION_OF_LENGTH[value.length];
+}
+
+/**
+ * The resolution a bound the protocol *declares* is written at, or `undefined`
+ * where it names no date.
+ *
+ * Built on the year-safe {@link utcDate} rather than a bare `Date.UTC` call,
+ * and its check reads the resulting year back alongside the month and day: a
+ * declared `min`/`max` can carry a two-digit year (`0099-01-01`), which
+ * `Date.UTC`'s own two-digit-year special case would silently remap to 1999
+ * and validate as a different, later date rather than as the year that was
+ * actually written. A day the calendar does not hold rolls forward rather
+ * than failing either way, so the parsed date is compared back against what
+ * was written — the year included, which is what distinguishes a real leap
+ * day in a low year from one the calendar refuses.
+ */
+export function boundResolution(value: string): DateResolution | undefined {
+  const resolution = dateShapeResolution(value);
+  if (resolution === undefined) return undefined;
+
+  const [year, month = '01', day = '01'] = value.split('-');
+  const date = utcDate(Number(year), Number(month), Number(day));
+  if (
+    date.getUTCFullYear() !== Number(year) ||
+    date.getUTCMonth() !== Number(month) - 1 ||
+    date.getUTCDate() !== Number(day)
+  ) {
+    return undefined;
+  }
+
+  return resolution;
+}
+
+/**
+ * The resolution a date string is written at, read from the string itself
+ * rather than from the window it came from: the runtime's comparator parses
+ * this string, and something that is no date at all has no resolution to
+ * step.
+ *
+ * A date-shaped day the calendar does not hold is one of those. `2020-02-31`
+ * neither fails to parse nor names February 31st — it rolls forward into
+ * March — so the parsed date is compared back against what was written, the
+ * same reading {@link boundResolution} applies to a declared bound.
+ *
+ * The two differ in what they read a low year with. Every caller of this one
+ * hands it a value that already came from a window {@link boundResolution}
+ * (through `requireCalendarBound`) held to a year no earlier than 0001 — the
+ * picker's own floor — so there is no two-digit year left here for
+ * `Date.UTC`'s remap to land on differently than {@link utcDate} would: for
+ * every year from 0001 on, the two agree on whether a given month and day
+ * roll forward. A plain `Date.UTC` is enough for that range, and this reader
+ * does not itself repeat the year-equality check {@link boundResolution}
+ * needs for a bound that has not yet been held to that floor.
+ */
+export function dateValueResolution(value: string): DateResolution | undefined {
+  const resolution = dateShapeResolution(value);
+  if (resolution === undefined) return undefined;
+
+  const [year, month = '01', day = '01'] = value.split('-');
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (
+    date.getUTCMonth() !== Number(month) - 1 ||
+    date.getUTCDate() !== Number(day)
+  ) {
+    return undefined;
+  }
+
+  return resolution;
+}
+
 function parts(value: string): { year: number; month: number; day: number } {
   const [year, month, day] = value.split('-').map(Number);
   return { year: year ?? 0, month: month ?? 1, day: day ?? 1 };

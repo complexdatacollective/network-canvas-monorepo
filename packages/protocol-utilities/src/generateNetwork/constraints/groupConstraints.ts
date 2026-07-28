@@ -2,6 +2,7 @@ import type { VariableEntry, VariableOptionInput } from '../../types';
 import {
   addSteps,
   type DateResolution,
+  dateValueResolution,
   EARLIEST_OFFERED_DATE,
   LATEST_OFFERED_DATE,
 } from './dateWindow';
@@ -535,41 +536,6 @@ export function steppedNumericBound(
   gap: number,
 ): number {
   return Number((base + steps * gap).toFixed(BOUND_DECIMAL_PLACES));
-}
-
-/** `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, before the calendar is consulted. */
-const DATE_SHAPE = /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/;
-
-/** The resolution each written length belongs to. */
-const RESOLUTION_OF_LENGTH: Record<number, DateResolution> = {
-  4: 'year',
-  7: 'month',
-  10: 'full',
-};
-
-/**
- * The resolution a date string is written at, read from the string itself
- * rather than from the window it came from: the runtime's comparator parses
- * this string, and something that is no date at all has no resolution to step.
- *
- * A date-shaped day the calendar does not hold is one of those. `2020-02-31`
- * neither fails to parse nor names February 31st — it rolls forward into March
- * — so the parsed date is compared back against what was written, which is the
- * same reading `requireCalendarBound` applies to a declared bound.
- */
-export function dateValueResolution(value: string): DateResolution | undefined {
-  if (!DATE_SHAPE.test(value)) return undefined;
-
-  const [year, month = '01', day = '01'] = value.split('-');
-  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-  if (
-    date.getUTCMonth() !== Number(month) - 1 ||
-    date.getUTCDate() !== Number(day)
-  ) {
-    return undefined;
-  }
-
-  return RESOLUTION_OF_LENGTH[value.length];
 }
 
 /** A date string rewritten at `resolution`, dropping or defaulting components. */
