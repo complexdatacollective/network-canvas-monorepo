@@ -361,6 +361,77 @@ describe('generateConstrained', () => {
     },
   );
 
+  // An ordinal option list can repeat a value for the same reason a categorical
+  // one can: the schema requires two options, not two values. Feasibility counts
+  // what `valueSpaceSize` reports, so every value it counts has to be reachable
+  // by a distinct sequence number — a draw walking entries meets the repeated
+  // value once per entry, exhausts the redraw budget the entity generator gives
+  // it, and refuses a protocol the count called satisfiable.
+  it('reaches every ordinal value counted for an option list that repeats one', () => {
+    const gen = new ValueGenerator(1);
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'ordinal',
+      options: [
+        ...Array.from({ length: 20 }, (_, at) => ({
+          label: `Low ${at + 1}`,
+          value: 1,
+        })),
+        { label: 'High', value: 2 },
+      ],
+      validation: { unique: true },
+    });
+
+    // The two values twenty-one entries carry, not the twenty-one entries.
+    expect(valueSpaceSize(variable, 100)).toBe(2);
+
+    const drawn = new Set<string>();
+    for (let seq = 0; seq < 2; seq++) {
+      drawn.add(
+        valueKey(gen.generateConstrained(variable, 0, { distinctSeq: seq })),
+      );
+    }
+    expect(drawn.size).toBe(2);
+
+    // A free draw spreads over the same values. Walking entries would answer
+    // with the repeated value on twenty indices out of twenty-one, which is a
+    // sample of the option list's labels rather than of the data it records.
+    const free = new Set<string>();
+    for (let index = 0; index < 4; index++) {
+      free.add(valueKey(gen.generateConstrained(variable, index)));
+    }
+    expect(free.size).toBe(2);
+  });
+
+  // What holds the change above safe. An option list whose values are already
+  // distinct — every list a protocol is likely to declare — is walked exactly as
+  // it always was, because deduplication keeps first occurrences in order. These
+  // are the values the draw emitted before it read the list by value.
+  it('walks a distinct-valued ordinal list in declared order, free and sequenced', () => {
+    const gen = new ValueGenerator(1);
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'ordinal',
+      options: [
+        { label: 'Never', value: 1 },
+        { label: 'Sometimes', value: 2 },
+        { label: 'Often', value: 3 },
+      ],
+    });
+
+    const free = Array.from({ length: 7 }, (_, index) =>
+      gen.generateConstrained(variable, index),
+    );
+    expect(free).toEqual([1, 2, 3, 1, 2, 3, 1]);
+
+    const sequenced = Array.from({ length: 7 }, (_, seq) =>
+      gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+    );
+    expect(sequenced).toEqual([1, 2, 3, 1, 2, 3, 1]);
+  });
+
   // The default floor of 18 is a realism default for ages, not a rule, so a
   // declared ceiling below it wins. `SyntheticInterview.getNetwork` draws
   // straight from `buildVariableConstraints`, with nothing between the declared

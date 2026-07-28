@@ -251,10 +251,23 @@ export class ValueGenerator {
           : this.faker.datatype.boolean();
 
       case 'ordinal': {
-        const options = entry.options ?? [];
-        if (options.length === 0) return null;
+        // Walked over the values the options offer rather than over the options
+        // themselves, the way the value-space count, the solver's domains and
+        // the categorical draw all read an option list. The schema requires two
+        // options, not two values, so an imported list can write one value under
+        // many labels; indexing entries then meets that value once per entry,
+        // and a `unique` variable spends its whole redraw budget on it before
+        // the sequence reaches the next value — refusing a protocol the count
+        // had just called satisfiable. A free draw walks the values for the
+        // milder version of the same reason: answering with whichever value is
+        // written most often samples the labels rather than the data.
+        //
+        // A list whose values are already distinct is unaffected, first
+        // occurrences being kept in order.
+        const values = distinctOptionValues(entry);
+        if (values.length === 0) return null;
         const pick = seq ?? index;
-        return options[pick % options.length]?.value ?? null;
+        return values[pick % values.length] ?? null;
       }
 
       case 'categorical': {

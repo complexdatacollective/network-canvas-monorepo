@@ -270,6 +270,66 @@ describe('generateNetwork constraint conformance', () => {
     expect(bands.every((band) => values.includes(Number(band)))).toBe(true);
   });
 
+  // The schema requires an ordinal to offer two options but not two values, so
+  // an imported protocol can write one value under many labels. Feasibility
+  // counts the values and calls each of these satisfiable; a draw that walked
+  // the entries instead would meet a repeated value once per entry, exhaust the
+  // redraw budget before the sequence reached the next value, and refuse a
+  // protocol the same analysis had just accepted.
+  it.each([
+    {
+      shape: 'writes one value twenty times before another',
+      values: [...Array.from({ length: 20 }, () => 1), 2],
+      distinct: [1, 2],
+    },
+    {
+      shape: 'buries each of three values behind ten repeats',
+      values: [
+        ...Array.from({ length: 10 }, () => 1),
+        ...Array.from({ length: 10 }, () => 2),
+        3,
+      ],
+      distinct: [1, 2, 3],
+    },
+  ])(
+    'issues every value of an option list that $shape',
+    ({ values, distinct }) => {
+      const options = values.map((value, at) => ({
+        label: `Band ${at + 1}`,
+        value,
+      }));
+
+      for (const seed of [1, 2, 3, 4, 5]) {
+        const { network } = generateNetwork({
+          seed,
+          codebook: personCodebook({
+            band: {
+              name: 'Band',
+              type: 'ordinal',
+              options,
+              validation: { unique: true },
+            },
+          }),
+          stages: [
+            {
+              ...nameGeneratorStage,
+              behaviours: {
+                minNodes: distinct.length,
+                maxNodes: distinct.length,
+              },
+            } as unknown as Stage,
+          ],
+        });
+
+        const bands = network.nodes.map(
+          (node) => node[entityAttributesProperty].band,
+        );
+        expect(bands).toHaveLength(distinct.length);
+        expect(new Set(bands)).toEqual(new Set(distinct));
+      }
+    },
+  );
+
   // The DatePicker writes `YYYY` from its year select, `YYYY-MM` from its
   // year/month pair and `YYYY-MM-DD` from its `type="date"` input; the
   // RelativeDatePicker writes `YYYY-MM-DD`. A value at any other resolution
