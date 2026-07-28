@@ -30,7 +30,7 @@ function nameGenerator(overrides: Record<string, unknown> = {}): Stage {
   } as Stage;
 }
 
-function familyPedigree(): Stage {
+function familyPedigree(overrides: Record<string, unknown> = {}): Stage {
   return {
     id: 'stage-fp',
     type: 'FamilyPedigree',
@@ -38,6 +38,7 @@ function familyPedigree(): Stage {
     nodeConfig: { type: 'relative' },
     edgeConfig: { type: 'kin' },
     prompts: [],
+    ...overrides,
   } as unknown as Stage;
 }
 
@@ -163,7 +164,12 @@ describe('worstCaseEntityCounts', () => {
     expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(6);
   });
 
-  it('adds pedigree edges to the edges another stage creates of the same type', () => {
+  it('folds pedigree edges into a later pairing of the same node type', () => {
+    // The sociogram pairs every relative the pedigree built, so the pedigree's
+    // own nine edges are nine of those 45 pairs rather than nine more edges:
+    // `handleFamilyPedigree` gives each node after the first exactly one parent
+    // from the nodes before it, so no two of its edges land on one pair, and
+    // `createEdgesForPairs` reuses whichever of them the sociogram meets.
     const sociogram = {
       id: 'stage-sociogram',
       type: 'Sociogram',
@@ -176,10 +182,31 @@ describe('worstCaseEntityCounts', () => {
       [familyPedigree(), sociogram, alterEdgeForm('note')],
       config,
     );
-    // C(10, 2) = 45 pedigree-built people paired by the sociogram, plus the
-    // pedigree's own nine edges for the variable the form fills.
-    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(54);
+    // C(10, 2) = 45, for the form's variable and for one no form fills alike.
+    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(45);
     expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(45);
+  });
+
+  it('keeps pedigree edges apart from a pairing that ran before them', () => {
+    // The sociogram runs before any relative exists, so it pairs nobody and its
+    // pair set cannot hold the pedigree's edges. Folding them in on the strength
+    // of the stage merely existing would report zero for nine real edges.
+    const sociogram = {
+      id: 'stage-sociogram',
+      type: 'Sociogram',
+      label: 'Link them',
+      subject: { entity: 'node', type: 'relative' },
+      prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'kin' } }],
+    } as unknown as Stage;
+
+    const counts = worstCaseEntityCounts(
+      [sociogram, familyPedigree(), alterEdgeForm('note')],
+      config,
+    );
+    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(
+      config.familyPedigreeNodeCount.max - 1,
+    );
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
   });
 
   it('reads only edge-subject references, not a node type of the same name', () => {
@@ -1331,6 +1358,316 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
         stages: [familyPedigree(), sociogram, alterEdgeForm('note')],
       }),
     ).toThrow(SyntheticDataConstraintError);
+  });
+});
+
+/**
+ * A pair set covers only the people standing when its stage runs, and a form
+ * fills only the edges standing when its stage runs. These pin both readings,
+ * in each direction: the protocol a stage-order-blind count refused, and the
+ * one that has to keep being refused because the order really does put the
+ * entities within reach.
+ */
+describe('generateNetwork with stage order deciding what a stage can reach', () => {
+  const person = {
+    name: 'Person',
+    color: 'node-color-seq-1',
+    variables: { name: { name: 'Name', type: 'text' } },
+  };
+
+  const uniqueBooleanEdge = {
+    node: { person },
+    edge: {
+      knows: {
+        name: 'Knows',
+        color: 'edge-color-seq-1',
+        variables: {
+          strength: {
+            name: 'Strength',
+            type: 'boolean',
+            validation: { unique: true },
+          },
+        },
+      },
+    },
+  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+  const census = {
+    id: 'stage-census',
+    type: 'DyadCensus',
+    label: 'Census',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [
+      { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+    ],
+  } as unknown as Stage;
+
+  const twoPeople = nameGenerator({
+    id: 'ng-two',
+    behaviours: { minNodes: 2, maxNodes: 2 },
+  });
+  const eightPeople = nameGenerator({
+    id: 'ng-eight',
+    behaviours: { minNodes: 8, maxNodes: 8 },
+  });
+
+  it('counts a census over the people who exist when it runs', () => {
+    const counts = worstCaseEntityCounts(
+      [twoPeople, census, eightPeople],
+      config,
+    );
+    // C(2, 2) = 1, not the C(10, 2) = 45 the protocol's final tally reaches.
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
+  });
+
+  it('generates when a later name generator cannot reach an earlier census', () => {
+    // The eight people the third stage adds are never among the census's
+    // candidates, so one pair is all it can join and two booleans cover it.
+    // Reading the protocol-wide total refused this for needing 45.
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook: uniqueBooleanEdge,
+      stages: [twoPeople, census, eightPeople],
+    });
+
+    expect(network.nodes).toHaveLength(10);
+    expect(network.edges.length).toBeLessThanOrEqual(1);
+  });
+
+  it('still refuses when those people are added before the census', () => {
+    // The same three stages, reordered so the census does see all ten. Nothing
+    // about the count is blanket-narrowed: the pair set is genuinely 45 here.
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 1,
+        codebook: uniqueBooleanEdge,
+        stages: [twoPeople, eightPeople, census],
+      });
+
+    expect(generate).toThrow(SyntheticDataConstraintError);
+    expect(generate).toThrow(/up to 45 edges of this type can be generated/);
+  });
+
+  it('still refuses when the census own people exhaust the value space', () => {
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 1,
+        codebook: uniqueBooleanEdge,
+        stages: [
+          nameGenerator({ behaviours: { minNodes: 3, maxNodes: 3 } }),
+          census,
+        ],
+      });
+
+    expect(generate).toThrow(/up to 3 edges of this type can be generated/);
+  });
+
+  it('keeps a composer pairing its own people when the census ran first', () => {
+    // The composer builds its people after the census has walked an empty
+    // draft, so its pair is outside the census's pair set rather than inside
+    // it. Folding it in on stage existence alone would report nothing at all
+    // for an edge the composer really does create.
+    const counts = worstCaseEntityCounts([census, networkComposer()], config);
+    // C(8, 2) = 28 over the composer's own configured ceiling.
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(28);
+  });
+});
+
+/**
+ * A FamilyPedigree edge is born empty and stays empty unless something writes
+ * onto an edge it did not create — and a writer can only reach the edges that
+ * exist when it runs.
+ */
+describe('generateNetwork with a pedigree built after its edge form', () => {
+  const codebook = {
+    node: {
+      relative: { name: 'Relative', color: 'node-color-seq-1', variables: {} },
+    },
+    edge: {
+      kin: {
+        name: 'Kin',
+        color: 'edge-color-seq-1',
+        variables: {
+          verified: {
+            name: 'Verified',
+            type: 'boolean',
+            validation: { unique: true },
+          },
+        },
+      },
+    },
+  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+  it('counts no pedigree edge for a variable only an earlier stage names', () => {
+    const counts = worstCaseEntityCounts(
+      [alterEdgeForm('verified'), familyPedigree()],
+      config,
+    );
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
+  });
+
+  it('generates, rather than refusing, when the form runs before the pedigree', () => {
+    // `handleAlterEdgeForm` walks the edges on the draft when it runs, and
+    // there are none: the pedigree has not been reached yet. Its nine edges are
+    // then created empty and nothing ever fills them.
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages: [alterEdgeForm('verified'), familyPedigree()],
+    });
+
+    expect(network.edges.length).toBeGreaterThan(2);
+    expect(
+      network.edges.every(
+        (edge) => edge[entityAttributesProperty].verified === undefined,
+      ),
+    ).toBe(true);
+  });
+
+  it('still refuses for the pedigree the form can reach', () => {
+    // Two pedigrees straddling the form. The first one's edges exist by the
+    // time the form runs and really do have to hold nine distinct booleans; the
+    // second one's do not exist yet. Counting per pedigree rather than per
+    // protocol is what tells them apart.
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 1,
+        codebook,
+        stages: [
+          familyPedigree(),
+          alterEdgeForm('verified'),
+          familyPedigree({ id: 'stage-fp-late' }),
+        ],
+      });
+
+    expect(generate).toThrow(SyntheticDataConstraintError);
+    expect(generate).toThrow(/up to 9 edges of this type can be generated/);
+  });
+});
+
+/**
+ * A configured per-pair probability that cannot rise above zero leaves
+ * `createEdgesForPairs` unable to create anything, however many pairs it walks.
+ */
+describe('generateNetwork with a census configured to create no edges', () => {
+  const codebook = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        variables: { name: { name: 'Name', type: 'text' } },
+      },
+    },
+    edge: {
+      knows: {
+        name: 'Knows',
+        color: 'edge-color-seq-1',
+        variables: {
+          strength: {
+            name: 'Strength',
+            type: 'boolean',
+            validation: { unique: true },
+          },
+        },
+      },
+    },
+  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+  const census = {
+    id: 'stage-census',
+    type: 'DyadCensus',
+    label: 'Census',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [
+      { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+    ],
+  } as unknown as Stage;
+
+  const stages = [
+    nameGenerator({ behaviours: { minNodes: 3, maxNodes: 3 } }),
+    census,
+  ];
+
+  it('counts no pair for a census whose probability ceiling is zero', () => {
+    const never = resolveGenerationConfig({
+      today: '2026-07-27',
+      censusEdgeProbability: { min: 0, max: 0 },
+    });
+
+    const counts = worstCaseEntityCounts(stages, never);
+    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(0);
+  });
+
+  it('generates, rather than refusing, and creates the nothing it counted', () => {
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages,
+      config: { censusEdgeProbability: { min: 0, max: 0 } },
+    });
+
+    expect(network.nodes).toHaveLength(3);
+    expect(network.edges).toHaveLength(0);
+  });
+
+  it('still refuses when the ceiling is above zero at all', () => {
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook,
+        stages,
+        config: { censusEdgeProbability: { min: 0, max: 0.001 } },
+      }),
+    ).toThrow(/up to 3 edges of this type can be generated/);
+  });
+
+  it('still refuses for an inverted range whose larger end is above zero', () => {
+    // `randomFloat` is handed the range as written, so a `max` of zero says
+    // nothing on its own: reading it alone would call this stage edgeless and
+    // let a protocol through that draws at up to a half per pair.
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook,
+        stages,
+        config: { censusEdgeProbability: { min: 0.5, max: 0 } },
+      }),
+    ).toThrow(/up to 3 edges of this type can be generated/);
+  });
+
+  it('keeps counting the edges a zero-probability census only writes onto', () => {
+    // `handleTieStrengthCensus` fills its `edgeVariable` over reused edges as
+    // well as new ones, so a census that creates nothing still puts a value on
+    // every pedigree edge it meets. Those edges are counted where they were
+    // created, and dropping the census's own pairs must not drop them too.
+    const tieStrength = {
+      id: 'stage-tie',
+      type: 'TieStrengthCensus',
+      label: 'How close?',
+      subject: { entity: 'node', type: 'relative' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'How close are they?',
+          createEdge: 'kin',
+          edgeVariable: 'closeness',
+          negativeLabel: 'Not at all',
+        },
+      ],
+    } as unknown as Stage;
+
+    const never = resolveGenerationConfig({
+      today: '2026-07-27',
+      censusEdgeProbability: { min: 0, max: 0 },
+    });
+
+    const counts = worstCaseEntityCounts(
+      [familyPedigree(), tieStrength],
+      never,
+    );
+    expect(edgeCountFor(counts.edge, 'kin', ['closeness'])).toBe(
+      never.familyPedigreeNodeCount.max - 1,
+    );
   });
 });
 

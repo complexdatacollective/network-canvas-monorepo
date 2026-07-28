@@ -19,6 +19,34 @@ type WorstCaseCounts = {
   edge: EdgeCounts;
 };
 
+/** One FamilyPedigree stage's edges, and where in the run it builds them. */
+type PedigreeEdges = {
+  count: number;
+  /** The stage's position in the list, which is the order it runs in. */
+  stageIndex: number;
+};
+
+/**
+ * What the stages pairing a node type's whole population reach for one edge
+ * type: the largest pair set any of them walks, and the last of them to run.
+ */
+type PopulationPairing = { maxPairs: number; lastIndex: number };
+
+/**
+ * Edges a stage creates among only the nodes it builds itself — a
+ * NetworkComposer's and a FamilyPedigree's — held until the whole stage list is
+ * known, because whether they are already inside a population pair set depends
+ * on what runs after them.
+ */
+type OwnNodeEdges = {
+  edgeType: string;
+  nodeType: string;
+  count: number;
+  stageIndex: number;
+  /** Whether the stage fills the edges as it creates them, or leaves them empty. */
+  born: 'filled' | 'empty';
+};
+
 /**
  * How many edges of each type can hold a value, split by what fills them.
  *
@@ -31,10 +59,18 @@ type WorstCaseCounts = {
 export type EdgeCounts = {
   /** Edges whose creating stage fills every variable of the type. */
   base: Map<string, number>;
-  /** Edges a FamilyPedigree stage creates, which start empty. */
-  pedigree: Map<string, number>;
-  /** The variable ids some stage names an attribute of, per edge type. */
-  named: Map<string, ReadonlySet<string>>;
+  /**
+   * Edges each FamilyPedigree stage creates, which start empty, kept apart per
+   * stage because whether a writer can reach them depends on where that stage
+   * runs relative to the writer.
+   */
+  pedigree: Map<string, PedigreeEdges[]>;
+  /**
+   * The last stage index naming an attribute of an edge type, per variable id.
+   * Read as "a stage naming it runs no later than this", which is what decides
+   * which pedigrees' edges the naming can reach.
+   */
+  named: Map<string, Map<string, number>>;
 };
 
 /**
@@ -42,12 +78,26 @@ export type EdgeCounts = {
  * group `variableIds` — one variable, or every member of a group held to a
  * single value.
  *
- * Pedigree-built edges join the count where some stage names any member of the
- * group, since nothing else writes onto an edge it did not create and writing
- * one member gives the whole group a value. Edges from every other stage count
- * for every variable, because those stages generate the type's whole attribute
- * set as they create them — a structural fact about the draw rather than a rule
- * about which stages exist.
+ * Pedigree-built edges join the count where a stage naming any member of the
+ * group runs at or after the pedigree that built them, since nothing else
+ * writes onto an edge it did not create and writing one member gives the whole
+ * group a value. The ordering is what a stage can reach rather than what it
+ * declares: `generateNetwork` walks its stage list once, in order, and skip
+ * logic only ever jumps forward (`resolveSkipLogicDestinationIndex` resolves a
+ * destination only when it is strictly after the owning stage), so a stage
+ * writing edges at index `i` sees exactly the edges the stages before `i` left
+ * on the draft. A pedigree later than every naming site therefore hands its
+ * edges to nobody, and they stay as `handleFamilyPedigree` built them: empty.
+ *
+ * "At or after" rather than "after", because a FamilyPedigree's own
+ * `edgeConfig` names four edge variables of its type
+ * (`relationshipTypeVariable` and friends), and a stage naming a variable of
+ * the edges it is itself creating is exactly the case this must not narrow
+ * away.
+ *
+ * Edges from every other stage count for every variable, because those stages
+ * generate the type's whole attribute set as they create them — a structural
+ * fact about the draw rather than a rule about which stages exist.
  */
 export function edgeCountFor(
   counts: EdgeCounts,
@@ -56,8 +106,20 @@ export function edgeCountFor(
 ): number {
   const base = counts.base.get(type) ?? 0;
   const named = counts.named.get(type);
-  const fillable = variableIds.some((id) => named?.has(id) ?? false);
-  return base + (fillable ? (counts.pedigree.get(type) ?? 0) : 0);
+
+  let namedAt = -1;
+  for (const id of variableIds) {
+    const at = named?.get(id);
+    if (at !== undefined) namedAt = Math.max(namedAt, at);
+  }
+  if (namedAt < 0) return base;
+
+  let fromPedigree = 0;
+  for (const { count, stageIndex } of counts.pedigree.get(type) ?? []) {
+    if (stageIndex <= namedAt) fromPedigree += count;
+  }
+
+  return base + fromPedigree;
 }
 
 /**
@@ -323,7 +385,7 @@ export function pedigreeNodeCeiling(config: GenerationConfig): number {
 }
 
 /**
- * The variables some stage names an attribute of, per edge type.
+ * The last stage index naming an attribute of each edge type, per variable id.
  *
  * `handleFamilyPedigree` builds its edges with empty attributes — the interface
  * draws parent-child links and collects nothing on them — so a pedigree edge
@@ -343,16 +405,36 @@ export function pedigreeNodeCeiling(config: GenerationConfig): number {
  * as `collectBinOnlyVariables` reads them — means a reference site added later
  * counts on its own, without this code being updated, and errs towards
  * refusing up front rather than running out of values partway through a draw.
+ *
+ * Where the reference sits is kept alongside it, because a stage can only write
+ * edges that already exist when it runs — see {@link edgeCountFor}. The index
+ * is read off the hit's own value path, whose root is the `stages` array this
+ * passes in, exactly as `isBinPromptAssignment` reads it. A hit this cannot
+ * place that way is read as reaching every pedigree rather than none, which is
+ * the direction that leaves a refusal standing instead of letting a draw run
+ * out of values: only stage references are collected here, so nothing produces
+ * such a hit today, and a reference site added somewhere else later should keep
+ * the old wide behaviour until it is deliberately placed.
  */
 function namedEdgeAttributes(
   stages: Stage[],
-): Map<string, ReadonlySet<string>> {
-  const named = new Map<string, Set<string>>();
+): Map<string, Map<string, number>> {
+  const named = new Map<string, Map<string, number>>();
 
   for (const hit of collectEntityAttributeReferences({ stages })) {
     if (hit.subject?.entity !== 'edge') continue;
-    const variables = named.get(hit.subject.type) ?? new Set<string>();
-    variables.add(hit.variableId);
+
+    const [root, stageIndex] = hit.path;
+    const namedAt =
+      root === 'stages' && typeof stageIndex === 'number'
+        ? stageIndex
+        : Number.POSITIVE_INFINITY;
+
+    const variables = named.get(hit.subject.type) ?? new Map<string, number>();
+    variables.set(
+      hit.variableId,
+      Math.max(variables.get(hit.variableId) ?? -1, namedAt),
+    );
     named.set(hit.subject.type, variables);
   }
 
@@ -365,7 +447,9 @@ function pairCount(count: number): number {
 }
 
 /**
- * The largest number of unordered pairs a subject node type could ever reach.
+ * The unordered pairs a subject node type reaches with the nodes counted so
+ * far — which, walking the stage list in order, is the population a stage at
+ * this point in the run can pair.
  *
  * Read from the type's whole node count rather than from any one variable's:
  * an edge is created for a pair of people, whatever values those people hold,
@@ -377,10 +461,24 @@ function pairCount(count: number): number {
  * draft. A NetworkComposer pairs only the nodes it built itself, and is counted
  * from its own ceiling instead.
  */
-function pairsFor(nodeType: string | undefined, node: NodeCounts): number {
+function pairsSoFar(nodeType: string | undefined, node: NodeCounts): number {
   if (nodeType === undefined) return 0;
   const tally = node.get(nodeType);
   return pairCount(tally === undefined ? 0 : nodeTotal(tally));
+}
+
+/**
+ * Whether a configured per-pair probability can ever produce an edge.
+ *
+ * `createEdgesForPairs` creates one only where `randomFloat(0, 1) <
+ * probability`, and that draw is never negative, so a probability the config
+ * cannot draw above zero leaves every pair unconnected however many pairs the
+ * stage walks. The ceiling is the larger end of the range rather than `max`:
+ * `randomFloat` is handed the range as written and does not normalise an
+ * inverted one, so `{ min: 0.5, max: 0 }` must be read as reaching 0.5.
+ */
+function createsEdges(probability: { min: number; max: number }): boolean {
+  return Math.max(probability.min, probability.max) > 0;
 }
 
 /**
@@ -395,12 +493,22 @@ function pairsFor(nodeType: string | undefined, node: NodeCounts): number {
  * about it, because `createEdgesForPairs` reuses the pair's existing edge the
  * way the interview does. A NetworkComposer bounds each of its edge types by
  * the pairs of its own node ceiling instead, since it pairs only the people it
- * built itself, and contributes nothing where something else already pairs its
- * node type for that edge type. FamilyPedigree bounds its edge type by one less
- * than its node ceiling, the parent-child edges it actually creates, and is
- * counted apart because those edges deliberately repeat a pair. Node counts sum
- * across stages producing the same type, since a `unique` constraint spans the
- * whole run.
+ * built itself, and FamilyPedigree by one less than its node ceiling, the
+ * parent-child edges it actually creates; both are folded into a later pairing
+ * of the same node type where one exists, and counted on their own where it
+ * does not. Node counts sum across stages producing the same type, since a
+ * `unique` constraint spans the whole run.
+ *
+ * The stage list is read in the order `generateNetwork` runs it, because every
+ * one of these bounds is about what a stage can reach rather than about what
+ * the protocol eventually holds. A census pairs the people standing when it
+ * runs, so a name generator after it adds nobody to its pair set; a form fills
+ * the edges standing when it runs, so a pedigree after it hands its edges to
+ * nobody. That reading is sound because the run only ever moves forward —
+ * `resolveSkipLogicDestinationIndex` resolves a skip destination only when it
+ * is strictly after the owning stage, so no stage is revisited and no node is
+ * ever removed — and because a skipped stage or an early drop-out leaves fewer
+ * entities than counted here, never more.
  *
  * Entities are therefore counted as the value space they spend, not as every
  * entity the run creates, because spending values is the only thing the count
@@ -424,10 +532,56 @@ export function worstCaseEntityCounts(
   externalData?: Record<string, NcNode[]>,
 ): WorstCaseCounts {
   const base = new Map<string, number>();
-  const pedigree = new Map<string, number>();
+  const pedigree = new Map<string, PedigreeEdges[]>();
   const node: NodeCounts = new Map();
 
-  for (const stage of stages) {
+  // The node types whose whole population is paired for each edge type, and
+  // the stages that pair only the people they build themselves.
+  //
+  // One pair count per node type rather than per prompt, because
+  // `createEdgesForPairs` now looks the pair up on `draft.edges` before drawing
+  // and reuses whatever it finds, exactly as the interview's `edgeExists` does.
+  // Edges carry no stage or prompt provenance, so that lookup spans the whole
+  // run: two prompts of one census, two censuses, and a Sociogram elsewhere in
+  // the protocol all draw from the same set of pairs and leave at most one edge
+  // of the type on each. Summing them would count edges the draw cannot create.
+  //
+  // Node types are summed against each other, not unioned: a pair is two nodes
+  // of one type, so a stage over `person` and a stage over `place` reach
+  // disjoint sets of pairs even when both create the same edge type.
+  const paired = new Map<string, Map<string, PopulationPairing>>();
+  const ownNodeEdges: OwnNodeEdges[] = [];
+
+  function pairsWith(
+    edgeType: string,
+    nodeType: string,
+    stageIndex: number,
+  ): void {
+    const byNodeType =
+      paired.get(edgeType) ?? new Map<string, PopulationPairing>();
+    const existing = byNodeType.get(nodeType);
+    // The largest pair set and the latest stage reaching it, which for a
+    // population that only ever grows are the same stage. Recorded apart all
+    // the same: the maximum is what bounds the type, while the index is what
+    // says which stage-local edge sets are inside that bound.
+    byNodeType.set(nodeType, {
+      maxPairs: Math.max(existing?.maxPairs ?? 0, pairsSoFar(nodeType, node)),
+      lastIndex: Math.max(existing?.lastIndex ?? -1, stageIndex),
+    });
+    paired.set(edgeType, byNodeType);
+  }
+
+  for (let stageIndex = 0; stageIndex < stages.length; stageIndex++) {
+    const stage = stages[stageIndex]!;
+
+    // One pass, in stage order, because a pair set is bounded by the population
+    // standing when its stage runs rather than by the one the protocol ends
+    // with. `generateNetwork` walks this same list once and only forwards —
+    // `resolveSkipLogicDestinationIndex` resolves a destination only when it is
+    // strictly after the owning stage — so nodes accumulate monotonically and
+    // the tally read at a stage is that stage's whole candidate pool. A skipped
+    // stage or an early drop-out leaves fewer nodes than counted here, never
+    // more, so the reading stays an upper bound either way.
     if (isNodeCreationStage(stage)) {
       const nodeType = getSubjectType(stage.subject, 'node');
       if (nodeType === undefined) continue;
@@ -443,56 +597,62 @@ export function worstCaseEntityCounts(
 
       if (pool === undefined) {
         tally.fabricated += maxNodes;
-        continue;
+      } else {
+        tally.rosterDrawn += Math.min(maxNodes, pool.length);
+        addRosterRows(tally.rosterRows, pool);
       }
 
-      tally.rosterDrawn += Math.min(maxNodes, pool.length);
-      addRosterRows(tally.rosterRows, pool);
+      if (stage.type === 'NetworkComposer') {
+        // Pairs of the stage's own new nodes, not of the type's whole
+        // population: `handleNetworkComposer` hands `createEdgesForPairs` the
+        // `newNodes` it just built, so people an earlier stage added are never
+        // among them. The protocol-wide total would count pairs the handler
+        // cannot form — a five-person name generator ahead of a composer capped
+        // at two claims 21 edges for a stage able to create one.
+        //
+        // The ceiling is `getNodeCountBounds`'s, which is what
+        // `createNodesForStage` caps the stage at, and it reads an inverted
+        // configured range as the draw does. A composer never draws from a
+        // roster — `handleNetworkComposer` passes no pool and allows
+        // fabrication — so nothing narrows the stage below it.
+        const pairs = createsEdges(config.networkComposerEdgeProbability)
+          ? pairCount(maxNodes)
+          : 0;
+        // Once per distinct type, not once per definition: the handler pushes
+        // each definition's edges onto the draft before the next one runs, so
+        // two definitions naming one type share the stage's pairs between them.
+        // Mirrors `handleNetworkComposer`'s read exactly (no `entity` check),
+        // so this count can never be lower than what the generator produces.
+        const edgeTypes = new Set<string>();
+        for (const edgeDef of stage.edges ?? []) {
+          const edgeType = edgeDef.subject?.type;
+          if (edgeType !== undefined) edgeTypes.add(edgeType);
+        }
+        for (const edgeType of edgeTypes) {
+          ownNodeEdges.push({
+            edgeType,
+            nodeType,
+            count: pairs,
+            stageIndex,
+            born: 'filled',
+          });
+        }
+      }
       continue;
     }
 
-    if (stage.type === 'FamilyPedigree') {
-      const nodeType = stage.nodeConfig?.type;
-      if (nodeType) {
-        tallyFor(node, nodeType).fabricated += pedigreeNodeCeiling(config);
-      }
-    }
-  }
-
-  // The node types whose whole population is paired for each edge type, and
-  // the composers that pair only the people they build themselves.
-  //
-  // One pair count per node type rather than per prompt, because
-  // `createEdgesForPairs` now looks the pair up on `draft.edges` before drawing
-  // and reuses whatever it finds, exactly as the interview's `edgeExists` does.
-  // Edges carry no stage or prompt provenance, so that lookup spans the whole
-  // run: two prompts of one census, two censuses, and a Sociogram elsewhere in
-  // the protocol all draw from the same set of pairs and leave at most one edge
-  // of the type on each. Summing them would count edges the draw cannot create.
-  //
-  // Node types are summed against each other, not unioned: a pair is two nodes
-  // of one type, so a stage over `person` and a stage over `place` reach
-  // disjoint sets of pairs even when both create the same edge type.
-  const pairedNodeTypes = new Map<string, Set<string>>();
-  const composerPairs: {
-    edgeType: string;
-    nodeType: string;
-    pairs: number;
-  }[] = [];
-
-  function pairsWith(edgeType: string, nodeType: string): void {
-    const nodeTypes = pairedNodeTypes.get(edgeType) ?? new Set<string>();
-    nodeTypes.add(nodeType);
-    pairedNodeTypes.set(edgeType, nodeTypes);
-  }
-
-  for (const stage of stages) {
     if (isPairEdgeStage(stage)) {
       const nodeType = getSubjectType(stage.subject, 'node');
       if (nodeType === undefined) continue;
+      // A census whose configured probability cannot rise above zero creates
+      // nothing at all, so it puts no pair of its own into the count. It may
+      // still WRITE onto a pair it meets — `handleTieStrengthCensus` fills its
+      // `edgeVariable` over reused edges as well as new ones — but every edge
+      // it could meet was created by some other stage, and is counted there.
+      if (!createsEdges(config.censusEdgeProbability)) continue;
       for (const prompt of stage.prompts) {
         const edgeType = prompt.createEdge;
-        if (edgeType) pairsWith(edgeType, nodeType);
+        if (edgeType) pairsWith(edgeType, nodeType, stageIndex);
       }
       continue;
     }
@@ -500,82 +660,87 @@ export function worstCaseEntityCounts(
     if (stage.type === 'Sociogram') {
       const nodeType = getSubjectType(stage.subject, 'node');
       if (nodeType === undefined) continue;
+      if (!createsEdges(config.sociogramEdgeProbability)) continue;
       for (const prompt of stage.prompts) {
         const edgeType = prompt.edges?.create;
-        if (edgeType) pairsWith(edgeType, nodeType);
-      }
-      continue;
-    }
-
-    if (stage.type === 'NetworkComposer') {
-      // `handleNetworkComposer` returns before building anything when its
-      // subject names no node type.
-      const nodeType = getSubjectType(stage.subject, 'node');
-      if (nodeType === undefined) continue;
-
-      // Pairs of the stage's own new nodes, not of the type's whole population:
-      // `handleNetworkComposer` hands `createEdgesForPairs` the `newNodes` it
-      // just built, so people an earlier stage added are never among them. The
-      // protocol-wide total would count pairs the handler cannot form — a
-      // five-person name generator ahead of a composer capped at two claims 21
-      // edges for a stage able to create one.
-      //
-      // The ceiling is `getNodeCountBounds`'s, which is what
-      // `createNodesForStage` caps the stage at, and it reads an inverted
-      // configured range as the draw does. A composer never draws from a
-      // roster — `handleNetworkComposer` passes no pool and allows fabrication
-      // — so nothing narrows the stage below it.
-      const pairs = pairCount(getNodeCountBounds(stage, config).maxNodes);
-      // Once per distinct type, not once per definition: the handler pushes
-      // each definition's edges onto the draft before the next one runs, so two
-      // definitions naming one type share the stage's pairs between them.
-      // Mirrors `handleNetworkComposer`'s read exactly (no `entity` check), so
-      // this count can never be lower than what the generator produces.
-      const edgeTypes = new Set<string>();
-      for (const edgeDef of stage.edges ?? []) {
-        const edgeType = edgeDef.subject?.type;
-        if (edgeType !== undefined) edgeTypes.add(edgeType);
-      }
-      for (const edgeType of edgeTypes) {
-        composerPairs.push({ edgeType, nodeType, pairs });
+        if (edgeType) pairsWith(edgeType, nodeType, stageIndex);
       }
       continue;
     }
 
     if (stage.type === 'FamilyPedigree') {
+      // `handleFamilyPedigree` returns before building anything — nodes and
+      // edges alike — when its config names no node type.
+      const nodeType = stage.nodeConfig?.type;
+      if (nodeType === undefined) continue;
+
+      tallyFor(node, nodeType).fabricated += pedigreeNodeCeiling(config);
+
       const edgeType = stage.edgeConfig?.type;
       // Tallied apart from the rest because these edges start empty, and only
       // the variables some stage names ever stop being — see
       // {@link edgeCountFor}, which decides that per variable.
-      if (edgeType) {
+      if (edgeType !== undefined) {
         // `handleFamilyPedigree` creates exactly `n - 1` edges (one per node
         // index 1..n-1), never pairwise, so the pair count over-counts by
         // roughly 5x at the default config maximum. Bound it by the true
         // maximum instead.
-        add(pedigree, edgeType, Math.max(pedigreeNodeCeiling(config) - 1, 0));
+        ownNodeEdges.push({
+          edgeType,
+          nodeType,
+          count: Math.max(pedigreeNodeCeiling(config) - 1, 0),
+          stageIndex,
+          born: 'empty',
+        });
       }
     }
   }
 
-  for (const [edgeType, nodeTypes] of pairedNodeTypes) {
-    for (const nodeType of nodeTypes) {
-      add(base, edgeType, pairsFor(nodeType, node));
+  for (const [edgeType, byNodeType] of paired) {
+    for (const { maxPairs } of byNodeType.values()) {
+      add(base, edgeType, maxPairs);
     }
   }
 
-  for (const { edgeType, nodeType, pairs } of composerPairs) {
-    // A composer's people are part of their type's population, so where some
-    // census or Sociogram already pairs that whole population for this edge
-    // type, the composer's edges are inside that count and the census reuses
-    // whichever of them it meets. Counting them again would double a pair.
+  for (const { edgeType, nodeType, count, stageIndex, born } of ownNodeEdges) {
+    // A composer's or a pedigree's people are part of their type's population,
+    // so where a census or Sociogram pairs that whole population for this edge
+    // type LATER in the run, this stage's edges are inside that pair set and
+    // the census reuses whichever of them it meets — `createEdgesForPairs`
+    // looks the pair up before drawing. Counting them again would double a
+    // pair.
     //
-    // Where nothing else pairs the type, each composer contributes its own
-    // pairs and they sum: two composers build disjoint sets of people, so no
-    // pair of theirs is shared. That sum can never exceed the type's whole pair
-    // count, since every composer's ceiling is inside `nodeTotal` and pairs
-    // grow faster than nodes.
-    if (pairedNodeTypes.get(edgeType)?.has(nodeType)) continue;
-    add(base, edgeType, pairs);
+    // A pedigree's edges are a subset of its own people's pairs because
+    // `handleFamilyPedigree` gives every node after the first exactly one
+    // parent drawn from the nodes before it, so no two of its edges land on one
+    // unordered pair. That is where the generator parts company with the
+    // interface, which lets several edges of a type join one pair and tells
+    // them apart by `relationshipTypeVariable`; were the generator ever taught
+    // to do the same, this fold would become an under-count and would have to
+    // go.
+    //
+    // Strictly later, because a pairing stage that ran BEFORE this one never
+    // saw these people: they did not exist yet, so its pair set excludes them
+    // and cannot hold these edges. Where nothing pairs the type afterwards,
+    // each such stage contributes its own edges and they sum — two composers
+    // build disjoint sets of people, and two pedigrees likewise — and that sum
+    // can never exceed the type's whole pair count, since every ceiling is
+    // inside `nodeTotal` and pairs grow faster than nodes.
+    if ((paired.get(edgeType)?.get(nodeType)?.lastIndex ?? -1) > stageIndex) {
+      continue;
+    }
+
+    // A composer generates the whole attribute set of every edge it creates, so
+    // its edges join the count for every variable; a pedigree's are born empty
+    // and are kept apart for {@link edgeCountFor} to settle per variable.
+    if (born === 'filled') {
+      add(base, edgeType, count);
+      continue;
+    }
+
+    const forType = pedigree.get(edgeType) ?? [];
+    forType.push({ count, stageIndex });
+    pedigree.set(edgeType, forType);
   }
 
   return { node, edge: { base, pedigree, named: namedEdgeAttributes(stages) } };
