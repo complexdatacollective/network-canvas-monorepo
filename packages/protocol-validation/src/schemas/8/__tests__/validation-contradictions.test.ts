@@ -6177,3 +6177,151 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 2: propag
     ).toEqual([]);
   });
 });
+
+describe('findValidationContradictions — Twenty-seventh-wave Finding 3: mixed-resolution equality nodes carry their surviving instants', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: mutual >= makes {a, c} an equality node whose
+  // surviving instants are exactly {2020-01-01} (the year picker emits only
+  // January 1sts; the full picker's window keeps just one of them) — yet the
+  // node retained its convex maximum 2020-01-02, so `b < c` looked
+  // satisfiable although no year instant lies below 2020-01-01.
+  it('rejects a strict comparator against a node whose surviving instants pin its maximum', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanOrEqualToVariable: 'c' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2021' },
+        { lessThanVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2020-01-01', max: '2020-01-02' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'lessThanVariable' },
+    ]);
+  });
+
+  // The mirror: the surviving instant sits at the TOP of the node's convex
+  // window instead, so a strictly-greater partner has nowhere to go.
+  it('rejects the mirror direction against a surviving instant at the window top', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanOrEqualToVariable: 'c' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2020-12-31', max: '2021-01-01' },
+        { greaterThanOrEqualToVariable: 'a' },
+      ),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'greaterThanVariable' },
+    ]);
+  });
+
+  // The accept guard immediately outside the boundary: TWO surviving
+  // instants whose hull still satisfies the downstream comparator
+  // (b = 2020 < c = 2021-01-01 with a = 2021) must stay accepted.
+  it('accepts a node with two surviving instants whose hull satisfies the comparator', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '2020', max: '2021' },
+          { greaterThanOrEqualToVariable: 'c' },
+        ),
+        b: datePicker(
+          'b',
+          { type: 'year', min: '2020', max: '2021' },
+          { lessThanVariable: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2021-01-01' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Conservatism: an over-cap coarse window makes the surviving set
+  // uncomputable, so the node keeps its convex interval and the reviewer's
+  // shape stays accepted rather than judged against a partial set.
+  it('keeps the convex interval when the coarse window exceeds the enumeration cap', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker(
+          'a',
+          { type: 'year', min: '1000', max: '3000' },
+          { greaterThanOrEqualToVariable: 'c' },
+        ),
+        b: datePicker(
+          'b',
+          { type: 'year', min: '2020', max: '2021' },
+          { lessThanVariable: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2020-01-02' },
+          { greaterThanOrEqualToVariable: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Conservatism: a group joined by a CROSS-RESOLUTION sameAs edge is the
+  // mixed-resolution machinery's to report — its repair strips that edge,
+  // after which the members separate — so the hull must not additionally
+  // judge `b`'s comparator against it. Exactly the one mixed-resolution
+  // report is expected.
+  it('does not judge comparators against a group the mixed-resolution repair will separate', () => {
+    const result = findValidationContradictions({
+      a: datePicker(
+        'a',
+        { type: 'year', min: '2020', max: '2021' },
+        { sameAs: 'c' },
+      ),
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2021' },
+        { lessThanVariable: 'c' },
+      ),
+      c: datePicker('c', { min: '2020-01-01', max: '2020-01-02' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain('different resolutions');
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+});

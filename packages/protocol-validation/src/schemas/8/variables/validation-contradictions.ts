@@ -2319,30 +2319,44 @@ const intersectInstantSets = (a: Set<number>, b: Set<number>): Set<number> => {
  * Deliberately conservative: an inability to enumerate a coarse member's
  * window exactly (an open bound, or a window wider than
  * `COARSE_INSTANT_ENUMERATION_CAP`), or the absence of ANY coarse member at
- * all, makes this return `false` — never "empty" — so it can only ever ADD a
- * detection the interval check above missed, never invent a false rejection
- * of its own. The caller only ever consults this once the interval check has
- * already found the group non-empty, so a group this DOES flag is reported
- * exactly once.
+ * all, makes this return `undefined` — never "empty" — so its emptiness
+ * consumer can only ever ADD a detection the interval check missed, never
+ * invent a false rejection of its own.
+ *
+ * Twenty-seventh-wave Finding 3 extracted this SET computation from
+ * `discreteInstantsEmpty` (below) so the comparator-feasibility passes can
+ * consume the surviving set itself — its hull is the group's true reachable
+ * range — rather than only its emptiness. The `exact` flag serves that new
+ * consumer: a member whose window lives on the symbolic 'interviewDate'
+ * origin, or that identifies no window at all, contributes NO fixed-calendar
+ * filter here, which is sound for the emptiness consumer (fewer filters only
+ * ever ACCEPT more) but the hull consumer TIGHTENS intervals with the
+ * result, so under `exact` any such unrepresented member makes the whole set
+ * unusable (`undefined`) instead — the convex interval stays in charge.
  */
-const discreteInstantsEmpty = (
+const survivingDiscreteInstants = (
   variables: UnknownRecord,
   subset: string[],
-): boolean => {
-  if (subset.length < 2) return false;
+  exact: boolean,
+): Set<number> | undefined => {
+  if (subset.length < 2) return undefined;
   const types = new Set(subset.map((member) => typeOf(variables[member])));
   const [onlyType] = types;
-  if (types.size !== 1 || onlyType !== 'datetime') return false;
+  if (types.size !== 1 || onlyType !== 'datetime') return undefined;
 
   let candidates: Set<number> | undefined;
   const fixedIntervals: Interval[] = [];
   for (const member of subset) {
     const variable = variables[member];
     const coarse = coarseInstantsOf(variable);
-    if (coarse === 'unenumerable') return false;
+    if (coarse === 'unenumerable') return undefined;
     if (coarse === undefined) {
       const interval = dateWindowInterval(variable);
-      if (interval?.origin === 'fixed') fixedIntervals.push(interval);
+      if (interval?.origin === 'fixed') {
+        fixedIntervals.push(interval);
+      } else if (exact) {
+        return undefined;
+      }
       continue;
     }
     candidates =
@@ -2350,9 +2364,9 @@ const discreteInstantsEmpty = (
         ? coarse
         : intersectInstantSets(candidates, coarse);
   }
-  // No coarse member: the interval check above is already exact for a group
-  // with no coarse resolution in play, so there is nothing further to detect.
-  if (candidates === undefined) return false;
+  // No coarse member: the interval check is already exact for a group with
+  // no coarse resolution in play, so there is nothing further to model.
+  if (candidates === undefined) return undefined;
 
   for (const interval of fixedIntervals) {
     candidates = new Set(
@@ -2363,7 +2377,77 @@ const discreteInstantsEmpty = (
       ),
     );
   }
-  return candidates.size === 0;
+  return candidates;
+};
+
+/**
+ * Whether a subset's surviving discrete instant set is computable and EMPTY —
+ * the group-level emptiness consumer of `survivingDiscreteInstants` above.
+ * The caller only ever consults this once the interval check has already
+ * found the group non-empty, so a group this DOES flag is reported exactly
+ * once.
+ */
+const discreteInstantsEmpty = (
+  variables: UnknownRecord,
+  subset: string[],
+): boolean => survivingDiscreteInstants(variables, subset, false)?.size === 0;
+
+/**
+ * Twenty-seventh-wave Finding 3: tightens an equality group's fixed-origin
+ * interval to the hull of its surviving discrete instants, so the comparator
+ * feasibility checks — the per-edge check and the chained propagation, which
+ * both read these intervals — judge the group by the range it can ACTUALLY
+ * reach rather than by its convex approximation. A year picker spanning
+ * 2020-2021 held equal (mutual non-strict comparators) to a full picker
+ * spanning 2020-01-01–2020-01-02 can only ever share 2020-01-01, yet the
+ * convex intersection retained 2020-01-02 as its maximum — so a year picker
+ * B with `B < (that node)` looked satisfiable although no year instant lies
+ * below 2020-01-01. The hull is a superset of the group's feasible shared
+ * values (every member's modelled emission set is itself a superset of its
+ * runtime emissions), so a comparator found infeasible against it is
+ * genuinely infeasible.
+ *
+ * Every uncertainty keeps the convex interval as-is (accept):
+ *   - a surviving set that cannot be computed EXACTLY — an over-cap or open
+ *     coarse window, an interview-date-origin or windowless member, no
+ *     coarse member at all (see `survivingDiscreteInstants`'s `exact` mode);
+ *   - an EMPTY surviving set — that group is already reported by the
+ *     group-level `discreteInstantsEmpty` check, whose repair strips the
+ *     grouping edges themselves; there is no hull to represent, and the
+ *     per-edge check's "never judge against an already-empty group"
+ *     precedent applies;
+ *   - a group containing a cross-resolution `sameAs` edge — the
+ *     mixed-resolution machinery reports that, and its repair strips exactly
+ *     those edges, after which the members separate and the hull no longer
+ *     binds them; judging comparators against it meanwhile could strip a
+ *     rule the mixed-resolution repair was about to rescue.
+ */
+const tightenToSurvivingInstantHull = (
+  variables: UnknownRecord,
+  members: string[],
+  intervals: GroupIntervals,
+): void => {
+  if (
+    members.some((member) => {
+      const target = usableReference(variables, member, 'sameAs');
+      return (
+        target !== undefined &&
+        dateResolutionOf(variables[member]) !==
+          dateResolutionOf(variables[target])
+      );
+    })
+  ) {
+    return;
+  }
+  const surviving = survivingDiscreteInstants(variables, members, true);
+  if (surviving === undefined || surviving.size === 0) return;
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const instant of surviving) {
+    if (instant < min) min = instant;
+    if (instant > max) max = instant;
+  }
+  addToGroupIntervals(intervals, { min, max, origin: 'fixed' });
 };
 
 const INTERVAL_ORIGINS = [
@@ -2686,6 +2770,9 @@ function chainedBoundContradictions(
       (group) => graph.membersOf.get(group) ?? [],
     );
     const intervals = intervalsOfMembers(variables, variableIds);
+    // Twenty-seventh-wave Finding 3: seed propagation from the node's true
+    // reachable range, not its convex approximation.
+    tightenToSurvivingInstantHull(variables, variableIds, intervals);
     const nodeIndex = nodes.length;
     for (const group of component) nodeOf.set(group, nodeIndex);
     nodes.push({
@@ -3005,6 +3092,11 @@ function disjointBoundsContradictions(
   const groupIntervals = new Map<string, GroupIntervals>();
   for (const [group, members] of membersOf) {
     const intervals = intervalsOfMembers(variables, members);
+    // Twenty-seventh-wave Finding 3: the per-edge feasibility check below
+    // judges each comparator against the group's TRUE reachable range. The
+    // group-level emptiness checks in this loop recompute their own
+    // untightened intervals and are unaffected.
+    tightenToSurvivingInstantHull(variables, members, intervals);
     groupIntervals.set(group, intervals);
 
     const internalNonStrictEdges =
