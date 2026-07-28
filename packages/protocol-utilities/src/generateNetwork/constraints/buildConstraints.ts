@@ -10,10 +10,10 @@ import {
 import type { VariableEntry } from '../../types';
 import { toVariableEntry } from '../attributes';
 import {
-  addDays,
   type DateResolution,
   type DateWindow,
   EARLIEST_OFFERED_DATE,
+  offsetWithinOfferedDates,
   truncateToResolution,
   utcDate,
 } from './dateWindow';
@@ -195,10 +195,31 @@ function resolveDateWindow(
       readNumber(parameters, 'before') ?? RELATIVE_DATE_PICKER_DEFAULT_BEFORE;
     const after =
       readNumber(parameters, 'after') ?? RELATIVE_DATE_PICKER_DEFAULT_AFTER;
+
+    // Both ends of this window are derived, so both are held to the dates the
+    // control can represent rather than refused. `anchor` is the declared half
+    // and `requireCalendarBound` has already held it to a year the picker
+    // offers; the offsets around it are what leave the calendar, in either
+    // direction and from schema-valid parameters. `anchor: "9999-12-31"` with
+    // `after: 1` derived `10000-01-01`, and a `before` reaching past an early
+    // anchor derived `0000-07-05` — or `00-1-11-28`, which is not a date at all
+    // and which `stepsBetween` reparses as year zero.
+    //
+    // Deliberately not fixed here: the interview derives this same window twice
+    // more — `buildDatePickerBoundProps` and `RelativeDatePickerField` — and
+    // neither clamps, so a protocol anchored at the last date the calendar
+    // offers still validates submissions against a `10000-01-01` maximum that
+    // `matchesDatePattern` does not recognise as a date and whose lexical
+    // fallback then rejects every four-digit year, typed or generated. Those
+    // two cannot import this clamp (the interview holds this package as a
+    // devDependency only, and fresco-ui not at all), so the field's own copies
+    // have to state it, the way both packages already keep their own `ymd`
+    // arithmetic. Clamping here is still what keeps a five-digit date out of a
+    // generated network, which is the half this package owns.
     return {
       resolution: 'full',
-      min: addDays(anchor, -before),
-      max: addDays(anchor, after),
+      min: offsetWithinOfferedDates(anchor, -before, 'full'),
+      max: offsetWithinOfferedDates(anchor, after, 'full'),
     };
   }
 

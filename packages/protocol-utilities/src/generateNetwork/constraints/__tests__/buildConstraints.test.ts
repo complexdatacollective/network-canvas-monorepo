@@ -6,12 +6,18 @@ import {
   VARIABLE_REFERENCE_VALIDATIONS,
 } from '@codaco/protocol-validation';
 
+import { ValueGenerator } from '../../../ValueGenerator';
 import { resolveGenerationConfig } from '../../config';
 import {
   buildEntityConstraints,
   buildVariableConstraints,
 } from '../buildConstraints';
-import { addSteps, stepsBetween } from '../dateWindow';
+import {
+  addSteps,
+  EARLIEST_OFFERED_DATE,
+  LATEST_OFFERED_DATE,
+  stepsBetween,
+} from '../dateWindow';
 import { analyseFeasibility } from '../feasibility';
 
 const TODAY = '2026-07-27';
@@ -378,6 +384,105 @@ describe('buildVariableConstraints', () => {
       min: '0099-05-16',
       max: '0099-06-20',
     });
+  });
+
+  // The anchor is a bound the protocol declares and is refused when it names a
+  // year the picker cannot offer; the window around it is derived, and is held
+  // to those years instead. `anchor: "9999-12-31"` with `after: 1` is a
+  // schema-valid pair — `isIsoDate` accepts the anchor and the offsets need only
+  // be non-negative integers — and derived `10000-01-01`, a five-digit year the
+  // runtime's `matchesDatePattern` does not read as a date at all. Its max
+  // validator then compared lexically, where `1` sorts below `9`, and rejected
+  // the `9999-12-31` the same window also offered.
+  it.each([
+    { after: 1, before: 0, max: '9999-12-31' },
+    { after: 365_250, before: 0, max: '9999-12-31' },
+    { after: 0, before: 0, max: '9999-12-31' },
+  ])(
+    'holds a relative window anchored at the last date offered (after $after)',
+    ({ after, before, max }) => {
+      const result = buildVariableConstraints(
+        {
+          id: 'v1',
+          name: 'Last seen',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '9999-12-31', before, after },
+        },
+        TODAY,
+      );
+
+      expect(result.dateWindow).toEqual({
+        resolution: 'full',
+        min: '9999-12-31',
+        max,
+      });
+    },
+  );
+
+  // The mirror at the other end: `before` reaching past an early anchor derived
+  // `0000-07-05`, a year the native date input cannot hold, or `00-1-11-28`,
+  // which is not a date at all — `stepsBetween` reparses it as year zero and the
+  // draw writes dates from a year nobody asked for.
+  it.each([
+    { anchor: '0001-01-01', before: 180, min: '0001-01-01' },
+    { anchor: '0001-01-01', before: 400, min: '0001-01-01' },
+    { anchor: '0001-06-15', before: 3650, min: '0001-01-01' },
+    { anchor: '0002-01-01', before: 400, min: '0001-01-01' },
+  ])(
+    'holds a relative window reaching behind $anchor at the first date offered',
+    ({ anchor, before, min }) => {
+      const result = buildVariableConstraints(
+        {
+          id: 'v1',
+          name: 'Last seen',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor, before, after: 0 },
+        },
+        TODAY,
+      );
+
+      expect(result.dateWindow).toEqual({
+        resolution: 'full',
+        min,
+        max: anchor,
+      });
+    },
+  );
+
+  // The window is what the draw walks, so the clamp is only worth having if the
+  // values it hands back are dates. Seeded draws over the unclamped ceiling
+  // alternated between `9999-12-31` and `10000-01-01`, which made whether a
+  // generated network validated a matter of which seed produced it.
+  it.each([
+    { end: 'ceiling', anchor: '9999-12-31', before: 0, after: 1 },
+    { end: 'floor', anchor: '0001-01-01', before: 400, after: 0 },
+  ])('draws only four-digit calendar dates at the $end', (parameters) => {
+    const entry = {
+      id: 'v1',
+      name: 'Last seen',
+      type: 'datetime' as const,
+      component: 'RelativeDatePicker' as const,
+      parameters,
+    };
+    const constraints = buildVariableConstraints(entry, TODAY);
+    const generator = new ValueGenerator(1, TODAY);
+    const drawn = new Set<string>();
+    for (let index = 0; index < 32; index++) {
+      const value = generator.generateConstrained(
+        { entry, constraints },
+        index,
+      );
+      expect(typeof value).toBe('string');
+      if (typeof value === 'string') drawn.add(value);
+    }
+
+    for (const value of drawn) {
+      expect(value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(value >= EARLIEST_OFFERED_DATE.full).toBe(true);
+      expect(value <= LATEST_OFFERED_DATE.full).toBe(true);
+    }
   });
 
   // Bounds are written at the resolution the picker collects, and protocols in

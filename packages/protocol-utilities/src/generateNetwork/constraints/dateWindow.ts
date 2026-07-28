@@ -23,6 +23,28 @@ export const EARLIEST_OFFERED_DATE = {
 } as const satisfies Record<DateResolution, string>;
 
 /**
+ * The latest date each resolution's own control can represent.
+ *
+ * Four digits is the whole of the rule, and every parser this ecosystem shares
+ * states it: the runtime's date-bound matcher
+ * (`/^\d{4}-\d{2}(-\d{2}(T\d{2}:\d{2}(:\d{2})?)?)?$/`, fresco-ui's
+ * `matchesDatePattern`), `DatePickerField`'s `ymdPattern`, the protocol
+ * schema's `isIsoDate`, and `CALENDAR_BOUND` in `buildConstraints`.
+ * `truncateToResolution` slices at fixed offsets for the same reason.
+ *
+ * A five-digit year is worse than out of range: it is not read as a date at
+ * all. `matchesDatePattern` refuses `10000-01-01`, so the max validator falls
+ * back to comparing the two strings lexically — where a leading `1` sorts every
+ * four-digit-year date *above* it. A window ceilinged there rejects every value
+ * it contains, generated or typed.
+ */
+export const LATEST_OFFERED_DATE = {
+  full: '9999-12-31',
+  month: '9999-12',
+  year: '9999',
+} as const satisfies Record<DateResolution, string>;
+
+/**
  * A closed date range at a single resolution. Bounds are strings at that
  * resolution: `YYYY`, `YYYY-MM` or `YYYY-MM-DD`.
  */
@@ -142,12 +164,49 @@ export function stepsBetween(
 }
 
 /**
+ * The date `steps` from `anchor`, held between the earliest and latest dates
+ * the resolution's own control can represent. A date outside that range is one
+ * no participant could have entered, so a bound the generator *derives* stops
+ * there rather than leaving the calendar. (A bound the protocol *declares* is
+ * refused instead — `buildConstraints`' `requireCalendarBound`.)
+ *
+ * The offset is clamped, not the date it produces, because a date outside the
+ * range is not a string any comparison can place. `addSteps` writes a year past
+ * 9999 as five digits (`10000-01-01`), which sorts *below* every four-digit
+ * year, and one before year zero as `-996-12-25` or `00-1-11-28`, which `parts`
+ * silently reparses as some other date. Clamping in step space needs neither
+ * shape to be recognised, and `stepsBetween` is exact for an anchor that is
+ * itself a date the control offers.
+ */
+export function offsetWithinOfferedDates(
+  anchor: string,
+  steps: number,
+  resolution: DateResolution,
+): string {
+  const earliest = stepsBetween(
+    anchor,
+    EARLIEST_OFFERED_DATE[resolution],
+    resolution,
+  );
+  const latest = stepsBetween(
+    anchor,
+    LATEST_OFFERED_DATE[resolution],
+    resolution,
+  );
+  return addSteps(
+    anchor,
+    Math.max(earliest, Math.min(steps, latest)),
+    resolution,
+  );
+}
+
+/**
  * The floor a date is drawn from when the protocol declares none: `span` steps
  * back from the window's ceiling, held at the earliest date the picker offers.
  * A ceiling already before that date is one the protocol declared, and reaching
  * behind it is then the only way to have a range at all — but no further back
- * than {@link EARLIEST_OFFERED_DATE}, since a date the control cannot represent
- * is one no participant could have entered.
+ * than {@link EARLIEST_OFFERED_DATE}, which is where
+ * {@link offsetWithinOfferedDates} stops it.
  *
  * Without that stop an early ceiling underflows: `max: "0005-01-01"` on a
  * full-date picker reaches `-996-12-25`, which `stepsBetween` reads as a window
@@ -163,13 +222,7 @@ export function openDateFloor(
   span: number,
   resolution: DateResolution,
 ): string {
-  const reach = addSteps(max, -span, resolution);
+  const reach = offsetWithinOfferedDates(max, -span, resolution);
   const offered = truncateToResolution(DATE_PICKER_DEFAULT_MIN, resolution);
-  if (reach < offered && offered <= max) return offered;
-
-  // Underflowed bounds compare below the earliest offered date rather than
-  // needing to be recognised: every string `addSteps` emits past year zero
-  // carries a `-` or a shorter year, both of which sort before `0`.
-  const earliest = EARLIEST_OFFERED_DATE[resolution];
-  return reach < earliest ? earliest : reach;
+  return reach < offered && offered <= max ? offered : reach;
 }

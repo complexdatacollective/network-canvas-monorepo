@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   addDays,
   addSteps,
+  LATEST_OFFERED_DATE,
+  offsetWithinOfferedDates,
   openDateFloor,
   stepsBetween,
   todayYmd,
@@ -173,6 +175,88 @@ describe('openDateFloor', () => {
     'never reaches behind $earliest, the earliest date a $resolution control offers',
     ({ resolution, earliest }) => {
       expect(openDateFloor(earliest, 365_250, resolution)).toBe(earliest);
+    },
+  );
+});
+
+describe('offsetWithinOfferedDates', () => {
+  it('leaves an offset that stays inside the calendar where it falls', () => {
+    expect(offsetWithinOfferedDates('2026-07-27', 30, 'full')).toBe(
+      '2026-08-26',
+    );
+    expect(offsetWithinOfferedDates('2026-07-27', -180, 'full')).toBe(
+      '2026-01-28',
+    );
+    expect(offsetWithinOfferedDates('2026-07', 6, 'month')).toBe('2027-01');
+    expect(offsetWithinOfferedDates('2026', -40, 'year')).toBe('1986');
+  });
+
+  // Stepping forward from a ceiling in year 9999 overflows into a five-digit
+  // year, which is not merely out of range: the runtime's `matchesDatePattern`
+  // does not recognise `10000-01-01` as a date, so its max validator compares
+  // the two strings lexically instead — where `1` sorts below `9` and every
+  // four-digit-year date in the window is rejected as too large.
+  it.each([
+    { anchor: '9999-12-31', steps: 1, expected: '9999-12-31' },
+    { anchor: '9999-12-31', steps: 365_250, expected: '9999-12-31' },
+    { anchor: '9999-01-01', steps: 400, expected: '9999-12-31' },
+    { anchor: '9998-12-31', steps: 400, expected: '9999-12-31' },
+  ])(
+    'stops a full-date step of $steps from $anchor at the last date offered',
+    ({ anchor, steps, expected }) => {
+      expect(offsetWithinOfferedDates(anchor, steps, 'full')).toBe(expected);
+    },
+  );
+
+  // The clamp cannot be a comparison against the overflowed string, because an
+  // overflowed string sorts *below* the ceiling it passed. This is the case
+  // that separates a step-space clamp from a lexical one.
+  it('does not mistake a five-digit year for a date before the ceiling', () => {
+    const ceiling = LATEST_OFFERED_DATE.full;
+    const overflowed = addSteps(ceiling, 1, 'full');
+
+    expect(overflowed).toBe('10000-01-01');
+    expect(overflowed < ceiling).toBe(true);
+    expect(offsetWithinOfferedDates(ceiling, 1, 'full')).toBe(ceiling);
+  });
+
+  // The mirror of the floor `openDateFloor` holds: a `before` offset reaching
+  // past an early anchor emits `0000-07-05`, a year the native date input
+  // cannot hold, or `00-1-11-28`, which is not a date at all and which `parts`
+  // reparses as some other year-zero date.
+  it.each([
+    { anchor: '0001-01-01', steps: -180, expected: '0001-01-01' },
+    { anchor: '0001-01-01', steps: -400, expected: '0001-01-01' },
+    { anchor: '0001-06-15', steps: -3650, expected: '0001-01-01' },
+    { anchor: '0002-01-01', steps: -400, expected: '0001-01-01' },
+  ])(
+    'stops a full-date step of $steps from $anchor at the first date offered',
+    ({ anchor, steps, expected }) => {
+      expect(offsetWithinOfferedDates(anchor, steps, 'full')).toBe(expected);
+    },
+  );
+
+  // Stated here rather than read from the module's own tables, so that moving
+  // either end is a decision this test makes visible rather than one it
+  // follows.
+  it.each([
+    { resolution: 'full', earliest: '0001-01-01', latest: '9999-12-31' },
+    { resolution: 'month', earliest: '1000-01', latest: '9999-12' },
+    { resolution: 'year', earliest: '1000', latest: '9999' },
+  ] as const)(
+    'holds a $resolution step between $earliest and $latest',
+    ({ resolution, earliest, latest }) => {
+      expect(offsetWithinOfferedDates(earliest, -365_250, resolution)).toBe(
+        earliest,
+      );
+      expect(offsetWithinOfferedDates(latest, 365_250, resolution)).toBe(
+        latest,
+      );
+      // Wider than the whole calendar at any of the three resolutions, so the
+      // step has to land on the far end rather than somewhere inside it.
+      expect(offsetWithinOfferedDates(earliest, 10_000_000, resolution)).toBe(
+        latest,
+      );
     },
   );
 });
