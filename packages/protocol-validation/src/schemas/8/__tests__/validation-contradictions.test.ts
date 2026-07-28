@@ -5035,26 +5035,35 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs 
     expect(result.map((item) => item.class)).toContain('disjointBounds');
   });
 
-  // A pin travels sameAs edges ONLY — never a non-strict comparator cycle.
-  // `sameAs` forces stored-value equality, while a comparator SCC forces only
-  // `compareVariables` equality (for datetime, two stored-distinct strings
-  // can compare equal through `new Date(...)`), and `differentFrom` compares
-  // stored values — so this check stays scoped to what it can prove.
-  it('does not carry a pin across a comparator-forced equality', () => {
-    expect(
-      findValidationContradictions({
-        a: number('a', {
-          minValue: 0,
-          maxValue: 0,
-          greaterThanOrEqualToVariable: 'c',
-        }),
-        c: number('c', {
-          greaterThanOrEqualToVariable: 'a',
-          differentFrom: 'd',
-        }),
-        d: number('d', { minValue: 0, maxValue: 0 }),
+  // FLIPPED by the thirty-fourth wave (Fix 2). This test used to record
+  // "a pin travels sameAs edges ONLY — never a non-strict comparator
+  // cycle", but its rationale (stored-distinct strings comparing equal
+  // through `new Date(...)`) is a DATETIME wrinkle, and the fixture is
+  // numbers: `compareVariables` compares numbers by `Number()` equality,
+  // which has no second stored representation, so the mutual comparators
+  // force `c` to store exactly `a`'s 0 — the same value `d` is pinned to —
+  // and the differentFrom is genuinely unsatisfiable. The datetime scoping
+  // the old stance protected survives in the thirty-fourth-wave block's
+  // stored-divergence accept guard.
+  it('carries a NUMBER pin across a comparator-forced equality', () => {
+    const result = findValidationContradictions({
+      a: number('a', {
+        minValue: 0,
+        maxValue: 0,
+        greaterThanOrEqualToVariable: 'c',
       }),
-    ).toEqual([]);
+      c: number('c', {
+        greaterThanOrEqualToVariable: 'a',
+        differentFrom: 'd',
+      }),
+      d: number('d', { minValue: 0, maxValue: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['c', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'c', rule: 'differentFrom' },
+    ]);
   });
 
   // Categorical pins propagate as their full JSON-framed composite set key,
@@ -8597,5 +8606,190 @@ describe('findValidationContradictions — Thirty-fourth wave Fix 1: one-sided f
         b: datePicker('b', { min: '2020-06-06', max: '2020-06-06' }),
       }),
     ).toEqual([]);
+  });
+});
+
+// Thirty-fourth wave (Fix 2): a NUMBER variable forced to one value by its
+// comparator-MERGED equality group inherits that pin for the pinned-equal
+// differentFrom check. Comparator equality is compareVariables' Number()
+// equality, and a number has no second textual representation of the same
+// quantity, so comparator-equal IS stored-equal (the per-type argument
+// class 9's carve-out already records) — unlike datetime, whose Date-based
+// comparator equality tolerates stored-string divergence across
+// resolutions, so datetime inheritance stays sameAs-only.
+describe('findValidationContradictions — Thirty-fourth wave Fix 2: comparator-merged number groups derive inherited pins', () => {
+  const number = (name: string, validation: Record<string, unknown> = {}) => ({
+    name,
+    type: 'number',
+    validation,
+  });
+
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own repro: the mutual non-strict comparators force
+  // B = C, so C is forced to B's pinned 2 — the same value A is pinned to —
+  // yet neither the sameAs-only inherited-pin path (no sameAs edge) nor
+  // propagatedPins (the merged group sits on no CROSS-group comparator
+  // edge, so the chain pass never builds a node for it) recorded it.
+  it('rejects the reviewer repro: a member of a pinned merged group differentFrom a partner pinned to the same value', () => {
+    const result = findValidationContradictions({
+      a: number('a', { minValue: 2, maxValue: 2 }),
+      b: number('b', {
+        minValue: 2,
+        maxValue: 2,
+        lessThanOrEqualToVariable: 'c',
+      }),
+      c: number('c', {
+        minValue: 2,
+        maxValue: 3,
+        lessThanOrEqualToVariable: 'b',
+        differentFrom: 'a',
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'c', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror: the differentFrom declared from the pinned partner's side
+  // reaches the same verdict through the same inherited pin.
+  it('rejects the mirror declared from the pinned partner', () => {
+    const result = findValidationContradictions({
+      a: number('a', { minValue: 2, maxValue: 2, differentFrom: 'c' }),
+      b: number('b', {
+        minValue: 2,
+        maxValue: 2,
+        lessThanOrEqualToVariable: 'c',
+      }),
+      c: number('c', {
+        minValue: 2,
+        maxValue: 3,
+        lessThanOrEqualToVariable: 'b',
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // No member carries an own pin, but the group's INTERSECTED interval
+  // collapses to a point ([1,2] ∩ [2,3] = [2,2]) — the group pin derives
+  // from the intersection exactly as sameAs groups' pins do.
+  it("derives the pin from a merged group's collapsed intersected interval", () => {
+    const result = findValidationContradictions({
+      a: number('a', { minValue: 2, maxValue: 2 }),
+      b: number('b', {
+        minValue: 1,
+        maxValue: 2,
+        lessThanOrEqualToVariable: 'c',
+      }),
+      c: number('c', {
+        minValue: 2,
+        maxValue: 3,
+        lessThanOrEqualToVariable: 'b',
+        differentFrom: 'a',
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+  });
+
+  // Accept guard: the same shape with DATETIME members derives nothing
+  // through the comparator edges — and must not, because the pairing is
+  // genuinely satisfiable: the comparators force C to compare Date-equal to
+  // B's 2021-01-01, which the year-resolution C satisfies by STORING
+  // '2021', a different stored string from A's '2021-01-01', so the
+  // differentFrom holds at runtime (isMatchingValue compares stored
+  // values). Inheriting B's full-resolution pin key across the comparator
+  // SCC would have falsely rejected exactly this.
+  it('derives nothing for a datetime merged group whose stored values can diverge', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', { min: '2021-01-01', max: '2021-01-01' }),
+        b: datePicker(
+          'b',
+          { min: '2021-01-01', max: '2021-01-01' },
+          { lessThanOrEqualToVariable: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { type: 'year', min: '2021', max: '2022' },
+          { lessThanOrEqualToVariable: 'b', differentFrom: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: a merged interval that keeps more than one value derives
+  // nothing — [1,2] ∩ [1,3] = [1,2], so C can hold 1 and differ from A.
+  it('derives nothing from a merged interval spanning more than one value', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', { minValue: 2, maxValue: 2 }),
+        b: number('b', {
+          minValue: 1,
+          maxValue: 2,
+          lessThanOrEqualToVariable: 'c',
+        }),
+        c: number('c', {
+          minValue: 1,
+          maxValue: 3,
+          lessThanOrEqualToVariable: 'b',
+          differentFrom: 'a',
+        }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: a STRICT edge never merges — B < C leaves C its whole
+  // (2, 3] range, where any value above 2 differs from A.
+  it('derives nothing across a strict comparator edge', () => {
+    expect(
+      findValidationContradictions({
+        a: number('a', { minValue: 2, maxValue: 2 }),
+        b: number('b', { minValue: 2, maxValue: 2, lessThanVariable: 'c' }),
+        c: number('c', { minValue: 2, maxValue: 3, differentFrom: 'a' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Poisoned-group guard: a merged group whose own bounds are already
+  // empty ([2,2] ∩ [3,4]) is the group-emptiness machinery's report, and
+  // its repair strips the comparator edges — after which C's [3,4] really
+  // can differ from A's 2 — so no pin may be inherited from it meanwhile.
+  it('derives nothing from a group the emptiness machinery already reported', () => {
+    const result = findValidationContradictions({
+      a: number('a', { minValue: 2, maxValue: 2 }),
+      b: number('b', {
+        minValue: 2,
+        maxValue: 2,
+        lessThanOrEqualToVariable: 'c',
+      }),
+      c: number('c', {
+        minValue: 3,
+        maxValue: 4,
+        lessThanOrEqualToVariable: 'b',
+        differentFrom: 'a',
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
   });
 });

@@ -2171,6 +2171,101 @@ function sameAsInheritedPins(
 }
 
 /**
+ * Thirty-fourth wave (Fix 2): the pinned value a NUMBER variable inherits
+ * through its comparator-MERGED equality group. The reviewer's repro: `B`
+ * pinned to 2, `C` spanning [2, 3], mutual non-strict comparators forcing
+ * `B = C`, and `C differentFrom A` with `A` pinned to 2 — `C` is forced to
+ * hold exactly 2, yet neither existing pin source sees it:
+ * `sameAsInheritedPins` scopes to sameAs-only components (no sameAs edge
+ * joins B and C), and `chainedBoundContradictions` builds propagation nodes
+ * only for groups on CROSS-group comparator edges (its adjacency comes from
+ * `graph.dependencies`), so a merged group whose comparators are all
+ * internal never receives a propagated pin.
+ *
+ * A pin may travel a non-strict comparator SCC for NUMBER variables only,
+ * by the same per-type argument class 9's carve-out records
+ * (`referenceStructureContradictions`, twenty-second-wave Finding 3): the
+ * comparator equality the SCC forces is `compareVariables`' `Number()`
+ * equality, and a number has no second textual representation of the same
+ * quantity, so comparator-equal IS stored-equal — exactly what
+ * `differentFrom`'s `isMatchingValue` compares. Every other type stays out:
+ *
+ *   - datetime keeps its sameAs-only inheritance — comparator equality runs
+ *     through `new Date(...)`, which tolerates stored-string divergence
+ *     across resolutions ('2021' and '2021-01-01' compare equal yet store
+ *     differently), and the chain pass already records ON-chain datetime
+ *     collapses resolution-aware in `propagatedPins`;
+ *   - scalar's comparator equality would be equally exact, but its
+ *     validation pick carries no `differentFrom`/`sameAs` and no value
+ *     bounds, and `pinnedValue` never pins one, so there is nothing to
+ *     derive (the chain pass records nothing for scalar collapses for the
+ *     same no-consumer reason);
+ *   - text/boolean/ordinal/categorical have no comparator rules at all
+ *     (`requireType` on the four comparator rules), so comparator-merged
+ *     groups of those types cannot exist.
+ *
+ * The derivation and guards mirror `sameAsInheritedPins` exactly: a group
+ * touching `unsatisfiableGroupMemberIds` contributes nothing (its
+ * emptiness repair may strip the very edges the pin would travel), a
+ * member whose `sameAs` and `differentFrom` name one target keeps its
+ * group out (class 7's repair strips that sameAs edge), disagreeing member
+ * pins derive nothing (the group machinery's conflict to report), and with
+ * no member pinned the group's INTERSECTED interval collapsing to a point
+ * pins every member (`sameAsGroupDerivedPin`'s number arm). The consumer
+ * below applies these pins only across two DISTINCT merged groups — a
+ * `differentFrom` inside one merged group is class 9's report.
+ */
+function comparatorMergedGroupInheritedPins(
+  variables: UnknownRecord,
+  membersOf: Map<string, string[]>,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
+  stageEffectiveComponents: boolean,
+): Map<string, number> {
+  const inherited = new Map<string, number>();
+  for (const members of membersOf.values()) {
+    if (members.length < 2) continue;
+    if (
+      members.some((member) => unsatisfiableGroupMemberIds.has(member)) ||
+      members.some((member) => {
+        const sameAs = referenceRule(variables[member], 'sameAs');
+        return (
+          sameAs !== undefined &&
+          sameAs === referenceRule(variables[member], 'differentFrom')
+        );
+      })
+    ) {
+      continue;
+    }
+    const types = new Set(members.map((member) => typeOf(variables[member])));
+    const [onlyType] = types;
+    if (types.size !== 1 || onlyType !== 'number') continue;
+
+    let pin: number | undefined;
+    let disagreement = false;
+    const unpinned: string[] = [];
+    for (const member of members) {
+      const own = pinnedValue(variables[member], stageEffectiveComponents);
+      if (own === undefined) {
+        unpinned.push(member);
+      } else if (typeof own !== 'number') {
+        // A number variable's own pin is always numeric; anything else is
+        // outside the model, so the group derives nothing (defensive).
+        disagreement = true;
+      } else if (pin === undefined) {
+        pin = own;
+      } else if (pin !== own) {
+        disagreement = true;
+      }
+    }
+    if (disagreement) continue;
+    const derived = pin ?? sameAsGroupDerivedPin(variables, members, 'number');
+    if (typeof derived !== 'number') continue;
+    for (const member of unpinned) inherited.set(member, derived);
+  }
+  return inherited;
+}
+
+/**
  * `differentFrom` edges (same-typed endpoints, per `usableReference`) whose
  * two ends are each individually pinned (`pinnedValue`) to the SAME runtime
  * value — unsatisfiable regardless of the rest of the validation graph, since
@@ -2201,6 +2296,13 @@ function sameAsInheritedPins(
  * components: a `differentFrom` whose both ends share one component is
  * class 9's (`sameAsGroupConflict`), and judging it here too would
  * double-report a single rule.
+ *
+ * Thirty-fourth wave (Fix 2): `comparatorMergedGroupInheritedPins` (above)
+ * is the third fallback — a pin forced onto a NUMBER variable by its
+ * comparator-merged equality group's member pins or collapsed intersected
+ * interval. It applies only across two DISTINCT merged groups for the same
+ * no-double-report reason: a `differentFrom` inside one merged group —
+ * whether joined by sameAs or by a comparator SCC — is class 9's report.
  */
 function pinnedEqualDifferentFromContradictions(
   variables: UnknownRecord,
@@ -2218,19 +2320,31 @@ function pinnedEqualDifferentFromContradictions(
     unsatisfiableGroupMemberIds,
     stageEffectiveComponents,
   );
+  const { groupOf: mergedGroupOf, membersOf: mergedMembersOf } =
+    buildEqualityGroups(variables, comparatorEdges(variables));
+  const mergedPins = comparatorMergedGroupInheritedPins(
+    variables,
+    mergedMembersOf,
+    unsatisfiableGroupMemberIds,
+    stageEffectiveComponents,
+  );
   const conflicts = new Map<string, VariableRuleRef[]>();
 
   for (const [id, variable] of Object.entries(variables)) {
     const target = usableReference(variables, id, 'differentFrom');
     if (target === undefined || target === id) continue;
     const crossComponent = sameAsFind(id) !== sameAsFind(target);
+    const crossMergedGroup =
+      mergedGroupOf.get(id) !== mergedGroupOf.get(target);
     const valueA =
       pinnedValue(variable, stageEffectiveComponents) ??
       (crossComponent ? inheritedPins.get(id) : undefined) ??
+      (crossMergedGroup ? mergedPins.get(id) : undefined) ??
       propagatedPins.get(id);
     const valueB =
       pinnedValue(variables[target], stageEffectiveComponents) ??
       (crossComponent ? inheritedPins.get(target) : undefined) ??
+      (crossMergedGroup ? mergedPins.get(target) : undefined) ??
       propagatedPins.get(target);
     if (valueA === undefined || valueB === undefined || valueA !== valueB) {
       continue;
