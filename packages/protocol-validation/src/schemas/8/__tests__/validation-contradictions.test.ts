@@ -7188,11 +7188,13 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
     ).toEqual([]);
   });
 
-  // Categorical variables never enter this machinery, even with exactly two
-  // options: the runtime stores a categorical selection as an ARRAY compared
-  // as an order-insensitive multiset, so a two-option categorical has four
-  // possible stored selections — the odd cycle below is genuinely
-  // satisfiable (e.g. {x}, {y}, {x,y}).
+  // A two-option categorical with no collapsing cardinality window stays out
+  // of this machinery: the runtime stores a categorical selection as an
+  // ARRAY compared as an order-insensitive multiset, so without rules the
+  // effective domain is the three non-empty selections {x}, {y}, {x,y} and
+  // the odd cycle below is genuinely satisfiable. (The thirty-second wave
+  // admits a categorical component only when a merged cardinality window
+  // narrows every group's domain to the same TWO selections.)
   it('leaves an odd cycle of two-option categoricals alone', () => {
     expect(
       findValidationContradictions({
@@ -7716,5 +7718,245 @@ describe('findValidationContradictions — Thirty-first wave: two-instant dateti
     expect(result[0]?.strips).toEqual([
       { variableId: 'a', rule: 'differentFrom' },
     ]);
+  });
+});
+
+describe('findValidationContradictions — Thirty-second wave Fix 1: exactly-two-selection categorical differentFrom components use the parity machinery', () => {
+  const categorical = (
+    name: string,
+    values: (string | number)[],
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'categorical',
+    options: values.map((value) => ({ label: String(value), value })),
+    validation,
+  });
+
+  // The reviewer's refinement of the thirtieth wave's exclusion proof: with
+  // minSelected 1 AND maxSelected 1 over the same two options, each field
+  // has exactly TWO storable selections ([x] or [y]), so three
+  // pairwise-different stored arrays cannot be drawn from them — the
+  // component is satisfiable iff it is two-colourable, and an odd cycle is
+  // not. One member lists its options in the opposite order: selections
+  // compare as order-insensitive multisets, so the domain is the same. The
+  // strip follows the established single-smallest-keyed-edge policy.
+  it('rejects the reviewer repro: an odd cycle over one shared two-selection domain', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['x', 'y'], {
+        required: true,
+        minSelected: 1,
+        maxSelected: 1,
+        differentFrom: 'b',
+      }),
+      b: categorical('b', ['y', 'x'], {
+        required: true,
+        minSelected: 1,
+        maxSelected: 1,
+        differentFrom: 'c',
+      }),
+      c: categorical('c', ['x', 'y'], {
+        required: true,
+        minSelected: 1,
+        maxSelected: 1,
+        differentFrom: 'a',
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror direction: the same triangle declared the other way around
+  // still strips exactly one declaration of the smallest-keyed edge.
+  it('rejects the mirror cycle declared in the opposite direction', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['x', 'y'], {
+        minSelected: 1,
+        maxSelected: 1,
+        differentFrom: 'c',
+      }),
+      b: categorical('b', ['x', 'y'], {
+        minSelected: 1,
+        maxSelected: 1,
+        differentFrom: 'a',
+      }),
+      c: categorical('c', ['x', 'y'], {
+        minSelected: 1,
+        maxSelected: 1,
+        differentFrom: 'b',
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Domains are read at GROUP granularity (Fix 2's principle): each sameAs
+  // pair joins a three-option member carrying the [1, 1] window to a
+  // two-option partner, so no member's RAW domain is two-selection — but
+  // every group's INTERSECTED option set under its MERGED cardinality window
+  // is exactly {[x], [y]}, and the triangle over the groups is odd.
+  it('rejects an odd cycle over group-intersected two-selection domains', () => {
+    const result = findValidationContradictions({
+      aWide: categorical('aWide', ['x', 'y', 'z'], {
+        minSelected: 1,
+        maxSelected: 1,
+        sameAs: 'aNarrow',
+        differentFrom: 'bWide',
+      }),
+      aNarrow: categorical('aNarrow', ['x', 'y']),
+      bWide: categorical('bWide', ['x', 'y', 'z'], {
+        minSelected: 1,
+        maxSelected: 1,
+        sameAs: 'bNarrow',
+        differentFrom: 'cWide',
+      }),
+      bNarrow: categorical('bNarrow', ['x', 'y']),
+      cWide: categorical('cWide', ['x', 'y', 'z'], {
+        minSelected: 1,
+        maxSelected: 1,
+        sameAs: 'cNarrow',
+        differentFrom: 'aWide',
+      }),
+      cNarrow: categorical('cNarrow', ['x', 'y']),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('oddDifferentFromCycle');
+    expect(result[0]?.variableIds.toSorted()).toEqual([
+      'aNarrow',
+      'aWide',
+      'bNarrow',
+      'bWide',
+      'cNarrow',
+      'cWide',
+    ]);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'aWide', rule: 'differentFrom' },
+    ]);
+  });
+
+  // Accept guard just outside the boundary: widening ONE member's
+  // cardinality window (no maxSelected) admits a third selection ({x,y}),
+  // so a = [x], b = [y], c = [x,y] satisfies every rule.
+  it('accepts the cycle when the cardinality window admits a third selection', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['x', 'y'], {
+          required: true,
+          minSelected: 1,
+          maxSelected: 1,
+          differentFrom: 'b',
+        }),
+        b: categorical('b', ['x', 'y'], {
+          required: true,
+          minSelected: 1,
+          maxSelected: 1,
+          differentFrom: 'c',
+        }),
+        c: categorical('c', ['x', 'y'], {
+          required: true,
+          minSelected: 1,
+          differentFrom: 'a',
+        }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: single-selection domains that DIFFER between members bail
+  // — a = [x], b = [y], c = [z] satisfies the cycle, so {[x],[y]} beside
+  // {[x],[z]} must never be treated as one two-colourable domain.
+  it('accepts the cycle when options differ between members', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['x', 'y'], {
+          minSelected: 1,
+          maxSelected: 1,
+          differentFrom: 'b',
+        }),
+        b: categorical('b', ['x', 'y'], {
+          minSelected: 1,
+          maxSelected: 1,
+          differentFrom: 'c',
+        }),
+        c: categorical('c', ['x', 'z'], {
+          minSelected: 1,
+          maxSelected: 1,
+          differentFrom: 'a',
+        }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Accept guard: a domain wider than the enumeration cap is never
+  // enumerated — the binomial count bails the component to accept before any
+  // combinatorial work (and a six-selection domain is genuinely
+  // three-colourable anyway).
+  it('accepts a cycle whose selection count exceeds the enumeration cap', () => {
+    const values = ['p', 'q', 'r', 's', 't', 'u'];
+    expect(
+      findValidationContradictions({
+        a: categorical('a', values, {
+          minSelected: 1,
+          maxSelected: 1,
+          differentFrom: 'b',
+        }),
+        b: categorical('b', values, {
+          minSelected: 1,
+          maxSelected: 1,
+          differentFrom: 'c',
+        }),
+        c: categorical('c', values, {
+          minSelected: 1,
+          maxSelected: 1,
+          differentFrom: 'a',
+        }),
+      }),
+    ).toEqual([]);
+  });
+
+  // Singleton effective domains act as pins exactly as the
+  // boolean/ordinal/datetime singletons do: `a` (only [x]) and `c` (only
+  // [y]) sit an even number of hops apart, so any two-colouring of the
+  // shared {[x], [y]} domain gives them the SAME selection, yet their
+  // domains pin them to opposite ones.
+  it('rejects disagreeing singleton pins across an even-hop path', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['x'], { required: true, differentFrom: 'b' }),
+      b: categorical('b', ['x', 'y'], {
+        required: true,
+        minSelected: 1,
+        maxSelected: 1,
+      }),
+      c: categorical('c', ['y'], { required: true, differentFrom: 'b' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedDifferentFromParity');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The agreeing-parity mirror stays satisfiable: both singletons pin the
+  // same selection an even number of hops apart (a = c = [x], b = [y]).
+  it('accepts agreeing singleton pins across an even-hop path', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['x'], { required: true, differentFrom: 'b' }),
+        b: categorical('b', ['x', 'y'], {
+          required: true,
+          minSelected: 1,
+          maxSelected: 1,
+        }),
+        c: categorical('c', ['x'], { required: true, differentFrom: 'b' }),
+      }),
+    ).toEqual([]);
   });
 });

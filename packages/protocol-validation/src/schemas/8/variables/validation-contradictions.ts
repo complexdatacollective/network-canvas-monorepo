@@ -4096,13 +4096,16 @@ const matchesReferenceAssignment = (pin: SingletonPin): boolean =>
  *     satisfiable, and there is no shared domain to force a colouring
  *     against.
  *
- * Categorical variables are deliberately NOT routed through this model even
- * when rendered as a single-select control: the runtime stores a
- * categorical value as an ARRAY and `differentFrom` compares those arrays
- * as order-insensitive multisets (fresco-ui's `isMatchingValue` — the same
- * reading `pinnedValue`'s composite set keys encode), so even a two-option
- * categorical has four possible stored selections, never a comparable
- * two-value scalar domain.
+ * Categorical variables do not share this model's per-VALUE reading: the
+ * runtime stores a categorical value as an ARRAY and `differentFrom`
+ * compares those arrays as order-insensitive multisets (fresco-ui's
+ * `isMatchingValue` — the same reading `pinnedValue`'s composite set keys
+ * encode), so an unconstrained two-option categorical has four possible
+ * stored selections, never a comparable two-value scalar domain. The
+ * thirty-second wave (Fix 1) instead admits a categorical component at
+ * SELECTION granularity — see `categoricalComponentTwoValueDomain` below —
+ * exactly when every group's effective selection domain is the same two
+ * multiset selections.
  */
 type ComponentTwoValueDomain = {
   /** Group id → whether the group's pinned value is the reference value. */
@@ -4160,6 +4163,225 @@ const ordinalComponentTwoValueDomain = (
       }
     }
     if (pinned !== undefined) pins.set(group, pinned === reference);
+  }
+  return { pins };
+};
+
+/**
+ * Thirty-second wave (Fix 1): the largest categorical selection domain the
+ * parity admission below will derive exactly. Only a domain of at most TWO
+ * selections can ever qualify (a shared two-selection pair, or a singleton
+ * pin), so the cap exists purely to bound the arithmetic and the enumeration
+ * on the way to that answer — a handful comfortably covers every qualifying
+ * shape while keeping the worst case a small, constant amount of work per
+ * equality group, the same discipline `COARSE_INSTANT_ENUMERATION_CAP`
+ * applies to coarse date windows.
+ */
+const CATEGORICAL_SELECTION_ENUMERATION_CAP = 4;
+
+/**
+ * How many distinct selections a categorical effective domain admits — the
+ * number of subsets of `optionCount` distinct values whose size lies within
+ * `[lo, hi]` — computed arithmetically with an early exit past `cap`
+ * (returning `cap + 1`), so a wide cardinality window over many options is
+ * never enumerated combinatorially. Each binomial is built through its
+ * symmetric form (`k' = min(k, n - k)`), whose intermediate factors are
+ * themselves monotonically increasing binomial coefficients, so the early
+ * exit can never abandon a term that would have come back under the cap.
+ */
+const selectionCountWithinWindow = (
+  optionCount: number,
+  lo: number,
+  hi: number,
+  cap: number,
+): number => {
+  let total = 0;
+  for (let size = lo; size <= hi; size++) {
+    const symmetric = Math.min(size, optionCount - size);
+    let binomial = 1;
+    for (let factor = 0; factor < symmetric; factor++) {
+      binomial = (binomial * (optionCount - factor)) / (factor + 1);
+      if (binomial > cap) return cap + 1;
+    }
+    total += binomial;
+    if (total > cap) return cap + 1;
+  }
+  return total;
+};
+
+/**
+ * Every selection of a size within `[lo, hi]` over `values`, each encoded as
+ * its canonical `categoricalSetPinKey` (order-insensitive and typeof-tagged,
+ * so two selections holding the same values always share one key — the
+ * multiset reading `isMatchingValue` applies to stored categorical arrays).
+ * Only ever called once `selectionCountWithinWindow` has vouched the count
+ * is trivially small, so the lexicographic index walk below is bounded by
+ * that same cap; it is iterative (no recursion), matching the file's
+ * import-time stack discipline (eleventh-wave Finding 2).
+ */
+const enumerateSelectionKeys = (
+  values: (string | number)[],
+  lo: number,
+  hi: number,
+): string[] => {
+  const keys: string[] = [];
+  for (let size = lo; size <= hi; size++) {
+    if (size < 1 || size > values.length) continue;
+    const indices: number[] = [];
+    for (let index = 0; index < size; index++) indices.push(index);
+    for (;;) {
+      const selection = new Set<string | number>();
+      for (const index of indices) {
+        const value = values[index];
+        if (value !== undefined) selection.add(value);
+      }
+      keys.push(categoricalSetPinKey(selection));
+      // Advance to the successor combination in lexicographic index order:
+      // bump the rightmost index that still has headroom, then re-pack every
+      // index after it consecutively.
+      let cursor = size - 1;
+      while (cursor >= 0) {
+        const current = indices[cursor];
+        if (
+          current !== undefined &&
+          current < values.length - (size - cursor)
+        ) {
+          break;
+        }
+        cursor -= 1;
+      }
+      if (cursor < 0) break;
+      const bumped = (indices[cursor] ?? 0) + 1;
+      for (let index = cursor; index < size; index++) {
+        indices[index] = bumped + (index - cursor);
+      }
+    }
+  }
+  return keys;
+};
+
+/**
+ * Thirty-second wave (Fix 1): one equality group's EFFECTIVE categorical
+ * selection domain — every selection its members can all store, each as its
+ * canonical `categoricalSetPinKey` — or `undefined` when the domain cannot
+ * be derived exactly (accept). The group's shared value must be a subset of
+ * the members' INTERSECTED distinct option values (`sharedOptionValues`, the
+ * same group-level read the emptiness checks and `sameAsGroupDerivedPin`'s
+ * categorical arm already use) whose size lies inside the members' MERGED
+ * minSelected/maxSelected window (the fixed-origin categorical interval,
+ * intersected across members exactly as `optionShortfall` reads it).
+ * Selections are non-empty — the entered-value convention `pinnedValue`'s
+ * categorical arm documents (`required` owns emptiness) — and the domain is
+ * enumerated only once `selectionCountWithinWindow` proves it trivially
+ * small; anything wider bails to accept rather than enumerating
+ * combinatorially. A non-integral window edge (raw migration input) and an
+ * empty merged interval (the group-emptiness machinery's own report) bail
+ * the same way.
+ */
+const categoricalGroupSelectionDomain = (
+  variables: UnknownRecord,
+  members: string[],
+): string[] | undefined => {
+  const shared = sharedOptionValues(variables, members);
+  if (shared?.type !== 'categorical' || shared.values.size === 0) {
+    return undefined;
+  }
+  const intervals = intervalsOfMembers(variables, members);
+  if (hasEmptyOrigin(intervals)) return undefined;
+  const window = intervals.get('fixed');
+  const lo = Math.max(1, window?.min ?? 1);
+  const hi = Math.min(shared.values.size, window?.max ?? shared.values.size);
+  if (!Number.isInteger(lo) || !Number.isInteger(hi) || lo > hi) {
+    return undefined;
+  }
+  const count = selectionCountWithinWindow(
+    shared.values.size,
+    lo,
+    hi,
+    CATEGORICAL_SELECTION_ENUMERATION_CAP,
+  );
+  if (count > CATEGORICAL_SELECTION_ENUMERATION_CAP) return undefined;
+  return enumerateSelectionKeys([...shared.values], lo, hi);
+};
+
+/**
+ * Thirty-second wave (Fix 1): the categorical refinement of the thirtieth
+ * wave's parity exclusion. That wave kept categorical out on the proof "a
+ * two-option categorical has four stored selections" — true of an
+ * UNCONSTRAINED two-option variable, but the effective SELECTION domain is
+ * what `differentFrom` actually ranges over, and a merged
+ * `minSelected: 1`/`maxSelected: 1` window over two shared options leaves
+ * exactly TWO storable selections ([x] or [y]), so a three-variable
+ * `differentFrom` triangle over them is exactly as unsatisfiable as the
+ * boolean one. A component every one of whose groups admits the SAME two
+ * selections is satisfiable iff it is two-colourable — the question the
+ * boolean bipartite machinery already decides — with selections compared as
+ * order-insensitive multisets exactly as the runtime compares stored arrays
+ * (fresco-ui's `isMatchingValue`; the canonical `categoricalSetPinKey`
+ * encoding, never re-derived, so option ORDER differences between members
+ * never split one selection into two). Domains are read at GROUP granularity
+ * — each equality group's intersected option set under its merged
+ * cardinality window (Fix 2's principle; see
+ * `categoricalGroupSelectionDomain`) — and a singleton effective domain pins
+ * its group exactly as the boolean/ordinal/datetime singletons do. Every
+ * uncertainty bails the WHOLE component to accept:
+ *
+ *   - a group touching `unsatisfiableGroupMemberIds` — an empty option
+ *     intersection (`optionsDisjoint`), an inverted merged cardinality
+ *     window (`intervalsEmpty`), or a shortfall (`optionsBelowMinSelected`)
+ *     are all the emptiness machinery's own reports, whose repairs may strip
+ *     the very grouping edges in play (two disagreeing singleton members
+ *     inside one group land here too, as an empty intersection);
+ *   - a domain that cannot be derived or enumerated exactly
+ *     (`categoricalGroupSelectionDomain`'s own bails, the enumeration cap
+ *     included), or that admits more than two selections;
+ *   - two-selection domains that differ between groups;
+ *   - a singleton selection outside the shared pair (its differentFrom edges
+ *     are trivially satisfiable, so treating it as a pin would be wrong);
+ *   - no two-selection group at all: all-singleton components are either the
+ *     pinned-equal machinery's (equal pins, already claimed) or trivially
+ *     satisfiable, and there is no shared domain to force a colouring
+ *     against.
+ */
+const categoricalComponentTwoValueDomain = (
+  variables: UnknownRecord,
+  groups: string[],
+  membersOf: Map<string, string[]>,
+  unsatisfiableGroupMemberIds: ReadonlySet<string>,
+): ComponentTwoValueDomain | undefined => {
+  let reference: string | undefined;
+  let other: string | undefined;
+  const groupDomains = new Map<string, string[]>();
+  for (const group of groups) {
+    const members = membersOf.get(group) ?? [group];
+    if (members.some((member) => unsatisfiableGroupMemberIds.has(member))) {
+      return undefined;
+    }
+    const domain = categoricalGroupSelectionDomain(variables, members);
+    if (domain === undefined || domain.length === 0 || domain.length > 2) {
+      return undefined;
+    }
+    groupDomains.set(group, domain);
+    if (domain.length !== 2) continue;
+    const [first, second] = domain.toSorted();
+    if (first === undefined || second === undefined) return undefined;
+    if (reference === undefined) {
+      reference = first;
+      other = second;
+    } else if (reference !== first || other !== second) {
+      return undefined;
+    }
+  }
+  if (reference === undefined || other === undefined) return undefined;
+  const pins = new Map<string, boolean>();
+  for (const group of groups) {
+    const domain = groupDomains.get(group);
+    if (domain?.length !== 1) continue;
+    const [key] = domain;
+    if (key === undefined || (key !== reference && key !== other)) {
+      return undefined;
+    }
+    pins.set(group, key === reference);
   }
   return { pins };
 };
@@ -4291,8 +4513,9 @@ const datetimeComponentTwoInstantDomain = (
 };
 
 /**
- * Contradictions in the boolean, two-valued-ordinal, and two-instant-datetime
- * `differentFrom` graph, at equality-group granularity (a `sameAs` group
+ * Contradictions in the boolean, two-valued-ordinal, two-instant-datetime,
+ * and two-selection-categorical `differentFrom` graph, at equality-group
+ * granularity (a `sameAs` group
  * holds one shared value, so `differentFrom` edges connect groups, not
  * individual variables). Two independent structural sources are checked per
  * connected component of that graph:
@@ -4309,12 +4532,14 @@ const datetimeComponentTwoInstantDomain = (
  *
  * DELIBERATE LIMIT: boolean variables are always checked here; ordinal
  * variables — thirtieth wave (Fix 3) — exactly when their whole component
- * shares one two-value option domain (see `ordinalComponentTwoValueDomain`,
- * including why categorical stays out: its stored value is an array, never a
- * comparable scalar); and datetime variables — thirty-first wave — exactly
- * when their whole component shares one exactly-enumerable two-instant
- * stored-value domain at one resolution (see
- * `datetimeComponentTwoInstantDomain`). Larger or non-uniform domains still
+ * shares one two-value option domain (see `ordinalComponentTwoValueDomain`);
+ * datetime variables — thirty-first wave — exactly when their whole
+ * component shares one exactly-enumerable two-instant stored-value domain at
+ * one resolution (see `datetimeComponentTwoInstantDomain`); and categorical
+ * variables — thirty-second wave (Fix 1) — exactly when every group's
+ * effective SELECTION domain (its intersected option set under its merged
+ * cardinality window) is the same two multiset selections (see
+ * `categoricalComponentTwoValueDomain`). Larger or non-uniform domains still
  * bail to accept: the equivalent question there is general k-colourability
  * (for cycles) or arbitrary domain propagation (for pins), neither of which
  * has an efficient exact check for an arbitrary domain — that remains out of
@@ -4346,7 +4571,12 @@ function oddDifferentFromCycleContradictions(
 
   for (const [id, variable] of Object.entries(variables)) {
     const type = typeOf(variable);
-    if (type !== 'boolean' && type !== 'ordinal' && type !== 'datetime') {
+    if (
+      type !== 'boolean' &&
+      type !== 'ordinal' &&
+      type !== 'datetime' &&
+      type !== 'categorical'
+    ) {
       continue;
     }
     // `usableReference` guarantees same-typed endpoints, so the target
@@ -4446,12 +4676,15 @@ function oddDifferentFromCycleContradictions(
     // member's type decides which domain model applies — the Set is
     // defensive, matching the rest of the file. An ordinal component is
     // judged ONLY when `ordinalComponentTwoValueDomain` validates it as one
-    // shared two-value set, and — thirty-first wave — a datetime component
-    // ONLY when `datetimeComponentTwoInstantDomain` validates it as one
-    // shared exactly-enumerable two-instant set; any member with a
-    // different, larger, or unenumerable domain bails the whole component to
-    // accept BEFORE either structural check below runs, keeping the
-    // documented k-colourability limit for genuinely larger domains.
+    // shared two-value set; a datetime component — thirty-first wave — ONLY
+    // when `datetimeComponentTwoInstantDomain` validates it as one shared
+    // exactly-enumerable two-instant set; and a categorical component —
+    // thirty-second wave (Fix 1) — ONLY when
+    // `categoricalComponentTwoValueDomain` validates it as one shared
+    // two-selection set. Any member with a different, larger, or
+    // unenumerable domain bails the whole component to accept BEFORE any
+    // structural check below runs, keeping the documented k-colourability
+    // limit for genuinely larger domains.
     const componentTypes = new Set(
       queue.flatMap((group) =>
         (membersOf.get(group) ?? [group]).map((member) =>
@@ -4478,7 +4711,19 @@ function oddDifferentFromCycleContradictions(
           )
         : undefined;
     if (componentType === 'datetime' && datetimeDomain === undefined) continue;
-    const twoValueDomain = ordinalDomain ?? datetimeDomain;
+    const categoricalDomain =
+      componentType === 'categorical'
+        ? categoricalComponentTwoValueDomain(
+            variables,
+            queue,
+            membersOf,
+            unsatisfiableGroupMemberIds,
+          )
+        : undefined;
+    if (componentType === 'categorical' && categoricalDomain === undefined) {
+      continue;
+    }
+    const twoValueDomain = ordinalDomain ?? datetimeDomain ?? categoricalDomain;
 
     if (!bipartite) {
       if (!conflict) continue; // Type-narrowing only: bipartite is only ever
@@ -4530,12 +4775,12 @@ function oddDifferentFromCycleContradictions(
     // (itself built on `booleanDomain`), never `options` directly, so a
     // Toggle-rendered boolean (or one with no declared component) stays
     // unconditionally two-valued here exactly as it does everywhere else in
-    // this file. An ordinal or datetime component's pins were already
-    // boolean-ized against its shared domain's reference value
+    // this file. An ordinal, datetime, or categorical component's pins were
+    // already boolean-ized against its shared domain's reference value
     // (`ordinalComponentTwoValueDomain` /
-    // `datetimeComponentTwoInstantDomain`), so singleton-domain ordinal and
-    // datetime members interact with parity through exactly this same
-    // machinery.
+    // `datetimeComponentTwoInstantDomain` /
+    // `categoricalComponentTwoValueDomain`), so singleton-domain members of
+    // those types interact with parity through exactly this same machinery.
     const singletonPins: SingletonPin[] = [];
     for (const group of queue) {
       let value: boolean | undefined;
