@@ -4861,6 +4861,95 @@ describe('Migration V7 to V8', () => {
       expect(variables?.b).toHaveProperty('validation.minLength', 0);
       expect(variables?.b).toHaveProperty('validation.maxLength', 1);
     });
+
+    // V8 puts `.int()` on all six numeric bound rules (minLength, maxLength,
+    // minValue, maxValue, minSelected, maxSelected — validation.ts), but v7
+    // is a `looseObject` that never enforced it, so a hand-authored
+    // fractional value survives migration untouched and then fails v8
+    // validation on import — the exact class of import blocker the other
+    // repairs in this file close.
+    it('strips a fractional minValue and maxSelected while keeping an integer sibling rule', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'age',
+          type: 'number',
+          validation: { minValue: 1.5, maxValue: 10 },
+        },
+        b: {
+          name: 'tags',
+          type: 'categorical',
+          options: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+          validation: { minSelected: 1, maxSelected: 2.7 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.minValue');
+      expect(variables?.a).toHaveProperty('validation.maxValue', 10);
+      expect(variables?.b).not.toHaveProperty('validation.maxSelected');
+      expect(variables?.b).toHaveProperty('validation.minSelected', 1);
+    });
+
+    // minValue/maxValue have no floor (a number variable's range may be
+    // negative), so a negative INTEGER must survive while a fractional value
+    // on any of the six rules is stripped regardless of sign or magnitude.
+    it('strips fractional values from all six numeric bound rules, keeping their integer siblings', () => {
+      const migratedRaw = migrateVariables({
+        n: {
+          name: 'n',
+          type: 'number',
+          validation: { minValue: -5, maxValue: 10.5 },
+        },
+        t: {
+          name: 't',
+          type: 'text',
+          validation: { minLength: 2.5, maxLength: 20 },
+        },
+        c: {
+          name: 'c',
+          type: 'categorical',
+          options: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+          validation: { minSelected: 1, maxSelected: 2.7 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.n).toHaveProperty('validation.minValue', -5);
+      expect(variables?.n).not.toHaveProperty('validation.maxValue');
+      expect(variables?.t).not.toHaveProperty('validation.minLength');
+      expect(variables?.t).toHaveProperty('validation.maxLength', 20);
+      expect(variables?.c).toHaveProperty('validation.minSelected', 1);
+      expect(variables?.c).not.toHaveProperty('validation.maxSelected');
+    });
+
+    it('does not fabricate required from a fractional minValue that gets stripped', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'age',
+          type: 'number',
+          validation: { minValue: 1.5 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.minValue');
+      expect(variables?.a).not.toHaveProperty('validation.required');
+    });
   });
 
   describe('contradictory validation rule removal', () => {

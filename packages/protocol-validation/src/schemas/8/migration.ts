@@ -1239,6 +1239,15 @@ const migrationV7toV8 = createMigration({
         // that never actually constrained anything. maxLength/maxSelected
         // don't feed that backfill, but share the same floor set, so they are
         // stripped in the same pass.
+        //
+        // All six numeric bound rules — these four plus minValue/maxValue —
+        // carry `.int()` in v8 (validation.ts), but v7 is a `looseObject`
+        // that never enforced it, so a hand-authored fractional value (e.g.
+        // `minValue: 1.5`) survives untouched into v8 and fails schema
+        // validation on import. minValue/maxValue have no floor of their own
+        // (a number variable's range may be negative), so they run through
+        // the same loop with an `undefined` floor: skip the below-floor
+        // check, keep the integer check.
         paths: [
           'codebook.node.*.variables',
           'codebook.edge.*.variables',
@@ -1249,6 +1258,8 @@ const migrationV7toV8 = createMigration({
           const floors = {
             minLength: 0,
             maxLength: 1,
+            minValue: undefined,
+            maxValue: undefined,
             minSelected: 0,
             maxSelected: 1,
           } as const;
@@ -1259,7 +1270,11 @@ const migrationV7toV8 = createMigration({
             if (!validation) continue;
             for (const [rule, floor] of Object.entries(floors)) {
               const value = validation[rule];
-              if (typeof value === 'number' && value < floor) {
+              if (
+                typeof value === 'number' &&
+                (!Number.isInteger(value) ||
+                  (floor !== undefined && value < floor))
+              ) {
                 delete validation[rule];
               }
             }
