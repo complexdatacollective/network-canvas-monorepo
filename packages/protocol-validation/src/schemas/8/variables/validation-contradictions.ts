@@ -651,11 +651,14 @@ function referenceStructureContradictions(
  * RelativeDatePicker's bounds are day OFFSETS from the interview date, which
  * is unknown at validation time but IDENTICAL for every such picker in a
  * protocol — so those bounds are real and mutually comparable, just not
- * against a calendar. `'mixed'` is the absorbing result of intersecting two
- * incomparable origins; it carries no bounds, so every downstream check skips
- * it conservatively.
+ * against a calendar.
+ *
+ * Fifteenth-wave Finding 1: the two origins are tracked side by side rather
+ * than collapsed. A group carries one interval PER origin present among its
+ * members (see `GroupIntervals`), so a member on one origin neither corrupts
+ * nor erases the bounds of the origin it says nothing about.
  */
-type IntervalOrigin = 'fixed' | 'interviewDate' | 'mixed';
+type IntervalOrigin = 'fixed' | 'interviewDate';
 
 type Interval = { min?: number; max?: number; origin: IntervalOrigin };
 
@@ -801,41 +804,59 @@ const intervalOf = (variable: unknown): Interval | undefined => {
 };
 
 /**
- * Bounds only intersect meaningfully on a shared origin: an anchorless
- * RelativeDatePicker's interview-date offsets and a calendar day number have
- * no known relationship at validation time. Mismatched origins collapse to a
- * bound-less `'mixed'` interval, which is absorbing — a later same-origin
- * member cannot resurrect bounds the fold has already established as
- * incomparable.
+ * Bounds only intersect meaningfully on a shared origin, so `intersect` takes
+ * two intervals already known to share one: an anchorless RelativeDatePicker's
+ * interview-date offsets and a calendar day number have no known relationship
+ * at validation time. Cross-origin combination is not an intersection at all —
+ * see `addToGroupIntervals`, which files each origin separately.
  */
-const intersect = (
-  a: Interval | undefined,
-  b: Interval | undefined,
-): Interval | undefined => {
-  if (!a) return b;
-  if (!b) return a;
-  if (a.origin !== b.origin) return { origin: 'mixed' };
-  return {
-    min:
-      a.min === undefined
-        ? b.min
-        : b.min === undefined
-          ? a.min
-          : Math.max(a.min, b.min),
-    max:
-      a.max === undefined
-        ? b.max
-        : b.max === undefined
-          ? a.max
-          : Math.min(a.max, b.max),
-    origin: a.origin,
-  };
-};
+const intersect = (a: Interval, b: Interval): Interval => ({
+  min:
+    a.min === undefined
+      ? b.min
+      : b.min === undefined
+        ? a.min
+        : Math.max(a.min, b.min),
+  max:
+    a.max === undefined
+      ? b.max
+      : b.max === undefined
+        ? a.max
+        : Math.min(a.max, b.max),
+  origin: a.origin,
+});
 
 const isEmptyInterval = (interval: Interval | undefined): boolean =>
   interval?.min !== undefined &&
   interval.max !== undefined &&
   interval.min > interval.max;
+
+/**
+ * An equality group's bounds, one interval per origin its members constrain.
+ * Fifteenth-wave Finding 1: folding every member into a single interval made
+ * one incomparable member (an anchorless RelativeDatePicker beside calendar
+ * dates) discard bounds the other members genuinely shared — a group of a
+ * fixed '2020-01-01', an anchorless picker and a fixed '2021-01-01' stopped
+ * reporting its real fixed-origin conflict. Keeping the origins apart means
+ * each is intersected only with same-origin members, and the group is
+ * contradictory when ANY origin is left empty.
+ */
+type GroupIntervals = Map<IntervalOrigin, Interval>;
+
+const addToGroupIntervals = (
+  group: GroupIntervals,
+  interval: Interval | undefined,
+): void => {
+  if (!interval) return;
+  const existing = group.get(interval.origin);
+  group.set(
+    interval.origin,
+    existing ? intersect(existing, interval) : interval,
+  );
+};
+
+const hasEmptyOrigin = (group: GroupIntervals): boolean =>
+  [...group.values()].some(isEmptyInterval);
 
 /**
  * A boolean variable's effective domain, for the singleton-domain
@@ -1086,18 +1107,18 @@ function disjointBoundsContradictions(
     internalNonStrictEdgesByGroup.set(lowerGroup, bucket);
   }
 
-  const groupIntervals = new Map<string, Interval | undefined>();
+  const groupIntervals = new Map<string, GroupIntervals>();
   for (const [group, members] of membersOf) {
-    let interval: Interval | undefined;
+    const intervals: GroupIntervals = new Map();
     for (const member of members) {
-      interval = intersect(interval, intervalOf(variables[member]));
+      addToGroupIntervals(intervals, intervalOf(variables[member]));
     }
-    groupIntervals.set(group, interval);
+    groupIntervals.set(group, intervals);
 
     const internalNonStrictEdges =
       internalNonStrictEdgesByGroup.get(group) ?? [];
 
-    if (members.length > 1 && isEmptyInterval(interval)) {
+    if (members.length > 1 && hasEmptyOrigin(intervals)) {
       const strips = groupEqualityStrips(
         variables,
         members,
@@ -1166,17 +1187,18 @@ function disjointBoundsContradictions(
                 strips: [first, ...rest],
               });
             }
-          } else if (onlyType === 'categorical' && !isEmptyInterval(interval)) {
+          } else if (onlyType === 'categorical' && !hasEmptyOrigin(intervals)) {
             // Non-empty but too small: the group's intersected minSelected
-            // (already computed above as `interval.min` — the group interval
-            // pass intersects every member's own minSelected) can still
+            // (already computed above as the fixed-origin interval's `min` —
+            // the group interval pass intersects every member's own
+            // minSelected, and selection counts are always absolute) can still
             // exceed the number of option values every member actually
             // shares, which is equally unsatisfiable. Ordinal is excluded —
             // it is single-select, so any non-empty shared set already
             // suffices and is covered by the emptiness check above. Skipped
             // when the group's own bounds are already empty — that case is
             // reported above and resolves via the same strips.
-            const minSelected = interval?.min;
+            const minSelected = intervals.get('fixed')?.min;
             if (minSelected !== undefined && minSelected > intersection.size) {
               const strips = groupEqualityStrips(
                 variables,
@@ -1269,21 +1291,29 @@ function disjointBoundsContradictions(
     ) {
       continue;
     }
-    const upperInterval = groupIntervals.get(upperGroup);
-    const lowerInterval = groupIntervals.get(lowerGroup);
+    const upperIntervals: GroupIntervals =
+      groupIntervals.get(upperGroup) ?? new Map();
+    const lowerIntervals: GroupIntervals =
+      groupIntervals.get(lowerGroup) ?? new Map();
     // An already-empty group is reported above; its sameAs strips resolve it
     // first, so edges touching it are not judged against nonsense bounds.
-    if (isEmptyInterval(upperInterval) || isEmptyInterval(lowerInterval)) {
-      continue;
-    }
-    if (upperInterval?.max === undefined || lowerInterval?.min === undefined) {
+    if (hasEmptyOrigin(upperIntervals) || hasEmptyOrigin(lowerIntervals)) {
       continue;
     }
     // Fourteenth-wave Finding 1: only same-origin bounds are comparable.
-    if (upperInterval.origin !== lowerInterval.origin) continue;
-    const infeasible = edge.strict
-      ? upperInterval.max <= lowerInterval.min
-      : upperInterval.max < lowerInterval.min;
+    // Fifteenth-wave Finding 1: each shared origin is judged on its own, so a
+    // group that also constrains an origin the other side says nothing about
+    // still has its comparable origins checked; an edge whose two sides share
+    // no origin at all is left unjudged.
+    const infeasible = [...upperIntervals].some(([origin, upperInterval]) => {
+      const lowerInterval = lowerIntervals.get(origin);
+      if (upperInterval.max === undefined || lowerInterval?.min === undefined) {
+        return false;
+      }
+      return edge.strict
+        ? upperInterval.max <= lowerInterval.min
+        : upperInterval.max < lowerInterval.min;
+    });
     if (!infeasible) continue;
     const [first, ...rest] = edge.sources;
     if (!first) continue;

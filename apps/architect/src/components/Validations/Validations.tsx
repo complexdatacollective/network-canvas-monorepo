@@ -161,15 +161,30 @@ const Validations = ({
   const usedOptions = getKeys(value);
 
   const uniqueValueCount = useMemo(() => {
-    if (variableType === 'boolean') return 2;
-    if (variableType !== 'ordinal') return undefined;
-    if (Array.isArray(draftOptions)) return draftOptions.length;
-    const current = allVariables?.[currentVariableId ?? ''];
+    if (variableType !== 'boolean' && variableType !== 'ordinal') {
+      return undefined;
+    }
     const isRecord = (v: unknown): v is Record<string, unknown> =>
       typeof v === 'object' && v !== null && !Array.isArray(v);
-    const options =
+    const current = allVariables?.[currentVariableId ?? ''];
+    const storedOptions =
       isRecord(current) && 'options' in current ? current.options : undefined;
-    return Array.isArray(options) ? options.length : undefined;
+    const options = Array.isArray(draftOptions)
+      ? draftOptions
+      : Array.isArray(storedOptions)
+        ? storedOptions
+        : undefined;
+    if (variableType === 'ordinal') return options?.length;
+    // Fifteenth-wave Finding 2: `booleanOptionsSchema` accepts a single-option
+    // array, so a Boolean can genuinely offer one value — with `unique` set,
+    // the second entity to answer then has nothing left to pick. Only an
+    // ABSENT options array means the unrestricted Yes/No default of two.
+    if (options === undefined) return 2;
+    return new Set(
+      options
+        .map((option) => (isRecord(option) ? option.value : undefined))
+        .filter((optionValue) => optionValue !== undefined),
+    ).size;
   }, [variableType, draftOptions, allVariables, currentVariableId]);
 
   const checkDraft = useMemo(

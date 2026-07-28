@@ -1476,6 +1476,92 @@ describe('findValidationContradictions — fourteenth-wave Finding 1: anchorless
   });
 });
 
+describe('findValidationContradictions — fifteenth-wave Finding 1: equality groups track bounds per origin', () => {
+  const relativePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'RelativeDatePicker',
+    parameters,
+    validation,
+  });
+
+  const pinnedDatePicker = (
+    name: string,
+    day: string,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { min: day, max: day },
+    validation,
+  });
+
+  it('reports a fixed-vs-fixed conflict across an anchorless member of the same sameAs group', () => {
+    const result = findValidationContradictions({
+      a: pinnedDatePicker('a', '2020-01-01', { required: true, sameAs: 'b' }),
+      b: relativePicker('b', {}, { required: true, sameAs: 'c' }),
+      c: pinnedDatePicker('c', '2021-01-01', { required: true }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
+    expect(result[0]?.message).toContain(
+      'are joined by sameAs but their rules leave no value they can share',
+    );
+    expect(
+      result[0]?.strips.toSorted((x, y) =>
+        x.variableId.localeCompare(y.variableId),
+      ),
+    ).toEqual([
+      { variableId: 'a', rule: 'sameAs' },
+      { variableId: 'b', rule: 'sameAs' },
+    ]);
+  });
+
+  it('accepts the same group when both fixed members pin the same day', () => {
+    expect(
+      findValidationContradictions({
+        a: pinnedDatePicker('a', '2020-01-01', { required: true, sameAs: 'b' }),
+        b: relativePicker('b', {}, { required: true, sameAs: 'c' }),
+        c: pinnedDatePicker('c', '2020-01-01', { required: true }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts a two-member sameAs pair spanning both origins', () => {
+    expect(
+      findValidationContradictions({
+        a: pinnedDatePicker('a', '2020-01-01', { required: true, sameAs: 'b' }),
+        b: relativePicker('b', { before: 0, after: 0 }, { required: true }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('reports a symbolic-origin comparator conflict independently of a fixed group member', () => {
+    const result = findValidationContradictions({
+      a: relativePicker(
+        'a',
+        { before: 0, after: 0 },
+        { sameAs: 'b', greaterThanVariable: 'd' },
+      ),
+      b: relativePicker('b', { before: 0, after: 0 }, { sameAs: 'c' }),
+      c: pinnedDatePicker('c', '2020-01-01'),
+      d: relativePicker('d', { before: 0, after: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'd']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'greaterThanVariable' },
+    ]);
+  });
+});
+
 describe('record schema conformance — contradiction refinement', () => {
   it('rejects a node variables record with inverted bounds, anchored at the offending rule', () => {
     const result = VariablesSchema.safeParse({

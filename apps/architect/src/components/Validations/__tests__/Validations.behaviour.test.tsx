@@ -20,6 +20,7 @@ type TestVariable = {
   name: string;
   type: 'number' | 'text' | 'boolean';
   validation?: Record<string, unknown>;
+  options?: { label: string; value: boolean }[];
 };
 
 type OwnProps = {
@@ -144,6 +145,54 @@ describe('Validations behaviour', () => {
       entity: 'node',
       currentVariableId: 'bool-var',
       allVariables: {},
+      existingVariables: {},
+      validation: { unique: true },
+    });
+
+    expect(
+      screen.getByText(/This variable has only 2 possible values/),
+    ).toBeInTheDocument();
+  });
+
+  // Fifteenth-wave Finding 2: a boolean restricted to one option really does
+  // offer one value, so the hint must count the configured options rather
+  // than assume the Yes/No default.
+  it('counts a single-option boolean variable as one available value', () => {
+    setup({
+      variableType: 'boolean',
+      entity: 'node',
+      currentVariableId: 'bool-var',
+      allVariables: {
+        'bool-var': {
+          name: 'Consented',
+          type: 'boolean',
+          options: [{ label: 'Yes', value: true }],
+        },
+      },
+      existingVariables: {},
+      validation: { unique: true },
+    });
+
+    expect(
+      screen.getByText(/This variable has only 1 possible values/),
+    ).toBeInTheDocument();
+  });
+
+  it('counts a two-option boolean variable as two available values', () => {
+    setup({
+      variableType: 'boolean',
+      entity: 'node',
+      currentVariableId: 'bool-var',
+      allVariables: {
+        'bool-var': {
+          name: 'Consented',
+          type: 'boolean',
+          options: [
+            { label: 'Yes', value: true },
+            { label: 'No', value: false },
+          ],
+        },
+      },
       existingVariables: {},
       validation: { unique: true },
     });
