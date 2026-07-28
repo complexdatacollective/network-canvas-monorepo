@@ -9,6 +9,10 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubject,
 } from '~/selectors/codebook';
+import {
+  excludeUnvalidatedUses,
+  excludeValidatedUses,
+} from '~/selectors/roleFilters';
 
 type Entity = 'node' | 'edge' | 'ego';
 
@@ -20,18 +24,32 @@ const mapStateToProps = (
     entity,
   }: { form: string; type?: string; entity: Entity | string },
 ) => {
-  const variableOptions = getVariableOptionsForSubject(state, {
-    type,
-    entity: entity as Entity,
-  });
+  const subject = { type, entity: entity as Entity };
+  const rawVariableOptions = getVariableOptionsForSubject(state, subject);
 
   const formSelector = formValueSelector(form);
   const variable = formSelector(state, 'variable');
   const otherVariable = formSelector(state, 'otherVariable');
-  const variables = getVariablesForSubject(state, {
-    type,
-    entity: entity as Entity,
-  });
+
+  // The main `variable` picker (CategoricalBin, OrdinalBin, Geospatial) is an
+  // UNVALIDATED writer: drop options a form elsewhere already validates.
+  const variableOptions = excludeValidatedUses(
+    state,
+    subject,
+    rawVariableOptions,
+    variable,
+  );
+  // CategoricalBin's "other" picker is a VALIDATED writer (its input now
+  // honours the referenced variable's codebook validation): drop options an
+  // unvalidated writer elsewhere already claims.
+  const otherVariableOptions = excludeUnvalidatedUses(
+    state,
+    subject,
+    rawVariableOptions,
+    otherVariable,
+  );
+
+  const variables = getVariablesForSubject(state, subject);
   const optionsForVariable = get(variables, [variable, 'options'], []);
   const optionsForVariableDraft = formSelector(state, 'variableOptions');
 
@@ -39,6 +57,7 @@ const mapStateToProps = (
     variable,
     otherVariable,
     variableOptions,
+    otherVariableOptions,
     optionsForVariable,
     optionsForVariableDraft,
   };

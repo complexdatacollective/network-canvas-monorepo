@@ -33,6 +33,7 @@ type PromptFieldsProps = {
   onCreateOtherVariable: (value: string, field: string) => void;
   optionsForVariableDraft?: Array<Record<string, unknown>>;
   otherVariable?: string;
+  otherVariableOptions?: VariableOption[];
   type: string;
   variable?: string;
   variableOptions?: VariableOption[];
@@ -44,6 +45,7 @@ const PromptFields = ({
   onCreateOtherVariable,
   optionsForVariableDraft = [],
   otherVariable,
+  otherVariableOptions = [],
   type,
   variable,
   variableOptions = [],
@@ -83,7 +85,10 @@ const PromptFields = ({
   const categoricalVariableOptions = variableOptions.filter(
     ({ type: variableType }) => variableType === 'categorical',
   );
-  const otherVariableOptions = variableOptions.filter(
+  // otherVariable is a VALIDATED writer, so it draws from the HOC's
+  // otherVariable-role-filtered pool rather than the (unvalidated-role-
+  // filtered) variableOptions pool used above.
+  const otherVariableTextOptions = otherVariableOptions.filter(
     ({ type: variableType }) => variableType === 'text',
   );
   const getOptions = getSortOrderOptionGetter(variableOptions);
@@ -164,7 +169,7 @@ const PromptFields = ({
             componentProps={{
               entity,
               type,
-              options: otherVariableOptions,
+              options: otherVariableTextOptions,
               onCreateOption: (value: string) =>
                 onCreateOtherVariable(value, 'otherVariable'),
               variable: otherVariable,

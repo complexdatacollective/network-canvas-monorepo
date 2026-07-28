@@ -24,6 +24,7 @@ type QuickAddProps = StageEditorSectionProps & {
     value: string,
     variableType: string,
     fieldName: string,
+    validation?: { required: true },
   ) => void;
   options?: VariableOption[];
   type?: string | null;
@@ -73,8 +74,14 @@ const QuickAdd = ({
         validation={{ required: true }}
         componentProps={{
           options,
+          // NameGeneratorQuickAdd's quickAdd is a VALIDATED writer (see
+          // `withOptions.tsx`), so a variable created here should require a
+          // value from the start, unlike NetworkComposer's own quickAdd
+          // (`NodeConfiguration.tsx`), which stays unvalidated.
           onCreateOption: (value: string) =>
-            handleCreateVariable(value, 'text', 'quickAdd'),
+            handleCreateVariable(value, 'text', 'quickAdd', {
+              required: true,
+            }),
           type,
           entity,
           variable: quickAdd,

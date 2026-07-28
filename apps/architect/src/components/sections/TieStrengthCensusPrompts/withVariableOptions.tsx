@@ -9,21 +9,29 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubject,
 } from '~/selectors/codebook';
+import { excludeValidatedUses } from '~/selectors/roleFilters';
 
 const mapStateToProps = (state: RootState, { form }: { form: string }) => {
   const formSelector = formValueSelector(form);
   const createEdge = formSelector(state, 'createEdge');
-
-  const variableOptions = getVariableOptionsForSubject(state, {
+  const subject: { entity: 'edge'; type: string } = {
     type: createEdge,
     entity: 'edge',
-  }).filter(({ type }) => type === 'ordinal');
-
+  };
   const edgeVariable = formSelector(state, 'edgeVariable');
-  const variables = getVariablesForSubject(state, {
-    type: createEdge,
-    entity: 'edge',
-  });
+
+  // TSC's edge-variable picker is an UNVALIDATED writer: drop options a form
+  // elsewhere already validates.
+  const variableOptions = excludeValidatedUses(
+    state,
+    subject,
+    getVariableOptionsForSubject(state, subject).filter(
+      ({ type }) => type === 'ordinal',
+    ),
+    edgeVariable,
+  );
+
+  const variables = getVariablesForSubject(state, subject);
   const optionsForVariable = get(variables, [edgeVariable, 'options'], []);
   const optionsForVariableDraft = formSelector(state, 'variableOptions');
 

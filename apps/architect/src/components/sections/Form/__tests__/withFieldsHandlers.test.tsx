@@ -27,6 +27,18 @@ vi.mock('~/selectors/codebook', () => {
   };
 });
 
+// Standing in for the role map: this suite is only concerned with the
+// sibling-field exclusion below, so the role-based exclusion is a passthrough
+// here. Its own behaviour is covered by
+// `src/components/sections/__tests__/pickerExclusions.test.ts`.
+vi.mock('~/selectors/roleFilters', () => ({
+  excludeUnvalidatedUses: (
+    _state: unknown,
+    _subject: unknown,
+    options: unknown[],
+  ) => options,
+}));
+
 import { useFieldHandlers } from '../withFieldsHandlers';
 
 type RenderArgs = {

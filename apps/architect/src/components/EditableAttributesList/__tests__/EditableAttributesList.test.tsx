@@ -4,6 +4,8 @@ import type { ComponentType } from 'react';
 import { Provider } from 'react-redux';
 import { expect, it, vi } from 'vitest';
 
+import type * as SelectorsIndexes from '~/selectors/indexes';
+
 import { COMPOSER_CONTRADICTION_FIELD } from '../ComposerAttributeFields';
 import EditableAttributesList from '../EditableAttributesList';
 
@@ -98,6 +100,20 @@ vi.mock('~/selectors/codebook', () => {
       return cache.get(subject);
     },
   };
+});
+
+// The Task 9 cross-class gate's hasUnvalidatedUse closure reads
+// getVariableRoleMap; a conflict-free stub keeps this file's pre-existing
+// contradiction-only coverage unaffected. The gate itself is covered in
+// contradictions.test.ts (pure-function level) and in
+// EditableAttributesList.crossClassGate.test.tsx (mount level, with a REAL
+// role map and NOT this neutralized stub — that file intentionally leaves
+// this module unmocked). Partially mocked here — `~/ducks/modules/protocol/
+// codebook` (imported transitively) also needs this module's real
+// `getVariableIndex`.
+vi.mock('~/selectors/indexes', async (importOriginal) => {
+  const actual = await importOriginal<typeof SelectorsIndexes>();
+  return { ...actual, getVariableRoleMap: () => ({}) };
 });
 
 const store = configureStore({ reducer: () => ({}) });

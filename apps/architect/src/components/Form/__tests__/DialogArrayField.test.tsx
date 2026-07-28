@@ -333,6 +333,80 @@ describe('DialogArrayField', () => {
     });
   });
 
+  // Task 9: the save-time cross-class gate's unchanged-pick escape
+  // (contradictions.ts's `makeFieldEditorValidate`) reads `props.initialValues`
+  // from editorValidate's second argument, on the inference that redux-form
+  // passes the decorated Form's own props — including `initialValues` — as
+  // `validate`'s second argument (same mechanism eleventh-wave Finding 4 relies
+  // on for `editIndex`, which the test above already pins). This test empirically
+  // settles that inference for the row this editor actually opens, rather than
+  // just reading redux-form's source: a fresh item reports no initialValues,
+  // and reopening the SAME edited item after a save reports its NEW committed
+  // values, not the stale pre-edit ones.
+  it('surfaces the edited row’s pre-edit committed values to editorValidate as props.initialValues', async () => {
+    const editorValidate = vi.fn<
+      (
+        values: Record<string, unknown>,
+        props?: { editIndex?: number; initialValues?: unknown },
+      ) => Record<string, unknown>
+    >(() => ({}));
+    setup({
+      initialItems: [{ id: 'item-1', label: 'Before' }],
+      editorValidate,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(editorValidate.mock.calls.at(-1)?.[1]?.initialValues).toEqual({
+      id: 'item-1',
+      label: 'Before',
+    });
+
+    // A brand-new item reports only its freshly-assigned uuid `id` and the
+    // template's blank label — not the earlier item's committed values.
+    editorValidate.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(editorValidate.mock.calls.at(-1)?.[1]?.initialValues).toEqual({
+      id: expect.any(String),
+      label: '',
+    });
+
+    // Saving the new item, then reopening it: initialValues now reflects the
+    // freshly-committed row, not the original item's — proving this is the
+    // REAL per-open committed snapshot, not a value fixed once at mount.
+    fireEvent.change(screen.getByRole('textbox', { name: 'Item label' }), {
+      target: { value: 'Second' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Edit item' })).toHaveLength(
+        2,
+      );
+    });
+    editorValidate.mockClear();
+    const secondEditBtn = screen.getAllByRole('button', {
+      name: 'Edit item',
+    })[1];
+    if (!secondEditBtn) throw new Error('Expected two edit buttons');
+    fireEvent.click(secondEditBtn);
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(
+      (
+        editorValidate.mock.calls.at(-1)?.[1]?.initialValues as
+          | { label?: string }
+          | undefined
+      )?.label,
+    ).toBe('Second');
+  });
+
   // Seventeenth-wave follow-up: the fields component gets the SAME index the
   // validate does, so an editor's pickers can scope themselves to exactly the
   // row the validate is judging (e.g. offering only variables no sibling has

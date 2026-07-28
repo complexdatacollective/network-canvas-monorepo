@@ -1,6 +1,6 @@
 import { find, get, has } from 'es-toolkit/compat';
 import { useCallback, useMemo } from 'react';
-import { useSelector } from 'react-redux';
+import { shallowEqual, useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
 import {
@@ -17,6 +17,7 @@ import {
   getVariableOptionsForSubjectSelector,
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
+import { excludeUnvalidatedUses } from '~/selectors/roleFilters';
 
 import { isVariableUsedBySibling } from './composerHelpers';
 
@@ -95,9 +96,22 @@ export const useFieldHandlers = ({
     getVariableOptionsForSubjectSelector(state, subject, {}),
   );
 
+  // This picker is a VALIDATED writer (Form, NetworkComposer fields,
+  // FamilyPedigree fields): a variable also written by a bin/highlight/census
+  // elsewhere would bypass that form's validation, so drop any option with an
+  // unvalidated hit. The currently-selected value is always kept.
+  const roleFilteredOptions = useSelector(
+    (state: RootState) =>
+      excludeUnvalidatedUses(state, subject, baseVariableOptions, variable),
+    // excludeUnvalidatedUses allocates a fresh array each call; compare
+    // elements (which baseVariableOptions already keeps stable) instead of
+    // the wrapper reference so unrelated store updates don't force a re-render.
+    shallowEqual,
+  );
+
   // Memoize the filtered and concatenated variable options
   const variableOptions = useMemo(() => {
-    const filtered = baseVariableOptions
+    const filtered = roleFilteredOptions
       // If not a variable with corresponding component, we can't use it here.
       .filter((option) =>
         VARIABLE_TYPES_WITH_COMPONENTS.includes(option.type as string),
@@ -121,7 +135,7 @@ export const useFieldHandlers = ({
         ])
       : filtered;
   }, [
-    baseVariableOptions,
+    roleFilteredOptions,
     isNewVariable,
     createNewVariable,
     siblingFields,
