@@ -6095,3 +6095,85 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 1: sameAs
     ).toEqual([]);
   });
 });
+
+describe('findValidationContradictions — Twenty-seventh-wave Finding 2: propagated pins record coarse stored strings', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  // The reviewer's own report: `b <= c` against `c`'s pinned '2020-02'
+  // collapses `b`'s reachable window to February 2020 (rounded to `b`'s own
+  // coarse emissions), so `b` is forced to store exactly the string `c`
+  // stores — but the propagated-pin recording handled only numbers and
+  // full-resolution dates, so `b differentFrom c` went unreported.
+  it('rejects a differentFrom whose coarse owner is pinned by chain propagation', () => {
+    const result = findValidationContradictions({
+      b: datePicker(
+        'b',
+        { type: 'month', min: '2020-02', max: '2021-01' },
+        { lessThanOrEqualToVariable: 'c', differentFrom: 'c' },
+      ),
+      c: datePicker('c', { type: 'month', min: '2020-02', max: '2020-02' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror direction at year resolution: `b >= c` against a partner
+  // pinned at `b`'s own upper edge collapses `b` upward onto '2021'.
+  it('rejects the mirror direction for a year picker pinned upward by propagation', () => {
+    const result = findValidationContradictions({
+      b: datePicker(
+        'b',
+        { type: 'year', min: '2020', max: '2021' },
+        { greaterThanOrEqualToVariable: 'c', differentFrom: 'c' },
+      ),
+      c: datePicker('c', { type: 'year', min: '2021', max: '2021' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The accept guard at the boundary: `d <= b <= c` with both full-resolution
+  // neighbours pinned to 2020-02-15 collapses `b`'s propagated window to a
+  // day BETWEEN `b`'s coarse emissions (`b`'s one-sided in-window bound keeps
+  // it unenumerable, so nothing rounds the bound onto a period start). No
+  // stored month string parses to that instant, so nothing may be recorded —
+  // `b differentFrom e` stays accepted even though `e` is pinned to the
+  // month containing it. (The chain itself is an accept-direction gap of the
+  // unenumerable fallback, deliberately preferred over a false rejection.)
+  it('records nothing when the propagated collapse lands between coarse instants', () => {
+    expect(
+      findValidationContradictions({
+        b: datePicker(
+          'b',
+          { type: 'month', min: '2020-01' },
+          { lessThanOrEqualToVariable: 'c', differentFrom: 'e' },
+        ),
+        c: datePicker('c', { min: '2020-02-15', max: '2020-02-15' }),
+        d: datePicker(
+          'd',
+          { min: '2020-02-15', max: '2020-02-15' },
+          { lessThanOrEqualToVariable: 'b' },
+        ),
+        e: datePicker('e', { type: 'month', min: '2020-02', max: '2020-02' }),
+      }),
+    ).toEqual([]);
+  });
+});

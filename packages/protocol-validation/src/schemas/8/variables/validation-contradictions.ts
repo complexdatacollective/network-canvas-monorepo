@@ -2180,6 +2180,43 @@ const coarsePeriodIndex = (
 ): number => (resolution === 'year' ? year : year * 12 + (month - 1));
 
 /**
+ * Twenty-seventh-wave Finding 2: the canonical stored string a coarse
+ * (month/year) DatePicker holds when the instant `compareVariables` reads
+ * back from it is exactly `day` — the inverse of `dayNumber`'s 'min'-edge
+ * reading (a bare year parses to 1 January, a bare month to the 1st).
+ * `undefined` whenever `day` is not exactly one representable coarse
+ * emission: a fractional or mid-period day number (no stored string parses
+ * to it), or a year outside 1000-9999. That year bracket is the unpadded-year
+ * caveat: the coarse year dropdown stores `y.toString()` with NO zero-padding
+ * (fresco-ui DatePicker.tsx's own COARSE_MIN_YEAR/COARSE_MAX_YEAR carve out
+ * the same range), so only a year whose unpadded form already satisfies the
+ * schema's four-digit YYYY grammar round-trips as a stored value — a smaller
+ * or larger year has no canonical encoding to pin. The month part is
+ * zero-padded ('01'-'12'), matching both the runtime's month option values
+ * and the YYYY-MM bound grammar, so the returned string is byte-identical to
+ * the authored bound `pinnedValue`'s coarse branch keys a pinned partner by.
+ */
+const coarseStoredValueAtDay = (
+  day: number,
+  resolution: 'month' | 'year',
+): string | undefined => {
+  if (!Number.isInteger(day)) return undefined;
+  const date = new Date(day * 86_400_000);
+  const year = date.getUTCFullYear();
+  if (
+    date.getUTCDate() !== 1 ||
+    (resolution === 'year' && date.getUTCMonth() !== 0) ||
+    year < COARSE_SYNTHESIS_MIN_YEAR ||
+    year > COARSE_SYNTHESIS_MAX_YEAR
+  ) {
+    return undefined;
+  }
+  return resolution === 'year'
+    ? String(year)
+    : `${String(year)}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+};
+
+/**
  * The exact set of UTC day numbers a bounded coarse (month/year) DatePicker
  * can ever emit — one entry per period in its declared window, each at that
  * period's first day (the value `compareVariables` derives from the stored
@@ -2393,10 +2430,13 @@ type ChainedBoundResult = {
   /**
    * Twenty-second-wave Finding 1: every variable a propagated bound pins to
    * one exact value, keyed by variable id, encoded exactly like
-   * `pinnedValue`'s own return value (a raw number for `number`, or
+   * `pinnedValue`'s own return value (a raw number for `number`,
    * `pinnedValue`'s `datetime:${origin}:${value}` tag for a full-resolution
-   * datetime) so the two are directly comparable. Consulted only as a
-   * FALLBACK by `pinnedEqualDifferentFromContradictions` — a variable's own
+   * datetime, or — twenty-seventh-wave Finding 2 — its
+   * `datetime:${resolution}:${stored}` tag for a coarse picker whose
+   * collapse lands exactly on a representable coarse emission) so the two
+   * are directly comparable. Consulted only as a FALLBACK by
+   * `pinnedEqualDifferentFromContradictions` — a variable's own
    * `pinnedValue` always wins when it applies. Populated below, once per
    * origin, from nodes whose propagated min and max collapse to one CLOSED
    * point.
@@ -2790,14 +2830,21 @@ function chainedBoundContradictions(
       // collapse to one CLOSED point pins every member to that value, even
       // when neither bound is the node's own — `pinnedEqualDifferentFromContradictions`
       // reads this map as a fallback once a variable's own rules don't
-      // already pin it. Scoped to `number` and full-resolution `datetime`:
-      // those are the only types a comparator edge ever connects (see
-      // `requireType` on the four comparator rules) whose bound also
-      // identifies the runtime VALUE rather than a length or count — a
-      // coarse picker's day-number window shares that same encoding, but a
-      // raw day number does not identify a coarse picker's STORED string the
-      // way `pinnedValue`'s own coarse branch keys it, so that case is left
-      // alone here. `!min.open && !max.open` is the fractional-domain guard:
+      // already pin it. Scoped to `number` and `datetime`: those are the
+      // only types a comparator edge ever connects (see `requireType` on
+      // the four comparator rules) whose bound also identifies the runtime
+      // VALUE rather than a length or count. A full-resolution datetime
+      // records the same origin-tagged day-number key `pinnedValue` derives;
+      // a COARSE (month/year) member additionally records its pin
+      // (twenty-seventh-wave Finding 2) whenever the collapsed day is
+      // exactly one representable coarse emission — encoded through
+      // `coarseStoredValueAtDay` into the same canonical stored-string key
+      // `pinnedValue`'s coarse branch uses — and only on the 'fixed' origin,
+      // the only one a coarse stored string exists on (a coarse pin key is
+      // resolution-tagged, never origin-tagged). A collapse landing between
+      // coarse instants, on a fractional day, or on a year with no
+      // canonical four-digit stored form records nothing (accept).
+      // `!min.open && !max.open` is the fractional-domain guard:
       // a strict hop only ever leaves a bound open when its quantity is not
       // known to be whole-numbered (`stepChainBound`), so an open collapse
       // means the node's true window excludes its one candidate point (a
@@ -2809,11 +2856,19 @@ function chainedBoundContradictions(
           const type = typeOf(variables[variableId]);
           if (type === 'number') {
             propagatedPins.set(variableId, min.value);
-          } else if (
-            type === 'datetime' &&
-            dateResolutionOf(variables[variableId]) === 'full'
-          ) {
-            propagatedPins.set(variableId, `datetime:${origin}:${min.value}`);
+          } else if (type === 'datetime') {
+            const resolution = dateResolutionOf(variables[variableId]);
+            if (resolution === 'full') {
+              propagatedPins.set(variableId, `datetime:${origin}:${min.value}`);
+            } else if (origin === 'fixed') {
+              const stored = coarseStoredValueAtDay(min.value, resolution);
+              if (stored !== undefined) {
+                propagatedPins.set(
+                  variableId,
+                  `datetime:${resolution}:${stored}`,
+                );
+              }
+            }
           }
         }
       }
