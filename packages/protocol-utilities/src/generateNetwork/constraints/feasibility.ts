@@ -8,6 +8,7 @@ import {
 import type { NcNode, VariableValue } from '@codaco/shared-consts';
 
 import type { ResolvedGenerationConfig } from '../config';
+import { isContentStage } from '../contentStages';
 import {
   collectPromptFixedAssignments,
   countPromptFixedValues,
@@ -153,10 +154,38 @@ function countPedigreeFixedValues(
 }
 
 /**
- * The scopes a protocol's stages name at all: the codebook node and edge types
- * — as a subject, as a prompt's created edge, as a FamilyPedigree's node or
- * edge config, or as a filter rule's target — and whether any stage takes ego
- * as its subject.
+ * Whether a collected reference belongs to a stage `generateNetwork` runs no
+ * handler for — the one kind of naming that is no evidence of a value at all.
+ *
+ * A content stage names its types through the same schema tags a creating stage
+ * does, but the dispatch does nothing for it: `CONTENT_STAGE_TYPES` is that
+ * dispatch's own list, so a stage type this passes over is one the generator
+ * provably neither creates an entity of nor writes an attribute onto. Anything
+ * this cannot place on such a stage is read as a writer's — a path rooted
+ * outside the stage list, an index naming no stage, and above all a stage type
+ * neither the dispatch nor this list knows — because reading a writer as a
+ * content stage would drop a scope whose values really are drawn, which is the
+ * failure that emits an invalid value rather than merely refusing a good
+ * protocol.
+ *
+ * The stage is read off the hit's own value path, whose root is the `stages`
+ * array the caller passes in, exactly as `isBinPromptAssignment` reads it.
+ */
+function referencedByContentStage(
+  path: readonly (string | number)[],
+  stages: Stage[],
+): boolean {
+  const [root, stageIndex] = path;
+  if (root !== 'stages' || typeof stageIndex !== 'number') return false;
+  const stage = stages[stageIndex];
+  return stage !== undefined && isContentStage(stage);
+}
+
+/**
+ * The scopes a protocol's stages name in a way that could put a value on an
+ * entity: the codebook node and edge types — as a subject, as a prompt's
+ * created edge, as a FamilyPedigree's node or edge config, or as a filter
+ * rule's target — and whether any stage takes ego as its subject.
  *
  * Read from the schema's own reference tags rather than from a hand-listed set
  * of stage keys, as `collectBinOnlyVariables` reads the attribute tags: a stage
@@ -168,6 +197,16 @@ function countPedigreeFixedValues(
  * ego subject. A filter rule's `attribute` resolves against the rule rather
  * than the stage and so names no scope here, which is right — an `ego` rule
  * reads a value, it does not write one.
+ *
+ * The tags describe the protocol, though, and not what the generator does with
+ * it, so a stage that only DISPLAYS a type names it just as loudly as one that
+ * creates it. What the tags cannot see, {@link referencedByContentStage} asks
+ * the dispatch: a type only a Narrative puts on a canvas has no entity to hold
+ * a value, because `generateNetwork` runs nothing for that stage. Asked of the
+ * stage rather than of the reference site, because the dispatch is where the
+ * answer actually lives — a Sociogram prompt's `edges.display` names an edge
+ * type its stage will not create either, and that finer reading belongs to the
+ * counter, which already draws it from `edges.create` alone.
  */
 function collectReferencedScopes(stages: Stage[]): {
   ego: boolean;
@@ -178,6 +217,7 @@ function collectReferencedScopes(stages: Stage[]): {
   const edge = new Set<string>();
 
   for (const hit of collectEntityTypeReferences({ stages })) {
+    if (referencedByContentStage(hit.path, stages)) continue;
     (hit.entity === 'edge' ? edge : node).add(hit.typeId);
   }
 
@@ -982,6 +1022,14 @@ export function analyseFeasibility(
   // `worstCaseEntityCounts`' own field reads see the same stage list
   // independently, so neither a tag dropped from the schema nor a creating
   // stage the counter does not model can on its own delete a refusal.
+  //
+  // What the tag reader keeps at a count of zero is a type some stage names
+  // while nothing creates one: an AlterForm renders a field for it, and a rule
+  // is applied where a field is rendered, whether or not this generator ever
+  // builds an entity to fill. That fallback is worth having and is why the
+  // counts alone do not decide this — but it is only worth having for a stage
+  // that could write. A content stage's naming is dropped before it gets here;
+  // see `collectReferencedScopes`.
   const carriesNothing = (
     entity: 'node' | 'edge',
     type: string,

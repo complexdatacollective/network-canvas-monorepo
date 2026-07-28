@@ -18,6 +18,7 @@ import { SyntheticDataConstraintError } from './generateNetwork/constraints/erro
 import { analyseFeasibility } from './generateNetwork/constraints/feasibility';
 import type { EntityConstraints } from './generateNetwork/constraints/types';
 import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
+import { isContentStage } from './generateNetwork/contentStages';
 import type {
   GenerationContext,
   NetworkDraft,
@@ -227,58 +228,63 @@ export function generateNetwork(
       }
     }
 
-    switch (stage.type) {
-      case 'NameGenerator':
-      case 'NameGeneratorQuickAdd':
-      case 'NameGeneratorRoster':
-        handleNameGenerators(ctx, draft, stage);
-        break;
-      case 'Sociogram':
-        handleSociogram(ctx, draft, stage);
-        break;
-      case 'DyadCensus':
-      case 'OneToManyDyadCensus':
-        handleDyadCensus(ctx, draft, stage, i);
-        break;
-      case 'TieStrengthCensus':
-        handleTieStrengthCensus(ctx, draft, stage, i);
-        break;
-      case 'OrdinalBin':
-        handleOrdinalBin(ctx, draft, stage);
-        break;
-      case 'CategoricalBin':
-        handleCategoricalBin(ctx, draft, stage);
-        break;
-      case 'EgoForm':
-        handleEgoForm(ctx, draft);
-        break;
-      case 'AlterForm':
-        handleAlterForm(ctx, draft, stage);
-        break;
-      case 'AlterEdgeForm':
-        handleAlterEdgeForm(ctx, draft, stage);
-        break;
-      case 'FamilyPedigree':
-        handleFamilyPedigree(ctx, draft, stage, i);
-        break;
-      case 'Geospatial':
-        handleGeospatial(ctx, draft, stage);
-        break;
-      case 'NetworkComposer':
-        handleNetworkComposer(ctx, draft, stage);
-        break;
-      case 'Information':
-      case 'Anonymisation':
-      case 'Narrative':
-      case 'NarrativePedigree':
-        // Read-only / content stages add no nodes or edges. NarrativePedigree
-        // reads the shared network written by its source FamilyPedigree stage.
-        break;
-      default:
-        throw new Error(
-          `Unsupported stage type "${stageType}". ` +
-            'Synthetic data generation does not yet support this stage type.',
-        );
+    // Content stages run no handler at all: they add no node or edge and write
+    // onto none. NarrativePedigree is one of them because it reads the shared
+    // network its source FamilyPedigree stage already wrote.
+    //
+    // Narrowed away here rather than cased below, so that `CONTENT_STAGE_TYPES`
+    // and this dispatch cannot come to disagree about what a stage does — which
+    // matters because `analyseFeasibility` reads that list to tell a type only
+    // such a stage names from one carrying generated values. Teaching one of
+    // them to write would stop type-checking as a `case`, and dropping one from
+    // the list sends it into the switch, where it is refused as unsupported.
+    if (!isContentStage(stage)) {
+      switch (stage.type) {
+        case 'NameGenerator':
+        case 'NameGeneratorQuickAdd':
+        case 'NameGeneratorRoster':
+          handleNameGenerators(ctx, draft, stage);
+          break;
+        case 'Sociogram':
+          handleSociogram(ctx, draft, stage);
+          break;
+        case 'DyadCensus':
+        case 'OneToManyDyadCensus':
+          handleDyadCensus(ctx, draft, stage, i);
+          break;
+        case 'TieStrengthCensus':
+          handleTieStrengthCensus(ctx, draft, stage, i);
+          break;
+        case 'OrdinalBin':
+          handleOrdinalBin(ctx, draft, stage);
+          break;
+        case 'CategoricalBin':
+          handleCategoricalBin(ctx, draft, stage);
+          break;
+        case 'EgoForm':
+          handleEgoForm(ctx, draft);
+          break;
+        case 'AlterForm':
+          handleAlterForm(ctx, draft, stage);
+          break;
+        case 'AlterEdgeForm':
+          handleAlterEdgeForm(ctx, draft, stage);
+          break;
+        case 'FamilyPedigree':
+          handleFamilyPedigree(ctx, draft, stage, i);
+          break;
+        case 'Geospatial':
+          handleGeospatial(ctx, draft, stage);
+          break;
+        case 'NetworkComposer':
+          handleNetworkComposer(ctx, draft, stage);
+          break;
+        default:
+          throw new Error(
+            `Unsupported stage type "${stageType}". ` +
+              'Synthetic data generation does not yet support this stage type.',
+          );
+      }
     }
 
     releaseExternalRosterValues(ctx, stage);

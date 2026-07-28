@@ -9,6 +9,7 @@ import {
 
 import { generateNetwork } from '../../../generateNetwork';
 import { resolveGenerationConfig } from '../../config';
+import { CONTENT_STAGE_TYPES } from '../../contentStages';
 import { SyntheticDataConstraintError } from '../error';
 import { analyseFeasibility } from '../feasibility';
 import { MAX_TEXT_DRAW_LENGTH } from '../valueSpace';
@@ -2406,6 +2407,192 @@ describe('a pedigree edge variable no stage writes', () => {
     expect(
       analyseFeasibility(codeOnly, [edgeForm('code'), pedigree], config),
     ).toEqual([]);
+  });
+});
+
+/**
+ * The same question one step coarser: not which variable of a type is written,
+ * but whether the stage naming the type does anything at all. A content stage
+ * names its subject through the very tags a name generator does while
+ * `generateNetwork` runs no handler for it, so a type only such a stage names
+ * has no entity to carry a value — and the reading has to come from the
+ * dispatch, which is why each acceptance below is paired with what the
+ * generator actually builds.
+ */
+describe('a codebook scope only a content stage names', () => {
+  const contradiction = {
+    name: 'Code',
+    type: 'text',
+    validation: { minLength: 10, maxLength: 5 },
+  };
+
+  const plainPerson = {
+    name: 'Person',
+    color: 'node-color-seq-1',
+    variables: { name: { name: 'Name', type: 'text' } },
+  };
+
+  const person = { ...plainPerson, variables: { code: contradiction } };
+
+  function narrative(displayed?: string[]): Stage {
+    return {
+      id: 'stage-nr',
+      type: 'Narrative',
+      label: 'Narrative',
+      subject: { entity: 'node', type: 'person' },
+      presets: [
+        {
+          id: 'preset-1',
+          label: 'Ties',
+          layoutVariable: 'layout',
+          ...(displayed ? { edges: { display: displayed } } : {}),
+        },
+      ],
+    } as unknown as Stage;
+  }
+
+  const nodeCodebook = { node: { person } } as unknown as StructuralCodebook;
+
+  it('accepts a contradiction on a node type only a Narrative displays', () => {
+    expect(analyseFeasibility(nodeCodebook, [narrative()], config)).toEqual([]);
+  });
+
+  it('builds no node of that type, which is what the acceptance rests on', () => {
+    const { network } = generateNetwork({
+      codebook: nodeCodebook,
+      stages: [narrative()],
+      seed: 1,
+    });
+
+    expect(network.nodes).toEqual([]);
+    expect(network.edges).toEqual([]);
+  });
+
+  it('runs no handler for any content stage type', () => {
+    // The ground the classification stands on, read from the dispatch rather
+    // than from intuition about stage names: a lone stage of each listed type
+    // leaves the network exactly as `generateNetwork` starts it. A handler
+    // taught to create or write for one of these would fail here first.
+    const codebook = {
+      node: { person: plainPerson },
+    } as unknown as StructuralCodebook;
+
+    for (const type of CONTENT_STAGE_TYPES) {
+      const stage = {
+        id: `stage-${type}`,
+        type,
+        label: type,
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'p1', text: 'Read this' }],
+      } as unknown as Stage;
+
+      const { network } = generateNetwork({
+        codebook,
+        stages: [stage],
+        seed: 1,
+      });
+
+      expect(network.nodes, `${type} built nodes`).toEqual([]);
+      expect(network.edges, `${type} built edges`).toEqual([]);
+      expect(
+        network.ego[entityAttributesProperty],
+        `${type} wrote ego`,
+      ).toEqual({});
+    }
+  });
+
+  it('refuses a stage type neither the dispatch nor the list knows', () => {
+    // The other half of the same switch: what keeps the content list honest is
+    // that removing a type from it lands the stage here. An unrecognised type
+    // is read as a writer above, so its scopes stay analysed — which costs
+    // nothing, since the run refuses outright either way.
+    const unknownStage = {
+      id: 'stage-unknown',
+      type: 'SomeNewStageType',
+      label: 'Unknown',
+    } as unknown as Stage;
+
+    expect(() =>
+      generateNetwork({
+        codebook: {
+          node: { person: plainPerson },
+        } as unknown as StructuralCodebook,
+        stages: [unknownStage],
+        seed: 1,
+      }),
+    ).toThrow(/Unsupported stage type "SomeNewStageType"/);
+  });
+
+  it('still refuses the contradiction where a name generator creates the type', () => {
+    const conflicts = analyseFeasibility(
+      nodeCodebook,
+      [nameGenerator, narrative()],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entityTypeName).toBe('Person');
+    expect(conflicts[0]?.reason).toBe('minLength 10 exceeds maxLength 5');
+  });
+
+  const edgeCodebook = {
+    node: { person: plainPerson },
+    edge: {
+      kin: {
+        name: 'Kin',
+        color: 'edge-color-seq-1',
+        variables: { code: contradiction },
+      },
+    },
+  } as unknown as StructuralCodebook;
+
+  it('accepts a contradiction on an edge type only a Narrative preset displays', () => {
+    expect(
+      analyseFeasibility(
+        edgeCodebook,
+        [nameGenerator, narrative(['kin'])],
+        config,
+      ),
+    ).toEqual([]);
+  });
+
+  it('still refuses it for every stage that can create the edge', () => {
+    const sociogram = {
+      id: 'stage-sg',
+      type: 'Sociogram',
+      label: 'Sociogram',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Draw ties', edges: { create: 'kin' } }],
+    } as unknown as Stage;
+
+    const dyadCensus = {
+      id: 'stage-dc',
+      type: 'DyadCensus',
+      label: 'Dyad census',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        { id: 'p1', text: 'Do these two know each other?', createEdge: 'kin' },
+      ],
+    } as unknown as Stage;
+
+    const composer = {
+      id: 'stage-nc',
+      type: 'NetworkComposer',
+      label: 'Composer',
+      subject: { entity: 'node', type: 'person' },
+      edges: [{ subject: { entity: 'edge', type: 'kin' } }],
+    } as unknown as Stage;
+
+    for (const creator of [sociogram, dyadCensus, composer]) {
+      const conflicts = analyseFeasibility(
+        edgeCodebook,
+        [nameGenerator, creator, narrative(['kin'])],
+        config,
+      );
+
+      expect(conflicts, `${creator.type} lost its edge scope`).toHaveLength(1);
+      expect(conflicts[0]?.entityTypeName).toBe('Kin');
+    }
   });
 });
 
