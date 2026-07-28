@@ -4487,6 +4487,65 @@ describe('Migration V7 to V8', () => {
       expect(variables?.a).toHaveProperty('parameters.min', '2020-01-01');
     });
 
+    // Twenty-third-wave Finding 7: this normaliser only touched `type`,
+    // `min`, and `max`, leaving every other key in place. `datePickerParametersSchema`
+    // (variable.ts) is a strictObject accepting only those three keys, so a
+    // v7 DatePicker parameters record carrying a stray key from elsewhere —
+    // e.g. a RelativeDatePicker `anchor` — failed the v8 schema outright and
+    // blocked the protocol from being imported at all, unlike
+    // `normalizeRelativeDatePickerParameters`, which already stripped keys
+    // outside its own set.
+    it('removes an unsupported parameter key (e.g. a RelativeDatePicker anchor) from a DatePicker record', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'anchor_leftover',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '2020-01-01', anchor: '2020-01-01' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.anchor');
+      expect(variables?.a).toHaveProperty('parameters.min', '2020-01-01');
+    });
+
+    it('removes an arbitrary stray DatePicker parameter key', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'stray_key',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '2020-01-01', foo: 1 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.foo');
+      expect(variables?.a).toHaveProperty('parameters.min', '2020-01-01');
+    });
+
+    it('leaves a fully valid DatePicker parameters record untouched', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'valid_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'month', min: '2020-01', max: '2020-06' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters', {
+        type: 'month',
+        min: '2020-01',
+        max: '2020-06',
+      });
+    });
+
     // Tenth-wave Finding 4: the codebook step previously skipped
     // RelativeDatePicker variables entirely, so a loose v7 parameters record
     // (small-year anchor, negative or fractional offsets, stray keys)
@@ -4657,7 +4716,12 @@ describe('Migration V7 to V8', () => {
     // A record carrying keys from BOTH parameter shapes matches neither
     // strictObject member, so no inference is safe: the pre-existing
     // DatePicker reading stands rather than guessing at relative intent.
-    it('keeps the DatePicker reading for a mixed-key componentless record', () => {
+    // Twenty-third-wave Finding 7: the DatePicker normaliser now strips keys
+    // outside its own set, so the surviving relative-only `before` key is
+    // removed here too — the routing decision (DatePicker, made by the
+    // caller's `isRelativeDatePickerShape` check before this normaliser ever
+    // runs) is unaffected by that later strip.
+    it('keeps the DatePicker reading for a mixed-key componentless record, then strips the incompatible key', () => {
       const migratedRaw = migrateVariables({
         a: {
           name: 'mixed_shape',
@@ -4665,13 +4729,11 @@ describe('Migration V7 to V8', () => {
           parameters: { type: 'year', min: '2020-05-03', before: -2 },
         },
       });
-      const variables = (
-        migratedRaw as unknown as {
-          codebook: { ego: { variables: Record<string, unknown> } };
-        }
-      ).codebook.ego.variables;
-      expect(variables.a).toHaveProperty('parameters.min', '2020');
-      expect(variables.a).toHaveProperty('parameters.before', -2);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.min', '2020');
+      expect(variables?.a).not.toHaveProperty('parameters.before');
     });
 
     // Audit sweep: this step's componentless inference must agree with the

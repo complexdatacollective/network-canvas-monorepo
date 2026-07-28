@@ -109,6 +109,10 @@ const independentLocalRepairs = (
 const DATE_RESOLUTION_RANK = { year: 0, month: 1, full: 2 } as const;
 const DATE_RESOLUTIONS_FINEST_FIRST = ['full', 'month', 'year'] as const;
 
+// The only keys `datePickerParametersSchema` (variable.ts) permits — anything
+// else fails that strictObject outright.
+const DATE_PICKER_KEYS = new Set(['type', 'min', 'max']);
+
 /**
  * Normalises a DatePicker `parameters` record's `min`/`max` in place: real
  * dates written exactly at the picker's resolution with `min <= max`.
@@ -116,16 +120,30 @@ const DATE_RESOLUTIONS_FINEST_FIRST = ['full', 'month', 'year'] as const;
  * authored intent); anything else invalid is stripped. Used by the
  * codebook-variable DatePicker step below.
  *
- * `type` itself is normalised first: `datePickerParametersSchema` only
- * accepts 'full'/'month'/'year' (or omitted, defaulting to 'full'). A legacy
- * value outside that set — e.g. a 'week' resolution a later app version
- * once offered — is treated as 'full' for the bounds logic below, but the
- * stray key must be deleted rather than left in place, or the post-migration
+ * Twenty-third-wave Finding 7: keys outside `DATE_PICKER_KEYS` are deleted
+ * first, mirroring `normalizeRelativeDatePickerParameters` below. A v7
+ * DatePicker record could carry a stray key from elsewhere in the codebook —
+ * e.g. a RelativeDatePicker `anchor` left over from a component switch — and
+ * `datePickerParametersSchema` is a strictObject, so one unrecognised key
+ * failed the whole object and blocked the protocol from being imported at
+ * all, even though `min`/`max` were otherwise valid. This runs after the
+ * caller has already chosen this normaliser over the relative one (the
+ * componentless-inference routing above), so stripping a relative-only key
+ * here cannot change which normaliser a mixed-key record was routed to.
+ *
+ * `type` itself is normalised next: `datePickerParametersSchema` only accepts
+ * 'full'/'month'/'year' (or omitted, defaulting to 'full'). A legacy value
+ * outside that set — e.g. a 'week' resolution a later app version once
+ * offered — is treated as 'full' for the bounds logic below, but the stray
+ * value must be deleted rather than left in place, or the post-migration
  * document fails the enum check the bounds logic already assumed passed.
  */
 const normalizeDatePickerParameters = (
   parameters: Record<string, unknown>,
 ): void => {
+  for (const key of Object.keys(parameters)) {
+    if (!DATE_PICKER_KEYS.has(key)) delete parameters[key];
+  }
   if (
     parameters.type !== undefined &&
     parameters.type !== 'month' &&
@@ -339,7 +357,7 @@ const migrationV7toV8 = createMigration({
 - A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean variable to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
-- DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed.
+- DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed. Any parameter key other than \`type\`, \`min\`, or \`max\` — e.g. a RelativeDatePicker \`anchor\` left over from a component switch — is also removed.
 - A datetime codebook variable's RelativeDatePicker \`anchor\` must be a real date using a year of 0100 or later — the interview's date arithmetic (\`Date.UTC\`) maps a two-digit year (0-99) onto 1900-1999, so such an anchor already produced a wrong window, while years 0100-0999 round-trip correctly — and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
 `,
   migrate: (doc, deps) => {
