@@ -69,6 +69,19 @@ function todayYmd(): Ymd {
   };
 }
 
+function compareYmd(a: Ymd, b: Ymd): number {
+  if (a.year !== b.year) return a.year - b.year;
+  if (a.month !== b.month) return a.month - b.month;
+  return a.day - b.day;
+}
+
+function formatYmd(ymd: Ymd): string {
+  const year = ymd.year.toString().padStart(4, '0');
+  const month = ymd.month.toString().padStart(2, '0');
+  const day = ymd.day.toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 const DEFAULT_MIN: Ymd = { year: 1920, month: 1, day: 1 };
 
 const months: SelectOption[] = [
@@ -117,14 +130,32 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     ...rest
   } = props;
 
-  const minYmd = useMemo(
-    () => (min ? (parseYmd(min) ?? DEFAULT_MIN) : DEFAULT_MIN),
-    [min],
-  );
-  const maxYmd = useMemo(
-    () => (max ? (parseYmd(max) ?? todayYmd()) : todayYmd()),
-    [max],
-  );
+  // Twenty-third-wave Findings 4 and 5: an authored bound outside the default
+  // 1920-to-today window must not collapse the resolvable range to nothing.
+  // An absent (or unparseable) min falls back to the default lower bound
+  // UNLESS the authored max is earlier than that default, in which case the
+  // lower bound extends down to meet it; an absent max falls back to today
+  // UNLESS the authored min is later than today, in which case the upper
+  // bound extends up to meet it. When both bounds are authored, both are
+  // honoured exactly. Every consumer of the range — the year loop, the month
+  // filtering at boundary years, and the full-resolution input's min/max
+  // attributes — reads from this single derivation so they cannot disagree.
+  const { minYmd, maxYmd } = useMemo(() => {
+    const authoredMin = min ? parseYmd(min) : null;
+    const authoredMax = max ? parseYmd(max) : null;
+    const today = todayYmd();
+
+    const resolvedMin =
+      authoredMin ??
+      (authoredMax && compareYmd(authoredMax, DEFAULT_MIN) < 0
+        ? authoredMax
+        : DEFAULT_MIN);
+    const resolvedMax =
+      authoredMax ??
+      (authoredMin && compareYmd(authoredMin, today) > 0 ? authoredMin : today);
+
+    return { minYmd: resolvedMin, maxYmd: resolvedMax };
+  }, [min, max]);
 
   const initialMonthParts = getMonthParts(value);
   const [selectedYear, setSelectedYear] = useState<string | undefined>(
@@ -319,8 +350,8 @@ export default function DatePickerField(props: DatePickerFieldProps) {
       id={id}
       type="date"
       size={size}
-      min={min}
-      max={max}
+      min={formatYmd(minYmd)}
+      max={formatYmd(maxYmd)}
       value={value}
       onChange={(v) => onChange?.(v === undefined || v === '' ? undefined : v)}
       name={name}

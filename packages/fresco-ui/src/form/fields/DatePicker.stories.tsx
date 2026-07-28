@@ -321,6 +321,66 @@ export const WithConstraints: Story = {
   },
 };
 
+export const OutOfDefaultWindowBound: Story = {
+  name: 'Bound Outside the Default Window',
+  render: () => {
+    const [belowDefault, setBelowDefault] = useState('');
+    const [aboveToday, setAboveToday] = useState('');
+
+    return (
+      <div className="flex w-full max-w-2xl flex-col gap-6">
+        <div>
+          <Heading level="h3" margin="none" className="mb-2 text-sm">
+            Year (max=&quot;1800&quot;, no min)
+          </Heading>
+          <DatePickerField
+            type="year"
+            max="1800"
+            value={belowDefault}
+            onChange={(v) => setBelowDefault(v ?? '')}
+            name="below-default-year"
+          />
+          <Paragraph
+            margin="none"
+            className="mt-1 text-xs text-current opacity-70"
+          >
+            An authored max below the default 1920 lower bound extends the range
+            down to meet it, instead of producing an empty dropdown. Selected:{' '}
+            {belowDefault || 'none'}
+          </Paragraph>
+        </div>
+        <div>
+          <Heading level="h3" margin="none" className="mb-2 text-sm">
+            Year (min=&quot;3000&quot;, no max)
+          </Heading>
+          <DatePickerField
+            type="year"
+            min="3000"
+            value={aboveToday}
+            onChange={(v) => setAboveToday(v ?? '')}
+            name="above-today-year"
+          />
+          <Paragraph
+            margin="none"
+            className="mt-1 text-xs text-current opacity-70"
+          >
+            An authored min above today&apos;s default upper bound extends the
+            range up to meet it. Selected: {aboveToday || 'none'}
+          </Paragraph>
+        </div>
+      </div>
+    );
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'When only one bound is authored and it falls outside the default 1920-to-today window, the range extends to include it rather than collapsing to an empty, unanswerable control.',
+      },
+    },
+  },
+};
+
 export const AllStates: Story = {
   name: 'All States Comparison',
   render: () => (

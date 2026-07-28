@@ -15,6 +15,16 @@ function optionValues(select: HTMLElement): string[] {
     .filter((value) => value !== '');
 }
 
+// Mirrors the component's local-time (not UTC) "today" formatting so
+// assertions can't drift from `toISOString()`'s UTC date near midnight.
+function todayFormatted(): string {
+  const now = new Date();
+  const year = now.getFullYear().toString().padStart(4, '0');
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  const day = now.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 describe('DatePickerField month mode', () => {
   it('clears its controlled month and year selections when the value clears', async () => {
     const { rerender } = render(
@@ -356,6 +366,104 @@ describe('DatePickerField year mode — partial YYYY bounds', () => {
     expect(years[years.length - 1]).toBe('2010');
     expect(years).not.toContain('2009');
     expect(years).not.toContain('2021');
+  });
+});
+
+describe('DatePickerField — authored bound outside the default window (Twenty-third-wave Findings 4 and 5)', () => {
+  it('keeps the year range non-empty when only max is authored below the default minimum', () => {
+    render(<DatePickerField type="year" name="date" max="1800" />);
+    const yearSelect = screen.getByRole('combobox');
+    expect(optionValues(yearSelect)).toEqual(['1800']);
+  });
+
+  it('keeps the year range non-empty when only min is authored above today', () => {
+    render(<DatePickerField type="year" name="date" min="3000" />);
+    const yearSelect = screen.getByRole('combobox');
+    expect(optionValues(yearSelect)).toEqual(['3000']);
+  });
+
+  // Guards against an over-eager fix that extends the default toward an
+  // authored bound unconditionally, instead of only when the default would
+  // otherwise leave the range empty.
+  it('does not extend the lower bound when an authored max alone is already above the default minimum', () => {
+    render(<DatePickerField type="year" name="date" max="2000" />);
+    const yearSelect = screen.getByRole('combobox');
+    const years = optionValues(yearSelect);
+    expect(years[0]).toBe('2000');
+    expect(years[years.length - 1]).toBe('1920');
+  });
+
+  it('does not extend the upper bound when an authored min alone is already before today', () => {
+    render(<DatePickerField type="year" name="date" min="2000" />);
+    const yearSelect = screen.getByRole('combobox');
+    const years = optionValues(yearSelect);
+    expect(years[0]).toBe(new Date().getFullYear().toString());
+    expect(years[years.length - 1]).toBe('2000');
+  });
+
+  it('keeps the month range non-empty when only max is authored below the default minimum', () => {
+    render(<DatePickerField type="month" name="date" max="1800-06" />);
+    const [yearSelect, monthSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect || !monthSelect) throw new Error('selects not rendered');
+    expect(optionValues(yearSelect)).toEqual(['1800']);
+
+    fireEvent.change(yearSelect, { target: { value: '1800' } });
+    expect(optionValues(monthSelect)).toEqual(['06']);
+  });
+
+  it('keeps the month range non-empty when only min is authored above today', () => {
+    render(<DatePickerField type="month" name="date" min="3000-03" />);
+    const [yearSelect, monthSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect || !monthSelect) throw new Error('selects not rendered');
+    expect(optionValues(yearSelect)).toEqual(['3000']);
+
+    fireEvent.change(yearSelect, { target: { value: '3000' } });
+    expect(optionValues(monthSelect)).toEqual(['03']);
+  });
+
+  it('spans exactly 1920 to today when no bounds are authored (regression guard)', () => {
+    render(<DatePickerField type="year" name="date" />);
+    const yearSelect = screen.getByRole('combobox');
+    const years = optionValues(yearSelect);
+    const currentYear = new Date().getFullYear();
+    expect(years[0]).toBe(currentYear.toString());
+    expect(years[years.length - 1]).toBe('1920');
+    expect(years).toHaveLength(currentYear - 1920 + 1);
+  });
+
+  it('extends the full-resolution input min/max to an out-of-window authored bound', () => {
+    const { container } = render(
+      <DatePickerField type="full" name="date" max="1800-01-01" />,
+    );
+    const input = container.querySelector('input[type="date"]');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('date input not rendered');
+    }
+    expect(input).toHaveAttribute('min', '1800-01-01');
+    expect(input).toHaveAttribute('max', '1800-01-01');
+  });
+
+  it('defaults the full-resolution input min/max to 1920..today when no bounds are authored (regression guard)', () => {
+    const { container } = render(<DatePickerField type="full" name="date" />);
+    const input = container.querySelector('input[type="date"]');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('date input not rendered');
+    }
+    expect(input).toHaveAttribute('min', '1920-01-01');
+    expect(input).toHaveAttribute('max', todayFormatted());
+  });
+
+  it('honours both bounds exactly, unchanged, when both are authored outside the default window', () => {
+    render(<DatePickerField type="year" name="date" min="1800" max="1805" />);
+    const yearSelect = screen.getByRole('combobox');
+    expect(optionValues(yearSelect)).toEqual([
+      '1805',
+      '1804',
+      '1803',
+      '1802',
+      '1801',
+      '1800',
+    ]);
   });
 });
 
