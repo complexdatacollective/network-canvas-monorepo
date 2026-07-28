@@ -38,7 +38,11 @@ import {
   type EntityConstraints,
 } from './types';
 import { valueKey } from './uniqueRegistry';
-import { distinctOptionValues, valueSpaceSize } from './valueSpace';
+import {
+  distinctOptionValues,
+  MAX_TEXT_DRAW_LENGTH,
+  valueSpaceSize,
+} from './valueSpace';
 
 type EntityScope = {
   entity: 'ego' | 'node' | 'edge';
@@ -357,6 +361,28 @@ function analyseEntity(
         [id],
         ['minLength', 'maxLength'],
         `minLength ${constraints.minLength} exceeds maxLength ${constraints.maxLength}`,
+      );
+    }
+
+    // The schema bounds neither length rule, so an imported protocol can ask
+    // for a value no run can build: a floor of a billion characters reaches
+    // `padEnd` and throws, and floors well short of that allocate hundreds of
+    // megabytes into the tab running the preview.
+    //
+    // Refused here rather than clamped at the draw. Clamping would emit a value
+    // shorter than its own `minLength` — data the interview's own validator
+    // rejects, which is the defect class this pass exists to remove — so the
+    // protocol is turned away before a seed is consulted instead. A `maxLength`
+    // above the cap needs no refusal: `textDrawLength` draws shorter, which
+    // satisfies it, and the value space is counted at that same length.
+    if (
+      constraints.minLength !== undefined &&
+      constraints.minLength > MAX_TEXT_DRAW_LENGTH
+    ) {
+      report(
+        [id],
+        ['minLength'],
+        `minLength ${constraints.minLength} exceeds the ${MAX_TEXT_DRAW_LENGTH} characters a generated value can hold`,
       );
     }
 

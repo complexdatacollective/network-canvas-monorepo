@@ -41,6 +41,33 @@ export const SCALAR_DOMAIN = { minValue: 0, maxValue: 1 };
 const DEFAULT_TEXT_LENGTH = 12;
 
 /**
+ * The longest text value generation will materialise, and the ceiling every
+ * text draw is taken at.
+ *
+ * The schema bounds neither length rule — `minLength` and `maxLength` are each
+ * a plain `z.number().int()` — so an imported protocol can declare a length no
+ * run can produce. `minLength: 1_000_000_000` reaches `padEnd` and throws
+ * `RangeError: Invalid string length`, and lengths well short of that allocate
+ * hundreds of megabytes into the tab running the preview.
+ *
+ * Where the ceiling comes from is not the field, which imposes none: `Text` and
+ * `TextArea` render a plain input and textarea, and fresco-ui's `maxLength`
+ * validator only enforces what the protocol itself declares. It is the export
+ * the data has to survive. A spreadsheet cell holds 32,767 characters, so a
+ * longer value cannot round-trip through the CSV a researcher opens — it is a
+ * length the pipeline could not deliver even if it were drawn. That is also
+ * orders of magnitude past anything a participant types into a single answer,
+ * and past the {@link DEFAULT_TEXT_LENGTH} a draw falls back to, so no protocol
+ * describing collectable data is affected by it.
+ *
+ * A `maxLength` above this is honoured by drawing shorter, which still
+ * satisfies it. A `minLength` above it is satisfied by no value this generator
+ * will build, so `analyseFeasibility` refuses the protocol rather than emitting
+ * a value shorter than its own rule.
+ */
+export const MAX_TEXT_DRAW_LENGTH = 32_767;
+
+/**
  * The range a number draw falls back to when the rules leave it open, as a
  * realistic span of ages.
  */
@@ -88,11 +115,22 @@ const GRID_TOLERANCE = 1e-6;
  * rather than spreading draws across `[minLength, maxLength]`, so counting the
  * whole range would let a `unique` variable pass feasibility and then collide;
  * both the generator and the count read this instead.
+ *
+ * Held at {@link MAX_TEXT_DRAW_LENGTH}. A ceiling above the cap is met by
+ * drawing shorter, a shorter value satisfying `maxLength` perfectly well, and
+ * the count reads the clamped length through this same function — so the space
+ * it describes stays the space the draw walks, which is the whole reason both
+ * read one function. A floor above the cap is the case no shorter value
+ * satisfies: `analyseFeasibility` refuses it before a seed is consulted, and
+ * `generateConstrained` throws rather than allocating if one reaches it anyway.
  */
 export function textDrawLength(constraints: VariableConstraints): number {
-  return Math.max(
-    constraints.maxLength ?? DEFAULT_TEXT_LENGTH,
-    constraints.minLength ?? 0,
+  return Math.min(
+    MAX_TEXT_DRAW_LENGTH,
+    Math.max(
+      constraints.maxLength ?? DEFAULT_TEXT_LENGTH,
+      constraints.minLength ?? 0,
+    ),
   );
 }
 

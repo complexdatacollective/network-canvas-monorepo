@@ -6,7 +6,12 @@ import { ValueGenerator } from '../../../ValueGenerator';
 import { buildVariableConstraints } from '../buildConstraints';
 import type { ConstrainedVariable } from '../types';
 import { valueKey } from '../uniqueRegistry';
-import { selectionSizeRange, valueSpaceSize } from '../valueSpace';
+import {
+  MAX_TEXT_DRAW_LENGTH,
+  selectionSizeRange,
+  textDrawLength,
+  valueSpaceSize,
+} from '../valueSpace';
 
 const TODAY = '2026-07-27';
 
@@ -617,6 +622,75 @@ describe('valueSpaceSize', () => {
     // Every draw is three characters long, so the space is 36 ** 3 rather than
     // the 36 + 36 ** 2 + 36 ** 3 the whole length range would offer.
     expect(valueSpaceSize(variable, 1_000_000)).toBe(36 ** 3);
+  });
+
+  /**
+   * The schema puts no ceiling on either length rule, so a `maxLength` an
+   * imported protocol declares can be far past anything a run should build.
+   * The draw is clamped rather than refused — a shorter value satisfies a
+   * ceiling — which is only sound while the count is taken at the same clamped
+   * length, so these hold the two together.
+   */
+  describe('a text length past the cap', () => {
+    const overCap = make({
+      id: 'v',
+      name: 'V',
+      type: 'text',
+      validation: { maxLength: 1_000_000_000, unique: true },
+    });
+
+    it('clamps the draw length a ceiling asks for', () => {
+      expect(textDrawLength(overCap.constraints)).toBe(MAX_TEXT_DRAW_LENGTH);
+    });
+
+    it('leaves a ceiling at the cap alone', () => {
+      const atCap = make({
+        id: 'v',
+        name: 'V',
+        type: 'text',
+        validation: { minLength: MAX_TEXT_DRAW_LENGTH },
+      });
+
+      expect(textDrawLength(atCap.constraints)).toBe(MAX_TEXT_DRAW_LENGTH);
+    });
+
+    it('draws at exactly the length the count is taken at', () => {
+      const generator = new ValueGenerator(1, TODAY);
+
+      for (const seq of [0, 1, 41]) {
+        expect(
+          String(
+            generator.generateConstrained(overCap, 0, { distinctSeq: seq }),
+          ).length,
+        ).toBe(textDrawLength(overCap.constraints));
+      }
+
+      // The free draw is bounded by the same rules from the other side: a name
+      // padded to no floor stays short of the ceiling either way.
+      expect(
+        String(generator.generateConstrained(overCap, 0)).length,
+      ).toBeLessThanOrEqual(MAX_TEXT_DRAW_LENGTH);
+    });
+
+    it('keeps unique text feasible at the clamped length', () => {
+      // 36 ** 32767 overflows to Infinity, which reads as unbounded — and it
+      // genuinely is, the clamped length still offering more distinct values
+      // than any run can spend. What matters is that the count and the draw
+      // reach that verdict through one length: draws at the cap stay distinct,
+      // so nothing exhausts a space feasibility called wide enough.
+      expect(valueSpaceSize(overCap, 1_000_000)).toBe('unbounded');
+
+      const generator = new ValueGenerator(1, TODAY);
+      const drawn = new Set<string>();
+      for (let seq = 0; seq < 40; seq++) {
+        drawn.add(
+          String(
+            generator.generateConstrained(overCap, 0, { distinctSeq: seq }),
+          ),
+        );
+      }
+      expect(drawn.size).toBe(40);
+    });
   });
 
   it('counts the rounding grid a scalar draw lands on', () => {

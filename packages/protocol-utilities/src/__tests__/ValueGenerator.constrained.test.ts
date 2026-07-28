@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { buildVariableConstraints } from '../generateNetwork/constraints/buildConstraints';
 import type { ConstrainedVariable } from '../generateNetwork/constraints/types';
 import { valueKey } from '../generateNetwork/constraints/uniqueRegistry';
-import { valueSpaceSize } from '../generateNetwork/constraints/valueSpace';
+import {
+  MAX_TEXT_DRAW_LENGTH,
+  valueSpaceSize,
+} from '../generateNetwork/constraints/valueSpace';
 import type { VariableEntry } from '../types';
 import { ValueGenerator } from '../ValueGenerator';
 
@@ -71,6 +74,43 @@ describe('generateConstrained', () => {
     for (let index = 0; index < 25; index++) {
       expect(String(gen.generateConstrained(variable, index))).toHaveLength(24);
     }
+  });
+
+  it('generates a text length just under the cap', () => {
+    const gen = new ValueGenerator(1);
+    const length = MAX_TEXT_DRAW_LENGTH - 1;
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'text',
+      validation: { minLength: length, maxLength: length },
+    });
+
+    expect(String(gen.generateConstrained(variable, 0))).toHaveLength(length);
+    expect(
+      String(gen.generateConstrained(variable, 0, { distinctSeq: 3 })),
+    ).toHaveLength(length);
+  });
+
+  it('throws rather than allocating a floor past the cap', () => {
+    // `analyseFeasibility` refuses such a protocol before a seed is consulted,
+    // so reaching the draw means it was generated without that pass. Throwing
+    // on the declared number is what keeps the `RangeError: Invalid string
+    // length` — and the hundreds of megabytes the floors below it allocate —
+    // off this path.
+    const gen = new ValueGenerator(1);
+    const variable = make({
+      id: 'v',
+      name: 'Bio',
+      type: 'text',
+      validation: { minLength: 1_000_000_000 },
+    });
+
+    const started = performance.now();
+    expect(() => gen.generateConstrained(variable, 0)).toThrow(
+      `"Bio" declares minLength 1000000000, beyond the ${MAX_TEXT_DRAW_LENGTH} characters a generated value can hold.`,
+    );
+    expect(performance.now() - started).toBeLessThan(1000);
   });
 
   it('respects a text maximum shorter than a generated name', () => {

@@ -19,6 +19,7 @@ import {
   decimalGrid,
   decimalGridValueAt,
   distinctOptionValues,
+  MAX_TEXT_DRAW_LENGTH,
   numberDrawBounds,
   SCALAR_DECIMAL_PLACES,
   SCALAR_DOMAIN,
@@ -186,6 +187,23 @@ export class ValueGenerator {
 
     switch (entry.type) {
       case 'text': {
+        // Belt to `analyseFeasibility`'s refusal, and the last point before a
+        // string of the declared length is allocated. `fitToLength` pads to
+        // `minLength` on both paths below, so a floor past the cap is where the
+        // hundreds of megabytes — or the `RangeError` — would come from.
+        // Reaching it means the value was generated without the feasibility
+        // pass that turns such a protocol away, so it throws rather than
+        // allocating, naming the variable the way a researcher-facing refusal
+        // does.
+        if (
+          constraints.minLength !== undefined &&
+          constraints.minLength > MAX_TEXT_DRAW_LENGTH
+        ) {
+          throw new Error(
+            `"${entry.name}" declares minLength ${constraints.minLength}, beyond the ${MAX_TEXT_DRAW_LENGTH} characters a generated value can hold.`,
+          );
+        }
+
         if (seq !== undefined) {
           return fitToLength(
             distinctText(seq, textDrawLength(constraints)),

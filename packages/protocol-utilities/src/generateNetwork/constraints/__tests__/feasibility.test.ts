@@ -7,9 +7,11 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { generateNetwork } from '../../../generateNetwork';
 import { resolveGenerationConfig } from '../../config';
 import { SyntheticDataConstraintError } from '../error';
 import { analyseFeasibility } from '../feasibility';
+import { MAX_TEXT_DRAW_LENGTH } from '../valueSpace';
 
 const config = resolveGenerationConfig({ today: '2026-07-27' });
 
@@ -1713,7 +1715,11 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
           value,
         })),
       })),
-      behaviours: { minNodes: 2, maxNodes: 2 },
+      // A floor below the ceiling, so the second prompt is one the stage can
+      // still have capacity for: prompts share `maxNodes` and spend it in
+      // order, and a prompt the ceiling leaves nothing for creates no node on
+      // any seed and fixes nothing to judge.
+      behaviours: { minNodes: 1, maxNodes: 2 },
     } as unknown as Stage;
   }
 
@@ -2158,5 +2164,178 @@ describe('SyntheticDataConstraintError', () => {
     expect(error.message).toContain('minLength 24 exceeds maxLength 10');
     expect(error.conflicts).toHaveLength(1);
     expect(error.name).toBe('SyntheticDataConstraintError');
+  });
+});
+
+/**
+ * The schema bounds neither length rule, so an imported protocol can declare a
+ * text floor no run can materialise. Refused from the declared rule alone —
+ * before a seed is consulted, and before anything builds, pads or measures a
+ * string of that length.
+ */
+describe('a text length beyond what a generated value can hold', () => {
+  const overCap = {
+    name: 'Bio',
+    type: 'text',
+    validation: { minLength: 1_000_000_000 },
+  };
+
+  it('refuses it without allocating a value of that length', () => {
+    const codebook = codebookWith({ bio: overCap });
+
+    const started = performance.now();
+    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+    const elapsed = performance.now() - started;
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['Bio']);
+    expect(conflicts[0]?.rules).toEqual(['minLength']);
+    expect(conflicts[0]?.reason).toBe(
+      `minLength 1000000000 exceeds the ${MAX_TEXT_DRAW_LENGTH} characters a generated value can hold`,
+    );
+    // A billion-character `padEnd` throws `RangeError: Invalid string length`,
+    // and the merely-huge floors below it allocate hundreds of megabytes. This
+    // pass reads the number and stops, so neither is on its path.
+    expect(elapsed).toBeLessThan(1000);
+  });
+
+  it('names the variable rather than its codebook key', () => {
+    // An Architect-authored protocol keys its variables by UUID, which names
+    // nothing the researcher reading the refusal would recognise.
+    const key = '3f2b81c6-5a4d-42e9-9a17-6c8de4b0f512';
+    const conflicts = analyseFeasibility(
+      codebookWith({ [key]: overCap }),
+      [nameGenerator],
+      config,
+    );
+
+    expect(conflicts[0]?.variableNames).toEqual(['Bio']);
+    expect(conflicts[0]?.variableIds).toEqual([key]);
+  });
+
+  it('refuses it on ego', () => {
+    const codebook = {
+      ego: { variables: { bio: overCap } },
+    } as unknown as StructuralCodebook;
+
+    const conflicts = analyseFeasibility(codebook, [egoForm], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entity).toBe('ego');
+    expect(conflicts[0]?.variableNames).toEqual(['Bio']);
+  });
+
+  it('refuses it on an edge type', () => {
+    const pedigree = {
+      id: 'stage-fp',
+      type: 'FamilyPedigree',
+      label: 'Pedigree',
+      nodeConfig: { type: 'person' },
+      edgeConfig: { type: 'kin' },
+      prompts: [],
+    } as unknown as Stage;
+
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: { name: { name: 'Name', type: 'text' } },
+        },
+      },
+      edge: {
+        kin: {
+          name: 'Kin',
+          color: 'edge-color-seq-1',
+          variables: { bio: overCap },
+        },
+      },
+    } as unknown as StructuralCodebook;
+
+    const conflicts = analyseFeasibility(codebook, [pedigree], config);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entity).toBe('edge');
+    expect(conflicts[0]?.entityTypeName).toBe('Kin');
+    expect(conflicts[0]?.variableNames).toEqual(['Bio']);
+  });
+
+  it('accepts a floor at the cap', () => {
+    const codebook = codebookWith({
+      bio: {
+        name: 'Bio',
+        type: 'text',
+        validation: { minLength: MAX_TEXT_DRAW_LENGTH },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+
+  it('accepts a ceiling above the cap, which a shorter draw satisfies', () => {
+    // Only `minLength` forces a length. A `maxLength` past the cap is met by
+    // drawing shorter, so refusing it would turn away a protocol whose data is
+    // perfectly generatable.
+    const codebook = codebookWith({
+      bio: {
+        name: 'Bio',
+        type: 'text',
+        validation: { maxLength: 1_000_000_000, unique: true },
+      },
+    });
+
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+  });
+});
+
+describe('REPRO-SCRATCH', () => {
+  it('emits a violating pair on every seed', () => {
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            age: { name: 'Age', type: 'number' },
+            retired: {
+              name: 'Retired',
+              type: 'number',
+              validation: { maxValue: 0, greaterThanVariable: 'age' },
+            },
+          },
+        },
+      },
+    } as unknown as StructuralCodebook;
+
+    const stage = {
+      id: 'stage-repro',
+      type: 'NameGenerator',
+      label: 'Name generator',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Name people',
+          additionalAttributes: [{ variable: 'age', value: true }],
+        },
+      ],
+      behaviours: { minNodes: 2, maxNodes: 2 },
+    } as unknown as Stage;
+
+    // eslint-disable-next-line no-console
+    console.log(
+      'CONFLICTS',
+      JSON.stringify(analyseFeasibility(codebook, [stage], config)),
+    );
+
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const { network } = generateNetwork({ codebook, stages: [stage], seed });
+      // eslint-disable-next-line no-console
+      console.log(
+        'SEED',
+        seed,
+        JSON.stringify(network.nodes.map((n) => n[entityAttributesProperty])),
+      );
+    }
   });
 });
