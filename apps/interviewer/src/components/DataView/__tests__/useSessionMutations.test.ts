@@ -1,6 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+
 import { useSessionMutations } from '../useSessionMutations';
 
 const markSessionsExported = vi.fn().mockResolvedValue(undefined);
@@ -135,6 +137,8 @@ describe('useSessionMutations — Save export marks exported from the save outco
 });
 
 describe('useSessionMutations — mark unfinished', () => {
+  const stages: CurrentProtocol['stages'] = [];
+
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -149,7 +153,7 @@ describe('useSessionMutations — mark unfinished', () => {
           id: 's1',
           caseId: 'case-1',
         },
-        { currentStep: 3, progress: 80 },
+        stages,
       );
     });
 
@@ -158,10 +162,7 @@ describe('useSessionMutations — mark unfinished', () => {
         title: 'Mark unfinished?',
       }),
     );
-    expect(markSessionUnfinished).toHaveBeenCalledWith('s1', {
-      currentStep: 3,
-      progress: 80,
-    });
+    expect(markSessionUnfinished).toHaveBeenCalledWith('s1', stages);
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Interview marked unfinished' }),
     );
@@ -177,7 +178,7 @@ describe('useSessionMutations — mark unfinished', () => {
           id: 's1',
           caseId: 'case-1',
         },
-        { currentStep: 3, progress: 80 },
+        stages,
       );
     });
 

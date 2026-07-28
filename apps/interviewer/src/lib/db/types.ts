@@ -51,11 +51,6 @@ export type StoredSession = {
   isSynthetic?: boolean;
 };
 
-export type SessionResumeState = {
-  currentStep: number;
-  progress: number;
-};
-
 export type SessionStatusKind = 'in-progress' | 'complete';
 
 // Stripped-down session metadata used by everything except the interview

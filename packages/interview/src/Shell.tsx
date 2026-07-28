@@ -33,6 +33,7 @@ import type {
 } from './contract/types';
 import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
+import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 import { store, type RootState } from './store/store';
 import {
   InterviewToastProvider,
@@ -347,6 +348,26 @@ const Shell = ({
     trackerRef.current = next;
   }, []);
 
+  const reviewCurrentStep = useMemo(() => {
+    if (
+      reviewMode !== true ||
+      currentStep === undefined ||
+      currentStep < payload.protocol.stages.length
+    ) {
+      return currentStep;
+    }
+
+    return getLastAvailableAuthoredStageIndex(
+      payload.protocol.stages,
+      payload.session.network,
+    );
+  }, [
+    currentStep,
+    payload.protocol.stages,
+    payload.session.network,
+    reviewMode,
+  ]);
+
   return (
     <AnalyticsProvider
       analytics={analytics}
@@ -362,7 +383,7 @@ const Shell = ({
           flags={flags}
         >
           <CurrentStepProvider
-            currentStep={currentStep}
+            currentStep={reviewCurrentStep}
             onStepChange={onStepChange}
           >
             <Interview

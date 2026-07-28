@@ -124,6 +124,29 @@ export const buildStageAvailabilityMap = (
   return availability;
 };
 
+/**
+ * Select the final authored stage on the active route for a saved network.
+ * The synthetic entry lets finish destinations bypass authored stages using
+ * the same route calculation as the live interview.
+ */
+export const getLastAvailableAuthoredStageIndex = (
+  stages: readonly RoutableStage[],
+  network: NcNetwork,
+): number => {
+  if (stages.length === 0) return 0;
+
+  const availability = buildStageAvailabilityMap(
+    [...stages, { id: '__finish__' }],
+    network,
+  );
+
+  for (let index = stages.length - 1; index >= 0; index -= 1) {
+    if (availability[index]?.kind === 'available') return index;
+  }
+
+  return 0;
+};
+
 export const getStageAvailabilityMap = createSelector(
   getStages,
   getNetwork,

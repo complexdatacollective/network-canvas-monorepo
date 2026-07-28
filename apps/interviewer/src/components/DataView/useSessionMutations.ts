@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import {
@@ -10,7 +11,7 @@ import {
   markSessionUnfinished,
   markSessionsExported,
 } from '~/lib/db/api';
-import type { SessionResumeState, StoredSessionLite } from '~/lib/db/types';
+import type { StoredSessionLite } from '~/lib/db/types';
 import {
   buildExportOptions,
   type ExportProgress,
@@ -240,7 +241,7 @@ export function useSessionMutations({
   const handleMarkUnfinished = useCallback(
     async (
       session: Pick<StoredSessionLite, 'id' | 'caseId'>,
-      resumeState: SessionResumeState,
+      stages: CurrentProtocol['stages'],
     ) => {
       if (markingUnfinishedId !== null) return;
       const confirmed = await dialog.openDialog({
@@ -257,7 +258,7 @@ export function useSessionMutations({
       if (confirmed !== true) return;
       setMarkingUnfinishedId(session.id);
       try {
-        await markSessionUnfinished(session.id, resumeState);
+        await markSessionUnfinished(session.id, stages);
         toast.add({
           title: 'Interview marked unfinished',
           description: `${session.caseId} can now be resumed.`,

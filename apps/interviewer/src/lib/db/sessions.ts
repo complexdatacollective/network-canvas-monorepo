@@ -1,5 +1,10 @@
 import { v4 as uuid } from 'uuid';
 
+import {
+  getInterviewProgress,
+  getLastAvailableAuthoredStageIndex,
+} from '@codaco/interview';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 import { db } from './db';
@@ -11,7 +16,6 @@ import {
 import type {
   SessionQueryParams,
   SessionQueryResult,
-  SessionResumeState,
   SessionStatusKind,
   StoredSession,
   StoredSessionLite,
@@ -341,17 +345,31 @@ export function markSessionFinished(id: string): Promise<void> {
 
 export function markSessionUnfinished(
   id: string,
-  resumeState: SessionResumeState,
+  stages: CurrentProtocol['stages'],
 ): Promise<void> {
   return enqueueSessionMutation(id, async () => {
-    const existing = await db.sessions.get(id);
-    if (!existing) return;
-    const now = new Date().toISOString();
-    await db.sessions.put({
-      ...existing,
-      finishedAt: null,
-      ...resumeState,
-      lastUpdatedAt: now,
+    const existingRow = await db.sessions.get(id);
+    if (!existingRow?.finishedAt) return;
+
+    const existing = await decryptSession(existingRow);
+    const currentStep = getLastAvailableAuthoredStageIndex(
+      stages,
+      existing.network,
+    );
+    const { progress } = getInterviewProgress(stages, currentStep);
+
+    await db.transaction('rw', db.sessions, async () => {
+      const latest = await db.sessions.get(id);
+      if (!latest?.finishedAt) return;
+
+      const now = new Date().toISOString();
+      await db.sessions.put({
+        ...latest,
+        finishedAt: null,
+        currentStep,
+        progress,
+        lastUpdatedAt: now,
+      });
     });
   });
 }

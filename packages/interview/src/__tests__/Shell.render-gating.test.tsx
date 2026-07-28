@@ -89,6 +89,26 @@ function ControlledShell() {
   );
 }
 
+function ControlledReviewShell() {
+  const [currentStep, setCurrentStep] = useState(
+    payload.protocol.stages.length,
+  );
+
+  return (
+    <Shell
+      payload={payload}
+      currentStep={currentStep}
+      onStepChange={setCurrentStep}
+      onSync={() => Promise.resolve()}
+      onFinish={() => Promise.resolve()}
+      onRequestAsset={() => Promise.resolve('')}
+      analytics={{ installationId: 'test', hostApp: 'test' }}
+      reviewMode
+      hideNavigation
+    />
+  );
+}
+
 function collectMountedStageIds(records: MutationRecord[], ids: Set<string>) {
   for (const record of records) {
     for (const node of record.addedNodes) {
@@ -138,5 +158,18 @@ describe('Shell render gating', () => {
       view.unmount();
       container.remove();
     }
+  });
+
+  it('opens a review saved on finish at the last available authored stage', () => {
+    const view = render(<ControlledReviewShell />);
+
+    expect(
+      view.container.querySelector('[data-stage-interface="available-stage"]'),
+    ).toBeInTheDocument();
+    expect(
+      view.container.querySelector(
+        '[data-stage-interface="unavailable-stage"]',
+      ),
+    ).not.toBeInTheDocument();
   });
 });

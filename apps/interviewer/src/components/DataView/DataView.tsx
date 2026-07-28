@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import Button from '@codaco/fresco-ui/Button';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { getInterviewProgress } from '@codaco/interview';
-import type { ProtocolWithCounts, SessionResumeState } from '~/lib/db/types';
+import type { ProtocolWithCounts } from '~/lib/db/types';
 
 import { DataViewToolbar } from './DataViewToolbar';
 import { useDataViewColumns } from './useDataViewColumns';
@@ -70,22 +70,20 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   // protocol hash, for the progress column's "step X of Y" label. Derived via
   // getInterviewProgress so the host never hard-codes the +1 for the finish
   // stage.
-  const { protocolTotalSteps, protocolResumeStates } = useMemo(() => {
+  const { protocolTotalSteps, protocolStages } = useMemo(() => {
     const totalSteps = new Map<string, number>();
-    const resumeStates = new Map<string, SessionResumeState>();
+    const stagesByHash = new Map<
+      string,
+      ProtocolWithCounts['protocol']['stages']
+    >();
     for (const protocol of protocols) {
       const stages = protocol.protocol.stages ?? [];
-      const currentStep = Math.max(0, stages.length - 1);
-      const progress = getInterviewProgress(stages, currentStep);
-      totalSteps.set(protocol.hash, progress.totalSteps);
-      resumeStates.set(protocol.hash, {
-        currentStep,
-        progress: progress.progress,
-      });
+      totalSteps.set(protocol.hash, getInterviewProgress(stages, 0).totalSteps);
+      stagesByHash.set(protocol.hash, stages);
     }
     return {
       protocolTotalSteps: totalSteps,
-      protocolResumeStates: resumeStates,
+      protocolStages: stagesByHash,
     };
   }, [protocols]);
 
@@ -162,11 +160,10 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
     someOnPageSelected,
     markingUnfinishedId,
     onMarkUnfinished: (session) => {
-      const resumeState = protocolResumeStates.get(session.protocolHash) ?? {
-        currentStep: Math.max(0, session.currentStep - 1),
-        progress: 0,
-      };
-      void handleMarkUnfinished(session, resumeState);
+      void handleMarkUnfinished(
+        session,
+        protocolStages.get(session.protocolHash) ?? [],
+      );
     },
   });
 
