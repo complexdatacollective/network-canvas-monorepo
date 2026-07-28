@@ -22,6 +22,16 @@ const nameGenerator = {
   behaviours: { maxNodes: 8 },
 } as unknown as Stage;
 
+// Ego's attributes stay empty until an ego-subject stage writes them, so a
+// codebook's ego variables are only analysed when the stage list has one.
+const egoForm = {
+  id: 'stage-ef',
+  type: 'EgoForm',
+  label: 'About you',
+  form: { fields: [{ variable: 'name', prompt: 'Your name' }] },
+  introductionPanel: { title: 'About you', text: 'Tell us about yourself.' },
+} as unknown as Stage;
+
 function codebookWith(variables: Record<string, unknown>): StructuralCodebook {
   return {
     node: {
@@ -970,7 +980,7 @@ describe('analyseFeasibility', () => {
       },
     } as unknown as StructuralCodebook;
 
-    const conflicts = analyseFeasibility(codebook, [], config);
+    const conflicts = analyseFeasibility(codebook, [egoForm], config);
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.entity).toBe('ego');
@@ -1674,16 +1684,17 @@ describe('a value one prompt fixes against its own rules', () => {
 });
 
 /**
- * A codebook may declare types the stage list never touches. Nothing draws a
- * value for such a type's variables and nothing submits one, so a rule on them
+ * A codebook may declare scopes the stage list never touches. Nothing draws a
+ * value for such a scope's variables and nothing submits one, so a rule on them
  * is never applied — and refusing the whole protocol for it blocks interviews
  * the rules it declares are perfectly satisfiable for.
  *
- * The three zeroes this pass sees are not the same zero, so these cover each in
- * turn: a node type nothing creates, an edge type whose edges exist while a
- * variable of theirs is never filled, and ego, whose count is structural.
+ * The zeroes this pass sees are not the same zero, so these cover each in turn:
+ * a node type nothing creates, an edge type whose edges exist while a variable
+ * of theirs is never filled, and ego, which the network always carries while
+ * its attributes stay empty until an ego-subject stage writes them.
  */
-describe('a codebook type no stage names', () => {
+describe('a codebook scope no stage names', () => {
   const contradiction = {
     name: 'Code',
     type: 'text',
@@ -1795,13 +1806,74 @@ describe('a codebook type no stage names', () => {
     expect(conflicts[0]?.entityTypeName).toBe('Kin');
   });
 
-  it('keeps ego, whose count no stage decides', () => {
-    const codebook = {
-      ego: { variables: { code: contradiction } },
-      node: { person },
-    } as unknown as StructuralCodebook;
+  const egoCodebook = {
+    ego: {
+      variables: {
+        code: contradiction,
+        name: { name: 'Name', type: 'text' },
+      },
+    },
+    node: { person },
+  } as unknown as StructuralCodebook;
 
-    const conflicts = analyseFeasibility(codebook, [nameGenerator], config);
+  it('accepts a contradiction on ego when no stage writes it', () => {
+    // `generateNetwork` leaves `egoAttributes` empty for a stage list with no
+    // ego-subject stage, so no value of `code` is drawn and none submitted.
+    expect(analyseFeasibility(egoCodebook, [nameGenerator], config)).toEqual(
+      [],
+    );
+  });
+
+  it('still refuses the same contradiction once an EgoForm writes ego', () => {
+    const conflicts = analyseFeasibility(
+      egoCodebook,
+      [nameGenerator, egoForm],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entity).toBe('ego');
+    expect(conflicts[0]?.reason).toBe('minLength 10 exceeds maxLength 5');
+  });
+
+  it('keeps ego for an EgoForm whose fields name no ego variable', () => {
+    // `handleEgoForm` draws the codebook's whole ego attribute set rather than
+    // the fields its form declares, so a form still empty mid-edit — or one
+    // naming other variables — draws `code` all the same. Read from the stage
+    // rather than from the references its fields carry for exactly this case:
+    // with the scope wrongly dropped the draw does not fail, it emits a value
+    // the rule rejects.
+    const emptyForm = { ...egoForm, form: { fields: [] } } as unknown as Stage;
+
+    const conflicts = analyseFeasibility(
+      egoCodebook,
+      [nameGenerator, emptyForm],
+      config,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entity).toBe('ego');
+  });
+
+  it('keeps ego for a stage the schema gives an ego subject', () => {
+    // The other reader: the schema's own attribute tags resolve a form field's
+    // `variable` against its stage's subject, so a stage type given the ego
+    // subject the schema already defines keeps the scope analysed without this
+    // pass learning its key. No shipped stage type carries that subject yet, so
+    // one is built here by giving a stage an ego subject.
+    const egoSubjectStage = {
+      id: 'stage-es',
+      type: 'AlterForm',
+      label: 'Ego-subject stage',
+      subject: { entity: 'ego' },
+      form: { fields: [{ variable: 'code', prompt: 'Code' }] },
+    } as unknown as Stage;
+
+    const conflicts = analyseFeasibility(
+      egoCodebook,
+      [nameGenerator, egoSubjectStage],
+      config,
+    );
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.entity).toBe('ego');

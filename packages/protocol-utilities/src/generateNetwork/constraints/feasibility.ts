@@ -1,4 +1,5 @@
 import {
+  collectEntityAttributeReferences,
   collectEntityTypeReferences,
   type Stage,
   type StructuralCodebook,
@@ -146,17 +147,24 @@ function countPedigreeFixedValues(
 }
 
 /**
- * The codebook node and edge types a protocol's stages name at all — as a
- * subject, as a prompt's created edge, as a FamilyPedigree's node or edge
- * config, or as a filter rule's target.
+ * The scopes a protocol's stages name at all: the codebook node and edge types
+ * — as a subject, as a prompt's created edge, as a FamilyPedigree's node or
+ * edge config, or as a filter rule's target — and whether any stage takes ego
+ * as its subject.
  *
- * Read from the schema's own `entityTypeReference` tags rather than from a
- * hand-listed set of stage keys, as `collectBinOnlyVariables` reads the
- * attribute tags: a stage type added to the schema later names its types
- * through the same tags, so it counts as a use — and keeps its scope
- * analysed — without anything here being updated.
+ * Read from the schema's own reference tags rather than from a hand-listed set
+ * of stage keys, as `collectBinOnlyVariables` reads the attribute tags: a stage
+ * type added to the schema later names its types through the same tags, so it
+ * counts as a use — and keeps its scope analysed — without anything here being
+ * updated. Ego has no type id to tag, so it is read from the attribute half of
+ * the same walk: a form field's `variable` resolves against its stage's
+ * subject, and that subject is ego exactly for the stages the schema gives an
+ * ego subject. A filter rule's `attribute` resolves against the rule rather
+ * than the stage and so names no scope here, which is right — an `ego` rule
+ * reads a value, it does not write one.
  */
-function collectReferencedTypes(stages: Stage[]): {
+function collectReferencedScopes(stages: Stage[]): {
+  ego: boolean;
   node: ReadonlySet<string>;
   edge: ReadonlySet<string>;
 } {
@@ -167,7 +175,26 @@ function collectReferencedTypes(stages: Stage[]): {
     (hit.entity === 'edge' ? edge : node).add(hit.typeId);
   }
 
-  return { node, edge };
+  const ego = collectEntityAttributeReferences({ stages }).some(
+    (hit) => hit.subject?.entity === 'ego',
+  );
+
+  return { ego, node, edge };
+}
+
+/**
+ * Whether `generateNetwork` runs a handler that writes ego's attributes for any
+ * of these stages — the ego counterpart of `worstCaseEntityCounts`' own reading
+ * of the stage list, and the second of the two readers the ego scope needs.
+ *
+ * `handleEgoForm` is the only writer of `egoAttributes`, and it draws the
+ * codebook's whole ego attribute set rather than the fields its form declares.
+ * So this asks after the stage and not after the variables it names: an
+ * EgoForm still mid-edit, with no field added yet, draws every ego variable all
+ * the same.
+ */
+function stagesWriteEgo(stages: Stage[]): boolean {
+  return stages.some((stage) => stage.type === 'EgoForm');
 }
 
 /**
@@ -695,9 +722,31 @@ export function analyseFeasibility(
   const promptFixed = countPromptFixedValues(stages, config, externalData);
   const pedigreeFixed = countPedigreeFixedValues(stages, config);
   const promptAssignments = collectPromptFixedAssignments(stages, externalData);
-  const referenced = collectReferencedTypes(stages);
-  const scopes: EntityScope[] = [
-    {
+  const referenced = collectReferencedScopes(stages);
+  const scopes: EntityScope[] = [];
+
+  // The network always carries an ego entity, but its attributes stay empty
+  // until a stage writes them, and only an ego-subject stage does. A stage list
+  // with none draws no ego value and submits none, so a rule declared on an ego
+  // variable is never applied — and analysing ego then refuses a protocol over
+  // a variable the run never reaches, exactly as an unused node type did.
+  //
+  // Read as a whole scope rather than variable by variable, for the reason the
+  // node and edge scopes are: `handleEgoForm` draws the codebook's whole ego
+  // attribute set rather than the fields its form declares, so an ego variable
+  // no field names is drawn all the same wherever an EgoForm exists, and has no
+  // exemption to claim.
+  //
+  // Both readers have to agree ego is absent, as for a node or edge type below.
+  // The schema's tags see an ego subject through a form field's `variable`,
+  // which resolves against its stage's subject; `generateNetwork`'s own
+  // dispatch sees the stage whose handler writes ego. So neither a tag dropped
+  // from the schema nor a field list still empty mid-edit can on its own delete
+  // a refusal — which matters more here than it does for a node or edge type,
+  // because dropping this scope wrongly does not make the draw fail. It makes
+  // it emit a value the rule rejects.
+  if (referenced.ego || stagesWriteEgo(stages)) {
+    scopes.push({
       entity: 'ego',
       variables: codebook.ego?.variables,
       unvalidated: NO_UNVALIDATED_VARIABLES,
@@ -708,8 +757,8 @@ export function analyseFeasibility(
       fixedValues: NO_FIXED_VALUES,
       pedigreeFixedValues: NO_FIXED_VALUES,
       fixedAssignments: NO_FIXED_ASSIGNMENTS,
-    },
-  ];
+    });
+  }
 
   // A codebook type the stage list never names carries no entity: no stage
   // creates one, and nothing writes onto one. No value of its variables is ever
@@ -724,9 +773,7 @@ export function analyseFeasibility(
   // this pass do not all mean the same thing. An edge type's per-variable count
   // is zero for every variable no form fills, while its edges exist all the
   // same — a pedigree edge is born empty — so reading that zero as "unused"
-  // would drop a contradiction on a type the run really does create. And ego
-  // has no stage-derived count at all: it is a singleton the network always
-  // carries, so its scope is never one of these.
+  // would drop a contradiction on a type the run really does create.
   //
   // Both readers have to agree the type is absent. The schema's tags and
   // `worstCaseEntityCounts`' own field reads see the same stage list
