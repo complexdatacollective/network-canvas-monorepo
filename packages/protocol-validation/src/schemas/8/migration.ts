@@ -372,6 +372,7 @@ const migrationV7toV8 = createMigration({
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed. Any parameter key other than \`type\`, \`min\`, or \`max\` — e.g. a RelativeDatePicker \`anchor\` left over from a component switch — is also removed.
 - A datetime codebook variable's RelativeDatePicker \`anchor\` must be a real date using a year of 0100 or later — the interview's date arithmetic (\`Date.UTC\`) maps a two-digit year (0-99) onto 1900-1999, so such an anchor already produced a wrong window, while years 0100-0999 round-trip correctly — and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
+- The CategoricalBin "other" input and the NameGenerator quick-add field now honour the referenced variable's configured validation instead of a hard-coded requirement. To preserve the effective behaviour of existing protocols, every variable referenced as an \`otherVariable\` or \`quickAdd\` target is marked \`required\`.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -1524,6 +1525,64 @@ const migrationV7toV8 = createMigration({
             typedStage.behaviours = next;
           }
           return stage;
+        },
+      },
+      {
+        // The CategoricalBin other-input and the NameGenerator quick-add field
+        // previously hard-coded `required` and ignored codebook rules; both now
+        // honour the codebook. Preserve migrated protocols' effective behaviour
+        // by setting `required: true` on every referenced target (an explicit
+        // `required: false` was inert under the old hard-coded behaviour, so it
+        // is overridden too).
+        paths: [''],
+        fn: <V>(document: V) => {
+          const doc = asRecord(document);
+          if (!doc) return document;
+          const stages = Array.isArray(doc.stages) ? doc.stages : [];
+
+          const targets: { subject: unknown; variableId: string }[] = [];
+          for (const rawStage of stages) {
+            const stage = asRecord(rawStage);
+            if (!stage) continue;
+            if (
+              stage.type === 'CategoricalBin' &&
+              Array.isArray(stage.prompts)
+            ) {
+              for (const rawPrompt of stage.prompts) {
+                const otherVariable = asRecord(rawPrompt)?.otherVariable;
+                if (typeof otherVariable === 'string') {
+                  targets.push({
+                    subject: stage.subject,
+                    variableId: otherVariable,
+                  });
+                }
+              }
+            }
+            if (
+              stage.type === 'NameGeneratorQuickAdd' &&
+              typeof stage.quickAdd === 'string'
+            ) {
+              targets.push({
+                subject: stage.subject,
+                variableId: stage.quickAdd,
+              });
+            }
+          }
+
+          for (const target of targets) {
+            const variable = codebookVariable(
+              doc.codebook,
+              target.subject,
+              target.variableId,
+            );
+            if (!variable) continue;
+            const validation = asRecord(variable.validation) ?? {};
+            if (validation.required !== true) {
+              validation.required = true;
+              variable.validation = validation;
+            }
+          }
+          return document;
         },
       },
       {
