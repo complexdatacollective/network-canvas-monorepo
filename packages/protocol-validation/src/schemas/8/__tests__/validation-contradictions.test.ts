@@ -2614,3 +2614,221 @@ describe('findValidationContradictions — twentieth-wave Finding 2: hybrid grou
     ]);
   });
 });
+
+describe('findValidationContradictions — Audit sweep: an explicitly null component reads as absent', () => {
+  // Architect's field editors write a literal `null` — not `undefined` — when
+  // a componentless codebook variable is picked (`handleChangeVariable` in
+  // withFieldsHandlers), and `buildProspectiveVariables` layers that null onto
+  // the prospective variable it hands this analyser. Every componentless
+  // inference must therefore read null exactly as it reads absent.
+  const nullComponent = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({ name, type: 'datetime', component: null, parameters, validation });
+
+  const componentless = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({ name, type: 'datetime', parameters, validation });
+
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown> = {},
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation,
+  });
+
+  // `dateResolutionOf` used to score a null as "a component other than
+  // DatePicker" and fall back to full resolution, inventing a resolution
+  // mismatch against a genuine year picker.
+  it('keeps a null-component year-parameterised datetime at year resolution', () => {
+    expect(
+      findValidationContradictions({
+        a: nullComponent('a', { type: 'year' }, { sameAs: 'b' }),
+        b: datePicker('b', { type: 'year' }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('still rejects a null-component year picker sameAs a month picker', () => {
+    const result = findValidationContradictions({
+      a: nullComponent('a', { type: 'year' }, { sameAs: 'b' }),
+      b: datePicker('b', { type: 'month' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+
+  // `dateWindowInterval` used to score a null as "a component IS declared",
+  // skipping the relative-shape inference and losing the window entirely.
+  it('keeps a null-component relative-shaped datetime window', () => {
+    const result = findValidationContradictions({
+      a: nullComponent(
+        'a',
+        { anchor: '2020-01-01', before: 0, after: 0 },
+        { differentFrom: 'b' },
+      ),
+      b: componentless('b', { anchor: '2020-01-01', before: 0, after: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+  });
+
+  it('still accepts a null-component relative picker spanning the default window', () => {
+    expect(
+      findValidationContradictions({
+        a: nullComponent('a', { anchor: '2020-01-01' }, { differentFrom: 'b' }),
+        b: componentless('b', { anchor: '2020-01-01' }),
+      }),
+    ).toEqual([]);
+  });
+
+  // `isRelativeDatePickerShape` counted an explicitly null member key as
+  // PRESENT, so a record carrying one matched neither shape and lost its
+  // window. A null key is the editor's reset, i.e. absent — the mixed-shape
+  // policy only applies to keys that really are set.
+  it('treats an explicitly null member key as absent when classifying the shape', () => {
+    const result = findValidationContradictions({
+      a: componentless(
+        'a',
+        { anchor: '2020-01-01', before: 0, after: 0, min: null },
+        { differentFrom: 'b' },
+      ),
+      b: componentless('b', { anchor: '2020-01-01', before: 0, after: 0 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  // The same reading applies to the RELATIVE key set: a record whose
+  // anchor/before/after were all cleared declares no window at all. Counting
+  // those nulls as present classified it as an anchorless RelativeDatePicker
+  // and invented the DEFAULT [-180, 0] interview-date window, which is enough
+  // to make a strict comparator against a picker pinned to the interview date
+  // look infeasible.
+  it('declares no window when every relative member key is explicitly null', () => {
+    expect(
+      findValidationContradictions({
+        a: componentless(
+          'a',
+          { anchor: null, before: null, after: null },
+          { greaterThanVariable: 'b' },
+        ),
+        b: {
+          name: 'b',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { before: 0, after: 0 },
+          validation: {},
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it('still keeps the DatePicker reading when both shapes are genuinely set', () => {
+    const result = findValidationContradictions({
+      a: componentless(
+        'a',
+        {
+          anchor: '2019-01-01',
+          before: 0,
+          after: 0,
+          min: '2021-01-01',
+          max: '2021-01-01',
+        },
+        { differentFrom: 'b' },
+      ),
+      b: componentless('b', { min: '2021-01-01', max: '2021-01-01' }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+});
+
+describe('findValidationContradictions — Audit sweep: a boolean domain follows its effective component', () => {
+  const boolean = (
+    name: string,
+    component: unknown,
+    options: { label: string; value: boolean }[] | undefined,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'boolean',
+    validation,
+    ...(component === undefined ? {} : { component }),
+    ...(options === undefined ? {} : { options }),
+  });
+
+  const trueOnly = [{ label: 'Yes', value: true }];
+
+  // fresco-ui's ToggleField takes no `options` prop at all, so a Toggle is
+  // unconditionally two-valued however the codebook variable is configured.
+  // The stage-effective overlay (schema.ts) keeps the codebook `options` while
+  // overriding `component`, and Architect's composer field editor layers a
+  // draft `component` over the codebook variable's own options, so a
+  // Toggle-rendered boolean reaches this analyser carrying an options list it
+  // never renders.
+  it('does not pin a singleton-options boolean rendered by a Toggle', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', 'Toggle', trueOnly, { differentFrom: 'b' }),
+        b: boolean('b', 'Toggle', trueOnly),
+      }),
+    ).toEqual([]);
+  });
+
+  it('still pins a singleton-options boolean rendered by the Boolean choice control', () => {
+    const result = findValidationContradictions({
+      a: boolean('a', 'Boolean', trueOnly, { differentFrom: 'b' }),
+      b: boolean('b', 'Boolean', trueOnly),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  it('still pins a singleton-options boolean with no component', () => {
+    const result = findValidationContradictions({
+      a: boolean('a', undefined, trueOnly, { differentFrom: 'b' }),
+      b: boolean('b', undefined, trueOnly),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  it('still pins a singleton-options boolean whose component is null', () => {
+    const result = findValidationContradictions({
+      a: boolean('a', null, trueOnly, { differentFrom: 'b' }),
+      b: boolean('b', null, trueOnly),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  // A Toggle offers both values, so disjoint singleton options can no longer
+  // make a sameAs group unsatisfiable when the group renders as Toggles.
+  it('accepts a sameAs group of Toggle-rendered booleans with disjoint options', () => {
+    expect(
+      findValidationContradictions({
+        a: boolean('a', 'Toggle', trueOnly, { sameAs: 'b' }),
+        b: boolean('b', 'Toggle', [{ label: 'No', value: false }]),
+      }),
+    ).toEqual([]);
+  });
+
+  it('still rejects a sameAs group of Boolean-rendered booleans with disjoint options', () => {
+    const result = findValidationContradictions({
+      a: boolean('a', 'Boolean', trueOnly, { sameAs: 'b' }),
+      b: boolean('b', 'Boolean', [{ label: 'No', value: false }]),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+  });
+});

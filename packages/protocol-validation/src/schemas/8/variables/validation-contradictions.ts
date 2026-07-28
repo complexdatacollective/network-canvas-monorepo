@@ -794,11 +794,17 @@ const DATE_PICKER_PARAMETER_KEYS = ['type', 'min', 'max'] as const;
  * Nineteenth-wave Finding 1: exported so the v7→v8 migration's codebook
  * datetime step routes a componentless variable to the same normaliser this
  * reading assumes.
+ *
+ * Audit sweep: an explicitly NULL member key is absent, not present. Architect
+ * clears a parameter record by writing literal nulls rather than deleting keys
+ * (`handleChangeComponent` in withFieldsHandlers), and redux-form keeps them,
+ * so counting a null as present made e.g. `{ anchor, before, after, min: null }`
+ * match neither shape — losing the relative window the author really declared.
+ * The mixed-shape stand-off above is reserved for keys that are genuinely set.
  */
 export const isRelativeDatePickerShape = (parameters: UnknownRecord): boolean =>
-  RELATIVE_DATE_PICKER_PARAMETER_KEYS.some(
-    (key) => parameters[key] !== undefined,
-  ) && !DATE_PICKER_PARAMETER_KEYS.some((key) => parameters[key] !== undefined);
+  RELATIVE_DATE_PICKER_PARAMETER_KEYS.some((key) => parameters[key] != null) &&
+  !DATE_PICKER_PARAMETER_KEYS.some((key) => parameters[key] != null);
 
 type DateResolution = 'full' | 'month' | 'year';
 
@@ -824,11 +830,19 @@ type DateResolution = 'full' | 'month' | 'year';
  * strictObject of anchor/before/after and cannot carry `type`. Parameters that
  * are absent or carry no recognised `type` still mean 'full', and a variable
  * that DOES declare a component is unaffected.
+ *
+ * Audit sweep: "absent" has to include an explicit NULL. Picking a
+ * componentless codebook variable in Architect's field editor writes
+ * `component: null` (`handleChangeVariable` in withFieldsHandlers) and
+ * `buildProspectiveVariables` layers that null onto the variable it hands this
+ * analyser, so an `=== undefined` test scored the null as "some component
+ * other than DatePicker" and discarded a declared `{ type: 'year' }` — the
+ * very false rejection this reading exists to prevent.
  */
 const dateResolutionOf = (variable: unknown): DateResolution => {
   const record = asRecord(variable);
   if (record === null) return 'full';
-  if (record.component !== undefined && record.component !== 'DatePicker') {
+  if (record.component != null && record.component !== 'DatePicker') {
     return 'full';
   }
   const type = asRecord(record.parameters)?.type;
@@ -869,9 +883,12 @@ const dateWindowInterval = (variable: unknown): Interval | undefined => {
   if (!record) return undefined;
   const parameters = asRecord(record.parameters);
   if (!parameters) return undefined;
+  // Audit sweep: a null `component` is an absent one (see `dateResolutionOf`),
+  // and testing `=== undefined` here dropped the shape inference entirely,
+  // losing the relative window rather than merely mis-reading it.
   if (
     record.component === 'RelativeDatePicker' ||
-    (record.component === undefined && isRelativeDatePickerShape(parameters))
+    (record.component == null && isRelativeDatePickerShape(parameters))
   ) {
     return relativeDateWindowInterval(parameters);
   }
@@ -987,9 +1004,26 @@ const hasEmptyOrigin = (group: GroupIntervals): boolean =>
  * this keeps the two layers agreeing on raw (pre-schema) migration input
  * too. A NON-empty array carrying no usable boolean value is malformed
  * rather than deliberately empty, so it keeps the two-value fallback.
+ *
+ * Audit sweep: `options` only describes the domain when the EFFECTIVE
+ * component is the choice control. fresco-ui's ToggleField takes no `options`
+ * prop at all, so a Toggle is unconditionally two-valued however the variable
+ * is configured — and both layers that resolve a stage-effective variable
+ * (schema.ts's composer overlay, and Architect's `buildProspectiveVariables`)
+ * override `component` while keeping the codebook `options`, so a
+ * Toggle-rendered boolean reaches here carrying an options list it never
+ * renders. Reading it pinned that variable to a single value and made a
+ * satisfiable `differentFrom` look unsatisfiable. An ABSENT (or null, per this
+ * same sweep) component still reads `options`: with no override, the codebook
+ * default IS the rendering, and BooleanField is the choice control.
  */
 const booleanDomain = (variable: unknown): Set<boolean> => {
-  const options = asRecord(variable)?.options;
+  const record = asRecord(variable);
+  const component = record?.component;
+  if (component != null && component !== 'Boolean') {
+    return new Set([true, false]);
+  }
+  const options = record?.options;
   if (!Array.isArray(options)) return new Set([true, false]);
   if (options.length === 0) return new Set();
   const domain = new Set<boolean>();

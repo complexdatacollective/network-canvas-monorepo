@@ -4648,6 +4648,38 @@ describe('Migration V7 to V8', () => {
       expect(variables.a).toHaveProperty('parameters.before', -2);
     });
 
+    // Audit sweep: this step's componentless inference must agree with the
+    // analyser's `isRelativeDatePickerShape`, which now reads an explicitly
+    // null `component` (and a null member key) as absent. Testing `component
+    // === undefined` here left a null-component relative record on the
+    // DatePicker normaliser, so its small-year anchor and negative offset
+    // survived untouched while the analyser — running over these same raw
+    // records in the contradiction-strip step — read it as a relative window.
+    it('normalises a null-component relative-shaped parameters record', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'null_component_relative',
+          type: 'datetime',
+          component: null,
+          parameters: { anchor: '0500-01-01', before: -2 },
+        },
+        b: {
+          name: 'null_member_key_relative',
+          type: 'datetime',
+          parameters: { anchor: '0500-01-01', after: -3, min: null },
+        },
+      });
+      const variables = (
+        migratedRaw as unknown as {
+          codebook: { ego: { variables: Record<string, unknown> } };
+        }
+      ).codebook.ego.variables;
+      expect(variables.a).not.toHaveProperty('parameters.anchor');
+      expect(variables.a).not.toHaveProperty('parameters.before');
+      expect(variables.b).not.toHaveProperty('parameters.anchor');
+      expect(variables.b).not.toHaveProperty('parameters.after');
+    });
+
     // Third-wave Finding 2: isValidCalendarDate must not fall into
     // Date.UTC's two-digit-year coercion (a year 0-99 silently becoming
     // 1900-1999), which would falsely reject a real four-digit year like

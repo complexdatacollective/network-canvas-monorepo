@@ -1336,9 +1336,15 @@ const migrationV7toV8 = createMigration({
             // strictObject key sets, so both layers read such a variable the
             // same way; a record mixing keys from BOTH shapes matches neither
             // member, and keeps the pre-existing DatePicker reading.
+            //
+            // Audit sweep: an explicitly null `component` counts as absent,
+            // as it now does for the analyser. The two layers have to move
+            // together — the contradiction-strip step below runs the analyser
+            // over these same raw records, so a disagreement here would strip
+            // rules against a window this step then leaves un-normalised.
             if (
               typedVariable.component === 'RelativeDatePicker' ||
-              (typedVariable.component === undefined &&
+              (typedVariable.component == null &&
                 isRelativeDatePickerShape(parameters))
             ) {
               normalizeRelativeDatePickerParameters(parameters);
