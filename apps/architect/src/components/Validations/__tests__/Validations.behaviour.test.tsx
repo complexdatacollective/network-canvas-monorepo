@@ -407,4 +407,93 @@ describe('Validations behaviour', () => {
       screen.getByRole('button', { name: 'Add validation rule' }),
     ).toBeDisabled();
   });
+
+  // Twenty-first-wave Finding 5: when all unused validation rules are
+  // reference rules with no legal target, the options map disables every
+  // remaining option, but isFull counted only used vs total options, leaving
+  // the Add button enabled. The user clicks Add, gets a row with no selectable
+  // options, and must delete it. isFull should count only enabled unused options.
+  describe('Add affordance when unused rules are disabled', () => {
+    it('hides Add when all remaining unused rules are disabled', () => {
+      // All non-reference rules (required, minValue, maxValue, unique) are used.
+      // Only reference rules remain, and they're all disabled because b cycles
+      // with itself (no legal targets). Add button should not be rendered.
+      setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'b',
+        allVariables: {
+          b: {
+            name: 'B',
+            type: 'number',
+            validation: { lessThanVariable: 'b' },
+          },
+        },
+        existingVariables: {},
+        validation: {
+          required: true,
+          minValue: 0,
+          maxValue: 100,
+          unique: true,
+        },
+      });
+
+      expect(
+        screen.queryByRole('button', { name: 'Add new' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('keeps Add enabled when at least one unused rule is enabled', () => {
+      // No rules are used yet. Reference rules have a legal target (c), so they
+      // remain enabled. Add should be enabled.
+      setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'b',
+        allVariables: {
+          b: { name: 'B', type: 'number', validation: {} },
+          c: { name: 'C', type: 'number', validation: {} },
+        },
+        existingVariables: {
+          c: { name: 'C', type: 'number' },
+        },
+        validation: {},
+      });
+
+      const addButton = screen.getByRole('button', { name: 'Add new' });
+      expect(addButton).not.toBeDisabled();
+    });
+
+    it('hides Add when all rules are already used (no regression)', () => {
+      // All available rules are used. Add button should not be rendered.
+      setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'b',
+        allVariables: {
+          b: { name: 'B', type: 'number', validation: {} },
+          c: { name: 'C', type: 'number', validation: {} },
+        },
+        existingVariables: {
+          c: { name: 'C', type: 'number' },
+        },
+        validation: {
+          required: true,
+          minValue: 0,
+          maxValue: 100,
+          unique: true,
+          lessThanVariable: 'c',
+          greaterThanVariable: 'c',
+          differentFrom: 'c',
+          sameAs: 'c',
+          lessThanOrEqualToVariable: 'c',
+          greaterThanOrEqualToVariable: 'c',
+        },
+      });
+
+      expect(
+        screen.queryByRole('button', { name: 'Add new' }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

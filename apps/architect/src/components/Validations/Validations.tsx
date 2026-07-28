@@ -258,7 +258,15 @@ const Validations = ({
     );
     return hasLegalTarget ? option : { ...option, disabled: true };
   });
-  const isFull = usedOptions.length === availableOptions.length;
+  // Twenty-first-wave Finding 5: when all unused validation rules are
+  // reference rules with no legal target, the options map disables every
+  // remaining option, but isFull below still compared only the number of used
+  // rules with the total option count. Treat disabled unused options as
+  // unavailable when deciding whether another rule can be added.
+  const enabledUnusedOptions = availableOptions.filter(
+    (option) => !option.disabled && !usedOptions.includes(option.value),
+  );
+  const isFull = enabledUnusedOptions.length === 0;
   const isEditingSomething = addNew || editingKey !== null;
 
   const handleSaveExisting = (
