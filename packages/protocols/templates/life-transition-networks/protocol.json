@@ -1,0 +1,588 @@
+{
+  "name": "Life Transitions & Turning Points",
+  "description": "An example template for a narrative interview about how a personal network was reshaped by a major life change. The participant tells the story of a transition they nominate, while the interviewer builds the network alongside them on a single canvas. The finished network is then explored through a Narrative Interface.",
+  "schemaVersion": 8,
+  "lastModified": "2026-07-28T21:01:18.876Z",
+  "codebook": {
+    "ego": {
+      "variables": {
+        "participant_consent": {
+          "name": "participant_consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "options": [
+            {
+              "label": "Yes. I agree to take part.",
+              "value": true,
+              "negative": false
+            },
+            {
+              "label": "No. I do not agree to take part.",
+              "value": false,
+              "negative": true
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "transition_type": {
+          "name": "transition_type",
+          "type": "categorical",
+          "component": "CheckboxGroup",
+          "options": [
+            {
+              "label": "Started or finished education",
+              "value": "education"
+            },
+            {
+              "label": "A new job, or a change of career",
+              "value": "new_job"
+            },
+            {
+              "label": "Lost a job, or left work",
+              "value": "job_loss"
+            },
+            {
+              "label": "Moved to a new place",
+              "value": "moved"
+            },
+            {
+              "label": "Moved to another country",
+              "value": "migrated"
+            },
+            {
+              "label": "A relationship began, or ended",
+              "value": "relationship"
+            },
+            {
+              "label": "Became a parent, or a carer",
+              "value": "caring"
+            },
+            {
+              "label": "Someone close to me died",
+              "value": "bereavement"
+            },
+            {
+              "label": "An illness, injury, or diagnosis",
+              "value": "health"
+            },
+            {
+              "label": "Left care, or left home",
+              "value": "left_care"
+            },
+            {
+              "label": "Retired",
+              "value": "retirement"
+            },
+            {
+              "label": "Something else",
+              "value": "other"
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "transition_when": {
+          "name": "transition_when",
+          "type": "datetime",
+          "component": "DatePicker",
+          "parameters": {
+            "type": "month"
+          }
+        },
+        "transition_summary": {
+          "name": "transition_summary",
+          "type": "text",
+          "component": "TextArea"
+        }
+      }
+    },
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": {
+          "default": "circle"
+        },
+        "variables": {
+          "social_circle": {
+            "name": "social_circle",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              {
+                "label": "Family",
+                "value": "family"
+              },
+              {
+                "label": "My partner's family",
+                "value": "partner_family"
+              },
+              {
+                "label": "Friends",
+                "value": "friends"
+              },
+              {
+                "label": "Work or study",
+                "value": "work_study"
+              },
+              {
+                "label": "Neighborhood",
+                "value": "neighborhood"
+              },
+              {
+                "label": "Community or faith group",
+                "value": "community"
+              },
+              {
+                "label": "Services and professionals",
+                "value": "professionals"
+              },
+              {
+                "label": "Online",
+                "value": "online"
+              },
+              {
+                "label": "Somewhere else",
+                "value": "other"
+              }
+            ]
+          },
+          "knew_before": {
+            "name": "knew_before",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              {
+                "label": "Yes",
+                "value": true
+              },
+              {
+                "label": "No",
+                "value": false
+              }
+            ]
+          },
+          "arrived_with_change": {
+            "name": "arrived_with_change",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              {
+                "label": "Yes",
+                "value": true
+              },
+              {
+                "label": "No",
+                "value": false
+              }
+            ]
+          },
+          "lost_touch": {
+            "name": "lost_touch",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              {
+                "label": "Yes",
+                "value": true
+              },
+              {
+                "label": "No",
+                "value": false
+              }
+            ]
+          },
+          "helped_through": {
+            "name": "helped_through",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              {
+                "label": "Yes",
+                "value": true
+              },
+              {
+                "label": "No",
+                "value": false
+              }
+            ]
+          },
+          "made_it_harder": {
+            "name": "made_it_harder",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              {
+                "label": "Yes",
+                "value": true
+              },
+              {
+                "label": "No",
+                "value": false
+              }
+            ]
+          },
+          "relationship": {
+            "name": "relationship",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              {
+                "label": "Partner or spouse",
+                "value": "partner"
+              },
+              {
+                "label": "Parent",
+                "value": "parent"
+              },
+              {
+                "label": "Child",
+                "value": "child"
+              },
+              {
+                "label": "Sibling",
+                "value": "sibling"
+              },
+              {
+                "label": "Other family member",
+                "value": "other_family"
+              },
+              {
+                "label": "Friend",
+                "value": "friend"
+              },
+              {
+                "label": "Colleague or classmate",
+                "value": "colleague"
+              },
+              {
+                "label": "Neighbor",
+                "value": "neighbor"
+              },
+              {
+                "label": "A professional, or someone from a service",
+                "value": "professional"
+              },
+              {
+                "label": "Someone else",
+                "value": "other"
+              }
+            ]
+          },
+          "closeness_before": {
+            "name": "closeness_before",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": "Not at all close",
+                "value": 1
+              },
+              {
+                "label": "A little close",
+                "value": 2
+              },
+              {
+                "label": "Fairly close",
+                "value": 3
+              },
+              {
+                "label": "Very close",
+                "value": 4
+              },
+              {
+                "label": "Extremely close",
+                "value": 5
+              }
+            ]
+          },
+          "closeness_now": {
+            "name": "closeness_now",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": "Not at all close",
+                "value": 1
+              },
+              {
+                "label": "A little close",
+                "value": 2
+              },
+              {
+                "label": "Fairly close",
+                "value": 3
+              },
+              {
+                "label": "Very close",
+                "value": 4
+              },
+              {
+                "label": "Extremely close",
+                "value": 5
+              }
+            ]
+          },
+          "how_we_met": {
+            "name": "how_we_met",
+            "type": "text",
+            "component": "TextArea"
+          },
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          },
+          "ea198045-6a3a-44e9-86b7-a02263b9f891": {
+            "name": "name",
+            "type": "text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          }
+        }
+      }
+    },
+    "edge": {
+      "knows": {
+        "name": "Knows",
+        "color": "edge-color-seq-1"
+      },
+      "close": {
+        "name": "Close",
+        "color": "edge-color-seq-2"
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "information-researcher-notes",
+      "type": "Information",
+      "label": "Template notes (delete before fielding)",
+      "title": "Template notes",
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis is an **interviewer\\-led narrative interview**. It is not a questionnaire a participant can work through alone. In this interview, the participant tells the story of a life change while you build their network on the Network Composer stage, and you then visualize and discuss that network on the Narrative stage.\n\n**Plan how you will capture the discussion.** The Narrative stage collects nothing, and free\\-draw annotations fade rather than being saved. You might, for example, use screen\\-recording and audio\\-recording software to keep a record of what is said and drawn.\n\n### Sources\n\n- [Herz A, Peters L, Truschkat I (2015). How to do Qualitative Structural Analysis. ](https://www.qualitative-research.net/index.php/fqs/article/view/2092)[_Forum Qualitative Sozialforschung_](https://www.qualitative-research.net/index.php/fqs/article/view/2092)[ 16(1)](https://www.qualitative-research.net/index.php/fqs/article/view/2092). — the interview procedure this template reproduces.\n- [Ryan L, Mulholland J, Agoston A (2014). Talking Ties. ](https://doi.org/10.5153/sro.3404)[_Sociological Research Online_](https://doi.org/10.5153/sro.3404)[ 19(2).](https://doi.org/10.5153/sro.3404)\n- [Hollstein B, Töpfer T, Pfeffer J (2020). Collecting egocentric network data with visual tools. ](https://doi.org/10.1017/nws.2020.4)[_Network Science_](https://doi.org/10.1017/nws.2020.4)[ 8(2):223–250.](https://doi.org/10.1017/nws.2020.4)"
+        }
+      ]
+    },
+    {
+      "id": "ego-consent",
+      "type": "EgoForm",
+      "label": "Welcome and consent",
+      "introductionPanel": {
+        "title": "About this interview",
+        "text": "This is a **conversation**, not a questionnaire. We would like you to tell us about a time your life changed in an important way, and about the people who were part of that story.\n\nAs you talk, the interviewer will **create a network** of the people you mention on the screen in front of you. You can correct it at any point — if someone is missing, or in the wrong place, just say so.\n\nThe people you name are recorded only by the first name or nickname you choose. The interviewer will tell you before you start whether the session is being recorded, and what happens to that recording.\n\nYou can skip anything, pause, or stop at any time, and you do not have to give a reason. The researcher will answer any questions you have before you choose below."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "participant_consent",
+            "prompt": "Do you consent to participate in this study?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ego-transition",
+      "type": "EgoForm",
+      "label": "The change we'll be talking about",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "6f2b1c48-9d0a-4f77-9a2e-3c51d0b4a7e1",
+              "type": "ego",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
+      },
+      "interviewScript": "",
+      "introductionPanel": {
+        "title": "Tell us what happened",
+        "text": "Think of a time in the last few years when **your life changed in an important way**. It might be something you chose, or something that happened to you."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "transition_type",
+            "prompt": "What kind of change?",
+            "hint": ""
+          },
+          {
+            "variable": "transition_when",
+            "prompt": "When did it happen?",
+            "hint": "An approximate month and year is fine. This becomes the reference point for the questions about 'before' and 'since'."
+          },
+          {
+            "variable": "transition_summary",
+            "prompt": "In a few sentences, what happened?",
+            "hint": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "composer-network",
+      "type": "NetworkComposer",
+      "label": "The people in your story",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "quickAdd": "ea198045-6a3a-44e9-86b7-a02263b9f891",
+      "layoutVariable": "layout",
+      "convexHullVariable": "social_circle",
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": false
+      },
+      "nodeForm": {
+        "fields": [
+          {
+            "variable": "social_circle",
+            "component": "CheckboxGroup",
+            "label": "Where you know them from",
+            "hint": "Drawn as a shaded group on the canvas. Someone can belong to more than one."
+          },
+          {
+            "variable": "relationship",
+            "component": "CheckboxGroup",
+            "label": "How are they related to you?"
+          },
+          {
+            "variable": "knew_before",
+            "component": "Toggle",
+            "label": "Knew them before the change"
+          },
+          {
+            "variable": "arrived_with_change",
+            "component": "Toggle",
+            "label": "New since the change"
+          },
+          {
+            "variable": "helped_through",
+            "component": "Toggle",
+            "label": "Helped you through it"
+          },
+          {
+            "variable": "made_it_harder",
+            "component": "Toggle",
+            "label": "Made things harder"
+          },
+          {
+            "variable": "lost_touch",
+            "component": "Toggle",
+            "label": "Lost touch since"
+          },
+          {
+            "variable": "closeness_before",
+            "component": "LikertScale",
+            "label": "How close you were before"
+          },
+          {
+            "variable": "closeness_now",
+            "component": "LikertScale",
+            "label": "How close you are now"
+          },
+          {
+            "variable": "how_we_met",
+            "component": "TextArea",
+            "label": "How you know each other",
+            "hint": "A sentence in the participant's own words, if they give you one."
+          }
+        ]
+      },
+      "edges": [
+        {
+          "id": "composer-edge-knows",
+          "subject": {
+            "entity": "edge",
+            "type": "knows"
+          }
+        },
+        {
+          "id": "composer-edge-close",
+          "subject": {
+            "entity": "edge",
+            "type": "close"
+          }
+        }
+      ]
+    },
+    {
+      "id": "narrative-review",
+      "type": "Narrative",
+      "label": "Your network, before and since",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": false,
+        "allowRepositioning": true,
+        "freeDraw": true
+      },
+      "presets": [
+        {
+          "id": "preset-circles",
+          "label": "The circles of your life",
+          "layoutVariable": "layout",
+          "groupVariable": "social_circle"
+        },
+        {
+          "id": "preset-before-since",
+          "label": "Before and since",
+          "layoutVariable": "layout",
+          "highlight": ["knew_before", "arrived_with_change"]
+        },
+        {
+          "id": "preset-help-and-strain",
+          "label": "Who helped, and who didn't",
+          "layoutVariable": "layout",
+          "highlight": ["helped_through", "made_it_harder"]
+        },
+        {
+          "id": "preset-fell-away",
+          "label": "Who fell away",
+          "layoutVariable": "layout",
+          "groupVariable": "social_circle",
+          "edges": {
+            "display": ["knows"]
+          },
+          "highlight": ["lost_touch"]
+        },
+        {
+          "id": "preset-close-to-whom",
+          "label": "Who is close to whom",
+          "layoutVariable": "layout",
+          "edges": {
+            "display": ["close"]
+          }
+        }
+      ]
+    }
+  ]
+}
