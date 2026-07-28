@@ -6759,3 +6759,155 @@ describe('findValidationContradictions — Twenty-ninth wave: uniformly coarse s
     ]);
   });
 });
+
+describe('findValidationContradictions — Thirtieth wave Fix 1: categorical sameAs groups pin to their forced full shared selection', () => {
+  const categorical = (
+    name: string,
+    values: string[],
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'categorical',
+    options: values.map((value) => ({ label: value.toUpperCase(), value })),
+    validation,
+  });
+
+  // The reviewer's own report: `a` {red, green, blue} and `b` {green, blue,
+  // yellow} are sameAs-joined with minSelected 2 each — neither is pinned by
+  // its own rules, but the group's shared distinct-value intersection is
+  // {green, blue} (size 2) and its merged minSelected floor is 2, so the only
+  // selection every member can share is exactly the whole shared set. `c`
+  // {green, blue} with minSelected 2 is pinned to that same set by the
+  // existing single-variable cardinality rule, so `a.differentFrom = c` can
+  // never be satisfied.
+  it('rejects the reviewer repro: a group forced onto its whole shared set equals the partner pin', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['red', 'green', 'blue'], {
+        required: true,
+        minSelected: 2,
+        sameAs: 'b',
+        differentFrom: 'c',
+      }),
+      b: categorical('b', ['green', 'blue', 'yellow'], {
+        required: true,
+        minSelected: 2,
+      }),
+      c: categorical('c', ['green', 'blue'], {
+        required: true,
+        minSelected: 2,
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'a', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The mirror direction: the differentFrom declared from the own-pinned
+  // partner's side reaches the same group-derived pin.
+  it('rejects the mirror repro declared from the pinned partner', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['red', 'green', 'blue'], {
+        minSelected: 2,
+        sameAs: 'b',
+      }),
+      b: categorical('b', ['green', 'blue', 'yellow'], { minSelected: 2 }),
+      c: categorical('c', ['green', 'blue'], {
+        minSelected: 2,
+        differentFrom: 'a',
+      }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'c', rule: 'differentFrom' },
+    ]);
+  });
+
+  // The accept guard immediately outside the boundary: a shared intersection
+  // LARGER than the merged floor leaves more than one valid selection, so
+  // nothing is pinned (the group can select {green, blue} while `c` holds
+  // {green, blue, purple}'s forced whole set — they differ).
+  it('derives nothing when the shared set is larger than the merged floor', () => {
+    expect(
+      findValidationContradictions({
+        a: categorical('a', ['red', 'green', 'blue', 'purple'], {
+          minSelected: 2,
+          sameAs: 'b',
+          differentFrom: 'c',
+        }),
+        b: categorical('b', ['green', 'blue', 'purple', 'yellow'], {
+          minSelected: 2,
+        }),
+        c: categorical('c', ['green', 'blue', 'purple'], { minSelected: 3 }),
+      }),
+    ).toEqual([]);
+  });
+
+  // An EMPTY shared intersection stays with the existing group-emptiness
+  // class: `optionsDisjoint` reports it once and poisons the group, so the
+  // pinned partner's differentFrom is left unjudged rather than doubled.
+  it('reports an empty shared intersection via the existing group class only', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['red', 'green'], {
+        sameAs: 'b',
+        differentFrom: 'c',
+      }),
+      b: categorical('b', ['blue', 'yellow']),
+      c: categorical('c', ['red', 'green'], { minSelected: 2 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain('but share no option values');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  // A merged maxSelected ceiling below the floor is the group-emptiness
+  // machinery's business: the interval check reports it once, the group is
+  // poisoned, and no pin is derived from it — never a double report.
+  it('reports a ceiling-below-floor group via the existing emptiness class only', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['red', 'green', 'blue'], {
+        minSelected: 2,
+        sameAs: 'b',
+        differentFrom: 'c',
+      }),
+      b: categorical('b', ['green', 'blue', 'yellow'], { maxSelected: 1 }),
+      c: categorical('c', ['green', 'blue'], { minSelected: 2 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.message).toContain(
+      'but their rules leave no value they can share',
+    );
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
+    expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
+  });
+
+  // A member pinned by its own rules keeps the existing inheritance path in
+  // charge: the group derivation only ever runs when NO member pin exists,
+  // so a disagreeing own-pin pair still contributes nothing (that conflict
+  // is the group machinery's own).
+  it('defers to a member own-pin when one exists', () => {
+    const result = findValidationContradictions({
+      a: categorical('a', ['green', 'blue'], {
+        minSelected: 2,
+        sameAs: 'b',
+      }),
+      b: categorical('b', ['red', 'green', 'blue'], {
+        differentFrom: 'c',
+      }),
+      c: categorical('c', ['green', 'blue'], { minSelected: 2 }),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'b', rule: 'differentFrom' },
+    ]);
+  });
+});

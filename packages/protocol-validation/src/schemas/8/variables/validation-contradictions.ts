@@ -1561,6 +1561,23 @@ const booleanDomain = (
 };
 
 /**
+ * The canonical composite key for a categorical selection SET — the
+ * order-insensitive, typeof-tagged, JSON-framed encoding `pinnedValue`'s
+ * categorical arm introduced (seventeenth-wave Finding 3: JSON escapes both
+ * `KEY_SEPARATOR` and its own delimiters, so no option value can forge
+ * another set's key, keeping the encoding injective). Extracted in the
+ * thirtieth wave so `sameAsGroupDerivedPin`'s categorical arm produces
+ * byte-identical keys — the pinned-equal comparison only ever fires on exact
+ * key equality, so the encoding must never be re-derived independently.
+ */
+const categoricalSetPinKey = (values: Set<string | number>): string => {
+  const tokens = [...values]
+    .map((value) => JSON.stringify([typeof value, String(value)]))
+    .toSorted();
+  return `categorical:${JSON.stringify(tokens)}`;
+};
+
+/**
  * The single runtime value a variable's OWN rules pin it to, if any —
  * sixth-wave Finding 2's generalisation of the fifth-wave singleton-boolean
  * check to every type a `differentFrom` edge can join. `undefined` means "not
@@ -1691,19 +1708,10 @@ const pinnedValue = (
       if (!pinned) {
         return undefined;
       }
-      // Seventeenth-wave Finding 3: JSON-encode each type-tagged pair and the
-      // sorted token list, rather than joining the raw tokens on
-      // KEY_SEPARATOR. Categorical option values are unrestricted strings
-      // (`categoricalOptionsSchema`), so a value carrying the separator plus a
-      // token prefix made two genuinely different sets encode identically —
-      // e.g. {'x', 'y'} and the singleton {'x<SEP>string:y'} — and the pair was
-      // falsely reported even though their runtime arrays differ in length.
-      // JSON escapes both the separator and its own delimiters, so the
-      // encoding is injective.
-      const tokens = [...values]
-        .map((value) => JSON.stringify([typeof value, String(value)]))
-        .toSorted();
-      return `categorical:${JSON.stringify(tokens)}`;
+      // Seventeenth-wave Finding 3: the canonical JSON-framed set key —
+      // extracted to `categoricalSetPinKey` so the thirtieth wave's group-pin
+      // arm shares the exact encoding rather than re-deriving it.
+      return categoricalSetPinKey(values);
     }
     default:
       return undefined;
@@ -1791,10 +1799,23 @@ const sharedOptionValues = (
  *     collapsing to one value pins it — single-select, so that value is the
  *     only one every member can store, keyed as the genuine primitive
  *     exactly like `pinnedValue`'s ordinal arm.
- *   - categorical, text and every other type derive nothing: a categorical
- *     group pin would have to reproduce the composite-set key against the
- *     members' merged cardinality rules, and a text length-window collapse
- *     does not pin a VALUE at all.
+ *   - categorical (thirtieth wave): every member's stored selection is a
+ *     subset of the members' shared distinct-value intersection (a value not
+ *     every member offers can never be the group's shared answer), and the
+ *     group's merged `minSelected` floor — the fixed-origin interval's `min`,
+ *     the max across members, exactly the read `optionShortfall` documents —
+ *     forces at least that many selections. When the floor reaches the
+ *     intersection's size, the only selection left is the WHOLE shared set,
+ *     keyed via `categoricalSetPinKey` — `pinnedValue`'s own encoding, never
+ *     re-derived. A floor below the intersection size derives nothing (two
+ *     different selections remain), an empty intersection is the
+ *     group-emptiness machinery's (`optionsDisjoint` reports it and poisons
+ *     the group before this derivation ever runs), and a merged
+ *     `maxSelected` ceiling below the floor empties the merged interval —
+ *     also the emptiness machinery's, and additionally guarded here by
+ *     declining to pin from a group whose own merged interval is empty.
+ *   - text and every other type derive nothing: a text length-window
+ *     collapse does not pin a VALUE at all.
  */
 const sameAsGroupDerivedPin = (
   variables: UnknownRecord,
@@ -1852,6 +1873,23 @@ const sameAsGroupDerivedPin = (
     }
     const [value] = shared.values;
     return value;
+  }
+  if (type === 'categorical') {
+    const shared = sharedOptionValues(variables, members);
+    if (shared?.type !== 'categorical' || shared.values.size === 0) {
+      return undefined;
+    }
+    const intervals = intervalsOfMembers(variables, members);
+    // An empty merged cardinality window (a member's maxSelected under
+    // another's minSelected) is the group-emptiness machinery's to report;
+    // its repair strips the grouping edges, so no pin may be derived from it
+    // meanwhile. Normally unreachable — such a group is already in
+    // `unsatisfiableGroupMemberIds` and the caller skips it — but guarded
+    // here so this derivation never depends on that ordering.
+    if (hasEmptyOrigin(intervals)) return undefined;
+    const floor = intervals.get('fixed')?.min;
+    if (floor === undefined || floor < shared.values.size) return undefined;
+    return categoricalSetPinKey(shared.values);
   }
   return undefined;
 };
