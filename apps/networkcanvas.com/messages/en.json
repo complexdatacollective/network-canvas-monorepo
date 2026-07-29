@@ -273,14 +273,8 @@
     "definitions": {
       "pwa": "<dfn>Progressive Web Apps</dfn> are specially crafted websites that can be installed on your device and provide a native app-like experience. This means they have an icon you can click to open them, they have their own storage, and they work offline.",
       "protocolSchema": "Protocol Schemas are the technical specifications that define how protocol files are structured and interpreted by the apps. They ensure that protocols are compatible across different versions of the apps and provide a framework for implementing new features and interfaces.",
-      "architectClassic": {
-        "description": "The original downloadable desktop app for designing Network Canvas protocols. It remains available for in-progress studies and is fully supported, but is in maintenance mode and will not receive new features.",
-        "download": "Download it <link>here</link>."
-      },
-      "interviewerClassic": {
-        "description": "The original downloadable desktop and tablet app for collecting interview data. It remains available for in-progress studies and is fully supported, but is in maintenance mode and will not receive new features.",
-        "download": "Download it <link>here</link>."
-      }
+      "architectClassic": "The original downloadable desktop app for designing Network Canvas protocols. It remains available for in-progress studies and is fully supported, but is in maintenance mode and will not receive new features. Download it <link>here</link>.",
+      "interviewerClassic": "The original downloadable desktop and tablet app for collecting interview data. It remains available for in-progress studies and is fully supported, but is in maintenance mode and will not receive new features. Download it <link>here</link>."
     },
     "common": {
       "documentation": "Documentation"

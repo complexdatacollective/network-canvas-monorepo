@@ -70,7 +70,7 @@ describe('Definition', () => {
     );
   });
 
-  it('opens when pressed without receiving focus', async () => {
+  it('does not open when pressed without receiving focus', async () => {
     render(
       <Definition definition="A collection of people and relationships.">
         network
@@ -82,6 +82,67 @@ describe('Definition', () => {
     fireEvent.click(term);
 
     expect(term).not.toHaveFocus();
-    await waitFor(() => expect(term).toHaveAttribute('data-popup-open'));
+    expect(term).not.toHaveAttribute('data-popup-open');
+  });
+
+  it('shows linked definitions on focus in an accessible popover', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Definition
+        interactive
+        definition={
+          <>
+            The original desktop app. Download it <a href="/get-started">here</a>.
+          </>
+        }
+      >
+        Architect Classic
+      </Definition>,
+    );
+
+    const term = screen.getByText('Architect Classic');
+
+    expect(term).not.toHaveAccessibleDescription();
+    expect(term).toHaveAttribute('tabindex', '0');
+
+    await user.tab();
+
+    expect(term).toHaveFocus();
+
+    const downloadLink = await screen.findByRole('link', { name: 'here' });
+    expect(downloadLink).toHaveAttribute('href', '/get-started');
+    expect(downloadLink).not.toHaveAttribute('tabindex', '-1');
+    expect(downloadLink.closest('[aria-hidden="true"]')).toBeNull();
+
+    await user.tab();
+
+    expect(downloadLink).toHaveFocus();
+  });
+
+  it('shows linked definitions on hover', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Definition
+        interactive
+        definition={
+          <>
+            The original desktop app. Download it <a href="/get-started">here</a>.
+          </>
+        }
+      >
+        Architect Classic
+      </Definition>,
+    );
+
+    const term = screen.getByText('Architect Classic');
+
+    await user.hover(term);
+
+    expect(await screen.findByRole('link', { name: 'here' })).toHaveAttribute(
+      'href',
+      '/get-started',
+    );
   });
 });

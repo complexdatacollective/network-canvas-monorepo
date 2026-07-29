@@ -273,14 +273,8 @@
     "definitions": {
       "pwa": "<dfn>Las aplicaciones web progresivas</dfn> son sitios web diseñados para instalarse en un dispositivo y ofrecer una experiencia similar a la de una aplicación nativa. Puede abrirlas desde un icono propio, cuentan con su propio almacenamiento y funcionan sin conexión.",
       "protocolSchema": "Los esquemas de protocolo son las especificaciones técnicas que definen cómo se estructuran los archivos de protocolo y cómo los interpretan las aplicaciones. Garantizan la compatibilidad de los protocolos entre distintas versiones de las aplicaciones y proporcionan un marco para implementar nuevas funciones e interfaces.",
-      "architectClassic": {
-        "description": "La aplicación de escritorio descargable original para diseñar protocolos de Network Canvas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas.",
-        "download": "Descárguela <link>aquí</link>."
-      },
-      "interviewerClassic": {
-        "description": "La aplicación de escritorio y tableta descargable original para recopilar datos de entrevistas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas.",
-        "download": "Descárguela <link>aquí</link>."
-      }
+      "architectClassic": "La aplicación de escritorio descargable original para diseñar protocolos de Network Canvas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas. Descárguela <link>aquí</link>.",
+      "interviewerClassic": "La aplicación de escritorio y tableta descargable original para recopilar datos de entrevistas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas. Descárguela <link>aquí</link>."
     },
     "common": {
       "documentation": "Documentación"

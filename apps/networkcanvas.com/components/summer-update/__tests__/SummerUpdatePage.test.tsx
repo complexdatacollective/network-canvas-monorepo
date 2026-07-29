@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -451,15 +452,15 @@ describe('SummerUpdatePage', () => {
     ).toBeInTheDocument();
   });
 
-  it('explains every Classic app term and provides an accessible download link', () => {
+  it('explains every Classic app term and provides an accessible download link', async () => {
     renderWithIntl(<SummerUpdatePage />);
 
-    const architectClassicTerms = screen.getAllByRole('button', {
-      name: 'Architect Classic',
-    });
-    const interviewerClassicTerms = screen.getAllByRole('button', {
-      name: 'Interviewer Classic',
-    });
+    const architectClassicTerms = screen
+      .getAllByText('Architect Classic')
+      .filter((term) => term.getAttribute('tabindex') === '0');
+    const interviewerClassicTerms = screen
+      .getAllByText('Interviewer Classic')
+      .filter((term) => term.getAttribute('tabindex') === '0');
 
     expect(architectClassicTerms).toHaveLength(6);
     expect(interviewerClassicTerms).toHaveLength(5);
@@ -469,15 +470,18 @@ describe('SummerUpdatePage', () => {
       throw new Error('Expected an Architect Classic definition trigger.');
     }
 
-    fireEvent.click(architectClassicTerm);
+    await act(async () => {
+      architectClassicTerm.focus();
+    });
 
-    expect(
-      screen.getByText(
-        'The original downloadable desktop app for designing Network Canvas protocols. It remains available for in-progress studies and is fully supported, but is in maintenance mode and will not receive new features.',
-      ),
-    ).toBeInTheDocument();
+    const definitionPopover = screen.getByRole('dialog');
+    expect(definitionPopover).toHaveTextContent(
+      'The original downloadable desktop app for designing Network Canvas protocols. It remains available for in-progress studies and is fully supported, but is in maintenance mode and will not receive new features. Download it here.',
+    );
 
-    const downloadLink = screen.getByRole('link', { name: 'here' });
+    const downloadLink = within(definitionPopover).getByRole('link', {
+      name: 'here',
+    });
     expect(downloadLink).toHaveAttribute('href', '/get-started');
     expect(downloadLink).not.toHaveAttribute('tabindex', '-1');
   });
@@ -660,7 +664,7 @@ describe('SummerUpdatePage', () => {
     );
   });
 
-  it('localizes feature interactions, images, and compatibility statuses in Spanish', () => {
+  it('localizes feature interactions, images, and compatibility statuses in Spanish', async () => {
     renderWithIntl(<SummerUpdatePage />, 'es');
 
     expect(
@@ -684,21 +688,24 @@ describe('SummerUpdatePage', () => {
       }),
     ).toBeInTheDocument();
 
-    const [architectClassicTerm] = screen.getAllByRole('button', {
-      name: 'Architect Classic',
-    });
+    const [architectClassicTerm] = screen
+      .getAllByText('Architect Classic')
+      .filter((term) => term.getAttribute('tabindex') === '0');
     if (!architectClassicTerm) {
       throw new Error('Expected an Architect Classic definition trigger.');
     }
 
-    fireEvent.click(architectClassicTerm);
+    await act(async () => {
+      architectClassicTerm.focus();
+    });
 
+    const definitionPopover = screen.getByRole('dialog');
+    expect(definitionPopover).toHaveTextContent(
+      'La aplicación de escritorio descargable original para diseñar protocolos de Network Canvas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas. Descárguela aquí.',
+    );
     expect(
-      screen.getByText(
-        'La aplicación de escritorio descargable original para diseñar protocolos de Network Canvas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'aquí' })).toHaveAttribute(
+      within(definitionPopover).getByRole('link', { name: 'aquí' }),
+    ).toHaveAttribute(
       'href',
       '/get-started',
     );

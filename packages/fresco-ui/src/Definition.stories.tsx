@@ -11,9 +11,11 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: `An inline term that reveals an expanded definition on hover, keyboard focus, or press. It composes Fresco's Base UI Tooltip primitives and renders a keyboard-focusable \`span\` by default.
+        component: `An inline term that reveals an expanded definition on hover or keyboard focus. It composes Fresco's Base UI Tooltip primitives and renders a keyboard-focusable \`span\` by default.
 
-The definition is also connected to the term with \`aria-describedby\`, because Base UI tooltips are visual-only. Screen readers receive the definition without depending on the popup being visible.
+For non-interactive content, the definition is also connected to the term with \`aria-describedby\`, because Base UI tooltips are visual-only. Screen readers receive the definition without depending on the popup being visible.
+
+Pass \`interactive\` when the definition includes a link or another control. This switches to an accessible popover that opens on hover or keyboard focus, where controls can receive focus, instead of putting interactive content inside a tooltip.
 
 Use \`asAbbreviation\` only when the visible text is genuinely an abbreviation. This switches the term to an \`abbr\` element without adding a competing native \`title\` tooltip.
 
@@ -27,7 +29,8 @@ import Definition from '@codaco/fresco-ui/Definition';
 
 Props:
 - \`children\`: the visible term or phrase.
-- \`definition\`: non-interactive content shown in the tooltip.
+- \`definition\`: expanded content shown in the tooltip or interactive popover.
+- \`interactive\`: use a hover- and focus-triggered popover for definition content that includes links or controls.
 - \`asAbbreviation\`: renders the term as \`abbr\` instead of \`span\`.
 - \`side\`, \`align\`, and \`sideOffset\`: control tooltip placement.
 - \`showArrow\`: shows or hides the tooltip arrow.`,
@@ -47,6 +50,11 @@ Props:
     asAbbreviation: {
       control: 'boolean',
       description: 'Render the visible term as an abbr element.',
+    },
+    interactive: {
+      control: 'boolean',
+      description:
+        'Use a hover- and focus-triggered popover when the definition contains links or controls.',
     },
     side: {
       control: 'select',
@@ -68,6 +76,7 @@ Props:
     definition:
       'The people an individual knows and the relationships among them.',
     asAbbreviation: false,
+    interactive: false,
     side: 'top',
     align: 'center',
     sideOffset: 10,
@@ -116,6 +125,35 @@ export const LongDefinition: Story = {
   },
 };
 
+export const LinkedDefinition: Story = {
+  args: {
+    children: 'Architect Classic',
+    interactive: true,
+  },
+  render: (args) => (
+    <Definition
+      {...args}
+      definition={
+        <>
+          The original downloadable desktop app for designing Network Canvas
+          protocols. Download it <a href="/get-started">here</a>.
+        </>
+      }
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const term = canvas.getByText('Architect Classic');
+
+    await userEvent.hover(term);
+    await waitFor(() =>
+      expect(document.querySelector('[data-base-ui-portal]')).toHaveTextContent(
+        'Download it here.',
+      ),
+    );
+  },
+};
+
 export const KeyboardFocus: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -126,14 +164,5 @@ export const KeyboardFocus: Story = {
     await expect(term).toHaveAccessibleDescription(
       'The people an individual knows and the relationships among them.',
     );
-  },
-};
-
-export const TouchActivation: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const term = canvas.getByText('personal network');
-    await userEvent.click(term);
-    await waitFor(() => expect(term).toHaveAttribute('data-popup-open'));
   },
 };

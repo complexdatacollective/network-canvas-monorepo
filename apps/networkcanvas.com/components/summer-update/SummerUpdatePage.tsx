@@ -15,11 +15,6 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Definition from '@codaco/fresco-ui/Definition';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@codaco/fresco-ui/Popover';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
@@ -66,71 +61,6 @@ function renderGetStartedLink(chunks: ReactNode) {
       {chunks}
     </Link>
   );
-}
-
-function ClassicAppDefinition({
-  app,
-  children,
-}: {
-  app: ClassicAppId;
-  children: ReactNode;
-}) {
-  const t = useTranslations('SummerUpdate');
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="text-link focusable inline-block cursor-help rounded-sm underline decoration-dashed decoration-2 underline-offset-3"
-        >
-          {children}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-max max-w-[min(var(--available-width),var(--container-sm))] text-pretty">
-        <Paragraph intent="smallText" margin="none">
-          {t(`definitions.${app}.description`)}
-        </Paragraph>
-        <Paragraph intent="smallText" margin="none" className="mt-3">
-          {t.rich(`definitions.${app}.download`, {
-            link: renderGetStartedLink,
-          })}
-        </Paragraph>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function renderArchitectClassic(chunks: ReactNode) {
-  return (
-    <ClassicAppDefinition app="architectClassic">{chunks}</ClassicAppDefinition>
-  );
-}
-
-function renderInterviewerClassic(chunks: ReactNode) {
-  return (
-    <ClassicAppDefinition app="interviewerClassic">
-      {chunks}
-    </ClassicAppDefinition>
-  );
-}
-
-function renderCompatibilityAppName(id: string, app: string) {
-  if (id === 'architectClassic') {
-    return (
-      <ClassicAppDefinition app="architectClassic">{app}</ClassicAppDefinition>
-    );
-  }
-
-  if (id === 'interviewerClassic') {
-    return (
-      <ClassicAppDefinition app="interviewerClassic">
-        {app}
-      </ClassicAppDefinition>
-    );
-  }
-
-  return app;
 }
 
 function ProgressiveWebAppTerm({
@@ -221,6 +151,27 @@ function renderCommunityLink(chunks: ReactNode) {
 
 export function SummerUpdatePage() {
   const t = useTranslations('SummerUpdate');
+  const renderClassicAppTerm = (app: ClassicAppId, chunks: ReactNode) => (
+    <Definition
+      interactive
+      definition={t.rich(`definitions.${app}`, {
+        link: renderGetStartedLink,
+      })}
+    >
+      {chunks}
+    </Definition>
+  );
+  const renderArchitectClassic = (chunks: ReactNode) =>
+    renderClassicAppTerm('architectClassic', chunks);
+  const renderInterviewerClassic = (chunks: ReactNode) =>
+    renderClassicAppTerm('interviewerClassic', chunks);
+  const renderCompatibilityAppName = (id: string, app: string) => {
+    if (id === 'architectClassic' || id === 'interviewerClassic') {
+      return renderClassicAppTerm(id, app);
+    }
+
+    return app;
+  };
   const { compatibilityRows, destinationLinks, interfaceFeatures } =
     useSummerUpdateContent();
   const featureGroupHeadings: Record<FeatureGroup, string> = {
