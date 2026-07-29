@@ -104,6 +104,43 @@ describe('findDraftContradictions', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('minSelectedExceedsOptions');
   });
+
+  it.each([
+    ['text', 'maxLength'],
+    ['categorical', 'maxSelected'],
+  ] as const)(
+    'accepts an optional %s draft whose %s is zero',
+    (variableType, maximumRule) => {
+      expect(
+        findDraftContradictions({
+          allVariables: {},
+          currentVariableId: '',
+          variableType,
+          validation: { [maximumRule]: 0 },
+        }),
+      ).toEqual([]);
+    },
+  );
+
+  it.each([
+    ['text', 'maxLength'],
+    ['categorical', 'maxSelected'],
+  ] as const)(
+    'rejects a required %s draft whose %s is zero',
+    (variableType, maximumRule) => {
+      const result = findDraftContradictions({
+        allVariables: {},
+        currentVariableId: '',
+        variableType,
+        validation: { required: true, [maximumRule]: 0 },
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.message).toContain(
+        `required answers cannot satisfy ${maximumRule} (0)`,
+      );
+    },
+  );
 });
 
 // Twelfth-wave Finding 2: `__draft-variable__` is a schema-VALID variable id,
@@ -1174,6 +1211,17 @@ describe('floorIssue', () => {
 
   it.each(integerRules)('accepts an integer %s value', (rule) => {
     expect(floorIssue(rule, 2)).toBeUndefined();
+  });
+
+  it.each(['maxLength', 'maxSelected'])(
+    'accepts zero for an optional %s',
+    (rule) => {
+      expect(floorIssue(rule, 0)).toBeUndefined();
+    },
+  );
+
+  it.each(['maxLength', 'maxSelected'])('rejects a negative %s', (rule) => {
+    expect(floorIssue(rule, -1)).toBe(`${rule} must be at least 0`);
   });
 });
 

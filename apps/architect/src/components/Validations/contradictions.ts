@@ -586,9 +586,9 @@ export const findLegalReferenceTargets = ({
 // generic message only after a failed protocol save.
 const RULE_FLOORS: Record<string, number> = {
   minLength: 0,
-  maxLength: 1,
+  maxLength: 0,
   minSelected: 0,
-  maxSelected: 1,
+  maxSelected: 0,
 };
 
 const INTEGER_RULES = new Set([

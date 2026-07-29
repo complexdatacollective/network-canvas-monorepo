@@ -1,5 +1,6 @@
 ---
 '@codaco/protocol-utilities': minor
+'@codaco/protocol-validation': patch
 '@codaco/fresco-ui': patch
 '@codaco/interview': patch
 ---
@@ -16,10 +17,18 @@ When skip logic and filtering are respected, controls on stages proven unreachab
 
 Read-only stage references no longer make validation rules apply to values written only by binning stages. Writers on stages proven unreachable by skip logic are likewise ignored consistently by both the feasibility check and the synthetic draw.
 
+Manually seeded nodes and edges keep omitted Boolean attributes at the neutral
+`false` value regardless of how the control's options are ordered.
+
 When multiple reachable Network Composer stages render one date variable at the
 same resolution, generation now uses the intersection of their accepted
 windows. It refuses only controls at incompatible resolutions or controls whose
 windows do not overlap. When an ordinary form also renders that variable,
 generation includes its codebook control in the same intersection.
+
+Categorical Bin "other" inputs must now target a text variable, matching the
+text field the interview renders. Importing a version 7 protocol removes an
+incompatible non-text "other" configuration instead of preserving a control
+that cannot record the target variable's value.
 
 `@codaco/fresco-ui` adds a `./form/validation/helpers` export subpath so consumers can build the same validator stack the interview uses. `@codaco/interview` now fails loudly, naming the variable, when a protocol carries a validation rule of the wrong type, rather than passing it to a validator that would report a generic error.

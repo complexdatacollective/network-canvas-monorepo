@@ -53,6 +53,7 @@ describe('attribute-writer usage tags', () => {
     );
     expect(promptVariable?.usage).toBe('unvalidatedAttribute');
     expect(otherVariable?.usage).toBe('validatedAttribute');
+    expect(otherVariable?.requireType).toEqual(['text']);
     // The narrowed duplicate declarations must not produce double hits.
     expect(
       hits.filter(

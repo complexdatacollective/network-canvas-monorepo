@@ -2579,6 +2579,27 @@ describe('Migration V7 to V8', () => {
         );
       }
     });
+
+    it('drops a non-text otherVariable and its associated configuration', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherVariable: 'cat',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('otherVariable');
+        expect(stage.prompts[0]).not.toHaveProperty('otherOptionLabel');
+        expect(stage.prompts[0]).not.toHaveProperty('otherVariablePrompt');
+      }
+      expect(parsed.codebook.node?.person?.variables?.cat).not.toHaveProperty(
+        'validation.required',
+      );
+    });
   });
 
   describe('OrdinalBin prompt color normalisation', () => {

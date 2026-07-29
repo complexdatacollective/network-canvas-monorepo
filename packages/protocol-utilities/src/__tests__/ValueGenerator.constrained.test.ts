@@ -61,6 +61,25 @@ function narrowed(
   };
 }
 
+describe('neutralForVariable', () => {
+  it('keeps a missing Boolean attribute false when true is the first option', () => {
+    const generator = new ValueGenerator(1);
+
+    expect(
+      generator.neutralForVariable({
+        id: 'affected',
+        name: 'Affected',
+        type: 'boolean',
+        component: 'Boolean',
+        options: [
+          { label: 'Yes', value: true },
+          { label: 'No', value: false },
+        ],
+      }),
+    ).toBe(false);
+  });
+});
+
 describe('generateConstrained', () => {
   it('respects an exact text length', () => {
     const gen = new ValueGenerator(1);

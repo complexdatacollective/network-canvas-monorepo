@@ -12,6 +12,8 @@ timing out while you are still reading it. A protocol with many clashing rules
 no longer grows the message taller than the screen, which used to carry its own
 heading and close button out of view: the list of clashes now scrolls within the
 message, and can be scrolled from the keyboard as well as the mouse.
+Conflicts on locally scoped variables with the same ID now remain distinct as
+the message updates.
 
 A failed generation also no longer leaves part of a batch behind. Most protocols
 whose rules cannot be satisfied are refused before anything is saved, but a

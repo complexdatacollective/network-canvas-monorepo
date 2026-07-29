@@ -394,6 +394,7 @@ const migrationV7toV8 = createMigration({
 - An OrdinalBin prompt \`color\` is now required, restricted to the ten \`ord-color-seq-1\`–\`ord-color-seq-10\` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color default to the first palette color (\`ord-color-seq-1\`), the runtime's previous fallback.
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored, as was an empty-string \`otherVariable\`. Such orphaned properties are removed.
 - A CategoricalBin prompt with \`otherVariable\` set now requires both \`otherVariablePrompt\` and \`otherOptionLabel\` (previously a missing label silently dropped the whole "other" bin). A missing value is backfilled from the other authored one, else "Please specify" / "Other".
+- A CategoricalBin prompt's \`otherVariable\` must reference a text variable because its follow-up control records text. A non-text reference and its associated "other" configuration are removed.
 - A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean variable to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`required\` text or categorical variables whose maximum is zero (the zero maximum is removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules must be non-negative; negative values are removed.
@@ -1734,6 +1735,47 @@ const migrationV7toV8 = createMigration({
             typedStage.behaviours = next;
           }
           return stage;
+        },
+      },
+      {
+        // CategoricalBin always renders its "other" follow-up as a text input.
+        // Drop legacy non-text targets before the required-rule backfill below
+        // so an unusable target is not mutated on its way out.
+        paths: [''],
+        fn: <V>(document: V) => {
+          const typedDocument = asRecord(document);
+          if (!typedDocument) return document;
+          const stages = Array.isArray(typedDocument.stages)
+            ? typedDocument.stages
+            : [];
+
+          for (const rawStage of stages) {
+            const stage = asRecord(rawStage);
+            if (
+              !stage ||
+              stage.type !== 'CategoricalBin' ||
+              !Array.isArray(stage.prompts)
+            ) {
+              continue;
+            }
+            for (const rawPrompt of stage.prompts) {
+              const prompt = asRecord(rawPrompt);
+              if (!prompt || typeof prompt.otherVariable !== 'string') {
+                continue;
+              }
+              const variable = codebookVariable(
+                typedDocument.codebook,
+                stage.subject,
+                prompt.otherVariable,
+              );
+              if (variable && variable.type !== 'text') {
+                delete prompt.otherVariable;
+                delete prompt.otherOptionLabel;
+                delete prompt.otherVariablePrompt;
+              }
+            }
+          }
+          return document;
         },
       },
       {

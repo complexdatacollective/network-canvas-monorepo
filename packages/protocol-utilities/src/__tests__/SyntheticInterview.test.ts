@@ -438,7 +438,15 @@ describe('SyntheticInterview', () => {
       const si = new SyntheticInterview();
       const nt = si.addNodeType();
       const isEgo = nt.addVariable({ type: 'boolean', name: 'isEgo' });
-      const affected = nt.addVariable({ type: 'boolean', name: 'affected' });
+      const affected = nt.addVariable({
+        type: 'boolean',
+        name: 'affected',
+        component: 'Boolean',
+        options: [
+          { label: 'Yes', value: true },
+          { label: 'No', value: false },
+        ],
+      });
       const relationship = nt.addVariable({
         type: 'text',
         name: 'relationship',

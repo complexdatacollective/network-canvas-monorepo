@@ -455,7 +455,7 @@ describe('Validations behaviour', () => {
     });
   });
 
-  it('gates a below-floor draft: disables the tick and shows the floor message', () => {
+  it('allows an optional zero maximum', () => {
     setup({
       variableType: 'text',
       entity: 'node',
@@ -474,7 +474,33 @@ describe('Validations behaviour', () => {
     });
 
     expect(
-      screen.getByText('maxLength must be at least 1'),
+      screen.queryByText(/maxLength must be at least/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Add validation rule' }),
+    ).not.toBeDisabled();
+  });
+
+  it('still rejects a required variable with a zero maximum', () => {
+    setup({
+      variableType: 'text',
+      entity: 'node',
+      currentVariableId: 'text-var',
+      allVariables: {},
+      existingVariables: {},
+      validation: { required: true },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'maxLength' },
+    });
+    fireEvent.change(screen.getByRole('spinbutton'), {
+      target: { value: '0' },
+    });
+
+    expect(
+      screen.getByText(/required answers cannot satisfy maxLength \(0\)/),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Add validation rule' }),

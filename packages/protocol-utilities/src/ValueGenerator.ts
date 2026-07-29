@@ -107,7 +107,7 @@ export class ValueGenerator {
   neutralForVariable(variable: VariableEntry): VariableValue {
     switch (variable.type) {
       case 'boolean':
-        return booleanDomainValues(variable)[0] ?? false;
+        return false;
       case 'text':
         return '';
       case 'categorical':

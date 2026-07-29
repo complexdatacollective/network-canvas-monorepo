@@ -45,9 +45,15 @@ export function GenerationFailureDescription({
     <>
       <p>{summary}</p>
       <ul className="list-disc space-y-1 pl-5">
-        {error.conflicts.map((conflict) => (
+        {error.conflicts.map((conflict, index) => (
           <ConstraintConflictItem
-            key={`${conflict.entity}-${conflict.variableIds.join('-')}`}
+            key={[
+              conflict.entity,
+              conflict.entityType ?? '',
+              conflict.variableIds.join('-'),
+              conflict.rules.join('-'),
+              index,
+            ].join(':')}
             conflict={conflict}
           />
         ))}

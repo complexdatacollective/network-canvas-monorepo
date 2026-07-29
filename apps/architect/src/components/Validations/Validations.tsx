@@ -207,9 +207,9 @@ const Validations = ({
         ruleValue: unknown,
         replacingKey?: string,
       ): string[] => {
-        // R1 floor check runs ahead of the contradiction analyser: a below-floor
-        // value (e.g. maxLength 0) is meaningless input the schema would reject
-        // outright, so there is no point feeding it into findDraftContradictions.
+        // R1 floor check runs ahead of the contradiction analyser: a
+        // below-floor value is input the schema would reject outright, so
+        // there is no point feeding it into findDraftContradictions.
         const floor = floorIssue(ruleKey, ruleValue);
         if (floor) return [floor];
         const prospective: Record<string, unknown> = { ...value };

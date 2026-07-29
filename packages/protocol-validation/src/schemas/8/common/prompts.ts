@@ -186,6 +186,7 @@ export const categoricalBinPromptSchema = promptSchema
     ...categoricalBinPromptFields,
     otherVariable: entityAttributeReference({
       subject: 'stageSubject',
+      requireType: ['text'],
       usage: 'validatedAttribute',
     }).optional(),
     otherVariablePrompt: z.string().optional(),
@@ -240,6 +241,7 @@ export const categoricalBinPromptSchema = promptSchema
           ...categoricalBinPromptFields,
           otherVariable: entityAttributeReference({
             subject: 'stageSubject',
+            requireType: ['text'],
             usage: 'validatedAttribute',
           }),
           otherVariablePrompt: z.string().min(1),
