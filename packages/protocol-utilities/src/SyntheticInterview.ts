@@ -30,6 +30,13 @@ import {
 } from './generateNetwork/attributes';
 import { resolveGenerationConfig } from './generateNetwork/config';
 import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints';
+import {
+  COMPOSER_RENDERING_CONFLICT,
+  type ComposerDateRendering,
+  type ComposerField,
+  type ComposerRenderings,
+  resolveComposerRenderings,
+} from './generateNetwork/constraints/composerRenderings';
 import { todayYmd } from './generateNetwork/constraints/dateWindow';
 import {
   type ConstraintConflict,
@@ -1916,14 +1923,28 @@ export class SyntheticInterview {
    * a rule nothing enforces yields a value that is valid either way.
    */
   private generationContext(today: string): GenerationContext {
+    const rendered = this.composerRenderings();
+
     const constraintsOf = (
       variables: Map<string, VariableEntry>,
+      renderings?: ReadonlyMap<string, ComposerDateRendering>,
     ): EntityConstraints =>
       new Map(
-        [...variables].map(([varId, entry]) => [
-          varId,
-          { entry, constraints: buildVariableConstraints(entry, today) },
-        ]),
+        [...variables].map(([varId, declared]) => {
+          const rendering = renderings?.get(varId);
+          // Only a date variable takes the stage's control, for the reason
+          // `applyComposerRenderings` gives: the constraint machinery reads a
+          // control and its parameters in one place, and that place has nothing
+          // to say about any other type.
+          const entry =
+            rendering !== undefined && declared.type === 'datetime'
+              ? { ...declared, ...rendering }
+              : declared;
+          return [
+            varId,
+            { entry, constraints: buildVariableConstraints(entry, today) },
+          ];
+        }),
       );
 
     const codebook: StructuralCodebook = {
@@ -1944,21 +1965,81 @@ export class SyntheticInterview {
       respectSkipLogicAndFiltering: false,
       uniqueRegistry: new UniqueRegistry(),
       entityConstraints: {
+        // Ego takes no rendering: a NetworkComposer's subject is always a node
+        // and its edge forms name edge types, so no composer field resolves
+        // against ego.
         ego: constraintsOf(this.egoVariables),
         node: new Map(
           [...this.nodeTypes].map(([id, entry]) => [
             id,
-            constraintsOf(entry.variables),
+            constraintsOf(entry.variables, rendered.node.get(id)),
           ]),
         ),
         edge: new Map(
           [...this.edgeTypes].map(([id, entry]) => [
             id,
-            constraintsOf(entry.variables),
+            constraintsOf(entry.variables, rendered.edge.get(id)),
           ]),
         ),
       },
     };
+  }
+
+  /**
+   * The date control each variable is generated against, where a
+   * NetworkComposer stage renders one.
+   *
+   * The builder's composer fields carry the same `component`/`parameters`
+   * override the schema's do, and its draws go through the same constraint
+   * machinery, so the hole is the same one `applyComposerRenderings` closes for
+   * a protocol: without this a builder that renders a date variable through a
+   * fixed anchor is handed values its own stage would reject, and the stories
+   * built on it show data no participant could have entered.
+   */
+  private composerRenderings(): ComposerRenderings {
+    const fields: ComposerField[] = [];
+
+    for (const stage of this.stages) {
+      if (stage.type !== 'NetworkComposer') continue;
+
+      const nodeType = stage.subject?.type;
+      if (nodeType !== undefined) {
+        for (const field of stage.nodeForm?.fields ?? []) {
+          fields.push({ entity: 'node', type: nodeType, ...field });
+        }
+      }
+
+      for (const edge of stage.networkComposerEdges ?? []) {
+        for (const field of edge.form?.fields ?? []) {
+          fields.push({ entity: 'edge', type: edge.subject.type, ...field });
+        }
+      }
+    }
+
+    const { renderings, disagreements } = resolveComposerRenderings(
+      fields,
+      (field) =>
+        (field.entity === 'node'
+          ? this.nodeTypes.get(field.type)
+          : this.edgeTypes.get(field.type)
+        )?.variables.get(field.variable)?.parameters,
+    );
+
+    if (disagreements.length > 0) {
+      throw new SyntheticDataConstraintError(
+        disagreements.map((disagreement) =>
+          this.conflict(
+            { entity: disagreement.entity, type: disagreement.type },
+            [disagreement.variable],
+            [...COMPOSER_RENDERING_CONFLICT.rules],
+            { reason: COMPOSER_RENDERING_CONFLICT.reason },
+          ),
+        ),
+        COMPOSER_RENDERING_CONFLICT.summary,
+      );
+    }
+
+    return renderings;
   }
 
   /**

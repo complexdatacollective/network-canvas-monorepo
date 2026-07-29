@@ -14,8 +14,13 @@ import {
 } from './generateNetwork/config';
 import { collectBinOnlyVariables } from './generateNetwork/constraints/binOnlyVariables';
 import { buildEntityConstraints } from './generateNetwork/constraints/buildConstraints';
+import {
+  applyComposerRenderings,
+  COMPOSER_RENDERING_CONFLICT,
+} from './generateNetwork/constraints/composerRenderings';
 import { SyntheticDataConstraintError } from './generateNetwork/constraints/error';
 import { analyseFeasibility } from './generateNetwork/constraints/feasibility';
+import { reachableStagesForFeasibility } from './generateNetwork/constraints/reachableStages';
 import type { EntityConstraints } from './generateNetwork/constraints/types';
 import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
 import { isContentStage } from './generateNetwork/contentStages';
@@ -105,16 +110,40 @@ export function generateNetwork(
 
   const resolvedConfig = resolveGenerationConfig(config);
 
+  // A NetworkComposer field carries the control it renders its variable with,
+  // overriding the codebook's — so the window a generated date has to land in
+  // is the stage's, not the variable's. Folded into the codebook before
+  // anything reads it, so the count and the draw are given the same one; see
+  // `applyComposerRenderings`.
+  //
+  // Its own refusal comes first and alone: where two composer stages disagree
+  // about a variable's control there is no single window to analyse, so there
+  // is nothing for feasibility to say about it yet.
+  const composed = applyComposerRenderings(codebook, stages);
+  if (composed.conflicts.length > 0) {
+    throw new SyntheticDataConstraintError(
+      composed.conflicts,
+      COMPOSER_RENDERING_CONFLICT.summary,
+    );
+  }
+  const renderedCodebook = composed.codebook;
+  const feasibilityStages = reachableStagesForFeasibility(
+    renderedCodebook,
+    stages,
+    respectSkipLogicAndFiltering,
+  );
+
   // Refused before anything is drawn, and before the seed is consulted: a
   // protocol whose declared rules no value can satisfy fails the same way on
   // every seed rather than only on the ones that happen to reach the
   // contradiction. The roster rows go in because they bound how many people a
   // roster stage can add, and a stage that adds none needs no values at all.
   const conflicts = analyseFeasibility(
-    codebook,
-    stages,
+    renderedCodebook,
+    feasibilityStages,
     resolvedConfig,
     externalData,
+    respectSkipLogicAndFiltering,
   );
   if (conflicts.length > 0) {
     throw new SyntheticDataConstraintError(conflicts);
@@ -146,8 +175,11 @@ export function generateNetwork(
       ]),
     );
 
+  // The rendered codebook throughout, so no reader can pick up a control the
+  // interview will not use. Ego is untouched by it: a composer's subject is
+  // always a node, and its edge forms name edge types.
   const ctx: GenerationContext = {
-    codebook,
+    codebook: renderedCodebook,
     valueGen,
     config: resolvedConfig,
     usedRosterUids: new Set<string>(),
@@ -156,11 +188,11 @@ export function generateNetwork(
     uniqueRegistry: new UniqueRegistry(),
     entityConstraints: {
       ego: buildEntityConstraints(
-        codebook.ego?.variables,
+        renderedCodebook.ego?.variables,
         resolvedConfig.today,
       ),
-      node: constraintsByType(codebook.node),
-      edge: constraintsByType(codebook.edge),
+      node: constraintsByType(renderedCodebook.node),
+      edge: constraintsByType(renderedCodebook.edge),
     },
   };
 

@@ -161,6 +161,36 @@ function dateShapeResolution(value: string): DateResolution | undefined {
 }
 
 /**
+ * The same shape, with every component held to the range the control's own
+ * parser accepts: month 01-12, day 01-31 whatever month it follows. This is
+ * `DatePickerField`'s `ymdPattern` plus the range check `parseYmd` applies to
+ * its captures, written as one pattern.
+ */
+const PICKER_READABLE_BOUND =
+  /^\d{4}(?:-(?:0[1-9]|1[0-2])(?:-(?:0[1-9]|[12]\d|3[01]))?)?$/;
+
+/**
+ * The resolution a bound is written at, where `DatePickerField` can read it at
+ * all — `undefined` otherwise.
+ *
+ * Separate from {@link boundResolution} because a bound outside those ranges is
+ * worse for the field than one naming a day its month does not hold. `parseYmd`
+ * returns null for it, and the field then falls back to its own default bound
+ * (`DATE_PICKER_DEFAULT_MIN`, or today at the ceiling) while the interview's
+ * validator goes on comparing against the declared string: the control offers
+ * dates the submit refuses. A day the calendar rejects still parses, so the
+ * control and the validator agree about it, and whether it can be honoured is
+ * then a question about which components that picker renders — which is what
+ * {@link boundResolution} over a truncated bound answers.
+ */
+export function pickerBoundResolution(
+  value: string,
+): DateResolution | undefined {
+  if (!PICKER_READABLE_BOUND.test(value)) return undefined;
+  return RESOLUTION_OF_LENGTH[value.length];
+}
+
+/**
  * The resolution a bound the protocol *declares* is written at, or `undefined`
  * where it names no date.
  *

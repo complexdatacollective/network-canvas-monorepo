@@ -15,6 +15,7 @@ import {
   type DateResolution,
   type DateWindow,
   EARLIEST_OFFERED_DATE,
+  pickerBoundResolution,
   truncateToResolution,
   utcDate,
 } from './dateWindow';
@@ -81,6 +82,23 @@ function earliestOfferedYear(resolution: DateResolution): number {
  * variable name, because a bound the generator cannot read is one it cannot
  * guess the intent of either.
  *
+ * The calendar is consulted over the components the picker renders, and only
+ * those. A bound finer than its picker carries components neither the control
+ * nor the validator ever reads: a month picker's `<select>`s take the year and
+ * month `ymdPattern` parsed and nothing else, while `compareDateStrings`
+ * truncates the bound to the submitted value's length before comparing. So
+ * `type: "month"` with `min: "2020-02-31"` is a February 2020 floor to both, and
+ * is kept as one — refusing February 31 there would refuse a field that collects
+ * dates perfectly well. The same bound on a full picker does name the day, and
+ * is still refused: what truncation discards is components finer than the
+ * picker's own resolution, never the resolution it collects at.
+ *
+ * What the control can read at all is a separate question, asked over the whole
+ * string at every resolution — {@link pickerBoundResolution}. A component
+ * outside its parser's ranges leaves the field on its default bound while the
+ * validator keeps enforcing the declared string, so `2020-13-01` is refused by a
+ * year picker that would otherwise never have looked at the month.
+ *
  * The year is held to what the picker can offer, at the floor that picker's own
  * control sets. A full date in a low year is one the native input renders and
  * the arithmetic here builds literally, so `0099-01-01` is kept and only year
@@ -94,9 +112,12 @@ function requireCalendarBound(
   value: string,
   resolution: DateResolution,
 ): DateResolution {
-  const written = boundResolution(value);
+  const written = pickerBoundResolution(value);
 
-  if (written === undefined) {
+  if (
+    written === undefined ||
+    boundResolution(truncateToResolution(value, resolution)) === undefined
+  ) {
     throw new Error(
       `Date variable "${entry.name}" (${entry.id}) declares ${parameter} "${value}", which is not a calendar date. ` +
         'Synthetic data generation needs a date written as YYYY, YYYY-MM or YYYY-MM-DD.',

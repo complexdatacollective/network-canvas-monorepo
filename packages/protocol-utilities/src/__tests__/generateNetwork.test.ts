@@ -226,7 +226,17 @@ function makeSkipRoutingCodebook(): Codebook {
       },
     },
     node: {
-      bypassed: nodeDefinition,
+      bypassed: {
+        ...nodeDefinition,
+        variables: {
+          ...nodeDefinition.variables,
+          blocked: {
+            name: 'Blocked',
+            type: 'text',
+            validation: { minLength: 10, maxLength: 5 },
+          },
+        },
+      },
       destination: nodeDefinition,
       final: nodeDefinition,
     },
@@ -235,6 +245,23 @@ function makeSkipRoutingCodebook(): Codebook {
 
 describe('generateNetwork', () => {
   describe('targeted skip destinations', () => {
+    it('still analyses a hidden stage when skip logic is disabled', () => {
+      const stages = [
+        {
+          ...makeTypedNameGeneratorStage('visible', 'bypassed'),
+          skipLogic: makeHiddenSkipLogic(),
+        } as Stage,
+      ];
+
+      expect(() =>
+        generateNetwork({
+          codebook: makeSkipRoutingCodebook(),
+          stages,
+          seed: 42,
+        }),
+      ).toThrow(/minLength 10 exceeds maxLength 5/);
+    });
+
     it('preserves the legacy one-stage skip when destination is absent', () => {
       const stages = [
         makeTypedNameGeneratorStage('skipped', 'bypassed'),

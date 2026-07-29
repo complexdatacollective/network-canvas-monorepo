@@ -1080,6 +1080,31 @@ describe('SyntheticInterview', () => {
       ).toBe('Number');
     });
 
+    it('draws builder nodes inside a NetworkComposer field date window', () => {
+      const si = new SyntheticInterview(7);
+      const node = si.addNodeType({ name: 'Person' });
+      const born = node.addVariable({
+        name: 'Born',
+        type: 'datetime',
+        component: 'DatePicker',
+      });
+      const stage = si.addStage('NetworkComposer', {
+        subject: { entity: 'node', type: node.id },
+        initialNodes: { count: 3 },
+      });
+      stage.addNodeFormField({
+        variable: born.id,
+        component: 'RelativeDatePicker',
+        parameters: { anchor: '2020-06-15', before: 0, after: 0 },
+      });
+
+      const values = si
+        .getNetwork()
+        .nodes.map((entry) => entry[entityAttributesProperty][born.id]);
+
+      expect(values).toEqual(['2020-06-15', '2020-06-15', '2020-06-15']);
+    });
+
     it('rejects a non-node (edge) subject', () => {
       const si = new SyntheticInterview();
       const friendship = si.addEdgeType({ name: 'Friendship' });

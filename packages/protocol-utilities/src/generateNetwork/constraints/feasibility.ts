@@ -1,3 +1,4 @@
+import { resolveSkipLogicDestinationIndex } from '@codaco/network-query';
 import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
@@ -176,13 +177,13 @@ function recordPinned(
  * edges it did not create, per edge type — what tells a pedigree's written
  * value from one a later stage replaces.
  *
- * Two handlers do it, and both do it the same way: `handleAlterEdgeForm` walks
- * every existing edge of its subject type and calls `generateAttributesForEntity`
- * with its form's field ids as `only`; `handleTieStrengthCensus` does the same
- * for its prompt's `edgeVariable` over the pairs it reuses as well as the ones
- * it creates. Either way the pedigree's literal is `existing` to a draw that
- * releases it and issues another, so what the finished edge holds is drawn, not
- * written.
+ * Two handlers do it, and both do it the same way when filtering is disabled:
+ * `handleAlterEdgeForm` walks every existing edge of its subject type and calls
+ * `generateAttributesForEntity` with its form's field ids as `only`;
+ * `handleTieStrengthCensus` does the same for its prompt's `edgeVariable` over
+ * the pairs it reuses as well as the ones it creates. Either way the pedigree's
+ * literal is `existing` to a draw that releases it and issues another, so what
+ * the finished edge holds is drawn, not written.
  *
  * Deliberately narrower than {@link EdgeCounts.named}, which answers the
  * placement question for the counts. That map is wide on purpose — any
@@ -197,6 +198,7 @@ function recordPinned(
  */
 function regeneratedEdgeAttributes(
   stages: Stage[],
+  respectSkipLogicAndFiltering: boolean,
 ): Map<string, Map<string, number>> {
   const regenerated = new Map<string, Map<string, number>>();
 
@@ -207,6 +209,31 @@ function regeneratedEdgeAttributes(
   };
 
   for (const [stageIndex, stage] of stages.entries()) {
+    const canBeBypassed = stages
+      .slice(0, stageIndex)
+      .some((earlier, earlierIndex) => {
+        const destination = earlier.skipLogic?.destination;
+        if (destination === undefined) return false;
+        const destinationIndex = resolveSkipLogicDestinationIndex(
+          destination,
+          stages,
+          earlierIndex,
+        );
+        return destinationIndex !== undefined && destinationIndex > stageIndex;
+      });
+
+    // A respected filter or skip rule can leave any pedigree edge untouched.
+    // Retaining every pin is the safe upper bound; dropping one that survives
+    // would admit duplicate fixed values on a `unique` variable.
+    if (
+      respectSkipLogicAndFiltering &&
+      (stage.skipLogic !== undefined ||
+        ('filter' in stage && stage.filter !== undefined) ||
+        canBeBypassed)
+    ) {
+      continue;
+    }
+
     if (stage.type === 'AlterEdgeForm') {
       const type = getSubjectType(stage.subject, 'edge');
       if (type === undefined) continue;
@@ -262,13 +289,17 @@ function regeneratedEdgeAttributes(
 function countPedigreeFixedValues(
   stages: Stage[],
   config: ResolvedGenerationConfig,
+  respectSkipLogicAndFiltering: boolean,
 ): {
   node: Map<string, PromptFixedValues>;
   edge: Map<string, PromptFixedValues>;
 } {
   const node = new Map<string, PromptFixedValues>();
   const edge = new Map<string, PromptFixedValues>();
-  const regenerated = regeneratedEdgeAttributes(stages);
+  const regenerated = regeneratedEdgeAttributes(
+    stages,
+    respectSkipLogicAndFiltering,
+  );
 
   for (const [stageIndex, stage] of stages.entries()) {
     if (stage.type !== 'FamilyPedigree') continue;
@@ -1195,6 +1226,7 @@ export function analyseFeasibility(
   stages: Stage[],
   config: ResolvedGenerationConfig,
   externalData?: Record<string, NcNode[]>,
+  respectSkipLogicAndFiltering = false,
 ): ConstraintConflict[] {
   const binOnly = collectBinOnlyVariables(stages);
   // The map the draw judges a roster row against, so a row this pass counts is
@@ -1224,7 +1256,11 @@ export function analyseFeasibility(
     nodeConstraints,
   );
   const promptFixed = countPromptFixedValues(stages, config, externalData);
-  const pedigreeFixed = countPedigreeFixedValues(stages, config);
+  const pedigreeFixed = countPedigreeFixedValues(
+    stages,
+    config,
+    respectSkipLogicAndFiltering,
+  );
   const rosterCarried = countRosterCarriedValues(
     stages,
     config,

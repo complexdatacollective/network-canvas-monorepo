@@ -2443,6 +2443,7 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
               options: RELATIONSHIP_TYPE_OPTIONS,
               validation: { unique: true },
             },
+            carrier: { name: 'Carrier', type: 'boolean' },
           },
         },
       },
@@ -2535,6 +2536,45 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
           `seed ${seed}`,
         ).toBe(2);
       }
+    });
+
+    it('retains the fixed values where a respected filter excludes the pedigree edges', () => {
+      const generate = (): unknown =>
+        generateNetwork({
+          seed: 1,
+          codebook: uniqueRelationshipType,
+          stages: [
+            familyPedigree({ edgeConfig }),
+            filteredAlterEdgeForm('carrier', 'relationshipType'),
+          ],
+          respectSkipLogicAndFiltering: true,
+          config: twoEdges,
+        });
+
+      expect(generate).toThrow(SyntheticDataConstraintError);
+      expect(generate).toThrow(
+        /a family pedigree fixes this to .* but unique allows one edge to hold a value/,
+      );
+    });
+
+    it('still redraws every edge when filtering is disabled', () => {
+      const { network } = generateNetwork({
+        seed: 1,
+        codebook: uniqueRelationshipType,
+        stages: [
+          familyPedigree({ edgeConfig }),
+          filteredAlterEdgeForm('carrier', 'relationshipType'),
+        ],
+        config: twoEdges,
+      });
+
+      const values = network.edges.map(
+        (edge) => edge[entityAttributesProperty].relationshipType,
+      );
+      expect(values).toHaveLength(2);
+      expect(new Set(values.map((value) => JSON.stringify(value))).size).toBe(
+        2,
+      );
     });
 
     it('still refuses where the form runs before the pedigree', () => {

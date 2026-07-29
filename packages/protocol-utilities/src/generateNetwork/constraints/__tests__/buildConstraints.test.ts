@@ -604,6 +604,105 @@ describe('buildVariableConstraints', () => {
     });
   });
 
+  // A bound finer than its picker carries components the control never renders
+  // and the validator never compares: `DatePickerField` reads a month picker's
+  // `<select>`s off the year and month `ymdPattern` parsed, and
+  // `compareDateStrings` truncates the bound to the submitted `YYYY-MM` before
+  // comparing. February 31 is a February 2020 floor to both, so it is truncated
+  // to one rather than refused as a day the calendar does not hold.
+  it.each([
+    {
+      type: 'month',
+      parameter: 'min',
+      value: '2020-02-31',
+      expected: '2020-02',
+    },
+    {
+      type: 'month',
+      parameter: 'max',
+      value: '2020-02-31',
+      expected: '2020-02',
+    },
+    { type: 'year', parameter: 'min', value: '2019-02-30', expected: '2019' },
+    { type: 'year', parameter: 'max', value: '2020-06-31', expected: '2020' },
+  ])(
+    'truncates a $type-picker $parameter of "$value" to $expected',
+    ({ type, parameter, value, expected }) => {
+      const result = buildVariableConstraints(
+        {
+          id: 'v1',
+          name: 'Born',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type, [parameter]: value },
+        },
+        TODAY,
+      );
+
+      expect(result.dateWindow?.[parameter === 'min' ? 'min' : 'max']).toBe(
+        expected,
+      );
+    },
+  );
+
+  // The other direction of the same rule: what truncation discards is
+  // components finer than the picker's own resolution, never the resolution it
+  // collects at. A full picker does render the day, and a day its month does not
+  // hold is a bound the two halves of the field disagree about — the native
+  // `<input type="date">` ignores a `min` it cannot parse while the interview's
+  // validator compares against it lexically, refusing the `2020-02-28` the input
+  // offered.
+  it.each([{ parameter: 'min' }, { parameter: 'max' }])(
+    'refuses a full-picker $parameter naming a day its month does not hold',
+    ({ parameter }) => {
+      expect(() =>
+        buildVariableConstraints(
+          {
+            id: 'v1',
+            name: 'Born',
+            type: 'datetime',
+            component: 'DatePicker',
+            parameters: { type: 'full', [parameter]: '2020-02-31' },
+          },
+          TODAY,
+        ),
+      ).toThrow(
+        `Date variable "Born" (v1) declares ${parameter} "2020-02-31", which is not a calendar date.`,
+      );
+    },
+  );
+
+  // A component outside the ranges `parseYmd` checks is not a bound the field
+  // can read at any resolution, so it is refused at every one — including where
+  // the picker would never have rendered that component. `parseYmd` returns null
+  // and `DatePickerField` falls back to its own bound (1920-01-01 at the floor,
+  // today at the ceiling) while the interview's validator goes on enforcing the
+  // declared string, so the control offers dates the submit refuses.
+  it.each([
+    { type: 'year', parameter: 'min', value: '2020-13-01' },
+    { type: 'year', parameter: 'max', value: '2020-06-32' },
+    { type: 'month', parameter: 'min', value: '2020-13' },
+    { type: 'month', parameter: 'max', value: '2020-00' },
+  ])(
+    'refuses a $type-picker $parameter of "$value", which its control cannot read',
+    ({ type, parameter, value }) => {
+      expect(() =>
+        buildVariableConstraints(
+          {
+            id: 'v1',
+            name: 'Born',
+            type: 'datetime',
+            component: 'DatePicker',
+            parameters: { type, [parameter]: value },
+          },
+          TODAY,
+        ),
+      ).toThrow(
+        `Date variable "Born" (v1) declares ${parameter} "${value}", which is not a calendar date.`,
+      );
+    },
+  );
+
   it('leaves a declared maximum alone', () => {
     const result = buildVariableConstraints(
       {
