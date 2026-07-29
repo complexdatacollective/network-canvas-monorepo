@@ -12,9 +12,10 @@ import ProtocolSchemaV8 from '../schema.ts';
  * variable's own inverted bound pair, or a `minSelected` above its own
  * option count). This generalises batching to every class whose
  * `variableIds` names the FULL set of variables that could change whether it
- * holds — which is every class except `pinnedEqualDifferentFrom` and
- * `disjointBounds` (see `NON_BATCHABLE_CONTRADICTION_CLASSES` in
- * migration.ts for why those two stay one-at-a-time unconditionally).
+ * holds — which is every class except `pinnedEqualDifferentFrom`,
+ * `pinnedDifferentFromParity`, and `disjointBounds` (see
+ * `NON_BATCHABLE_CONTRADICTION_CLASSES` in migration.ts for why those three
+ * stay one-at-a-time unconditionally).
  * Contradictions that share a variable — whatever their class — are never
  * batched together regardless: the second one is simply deferred to a later
  * pass, where it is re-analysed fresh against the post-strip state.
@@ -164,6 +165,60 @@ describe('migration contradiction-repair batching', () => {
         index,
       );
     }
+  });
+
+  it('re-analyses pinnedDifferentFromParity after repairing its unreported pin sources', () => {
+    const dateVariable = (
+      name: string,
+      min: string,
+      max: string,
+      validation: Record<string, unknown> = {},
+    ) => ({
+      name,
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { min, max },
+      validation: { required: true, ...validation },
+    });
+    const variables = {
+      a: dateVariable('a', '2020-01-02', '2020-01-03'),
+      b: dateVariable('b', '2020-01-02', '2020-01-03', {
+        differentFrom: 'a',
+        greaterThanVariable: 'd',
+      }),
+      c: dateVariable('c', '2020-01-02', '2020-01-03', {
+        differentFrom: 'a',
+        lessThanVariable: 'f',
+      }),
+      d: dateVariable('d', '2020-01-01', '2020-01-02', {
+        sameAs: 'e',
+        differentFrom: 'e',
+      }),
+      e: dateVariable('e', '2020-01-02', '2020-01-02'),
+      f: dateVariable('f', '2020-01-03', '2020-01-04', {
+        sameAs: 'g',
+        differentFrom: 'g',
+      }),
+      g: dateVariable('g', '2020-01-03', '2020-01-03'),
+    };
+
+    const migratedRaw = migrateVariables(variables);
+
+    // The two conflicting source pairs are safely batched. Their repair
+    // removes the propagated pins that made b and c appear parity-conflicted,
+    // so the second analyser run reaches the fixpoint without stripping
+    // either differentFrom edge on the a-b-c path.
+    expect(analyser.calls).toBe(2);
+
+    const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+    expect(parsed.success).toBe(true);
+    const parsedVariables = parsed.data?.codebook.ego?.variables;
+    expect(parsedVariables?.b).toHaveProperty('validation.differentFrom', 'a');
+    expect(parsedVariables?.c).toHaveProperty('validation.differentFrom', 'a');
+    expect(parsedVariables?.d).not.toHaveProperty('validation.sameAs');
+    expect(parsedVariables?.d).not.toHaveProperty('validation.differentFrom');
+    expect(parsedVariables?.f).not.toHaveProperty('validation.sameAs');
+    expect(parsedVariables?.f).not.toHaveProperty('validation.differentFrom');
   });
 
   it('batches only the non-overlapping repairs when independent and interdependent contradictions are mixed', () => {

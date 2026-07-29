@@ -702,11 +702,16 @@ const findResolvedViewDraftContradictions = (
   view: ResolvedFormValidationView,
   allRenderedVariableIds: ReadonlySet<string>,
   baselineKeys: ReadonlySet<string>,
+  draftRenderingOwnership: 'codebook' | 'current-form',
 ): ValidationContradiction[] => {
   const id = draft.currentVariableId || draftVariableId(draft.allVariables);
+  const resolvedDraft =
+    draftRenderingOwnership === 'current-form'
+      ? { ...draft, component: undefined, parameters: undefined }
+      : draft;
   const withDraft = withOverlay(
     withoutUnknownRenderings(
-      buildProspectiveVariables(draft),
+      buildProspectiveVariables(resolvedDraft),
       allRenderedVariableIds,
       view.renderedVariableIds,
     ),
@@ -833,6 +838,13 @@ export const crossClassPickIssue = ({
  * rendering overrides a draft codebook component. Each view is compared with
  * an identically scoped committed baseline, preserving the existing
  * new-contradiction gate.
+ *
+ * `resolvedViewDraftRendering` distinguishes the two editor ownership models.
+ * Ordinary form dialogs edit the codebook rendering itself, so their draft
+ * component/parameters remain effective in shared views. NetworkComposer
+ * dialogs edit only the current field's rendering: resolved views begin from
+ * the committed codebook rendering, then each other composer overlay wins in
+ * its own view.
  */
 export const makeFieldEditorValidate = (
   allVariables: UnknownRecord,
@@ -840,6 +852,7 @@ export const makeFieldEditorValidate = (
   crossFormRendered?: ReadonlySet<string>,
   hasUnvalidatedUse?: (variableId: string) => boolean | string,
   resolvedViews: readonly ResolvedFormValidationView[] = [],
+  resolvedViewDraftRendering: 'codebook' | 'current-form' = 'codebook',
 ) => {
   // Computed once per dialog session, not on every keystroke: `allVariables`
   // and `overlay` are fixed for the returned validator's whole lifetime, so
@@ -859,12 +872,12 @@ export const makeFieldEditorValidate = (
       !(overlay !== undefined && Object.hasOwn(overlay, id)) &&
       Object.hasOwn(overlaidVariables, id),
   );
-  const resolvedRenderedVariableIds = new Set<string>();
   const resolvedViewIncludesEditedVariable = resolvedViews.some(
     (view) => view.includesEditedVariable === true,
   );
+  const resolvedRenderedVariableIds = new Set<string>();
   for (const view of resolvedViews) {
-    for (const id of view.renderedVariableIds) {
+    for (const id of Object.keys(view.overlay)) {
       resolvedRenderedVariableIds.add(id);
     }
   }
@@ -1011,6 +1024,7 @@ export const makeFieldEditorValidate = (
           resolvedView,
           allResolvedRenderedVariableIds,
           baselineKeys,
+          resolvedViewDraftRendering,
         )[0];
         if (contradiction) {
           return { validation: contradiction.message };

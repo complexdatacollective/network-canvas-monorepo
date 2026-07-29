@@ -8,6 +8,7 @@ import {
   crossFormRenderedVariables,
   isVariableUsedBySibling,
   sharedFormValidationView,
+  sharedFormValidationViews,
 } from '../composerHelpers';
 
 describe('composerNormalizeField', () => {
@@ -311,6 +312,84 @@ describe('sharedFormValidationView', () => {
       overlay: {},
       includesEditedVariable: true,
     });
+  });
+});
+
+describe('sharedFormValidationViews', () => {
+  const stages = [
+    {
+      type: 'AlterForm',
+      subject: { entity: 'node', type: 'person' },
+      form: {
+        fields: [{ variable: 'nickname' }, { variable: 'birth_date' }],
+      },
+    },
+    {
+      type: 'NameGenerator',
+      subject: { entity: 'node', type: 'person' },
+      form: { fields: [{ variable: 'nickname' }] },
+    },
+    {
+      type: 'AlterEdgeForm',
+      subject: { entity: 'edge', type: 'knows' },
+      form: { fields: [{ variable: 'closeness' }] },
+    },
+    {
+      type: 'FamilyPedigree',
+      nodeConfig: {
+        type: 'person',
+        form: [{ variable: 'diagnosis' }],
+      },
+    },
+    {
+      type: 'NetworkComposer',
+      subject: { entity: 'node', type: 'person' },
+      nodeForm: {
+        fields: [{ variable: 'composer_only', component: 'Text' }],
+      },
+    },
+  ];
+
+  it('keeps each matching shared form as a separate codebook-rendered view', () => {
+    expect(
+      sharedFormValidationViews(stages, {
+        entity: 'node',
+        type: 'person',
+      }),
+    ).toEqual([
+      {
+        renderedVariableIds: new Set(['nickname', 'birth_date']),
+        overlay: {},
+      },
+      {
+        renderedVariableIds: new Set(['nickname']),
+        overlay: {},
+      },
+      {
+        renderedVariableIds: new Set(['diagnosis']),
+        overlay: {},
+      },
+    ]);
+  });
+
+  it('collects edge views and ignores NetworkComposer fields', () => {
+    expect(
+      sharedFormValidationViews(stages, {
+        entity: 'edge',
+        type: 'knows',
+      }),
+    ).toEqual([
+      {
+        renderedVariableIds: new Set(['closeness']),
+        overlay: {},
+      },
+    ]);
+    expect(
+      sharedFormValidationViews(stages, {
+        entity: 'node',
+        type: null,
+      }),
+    ).toEqual([]);
   });
 });
 

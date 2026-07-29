@@ -18,6 +18,7 @@ import {
   composerValidationViews,
   crossFormRenderedVariables,
   isVariableUsedBySibling,
+  sharedFormValidationViews,
 } from '../sections/Form/composerHelpers';
 import { makeFieldEditorValidate } from '../Validations/contradictions';
 import ComposerAttributeFields, {
@@ -103,6 +104,10 @@ const EditableAttributesList = ({
       ),
     [committedStages, entity, type, draftStageId],
   );
+  const resolvedSharedViews = useMemo(
+    () => sharedFormValidationViews(committedStages, { entity, type }),
+    [committedStages, entity, type],
+  );
   // Eleventh-wave Finding 4: the overlay is built per validate call so the
   // edited row itself — identified by the array index DialogArrayField
   // surfaces as validate's `editIndex` prop — can be excluded at
@@ -153,7 +158,8 @@ const EditableAttributesList = ({
           buildComposerFieldOverlay(composerFields, props?.editIndex),
           crossFormRendered,
           hasUnvalidatedUse,
-          resolvedComposerViews,
+          [...resolvedSharedViews, ...resolvedComposerViews],
+          'current-form',
         )(composerDraftValues(values), props);
         return typeof validation === 'string'
           ? { ...rest, [COMPOSER_CONTRADICTION_FIELD]: validation }
@@ -165,6 +171,7 @@ const EditableAttributesList = ({
       crossFormRendered,
       hasUnvalidatedUse,
       resolvedComposerViews,
+      resolvedSharedViews,
     ],
   );
 

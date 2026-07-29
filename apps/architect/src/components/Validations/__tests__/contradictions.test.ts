@@ -360,6 +360,77 @@ describe('makeFieldEditorValidate', () => {
       ).toContain('must differ');
     });
 
+    it('applies composer-owned draft rendering only to the current form while shared views keep codebook controls', () => {
+      const booleans = {
+        a: {
+          name: 'a',
+          type: 'boolean',
+          component: 'Boolean',
+          options: [
+            { label: 'Yes', value: true },
+            { label: 'No', value: false },
+          ],
+          validation: { differentFrom: 'b' },
+        },
+        b: {
+          name: 'b',
+          type: 'boolean',
+          component: 'Boolean',
+          options: [{ label: 'Yes', value: true }],
+          validation: {},
+        },
+      };
+      const validate = makeFieldEditorValidate(
+        booleans,
+        { b: { component: 'Toggle' } },
+        undefined,
+        undefined,
+        [
+          {
+            renderedVariableIds: new Set(['a', 'b']),
+            overlay: {},
+          },
+        ],
+        'current-form',
+      );
+
+      expect(
+        validate({
+          variable: 'a',
+          validation: { differentFrom: 'b' },
+          component: 'Toggle',
+          options: [{ label: 'Yes', value: true }],
+        }).validation,
+      ).toContain('must differ');
+    });
+
+    it('accepts matching date controls when the current composer and shared form resolve them differently', () => {
+      const validate = makeFieldEditorValidate(
+        fullResolutionPair,
+        {
+          b: { component: 'DatePicker', parameters: { type: 'year' } },
+        },
+        undefined,
+        undefined,
+        [
+          {
+            renderedVariableIds: new Set(['a', 'b']),
+            overlay: {},
+          },
+        ],
+        'current-form',
+      );
+
+      expect(
+        validate({
+          variable: 'a',
+          validation: { sameAs: 'b' },
+          component: 'DatePicker',
+          parameters: { type: 'year' },
+        }),
+      ).toEqual({});
+    });
+
     it('keeps current shared-form fields visible beside composer-owned variables', () => {
       const booleans = {
         a: {

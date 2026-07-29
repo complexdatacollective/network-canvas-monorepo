@@ -1,7 +1,10 @@
 import { get, omit } from 'es-toolkit/compat';
 import { formValueSelector } from 'redux-form';
 
-import type { VariablePropertyKey } from '@codaco/protocol-validation';
+import {
+  collectEntityAttributeReferences,
+  type VariablePropertyKey,
+} from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
 
@@ -148,6 +151,58 @@ export const sharedFormValidationView = (
   overlay: {},
   includesEditedVariable: true,
 });
+
+/**
+ * Every committed shared FormFieldSchema view for `subject`. The schema's
+ * writer metadata identifies these surfaces without duplicating its stage-type
+ * union here; FamilyPedigree is the sole surface whose subject must be
+ * recovered from nodeConfig rather than the reference hit.
+ */
+export const sharedFormValidationViews = (
+  stages: unknown,
+  subject: { entity: 'node' | 'edge'; type: string | null },
+): ResolvedFormValidationView[] => {
+  if (!Array.isArray(stages) || subject.type === null) return [];
+
+  const variablesByStage = new Map<number, Set<string>>();
+  for (const hit of collectEntityAttributeReferences({ stages })) {
+    if (
+      hit.usage !== 'validatedAttribute' ||
+      hit.path.at(-1) !== 'variable' ||
+      hit.path[0] !== 'stages' ||
+      typeof hit.path[1] !== 'number'
+    ) {
+      continue;
+    }
+
+    const stageIndex = hit.path[1];
+    const stage = stages[stageIndex];
+    if (!isRecord(stage) || stage.type === 'NetworkComposer') continue;
+
+    const hitSubject =
+      hit.subject ??
+      (stage.type === 'FamilyPedigree' &&
+      isRecord(stage.nodeConfig) &&
+      typeof stage.nodeConfig.type === 'string'
+        ? { entity: 'node' as const, type: stage.nodeConfig.type }
+        : undefined);
+    if (
+      hitSubject?.entity !== subject.entity ||
+      hitSubject.type !== subject.type
+    ) {
+      continue;
+    }
+
+    const variables = variablesByStage.get(stageIndex) ?? new Set<string>();
+    variables.add(hit.variableId);
+    variablesByStage.set(stageIndex, variables);
+  }
+
+  return [...variablesByStage.values()].map((renderedVariableIds) => ({
+    renderedVariableIds,
+    overlay: {},
+  }));
+};
 
 /**
  * Every distinct NetworkComposer form that resolves `subject`'s field

@@ -95,6 +95,23 @@ vi.mock('~/selectors/codebook', () => {
             component: 'DatePicker',
             validation: {},
           },
+          boolA: {
+            name: 'boolA',
+            type: 'boolean',
+            component: 'Boolean',
+            options: [
+              { label: 'Yes', value: true },
+              { label: 'No', value: false },
+            ],
+            validation: { differentFrom: 'boolB' },
+          },
+          boolB: {
+            name: 'boolB',
+            type: 'boolean',
+            component: 'Boolean',
+            options: [{ label: 'Yes', value: true }],
+            validation: {},
+          },
         });
       }
       return cache.get(subject);
@@ -351,6 +368,117 @@ it('checks edits against another composer stage without letting the draft render
       validation: { sameAs: 'b' },
       component: 'DatePicker',
       parameters: {},
+    }),
+  ).toEqual({});
+});
+
+it('rejects codebook options that make an ordinary shared-form view contradictory', () => {
+  const storeWithSharedForm = configureStore({
+    reducer: () => ({
+      activeProtocol: {
+        present: {
+          stages: [
+            {
+              id: 'shared-form',
+              type: 'AlterForm',
+              subject: { entity: 'node', type: 'person' },
+              form: {
+                fields: [{ variable: 'boolA' }, { variable: 'boolB' }],
+              },
+            },
+          ],
+        },
+      },
+      form: {
+        'edit-stage': {
+          values: {
+            id: 'current-stage',
+            nodeForm: {
+              fields: [{ variable: 'boolB', component: 'Toggle' }],
+            },
+          },
+        },
+      },
+    }),
+  });
+
+  render(
+    <Provider store={storeWithSharedForm}>
+      <EditableAttributesList
+        fieldName="nodeForm.fields"
+        entity="node"
+        type="person"
+        form="edit-stage"
+        editFormName="node-attr-edit"
+        handleChangeFields={() => undefined}
+      />
+    </Provider>,
+  );
+
+  const errors = capturedEditorValidate?.({
+    variable: 'boolA',
+    validation: { differentFrom: 'boolB' },
+    component: 'Toggle',
+    options: [{ label: 'Yes', value: true }],
+  });
+  expect(errors?.[COMPOSER_CONTRADICTION_FIELD]).toContain('must differ');
+});
+
+it('keeps shared forms on committed date controls while the current composer uses its draft controls', () => {
+  const storeWithSharedForm = configureStore({
+    reducer: () => ({
+      activeProtocol: {
+        present: {
+          stages: [
+            {
+              id: 'shared-form',
+              type: 'AlterForm',
+              subject: { entity: 'node', type: 'person' },
+              form: {
+                fields: [{ variable: 'a' }, { variable: 'b' }],
+              },
+            },
+          ],
+        },
+      },
+      form: {
+        'edit-stage': {
+          values: {
+            id: 'current-stage',
+            nodeForm: {
+              fields: [
+                {
+                  variable: 'b',
+                  component: 'DatePicker',
+                  parameters: { type: 'year' },
+                },
+              ],
+            },
+          },
+        },
+      },
+    }),
+  });
+
+  render(
+    <Provider store={storeWithSharedForm}>
+      <EditableAttributesList
+        fieldName="nodeForm.fields"
+        entity="node"
+        type="person"
+        form="edit-stage"
+        editFormName="node-attr-edit"
+        handleChangeFields={() => undefined}
+      />
+    </Provider>,
+  );
+
+  expect(
+    capturedEditorValidate?.({
+      variable: 'a',
+      validation: { sameAs: 'b' },
+      component: 'DatePicker',
+      parameters: { type: 'year' },
     }),
   ).toEqual({});
 });

@@ -72,7 +72,7 @@ const REFERENCE_VALUED_VALIDATIONS = new Set<string>(
 // participating in the contradiction", which is exactly the property batching
 // (below) needs: two contradictions with disjoint `variableIds` cannot affect
 // one another's outcome UNLESS one of them was computed from a variable it
-// never listed. Every class satisfies that except these two:
+// never listed. Every class satisfies that except these three:
 //
 //   - `pinnedEqualDifferentFrom`: `pinnedEqualDifferentFromContradictions`
 //     falls back to `propagatedPins` (the chained-bound-propagation closure)
@@ -92,9 +92,15 @@ const REFERENCE_VALUED_VALIDATIONS = new Set<string>(
 //     from the group-level and chain-witness checks that share it (both of
 //     which DO report every contributing member), so the whole class stays
 //     one-at-a-time.
+//   - `pinnedDifferentFromParity`: the datetime parity check consumes
+//     `propagatedPins`, whose values can be supplied by comparator chains
+//     outside the reported differentFrom path. Repairing an unlisted source
+//     chain can dissolve the apparent parity conflict, so it must be
+//     re-analysed before its strips are applied.
 const NON_BATCHABLE_CONTRADICTION_CLASSES = new Set<ContradictionClass>([
   'pinnedEqualDifferentFrom',
   'disjointBounds',
+  'pinnedDifferentFromParity',
 ]);
 
 /**
@@ -111,7 +117,7 @@ const NON_BATCHABLE_CONTRADICTION_CLASSES = new Set<ContradictionClass>([
  *   - its class is not in `NON_BATCHABLE_CONTRADICTION_CLASSES`, so its
  *     `variableIds` names every variable that could change whether it holds
  *     (thirteenth-wave Finding 4 batched only two such classes by name;
- *     every class now qualifies except the two documented above); and
+ *     every class now qualifies except the three documented above); and
  *   - no earlier member of the batch already claimed any of its
  *     `variableIds`, so the batch's variable-id sets are pairwise disjoint —
  *     two repairs in the batch can never have been computed from rules the
@@ -1638,10 +1644,10 @@ const migrationV7toV8 = createMigration({
         // provably independent — see `independentRepairs` — are applied
         // together in one pass instead, which takes a protocol of N
         // independently broken variables from N+1 analyser runs to 2. Only
-        // `pinnedEqualDifferentFrom` and `disjointBounds` (see
-        // `NON_BATCHABLE_CONTRADICTION_CLASSES`) stay one-at-a-time
-        // unconditionally; every other class batches whenever its
-        // `variableIds` are pairwise disjoint from the rest of the pass.
+        // `pinnedEqualDifferentFrom`, `pinnedDifferentFromParity`, and
+        // `disjointBounds` (see `NON_BATCHABLE_CONTRADICTION_CLASSES`) stay
+        // one-at-a-time unconditionally; every other class batches whenever
+        // its `variableIds` are pairwise disjoint from the rest of the pass.
         paths: [
           'codebook.node.*.variables',
           'codebook.edge.*.variables',
