@@ -142,8 +142,8 @@ catalogs:
       specifier: ^6.0.0-beta.1
       version: 6.0.0-beta.1
     es-toolkit:
-      specifier: ^1.47.0
-      version: 1.47.0
+      specifier: ^1.50.0
+      version: 1.50.0
     fuse.js:
       specifier: ^7.5.0
       version: 7.5.0
@@ -339,7 +339,7 @@ importers:
         version: 4.4.4
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.50.0
       fuse.js:
         specifier: 'catalog:'
         version: 7.5.0
@@ -1500,7 +1500,7 @@ importers:
         version: 1.0.0-beta.4(@typescript/typescript6@6.0.2)
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.50.0
       fuse.js:
         specifier: 'catalog:'
         version: 7.5.0
@@ -1721,7 +1721,7 @@ importers:
         version: 3.0.0
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.50.0
       html-to-image:
         specifier: ^1.11.13
         version: 1.11.13
@@ -1902,7 +1902,7 @@ importers:
         version: 3.21.2
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.50.0
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
@@ -1945,7 +1945,7 @@ importers:
         version: link:../shared-consts
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.50.0
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:^
@@ -1979,7 +1979,7 @@ importers:
         version: 10.4.0
       es-toolkit:
         specifier: 'catalog:'
-        version: 1.47.0
+        version: 1.50.0
       uuid:
         specifier: 'catalog:'
         version: 14.0.1
@@ -9086,6 +9086,9 @@ packages:
 
   es-toolkit@1.47.0:
     resolution: {integrity: sha512-n1GuoD0WEQZMBk5tttoZSqwgyLx01oqa5XsBmCHwPyNe1S9jPBEmtR2pSgp2kJuWE3ciFZ6yRHmY4pM4C3OOkw==}
+
+  es-toolkit@1.50.0:
+    resolution: {integrity: sha512-OyZKhUVvEep9ITEiwHn8GKnMRQIVqoSIX7WnRbkWgJkllCujilqP2rD0u979tkl8wqyc8ICwlc1UBVv/Sl1G6w==}
 
   es6-error@4.1.1:
     resolution: {integrity: sha512-Um/+FxMr9CISWh0bi5Zv0iOD+4cFh5qLeks1qhAopKVAJw3drgKbKySikp7wGhDL0HPeaja0P5ULZrxLkniUVg==}
@@ -21442,6 +21445,8 @@ snapshots:
       is-symbol: 1.1.1
 
   es-toolkit@1.47.0: {}
+
+  es-toolkit@1.50.0: {}
 
   es6-error@4.1.1: {}
 
