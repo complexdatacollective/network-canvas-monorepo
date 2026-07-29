@@ -101,7 +101,10 @@ export function SettingsDialog({
   const auth = useAuth();
   const analytics = useAnalytics();
   const toast = useToast();
-  const addToast = toast.add;
+  const addToastRef = useRef(toast.add);
+  useEffect(() => {
+    addToastRef.current = toast.add;
+  }, [toast.add]);
   const { confirm } = useDialog();
   const { openSetupWizard } = useSetupWizard({ preserveExistingData: true });
   const [section, setSection] = useState<Section>('about');
@@ -169,7 +172,7 @@ export function SettingsDialog({
     try {
       await reloadSynthetic();
     } catch {
-      addToast({
+      addToastRef.current({
         title: 'Could not refresh synthetic session info',
         description:
           'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
@@ -177,7 +180,7 @@ export function SettingsDialog({
         timeout: 0,
       });
     }
-  }, [addToast, reloadSynthetic]);
+  }, [reloadSynthetic]);
 
   useEffect(() => {
     if (!open) return;

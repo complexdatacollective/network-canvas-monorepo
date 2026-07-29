@@ -37,6 +37,7 @@ const {
   mockOpenSetupWizard,
   mockGenerateSyntheticSessions,
   mockToastAdd,
+  mockUnstableToastAdd,
   mockCountSyntheticSessions,
   mockDeleteSyntheticSessions,
   mockConfirm,
@@ -48,6 +49,7 @@ const {
   mockOpenSetupWizard: vi.fn(),
   mockGenerateSyntheticSessions: vi.fn(),
   mockToastAdd: vi.fn<(data: ToastAddCall) => string>(),
+  mockUnstableToastAdd: { current: false },
   mockCountSyntheticSessions: vi.fn<() => Promise<number>>(),
   mockDeleteSyntheticSessions: vi.fn<() => Promise<number>>(),
   mockConfirm: vi.fn<(options: ConfirmCall) => Promise<boolean | null>>(),
@@ -90,7 +92,9 @@ vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
 }));
 
 vi.mock('@codaco/fresco-ui/Toast', () => ({
-  useToast: () => ({ add: mockToastAdd }),
+  useToast: () => ({
+    add: mockUnstableToastAdd.current ? mockToastAdd.bind(null) : mockToastAdd,
+  }),
 }));
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
@@ -137,6 +141,7 @@ function mockAuth(kind: AuthStateKind, mode?: AuthMode) {
 }
 
 beforeEach(() => {
+  mockUnstableToastAdd.current = false;
   mockAuth('unlocked', 'none');
   mockListProtocols.mockResolvedValue([]);
   mockEstimateStorage.mockResolvedValue({ usage: 0, quota: 0, percent: 0 });
@@ -352,6 +357,25 @@ describe('SettingsDialog synthetic tab — protocol import race', () => {
         }),
       ),
     );
+  });
+
+  it('does not restart the refresh when the toast callback changes identity', async () => {
+    mockUnstableToastAdd.current = true;
+    const neverProtocols = new Promise<ProtocolWithCounts[]>(() => {});
+    const neverCount = new Promise<number>(() => {});
+    mockListProtocols.mockReturnValue(neverProtocols);
+    mockCountSyntheticSessions.mockReturnValue(neverCount);
+    const onClose = vi.fn();
+
+    const { rerender } = render(
+      <SettingsDialog open={false} onClose={onClose} />,
+    );
+    rerender(<SettingsDialog open onClose={onClose} />);
+
+    await waitFor(() => expect(mockListProtocols).toHaveBeenCalledTimes(1));
+
+    rerender(<SettingsDialog open onClose={onClose} />);
+    expect(mockListProtocols).toHaveBeenCalledTimes(1);
   });
 });
 
