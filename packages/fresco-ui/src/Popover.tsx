@@ -189,11 +189,11 @@ function PopoverContent({
     <BasePopover.Portal
       container={portalContainer ?? undefined}
       keepMounted={keepMounted}
-      {...(props as ComponentPropsWithoutRef<typeof BasePopover.Portal>)}
     >
       <AnimatePresence>
         {mounted && (
           <BasePopover.Positioner
+            className="z-3000"
             sideOffset={sideOffset}
             arrowPadding={POPOVER_ARROW_PADDING}
             align={align}

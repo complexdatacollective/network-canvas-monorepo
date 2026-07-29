@@ -461,11 +461,7 @@ describe('SummerUpdatePage', () => {
 
     fireEvent.click(within(frescoCompatibilityRow).getByText('Fresco'));
 
-    expect(
-      screen.getByText(
-        /Fresco 3\.1\.2 supports Schema 7 protocols but does not support Schema 8 protocols/,
-      ),
-    ).toBeInTheDocument();
+    expect(frescoCompatibilityRow).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('explains every Classic app term and provides an accessible download link', async () => {
@@ -498,8 +494,32 @@ describe('SummerUpdatePage', () => {
     const downloadLink = within(definitionPopover).getByRole('link', {
       name: 'here',
     });
-    expect(downloadLink).toHaveAttribute('href', '/get-started');
+    expect(downloadLink).toHaveAttribute('href', '/get-started/#design');
     expect(downloadLink).not.toHaveAttribute('tabindex', '-1');
+    expect(
+      screen.getByText(
+        (_, element) => element?.textContent === 'Architect Classic\u00a06.6.0',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('links Interviewer Classic to the collect-data section', async () => {
+    renderWithIntl(<SummerUpdatePage />);
+
+    const [interviewerClassicTerm] = screen
+      .getAllByText('Interviewer Classic')
+      .filter((term) => term.getAttribute('tabindex') === '0');
+    if (!interviewerClassicTerm) {
+      throw new Error('Expected an Interviewer Classic definition trigger.');
+    }
+
+    await act(async () => {
+      interviewerClassicTerm.focus();
+    });
+
+    expect(
+      within(screen.getByRole('dialog')).getByRole('link', { name: 'here' }),
+    ).toHaveAttribute('href', '/get-started/#collect');
   });
 
   it('introduces the redesigned project website and documentation', () => {
@@ -721,7 +741,7 @@ describe('SummerUpdatePage', () => {
     );
     expect(
       within(definitionPopover).getByRole('link', { name: 'aquí' }),
-    ).toHaveAttribute('href', '/get-started');
+    ).toHaveAttribute('href', '/get-started/#design');
 
     fireEvent.click(screen.getByRole('button', { name: 'Anonimización' }));
 

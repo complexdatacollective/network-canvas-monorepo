@@ -52,15 +52,22 @@ function renderStrong(chunks: ReactNode) {
 
 type ClassicAppId = 'architectClassic' | 'interviewerClassic';
 
-function renderGetStartedLink(chunks: ReactNode) {
-  return (
-    <Link
-      className="text-link focusable rounded-sm underline underline-offset-3"
-      href="/get-started"
-    >
-      {chunks}
-    </Link>
-  );
+const classicAppDownloadHrefs = {
+  architectClassic: '/get-started/#design',
+  interviewerClassic: '/get-started/#collect',
+} satisfies Record<ClassicAppId, string>;
+
+function renderGetStartedLink(href: string) {
+  return function renderLink(chunks: ReactNode) {
+    return (
+      <Link
+        className="text-link focusable rounded-sm underline underline-offset-3"
+        href={href}
+      >
+        {chunks}
+      </Link>
+    );
+  };
 }
 
 function ProgressiveWebAppTerm({
@@ -155,7 +162,7 @@ export function SummerUpdatePage() {
     <Definition
       interactive
       definition={t.rich(`definitions.${app}`, {
-        link: renderGetStartedLink,
+        link: renderGetStartedLink(classicAppDownloadHrefs[app]),
       })}
     >
       {chunks}
@@ -820,7 +827,7 @@ export function SummerUpdatePage() {
                           ) : null}
                           <div
                             className={cn(
-                              'border-text/10 has-[button:hover]:bg-text/5 grid grid-cols-4 items-center gap-4 border-t px-6 py-4 transition first:border-t-0',
+                              'border-text/10 has-[button:hover]:bg-text/5 relative grid grid-cols-4 items-center gap-4 border-t px-6 py-4 transition first:border-t-0',
                               selectedCompatibilityRow === index &&
                                 'bg-sea-serpent/10',
                             )}
@@ -867,8 +874,9 @@ export function SummerUpdatePage() {
                               <StatusChip status={row.schema8} />
                             </button>
                             {hasClassicAppDefinition ? (
-                              <span className="text-text z-10 col-start-1 row-start-1 font-bold">
-                                {renderCompatibilityAppName(row.id, row.app)}{' '}
+                              <span className="text-text absolute inset-y-0 left-6 z-10 flex items-center font-bold">
+                                {renderCompatibilityAppName(row.id, row.app)}
+                                {' '}
                                 {row.version ? (
                                   <span className="font-monospace text-xs font-normal text-current/50">
                                     {row.version}
