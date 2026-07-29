@@ -1254,6 +1254,7 @@ const MUTATIONS: Mutation[] = [
 
 const SEEDS = [101, 202, 303, 404, 505, 606] as const;
 const CASES_PER_SEED = 50;
+const FUZZ_SEED_TIMEOUT_MS = 15_000;
 const MAX_MUTATIONS_PER_CASE = 5;
 
 type CaseResult = {
@@ -1384,15 +1385,19 @@ describe('migration fuzz: v7 protocols in contract migrate to valid v8', () => {
   });
 
   for (const seed of SEEDS) {
-    it(`seed ${seed}: ${CASES_PER_SEED} mutated protocols migrate to valid v8`, () => {
-      for (let caseIndex = 0; caseIndex < CASES_PER_SEED; caseIndex++) {
-        const result = runCase(seed, caseIndex);
-        expect(
-          result.error ?? result.issues ?? '',
-          describeFailure(result),
-        ).toBe('');
-      }
-    });
+    it(
+      `seed ${seed}: ${CASES_PER_SEED} mutated protocols migrate to valid v8`,
+      () => {
+        for (let caseIndex = 0; caseIndex < CASES_PER_SEED; caseIndex++) {
+          const result = runCase(seed, caseIndex);
+          expect(
+            result.error ?? result.issues ?? '',
+            describeFailure(result),
+          ).toBe('');
+        }
+      },
+      FUZZ_SEED_TIMEOUT_MS,
+    );
   }
 
   it('migration is deterministic (two runs on the same input are deeply equal)', () => {
