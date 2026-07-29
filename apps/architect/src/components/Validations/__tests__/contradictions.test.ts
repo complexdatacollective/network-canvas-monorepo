@@ -62,6 +62,19 @@ describe('findDraftContradictions', () => {
     );
   });
 
+  it('names a not-yet-created variable by the name typed into the dialog', () => {
+    const result = findDraftContradictions({
+      allVariables: {},
+      currentVariableId: '',
+      variableType: 'number',
+      validation: { minValue: 10, maxValue: 2 },
+      draftVariableName: 'test',
+    });
+    expect(result[0]?.message).toBe(
+      'Variable "test": minValue (10) is greater than maxValue (2)',
+    );
+  });
+
   it('reports a contradiction whose offending rule lives on another variable', () => {
     // Editing b's maxValue below a's minimum makes a's comparator impossible.
     const result = findDraftContradictions({

@@ -31,6 +31,21 @@ export const draftVariableId = (allVariables: UnknownRecord): string => {
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const draftVariableBase = (
+  existing: unknown,
+  variableType: string,
+  draftVariableName: unknown,
+): UnknownRecord =>
+  isRecord(existing)
+    ? existing
+    : {
+        name:
+          typeof draftVariableName === 'string' && draftVariableName.trim()
+            ? draftVariableName
+            : 'this variable',
+        type: variableType,
+      };
+
 export type ProspectiveDraft = {
   /** Every variable of the owning entity, keyed by id, from the codebook. */
   allVariables: UnknownRecord;
@@ -52,6 +67,7 @@ export type ProspectiveDraft = {
   options?: unknown;
   /** Draft component parameters (e.g. DatePicker min/max), from form state. */
   parameters?: unknown;
+  draftVariableName?: unknown;
   /**
    * Threaded straight through to `findValidationContradictions`'
    * `stageEffectiveComponents` option (see @codaco/protocol-validation's
@@ -78,12 +94,14 @@ export const buildProspectiveVariables = ({
   component,
   options,
   parameters,
+  draftVariableName,
 }: ProspectiveDraft): UnknownRecord => {
   const id = currentVariableId || draftVariableId(allVariables);
-  const existing = allVariables[id];
-  const base = isRecord(existing)
-    ? existing
-    : { name: 'this variable', type: variableType };
+  const base = draftVariableBase(
+    allVariables[id],
+    variableType,
+    draftVariableName,
+  );
   return {
     ...allVariables,
     [id]: {
@@ -291,6 +309,7 @@ export type ReferenceTargetLegalityInput = {
   component?: unknown;
   options?: unknown;
   parameters?: unknown;
+  draftVariableName?: unknown;
   /**
    * See `ProspectiveDraft.stageEffectiveComponents` — threaded through
    * unchanged to every `findValidationContradictions` call this makes.
@@ -383,6 +402,7 @@ export const findLegalReferenceTargets = ({
   component,
   options,
   parameters,
+  draftVariableName,
   stageEffectiveComponents = false,
 }: ReferenceTargetLegalityInput): Set<string> => {
   const id = currentVariableId || draftVariableId(allVariables);
@@ -394,10 +414,11 @@ export const findLegalReferenceTargets = ({
   delete baseline[ruleKey];
 
   const draftEntry = (draftValidation: UnknownRecord): UnknownRecord => {
-    const existing = allVariables[id];
-    const base = isRecord(existing)
-      ? existing
-      : { name: 'this variable', type: variableType };
+    const base = draftVariableBase(
+      allVariables[id],
+      variableType,
+      draftVariableName,
+    );
     return {
       ...base,
       type: variableType,
@@ -959,6 +980,7 @@ export const makeFieldEditorValidate = (
       component: values.component,
       options: values.options,
       parameters: values.parameters,
+      draftVariableName: values._createNewVariable,
       // An `overlay` is only ever built from a stage's OWN composer fields
       // (`buildComposerFieldOverlay`), so its presence IS the
       // stage-effective signal: every variable it names carries that
@@ -987,6 +1009,7 @@ export const makeFieldEditorValidate = (
         component: values.component,
         options: values.options,
         parameters: values.parameters,
+        draftVariableName: values._createNewVariable,
       };
       const resolvedBaselineKey =
         overlay !== undefined || resolvedViewIncludesEditedVariable

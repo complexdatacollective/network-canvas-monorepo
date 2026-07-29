@@ -31,6 +31,7 @@ const mapStateToProps = (
     // both checks read one set of live form values.
     draftComponent: formValueSelector(form)(state, 'component'),
     draftParameters: formValueSelector(form)(state, 'parameters'),
+    draftVariableName: formValueSelector(form)(state, '_createNewVariable'),
   };
 };
 

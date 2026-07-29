@@ -144,6 +144,7 @@ type ValidationsProps = {
   draftOptions?: unknown;
   draftComponent?: unknown;
   draftParameters?: unknown;
+  draftVariableName?: unknown;
 };
 
 const Validations = ({
@@ -162,6 +163,7 @@ const Validations = ({
   draftOptions,
   draftComponent,
   draftParameters,
+  draftVariableName,
 }: ValidationsProps) => {
   // Only one row (existing or the "add new" draft) is ever open for editing
   // at a time.
@@ -233,6 +235,7 @@ const Validations = ({
           // perfectly well once the dialog is closed and reopened.
           component: draftComponent,
           parameters: draftParameters,
+          draftVariableName,
         }).map((contradiction) => contradiction.message);
       },
     [
@@ -243,6 +246,7 @@ const Validations = ({
       draftOptions,
       draftComponent,
       draftParameters,
+      draftVariableName,
     ],
   );
 
@@ -269,6 +273,7 @@ const Validations = ({
           options: draftOptions,
           component: draftComponent,
           parameters: draftParameters,
+          draftVariableName,
         });
       },
     [
@@ -279,6 +284,7 @@ const Validations = ({
       draftOptions,
       draftComponent,
       draftParameters,
+      draftVariableName,
     ],
   );
 
