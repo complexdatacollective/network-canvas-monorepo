@@ -1,5 +1,5 @@
 {
-  "extends": "@codaco/tsconfig/dev.json",
+  "extends": "../../../tooling/typescript/dev.json",
   "compilerOptions": {
     "strict": true,
     "noEmit": true
