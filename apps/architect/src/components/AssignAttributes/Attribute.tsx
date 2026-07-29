@@ -17,6 +17,7 @@ import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 import {
   crossClassPickIssue,
+  draftValidatedElsewhereMessage,
   validatedElsewhereMessage,
 } from '~/components/Validations/contradictions';
 import type { RootState } from '~/ducks/modules/root';
@@ -45,6 +46,7 @@ export type AttributeValue = {
 
 type AttributeOwnProps = FrescoReduxArrayFieldItemProps<AttributeValue> & {
   variableOptions: VariableOption[];
+  draftValidatedVariables: ReadonlySet<string>;
   entity: 'node' | 'edge' | 'ego';
   type: string;
 };
@@ -71,6 +73,7 @@ const Attribute = ({
   readOnly,
   entity,
   type,
+  draftValidatedVariables,
 }: AttributeProps) => {
   const variable = useSelector(
     (state: RootState) =>
@@ -82,10 +85,9 @@ const Attribute = ({
   // as NetworkComposer's quickAdd): this stamp is an UNVALIDATED writer, so
   // its variable may not be one a form elsewhere already collects. Sync field
   // validation blocks the prompt dialog's save, backstopping the pool
-  // exclusion in AssignAttributes.tsx for a stale draft. Checks the SAVED
-  // document's role map only — an unsaved sibling draft (e.g. this same
-  // NameGenerator stage's own form fields, still uncommitted) is out of its
-  // reach.
+  // exclusion in AssignAttributes.tsx for a stale draft. The saved protocol
+  // role map and this Name Generator stage's still-unsaved form fields are
+  // both authoritative writer-role sources.
   const subject = useMemo(() => ({ entity, type }), [entity, type]);
   const roleMap = useSelector(getVariableRoleMap);
   const allVariables = useSelector((state: RootState) =>
@@ -103,6 +105,14 @@ const Attribute = ({
     (value: unknown): string | undefined => {
       const variableId = typeof value === 'string' ? value : '';
       if (!variableId) return undefined;
+      if (
+        draftValidatedVariables.has(variableId) &&
+        variableId !== committedVariable
+      ) {
+        return draftValidatedElsewhereMessage(
+          allVariables[variableId]?.name ?? variableId,
+        );
+      }
       return crossClassPickIssue({
         variableId,
         originalVariableId: committedVariable,
@@ -112,7 +122,13 @@ const Attribute = ({
         message: validatedElsewhereMessage,
       });
     },
-    [committedVariable, roleMap, subject, allVariables],
+    [
+      committedVariable,
+      roleMap,
+      subject,
+      allVariables,
+      draftValidatedVariables,
+    ],
   );
 
   return (

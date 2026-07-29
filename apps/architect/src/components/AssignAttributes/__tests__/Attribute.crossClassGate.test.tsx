@@ -99,7 +99,11 @@ const protocolWith = (stages: unknown[]) => ({
 
 type FormValues = { additionalAttributes: AttributeValue[] };
 
-const renderRow = (protocol: unknown, committedRow?: AttributeValue): void => {
+const renderRow = (
+  protocol: unknown,
+  committedRow?: AttributeValue,
+  draftValidatedVariables: ReadonlySet<string> = new Set(),
+): void => {
   for (const key of Object.keys(capturedValidation)) {
     delete capturedValidation[key];
   }
@@ -127,6 +131,7 @@ const renderRow = (protocol: unknown, committedRow?: AttributeValue): void => {
       variableOptions={[
         { label: 'Flagged', value: 'flagged', type: 'boolean' },
       ]}
+      draftValidatedVariables={draftValidatedVariables}
       entity="node"
       type="person"
     />
@@ -179,6 +184,26 @@ describe('Attribute (additionalAttributes stamp) cross-class gate', () => {
 
   it('allows a pick with no use anywhere', () => {
     renderRow(protocolWith([]));
+    expect(
+      crossClassValidatorFor('additionalAttributes[0].variable')('flagged'),
+    ).toBeUndefined();
+  });
+
+  it('rejects a pick collected by the unsaved stage form draft', () => {
+    renderRow(protocolWith([]), undefined, new Set(['flagged']));
+    expect(
+      crossClassValidatorFor('additionalAttributes[0].variable')('flagged'),
+    ).toBe(
+      '"Flagged" is collected by this stage\'s form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)',
+    );
+  });
+
+  it('keeps the unchanged-pick escape for a pre-existing draft conflict', () => {
+    renderRow(
+      protocolWith([]),
+      { variable: 'flagged', value: true },
+      new Set(['flagged']),
+    );
     expect(
       crossClassValidatorFor('additionalAttributes[0].variable')('flagged'),
     ).toBeUndefined();

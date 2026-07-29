@@ -22,7 +22,12 @@ import {
 import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
 
-import { makeFieldEditorValidate } from '../../Validations/contradictions';
+import {
+  draftUnvalidatedElsewhereMessage,
+  makeFieldEditorValidate,
+  variableDisplayName,
+} from '../../Validations/contradictions';
+import { draftAdditionalAttributeVariableIds } from '../../Validations/draftWriterRoles';
 import {
   composerValidationViews,
   sharedFormValidationView,
@@ -90,17 +95,31 @@ const Form = ({
   const formFields = useSelector((state: RootState) =>
     stageFormSelector(state, 'form.fields'),
   );
+  const promptDrafts = useSelector((state: RootState) =>
+    stageFormSelector(state, 'prompts'),
+  );
+  const draftUnvalidatedVariables = useMemo(
+    () => draftAdditionalAttributeVariableIds(promptDrafts),
+    [promptDrafts],
+  );
   const resolvedFormViews = useMemo(
     () => [sharedFormValidationView(formFields), ...resolvedComposerViews],
     [formFields, resolvedComposerViews],
   );
   // Backs makeFieldEditorValidate's save-time gate: a form field may not pick
-  // a variable some bin/highlight/census/etc. elsewhere already writes.
+  // a variable an unvalidated writer already uses in either the saved
+  // protocol or this stage's still-unsaved prompt drafts.
   const hasUnvalidatedUse = useCallback(
-    (variableId: string) =>
-      !!subject &&
-      (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0,
-    [roleMap, subject],
+    (variableId: string): boolean | string => {
+      if (!subject) return false;
+      if (draftUnvalidatedVariables.has(variableId)) {
+        return draftUnvalidatedElsewhereMessage(
+          variableDisplayName(allVariables, variableId),
+        );
+      }
+      return (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0;
+    },
+    [roleMap, subject, draftUnvalidatedVariables, allVariables],
   );
   const editorValidate = useMemo(
     () =>

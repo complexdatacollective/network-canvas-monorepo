@@ -1105,6 +1105,50 @@ describe('SyntheticInterview', () => {
       expect(values).toEqual(['2020-06-15', '2020-06-15', '2020-06-15']);
     });
 
+    it('refuses disjoint ordinary-form and composer date windows', () => {
+      const si = new SyntheticInterview(7);
+      const node = si.addNodeType({ name: 'Person' });
+      const born = node.addVariable({
+        name: 'Born',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: {
+          type: 'full',
+          min: '2000-01-01',
+          max: '2010-12-31',
+        },
+      });
+      si.addStage('AlterForm', {
+        subject: { entity: 'node', type: node.id },
+        form: {
+          fields: [
+            {
+              variable: born.id,
+              component: 'DatePicker',
+              prompt: 'When?',
+            },
+          ],
+        },
+      });
+      const composer = si.addStage('NetworkComposer', {
+        subject: { entity: 'node', type: node.id },
+        initialNodes: { count: 1 },
+      });
+      composer.addNodeFormField({
+        variable: born.id,
+        component: 'DatePicker',
+        parameters: {
+          type: 'full',
+          min: '2020-01-01',
+          max: '2030-12-31',
+        },
+      });
+
+      expect(() => si.getNetwork()).toThrow(
+        'this protocol renders one variable with incompatible date controls',
+      );
+    });
+
     it('rejects a non-node (edge) subject', () => {
       const si = new SyntheticInterview();
       const friendship = si.addEdgeType({ name: 'Friendship' });

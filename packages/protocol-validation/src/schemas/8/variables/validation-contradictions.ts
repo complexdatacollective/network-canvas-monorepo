@@ -127,6 +127,31 @@ function localContradictions(
         });
       }
     }
+    const type = typeOf(variable);
+    const zeroMaximum =
+      type === 'text'
+        ? ({ min: 'minLength', max: 'maxLength' } as const)
+        : type === 'categorical'
+          ? ({ min: 'minSelected', max: 'maxSelected' } as const)
+          : undefined;
+    if (
+      zeroMaximum !== undefined &&
+      validationOf(variable).required === true &&
+      numberRule(variable, zeroMaximum.max) === 0
+    ) {
+      const explicitMin = numberRule(variable, zeroMaximum.min);
+      // A positive explicit minimum already reports through the ordinary
+      // inverted-bound check above. Otherwise requiredness supplies the
+      // implicit minimum of one non-empty character/selection.
+      if (explicitMin === undefined || explicitMin <= 0) {
+        found.push({
+          class: 'invertedBounds',
+          message: `Variable "${name}": required answers cannot satisfy ${zeroMaximum.max} (0)`,
+          variableIds: [id],
+          strips: [{ variableId: id, rule: zeroMaximum.max }],
+        });
+      }
+    }
     const minSelected = numberRule(variable, 'minSelected');
     const options = optionValues(variable)?.size;
     if (

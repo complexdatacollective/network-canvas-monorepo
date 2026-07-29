@@ -572,6 +572,30 @@ function adaptDelegatedContradiction(
     const variable = entity.get(variableIds[0] ?? '');
     const [minimum, maximum] = contradiction.strips;
     if (maximum === undefined) {
+      if (
+        minimum?.rule === 'maxSelected' &&
+        variable?.constraints.required &&
+        variable.constraints.maxSelected === 0
+      ) {
+        return {
+          variableIds,
+          rules: ['required', 'maxSelected'],
+          reason:
+            'maxSelected 0 permits only an empty selection, which required rejects',
+        };
+      }
+      if (
+        minimum?.rule === 'maxLength' &&
+        variable?.constraints.required &&
+        variable.constraints.maxLength === 0
+      ) {
+        return {
+          variableIds,
+          rules: ['required', 'maxLength'],
+          reason:
+            'maxLength 0 permits only an empty string, which required rejects',
+        };
+      }
       return {
         variableIds,
         rules: strippedRules,
@@ -902,31 +926,6 @@ function analyseEntity(
         [id],
         ['minLength'],
         `minLength ${constraints.minLength} exceeds the ${MAX_TEXT_DRAW_LENGTH} characters a generated value can hold`,
-      );
-    }
-
-    // Schema R1 prevents this in validated protocols; hand-built codebooks still need the guard.
-    // `maxSelected: 0` leaves the empty selection as the only drawable value,
-    // and `required` is the one rule that rejects it. Without this the draw
-    // emits `[]` and the interview refuses it — invalid data rather than a
-    // refusal, which is the outcome this pass exists to prevent.
-    if (constraints.required && constraints.maxSelected === 0) {
-      report(
-        [id],
-        ['required', 'maxSelected'],
-        'maxSelected 0 permits only an empty selection, which required rejects',
-      );
-    }
-
-    // Schema R1 prevents this in validated protocols; hand-built codebooks still need the guard.
-    // The same contradiction in the length rules: `maxLength: 0` leaves the
-    // empty string as the only value it permits, and `required` rejects it.
-    // `textDrawLength` picks length 0 and `fitToLength` emits `""`.
-    if (constraints.required && constraints.maxLength === 0) {
-      report(
-        [id],
-        ['required', 'maxLength'],
-        'maxLength 0 permits only an empty string, which required rejects',
       );
     }
 

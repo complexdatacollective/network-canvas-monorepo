@@ -264,7 +264,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               label={otherVariablePrompt}
               placeholder="Enter your response here..."
               component={InputField}
-              name="otherVariable"
+              name={otherVariable}
               {...otherValidationProps}
               validationContext={validationContext}
               autoFocus
@@ -282,8 +282,8 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
           newAttributeData: {
             [variable]: null,
             [otherVariable]:
-              typeof result.otherVariable === 'string'
-                ? result.otherVariable
+              typeof result[otherVariable] === 'string'
+                ? result[otherVariable]
                 : null,
           },
           currentStep,

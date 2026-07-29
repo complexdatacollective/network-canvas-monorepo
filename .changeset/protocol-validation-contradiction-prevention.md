@@ -8,10 +8,11 @@ rejects inverted `min`/`max` pairs, `minSelected` above the option count,
 satisfy (impossible cycles, comparisons inside a `sameAs` group, comparisons
 with disjoint bounds), cross-type validation references, count-valued rules
 below their floors, and malformed or inverted DatePicker `min`/`max`
-parameters. The v7→v8 migration strips or normalises all of these in existing
-protocols (see the migration notes). Protocols already at schema version 8
-that carry a contradiction will now fail validation — the interview forms
-they produced were already unsubmittable.
+parameters. Required text and categorical variables also cannot set their
+maximum answer size to zero. The v7→v8 migration strips or normalises all of
+these in existing protocols (see the migration notes). Protocols already at
+schema version 8 that carry a contradiction will now fail validation — the
+interview forms they produced were already unsubmittable.
 
 Three further unanswerable configurations are rejected for the same reason: a
 Network Composer form listing one variable in two fields (both fields render

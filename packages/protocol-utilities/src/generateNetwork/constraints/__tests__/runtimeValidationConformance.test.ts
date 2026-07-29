@@ -275,8 +275,8 @@ function required(validation: Record<string, unknown>) {
 }
 
 function generatedFixture(seed: number): Variables {
-  const family = (seed - 1) % 8;
-  const variant = Math.floor((seed - 1) / 8);
+  const family = (seed - 1) % 9;
+  const variant = Math.floor((seed - 1) / 9);
   const offset = variant % 4;
   const year = 2020 + (variant % 5);
   const day = 1 + (variant % 20);
@@ -462,6 +462,27 @@ function generatedFixture(seed: number): Variables {
     };
   }
 
+  if (family === 7) {
+    return variant % 2 === 0
+      ? {
+          a: {
+            name: 'Required empty text',
+            type: 'text',
+            component: 'Text',
+            validation: required({ maxLength: 0 }),
+          },
+        }
+      : {
+          a: {
+            name: 'Required empty selection',
+            type: 'categorical',
+            component: 'CheckboxGroup',
+            options: [option(`x-${variant}`), option(`y-${variant}`)],
+            validation: required({ maxSelected: 0 }),
+          },
+        };
+  }
+
   return {
     a: {
       name: 'Inverted',
@@ -481,7 +502,7 @@ describe('analyser to runtime conformance property', () => {
         contradictionClasses: string[];
       }[] = [];
 
-      for (let seed = 1; seed <= 160; seed++) {
+      for (let seed = 1; seed <= 180; seed++) {
         const variables = generatedFixture(seed);
         const contradictions = findValidationContradictions(variables, {
           stageEffectiveComponents: true,

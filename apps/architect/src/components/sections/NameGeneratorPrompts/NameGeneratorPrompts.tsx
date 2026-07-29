@@ -21,6 +21,7 @@ type NameGeneratorPromptsProps = StageEditorSectionProps & {
   disabledMessage?: string;
 };
 const NameGeneratorPrompts = ({
+  form,
   disabled,
   disabledMessage,
   entity,
@@ -49,7 +50,7 @@ const NameGeneratorPrompts = ({
         editorFieldsComponent: PromptFields,
         editorTitle: 'Edit Prompt',
         itemLabel: 'prompt',
-        editorProps: { entity, type },
+        editorProps: { entity, type, stageForm: form },
         requestedEditFormName: 'editable-list-form',
         sortable: true,
       }}

@@ -7,3 +7,7 @@ The Categorical Bin "other" input and the Name Generator quick-add field now app
 Network Composer also waits for a quick-add node to finish being stored before
 clearing and reopening the input, preventing two rapid submissions from
 bypassing uniqueness validation against the first node.
+
+The Categorical Bin dialog registers its response under the referenced
+codebook variable ID, so a sibling variable literally named `otherVariable`
+cannot be mistaken for the live response by cross-variable validation.

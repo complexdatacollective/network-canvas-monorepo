@@ -19,6 +19,7 @@ Read-only stage references no longer make validation rules apply to values writt
 When multiple reachable Network Composer stages render one date variable at the
 same resolution, generation now uses the intersection of their accepted
 windows. It refuses only controls at incompatible resolutions or controls whose
-windows do not overlap.
+windows do not overlap. When an ordinary form also renders that variable,
+generation includes its codebook control in the same intersection.
 
 `@codaco/fresco-ui` adds a `./form/validation/helpers` export subpath so consumers can build the same validator stack the interview uses. `@codaco/interview` now fails loudly, naming the variable, when a protocol carries a validation rule of the wrong type, rather than passing it to a validator that would report a generic error.

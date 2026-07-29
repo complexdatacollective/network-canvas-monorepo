@@ -747,6 +747,14 @@ export const validatedElsewhereMessage = (variableName: string): string =>
 export const unvalidatedElsewhereMessage = (variableName: string): string =>
   `"${variableName}" is written without validation by another stage, so it cannot be used as a form field`;
 
+export const draftValidatedElsewhereMessage = (variableName: string): string =>
+  `"${variableName}" is collected by this stage's form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)`;
+
+export const draftUnvalidatedElsewhereMessage = (
+  variableName: string,
+): string =>
+  `"${variableName}" is assigned without validation by a prompt in this stage, so it cannot be used as a form field`;
+
 /**
  * The save-time exclusivity gate shared by every writer surface (the form
  * dialog's `variable` field, and each unvalidated writer's `onBeforeSave`/
@@ -814,7 +822,8 @@ export const crossClassPickIssue = ({
  * as this validate's second argument (see InlineEditScreen/Form's
  * WrappedFormProps); `props.initialValues` is the row's PRE-EDIT committed
  * values, read here to implement `crossClassPickIssue`'s unchanged-pick
- * escape.
+ * escape. A string result is already a draft-specific conflict message but
+ * keeps that same unchanged-pick escape.
  *
  * `resolvedViews` contains the current shared form and every NetworkComposer
  * form that renders this subject. Each view is analysed independently after
@@ -829,7 +838,7 @@ export const makeFieldEditorValidate = (
   allVariables: UnknownRecord,
   overlay?: VariableOverlay,
   crossFormRendered?: ReadonlySet<string>,
-  hasUnvalidatedUse?: (variableId: string) => boolean,
+  hasUnvalidatedUse?: (variableId: string) => boolean | string,
   resolvedViews: readonly ResolvedFormValidationView[] = [],
 ) => {
   // Computed once per dialog session, not on every keystroke: `allVariables`
@@ -1016,10 +1025,18 @@ export const makeFieldEditorValidate = (
         typeof initialValues?.variable === 'string'
           ? initialValues.variable
           : '';
+      const conflictingUse = hasUnvalidatedUse(currentVariableId);
+      if (
+        typeof conflictingUse === 'string' &&
+        currentVariableId !== originalVariableId
+      ) {
+        return { variable: conflictingUse };
+      }
       const issue = crossClassPickIssue({
         variableId: currentVariableId,
         originalVariableId,
-        hasConflictingUse: hasUnvalidatedUse,
+        hasConflictingUse: () =>
+          typeof conflictingUse === 'boolean' && conflictingUse,
         allVariables: overlaidVariables,
         message: unvalidatedElsewhereMessage,
       });

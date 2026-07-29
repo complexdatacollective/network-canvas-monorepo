@@ -117,12 +117,12 @@ export function generateNetwork(
   );
 
   // A reachable NetworkComposer field carries the control it renders its
-  // variable with, overriding the codebook's — so the window a generated date
-  // has to land in is the stage's, not the variable's. Folded into the codebook
-  // before anything reads it, so the count and the draw are given the same one;
-  // see `applyComposerRenderings`.
+  // variable with. Where an ordinary form also renders that variable through
+  // the codebook control, the generated value must satisfy both. Fold their
+  // common domain into the codebook before anything reads it, so the count and
+  // the draw are given the same one; see `applyComposerRenderings`.
   //
-  // Its own refusal comes first and alone: where two composer controls have no
+  // Its own refusal comes first and alone: where reachable controls have no
   // common window at one resolution there is nothing for feasibility to say
   // about the variable yet.
   const composed = applyComposerRenderings(

@@ -100,6 +100,12 @@ const PROTOCOL_WITH_FORM_CONFLICT = {
             options: [{ label: 'Yes', value: true }],
             validation: {},
           },
+          draftOnly: {
+            name: 'Draft only',
+            type: 'boolean',
+            component: 'Toggle',
+            validation: {},
+          },
         },
       },
       place: {
@@ -178,6 +184,13 @@ const renderForm = (subject: {
               form: {
                 fields: [{ variable: 'boolA' }, { variable: 'boolB' }],
               },
+              prompts: [
+                {
+                  additionalAttributes: [
+                    { variable: 'draftOnly', value: true },
+                  ],
+                },
+              ],
             },
           },
         },
@@ -250,5 +263,32 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
     });
 
     expect(errors.validation).toContain('must differ');
+  });
+
+  it('rejects a field variable written by an unsaved prompt draft', () => {
+    const editorValidate = renderForm({ entity: 'node', type: 'person' });
+    const errors = editorValidate({
+      variable: 'draftOnly',
+      validation: {},
+      component: 'Toggle',
+    });
+
+    expect(errors.variable).toBe(
+      '"Draft only" is assigned without validation by a prompt in this stage, so it cannot be used as a form field',
+    );
+  });
+
+  it('keeps the unchanged-pick escape for a pre-existing draft conflict', () => {
+    const editorValidate = renderForm({ entity: 'node', type: 'person' });
+    expect(
+      editorValidate(
+        {
+          variable: 'draftOnly',
+          validation: {},
+          component: 'Toggle',
+        },
+        { initialValues: { variable: 'draftOnly' } },
+      ),
+    ).toEqual({});
   });
 });

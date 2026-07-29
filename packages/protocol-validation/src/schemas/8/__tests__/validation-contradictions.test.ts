@@ -78,6 +78,49 @@ describe('findValidationContradictions — local checks', () => {
     ]);
   });
 
+  it.each([
+    ['text', 'maxLength'],
+    ['categorical', 'maxSelected'],
+  ] as const)(
+    'rejects a required %s variable whose %s is zero',
+    (type, maximumRule) => {
+      const result = findValidationContradictions({
+        a: {
+          name: 'answer',
+          type,
+          validation: { required: true, [maximumRule]: 0 },
+        },
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.class).toBe('invertedBounds');
+      expect(result[0]?.message).toBe(
+        `Variable "answer": required answers cannot satisfy ${maximumRule} (0)`,
+      );
+      expect(result[0]?.strips).toEqual([
+        { variableId: 'a', rule: maximumRule },
+      ]);
+    },
+  );
+
+  it.each([
+    ['text', 'maxLength'],
+    ['categorical', 'maxSelected'],
+  ] as const)(
+    'accepts an optional %s variable whose %s is zero',
+    (type, maximumRule) => {
+      expect(
+        findValidationContradictions({
+          a: {
+            name: 'answer',
+            type,
+            validation: { required: false, [maximumRule]: 0 },
+          },
+        }),
+      ).toEqual([]);
+    },
+  );
+
   // Sixth-wave Finding 3: categoricalOptionsSchema permits duplicate-VALUE
   // option entries, but the runtime can only ever select a distinct value —
   // minSelected must be judged against the DISTINCT value count, not the
@@ -2745,6 +2788,16 @@ describe('R1 — absolute floors on count-valued rules', () => {
       }).success,
     ).toBe(true);
     expect(
+      VariablesSchema.safeParse({
+        first_name: {
+          name: 'first_name',
+          type: 'text',
+          component: 'Text',
+          validation: { required: true, maxLength: 0 },
+        },
+      }).success,
+    ).toBe(false);
+    expect(
       VariableSchema.safeParse({
         name: 'first_name',
         type: 'text',
@@ -2755,7 +2808,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
   });
 
   it('accepts selection-count boundaries and rejects negative minSelected', () => {
-    const categorical = (validation: Record<string, number>) => ({
+    const categorical = (validation: Record<string, number | boolean>) => ({
       name: 'colors',
       type: 'categorical',
       component: 'CheckboxGroup',
@@ -2768,6 +2821,11 @@ describe('R1 — absolute floors on count-valued rules', () => {
     expect(
       VariableSchema.safeParse(categorical({ maxSelected: 0 })).success,
     ).toBe(true);
+    expect(
+      VariablesSchema.safeParse({
+        colors: categorical({ required: true, maxSelected: 0 }),
+      }).success,
+    ).toBe(false);
     expect(
       VariableSchema.safeParse(categorical({ minSelected: 0, maxSelected: 1 }))
         .success,

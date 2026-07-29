@@ -84,6 +84,7 @@ const NODE_TYPE = 'person';
 const CATEGORY_VARIABLE = 'category';
 const OTHER_VARIABLE = 'otherReason';
 const NOTE_VARIABLE = 'existingNote';
+const COLLIDING_SIBLING_VARIABLE = 'otherVariable';
 const STAGE_ID = 'categorical-bin-stage';
 const PROMPT_ID = 'prompt-1';
 const OTHER_PROMPT_TEXT = 'Please specify the other category';
@@ -95,7 +96,10 @@ const OTHER_BIN_INDEX = 1;
 const node: NcNode = {
   [entityPrimaryKeyProperty]: 'node-1',
   type: NODE_TYPE,
-  [entityAttributesProperty]: { [NOTE_VARIABLE]: RESERVED_NOTE_VALUE },
+  [entityAttributesProperty]: {
+    [NOTE_VARIABLE]: RESERVED_NOTE_VALUE,
+    [COLLIDING_SIBLING_VARIABLE]: RESERVED_NOTE_VALUE,
+  },
 };
 
 function buildCodebook(
@@ -133,6 +137,11 @@ function buildCodebook(
           },
           [NOTE_VARIABLE]: {
             name: 'Existing note',
+            type: 'text',
+            component: 'Text',
+          },
+          [COLLIDING_SIBLING_VARIABLE]: {
+            name: 'Collision-prone sibling',
             type: 'text',
             component: 'Text',
           },
@@ -316,7 +325,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     fireEvent.change(input, { target: { value: 'abcdef' } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
-    await screen.findByTestId('otherVariable-field-error');
+    await screen.findByTestId(`${OTHER_VARIABLE}-field-error`);
     expect(screen.getByTestId('dialog-submit')).toBeInTheDocument();
     expect(getOtherAttribute(store)).toBeUndefined();
 
@@ -324,7 +333,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     fireEvent.change(input, { target: { value: '' } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
-    await screen.findByTestId('otherVariable-field-error');
+    await screen.findByTestId(`${OTHER_VARIABLE}-field-error`);
     expect(screen.getByTestId('dialog-submit')).toBeInTheDocument();
     expect(getOtherAttribute(store)).toBeUndefined();
   });
@@ -355,14 +364,10 @@ describe('CategoricalBin other-input honours codebook validation', () => {
 
     // Matches the node's existing `existingNote` attribute: rejected without
     // validationContext (differentFrom has nothing to compare against, since
-    // the dialog's field name is the literal "otherVariable", not the real
-    // codebook attribute id — the comparison value can only be found via
-    // network + currentEntityId, exactly as differentFrom/getComparisonValue
-    // resolve it).
     fireEvent.change(input, { target: { value: RESERVED_NOTE_VALUE } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
-    await screen.findByTestId('otherVariable-field-error');
+    await screen.findByTestId(`${OTHER_VARIABLE}-field-error`);
     expect(screen.getByTestId('dialog-submit')).toBeInTheDocument();
     expect(getOtherAttribute(store)).toBeUndefined();
 
@@ -375,6 +380,30 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     });
 
     expect(getOtherAttribute(store)).toBe('a genuinely new reason');
+  });
+
+  it('resolves a reference to a sibling literally named otherVariable instead of comparing the dialog answer with itself', async () => {
+    const { store, getDndStore } = renderCategoricalBin({
+      differentFrom: asEntityAttributeReference(COLLIDING_SIBLING_VARIABLE),
+    });
+
+    await dropNodeIntoOtherBin(getDndStore);
+
+    const input = await screen.findByRole('textbox');
+    fireEvent.change(input, { target: { value: RESERVED_NOTE_VALUE } });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await screen.findByTestId(`${OTHER_VARIABLE}-field-error`);
+    expect(getOtherAttribute(store)).toBeUndefined();
+
+    fireEvent.change(input, { target: { value: 'a distinct reason' } });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('dialog-submit')).not.toBeInTheDocument();
+    });
+
+    expect(getOtherAttribute(store)).toBe('a distinct reason');
   });
 
   it('still enforces validation for a component-less otherVariable (e.g. one created via Architect\'s "Create New Variable" dialog, which never sets `component`), without crashing', async () => {
@@ -392,7 +421,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     // variable carries no `component`.
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
-    await screen.findByTestId('otherVariable-field-error');
+    await screen.findByTestId(`${OTHER_VARIABLE}-field-error`);
     expect(screen.getByTestId('dialog-submit')).toBeInTheDocument();
     expect(getOtherAttribute(store)).toBeUndefined();
 

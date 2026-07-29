@@ -5,6 +5,7 @@ import type {
   Variable,
   Variables,
 } from '@codaco/protocol-validation';
+import { collectEntityAttributeReferences } from '@codaco/protocol-validation';
 
 import type { VariableEntry } from '../../types';
 import { buildVariableConstraints } from './buildConstraints';
@@ -58,7 +59,7 @@ export type ComposerRendering =
   | ComposerDateRendering
   | ComposerBooleanRendering;
 
-/** A variable two composer fields render with different date controls. */
+/** A variable reachable forms render with incompatible date controls. */
 export type ComposerRenderingDisagreement = {
   entity: 'node' | 'edge';
   type: string;
@@ -74,7 +75,7 @@ export const COMPOSER_RENDERING_CONFLICT = {
   summary: 'this protocol renders one variable with incompatible date controls',
   rules: ['component', 'parameters'],
   reason:
-    'two Network Composer stages render this variable with date controls that have no common window at one resolution, ' +
+    'reachable forms render this variable with date controls that have no common window at one resolution, ' +
     'and the one value it holds is submitted through both',
 } as const;
 
@@ -126,6 +127,71 @@ function composerFields(stages: Stage[]): ComposerField[] {
         fields.push({ entity: 'edge', type: edgeType, ...field });
       }
     }
+  }
+
+  return fields;
+}
+
+const fieldKey = (
+  field: Pick<ComposerField, 'entity' | 'type' | 'variable'>,
+): string => `${field.entity}:${field.type}:${field.variable}`;
+
+/**
+ * Codebook controls that a reachable non-composer form actually renders for a
+ * variable also rendered by Network Composer.
+ *
+ * The schema's writer tags identify shared FormFieldSchema surfaces without a
+ * second stage-type list: their reference ends in `variable` and is validated.
+ * Network Composer fields are excluded because their override was collected
+ * separately. FamilyPedigree has no stage subject, so its node form recovers
+ * the type from nodeConfig.
+ */
+function ordinaryFormFields(
+  codebook: StructuralCodebook,
+  stages: Stage[],
+  composers: readonly ComposerField[],
+): ComposerField[] {
+  const composerKeys = new Set(composers.map(fieldKey));
+  const fields: ComposerField[] = [];
+
+  for (const hit of collectEntityAttributeReferences({ stages })) {
+    if (
+      hit.usage !== 'validatedAttribute' ||
+      hit.path[hit.path.length - 1] !== 'variable'
+    ) {
+      continue;
+    }
+    const stageIndex = hit.path[0] === 'stages' ? hit.path[1] : undefined;
+    if (typeof stageIndex !== 'number') continue;
+    const stage = stages[stageIndex];
+    if (stage === undefined || stage.type === 'NetworkComposer') continue;
+
+    const subject =
+      hit.subject ??
+      (stage.type === 'FamilyPedigree'
+        ? { entity: 'node' as const, type: stage.nodeConfig.type }
+        : undefined);
+    if (subject === undefined || subject.entity === 'ego') continue;
+
+    const key = fieldKey({ ...subject, variable: hit.variableId });
+    if (!composerKeys.has(key)) continue;
+    const variable =
+      codebook[subject.entity]?.[subject.type]?.variables?.[hit.variableId];
+    if (
+      variable === undefined ||
+      !('component' in variable) ||
+      variable.component === undefined
+    ) {
+      continue;
+    }
+    fields.push({
+      ...subject,
+      variable: hit.variableId,
+      component: variable.component,
+      ...('parameters' in variable && variable.parameters !== undefined
+        ? { parameters: variable.parameters }
+        : {}),
+    });
   }
 
   return fields;
@@ -274,8 +340,8 @@ function mergedRendering(
 }
 
 /**
- * The rendering each variable is generated against, folded from every composer
- * field naming it.
+ * The rendering each variable is generated against, folded from every
+ * contributed field naming it.
  *
  * Date controls at one resolution are narrowed to their common window. An empty
  * intersection or different resolutions are reported as a disagreement,
@@ -335,6 +401,39 @@ export function resolveComposerRenderings(
 }
 
 /**
+ * Resolve every reachable control domain that constrains a composer-rendered
+ * variable. Composer overrides contribute their stage-effective control;
+ * ordinary forms contribute the codebook control they actually render.
+ */
+function resolveComposerRenderingsForProtocol(
+  codebook: StructuralCodebook,
+  stages: Stage[],
+  today: string,
+): {
+  renderings: ComposerRenderings;
+  disagreements: ComposerRenderingDisagreement[];
+} {
+  const composers = composerFields(stages);
+  const fields = [
+    ...composers,
+    ...ordinaryFormFields(codebook, stages, composers),
+  ];
+  const variableOf = (field: ComposerField): Variable | undefined =>
+    codebook[field.entity]?.[field.type]?.variables?.[field.variable];
+
+  return resolveComposerRenderings(
+    fields,
+    (field) => {
+      const variable = variableOf(field);
+      return variable !== undefined && 'parameters' in variable
+        ? variable.parameters
+        : undefined;
+    },
+    today,
+  );
+}
+
+/**
  * The same variable, rendered by the control a composer field puts in front of
  * the participant.
  *
@@ -380,8 +479,8 @@ function renderedVariables(
 
 /**
  * The codebook a run generates against: the one the protocol declares, with
- * every variable a NetworkComposer renders carrying that stage's control and
- * parameters instead of its own.
+ * every variable a NetworkComposer renders narrowed to the control domains of
+ * every reachable form that can submit it.
  *
  * A composer field overrides the codebook variable's `component` and
  * `parameters` for the form the interview renders — `createFieldMetadata` in
@@ -407,15 +506,9 @@ function renderedVariables(
  * through whichever form the participant opens — so a value for this variable
  * has to satisfy the composer's control wherever the node was created.
  *
- * What is deliberately *not* folded is the codebook control's own window
- * alongside the composer's. A variable a composer renders is one whose codebook
- * control the composer replaces, and intersecting the two would refuse a
- * protocol nothing is wrong with: Architect gives every datetime variable a
- * codebook DatePicker, whose window stops at today, so a composer anchoring
- * dates in the future would be refused for a bound no field in the interview
- * applies. A second, non-composer form rendering the same variable through the
- * codebook's own control keeps that unmodelled window, which is the boundary
- * this cut accepts.
+ * The codebook control contributes only when a reachable ordinary form names
+ * the variable. A composer-only variable still uses only its override, so an
+ * unused codebook default cannot narrow the generated domain.
  */
 export function applyComposerRenderings(
   codebook: StructuralCodebook,
@@ -425,17 +518,9 @@ export function applyComposerRenderings(
   const fields = composerFields(stages);
   if (fields.length === 0) return { codebook, conflicts: [] };
 
-  const variableOf = (field: ComposerField): Variable | undefined =>
-    codebook[field.entity]?.[field.type]?.variables?.[field.variable];
-
-  const { renderings, disagreements } = resolveComposerRenderings(
-    fields,
-    (field) => {
-      const variable = variableOf(field);
-      return variable !== undefined && 'parameters' in variable
-        ? variable.parameters
-        : undefined;
-    },
+  const { renderings, disagreements } = resolveComposerRenderingsForProtocol(
+    codebook,
+    stages,
     today,
   );
 

@@ -7,6 +7,7 @@ import {
 } from 'redux-form';
 
 import FrescoReduxArrayField from '~/components/Form/FrescoReduxArrayField';
+import { draftFormFieldVariableIds } from '~/components/Validations/draftWriterRoles';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { excludeValidatedUses } from '~/selectors/roleFilters';
@@ -42,8 +43,10 @@ type AssignAttributesProps = {
   entity: 'node' | 'edge' | 'ego';
   form: string;
   name: string;
+  stageForm?: string;
   type: string;
   variableOptions: VariableOption[];
+  draftValidatedVariables: ReadonlySet<string>;
 };
 
 const AssignAttributes = ({
@@ -51,13 +54,19 @@ const AssignAttributes = ({
   type,
   entity,
   name,
+  draftValidatedVariables,
 }: AssignAttributesProps) => (
   <FieldArray
     name={name}
     component={FrescoReduxArrayField}
     label=""
     itemComponent={Attribute}
-    itemComponentProps={{ entity, type, variableOptions }}
+    itemComponentProps={{
+      entity,
+      type,
+      variableOptions,
+      draftValidatedVariables,
+    }}
     itemTemplate={() => ({}) satisfies Partial<AttributeValue>}
     itemClasses="p-0! shadow-none"
     addButtonLabel="Add new variable to assign"
@@ -75,6 +84,8 @@ const AssignAttributes = ({
  * validates. `committedVariables` is every row's COMMITTED pick from the
  * prompt editor's initial values — the multi-row form of the usual
  * currentValue escape, so an existing row keeps rendering its selection.
+ * The outer `stageForm` contributes live form-field roles before the stage
+ * itself has been saved.
  * Exported so pickerExclusions.test.ts pins the direction directly.
  */
 export const getAdditionalAttributesOptionsForSubject = (
@@ -91,7 +102,13 @@ export const getAdditionalAttributesOptionsForSubject = (
 
 const mapStateToProps = (
   state: RootState,
-  { entity, type, form, name }: Omit<AssignAttributesProps, 'variableOptions'>,
+  {
+    entity,
+    type,
+    form,
+    name,
+    stageForm,
+  }: Omit<AssignAttributesProps, 'variableOptions' | 'draftValidatedVariables'>,
 ) => {
   const usedVariables = (
     (formValueSelector(form)(state, name) as AttributeValue[] | undefined) || []
@@ -108,12 +125,20 @@ const mapStateToProps = (
     { entity, type },
     committedVariables,
   );
+  const draftValidatedVariables = draftFormFieldVariableIds(
+    stageForm ? formValueSelector(stageForm)(state, 'form.fields') : undefined,
+  );
+  const draftSafeOptions = variableOptions.filter(
+    ({ value }) =>
+      !draftValidatedVariables.has(value) || committedVariables.includes(value),
+  );
 
   return {
     variableOptions: getAssignableVariableOptions(
-      variableOptions,
+      draftSafeOptions,
       usedVariables,
     ),
+    draftValidatedVariables,
   };
 };
 

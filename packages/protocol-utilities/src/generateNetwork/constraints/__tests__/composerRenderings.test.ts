@@ -112,6 +112,24 @@ function composerStage(options: {
   };
 }
 
+function alterFormStage(variable: string): Stage {
+  return {
+    id: 'ordinary-form',
+    type: 'AlterForm',
+    label: 'Edit person',
+    subject: { entity: 'node', type: 'person' },
+    introductionPanel: { title: 'Introduction', text: 'Continue' },
+    form: {
+      fields: [
+        {
+          variable: asEntityAttributeReference(variable),
+          prompt: 'Enter a value',
+        },
+      ],
+    },
+  };
+}
+
 function valuesOf(
   entities: readonly {
     [entityAttributesProperty]: Record<string, VariableValue>;
@@ -319,6 +337,117 @@ describe('NetworkComposer field renderings', () => {
     });
 
     expect(new Set(valuesOf(network.nodes, 'born'))).toEqual(new Set(['1990']));
+  });
+
+  it('refuses disjoint ordinary-form and composer date windows', () => {
+    const generate = () =>
+      generateNetwork({
+        codebook: codebookWith({
+          nodeParameters: {
+            type: 'full',
+            min: '2000-01-01',
+            max: '2010-12-31',
+          },
+        }),
+        stages: [
+          alterFormStage('born'),
+          composerStage({
+            nodeFields: [
+              {
+                variable: 'born',
+                component: 'DatePicker',
+                parameters: {
+                  type: 'full',
+                  min: '2020-01-01',
+                  max: '2030-12-31',
+                },
+              },
+            ],
+          }),
+        ],
+        seed: 5,
+        config: { today: TODAY },
+      });
+
+    expect(generate).toThrow(
+      'this protocol renders one variable with incompatible date controls',
+    );
+  });
+
+  it('ignores an ordinary form proven unreachable when resolving composer controls', () => {
+    const unreachableOrdinaryForm: Stage = {
+      ...alterFormStage('born'),
+      skipLogic: {
+        action: 'SKIP',
+        filter: {
+          rules: [
+            {
+              id: 'missing-consent',
+              type: 'ego',
+              options: {
+                attribute: asEntityAttributeReference('consent'),
+                operator: 'NOT_EXISTS',
+              },
+            },
+          ],
+        },
+      },
+    };
+    const { network } = generateNetwork({
+      codebook: codebookWith({
+        nodeParameters: {
+          type: 'full',
+          min: '2000-01-01',
+          max: '2010-12-31',
+        },
+      }),
+      stages: [
+        unreachableOrdinaryForm,
+        composerStage({
+          nodeFields: [
+            {
+              variable: 'born',
+              component: 'DatePicker',
+              parameters: {
+                type: 'full',
+                min: '2020-01-01',
+                max: '2020-01-01',
+              },
+            },
+          ],
+        }),
+      ],
+      seed: 5,
+      config: { today: TODAY },
+      respectSkipLogicAndFiltering: true,
+    });
+
+    expect(new Set(valuesOf(network.nodes, 'born'))).toEqual(
+      new Set(['2020-01-01']),
+    );
+  });
+
+  it('intersects an ordinary Boolean field with a composer Toggle override', () => {
+    const values = new Set<VariableValue>();
+
+    for (let seed = 0; seed < 20; seed++) {
+      const { network } = generateNetwork({
+        codebook: codebookWith({
+          booleanOptions: [{ label: 'Yes', value: true }],
+        }),
+        stages: [
+          alterFormStage('flag'),
+          composerStage({
+            nodeFields: [{ variable: 'flag', component: 'Toggle' }],
+          }),
+        ],
+        seed,
+        config: { today: TODAY },
+      });
+      for (const value of valuesOf(network.nodes, 'flag')) values.add(value);
+    }
+
+    expect(values).toEqual(new Set([true]));
   });
 
   // One stored value reaches every stage that renders it — a composer's canvas

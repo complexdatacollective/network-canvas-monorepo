@@ -1988,8 +1988,9 @@ export class SyntheticInterview {
   }
 
   /**
-   * The domain-defining control each variable is generated against, where a
-   * NetworkComposer stage renders one.
+   * The shared control domain each variable is generated against where a
+   * NetworkComposer stage renders one, including any ordinary form that also
+   * submits the value through its codebook control.
    *
    * The builder's composer fields carry the same `component`/`parameters`
    * override the schema's do, and its draws go through the same constraint
@@ -1999,20 +2000,55 @@ export class SyntheticInterview {
    */
   private composerRenderings(today: string): ComposerRenderings {
     const fields: ComposerField[] = [];
+    const addOrdinaryField = (
+      entity: 'node' | 'edge',
+      type: string,
+      variable: string,
+    ): void => {
+      const declared = (
+        entity === 'node' ? this.nodeTypes.get(type) : this.edgeTypes.get(type)
+      )?.variables.get(variable);
+      if (declared?.component === undefined) return;
+      fields.push({
+        entity,
+        type,
+        variable,
+        component: declared.component,
+        ...(declared.parameters !== undefined
+          ? { parameters: declared.parameters }
+          : {}),
+      });
+    };
 
     for (const stage of this.stages) {
-      if (stage.type !== 'NetworkComposer') continue;
-
-      const nodeType = stage.subject?.type;
-      if (nodeType !== undefined) {
-        for (const field of stage.nodeForm?.fields ?? []) {
-          fields.push({ entity: 'node', type: nodeType, ...field });
+      if (stage.type === 'NetworkComposer') {
+        const nodeType = stage.subject?.type;
+        if (nodeType !== undefined) {
+          for (const field of stage.nodeForm?.fields ?? []) {
+            fields.push({ entity: 'node', type: nodeType, ...field });
+          }
         }
+
+        for (const edge of stage.networkComposerEdges ?? []) {
+          for (const field of edge.form?.fields ?? []) {
+            fields.push({ entity: 'edge', type: edge.subject.type, ...field });
+          }
+        }
+        continue;
       }
 
-      for (const edge of stage.networkComposerEdges ?? []) {
-        for (const field of edge.form?.fields ?? []) {
-          fields.push({ entity: 'edge', type: edge.subject.type, ...field });
+      if (stage.form !== undefined && stage.subject !== undefined) {
+        for (const field of stage.form.fields) {
+          addOrdinaryField(
+            stage.subject.entity,
+            stage.subject.type,
+            field.variable,
+          );
+        }
+      }
+      if (stage.type === 'FamilyPedigree' && stage.nodeConfig !== undefined) {
+        for (const field of stage.nodeConfig.form ?? []) {
+          addOrdinaryField('node', stage.nodeConfig.type, field.variable);
         }
       }
     }

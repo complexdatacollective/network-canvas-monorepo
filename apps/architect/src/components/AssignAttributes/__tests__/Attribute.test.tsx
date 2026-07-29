@@ -97,6 +97,7 @@ const Harness = (_props: InjectedFormProps<FormValues>) => (
         type: 'boolean',
       },
     ]}
+    draftValidatedVariables={new Set()}
     entity="node"
     type="person"
   />

@@ -4880,7 +4880,7 @@ describe('Migration V7 to V8', () => {
       expect(variables?.a).not.toHaveProperty('parameters.min');
     });
 
-    it('strips negative count-valued rules and preserves zero-valued maxima', () => {
+    it('strips negative count-valued rules and preserves optional zero-valued maxima', () => {
       const migratedRaw = migrateVariables({
         a: {
           name: 'first_name',
@@ -4905,7 +4905,7 @@ describe('Migration V7 to V8', () => {
       const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
-      expect(variables?.a).toHaveProperty('validation.maxLength', 0);
+      expect(variables?.a).not.toHaveProperty('validation.maxLength');
       expect(variables?.a).not.toHaveProperty('validation.minLength');
       expect(variables?.a).toHaveProperty('validation.required', true);
       expect(variables?.b).toHaveProperty('validation.minLength', 0);
@@ -5107,6 +5107,38 @@ describe('Migration V7 to V8', () => {
         name: 'Test Protocol',
       });
     };
+
+    it('strips zero maxima when migration backfills requiredness from a zero minimum', () => {
+      const migratedRaw = migrateVariables({
+        text: {
+          name: 'comment',
+          type: 'text',
+          validation: { minLength: 0, maxLength: 0 },
+        },
+        choices: {
+          name: 'choices',
+          type: 'categorical',
+          options: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+          validation: { minSelected: 0, maxSelected: 0 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.text).toHaveProperty('validation.required', true);
+      expect(variables?.text).toHaveProperty('validation.minLength', 0);
+      expect(variables?.text).not.toHaveProperty('validation.maxLength');
+      expect(variables?.choices).toHaveProperty('validation.required', true);
+      expect(variables?.choices).toHaveProperty('validation.minSelected', 0);
+      expect(variables?.choices).not.toHaveProperty('validation.maxSelected');
+    });
 
     it('strips both members of an inverted pair', () => {
       const migratedRaw = migrateVariables({
