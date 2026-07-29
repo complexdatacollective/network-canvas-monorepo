@@ -80,7 +80,7 @@ Sociogram `prompts[].highlight.variable` (tap toggle) and
 Geospatial `prompts[].variable`; FamilyPedigree
 `nominationPrompts[].variable` (toggle) and all eight
 `nodeConfig`/`edgeConfig` variables (wizard/transform writes); NetworkComposer
-`quickAdd` and `layoutVariable`.
+`layoutVariable` and `convexHullVariable` (group and lasso membership writes).
 
 **Read-only (untagged for usage, outside the rule)**: Narrative preset
 `layoutVariable`/`groupVariable`/`highlight[]`, NarrativePedigree
@@ -88,19 +88,6 @@ Geospatial `prompts[].variable`; FamilyPedigree
 six validation reference rules, shape-mapping variables, filter-rule
 attributes, and the untagged sort keys. DyadCensus and OneToManyDyadCensus
 create edges only and write no attributes.
-
-**Untagged by decision, despite writing**: NetworkComposer
-`convexHullVariable`. This slot does persist attribute values — the Groups
-tool and lasso bulk-add write group membership directly
-(`toggleGroupMembership`/`addGroupMembership` → `updateNode`, no codebook
-rules applied) — but it is deliberately left untagged so grouping/display use
-never restricts a variable's use elsewhere, extending to it the authoring
-freedom Narrative's `groupVariable`/`highlight` presets get (commit
-`9e5365c63`; `32dad0950` removed the matching Architect picker exclusion and
-save-time gate). Accepted trade-off: a variable used both as a validated
-composer form field and as `convexHullVariable` can acquire membership values
-the form's rules would reject (e.g. a `maxSelected: 1` categorical gaining a
-second value), and `findVariableRoleConflicts` will not report the pairing.
 
 Two collector facts the implementation must handle: the FamilyPedigree and
 NarrativePedigree stages declare no top-level `subject`, so their hits carry

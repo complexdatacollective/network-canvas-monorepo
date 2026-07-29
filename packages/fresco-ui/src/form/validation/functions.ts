@@ -276,6 +276,21 @@ const DATE_TIME_RE =
   /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
 const TIME_RE = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
+function utcDateFromParts(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+  second = 0,
+): Date {
+  // Date.UTC treats years 0-99 as 1900-1999; setUTCFullYear preserves them.
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(hour, minute, second, 0);
+  return date;
+}
+
 /**
  * Format a min/max bound for human-readable display in validation hints.
  * Uses the runtime's locale via Intl.DateTimeFormat with timeZone: 'UTC' so
@@ -294,7 +309,7 @@ function formatBoundForDisplay(bound: string): string {
       year: 'numeric',
       month: 'long',
       timeZone: 'UTC',
-    }).format(new Date(Date.UTC(year, month - 1, 1)));
+    }).format(utcDateFromParts(year, month, 1));
   }
 
   const dateTime = DATE_TIME_RE.exec(bound);
@@ -304,15 +319,13 @@ function formatBoundForDisplay(bound: string): string {
     const day = Number(dateTime[3]);
     const hour = dateTime[4];
     if (hour !== undefined) {
-      const date = new Date(
-        Date.UTC(
-          year,
-          month - 1,
-          day,
-          Number(hour),
-          Number(dateTime[5]),
-          dateTime[6] !== undefined ? Number(dateTime[6]) : 0,
-        ),
+      const date = utcDateFromParts(
+        year,
+        month,
+        day,
+        Number(hour),
+        Number(dateTime[5]),
+        dateTime[6] !== undefined ? Number(dateTime[6]) : 0,
       );
       return new Intl.DateTimeFormat(undefined, {
         dateStyle: 'long',
@@ -323,7 +336,7 @@ function formatBoundForDisplay(bound: string): string {
     return new Intl.DateTimeFormat(undefined, {
       dateStyle: 'long',
       timeZone: 'UTC',
-    }).format(new Date(Date.UTC(year, month - 1, day)));
+    }).format(utcDateFromParts(year, month, day));
   }
 
   const time = TIME_RE.exec(bound);

@@ -274,4 +274,29 @@ describe('NetworkComposer quick-add honours codebook validation', () => {
     await waitFor(() => expect(input).toHaveValue('Alice'));
     expect(store.getState().session.network.nodes).toHaveLength(1);
   });
+
+  it('starts the next required quick-add entry without showing a stale validation error', async () => {
+    const { store } = renderInterface({
+      validation: { required: true },
+    });
+
+    const input = await openAddInput();
+    await userEvent.type(input, 'Alice');
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    });
+
+    await waitFor(() => {
+      expect(store.getState().session.network.nodes).toHaveLength(1);
+      expect(input).toHaveValue('');
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    expect(input).toHaveAttribute('aria-invalid', 'false');
+    expect(
+      screen.queryByText('You must answer this question before continuing.'),
+    ).not.toBeInTheDocument();
+  });
 });

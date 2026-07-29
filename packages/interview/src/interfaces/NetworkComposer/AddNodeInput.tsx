@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
@@ -44,6 +44,8 @@ function AddNodeField({
   ...validationProps
 }: AddNodeInputProps) {
   const validateForm = useFormStore((state) => state.validateForm);
+  const resetField = useFormStore((state) => state.resetField);
+  const [fieldToReset, setFieldToReset] = useState<string>();
 
   const { id, meta, fieldProps, containerProps } = useField({
     name: targetVariable,
@@ -53,6 +55,12 @@ function AddNodeField({
     validationContext,
     ...validationProps,
   });
+
+  useEffect(() => {
+    if (fieldToReset === undefined) return;
+    resetField(fieldToReset);
+    setFieldToReset(undefined);
+  }, [fieldToReset, resetField]);
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -75,10 +83,10 @@ function AddNodeField({
         if (name === '') return;
 
         onCreate(name);
-        fieldProps.onChange('');
+        setFieldToReset(targetVariable);
       })();
     },
-    [validateForm, fieldProps, onCreate],
+    [validateForm, fieldProps, onCreate, targetVariable],
   );
 
   return (

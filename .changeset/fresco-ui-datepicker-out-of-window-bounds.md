@@ -37,3 +37,6 @@ single genuinely-submittable day rather than a wider, trap-filled one. This
 is a distinct concern from the year/month dropdowns' clamp above (native
 input/validator legality, not dropdown storage grammar), so the two clamp
 to different four-digit ranges.
+
+Validation hints also preserve authored years from 0001 through 0099 instead
+of displaying them as years 1901 through 1999.

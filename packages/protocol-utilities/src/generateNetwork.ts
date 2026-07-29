@@ -110,16 +110,22 @@ export function generateNetwork(
 
   const resolvedConfig = resolveGenerationConfig(config);
 
-  // A NetworkComposer field carries the control it renders its variable with,
-  // overriding the codebook's — so the window a generated date has to land in
-  // is the stage's, not the variable's. Folded into the codebook before
-  // anything reads it, so the count and the draw are given the same one; see
-  // `applyComposerRenderings`.
+  const feasibilityStages = reachableStagesForFeasibility(
+    codebook,
+    stages,
+    respectSkipLogicAndFiltering,
+  );
+
+  // A reachable NetworkComposer field carries the control it renders its
+  // variable with, overriding the codebook's — so the window a generated date
+  // has to land in is the stage's, not the variable's. Folded into the codebook
+  // before anything reads it, so the count and the draw are given the same one;
+  // see `applyComposerRenderings`.
   //
   // Its own refusal comes first and alone: where two composer stages disagree
   // about a variable's control there is no single window to analyse, so there
   // is nothing for feasibility to say about it yet.
-  const composed = applyComposerRenderings(codebook, stages);
+  const composed = applyComposerRenderings(codebook, feasibilityStages);
   if (composed.conflicts.length > 0) {
     throw new SyntheticDataConstraintError(
       composed.conflicts,
@@ -127,11 +133,6 @@ export function generateNetwork(
     );
   }
   const renderedCodebook = composed.codebook;
-  const feasibilityStages = reachableStagesForFeasibility(
-    renderedCodebook,
-    stages,
-    respectSkipLogicAndFiltering,
-  );
 
   // Refused before anything is drawn, and before the seed is consulted: a
   // protocol whose declared rules no value can satisfy fails the same way on

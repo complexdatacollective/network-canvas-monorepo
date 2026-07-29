@@ -154,6 +154,58 @@ describe('NetworkComposer field renderings', () => {
     );
   });
 
+  it('ignores rendering conflicts from composers proven unreachable', () => {
+    const reachable = composerStage({
+      id: 'reachable',
+      nodeFields: [
+        {
+          variable: 'born',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '2020-06-15', before: 0, after: 0 },
+        },
+      ],
+    });
+    const unreachable: Stage = {
+      ...composerStage({
+        id: 'unreachable',
+        nodeFields: [
+          {
+            variable: 'born',
+            component: 'RelativeDatePicker',
+            parameters: { anchor: '2021-06-15', before: 0, after: 0 },
+          },
+        ],
+      }),
+      skipLogic: {
+        action: 'SKIP',
+        filter: {
+          rules: [
+            {
+              id: 'missing-consent',
+              type: 'ego',
+              options: {
+                attribute: asEntityAttributeReference('consent'),
+                operator: 'NOT_EXISTS',
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    const { network } = generateNetwork({
+      codebook: codebookWith({}),
+      stages: [reachable, unreachable],
+      seed: 7,
+      config: { today: TODAY },
+      respectSkipLogicAndFiltering: true,
+    });
+
+    expect(new Set(valuesOf(network.nodes, 'born'))).toEqual(
+      new Set(['2020-06-15']),
+    );
+  });
+
   // An edge form's fields resolve against that edge entry's own subject, so the
   // overlay has to follow the same split rather than reading every field
   // against the stage subject.

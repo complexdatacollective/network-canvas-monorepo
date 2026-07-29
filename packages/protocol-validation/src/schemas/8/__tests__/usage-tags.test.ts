@@ -71,7 +71,7 @@ describe('attribute-writer usage tags', () => {
     }
   });
 
-  it('tags NetworkComposer quickAdd as validatedAttribute and leaves convexHullVariable untagged', () => {
+  it('tags NetworkComposer quickAdd as validatedAttribute and convexHullVariable as unvalidatedAttribute', () => {
     const protocol = {
       ...createBaseProtocol(),
       stages: [
@@ -94,9 +94,7 @@ describe('attribute-writer usage tags', () => {
       (hit) => hit.path[hit.path.length - 1] === 'convexHullVariable',
     );
     expect(quickAddHit?.usage).toBe('validatedAttribute');
-    // A grouping/display slot, not an attribute writer — must never restrict
-    // the variable's use elsewhere.
-    expect(hullHit?.usage).toBeUndefined();
+    expect(hullHit?.usage).toBe('unvalidatedAttribute');
   });
 
   it('leaves Narrative preset groupVariable and highlight references untagged (grouping/display slots never restrict a variable elsewhere)', () => {
