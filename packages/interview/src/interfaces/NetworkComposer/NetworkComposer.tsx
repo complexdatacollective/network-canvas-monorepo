@@ -1,9 +1,14 @@
 'use client';
 
+import { Toggle } from '@base-ui/react/toggle';
+import { ToggleGroup } from '@base-ui/react/toggle-group';
+import { AnimatePresence, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
+import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Node from '@codaco/fresco-ui/Node';
+import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -50,6 +55,16 @@ const isPosition = (value: unknown): value is { x: number; y: number } =>
   typeof value.x === 'number' &&
   typeof value.y === 'number';
 
+const hasGroupValue = (raw: unknown, value: string): boolean => {
+  if (raw == null) return false;
+  const values = Array.isArray(raw) ? raw : [raw];
+  return values.some(
+    (groupValue) =>
+      (typeof groupValue === 'string' || typeof groupValue === 'number') &&
+      String(groupValue) === value,
+  );
+};
+
 type DrawerEditor = {
   kind: 'node' | 'edge';
   entityId: string;
@@ -63,6 +78,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const { stage } = stageProps;
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
+  const shouldReduceMotion = useReducedMotion();
 
   const layoutVariable = stage.layoutVariable;
 
@@ -432,51 +448,64 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     ) : null;
 
   // Bulk group assignment for a multi-node selection: in group mode a single
-  // button targets the active group; in select mode (where lasso selection is
-  // enabled by the hull variable) one button per group option. Each button is
-  // painted with its group's hull colour (1-based option position → --cat-N,
-  // matching ConvexHullLayer). The selection is deliberately kept afterwards
-  // so a multi-membership assignment can follow.
+  // toggle targets the active group; in select mode (where lasso selection is
+  // enabled by the hull variable) one toggle per group option.
   const groupColorIndex = (value: string) => {
     const index =
       groupVariable?.options.findIndex((option) => option.value === value) ??
       -1;
     return index >= 0 ? index + 1 : undefined;
   };
-  const selectionBarButtons = (() => {
+  const selectionGroupOptions = (() => {
     if (selectedNodeIds.size < 2) return [];
     if (activeGroup !== null) {
       return [
         {
+          variable: activeGroup.variable,
           value: activeGroup.value,
-          label: `Add all to ${activeGroupLabel}`,
+          label: activeGroupLabel,
           colorIndex: groupColorIndex(activeGroup.value),
-          onClick: () => {
-            void actions.addGroupMembership(
-              [...selectedNodeIds],
-              activeGroup.variable,
-              activeGroup.value,
-            );
-          },
         },
       ];
     }
     if (currentTool.kind === 'select' && groupVariable !== null) {
       return groupVariable.options.map((option, index) => ({
+        variable: groupVariable.id,
         value: option.value,
-        label: `Add all to ${option.label}`,
+        label: option.label,
         colorIndex: index + 1,
-        onClick: () => {
-          void actions.addGroupMembership(
-            [...selectedNodeIds],
-            groupVariable.id,
-            option.value,
-          );
-        },
       }));
     }
     return [];
   })();
+
+  const selectedGroupValues = selectionGroupOptions
+    .filter((option) =>
+      nodes.some(
+        (node) =>
+          selectedNodeIds.has(node[entityPrimaryKeyProperty]) &&
+          hasGroupValue(
+            node[entityAttributesProperty][option.variable],
+            option.value,
+          ),
+      ),
+    )
+    .map((option) => option.value);
+
+  const handleSelectionGroupValueChange = (nextValues: string[]) => {
+    const changedOption = selectionGroupOptions.find(
+      (option) =>
+        selectedGroupValues.includes(option.value) !==
+        nextValues.includes(option.value),
+    );
+    if (changedOption === undefined) return;
+    void actions.setGroupMembership(
+      [...selectedNodeIds],
+      changedOption.variable,
+      changedOption.value,
+      nextValues.includes(changedOption.value),
+    );
+  };
 
   const simulationHandlers =
     layoutMode === 'AUTOMATIC'
@@ -571,29 +600,70 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         automaticLayout={automaticLayout}
         onToggleAutomaticLayout={handleToggleAutomaticLayout}
       />
-      {selectionBarButtons.length > 0 && (
-        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
-          {selectionBarButtons.map((button) => (
-            <button
-              key={button.value}
-              type="button"
-              className={
-                button.colorIndex !== undefined
-                  ? 'rounded border border-transparent px-3 py-1.5 text-sm font-medium text-white shadow'
-                  : 'bg-background border-primary rounded border px-3 py-1.5 text-sm font-medium shadow'
+      <AnimatePresence initial={false}>
+        {selectionGroupOptions.length > 0 && (
+          <div
+            key="selection-group-membership"
+            className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center pr-4 pl-24 min-[68rem]:px-4"
+          >
+            <MotionSurface
+              floating
+              noContainer
+              shadow="sm"
+              spacing="none"
+              initial={{ y: '120%', scale: 0.96, opacity: 0 }}
+              animate={{ y: 0, scale: 1, opacity: 1 }}
+              exit={{ y: '120%', scale: 0.96, opacity: 0 }}
+              transition={
+                shouldReduceMotion
+                  ? { duration: 0 }
+                  : {
+                      default: {
+                        type: 'spring',
+                        stiffness: 180,
+                        damping: 22,
+                        mass: 1.25,
+                      },
+                      opacity: { duration: 0.2 },
+                    }
               }
-              style={
-                button.colorIndex !== undefined
-                  ? { backgroundColor: `var(--cat-${button.colorIndex})` }
-                  : undefined
-              }
-              onClick={button.onClick}
+              className="pointer-events-auto w-full max-w-4xl"
             >
-              {button.label}
-            </button>
-          ))}
-        </div>
-      )}
+              <ScrollArea
+                aria-label="Group membership options"
+                orientation="vertical"
+                className="h-auto max-h-64 max-w-full"
+                viewportClassName="px-3"
+              >
+                <ToggleGroup
+                  multiple
+                  aria-label="Group membership for selected people"
+                  value={selectedGroupValues}
+                  onValueChange={handleSelectionGroupValueChange}
+                  className="grid w-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(--spacing(36),1fr))] gap-2"
+                >
+                  {selectionGroupOptions.map((option) => (
+                    <Toggle
+                      key={option.value}
+                      value={option.value}
+                      className="focusable spring-short h-full min-w-0 rounded border-2 border-transparent px-3 py-2 text-sm leading-tight font-medium wrap-break-word text-white shadow data-pressed:border-white data-pressed:font-bold data-pressed:shadow-xl data-pressed:ring-4 data-pressed:ring-white/80 data-pressed:ring-inset"
+                      style={
+                        option.colorIndex !== undefined
+                          ? {
+                              backgroundColor: `var(--cat-${option.colorIndex})`,
+                            }
+                          : undefined
+                      }
+                    >
+                      {option.label}
+                    </Toggle>
+                  ))}
+                </ToggleGroup>
+              </ScrollArea>
+            </MotionSurface>
+          </div>
+        )}
+      </AnimatePresence>
       <ComposerCanvas
         canvasStore={canvasStore}
         composerStore={composerStore}
