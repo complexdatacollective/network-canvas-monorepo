@@ -4913,6 +4913,97 @@ describe('Migration V7 to V8', () => {
       expect(variables?.c).toHaveProperty('validation.maxSelected', 0);
     });
 
+    it('normalizes selection-count floors on node and edge variables while preserving 0/1 boundaries', () => {
+      const categorical = (
+        name: string,
+        validation: Record<string, number>,
+      ) => ({
+        name,
+        type: 'categorical',
+        component: 'CheckboxGroup',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'B', value: 'b' },
+        ],
+        validation,
+      });
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                nodeNegativeCounts: categorical('NodeNegativeCounts', {
+                  minSelected: -1,
+                  maxSelected: -1,
+                }),
+                nodeBoundaryCounts: categorical('NodeBoundaryCounts', {
+                  minSelected: 0,
+                  maxSelected: 1,
+                }),
+              },
+            },
+          },
+          edge: {
+            knows: {
+              name: 'Knows',
+              color: 'edge-color-seq-1',
+              variables: {
+                edgeNegativeCounts: categorical('EdgeNegativeCounts', {
+                  minSelected: -1,
+                  maxSelected: -1,
+                }),
+                edgeBoundaryCounts: categorical('EdgeBoundaryCounts', {
+                  minSelected: 0,
+                  maxSelected: 1,
+                }),
+              },
+            },
+          },
+          ego: {},
+        },
+        stages: [],
+      };
+      const parsed = ProtocolSchemaV8.parse(
+        migrationV7toV8.migrate(v7Protocol as unknown as Protocol<7>, {
+          name: 'Test Protocol',
+        }),
+      );
+      const nodeVariables = parsed.codebook.node?.person?.variables;
+      const edgeVariables = parsed.codebook.edge?.knows?.variables;
+
+      expect(nodeVariables?.nodeNegativeCounts).not.toHaveProperty(
+        'validation.minSelected',
+      );
+      expect(nodeVariables?.nodeNegativeCounts).not.toHaveProperty(
+        'validation.maxSelected',
+      );
+      expect(nodeVariables?.nodeBoundaryCounts).toHaveProperty(
+        'validation.minSelected',
+        0,
+      );
+      expect(nodeVariables?.nodeBoundaryCounts).toHaveProperty(
+        'validation.maxSelected',
+        1,
+      );
+      expect(edgeVariables?.edgeNegativeCounts).not.toHaveProperty(
+        'validation.minSelected',
+      );
+      expect(edgeVariables?.edgeNegativeCounts).not.toHaveProperty(
+        'validation.maxSelected',
+      );
+      expect(edgeVariables?.edgeBoundaryCounts).toHaveProperty(
+        'validation.minSelected',
+        0,
+      );
+      expect(edgeVariables?.edgeBoundaryCounts).toHaveProperty(
+        'validation.maxSelected',
+        1,
+      );
+    });
+
     // V8 puts `.int()` on all six numeric bound rules (minLength, maxLength,
     // minValue, maxValue, minSelected, maxSelected — validation.ts), but v7
     // is a `looseObject` that never enforced it, so a hand-authored

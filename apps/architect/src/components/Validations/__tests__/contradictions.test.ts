@@ -56,7 +56,9 @@ describe('findDraftContradictions', () => {
       validation: { minValue: 10, maxValue: 2 },
     });
     expect(result).toHaveLength(1);
-    expect(result[0]?.message).toContain('is greater than');
+    expect(result[0]?.message).toBe(
+      'Variable "this variable": minValue (10) is greater than maxValue (2)',
+    );
   });
 
   it('reports a contradiction whose offending rule lives on another variable', () => {

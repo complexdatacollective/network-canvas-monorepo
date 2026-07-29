@@ -2754,7 +2754,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
     ).toBe(false);
   });
 
-  it('accepts maxSelected 0 and rejects negative minSelected', () => {
+  it('accepts selection-count boundaries and rejects negative minSelected', () => {
     const categorical = (validation: Record<string, number>) => ({
       name: 'colors',
       type: 'categorical',
@@ -2767,6 +2767,10 @@ describe('R1 — absolute floors on count-valued rules', () => {
     });
     expect(
       VariableSchema.safeParse(categorical({ maxSelected: 0 })).success,
+    ).toBe(true);
+    expect(
+      VariableSchema.safeParse(categorical({ minSelected: 0, maxSelected: 1 }))
+        .success,
     ).toBe(true);
     expect(
       VariableSchema.safeParse(categorical({ minSelected: -1 })).success,

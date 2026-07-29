@@ -53,6 +53,7 @@ export const validateReferences = (
     const rule = hit.path[hit.path.length - 1];
     const sourceId = hit.path[hit.path.length - 3];
     if (
+      hit.path[hit.path.length - 4] === 'variables' &&
       hit.path[hit.path.length - 2] === 'validation' &&
       typeof rule === 'string' &&
       VALIDATION_REFERENCE_RULES.has(rule) &&

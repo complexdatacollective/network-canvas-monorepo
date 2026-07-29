@@ -68,6 +68,44 @@ describe('validateReferences', () => {
     expect(issues).toEqual([]);
   });
 
+  it('does not treat a validation-like path outside variables as a variable validation reference', () => {
+    const issues = validateReferences(codebook, [
+      {
+        path: ['stages', 0, 'notVariables', 'age', 'validation', 'sameAs'],
+        variableId: 'rank',
+        subject: { entity: 'node', type: 'person' },
+      },
+    ]);
+    expect(issues).toEqual([]);
+  });
+
+  it('reports a type mismatch for a genuine variable validation reference path', () => {
+    const path = [
+      'codebook',
+      'node',
+      'person',
+      'variables',
+      'age',
+      'validation',
+      'sameAs',
+    ];
+    const issues = validateReferences(codebook, [
+      {
+        path,
+        variableId: 'rank',
+        subject: { entity: 'node', type: 'person' },
+      },
+    ]);
+    expect(issues).toEqual([
+      {
+        code: 'custom',
+        message:
+          'The "sameAs" rule on variable "age" must reference another number variable, but "rank" is ordinal',
+        path,
+      },
+    ]);
+  });
+
   it('skips hits with no resolved subject', () => {
     const issues = validateReferences(codebook, [
       { path: ['f'], variableId: 'whatever', subject: undefined },
