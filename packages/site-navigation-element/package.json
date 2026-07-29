@@ -37,7 +37,7 @@
     "@codaco/tsconfig": "workspace:^",
     "@fontsource-variable/inclusive-sans": "catalog:",
     "@fontsource-variable/nunito": "catalog:",
-    "@tailwindcss/cli": "^4.3.2",
+    "@tailwindcss/cli": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
