@@ -441,7 +441,7 @@
       "id": "composer-network",
       "type": "NetworkComposer",
       "label": "The people in your story",
-      "interviewScript": "You should operate this interface throughout, building the map while listening to the participant's narration. Add each person when they are mentioned, using the first name or nickname the participant chooses. Arrange people so that the map remains legible. If position, circles, or clusters are intended to represent meaning, ask the participant what the arrangement should convey and then make the placement yourself. Do not impose a fixed meaning unless your study's field manual defines one. Ask open questions about how people are connected and record the configured details without interrupting the story more than necessary.\n\nWhen naming slows, use the same sequence of cues with every participant. First ask whether there is anyone else they would like to add. Then prompt across contexts such as family, friends, work or study, neighborhood, community or faith groups, services and professionals, and online ties. Follow up on groups and people who know one another, while allowing uncertainty, multiple group memberships, and relationships that changed over time. Visual mapping can feel exposing, so check your entries and placements verbally, make any requested corrections yourself, avoid pressuring the participant to rank anyone precisely, and follow your study's privacy and distress procedures.",
+      "interviewScript": "You should operate this interface throughout, building the map while listening to the participant's narration. Add each person when they are mentioned, using the first name or nickname the participant chooses. Automatic layout is enabled at the start to keep the map legible as it grows. Leave it on while adding people, and pause it only when you need to make a deliberate adjustment. Treat automatically produced positions as a display aid, not as evidence about closeness or importance. If position, circles, or clusters are intended to represent meaning, ask the participant what the arrangement should convey, turn off automatic layout, make the placement yourself, and confirm your interpretation. Do not impose a fixed meaning unless your study's field manual defines one. Ask open questions about how people are connected and record the configured details without interrupting the story more than necessary.\n\nWhen naming slows, use the same sequence of cues with every participant. First ask whether there is anyone else they would like to add. Then prompt across contexts such as family, friends, work or study, neighborhood, community or faith groups, services and professionals, and online ties. Follow up on groups and people who know one another, while allowing uncertainty, multiple group memberships, and relationships that changed over time. Visual mapping can feel exposing, so check your entries and placements verbally, make any requested corrections yourself, avoid pressuring the participant to rank anyone precisely, and follow your study's privacy and distress procedures.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -454,7 +454,7 @@
         "skewedTowardCenter": true
       },
       "behaviours": {
-        "automaticLayout": false
+        "automaticLayout": true
       },
       "nodeForm": {
         "fields": [
