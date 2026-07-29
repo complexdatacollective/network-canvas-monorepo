@@ -55,6 +55,21 @@ const nameGeneratorRankingRank = {
   },
 } as unknown as Stage;
 
+const narrativeDisplayingRank = {
+  id: 'stage-narrative',
+  type: 'Narrative',
+  label: 'Review people',
+  subject: { entity: 'node', type: 'person' },
+  presets: [
+    {
+      id: 'preset-1',
+      label: 'Review',
+      layoutVariable: 'layout',
+      highlight: ['rank'],
+    },
+  ],
+} as unknown as Stage;
+
 describe('a unique variable used only by a binning stage', () => {
   it('generates, because nothing in the interview validates it', () => {
     const { network } = generateNetwork({
@@ -91,6 +106,52 @@ describe('a unique variable used only by a binning stage', () => {
     expect(error.conflicts[0]?.variableNames).toEqual(['Rank']);
     expect(error.conflicts[0]?.rules).toEqual(['unique']);
   });
+
+  it('generates when the only other reference is on a read-only stage', () => {
+    const { network } = generateNetwork({
+      seed: 3,
+      codebook,
+      stages: [nameGenerator, ordinalBin, narrativeDisplayingRank],
+    });
+
+    expect(network.nodes).toHaveLength(3);
+  });
+
+  it('generates when a form writer is proven unreachable', () => {
+    const unreachableForm = {
+      id: 'stage-form',
+      type: 'AlterForm',
+      label: 'About each person',
+      subject: { entity: 'node', type: 'person' },
+      form: {
+        fields: [{ variable: 'rank', prompt: 'Rank' }],
+      },
+      skipLogic: {
+        action: 'SKIP',
+        filter: {
+          rules: [
+            {
+              id: 'missing-consent',
+              type: 'ego',
+              options: {
+                attribute: 'consent',
+                operator: 'NOT_EXISTS',
+              },
+            },
+          ],
+        },
+      },
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 3,
+      codebook,
+      stages: [nameGenerator, ordinalBin, unreachableForm],
+      respectSkipLogicAndFiltering: true,
+    });
+
+    expect(network.nodes).toHaveLength(3);
+  });
 });
 
 describe('collectBinOnlyVariables', () => {
@@ -104,6 +165,16 @@ describe('collectBinOnlyVariables', () => {
     expect(
       collectBinOnlyVariables([nameGeneratorRankingRank, ordinalBin]),
     ).toEqual(new Map());
+  });
+
+  it('ignores read-only references to a binning stage variable', () => {
+    expect(
+      collectBinOnlyVariables([
+        nameGenerator,
+        ordinalBin,
+        narrativeDisplayingRank,
+      ]),
+    ).toEqual(new Map([['person', new Set(['rank'])]]));
   });
 
   it('keeps a variable two binning stages share', () => {

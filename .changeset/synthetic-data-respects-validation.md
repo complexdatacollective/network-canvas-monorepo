@@ -14,6 +14,8 @@ If a protocol's rules cannot all be satisfied at once — for example a minimum 
 
 When skip logic and filtering are respected, controls on stages proven unreachable no longer create synthetic-data rendering conflicts with reachable Network Composer stages.
 
+Read-only stage references no longer make validation rules apply to values written only by binning stages. Writers on stages proven unreachable by skip logic are likewise ignored consistently by both the feasibility check and the synthetic draw.
+
 When multiple reachable Network Composer stages render one date variable at the
 same resolution, generation now uses the intersection of their accepted
 windows. It refuses only controls at incompatible resolutions or controls whose

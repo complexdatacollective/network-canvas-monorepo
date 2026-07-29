@@ -164,7 +164,7 @@ export function generateNetwork(
   // without their rules, or the draw exhausts a value space no rule was ever
   // going to be enforced against. No edge type can hold one (both binning
   // stages take a node subject), so the edge map simply never matches.
-  const binOnly = collectBinOnlyVariables(stages);
+  const binOnly = collectBinOnlyVariables(feasibilityStages);
 
   const constraintsByType = (
     definitions: StructuralCodebook['node'] | StructuralCodebook['edge'],

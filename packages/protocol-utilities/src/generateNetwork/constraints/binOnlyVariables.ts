@@ -53,14 +53,14 @@ function add(
  * forbids two nodes sharing a bin, `minSelected: 2` forbids a node sitting in
  * exactly one. See commit 49142e017.
  *
- * "Only" is the whole of the claim, and it is deliberately strict: a variable
- * with any other reference anywhere in the stage list keeps its rules, because
- * that other site may well be a form field, and there a value that breaks the
- * rules is a value the participant is shown an error for. References are read
- * from the schema's own `entityAttributeReference` tags rather than from a
- * hand-listed set of stage keys, so a reference site added to the schema later
- * counts as another use — and keeps the variable constrained — without anything
- * here being updated.
+ * "Only" is the whole of the claim, and it is deliberately strict about other
+ * writers: a variable with another validated or unvalidated writer keeps its
+ * rules, because the other site may be a form field where the participant is
+ * shown a validation error. Read-only references do not change who writes the
+ * value and therefore do not disqualify it. References and their writer usage
+ * are read from the schema's own `entityAttributeReference` tags rather than
+ * from a hand-listed set of stage keys, so a writer added to the schema later
+ * keeps the variable constrained without anything here being updated.
  */
 export function collectBinOnlyVariables(stages: Stage[]): BinOnlyVariables {
   const binAssigned = new Map<string, Set<string>>();
@@ -72,6 +72,8 @@ export function collectBinOnlyVariables(stages: Stage[]): BinOnlyVariables {
   // rule naming this variable as its target is a rule on the OTHER variable,
   // and does not put this one in front of a participant.
   for (const hit of collectEntityAttributeReferences({ stages })) {
+    if (hit.usage === undefined) continue;
+
     // Both binning stages take a node subject, so a reference resolving to any
     // other entity cannot be one of their prompt variables.
     if (hit.subject?.entity !== 'node') continue;
