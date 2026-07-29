@@ -108,7 +108,6 @@ const Attribute = ({
       <IconButton
         icon={<Trash2 />}
         aria-label="Delete attribute"
-        size="lg"
         color="destructive"
         disabled={disabled || readOnly}
         className="ml-5 self-center"
