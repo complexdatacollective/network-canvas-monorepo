@@ -459,12 +459,6 @@
       "nodeForm": {
         "fields": [
           {
-            "variable": "social_circle",
-            "component": "CheckboxGroup",
-            "label": "Where you know them from",
-            "hint": "Drawn as a shaded group on the canvas. Someone can belong to more than one."
-          },
-          {
             "variable": "relationship",
             "component": "CheckboxGroup",
             "label": "How are they related to you?"

@@ -3,6 +3,8 @@ import {
   type Variables,
 } from '@codaco/protocol-validation';
 import {
+  DATE_PICKER_DEFAULT_MIN,
+  DATE_PICKER_LATEST_DATE,
   dateWithinPickerRange,
   RELATIVE_DATE_PICKER_DEFAULT_AFTER,
   RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
@@ -55,9 +57,11 @@ const RESOLUTION_SHAPE = {
   full: 'YYYY-MM-DD',
 } as const satisfies Record<DateResolution, string>;
 
-const DATE_PICKER_DEFAULT_MIN_YEAR = 1920;
+const DATE_PICKER_DEFAULT_MIN_YEAR = Number(
+  DATE_PICKER_DEFAULT_MIN.slice(0, 4),
+);
 const COARSE_DATE_PICKER_MIN_YEAR = 1000;
-const COARSE_DATE_PICKER_MAX_YEAR = 9999;
+const COARSE_DATE_PICKER_MAX_YEAR = Number(DATE_PICKER_LATEST_DATE.slice(0, 4));
 
 /** Which end of a window a declared bound closes. */
 type BoundEnd = 'floor' | 'ceiling';

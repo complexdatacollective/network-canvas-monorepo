@@ -174,30 +174,36 @@ describe('a conflict-free variable is never dropped in either direction', () => 
 // `binOnly` pattern above) isolates each hit kind so a swapped
 // `excludeValidatedUses`/`excludeUnvalidatedUses` call fails.
 const validatedOnly = { ...protocol, stages: [protocol.stages[0]] }; // s1 only: cat + qa validated, neither unvalidated
+const catUnvalidatedOnly = { ...protocol, stages: [protocol.stages[1]] }; // s2 only: cat unvalidated, not validated; qa has no hits at all
 const qaUnvalidatedOnly = { ...protocol, stages: [protocol.stages[2]] }; // s3 only: qa unvalidated (FamilyPedigree nodeLabelVariable), not validated; cat has no hits at all
 
-// Composer scope-change consequentials: convexHullVariable lost its usage tag
-// entirely (network-composer.ts) — a grouping/display slot, not an attribute
-// writer — so its picker must never restrict, or be restricted by, a
-// variable's use elsewhere. Every categorical variable for the subject is
-// offered unconditionally, regardless of the role map.
-describe('getConvexHullOptionsForSubject (NodeConfiguration convexHull picker, UNTAGGED — unrestricted)', () => {
-  it('never drops a categorical variable, even one both validated and unvalidated elsewhere', () => {
-    const result = getConvexHullOptionsForSubject(stateWith(protocol), {
-      entity: subject.entity,
-      type: subject.type,
-    });
+describe('getConvexHullOptionsForSubject (NodeConfiguration convexHull picker, UNVALIDATED writer)', () => {
+  it('drops a categorical variable a form elsewhere already validates', () => {
+    const result = getConvexHullOptionsForSubject(
+      stateWith(validatedOnly),
+      subject,
+    );
+
+    expect(result.map((o) => o.value)).not.toContain('cat');
+  });
+
+  it('keeps a categorical variable only an unvalidated writer elsewhere claims', () => {
+    const result = getConvexHullOptionsForSubject(
+      stateWith(catUnvalidatedOnly),
+      subject,
+    );
 
     expect(result.map((o) => o.value)).toContain('cat');
   });
 
-  it('returns every categorical variable for the subject, unfiltered by role', () => {
-    const result = getConvexHullOptionsForSubject(stateWith(validatedOnly), {
-      entity: subject.entity,
-      type: subject.type,
-    });
+  it('keeps the dropped option when it is the currently-selected value', () => {
+    const result = getConvexHullOptionsForSubject(
+      stateWith(validatedOnly),
+      subject,
+      'cat',
+    );
 
-    expect(result.map((o) => o.value)).toEqual(['cat']);
+    expect(result.map((o) => o.value)).toContain('cat');
   });
 });
 

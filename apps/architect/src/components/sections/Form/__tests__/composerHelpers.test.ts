@@ -4,8 +4,10 @@ import {
   buildComposerFieldOverlay,
   composerDraftValues,
   composerNormalizeField,
+  composerValidationViews,
   crossFormRenderedVariables,
   isVariableUsedBySibling,
+  sharedFormValidationView,
 } from '../composerHelpers';
 
 describe('composerNormalizeField', () => {
@@ -210,6 +212,105 @@ describe('crossFormRenderedVariables', () => {
     expect(
       crossFormRenderedVariables(stages, { entity: 'node', type: null }),
     ).toEqual(new Set());
+  });
+});
+
+describe('composerValidationViews', () => {
+  const stages = [
+    {
+      id: 'node-year',
+      type: 'NetworkComposer',
+      subject: { entity: 'node', type: 'person' },
+      nodeForm: {
+        fields: [
+          {
+            variable: 'born',
+            component: 'DatePicker',
+            parameters: { type: 'year' },
+          },
+          { variable: 'age', component: 'Number' },
+        ],
+      },
+      edges: [
+        {
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [{ variable: 'closeness', component: 'Number' }],
+          },
+        },
+      ],
+    },
+    {
+      id: 'node-full',
+      type: 'NetworkComposer',
+      subject: { entity: 'node', type: 'person' },
+      nodeForm: {
+        fields: [{ variable: 'born', component: 'DatePicker', parameters: {} }],
+      },
+    },
+  ];
+
+  it('preserves one distinct resolved overlay per matching node form', () => {
+    expect(
+      composerValidationViews(stages, { entity: 'node', type: 'person' }),
+    ).toEqual([
+      {
+        renderedVariableIds: new Set(['born', 'age']),
+        overlay: {
+          born: {
+            component: 'DatePicker',
+            parameters: { type: 'year' },
+          },
+          age: { component: 'Number', parameters: undefined },
+        },
+      },
+      {
+        renderedVariableIds: new Set(['born']),
+        overlay: {
+          born: { component: 'DatePicker', parameters: {} },
+        },
+      },
+    ]);
+  });
+
+  it('collects matching edge forms and excludes the current stage', () => {
+    expect(
+      composerValidationViews(
+        stages,
+        { entity: 'edge', type: 'knows' },
+        'node-full',
+      ),
+    ).toEqual([
+      {
+        renderedVariableIds: new Set(['closeness']),
+        overlay: {
+          closeness: { component: 'Number', parameters: undefined },
+        },
+      },
+    ]);
+    expect(
+      composerValidationViews(
+        stages,
+        { entity: 'node', type: 'person' },
+        'node-year',
+      ),
+    ).toHaveLength(1);
+  });
+});
+
+describe('sharedFormValidationView', () => {
+  it('keeps live field variables and marks the edited draft as part of the view', () => {
+    expect(
+      sharedFormValidationView([
+        { variable: 'a' },
+        { variable: 'b' },
+        { label: 'Not assigned yet' },
+      ]),
+    ).toEqual({
+      renderedVariableIds: new Set(['a', 'b']),
+      overlay: {},
+      includesEditedVariable: true,
+    });
   });
 });
 

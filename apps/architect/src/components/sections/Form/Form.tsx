@@ -1,6 +1,7 @@
 import { type ComponentType, useCallback, useMemo } from 'react';
 import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
+import { formValueSelector } from 'redux-form';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -19,8 +20,13 @@ import {
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
 import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import { getProtocol } from '~/selectors/protocol';
 
 import { makeFieldEditorValidate } from '../../Validations/contradictions';
+import {
+  composerValidationViews,
+  sharedFormValidationView,
+} from './composerHelpers';
 import FieldFields from './FieldFields';
 import FieldPreview from './FieldPreview';
 import { itemSelector, normalizeField } from './helpers';
@@ -49,6 +55,7 @@ type FormProps = StageEditorSectionProps & {
   entity?: string | null;
 };
 const Form = ({
+  form,
   handleChangeFields,
   disabled = false,
   disabledMessage,
@@ -68,6 +75,25 @@ const Form = ({
     subject ? getVariablesForSubjectSelector(state, subject) : EMPTY_VARIABLES,
   );
   const roleMap = useSelector(getVariableRoleMap);
+  const stages = useSelector((state: RootState) => getProtocol(state)?.stages);
+  const resolvedComposerViews = useMemo(
+    () =>
+      subject && subject.entity !== 'ego'
+        ? composerValidationViews(stages, {
+            entity: subject.entity,
+            type: subject.type ?? null,
+          })
+        : [],
+    [stages, subject],
+  );
+  const stageFormSelector = useMemo(() => formValueSelector(form), [form]);
+  const formFields = useSelector((state: RootState) =>
+    stageFormSelector(state, 'form.fields'),
+  );
+  const resolvedFormViews = useMemo(
+    () => [sharedFormValidationView(formFields), ...resolvedComposerViews],
+    [formFields, resolvedComposerViews],
+  );
   // Backs makeFieldEditorValidate's save-time gate: a form field may not pick
   // a variable some bin/highlight/census/etc. elsewhere already writes.
   const hasUnvalidatedUse = useCallback(
@@ -83,8 +109,9 @@ const Form = ({
         undefined,
         undefined,
         hasUnvalidatedUse,
+        resolvedFormViews,
       ),
-    [allVariables, hasUnvalidatedUse],
+    [allVariables, hasUnvalidatedUse, resolvedFormViews],
   );
 
   return (

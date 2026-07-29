@@ -20,6 +20,8 @@ import type { StageEditorSectionProps } from '~/components/StageEditor/Interface
 import {
   crossClassPickIssue,
   unvalidatedElsewhereMessage,
+  validatedElsewhereMessage,
+  variableDisplayName,
 } from '~/components/Validations/contradictions';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
@@ -29,7 +31,10 @@ import {
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
 import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
-import { excludeUnvalidatedUses } from '~/selectors/roleFilters';
+import {
+  excludeUnvalidatedUses,
+  excludeValidatedUses,
+} from '~/selectors/roleFilters';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import withComposerFormHandlers from '../Form/withComposerFormHandlers';
@@ -37,6 +42,18 @@ import { getLayoutVariablesForSubject } from '../SociogramPrompts/selectors';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const nodeFormFieldVariables = (
+  values: Record<string, unknown> | undefined,
+): string[] => {
+  const nodeForm = isRecord(values) ? values.nodeForm : undefined;
+  const fields =
+    isRecord(nodeForm) && Array.isArray(nodeForm.fields) ? nodeForm.fields : [];
+  return fields
+    .filter(isRecord)
+    .map((field) => field.variable)
+    .filter((variable): variable is string => typeof variable === 'string');
+};
 
 type LayoutVariableOption = {
   isUsed?: boolean;
@@ -100,15 +117,9 @@ export const NodeConfigurationComponent = ({
       dispatch(change(form, 'behaviours.automaticLayout', true));
     }
   }, [rawAutomaticLayout, dispatch, form]);
-  // quickAdd is a VALIDATED writer (its interview input now honours the
-  // target variable's codebook validation — see network-composer.ts), so it
-  // gets the same save-time gate Form.tsx's form fields do: a saved-document
-  // role-map check rejecting a pick some bin/highlight/census/etc. elsewhere
-  // already writes without validation, with the usual committed-value escape.
-  // convexHullVariable is UNTAGGED (a grouping/display slot, not an attribute
-  // writer — see network-composer.ts) and nodeForm.fields is itself a
-  // validated writer, so no cross-class pair can exist within this stage's
-  // OWN draft any more — quickAdd's gate below covers the only surface left.
+  // quickAdd applies codebook validation, while convexHullVariable's group
+  // and lasso interactions write directly. Their gates therefore check
+  // opposite role classes.
   const nodeVariablesSubject = useMemo(
     () => (type ? { entity: entity === 'ego' ? 'node' : entity, type } : null),
     [entity, type],
@@ -126,6 +137,13 @@ export const NodeConfigurationComponent = ({
         0) > 0,
     [roleMap, nodeVariablesSubject],
   );
+  const hasValidatedUseForSubject = useCallback(
+    (variableId: string) =>
+      !!nodeVariablesSubject &&
+      (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.validated ?? 0) >
+        0,
+    [roleMap, nodeVariablesSubject],
+  );
   const stageInitialValues = useAppSelector((state: RootState) =>
     getFormInitialValues(form)(state),
   );
@@ -134,6 +152,18 @@ export const NodeConfigurationComponent = ({
     typeof stageInitialValues.quickAdd === 'string'
       ? stageInitialValues.quickAdd
       : '';
+  const originalConvexHullVariable =
+    isRecord(stageInitialValues) &&
+    typeof stageInitialValues.convexHullVariable === 'string'
+      ? stageInitialValues.convexHullVariable
+      : '';
+  const committedNodeFormVariableIds = useMemo(
+    () =>
+      nodeFormFieldVariables(
+        isRecord(stageInitialValues) ? stageInitialValues : undefined,
+      ),
+    [stageInitialValues],
+  );
   const quickAddCrossClassValidate = useCallback(
     (value: unknown): string | undefined => {
       const variableId = typeof value === 'string' ? value : '';
@@ -147,6 +177,51 @@ export const NodeConfigurationComponent = ({
       });
     },
     [originalQuickAdd, hasUnvalidatedUseForSubject, allVariables],
+  );
+  const convexHullCrossClassValidate = useCallback(
+    (
+      value: unknown,
+      allValues?: Record<string, unknown>,
+    ): string | undefined => {
+      const variableId = typeof value === 'string' ? value : '';
+      if (!variableId) return undefined;
+      const savedDocumentIssue = crossClassPickIssue({
+        variableId,
+        originalVariableId: originalConvexHullVariable,
+        hasConflictingUse: hasValidatedUseForSubject,
+        allVariables,
+        message: validatedElsewhereMessage,
+      });
+      if (savedDocumentIssue) return savedDocumentIssue;
+      if (!nodeFormFieldVariables(allValues).includes(variableId)) {
+        return undefined;
+      }
+      const pairAlreadyCommitted =
+        variableId === originalConvexHullVariable &&
+        committedNodeFormVariableIds.includes(variableId);
+      return pairAlreadyCommitted
+        ? undefined
+        : validatedElsewhereMessage(
+            variableDisplayName(allVariables, variableId),
+          );
+    },
+    [
+      allVariables,
+      committedNodeFormVariableIds,
+      hasValidatedUseForSubject,
+      originalConvexHullVariable,
+    ],
+  );
+  const convexHullVariableValue = useAppSelector((state: RootState) =>
+    formValueSelector(form)(state, 'convexHullVariable'),
+  );
+  const siblingUnvalidatedVariableIds = useMemo(
+    () =>
+      typeof convexHullVariableValue === 'string' &&
+      convexHullVariableValue !== ''
+        ? [convexHullVariableValue]
+        : [],
+    [convexHullVariableValue],
   );
   const newVariableWindowInitialProps = {
     entity: (entity === 'ego' ? 'node' : entity) as Entity,
@@ -262,7 +337,7 @@ export const NodeConfigurationComponent = ({
           <ValidatedField
             name="convexHullVariable"
             component={VariablePicker}
-            validation={{}}
+            validation={{ crossClassPick: convexHullCrossClassValidate }}
             componentProps={{
               label: 'Create or select a categorical variable for grouping',
               type,
@@ -290,6 +365,7 @@ export const NodeConfigurationComponent = ({
           editFormName="node-attr-edit"
           title="Edit attribute"
           handleChangeFields={handleChangeFields}
+          siblingUnvalidatedVariableIds={siblingUnvalidatedVariableIds}
         />
       </Subsection>
 
@@ -313,19 +389,20 @@ const withLayoutOptions = connect(
   }),
 );
 /**
- * convexHullVariable is UNTAGGED — a grouping/display slot, not an attribute
- * writer (see network-composer.ts) — so it must never restrict, or be
- * restricted by, a variable's use elsewhere. Every categorical variable for
- * the subject is offered, unconditionally. Exported (alongside its quickAdd
- * sibling below) so this stays pinned directly in `pickerExclusions.test.ts`.
+ * convexHullVariable writes group membership without applying codebook
+ * validation, so variables already written by a validated form are omitted.
  */
 export const getConvexHullOptionsForSubject = (
   state: RootState,
   subject: { entity: 'node' | 'edge' | 'ego'; type: string },
-) =>
-  getVariableOptionsForSubject(state, subject).filter(
-    ({ type: variableType }) => variableType === 'categorical',
-  );
+  currentValue?: string,
+) => {
+  const categoricalOptions = getVariableOptionsForSubject(
+    state,
+    subject,
+  ).filter(({ type: variableType }) => variableType === 'categorical');
+  return excludeValidatedUses(state, subject, categoricalOptions, currentValue);
+};
 
 /**
  * NetworkComposer's own quickAdd (distinct from NameGeneratorQuickAdd's) is a
@@ -346,15 +423,24 @@ export const getComposerQuickAddOptionsForSubject = (
 };
 
 const withCategoricalOptions = connect(
-  (state: RootState, { entity, type }: OwnProps) => {
+  (state: RootState, { entity, type, form }: OwnProps) => {
     if (!type) {
       return { categoricalVariablesForSubject: [] };
     }
+    const rawConvexHullVariable = formValueSelector(form)(
+      state,
+      'convexHullVariable',
+    );
+    const convexHullVariable =
+      typeof rawConvexHullVariable === 'string'
+        ? rawConvexHullVariable
+        : undefined;
     return {
-      categoricalVariablesForSubject: getConvexHullOptionsForSubject(state, {
-        entity,
-        type,
-      }),
+      categoricalVariablesForSubject: getConvexHullOptionsForSubject(
+        state,
+        { entity, type },
+        convexHullVariable,
+      ),
     };
   },
 );

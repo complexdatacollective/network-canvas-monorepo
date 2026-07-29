@@ -292,6 +292,69 @@ it('folds a sibling composer field component/parameters override into editorVali
   );
 });
 
+it('checks edits against another composer stage without letting the draft rendering shadow that stage', () => {
+  const storeWithOtherComposerStage = configureStore({
+    reducer: () => ({
+      activeProtocol: {
+        present: {
+          stages: [
+            {
+              id: 'other-stage',
+              type: 'NetworkComposer',
+              subject: { entity: 'node', type: 'person' },
+              nodeForm: {
+                fields: [
+                  {
+                    variable: 'a',
+                    component: 'DatePicker',
+                    parameters: { type: 'year' },
+                  },
+                  {
+                    variable: 'b',
+                    component: 'DatePicker',
+                    parameters: { type: 'year' },
+                  },
+                ],
+              },
+              edges: [],
+            },
+          ],
+        },
+      },
+      form: {
+        'edit-stage': {
+          values: {
+            id: 'current-stage',
+            nodeForm: { fields: [] },
+          },
+        },
+      },
+    }),
+  });
+
+  render(
+    <Provider store={storeWithOtherComposerStage}>
+      <EditableAttributesList
+        fieldName="nodeForm.fields"
+        entity="node"
+        type="person"
+        form="edit-stage"
+        editFormName="node-attr-edit"
+        handleChangeFields={() => undefined}
+      />
+    </Provider>,
+  );
+
+  expect(
+    capturedEditorValidate?.({
+      variable: 'a',
+      validation: { sameAs: 'b' },
+      component: 'DatePicker',
+      parameters: {},
+    }),
+  ).toEqual({});
+});
+
 // PR #1107 eleventh-wave Finding 4: reassigning a field from `a` to `b` must
 // exclude the field's OWN stale overlay entry (still keyed by `a`, its
 // pre-edit variable). The exclusion happens at overlay construction time, by

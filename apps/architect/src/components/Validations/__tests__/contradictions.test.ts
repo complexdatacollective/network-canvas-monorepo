@@ -6,6 +6,7 @@ import {
   crossClassPickIssue,
   draftVariableId,
   findDraftContradictions,
+  floorIssue,
   makeFieldEditorValidate,
   unvalidatedElsewhereMessage,
   validatedElsewhereMessage,
@@ -204,7 +205,194 @@ describe('makeFieldEditorValidate', () => {
       component: 'Text',
       validation: { minLength: 10, maxLength: 2 },
     });
-    expect(errors.validation).toContain('minLength');
+    expect(errors.validation).toBe(
+      'Variable "this variable": minLength (10) is greater than maxLength (2)',
+    );
+  });
+
+  describe('NetworkComposer stage-effective views', () => {
+    const fullResolutionPair = {
+      a: {
+        name: 'a',
+        type: 'datetime',
+        component: 'DatePicker',
+        validation: {},
+      },
+      b: {
+        name: 'b',
+        type: 'datetime',
+        component: 'DatePicker',
+        validation: {},
+      },
+    };
+
+    const yearView = {
+      renderedVariableIds: new Set(['a', 'b']),
+      overlay: {
+        a: { component: 'DatePicker', parameters: { type: 'year' } },
+        b: { component: 'DatePicker', parameters: { type: 'year' } },
+      },
+    };
+
+    it('lets each stage overlay outrank draft component and parameters while draft validation still wins', () => {
+      const validate = makeFieldEditorValidate(
+        fullResolutionPair,
+        undefined,
+        undefined,
+        undefined,
+        [yearView],
+      );
+
+      expect(
+        validate({
+          variable: 'a',
+          validation: { sameAs: 'b' },
+          component: 'DatePicker',
+          parameters: {},
+        }),
+      ).toEqual({});
+    });
+
+    it('rejects when any composer view makes the draft contradictory', () => {
+      const validate = makeFieldEditorValidate(
+        fullResolutionPair,
+        undefined,
+        undefined,
+        undefined,
+        [
+          yearView,
+          {
+            renderedVariableIds: new Set(['a', 'b']),
+            overlay: {
+              a: { component: 'DatePicker', parameters: { type: 'year' } },
+              b: { component: 'DatePicker', parameters: {} },
+            },
+          },
+        ],
+      );
+
+      expect(
+        validate({
+          variable: 'a',
+          validation: { sameAs: 'b' },
+          component: 'DatePicker',
+          parameters: {},
+        }).validation,
+      ).toContain('different resolutions');
+    });
+
+    it('keeps draft options while applying stage-effective Boolean controls', () => {
+      const booleans = {
+        a: {
+          name: 'a',
+          type: 'boolean',
+          component: 'Toggle',
+          validation: { differentFrom: 'b' },
+        },
+        b: {
+          name: 'b',
+          type: 'boolean',
+          component: 'Toggle',
+          options: [{ label: 'Yes', value: true }],
+          validation: {},
+        },
+      };
+      const validate = makeFieldEditorValidate(
+        booleans,
+        undefined,
+        undefined,
+        undefined,
+        [
+          {
+            renderedVariableIds: new Set(['a', 'b']),
+            overlay: {
+              a: { component: 'Boolean' },
+              b: { component: 'Boolean' },
+            },
+          },
+        ],
+      );
+
+      expect(
+        validate({
+          variable: 'a',
+          validation: { differentFrom: 'b' },
+          component: 'Toggle',
+          options: [{ label: 'Yes', value: true }],
+        }).validation,
+      ).toContain('must differ');
+    });
+
+    it('keeps current shared-form fields visible beside composer-owned variables', () => {
+      const booleans = {
+        a: {
+          name: 'a',
+          type: 'boolean',
+          component: 'Boolean',
+          options: [{ label: 'Yes', value: true }],
+          validation: {},
+        },
+        b: {
+          name: 'b',
+          type: 'boolean',
+          component: 'Boolean',
+          options: [{ label: 'Yes', value: true }],
+          validation: {},
+        },
+      };
+      const validate = makeFieldEditorValidate(
+        booleans,
+        undefined,
+        undefined,
+        undefined,
+        [
+          {
+            renderedVariableIds: new Set(['a']),
+            overlay: { a: { component: 'Toggle' } },
+          },
+          {
+            renderedVariableIds: new Set(['a', 'b']),
+            overlay: {},
+            includesEditedVariable: true,
+          },
+        ],
+      );
+
+      expect(
+        validate({
+          variable: 'a',
+          validation: { differentFrom: 'b' },
+          component: 'Boolean',
+          options: [{ label: 'Yes', value: true }],
+        }).validation,
+      ).toContain('must differ');
+    });
+
+    it('does not attribute an identically scoped baseline contradiction to an unrelated draft', () => {
+      const variables = {
+        ...fullResolutionPair,
+        c: { name: 'c', type: 'number', validation: {} },
+      };
+      const validate = makeFieldEditorValidate(
+        variables,
+        undefined,
+        undefined,
+        undefined,
+        [
+          {
+            renderedVariableIds: new Set(['a', 'b']),
+            overlay: {
+              a: { component: 'DatePicker', parameters: { type: 'year' } },
+              b: { component: 'DatePicker', parameters: {} },
+            },
+          },
+        ],
+      );
+
+      expect(
+        validate({ variable: 'c', validation: { required: true } }),
+      ).toEqual({});
+    });
   });
 
   // Nineteenth-wave Finding 2: creating a variable writes the typed DISPLAY
@@ -967,6 +1155,25 @@ describe('variableDisplayName', () => {
   it('falls back to the id when the variable or its name is absent', () => {
     expect(variableDisplayName({}, 'missing')).toBe('missing');
     expect(variableDisplayName({ a: { type: 'number' } }, 'a')).toBe('a');
+  });
+});
+
+describe('floorIssue', () => {
+  const integerRules = [
+    'minLength',
+    'maxLength',
+    'minValue',
+    'maxValue',
+    'minSelected',
+    'maxSelected',
+  ];
+
+  it.each(integerRules)('rejects a fractional %s value', (rule) => {
+    expect(floorIssue(rule, 1.5)).toBe(`${rule} must be a whole number`);
+  });
+
+  it.each(integerRules)('accepts an integer %s value', (rule) => {
+    expect(floorIssue(rule, 2)).toBeUndefined();
   });
 });
 

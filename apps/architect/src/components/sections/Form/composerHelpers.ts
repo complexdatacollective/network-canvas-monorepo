@@ -5,7 +5,10 @@ import type { VariablePropertyKey } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
 
-import type { VariableOverlay } from '../../Validations/contradictions';
+import type {
+  ResolvedFormValidationView,
+  VariableOverlay,
+} from '../../Validations/contradictions';
 
 // Codebook props that, for NetworkComposer, stay on the codebook variable.
 // `component`/`parameters` are intentionally NOT here — they live on the field.
@@ -132,6 +135,74 @@ const composerFormFieldVariables = (form: unknown): string[] => {
 };
 
 /**
+ * Shared FormFieldSchema fields have no rendering override: their resolved
+ * view is the codebook controls themselves. The active dialog row is included
+ * dynamically because redux-form does not add it to this array until save.
+ */
+export const sharedFormValidationView = (
+  fields: unknown,
+): ResolvedFormValidationView => ({
+  renderedVariableIds: new Set(
+    composerFormFieldVariables({ fields: Array.isArray(fields) ? fields : [] }),
+  ),
+  overlay: {},
+  includesEditedVariable: true,
+});
+
+/**
+ * Every distinct NetworkComposer form that resolves `subject`'s field
+ * controls. A codebook variable edit must be checked against each view rather
+ * than a merged overlay, because later stages may intentionally choose a
+ * different component or parameter set for the same variable.
+ */
+export const composerValidationViews = (
+  stages: unknown,
+  subject: { entity: 'node' | 'edge'; type: string | null },
+  excludeStageId?: string,
+): ResolvedFormValidationView[] => {
+  const views: ResolvedFormValidationView[] = [];
+  if (!Array.isArray(stages) || subject.type === null) return views;
+
+  const addView = (form: unknown): void => {
+    const renderedVariableIds = new Set(composerFormFieldVariables(form));
+    if (renderedVariableIds.size === 0 || !isRecord(form)) return;
+    views.push({
+      renderedVariableIds,
+      overlay: buildComposerFieldOverlay(form.fields),
+    });
+  };
+
+  for (const stage of stages) {
+    if (!isRecord(stage) || stage.type !== 'NetworkComposer') continue;
+    if (excludeStageId !== undefined && stage.id === excludeStageId) continue;
+    if (subject.entity === 'node') {
+      const stageSubject = stage.subject;
+      if (
+        isRecord(stageSubject) &&
+        stageSubject.entity === 'node' &&
+        stageSubject.type === subject.type
+      ) {
+        addView(stage.nodeForm);
+      }
+      continue;
+    }
+    if (!Array.isArray(stage.edges)) continue;
+    for (const edge of stage.edges) {
+      if (!isRecord(edge)) continue;
+      const edgeSubject = edge.subject;
+      if (
+        isRecord(edgeSubject) &&
+        edgeSubject.entity === 'edge' &&
+        edgeSubject.type === subject.type
+      ) {
+        addView(edge.form);
+      }
+    }
+  }
+  return views;
+};
+
+/**
  * Thirty-fifth-wave finding: the ids of `subject`'s variables that a
  * NetworkComposer form in some OTHER stage renders with its own control —
  * the editor-side counterpart of schema.ts's `collectComposerFieldOverrides`
@@ -159,37 +230,9 @@ export const crossFormRenderedVariables = (
   excludeStageId?: string,
 ): ReadonlySet<string> => {
   const rendered = new Set<string>();
-  if (!Array.isArray(stages) || subject.type === null) return rendered;
-  for (const stage of stages) {
-    if (!isRecord(stage) || stage.type !== 'NetworkComposer') continue;
-    if (excludeStageId !== undefined && stage.id === excludeStageId) continue;
-    if (subject.entity === 'node') {
-      const stageSubject = stage.subject;
-      if (
-        isRecord(stageSubject) &&
-        stageSubject.entity === 'node' &&
-        stageSubject.type === subject.type
-      ) {
-        for (const variable of composerFormFieldVariables(stage.nodeForm)) {
-          rendered.add(variable);
-        }
-      }
-      continue;
-    }
-    if (!Array.isArray(stage.edges)) continue;
-    for (const edge of stage.edges) {
-      if (!isRecord(edge)) continue;
-      const edgeSubject = edge.subject;
-      if (
-        !isRecord(edgeSubject) ||
-        edgeSubject.entity !== 'edge' ||
-        edgeSubject.type !== subject.type
-      ) {
-        continue;
-      }
-      for (const variable of composerFormFieldVariables(edge.form)) {
-        rendered.add(variable);
-      }
+  for (const view of composerValidationViews(stages, subject, excludeStageId)) {
+    for (const variable of view.renderedVariableIds) {
+      rendered.add(variable);
     }
   }
   return rendered;

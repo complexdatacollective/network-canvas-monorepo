@@ -4,16 +4,10 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
-// Composer scope-change consequentials: NetworkComposer's quickAdd is now a
-// VALIDATED writer (its interview input honours the target variable's
-// codebook validation — see network-composer.ts), so its save-time gate now
-// mirrors Form.tsx's form-field gate exactly: reject a pick some bin/
-// highlight/census/etc. elsewhere already writes WITHOUT validation, using
-// the mirror message, with the usual committed-value escape. There is no
-// intra-draft check any more — nodeForm.fields is also a validated writer
-// (same class as quickAdd), so no cross-class pair can form between them,
-// and convexHullVariable is untagged entirely (never gated, never
-// restricted — see pickerExclusions.test.ts for its picker coverage).
+// NetworkComposer's quickAdd is a VALIDATED writer, while
+// convexHullVariable writes group membership WITHOUT validation. This
+// mount-level test covers both saved-document gates and the convex-hull
+// field's same-draft collision with nodeForm.fields.
 //
 // The heavy editor chrome is stubbed the way NodeConfiguration.test.tsx
 // stubs it; unlike that file, ValidatedField is mocked to EXPOSE the
@@ -57,7 +51,10 @@ vi.mock('~/components/Form/ValidatedField', () => ({
 // eslint-disable-next-line import/first -- must follow the vi.mock calls above
 import { NodeConfigurationComponent } from '../NodeConfiguration';
 
-type CrossClassValidator = (value: unknown) => string | undefined;
+type CrossClassValidator = (
+  value: unknown,
+  allValues?: Record<string, unknown>,
+) => string | undefined;
 
 const crossClassValidatorFor = (fieldName: string): CrossClassValidator => {
   const validator = capturedValidation[fieldName]?.crossClassPick;
@@ -69,9 +66,8 @@ const crossClassValidatorFor = (fieldName: string): CrossClassValidator => {
 
 // `label` is a text variable written by an AlterForm field elsewhere
 // (validated, stage s1) and by a FamilyPedigree nodeLabelVariable (unvalidated,
-// stage s2) — the same "one hit each direction" fixture shape
-// pickerExclusions.test.ts/roleMap.test.ts use, sized for quickAdd's TEXT-only
-// picker.
+// stage s2). `cat` has only the validated form use, isolating the
+// convexHullVariable gate's direction.
 const PROTOCOL_WITH_FORM_CONFLICT = {
   schemaVersion: 8,
   codebook: {
@@ -80,6 +76,14 @@ const PROTOCOL_WITH_FORM_CONFLICT = {
         name: 'Person',
         color: 'c',
         variables: {
+          cat: {
+            name: 'Cat',
+            type: 'categorical',
+            options: [
+              { label: 'A', value: 'a' },
+              { label: 'B', value: 'b' },
+            ],
+          },
           label: { name: 'Label', type: 'text' },
         },
       },
@@ -92,7 +96,12 @@ const PROTOCOL_WITH_FORM_CONFLICT = {
       label: 'F',
       subject: { entity: 'node', type: 'person' },
       introductionPanel: { title: 'T', text: 'X' },
-      form: { fields: [{ variable: 'label', prompt: 'Q' }] },
+      form: {
+        fields: [
+          { variable: 'cat', prompt: 'P' },
+          { variable: 'label', prompt: 'Q' },
+        ],
+      },
     },
     {
       id: 's2',
@@ -166,9 +175,45 @@ describe('NodeConfiguration (NetworkComposer) quickAdd cross-class gate', () => 
   });
 });
 
-describe('NodeConfiguration (NetworkComposer) convexHullVariable is never gated', () => {
-  it('carries no crossClassPick validator — convexHullVariable is untagged, not an attribute writer', () => {
+describe('NodeConfiguration (NetworkComposer) convexHullVariable cross-class gate', () => {
+  it('rejects a pick a form elsewhere already validates', () => {
     renderComponent();
-    expect(capturedValidation.convexHullVariable).toEqual({});
+    expect(crossClassValidatorFor('convexHullVariable')('cat')).toBe(
+      '"Cat" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+    );
+  });
+
+  it('escapes when the pick equals the stage’s original committed value', () => {
+    renderComponent(PROTOCOL_WITH_FORM_CONFLICT, {
+      convexHullVariable: 'cat',
+    });
+    expect(crossClassValidatorFor('convexHullVariable')('cat')).toBeUndefined();
+  });
+
+  it('rejects a collision with this stage’s live nodeForm draft', () => {
+    const conflictFree = { ...PROTOCOL_WITH_FORM_CONFLICT, stages: [] };
+    renderComponent(conflictFree);
+    expect(
+      crossClassValidatorFor('convexHullVariable')('cat', {
+        nodeForm: {
+          fields: [{ variable: 'cat', component: 'CheckboxGroup' }],
+        },
+      }),
+    ).toBe(
+      '"Cat" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+    );
+  });
+
+  it('allows an unchanged pair that already existed in the committed stage', () => {
+    const nodeForm = {
+      fields: [{ variable: 'cat', component: 'CheckboxGroup' }],
+    };
+    renderComponent(
+      { ...PROTOCOL_WITH_FORM_CONFLICT, stages: [] },
+      { convexHullVariable: 'cat', nodeForm },
+    );
+    expect(
+      crossClassValidatorFor('convexHullVariable')('cat', { nodeForm }),
+    ).toBeUndefined();
   });
 });

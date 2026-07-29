@@ -47,8 +47,8 @@ export const EARLIEST_OFFERED_DATE = {
  */
 export const LATEST_OFFERED_DATE = {
   full: DATE_PICKER_LATEST_DATE,
-  month: '9999-12',
-  year: '9999',
+  month: DATE_PICKER_LATEST_DATE.slice(0, 7),
+  year: DATE_PICKER_LATEST_DATE.slice(0, 4),
 } as const satisfies Record<DateResolution, string>;
 
 /**

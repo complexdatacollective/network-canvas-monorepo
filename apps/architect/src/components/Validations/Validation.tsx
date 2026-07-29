@@ -15,6 +15,7 @@ import {
   MULTI_SELECT_OPTIONS_CLASSES,
   MULTI_SELECT_RULE_CLASSES,
 } from '../Form/MultiSelect';
+import { floorIssue } from './contradictions';
 import {
   getValidationLabel,
   isValidationWithListValue,
@@ -138,10 +139,16 @@ const Validation = ({
   const isNewItem = itemKey === '';
   const [draftKey, setDraftKey] = useState(itemKey);
   const [draftValue, setDraftValue] = useState<ValidationValue>(itemValue);
+  const intrinsicIssue =
+    draftKey && isDraftComplete(draftKey, draftValue)
+      ? floorIssue(draftKey, draftValue)
+      : undefined;
   const draftIssues =
-    checkDraft && draftKey && isDraftComplete(draftKey, draftValue)
-      ? checkDraft(draftKey, draftValue, itemKey || undefined)
-      : [];
+    intrinsicIssue !== undefined
+      ? [intrinsicIssue]
+      : checkDraft && draftKey && isDraftComplete(draftKey, draftValue)
+        ? checkDraft(draftKey, draftValue, itemKey || undefined)
+        : [];
   const draftIssuesId = useId();
 
   // Reset the draft to the committed value every time a row (re)starts an
@@ -318,7 +325,7 @@ const Validation = ({
                 setDraftValue(parseNumberInput(value))
               }
               type="number"
-              step="any"
+              step={1}
             />
           </div>
         )}

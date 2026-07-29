@@ -26,6 +26,10 @@ import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
 import EntitySelectField from '~/components/sections/fields/EntitySelectField/EntitySelectField';
+import {
+  composerValidationViews,
+  sharedFormValidationView,
+} from '~/components/sections/Form/composerHelpers';
 import FieldFields from '~/components/sections/Form/FieldFields';
 import {
   CODEBOOK_PROPERTIES,
@@ -210,6 +214,25 @@ const NodeConfigurationInner = ({
       ? getVariablesForSubjectSelector(state, nodeVariablesSubject)
       : EMPTY_VARIABLES,
   );
+  const resolvedComposerViews = useMemo(
+    () =>
+      composerValidationViews(
+        stages,
+        { entity: 'node', type: nodeType ?? null },
+        stageId,
+      ),
+    [stages, nodeType, stageId],
+  );
+  const pedigreeFormFields = useSelector((state: RootState) =>
+    formSelector(state, 'nodeConfig.form'),
+  );
+  const resolvedFormViews = useMemo(
+    () => [
+      sharedFormValidationView(pedigreeFormFields),
+      ...resolvedComposerViews,
+    ],
+    [pedigreeFormFields, resolvedComposerViews],
+  );
   const roleMap = useSelector(getVariableRoleMap);
   const stageInitialValues = useSelector((state: RootState) =>
     getFormInitialValues(form)(state),
@@ -263,8 +286,9 @@ const NodeConfigurationInner = ({
         undefined,
         undefined,
         hasUnvalidatedUse,
+        resolvedFormViews,
       ),
-    [allVariables, hasUnvalidatedUse],
+    [allVariables, hasUnvalidatedUse, resolvedFormViews],
   );
   // Save-time cross-class gate for a nodeConfig slot (an UNVALIDATED writer):
   // rejects a pick a form elsewhere in the saved document already collects,

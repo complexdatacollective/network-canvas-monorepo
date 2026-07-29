@@ -8700,9 +8700,10 @@ describe('findValidationContradictions — Thirty-fourth wave Fix 1: one-sided f
 // differentFrom check. Comparator equality is compareVariables' Number()
 // equality, and a number has no second textual representation of the same
 // quantity, so comparator-equal IS stored-equal (the per-type argument
-// class 9's carve-out already records) — unlike datetime, whose Date-based
-// comparator equality tolerates stored-string divergence across
-// resolutions, so datetime inheritance stays sameAs-only.
+// class 9's carve-out already records). Datetime comparator equality can
+// tolerate stored-string divergence across resolutions, so the mixed-
+// resolution guard below remains necessary even after uniform full dates
+// gain the same inheritance in the follow-up block.
 describe('findValidationContradictions — Thirty-fourth wave Fix 2: comparator-merged number groups derive inherited pins', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
@@ -8956,6 +8957,333 @@ describe('findValidationContradictions — Thirty-fourth wave Fix 3: comparator-
           differentFrom: 'a',
           greaterThanOrEqualToVariable: 'b',
         }),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — coarse synthesized singleton pins', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  it.each([
+    ['year ceiling', { type: 'year', min: '9999' }, '9999'],
+    ['month ceiling', { type: 'month', min: '9999-12' }, '9999-12'],
+    ['year default floor', { type: 'year', max: '1920' }, '1920'],
+    ['month default floor', { type: 'month', max: '1920-01' }, '1920-01'],
+    ['year grammar floor', { type: 'year', max: '1000' }, '1000'],
+    ['month grammar floor', { type: 'month', max: '1000-01' }, '1000-01'],
+  ])(
+    'treats the stable %s as a singleton stored value',
+    (_, parameters, pinnedDate) => {
+      const result = findValidationContradictions({
+        a: datePicker('a', parameters, { differentFrom: 'b' }),
+        b: datePicker('b', {
+          type: parameters.type,
+          min: pinnedDate,
+          max: pinnedDate,
+        }),
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+      expect(result[0]?.strips).toEqual([
+        { variableId: 'a', rule: 'differentFrom' },
+      ]);
+    },
+  );
+
+  it.each([
+    [
+      'year ceiling',
+      { type: 'year', min: '9998' },
+      { type: 'year', min: '9998', max: '9998' },
+    ],
+    [
+      'month ceiling',
+      { type: 'month', min: '9999-11' },
+      { type: 'month', min: '9999-11', max: '9999-11' },
+    ],
+    [
+      'year grammar floor',
+      { type: 'year', max: '1001' },
+      { type: 'year', min: '1001', max: '1001' },
+    ],
+    [
+      'month grammar floor',
+      { type: 'month', max: '1000-02' },
+      { type: 'month', min: '1000-02', max: '1000-02' },
+    ],
+  ])('keeps the nearby %s window unpinned', (_, parameters, explicitPin) => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', parameters, { differentFrom: 'b' }),
+        b: datePicker('b', explicitPin),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — comparator-merged full-date pins', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  it('inherits a fixed full-date pin across a comparator-forced equality group', () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', {
+        min: '2021-01-01',
+        max: '2021-01-01',
+      }),
+      b: datePicker(
+        'b',
+        { min: '2021-01-01', max: '2021-01-01' },
+        { lessThanOrEqualToVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2021-01-01', max: '2021-01-02' },
+        {
+          lessThanOrEqualToVariable: 'b',
+          differentFrom: 'a',
+        },
+      ),
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'c']);
+  });
+
+  it("derives a fixed full-date pin from the merged group's intersected window", () => {
+    const result = findValidationContradictions({
+      a: datePicker('a', {
+        min: '2021-01-02',
+        max: '2021-01-02',
+      }),
+      b: datePicker(
+        'b',
+        { min: '2021-01-01', max: '2021-01-02' },
+        { lessThanOrEqualToVariable: 'c' },
+      ),
+      c: datePicker(
+        'c',
+        { min: '2021-01-02', max: '2021-01-03' },
+        {
+          lessThanOrEqualToVariable: 'b',
+          differentFrom: 'a',
+        },
+      ),
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
+  });
+
+  it('does not inherit across mixed fixed and interview-date origins', () => {
+    const relative = (
+      name: string,
+      validation: Record<string, unknown> = {},
+    ) => ({
+      name,
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { before: 0, after: 0 },
+      validation: { required: true, ...validation },
+    });
+
+    expect(
+      findValidationContradictions({
+        a: relative('a'),
+        b: relative('b', { lessThanOrEqualToVariable: 'c' }),
+        c: datePicker(
+          'c',
+          { min: '2020-01-01', max: '2020-01-02' },
+          {
+            lessThanOrEqualToVariable: 'b',
+            differentFrom: 'a',
+          },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  it('does not derive a pin from a multi-day merged window', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', {
+          min: '2021-01-01',
+          max: '2021-01-01',
+        }),
+        b: datePicker(
+          'b',
+          { min: '2021-01-01', max: '2021-01-02' },
+          { lessThanOrEqualToVariable: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2021-01-01', max: '2021-01-02' },
+          {
+            lessThanOrEqualToVariable: 'b',
+            differentFrom: 'a',
+          },
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  it('does not inherit a pin across a strict comparator edge', () => {
+    expect(
+      findValidationContradictions({
+        a: datePicker('a', {
+          min: '2021-01-01',
+          max: '2021-01-01',
+        }),
+        b: datePicker(
+          'b',
+          { min: '2021-01-01', max: '2021-01-01' },
+          { lessThanVariable: 'c' },
+        ),
+        c: datePicker(
+          'c',
+          { min: '2021-01-01', max: '2021-01-02' },
+          { differentFrom: 'a' },
+        ),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('findValidationContradictions — disequality singleton fixpoint', () => {
+  const datePicker = (
+    name: string,
+    parameters: Record<string, unknown>,
+    validation: Record<string, unknown> = {},
+  ) => ({
+    name,
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters,
+    validation: { required: true, ...validation },
+  });
+
+  const twoDays = { min: '2020-01-01', max: '2020-01-02' };
+  const threeDays = { min: '2020-01-01', max: '2020-01-03' };
+  const oneDay = (day: '01' | '02') => ({
+    min: `2020-01-${day}`,
+    max: `2020-01-${day}`,
+  });
+
+  it('iterates derived singleton pins independently of variable insertion order', () => {
+    const build = (reverse: boolean) => {
+      const entries = [
+        ['a', datePicker('a', oneDay('01'))],
+        ['b', datePicker('b', twoDays, { differentFrom: 'a' })],
+        ['c', datePicker('c', twoDays, { differentFrom: 'b' })],
+        ['d', datePicker('d', oneDay('01'), { differentFrom: 'c' })],
+      ] as const;
+      return Object.fromEntries(reverse ? entries.toReversed() : entries);
+    };
+
+    const [forward, reverse] = [build(false), build(true)].map((variables) =>
+      findValidationContradictions(variables),
+    );
+    expect(reverse).toEqual(forward);
+    expect(forward).toHaveLength(1);
+    expect(forward?.[0]?.class).toBe('pinnedEqualDifferentFrom');
+    expect(forward?.[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
+    expect(forward?.[0]?.strips).toEqual([
+      { variableId: 'c', rule: 'differentFrom' },
+    ]);
+  });
+
+  it('accepts the alternating chain when the terminal pin differs', () => {
+    expect(
+      findValidationContradictions({
+        d: datePicker('d', oneDay('02'), { differentFrom: 'c' }),
+        c: datePicker('c', twoDays, { differentFrom: 'b' }),
+        b: datePicker('b', twoDays, { differentFrom: 'a' }),
+        a: datePicker('a', oneDay('01')),
+      }),
+    ).toEqual([]);
+  });
+
+  it('propagates through a longer cascade after an interior exclusion', () => {
+    const result = findValidationContradictions({
+      middle: datePicker('middle', oneDay('02')),
+      x: datePicker('x', threeDays, { differentFrom: 'middle' }),
+      source: datePicker('source', oneDay('02')),
+      a: datePicker('a', twoDays, { differentFrom: 'source' }),
+      aOverlay: datePicker('aOverlay', twoDays, {
+        sameAs: 'a',
+        differentFrom: 'x',
+      }),
+      y: datePicker(
+        'y',
+        { min: '2020-01-02', max: '2020-01-03' },
+        { differentFrom: 'x', greaterThanVariable: 'terminal' },
+      ),
+      terminal: datePicker('terminal', oneDay('02')),
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.class).toBe('disjointBounds');
+    expect(result[0]?.variableIds.toSorted()).toEqual(['terminal', 'y']);
+    expect(result[0]?.strips).toEqual([
+      { variableId: 'y', rule: 'greaterThanVariable' },
+    ]);
+  });
+
+  it('accepts a middle domain with an escape value', () => {
+    expect(
+      findValidationContradictions({
+        middle: datePicker('middle', oneDay('02')),
+        x: datePicker(
+          'x',
+          { min: '2020-01-01', max: '2020-01-04' },
+          { differentFrom: 'middle' },
+        ),
+        source: datePicker('source', oneDay('02')),
+        a: datePicker('a', twoDays, { differentFrom: 'source' }),
+        aOverlay: datePicker('aOverlay', twoDays, {
+          sameAs: 'a',
+          differentFrom: 'x',
+        }),
+        y: datePicker(
+          'y',
+          { min: '2020-01-02', max: '2020-01-03' },
+          { differentFrom: 'x', greaterThanVariable: 'terminal' },
+        ),
+        terminal: datePicker('terminal', oneDay('02')),
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts a consistent alternating even component', () => {
+    expect(
+      findValidationContradictions({
+        start: datePicker('start', oneDay('02')),
+        a: datePicker('a', twoDays, { differentFrom: 'start' }),
+        b: datePicker('b', twoDays, { differentFrom: 'a' }),
+        c: datePicker('c', twoDays, { differentFrom: 'b' }),
+        end: datePicker('end', oneDay('02'), { differentFrom: 'c' }),
       }),
     ).toEqual([]);
   });

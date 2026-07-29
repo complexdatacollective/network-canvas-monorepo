@@ -351,6 +351,41 @@ const referenceConnectedIds = (
   return connected;
 };
 
+const contradictionKey = (contradiction: ValidationContradiction): string =>
+  [
+    contradiction.class,
+    [...contradiction.variableIds].toSorted().join(','),
+    contradiction.strips
+      .map((strip) => `${strip.variableId}:${strip.rule}`)
+      .toSorted()
+      .join(','),
+  ].join('|');
+
+const visibleVariablesForStage = (
+  codebookVariables: Record<string, Variable>,
+  unknownRendering: ReadonlySet<string>,
+): Record<string, Variable> =>
+  Object.fromEntries(
+    Object.entries(codebookVariables).filter(
+      ([id]) => !unknownRendering.has(id),
+    ),
+  );
+
+// Stage rendering may make a codebook-valid rule set unsatisfiable. Comparing
+// stable contradiction identities keeps the codebook refinement responsible
+// for errors that already existed before the stage-effective view was applied.
+const contradictionsIntroducedByStageRendering = (
+  visible: Record<string, Variable>,
+  effective: Record<string, unknown>,
+): ValidationContradiction[] => {
+  const baseKeys = new Set(
+    findValidationContradictions(visible).map(contradictionKey),
+  );
+  return findValidationContradictions(effective, {
+    stageEffectiveComponents: true,
+  }).filter((contradiction) => !baseKeys.has(contradictionKey(contradiction)));
+};
+
 /**
  * NetworkComposer stage-effective-overlay contradiction check (seventh-wave
  * Finding 2; direction fix ninth-wave Finding 2; widened from the narrow
@@ -435,11 +470,7 @@ const validateComposerFieldContradictions = (
 ) => {
   if (!fields || fields.length === 0) return;
 
-  const visible: Record<string, Variable> = {};
-  for (const [id, variable] of Object.entries(codebookVariables)) {
-    if (unknownRendering.has(id)) continue;
-    visible[id] = variable;
-  }
+  const visible = visibleVariablesForStage(codebookVariables, unknownRendering);
 
   const overlaid: Record<string, unknown> = { ...visible };
   for (const field of fields) {
@@ -458,16 +489,6 @@ const validateComposerFieldContradictions = (
     };
   }
 
-  const keyOf = (contradiction: ValidationContradiction): string =>
-    [
-      contradiction.class,
-      [...contradiction.variableIds].toSorted().join(','),
-      contradiction.strips
-        .map((strip) => `${strip.variableId}:${strip.rule}`)
-        .toSorted()
-        .join(','),
-    ].join('|');
-
   // The baseline runs over the SAME visible subset so its contradiction keys
   // (which carry group membership) are comparable with the overlay's — and in
   // the same RECORD-LEVEL mode as `rejectValidationContradictions`, so its
@@ -480,16 +501,14 @@ const validateComposerFieldContradictions = (
   // domain here, which the record level (with no stages in scope) never may.
   // A contradiction that needs that reading is by construction absent from
   // the baseline keys, so it reports here, anchored at a participating field.
-  const baseKeys = new Set(findValidationContradictions(visible).map(keyOf));
-
   // Thirtieth-wave Finding 1 (see the function comment): computed lazily —
   // only a new contradiction with no participating field ever needs it.
   let stageEffectiveBaseKeys: Set<string> | undefined;
 
-  for (const contradiction of findValidationContradictions(overlaid, {
-    stageEffectiveComponents: true,
-  })) {
-    if (baseKeys.has(keyOf(contradiction))) continue;
+  for (const contradiction of contradictionsIntroducedByStageRendering(
+    visible,
+    overlaid,
+  )) {
     const fieldIndex = fields.findIndex((field) =>
       contradiction.variableIds.includes(field.variable),
     );
@@ -512,9 +531,9 @@ const validateComposerFieldContradictions = (
     stageEffectiveBaseKeys ??= new Set(
       findValidationContradictions(visible, {
         stageEffectiveComponents: true,
-      }).map(keyOf),
+      }).map(contradictionKey),
     );
-    if (stageEffectiveBaseKeys.has(keyOf(contradiction))) continue;
+    if (stageEffectiveBaseKeys.has(contradictionKey(contradiction))) continue;
 
     const connected = referenceConnectedIds(visible, contradiction.variableIds);
     const causeIndex = fields.findIndex((field) =>
@@ -533,6 +552,43 @@ const validateComposerFieldContradictions = (
     addIssue({
       message: `NetworkComposer field overrides for "${causeName}" propagate through its validation rules and make its linked variables contradictory: ${contradiction.message}`,
       path: [...fieldsPath, causeIndex, 'parameters'],
+    });
+  }
+};
+
+/**
+ * Shared form fields use the codebook component without an override. The
+ * record-level analyser deliberately cannot treat that component as final,
+ * because NetworkComposer may replace it elsewhere; a concrete shared form can.
+ * Only contradictions involving a field rendered by this form are anchored
+ * here. Variables overridden by another composer form remain unknown unless
+ * this shared form renders them itself, matching the composer visible-subset
+ * rule without hiding the current form's known codebook rendering.
+ */
+const validateSharedFormContradictions = (
+  codebookVariables: Record<string, Variable>,
+  fields: FormField[] | undefined,
+  fieldsPath: (string | number)[],
+  unknownRendering: ReadonlySet<string>,
+  addIssue: IssueReporter,
+) => {
+  if (!fields || fields.length === 0) return;
+
+  const visible = visibleVariablesForStage(codebookVariables, unknownRendering);
+  for (const contradiction of contradictionsIntroducedByStageRendering(
+    visible,
+    visible,
+  )) {
+    const fieldIndex = fields.findIndex((field) =>
+      contradiction.variableIds.includes(field.variable),
+    );
+    if (fieldIndex === -1) continue;
+    const field = fields[fieldIndex];
+    if (!field) continue;
+    const fieldName = codebookVariables[field.variable]?.name ?? field.variable;
+    addIssue({
+      message: `Form field for "${fieldName}" renders its codebook component with contradictory validation: ${contradiction.message}`,
+      path: [...fieldsPath, fieldIndex, 'variable'],
     });
   }
 };
@@ -579,7 +635,7 @@ const collectComposerFieldOverrides = (
 const unknownRenderingFor = (
   overrides: Map<string, Set<string>>,
   subject: StageSubject,
-  fields: ComposerFormField[] | undefined,
+  fields: readonly { variable: string }[] | undefined,
 ): ReadonlySet<string> => {
   const bucket = overrides.get(subjectKey(subject));
   if (!bucket) return new Set();
@@ -711,14 +767,14 @@ const ProtocolSchema = z
       // entity-attribute reference validator above; here we additionally reject
       // variables whose type cannot be rendered as a form field (layout/location).
       if ('form' in stage && stage.form?.fields) {
-        stage.form.fields.forEach((field: FormField, fieldIndex: number) => {
-          let subject: StageSubject | undefined;
-          if (stage.type === 'EgoForm') {
-            subject = { entity: 'ego' as const };
-          } else if ('subject' in stage && stage.subject) {
-            subject = stage.subject;
-          }
+        let subject: StageSubject | undefined;
+        if (stage.type === 'EgoForm') {
+          subject = { entity: 'ego' };
+        } else if ('subject' in stage && stage.subject) {
+          subject = stage.subject;
+        }
 
+        stage.form.fields.forEach((field: FormField, fieldIndex: number) => {
           if (subject) {
             validateFormFieldVariable(
               protocol.codebook,
@@ -729,6 +785,19 @@ const ProtocolSchema = z
             );
           }
         });
+        if (subject) {
+          validateSharedFormContradictions(
+            getVariablesForSubject(protocol.codebook, subject),
+            stage.form.fields,
+            ['stages', stageIndex, 'form', 'fields'],
+            unknownRenderingFor(
+              composerFieldOverrides,
+              subject,
+              stage.form.fields,
+            ),
+            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+          );
+        }
       }
 
       // 3b.ii. NetworkComposer: a stage field's own component/parameters
@@ -1055,6 +1124,17 @@ const ProtocolSchema = z
             (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
           );
         });
+        validateSharedFormContradictions(
+          getVariablesForSubject(protocol.codebook, nodeSubject),
+          stage.nodeConfig.form,
+          ['stages', stageIndex, 'nodeConfig', 'form'],
+          unknownRenderingFor(
+            composerFieldOverrides,
+            nodeSubject,
+            stage.nodeConfig.form,
+          ),
+          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+        );
       }
 
       // 3e.iii.b-2. FamilyPedigree: each nomination prompt variable must exist

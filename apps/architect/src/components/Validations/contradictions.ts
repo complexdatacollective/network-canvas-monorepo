@@ -580,10 +580,10 @@ export const findLegalReferenceTargets = ({
   return legal;
 };
 
-// R1 (schema shape) rejects a rule value below these floors with a generic
-// Zod message. Gating them here — ahead of the schema — lets the row editor
-// disable the save and explain why, instead of surfacing that generic message
-// only after a failed protocol save.
+// R1 (schema shape) rejects fractional values and values below these floors
+// with a generic Zod message. Gating them here — ahead of the schema — lets
+// the row editor disable the save and explain why, instead of surfacing that
+// generic message only after a failed protocol save.
 const RULE_FLOORS: Record<string, number> = {
   minLength: 0,
   maxLength: 1,
@@ -591,10 +591,26 @@ const RULE_FLOORS: Record<string, number> = {
   maxSelected: 1,
 };
 
+const INTEGER_RULES = new Set([
+  'minLength',
+  'maxLength',
+  'minValue',
+  'maxValue',
+  'minSelected',
+  'maxSelected',
+]);
+
 export const floorIssue = (
   ruleKey: string,
   value: unknown,
 ): string | undefined => {
+  if (
+    INTEGER_RULES.has(ruleKey) &&
+    typeof value === 'number' &&
+    !Number.isInteger(value)
+  ) {
+    return `${ruleKey} must be a whole number`;
+  }
   const floor = RULE_FLOORS[ruleKey];
   if (floor === undefined || typeof value !== 'number' || Number.isNaN(value)) {
     return undefined;
@@ -626,6 +642,19 @@ export type VariableOverlay = Record<
 >;
 
 /**
+ * One form's resolved rendering for a subject. Keeping views distinct is
+ * essential: two stages can render the same codebook variable through
+ * different controls, and a codebook edit must remain satisfiable in every
+ * one of those participant-facing views.
+ */
+export type ResolvedFormValidationView = {
+  renderedVariableIds: ReadonlySet<string>;
+  overlay: VariableOverlay;
+  /** The live draft row belongs to this form even before its array is saved. */
+  includesEditedVariable?: boolean;
+};
+
+/**
  * `allVariables` with `overlay` layered on top. Only
  * `component`/`parameters` are overridden — everything else (`options`,
  * `validation`, `type`, ...) still comes from the codebook. An overlay entry
@@ -650,6 +679,46 @@ const withOverlay = (
     };
   }
   return overlaid;
+};
+
+const withoutUnknownRenderings = (
+  variables: UnknownRecord,
+  allRenderedVariableIds: ReadonlySet<string>,
+  renderedVariableIds: ReadonlySet<string>,
+): UnknownRecord => {
+  const unknown = [...allRenderedVariableIds].filter(
+    (id) => !renderedVariableIds.has(id) && Object.hasOwn(variables, id),
+  );
+  if (unknown.length === 0) return variables;
+  const visible = { ...variables };
+  for (const id of unknown) {
+    delete visible[id];
+  }
+  return visible;
+};
+
+const findResolvedViewDraftContradictions = (
+  draft: ProspectiveDraft,
+  view: ResolvedFormValidationView,
+  allRenderedVariableIds: ReadonlySet<string>,
+  baselineKeys: ReadonlySet<string>,
+): ValidationContradiction[] => {
+  const id = draft.currentVariableId || draftVariableId(draft.allVariables);
+  const withDraft = withOverlay(
+    withoutUnknownRenderings(
+      buildProspectiveVariables(draft),
+      allRenderedVariableIds,
+      view.renderedVariableIds,
+    ),
+    view.overlay,
+  );
+  return findValidationContradictions(withDraft, {
+    stageEffectiveComponents: true,
+  }).filter(
+    (contradiction) =>
+      contradiction.variableIds.includes(id) ||
+      !baselineKeys.has(contradictionKey(contradiction)),
+  );
 };
 
 /** A variable's codebook display name, falling back to its id when absent. */
@@ -746,12 +815,22 @@ export const crossClassPickIssue = ({
  * WrappedFormProps); `props.initialValues` is the row's PRE-EDIT committed
  * values, read here to implement `crossClassPickIssue`'s unchanged-pick
  * escape.
+ *
+ * `resolvedViews` contains the current shared form and every NetworkComposer
+ * form that renders this subject. Each view is analysed independently after
+ * the draft's codebook properties are installed and before that view's
+ * component/parameters are layered last. That precedence matches the runtime:
+ * draft validation/options remain codebook-owned, while a stage field's
+ * rendering overrides a draft codebook component. Each view is compared with
+ * an identically scoped committed baseline, preserving the existing
+ * new-contradiction gate.
  */
 export const makeFieldEditorValidate = (
   allVariables: UnknownRecord,
   overlay?: VariableOverlay,
   crossFormRendered?: ReadonlySet<string>,
   hasUnvalidatedUse?: (variableId: string) => boolean,
+  resolvedViews: readonly ResolvedFormValidationView[] = [],
 ) => {
   // Computed once per dialog session, not on every keystroke: `allVariables`
   // and `overlay` are fixed for the returned validator's whole lifetime, so
@@ -770,6 +849,21 @@ export const makeFieldEditorValidate = (
     (id) =>
       !(overlay !== undefined && Object.hasOwn(overlay, id)) &&
       Object.hasOwn(overlaidVariables, id),
+  );
+  const resolvedRenderedVariableIds = new Set<string>();
+  const resolvedViewIncludesEditedVariable = resolvedViews.some(
+    (view) => view.includesEditedVariable === true,
+  );
+  for (const view of resolvedViews) {
+    for (const id of view.renderedVariableIds) {
+      resolvedRenderedVariableIds.add(id);
+    }
+  }
+  for (const id of Object.keys(overlay ?? {})) {
+    resolvedRenderedVariableIds.add(id);
+  }
+  const resolvedBaselineKeys = resolvedViews.map(
+    () => new Map<string, Set<string>>(),
   );
   return (
     values: Record<string, unknown>,
@@ -848,13 +942,72 @@ export const makeFieldEditorValidate = (
       // stage-effective signal: every variable it names carries that
       // field's own RESOLVED component, and this dialog's own draft
       // component (above) is the edited field's resolved component too.
-      // An overlay-less caller (the shared FieldFields dialog,
-      // FamilyPedigree's NodeConfiguration) has no stage in scope to
-      // resolve any OTHER variable's rendering, so it must stay in the
-      // default, unresolved mode.
+      // An overlay-less caller's first pass stays at the record level; its
+      // shared-form and composer stage-effective views run independently
+      // below through `resolvedViews`.
       stageEffectiveComponents: overlay !== undefined,
     })[0];
     if (first) return { validation: first.message };
+    if (resolvedViews.length > 0) {
+      const allResolvedRenderedVariableIds = new Set(
+        resolvedRenderedVariableIds,
+      );
+      if (overlay !== undefined || resolvedViewIncludesEditedVariable) {
+        allResolvedRenderedVariableIds.add(
+          currentVariableId || draftVariableId(allVariables),
+        );
+      }
+      const draft = {
+        allVariables,
+        currentVariableId,
+        variableType,
+        validation,
+        component: values.component,
+        options: values.options,
+        parameters: values.parameters,
+      };
+      const resolvedBaselineKey =
+        overlay !== undefined || resolvedViewIncludesEditedVariable
+          ? currentVariableId || draftVariableId(allVariables)
+          : '';
+      for (const [viewIndex, view] of resolvedViews.entries()) {
+        const renderedVariableIds = view.includesEditedVariable
+          ? new Set([
+              ...view.renderedVariableIds,
+              currentVariableId || draftVariableId(allVariables),
+            ])
+          : view.renderedVariableIds;
+        const resolvedView = { ...view, renderedVariableIds };
+        const byEditedVariable = resolvedBaselineKeys[viewIndex];
+        if (!byEditedVariable) continue;
+        let baselineKeys = byEditedVariable.get(resolvedBaselineKey);
+        if (!baselineKeys) {
+          const baseline = withOverlay(
+            withoutUnknownRenderings(
+              allVariables,
+              allResolvedRenderedVariableIds,
+              resolvedView.renderedVariableIds,
+            ),
+            resolvedView.overlay,
+          );
+          baselineKeys = new Set(
+            findValidationContradictions(baseline, {
+              stageEffectiveComponents: true,
+            }).map(contradictionKey),
+          );
+          byEditedVariable.set(resolvedBaselineKey, baselineKeys);
+        }
+        const contradiction = findResolvedViewDraftContradictions(
+          draft,
+          resolvedView,
+          allResolvedRenderedVariableIds,
+          baselineKeys,
+        )[0];
+        if (contradiction) {
+          return { validation: contradiction.message };
+        }
+      }
+    }
     if (hasUnvalidatedUse) {
       const initialValues = isRecord(props?.initialValues)
         ? props.initialValues

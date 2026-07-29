@@ -74,6 +74,32 @@ const PROTOCOL_WITH_FORM_CONFLICT = {
               { label: 'B', value: 'b' },
             ],
           },
+          a: {
+            name: 'A',
+            type: 'datetime',
+            component: 'DatePicker',
+            validation: {},
+          },
+          b: {
+            name: 'B',
+            type: 'datetime',
+            component: 'DatePicker',
+            validation: {},
+          },
+          boolA: {
+            name: 'Boolean A',
+            type: 'boolean',
+            component: 'Boolean',
+            options: [{ label: 'Yes', value: true }],
+            validation: {},
+          },
+          boolB: {
+            name: 'Boolean B',
+            type: 'boolean',
+            component: 'Boolean',
+            options: [{ label: 'Yes', value: true }],
+            validation: {},
+          },
         },
       },
       place: {
@@ -108,6 +134,27 @@ const PROTOCOL_WITH_FORM_CONFLICT = {
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'p1', text: 'T', variable: 'cat' }],
     },
+    {
+      id: 's3',
+      type: 'NetworkComposer',
+      label: 'Composer',
+      subject: { entity: 'node', type: 'person' },
+      nodeForm: {
+        fields: [
+          {
+            variable: 'a',
+            component: 'DatePicker',
+            parameters: { type: 'year' },
+          },
+          {
+            variable: 'b',
+            component: 'DatePicker',
+            parameters: { type: 'year' },
+          },
+        ],
+      },
+      edges: [],
+    },
   ],
 };
 
@@ -123,7 +170,18 @@ const renderForm = (subject: {
     reducer: {
       activeProtocol: (state = { present: PROTOCOL_WITH_FORM_CONFLICT }) =>
         state,
-      form: (state = { 'edit-stage': { values: { subject } } }) => state,
+      form: (
+        state = {
+          'edit-stage': {
+            values: {
+              subject,
+              form: {
+                fields: [{ variable: 'boolA' }, { variable: 'boolB' }],
+              },
+            },
+          },
+        },
+      ) => state,
     },
   });
   render(
@@ -168,5 +226,29 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
     const editorValidate = renderForm({ entity: 'node', type: 'place' });
     const errors = editorValidate({ variable: 'cat', validation: {} });
     expect(errors).toEqual({});
+  });
+
+  it('checks codebook edits against a composer view with stage rendering taking precedence', () => {
+    const editorValidate = renderForm({ entity: 'node', type: 'person' });
+    const errors = editorValidate({
+      variable: 'a',
+      validation: { sameAs: 'b' },
+      component: 'DatePicker',
+      parameters: {},
+    });
+
+    expect(errors).toEqual({});
+  });
+
+  it('checks the current shared form as a stage-effective view', () => {
+    const editorValidate = renderForm({ entity: 'node', type: 'person' });
+    const errors = editorValidate({
+      variable: 'boolA',
+      validation: { differentFrom: 'boolB' },
+      component: 'Boolean',
+      options: [{ label: 'Yes', value: true }],
+    });
+
+    expect(errors.validation).toContain('must differ');
   });
 });

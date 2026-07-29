@@ -1,3 +1,11 @@
+import {
+  DATE_PICKER_DEFAULT_MIN,
+  DATE_PICKER_EARLIEST_DATE,
+  DATE_PICKER_LATEST_DATE,
+  RELATIVE_DATE_PICKER_DEFAULT_AFTER,
+  RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
+} from '@codaco/shared-consts';
+
 import type { ValidationName } from './validation.ts';
 import { isIsoDate, isValidDateAtResolution } from './variable.ts';
 
@@ -866,12 +874,6 @@ const dayNumber = (value: string, edge: 'min' | 'max'): number | undefined => {
   return utcDayNumber(year, month - 1, day);
 };
 
-// RelativeDatePicker's own defaults when `before`/`after` are omitted (see
-// the interview runtime's RelativeDatePicker component): 180 days before the
-// anchor, 0 days after it.
-const RELATIVE_DATE_PICKER_DEFAULT_BEFORE = 180;
-const RELATIVE_DATE_PICKER_DEFAULT_AFTER = 0;
-
 /**
  * Twenty-third-wave Finding 6: the earliest date the native
  * `<input type="date">` control backing both datetime pickers can ever
@@ -890,7 +892,11 @@ const RELATIVE_DATE_PICKER_DEFAULT_AFTER = 0;
  * back to but its own year-0001 floor, so the control's TRUE reachable
  * minimum is this constant, however much further the arithmetic overshot it.
  */
-const NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER = utcDayNumber(1, 0, 1);
+const NATIVE_DATE_INPUT_FLOOR_DAY_NUMBER = utcDayNumber(
+  Number(DATE_PICKER_EARLIEST_DATE.slice(0, 4)),
+  Number(DATE_PICKER_EARLIEST_DATE.slice(5, 7)) - 1,
+  Number(DATE_PICKER_EARLIEST_DATE.slice(8, 10)),
+);
 
 /**
  * Clamps a 'fixed'-origin datetime interval's lower edge at the floor above,
@@ -1068,7 +1074,9 @@ const dateResolutionOf = (variable: unknown): DateResolution => {
  * bound's missing month/day also default to 1, so the runtime's
  * `compareYmd(authoredMax, DEFAULT_MIN) < 0` test is exactly `year < 1920`.
  */
-const DEFAULT_DATE_WINDOW_MIN_YEAR = 1920;
+const DEFAULT_DATE_WINDOW_MIN_YEAR = Number(
+  DATE_PICKER_DEFAULT_MIN.slice(0, 4),
+);
 
 /**
  * Twenty-fifth wave: the latest plausible interview date the synthesized
@@ -1114,7 +1122,7 @@ const COARSE_SYNTHESIS_SPAN_YEARS =
  * native input floors at year 1 instead (`clampToNativeDateFloor`).
  */
 const COARSE_SYNTHESIS_MIN_YEAR = 1000;
-const COARSE_SYNTHESIS_MAX_YEAR = 9999;
+const COARSE_SYNTHESIS_MAX_YEAR = Number(DATE_PICKER_LATEST_DATE.slice(0, 4));
 
 /**
  * Mirrors fresco-ui DatePicker.tsx's `parseYmd` exactly — grammar
@@ -1828,18 +1836,29 @@ const pinnedValue = (
       const resolution = dateResolutionOf(variable);
       if (resolution !== 'full') {
         const parameters = asRecord(asRecord(variable)?.parameters);
-        const min = parameters?.min;
-        // A bound that does not match the picker's own resolution is
+        // A present bound that does not match the picker's own resolution is
         // malformed rather than pinning (the schema rejects it separately),
         // and the analyser also runs over raw migration input.
         if (
-          typeof min !== 'string' ||
-          min !== parameters?.max ||
-          !isValidDateAtResolution(min, resolution)
+          !parameters ||
+          (parameters.min !== undefined &&
+            (typeof parameters.min !== 'string' ||
+              !isValidDateAtResolution(parameters.min, resolution))) ||
+          (parameters.max !== undefined &&
+            (typeof parameters.max !== 'string' ||
+              !isValidDateAtResolution(parameters.max, resolution)))
         ) {
           return undefined;
         }
-        return `datetime:${resolution}:${min}`;
+        const window = dateWindowInterval(variable);
+        if (
+          window?.origin !== 'fixed' ||
+          window.min === undefined ||
+          window.min !== window.max
+        ) {
+          return undefined;
+        }
+        return storedPinKeyAtDay(window.min, resolution);
       }
       const window = dateWindowInterval(variable);
       if (window?.min === undefined || window.min !== window.max) {
@@ -2171,8 +2190,9 @@ function sameAsInheritedPins(
 }
 
 /**
- * Thirty-fourth wave (Fix 2): the pinned value a NUMBER variable inherits
- * through its comparator-MERGED equality group. The reviewer's repro: `B`
+ * Thirty-fourth wave (Fix 2), extended for uniform full dates: the pinned
+ * value a variable inherits through its comparator-MERGED equality group. The
+ * original number repro: `B`
  * pinned to 2, `C` spanning [2, 3], mutual non-strict comparators forcing
  * `B = C`, and `C differentFrom A` with `A` pinned to 2 — `C` is forced to
  * hold exactly 2, yet neither existing pin source sees it:
@@ -2182,19 +2202,19 @@ function sameAsInheritedPins(
  * `graph.dependencies`), so a merged group whose comparators are all
  * internal never receives a propagated pin.
  *
- * A pin may travel a non-strict comparator SCC for NUMBER variables only,
- * by the same per-type argument class 9's carve-out records
+ * A pin may travel a non-strict comparator SCC for number variables, by the
+ * same per-type argument class 9's carve-out records
  * (`referenceStructureContradictions`, twenty-second-wave Finding 3): the
  * comparator equality the SCC forces is `compareVariables`' `Number()`
  * equality, and a number has no second textual representation of the same
  * quantity, so comparator-equal IS stored-equal — exactly what
- * `differentFrom`'s `isMatchingValue` compares. Every other type stays out:
+ * `differentFrom`'s `isMatchingValue` compares. Uniform full-resolution
+ * datetime groups on one shared origin qualify for the same reason: every
+ * control stores the canonical full date, so Date-equal is stored-equal.
+ * Mixed resolutions and origins still derive nothing because either can
+ * compare equal while storing a different value, or cannot be related
+ * without knowing the interview date. Every other type stays out:
  *
- *   - datetime keeps its sameAs-only inheritance — comparator equality runs
- *     through `new Date(...)`, which tolerates stored-string divergence
- *     across resolutions ('2021' and '2021-01-01' compare equal yet store
- *     differently), and the chain pass already records ON-chain datetime
- *     collapses resolution-aware in `propagatedPins`;
  *   - scalar's comparator equality would be equally exact, but its
  *     validation pick carries no `differentFrom`/`sameAs` and no value
  *     bounds, and `pinnedValue` never pins one, so there is nothing to
@@ -2211,7 +2231,7 @@ function sameAsInheritedPins(
  * group out (class 7's repair strips that sameAs edge), disagreeing member
  * pins derive nothing (the group machinery's conflict to report), and with
  * no member pinned the group's INTERSECTED interval collapsing to a point
- * pins every member (`sameAsGroupDerivedPin`'s number arm). The consumer
+ * pins every member (`sameAsGroupDerivedPin`). The consumer
  * below applies these pins only across two DISTINCT merged groups — a
  * `differentFrom` inside one merged group is class 9's report.
  */
@@ -2220,8 +2240,8 @@ function comparatorMergedGroupInheritedPins(
   membersOf: Map<string, string[]>,
   unsatisfiableGroupMemberIds: ReadonlySet<string>,
   stageEffectiveComponents: boolean,
-): Map<string, number> {
-  const inherited = new Map<string, number>();
+): Map<string, string | number> {
+  const inherited = new Map<string, string | number>();
   for (const members of membersOf.values()) {
     if (members.length < 2) continue;
     if (
@@ -2238,29 +2258,65 @@ function comparatorMergedGroupInheritedPins(
     }
     const types = new Set(members.map((member) => typeOf(variables[member])));
     const [onlyType] = types;
-    if (types.size !== 1 || onlyType !== 'number') continue;
+    if (
+      types.size !== 1 ||
+      (onlyType !== 'number' && onlyType !== 'datetime')
+    ) {
+      continue;
+    }
+    if (onlyType === 'datetime') {
+      if (
+        members.some((member) => dateResolutionOf(variables[member]) !== 'full')
+      ) {
+        continue;
+      }
+      const origins = new Set<IntervalOrigin>();
+      let missingOrigin = false;
+      for (const member of members) {
+        const origin = dateWindowInterval(variables[member])?.origin;
+        if (origin === undefined) {
+          missingOrigin = true;
+          break;
+        }
+        origins.add(origin);
+      }
+      if (missingOrigin || origins.size !== 1) continue;
+    }
 
-    let pin: number | undefined;
+    let pin: string | number | undefined;
     let disagreement = false;
     const unpinned: string[] = [];
     for (const member of members) {
       const own = pinnedValue(variables[member], stageEffectiveComponents);
       if (own === undefined) {
         unpinned.push(member);
-      } else if (typeof own !== 'number') {
-        // A number variable's own pin is always numeric; anything else is
+      } else if (onlyType === 'number' && typeof own === 'number') {
+        if (pin === undefined) {
+          pin = own;
+        } else if (pin !== own) {
+          disagreement = true;
+        }
+      } else if (onlyType === 'datetime' && typeof own === 'string') {
+        if (pin === undefined) {
+          pin = own;
+        } else if (pin !== own) {
+          disagreement = true;
+        }
+      } else {
+        // The pin encoding must agree with the group's type; anything else is
         // outside the model, so the group derives nothing (defensive).
-        disagreement = true;
-      } else if (pin === undefined) {
-        pin = own;
-      } else if (pin !== own) {
         disagreement = true;
       }
     }
     if (disagreement) continue;
-    const derived = pin ?? sameAsGroupDerivedPin(variables, members, 'number');
-    if (typeof derived !== 'number') continue;
-    for (const member of unpinned) inherited.set(member, derived);
+    const derived = pin ?? sameAsGroupDerivedPin(variables, members, onlyType);
+    if (onlyType === 'number') {
+      if (typeof derived !== 'number') continue;
+      for (const member of unpinned) inherited.set(member, derived);
+    } else {
+      if (typeof derived !== 'string') continue;
+      for (const member of unpinned) inherited.set(member, derived);
+    }
   }
   return inherited;
 }
@@ -2297,12 +2353,13 @@ function comparatorMergedGroupInheritedPins(
  * class 9's (`sameAsGroupConflict`), and judging it here too would
  * double-report a single rule.
  *
- * Thirty-fourth wave (Fix 2): `comparatorMergedGroupInheritedPins` (above)
- * is the third fallback — a pin forced onto a NUMBER variable by its
- * comparator-merged equality group's member pins or collapsed intersected
- * interval. It applies only across two DISTINCT merged groups for the same
- * no-double-report reason: a `differentFrom` inside one merged group —
- * whether joined by sameAs or by a comparator SCC — is class 9's report.
+ * Thirty-fourth wave (Fix 2), extended for uniform full dates:
+ * `comparatorMergedGroupInheritedPins` (above) is the third fallback — a pin
+ * forced onto a number or eligible datetime variable by its comparator-merged
+ * equality group's member pins or collapsed intersected interval. It applies
+ * only across two DISTINCT merged groups for the same no-double-report reason:
+ * a `differentFrom` inside one merged group — whether joined by sameAs or by a
+ * comparator SCC — is class 9's report.
  */
 function pinnedEqualDifferentFromContradictions(
   variables: UnknownRecord,
@@ -3008,33 +3065,59 @@ const datetimeDisequalitiesByGroup = (
  *     rearrange the very grouping their pin travelled);
  *   - counterparts pinned on another origin or resolution — the key-space
  *     comparison makes a mismatch structurally impossible to misapply;
- *   - counterparts with no own or sameAs-inherited pin. Propagated pins are
- *     NOT consulted: they are the chain pass's own output, and the pruned
- *     hulls feed that pass, so consulting them would need a second analyser
- *     iteration — excluded by design (no fixpoint).
+ *   - counterparts with no own, sameAs-inherited, or earlier
+ *     disequality-derived pin. Comparator-propagated pins are NOT consulted:
+ *     they are the chain pass's own output, and the pruned hulls feed that
+ *     pass.
+ *
+ * When pruning leaves one instant, every member's canonical stored key at
+ * that instant becomes another pin source. The caller iterates those pins to
+ * a monotone fixpoint and passes the prior round's exact surviving domain
+ * back in: a removed interior instant therefore never re-enters through the
+ * convex hull published to comparator consumers. A round can only add a
+ * previously absent pin and a variable can contribute at most one, so
+ * termination is bounded by the number of variables. Enumeration caps and
+ * every bailout above are decided when the initial exact domain is built and
+ * remain in force throughout.
  */
+type DisequalityPruningResult = {
+  contradiction: ValidationContradiction | undefined;
+  derivedPins: Map<string, string>;
+  survivingDomain: Set<number> | undefined;
+};
+
+const noDisequalityPruning = (): DisequalityPruningResult => ({
+  contradiction: undefined,
+  derivedPins: new Map(),
+  survivingDomain: undefined,
+});
+
 const pruneToPinnedDisequalityHull = (
   variables: UnknownRecord,
   members: string[],
   intervals: GroupIntervals,
+  exactDomain: ReadonlySet<number> | undefined,
   disequalities: PinnedDisequalityEdge[] | undefined,
   pinOf: (id: string) => string | number | boolean | undefined,
   unsatisfiableGroupMemberIds: ReadonlySet<string>,
-): ValidationContradiction | undefined => {
-  if (!disequalities || disequalities.length === 0) return undefined;
+): DisequalityPruningResult => {
+  if (!disequalities || disequalities.length === 0) {
+    return noDisequalityPruning();
+  }
   const types = new Set(members.map((member) => typeOf(variables[member])));
   const [onlyType] = types;
-  if (types.size !== 1 || onlyType !== 'datetime') return undefined;
-  if (members.some((member) => unsatisfiableGroupMemberIds.has(member))) {
-    return undefined;
+  if (types.size !== 1 || onlyType !== 'datetime') {
+    return noDisequalityPruning();
   }
-  if (hasCrossResolutionSameAsEdge(variables, members)) return undefined;
-  const domain = enumerableFixedDomain(
-    variables,
-    members,
-    intervals.get('fixed'),
-  );
-  if (domain === undefined || domain.size === 0) return undefined;
+  if (members.some((member) => unsatisfiableGroupMemberIds.has(member))) {
+    return noDisequalityPruning();
+  }
+  if (hasCrossResolutionSameAsEdge(variables, members)) {
+    return noDisequalityPruning();
+  }
+  if (exactDomain === undefined || exactDomain.size === 0) {
+    return noDisequalityPruning();
+  }
 
   const exclusions = new Map<
     number,
@@ -3047,7 +3130,7 @@ const pruneToPinnedDisequalityHull = (
     // excludes nothing.
     if (typeof pin !== 'string') continue;
     const resolution = dateResolutionOf(variables[edge.member]);
-    for (const day of domain) {
+    for (const day of exactDomain) {
       if (storedPinKeyAtDay(day, resolution) !== pin) continue;
       const exclusion = exclusions.get(day) ?? {
         sources: [],
@@ -3069,9 +3152,9 @@ const pruneToPinnedDisequalityHull = (
       break;
     }
   }
-  if (exclusions.size === 0) return undefined;
+  if (exclusions.size === 0) return noDisequalityPruning();
 
-  const surviving = [...domain].filter((day) => !exclusions.has(day));
+  const surviving = [...exactDomain].filter((day) => !exclusions.has(day));
   if (surviving.length > 0) {
     let min = Number.POSITIVE_INFINITY;
     let max = Number.NEGATIVE_INFINITY;
@@ -3080,12 +3163,28 @@ const pruneToPinnedDisequalityHull = (
       if (day > max) max = day;
     }
     addToGroupIntervals(intervals, { min, max, origin: 'fixed' });
-    return undefined;
+    const derivedPins = new Map<string, string>();
+    if (surviving.length === 1) {
+      const [onlyDay] = surviving;
+      if (onlyDay === undefined) return noDisequalityPruning();
+      for (const member of members) {
+        const pin = storedPinKeyAtDay(
+          onlyDay,
+          dateResolutionOf(variables[member]),
+        );
+        if (pin !== undefined) derivedPins.set(member, pin);
+      }
+    }
+    return {
+      contradiction: undefined,
+      derivedPins,
+      survivingDomain: new Set(surviving),
+    };
   }
 
   // Emptied. A single excluded value means a single-value domain — the
   // pinned-equal machinery's territory (see the doc comment above).
-  if (exclusions.size < 2) return undefined;
+  if (exclusions.size < 2) return noDisequalityPruning();
   const orderedDays = [...exclusions.keys()].toSorted(
     (dayA, dayB) => dayA - dayB,
   );
@@ -3093,7 +3192,7 @@ const pruneToPinnedDisequalityHull = (
   const chosen =
     smallestDay === undefined ? undefined : exclusions.get(smallestDay);
   const [first, ...rest] = chosen?.sources ?? [];
-  if (!first) return undefined;
+  if (!first) return noDisequalityPruning();
   const counterparts: string[] = [];
   for (const day of orderedDays) {
     for (const counterpart of exclusions.get(day)?.counterparts ?? []) {
@@ -3111,13 +3210,17 @@ const pruneToPinnedDisequalityHull = (
       ? `Variable ${memberNames[0]}`
       : `Variables ${memberNames.join(', ')}`;
   return {
-    class: 'disjointBounds',
-    message: `${subject}: differentFrom rules against pinned variables ${counterpartNames.join(', ')} leave no selectable date`,
-    variableIds: [
-      ...members,
-      ...counterparts.filter((counterpart) => !members.includes(counterpart)),
-    ],
-    strips: [first, ...rest],
+    contradiction: {
+      class: 'disjointBounds',
+      message: `${subject}: differentFrom rules against pinned variables ${counterpartNames.join(', ')} leave no selectable date`,
+      variableIds: [
+        ...members,
+        ...counterparts.filter((counterpart) => !members.includes(counterpart)),
+      ],
+      strips: [first, ...rest],
+    },
+    derivedPins: new Map(),
+    survivingDomain: undefined,
   };
 };
 
@@ -3991,9 +4094,13 @@ function disjointBoundsContradictions(
     unsatisfiableGroupMemberIds,
     stageEffectiveComponents,
   );
-  const pinOf = (id: string): string | number | boolean | undefined =>
-    pinnedValue(variables[id], stageEffectiveComponents) ??
-    inheritedPins.get(id);
+  const comparatorMergedPins = comparatorMergedGroupInheritedPins(
+    variables,
+    membersOf,
+    unsatisfiableGroupMemberIds,
+    stageEffectiveComponents,
+  );
+  const disequalityDerivedPins = new Map<string, string>();
   const disequalitiesByGroup = datetimeDisequalitiesByGroup(
     variables,
     groupOf,
@@ -4008,26 +4115,92 @@ function disjointBoundsContradictions(
   // untightened intervals and are unaffected. A domain the pruning empties
   // outright is reported here instead of tightening.
   const groupIntervals = new Map<string, GroupIntervals>();
+  const exactDomainsByGroup = new Map<string, Set<number>>();
   const groupIntervalsByMember = new Map<string, GroupIntervals>();
   const disequalityEmptiedMemberIds = new Set<string>();
   for (const [group, members] of membersOf) {
     const intervals = intervalsOfMembers(variables, members);
     tightenToSurvivingInstantHull(variables, members, intervals);
-    const emptiedDomain = pruneToPinnedDisequalityHull(
+    groupIntervals.set(group, intervals);
+    const exactDomain = enumerableFixedDomain(
       variables,
       members,
-      intervals,
-      disequalitiesByGroup.get(group),
-      pinOf,
-      unsatisfiableGroupMemberIds,
+      intervals.get('fixed'),
     );
-    if (emptiedDomain) {
-      found.push(emptiedDomain);
-      for (const member of members) disequalityEmptiedMemberIds.add(member);
+    if (exactDomain !== undefined) {
+      exactDomainsByGroup.set(group, exactDomain);
     }
-    groupIntervals.set(group, intervals);
     for (const member of members) groupIntervalsByMember.set(member, intervals);
   }
+
+  // Each round filters the previous exact finite domain rather than
+  // re-enumerating its convex hull. That makes interior exclusions monotone:
+  // once an instant is removed it cannot re-enter merely because the hull's
+  // endpoints still surround it. A productive round adds a singleton pin; at
+  // most one is recorded per variable, so the fixpoint takes no more than N
+  // productive rounds. Groups whose domain was already reported empty are
+  // skipped thereafter so their poisoned state never supplies a pin.
+  let addedPin: boolean;
+  do {
+    addedPin = false;
+    const roundDerivedPins = new Map(disequalityDerivedPins);
+    const pendingPins = new Map<string, string>();
+    const pinOf = (id: string): string | number | boolean | undefined =>
+      pinnedValue(variables[id], stageEffectiveComponents) ??
+      inheritedPins.get(id) ??
+      comparatorMergedPins.get(id) ??
+      roundDerivedPins.get(id);
+    for (const [group, members] of membersOf) {
+      if (members.some((member) => disequalityEmptiedMemberIds.has(member))) {
+        continue;
+      }
+      const intervals = groupIntervals.get(group);
+      if (intervals === undefined) continue;
+      const pruning = pruneToPinnedDisequalityHull(
+        variables,
+        members,
+        intervals,
+        exactDomainsByGroup.get(group),
+        disequalitiesByGroup.get(group),
+        pinOf,
+        unsatisfiableGroupMemberIds,
+      );
+      if (pruning.contradiction) {
+        // A contradiction that only appears after consuming another group's
+        // disequality-derived pin belongs to the downstream pinned/parity
+        // machinery. Reporting it here would reclassify an established
+        // conflict and poison the very group whose singleton proof that
+        // downstream pass needs. The interval was not mutated on emptiness,
+        // so declining here is a true bailout.
+        const dependsOnDerivedPin = pruning.contradiction.variableIds.some(
+          (variableId) =>
+            !members.includes(variableId) && roundDerivedPins.has(variableId),
+        );
+        if (dependsOnDerivedPin) continue;
+        found.push(pruning.contradiction);
+        for (const member of members) {
+          disequalityEmptiedMemberIds.add(member);
+          disequalityDerivedPins.delete(member);
+        }
+        continue;
+      }
+      if (pruning.survivingDomain !== undefined) {
+        exactDomainsByGroup.set(group, pruning.survivingDomain);
+      }
+      for (const [member, pin] of pruning.derivedPins) {
+        const existing = roundDerivedPins.get(member);
+        if (existing === undefined) {
+          pendingPins.set(member, pin);
+        }
+      }
+    }
+    for (const [member, pin] of pendingPins) {
+      if (!disequalityDerivedPins.has(member)) {
+        disequalityDerivedPins.set(member, pin);
+        addedPin = true;
+      }
+    }
+  } while (addedPin);
 
   for (const edge of edges) {
     const upperGroup = groupOf.get(edge.upper);
@@ -4077,6 +4250,11 @@ function disjointBoundsContradictions(
 
   const chained = chainedBoundContradictions(variables, graph, groupIntervals);
   found.push(...chained.contradictions);
+  for (const [member, pin] of disequalityDerivedPins) {
+    if (!chained.propagatedPins.has(member)) {
+      chained.propagatedPins.set(member, pin);
+    }
+  }
 
   return {
     contradictions: found,

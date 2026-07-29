@@ -15,6 +15,7 @@ import {
   composerDraftValues,
   composerItemSelector,
   composerNormalizeField,
+  composerValidationViews,
   crossFormRenderedVariables,
   isVariableUsedBySibling,
 } from '../sections/Form/composerHelpers';
@@ -31,6 +32,7 @@ type EditableAttributesListProps = {
   editFormName?: string;
   title?: string;
   handleChangeFields: (field: Record<string, unknown>) => unknown;
+  siblingUnvalidatedVariableIds?: string[];
 };
 
 const EditableAttributesList = ({
@@ -41,6 +43,7 @@ const EditableAttributesList = ({
   editFormName = 'editable-list-form',
   title = 'Edit attribute',
   handleChangeFields,
+  siblingUnvalidatedVariableIds,
 }: EditableAttributesListProps) => {
   // Memoized on the primitives so the subject object identity is stable
   // across renders, matching getVariablesForSubjectSelector's reselect
@@ -66,8 +69,9 @@ const EditableAttributesList = ({
   // writes.
   const hasUnvalidatedUse = useCallback(
     (variableId: string) =>
-      (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0,
-    [roleMap, subject],
+      (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0 ||
+      (siblingUnvalidatedVariableIds?.includes(variableId) ?? false),
+    [roleMap, subject, siblingUnvalidatedVariableIds],
   );
   // Thirty-fifth-wave finding: this subject's variables that a composer form
   // in some OTHER stage renders with its own control. The stage being edited
@@ -84,6 +88,15 @@ const EditableAttributesList = ({
   const crossFormRendered = useMemo(
     () =>
       crossFormRenderedVariables(
+        committedStages,
+        { entity, type },
+        typeof draftStageId === 'string' ? draftStageId : undefined,
+      ),
+    [committedStages, entity, type, draftStageId],
+  );
+  const resolvedComposerViews = useMemo(
+    () =>
+      composerValidationViews(
         committedStages,
         { entity, type },
         typeof draftStageId === 'string' ? draftStageId : undefined,
@@ -140,12 +153,19 @@ const EditableAttributesList = ({
           buildComposerFieldOverlay(composerFields, props?.editIndex),
           crossFormRendered,
           hasUnvalidatedUse,
+          resolvedComposerViews,
         )(composerDraftValues(values), props);
         return typeof validation === 'string'
           ? { ...rest, [COMPOSER_CONTRADICTION_FIELD]: validation }
           : rest;
       },
-    [allVariables, composerFields, crossFormRendered, hasUnvalidatedUse],
+    [
+      allVariables,
+      composerFields,
+      crossFormRendered,
+      hasUnvalidatedUse,
+      resolvedComposerViews,
+    ],
   );
 
   return (

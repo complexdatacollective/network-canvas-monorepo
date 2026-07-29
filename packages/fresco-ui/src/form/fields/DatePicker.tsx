@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { DATE_PICKER_DEFAULT_MIN } from '@codaco/shared-consts';
+import {
+  DATE_PICKER_DEFAULT_MIN,
+  DATE_PICKER_EARLIEST_DATE,
+  DATE_PICKER_LATEST_DATE,
+} from '@codaco/shared-consts';
 
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
@@ -94,7 +98,7 @@ const DEFAULT_MIN: Ymd = requireYmd(DATE_PICKER_DEFAULT_MIN);
 // four-digit year (1000-9999). These bracket the synthesized (non-authored)
 // far bound below so the dropdown never offers a year it cannot itself emit.
 const COARSE_MIN_YEAR = 1000;
-const COARSE_MAX_YEAR = 9999;
+const COARSE_MAX_YEAR = Number(DATE_PICKER_LATEST_DATE.slice(0, 4));
 
 // The full-resolution native <input type="date"> is a different concern
 // from the coarse dropdowns above: `formatYmd` always zero-pads to four
@@ -110,8 +114,8 @@ const COARSE_MAX_YEAR = 9999;
 // synthesized (non-authored) side of minYmd/maxYmd to the four-digit year
 // range (0001-9999) so the native input never offers a value the validator
 // can't accept.
-const NATIVE_MIN_YEAR = 1;
-const NATIVE_MAX_YEAR = 9999;
+const NATIVE_MIN_YEAR = Number(DATE_PICKER_EARLIEST_DATE.slice(0, 4));
+const NATIVE_MAX_YEAR = Number(DATE_PICKER_LATEST_DATE.slice(0, 4));
 
 const months: SelectOption[] = [
   { value: '01', label: 'January' },

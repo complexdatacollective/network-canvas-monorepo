@@ -19,14 +19,6 @@ import { describe, expect, it, vi } from 'vitest';
 // `props.initialValues` plumbing (the escape's other half) is proven
 // separately and generically in Form/__tests__/DialogArrayField.test.tsx.
 //
-// (Composer scope-change consequentials: the intra-draft "mirror check"
-// against NetworkComposer's own quickAdd/convexHullVariable draft picks that
-// used to live in this file was removed — quickAdd is now a VALIDATED writer
-// (same class as nodeForm.fields, so no cross-class pair can form between
-// them) and convexHullVariable is untagged entirely, so neither can ever
-// reach this editor's gate any more. See NodeConfiguration.crossClassGate.
-// test.tsx for the composer's own (now much simpler) save-time gate.)
-//
 // Bypasses redux-form's real FieldArray (which needs a reduxForm()-wrapped
 // ancestor this mount does not provide on its own) and captures the real
 // `editorValidate` componentProp for direct invocation — the same
@@ -83,6 +75,7 @@ const PROTOCOL_WITH_FORM_CONFLICT = {
               { label: 'B', value: 'b' },
             ],
           },
+          label: { name: 'Label', type: 'text' },
         },
       },
     },
@@ -106,7 +99,9 @@ const PROTOCOL_WITH_FORM_CONFLICT = {
   ],
 };
 
-const renderList = (): ((
+const renderList = (
+  siblingUnvalidatedVariableIds?: string[],
+): ((
   values: Record<string, unknown>,
   props?: { editIndex?: number; initialValues?: unknown },
 ) => Record<string, unknown>) => {
@@ -126,6 +121,7 @@ const renderList = (): ((
         form="edit-stage"
         editFormName="node-attr-edit"
         handleChangeFields={() => undefined}
+        siblingUnvalidatedVariableIds={siblingUnvalidatedVariableIds}
       />
     </Provider>,
   );
@@ -161,5 +157,40 @@ describe('EditableAttributesList cross-class gate (real role-map wiring)', () =>
       { initialValues: { variable: 'cat', component: 'CheckboxGroup' } },
     );
     expect(errors).toEqual({});
+  });
+
+  describe('same-draft convexHullVariable mirror gate', () => {
+    it('rejects a variable the current convex-hull draft already writes without validation', () => {
+      const editorValidate = renderList(['label']);
+      expect(
+        editorValidate({
+          variable: 'label',
+          validation: {},
+          component: 'Text',
+        }),
+      ).toEqual({
+        variable:
+          '"Label" is written without validation by another stage, so it cannot be used as a form field',
+      });
+    });
+
+    it('allows an unchanged field from a pre-existing committed pair', () => {
+      const editorValidate = renderList(['label']);
+      expect(
+        editorValidate(
+          {
+            variable: 'label',
+            validation: {},
+            component: 'Text',
+          },
+          {
+            initialValues: {
+              variable: 'label',
+              component: 'Text',
+            },
+          },
+        ),
+      ).toEqual({});
+    });
   });
 });

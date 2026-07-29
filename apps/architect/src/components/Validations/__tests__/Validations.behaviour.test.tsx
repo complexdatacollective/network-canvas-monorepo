@@ -481,6 +481,39 @@ describe('Validations behaviour', () => {
     ).toBeDisabled();
   });
 
+  it.each([
+    ['text', 'minLength'],
+    ['text', 'maxLength'],
+    ['number', 'minValue'],
+    ['number', 'maxValue'],
+    ['categorical', 'minSelected'],
+    ['categorical', 'maxSelected'],
+  ])('gates a fractional %s %s draft', (variableType, validationRule) => {
+    setup({
+      variableType,
+      entity: 'node',
+      currentVariableId: `${variableType}-var`,
+      allVariables: {},
+      existingVariables: {},
+      validation: {},
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: validationRule },
+    });
+    fireEvent.change(screen.getByRole('spinbutton'), {
+      target: { value: '1.5' },
+    });
+
+    expect(
+      screen.getByText(`${validationRule} must be a whole number`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Add validation rule' }),
+    ).toBeDisabled();
+  });
+
   // Twenty-first-wave Finding 5: when all unused validation rules are
   // reference rules with no legal target, the options map disables every
   // remaining option, but isFull counted only used vs total options, leaving

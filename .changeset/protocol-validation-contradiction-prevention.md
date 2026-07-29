@@ -20,3 +20,9 @@ cannot render its variable's type (for example a date picker on a numeric
 variable), and a boolean variable whose `options` list is empty (the control
 renders no choices at all). The migration removes an empty boolean `options`
 list so existing protocols keep the standard Yes/No choices.
+
+The contradiction check now also evaluates the participant-facing controls on
+Ego, node, edge, name-generator, and Family Pedigree forms. Its date reasoning
+recognises stable single-value coarse picker windows, equality forced by
+non-strict comparisons between full-date fields, and singleton values that
+propagate through a chain of `differentFrom` rules.
