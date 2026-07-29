@@ -1,5 +1,16 @@
 # @codaco/fresco-ui
 
+## 4.2.0
+
+### Minor Changes
+
+- 711c77a: Add raised buttons, uppercase text styling, larger heading variants, and the supporting shared type-scale tokens for expressive product pages. Add the accessible Definition tooltip for inline terms, including touch activation.
+
+### Patch Changes
+
+- 06aa4a6: Allow Definition popovers to contain keyboard-accessible links and controls.
+- a3585a2: RelativeDatePickerField now forwards the id supplied by Field to its native date input, restoring the label/input association so screen readers announce the field's label when the input receives focus.
+
 ## 4.1.2
 
 ### Patch Changes

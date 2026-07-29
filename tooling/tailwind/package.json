@@ -1,6 +1,6 @@
 {
   "name": "@codaco/tailwind-config",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Shared Tailwind v4 theme, color palette, and plugins for Fresco and other Codaco apps.",
   "license": "MIT",
   "repository": {

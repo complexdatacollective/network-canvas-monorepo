@@ -1,5 +1,31 @@
 # @codaco/tailwind-config
 
+## 1.2.0
+
+### Minor Changes
+
+- 00e16c0: Refine interview typography scaling and unify the type-scale base.
+
+  The shared Fresco theme now uses a single `0.9rem` base for `--theme-root-size`
+  across product surfaces, and exposes a new `--theme-root-size-fluid` token — an
+  opt-in `clamp()` ramp for presentation surfaces that want type and spacing to
+  grow on wide or scaled-up displays. The participant interview adopts the shared
+  `0.9rem` base and scales it with a continuous ramp (reaching ~`1rem` at typical
+  screen sizes and up to `1.25rem` on large displays), replacing the previous
+  three-step ramp. Dense product UI keeps a constant, compact base.
+
+  Also fixes the scroll-to-bottom "ready" detection in scrolling forms
+  (`useScrolledToBottom`): it now measures scroll position directly instead of
+  relying on a zero-height sentinel's edge intersection, which some browsers
+  (notably Firefox) fail to report when the form is scrolled to the exact bottom —
+  so the "ready to continue" cue reliably appears.
+
+- 711c77a: Add raised buttons, uppercase text styling, larger heading variants, and the supporting shared type-scale tokens for expressive product pages. Add the accessible Definition tooltip for inline terms, including touch activation.
+
+### Patch Changes
+
+- 0134e88: Reduce the default Fresco theme root scale so shared typography, spacing, and component dimensions render more compactly across consuming applications.
+
 ## 1.1.0
 
 ### Minor Changes

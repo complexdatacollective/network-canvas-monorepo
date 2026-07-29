@@ -1,5 +1,11 @@
 # @codaco/site-navigation-element
 
+## 1.0.2
+
+### Patch Changes
+
+- d33236b: Compile the navigation styles with the catalog-managed Tailwind CLI so nested source files are scanned correctly.
+
 ## 1.0.1
 
 ### Patch Changes

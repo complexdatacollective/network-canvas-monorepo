@@ -1,5 +1,59 @@
 # @codaco/interview
 
+## 6.0.0
+
+### Minor Changes
+
+- b66b062: The interview Shell now supports a review mode that stops before the finish
+  screen, uses review-specific exit messaging, suppresses interview analytics, and
+  allows hosts to explain their post-completion editing policy in the finish
+  confirmation.
+
+### Patch Changes
+
+- 00e16c0: Refine interview typography scaling and unify the type-scale base.
+
+  The shared Fresco theme now uses a single `0.9rem` base for `--theme-root-size`
+  across product surfaces, and exposes a new `--theme-root-size-fluid` token — an
+  opt-in `clamp()` ramp for presentation surfaces that want type and spacing to
+  grow on wide or scaled-up displays. The participant interview adopts the shared
+  `0.9rem` base and scales it with a continuous ramp (reaching ~`1rem` at typical
+  screen sizes and up to `1.25rem` on large displays), replacing the previous
+  three-step ramp. Dense product UI keeps a constant, compact base.
+
+  Also fixes the scroll-to-bottom "ready" detection in scrolling forms
+  (`useScrolledToBottom`): it now measures scroll position directly instead of
+  relying on a zero-height sentinel's edge intersection, which some browsers
+  (notably Firefox) fail to report when the form is scrolled to the exact bottom —
+  so the "ready to continue" cue reliably appears.
+
+- 31d45db: Fix the Previous Step button at the start of an interview: it no longer lights up before there is anywhere to go back to, and pressing it when no earlier screen exists no longer silently breaks the current stage's own step-by-step navigation.
+- c8c4614: Scalar (visual analog scale) variables no longer accept the `minValue` and
+  `maxValue` validation rules.
+
+  A scalar response is recorded on a normalised 0-1 scale, and these rules are
+  integers — so the only pair they could express on that scale was `{0, 1}`, the
+  scale it already has. Anything else silently redefined the variable's range
+  through a validation rule, which the interview then forwarded onto the slider's
+  rendered track without adjusting its step or value formatting. Validation now
+  rejects either rule on a scalar, migrating a protocol to schema 8 removes them
+  (preserving the requiredness a `min*` validator used to imply), and the
+  interview no longer derives the slider's bounds from validation.
+
+  Number variables are unaffected, and scalars keep `required` and the comparison
+  rules, which compare two scalars on the same scale.
+
+  Also adds a `VARIABLE_TYPE_VALIDATIONS` export: the record of which validation
+  rules each variable type accepts. Every variable schema now picks its
+  `validation` shape from this record, so an authoring UI can build its per-type
+  rule list from the same source rather than maintaining a parallel copy.
+
+- 310a5ae: Improve Network Composer group assignment for multi-person selections with an accessible, scrollable group selector that handles mixed membership and consistently sizes group controls.
+- Updated dependencies [9c25292]
+- Updated dependencies [c8c4614]
+  - @codaco/protocol-validation@12.0.0
+  - @codaco/network-query@1.2.3
+
 ## 5.0.0
 
 ### Major Changes
