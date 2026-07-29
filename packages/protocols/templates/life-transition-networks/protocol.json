@@ -450,7 +450,7 @@
       "layoutVariable": "layout",
       "convexHullVariable": "social_circle",
       "background": {
-        "concentricCircles": 3,
+        "concentricCircles": 1,
         "skewedTowardCenter": true
       },
       "behaviours": {
@@ -539,7 +539,7 @@
         "type": "person"
       },
       "background": {
-        "concentricCircles": 3,
+        "concentricCircles": 1,
         "skewedTowardCenter": true
       },
       "behaviours": {
