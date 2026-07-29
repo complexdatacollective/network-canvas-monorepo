@@ -1,5 +1,37 @@
 # @codaco/protocol-validation
 
+## 12.0.0
+
+### Major Changes
+
+- 9c25292: `validateProtocol` now returns a domain-owned `ProtocolValidationResult` instead of Zod's `SafeParseReturnType`. The result envelope is unchanged (`{ success: true, data }` / `{ success: false, error }`), but on failure `error` is now a `ProtocolValidationError` — an `Error` subclass carrying `issues: ProtocolValidationIssue[]` (`{ code, path, message }`) whose `message` renders the issues as a readable `path: message` list. `ProtocolValidationResult`, `ProtocolValidationIssue`, `ProtocolValidationError`, and `formatProtocolValidationIssues` are all exported.
+
+  No changes are needed if you only read `result.success`, `result.data`, `result.error.message`, or the `code`/`path`/`message` fields of `result.error.issues`. Code relying on Zod specifics must migrate: `error instanceof z.ZodError` checks, `error.format()`/`error.flatten()`, per-code issue fields (`expected`, `received`, `minimum`, …), or narrowing against Zod's literal issue-code union. The CLI prints the formatted issue list on failure.
+
+  Internally, entity-reference collection no longer touches Zod's private `zod/v4/core` internals; schema traversal now uses only Zod 4's public API.
+
+### Minor Changes
+
+- c8c4614: Scalar (visual analog scale) variables no longer accept the `minValue` and
+  `maxValue` validation rules.
+
+  A scalar response is recorded on a normalised 0-1 scale, and these rules are
+  integers — so the only pair they could express on that scale was `{0, 1}`, the
+  scale it already has. Anything else silently redefined the variable's range
+  through a validation rule, which the interview then forwarded onto the slider's
+  rendered track without adjusting its step or value formatting. Validation now
+  rejects either rule on a scalar, migrating a protocol to schema 8 removes them
+  (preserving the requiredness a `min*` validator used to imply), and the
+  interview no longer derives the slider's bounds from validation.
+
+  Number variables are unaffected, and scalars keep `required` and the comparison
+  rules, which compare two scalars on the same scale.
+
+  Also adds a `VARIABLE_TYPE_VALIDATIONS` export: the record of which validation
+  rules each variable type accepts. Every variable schema now picks its
+  `validation` shape from this record, so an authoring UI can build its per-type
+  rule list from the same source rather than maintaining a parallel copy.
+
 ## 11.12.0
 
 ### Minor Changes

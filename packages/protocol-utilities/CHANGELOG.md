@@ -1,5 +1,14 @@
 # @codaco/protocol-utilities
 
+## 3.0.1
+
+### Patch Changes
+
+- Updated dependencies [9c25292]
+- Updated dependencies [c8c4614]
+  - @codaco/protocol-validation@12.0.0
+  - @codaco/network-query@1.2.3
+
 ## 3.0.0
 
 ### Major Changes

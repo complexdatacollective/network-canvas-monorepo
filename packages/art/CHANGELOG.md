@@ -1,5 +1,12 @@
 # @codaco/art
 
+## 0.1.4
+
+### Patch Changes
+
+- 1fb4daa: Keep PageBackground behind normal page content so translucent surfaces, images, and portalled overlays render in the correct layer.
+- 3abfaf7: Keep unresolved weave backgrounds hidden when their focal point lies on a zero-valued axis.
+
 ## 0.1.3
 
 ### Patch Changes

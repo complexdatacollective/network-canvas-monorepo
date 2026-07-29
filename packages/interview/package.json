@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interview",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "description": "Network Canvas interview engine — Shell component, session contract.",
   "license": "MIT",
   "repository": {
