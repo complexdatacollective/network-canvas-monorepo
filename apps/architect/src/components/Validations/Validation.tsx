@@ -194,14 +194,12 @@ const Validation = ({
           <IconButton
             icon={<Pencil />}
             aria-label={`Edit ${label} validation rule`}
-            size="lg"
             color="dynamic"
             onClick={onEdit}
           />
           <IconButton
             icon={<Trash2 />}
             aria-label={`Delete ${label} validation rule`}
-            size="lg"
             color="destructive"
             onClick={() => onDelete(itemKey)}
           />
