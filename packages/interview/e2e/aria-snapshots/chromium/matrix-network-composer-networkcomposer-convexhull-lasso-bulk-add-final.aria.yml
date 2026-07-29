@@ -8,9 +8,17 @@
     - separator
     - button "Undo"
     - button "Redo" [disabled]
-  - button "Add all to School"
-  - button "Add all to Work"
-  - button "Add all to Family"
+  - region "Group membership options":
+    - group "Group membership for selected people":
+      - button "School"
+      - button "Work" [pressed]
+      - button "Family"
+      - button "My partner's family"
+      - button "Friends"
+      - button "Neighborhood"
+      - button "Community or faith group"
+      - button "Services and professionals"
+      - button "Online"
   - application:
     - img
     - button "Ida"
