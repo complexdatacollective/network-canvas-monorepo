@@ -311,9 +311,9 @@ function getOtherAttribute(
 }
 
 describe('CategoricalBin other-input honours codebook validation', () => {
-  it('rejects an empty entry and an entry over maxLength when the codebook requires the field', async () => {
+  it('keeps the special writer required while honoring the other codebook rules', async () => {
     const { store, getDndStore } = renderCategoricalBin({
-      required: true,
+      required: false,
       maxLength: 5,
     });
 
@@ -338,19 +338,26 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     expect(getOtherAttribute(store)).toBeUndefined();
   });
 
-  it('accepts an empty submission when the codebook has no validation rules for the field', async () => {
+  it('requires an entry when the codebook has no validation rules for the field', async () => {
     const { store, getDndStore } = renderCategoricalBin(undefined);
 
     await dropNodeIntoOtherBin(getDndStore);
 
-    await screen.findByRole('textbox');
+    const input = await screen.findByRole('textbox');
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await screen.findByTestId(`${OTHER_VARIABLE}-field-error`);
+    expect(screen.getByTestId('dialog-submit')).toBeInTheDocument();
+    expect(getOtherAttribute(store)).toBeUndefined();
+
+    fireEvent.change(input, { target: { value: 'a reason' } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
     await waitFor(() => {
       expect(screen.queryByTestId('dialog-submit')).not.toBeInTheDocument();
     });
 
-    expect(getOtherAttribute(store)).toBeNull();
+    expect(getOtherAttribute(store)).toBe('a reason');
   });
 
   it('rejects a value matching a sibling attribute on the same node and accepts a distinct one, proving validationContext (network + currentEntityId) reaches the dialog Field', async () => {

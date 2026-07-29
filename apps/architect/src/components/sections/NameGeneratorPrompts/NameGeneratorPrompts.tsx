@@ -26,6 +26,8 @@ const NameGeneratorPrompts = ({
   disabledMessage,
   entity,
   type,
+  stagePath,
+  stagePosition,
 }: NameGeneratorPromptsProps) => (
   <Section
     disabled={disabled}
@@ -50,7 +52,12 @@ const NameGeneratorPrompts = ({
         editorFieldsComponent: PromptFields,
         editorTitle: 'Edit Prompt',
         itemLabel: 'prompt',
-        editorProps: { entity, type, stageForm: form },
+        editorProps: {
+          entity,
+          type,
+          stageForm: form,
+          currentStageIndex: stagePath === null ? undefined : stagePosition,
+        },
         requestedEditFormName: 'editable-list-form',
         sortable: true,
       }}

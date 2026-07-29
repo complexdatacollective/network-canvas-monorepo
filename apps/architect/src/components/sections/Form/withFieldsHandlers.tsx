@@ -37,6 +37,7 @@ type UseFieldHandlerProps = {
    */
   siblingFields?: unknown;
   editIndex?: number;
+  currentStageIndex?: number;
 };
 
 export const useFieldHandlers = ({
@@ -45,6 +46,7 @@ export const useFieldHandlers = ({
   type,
   siblingFields,
   editIndex,
+  currentStageIndex,
 }: UseFieldHandlerProps) => {
   const dispatch = useAppDispatch();
   const changeField = useCallback(
@@ -102,7 +104,13 @@ export const useFieldHandlers = ({
   // unvalidated hit. The currently-selected value is always kept.
   const roleFilteredOptions = useSelector(
     (state: RootState) =>
-      excludeUnvalidatedUses(state, subject, baseVariableOptions, variable),
+      excludeUnvalidatedUses(
+        state,
+        subject,
+        baseVariableOptions,
+        variable,
+        currentStageIndex,
+      ),
     // excludeUnvalidatedUses allocates a fresh array each call; compare
     // elements (which baseVariableOptions already keeps stable) instead of
     // the wrapper reference so unrelated store updates don't force a re-render.

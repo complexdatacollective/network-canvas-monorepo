@@ -164,10 +164,13 @@ const PROTOCOL_WITH_FORM_CONFLICT = {
   ],
 };
 
-const renderForm = (subject: {
-  entity: string;
-  type: string;
-}): ((
+const renderForm = (
+  subject: {
+    entity: string;
+    type: string;
+  },
+  currentStageIndex = 0,
+): ((
   values: Record<string, unknown>,
   props?: { initialValues?: unknown },
 ) => Record<string, unknown>) => {
@@ -201,8 +204,8 @@ const renderForm = (subject: {
     <Provider store={store}>
       <Form
         form="edit-stage"
-        stagePath="stages[0]"
-        stagePosition={0}
+        stagePath={`stages[${currentStageIndex}]`}
+        stagePosition={currentStageIndex}
         interfaceType="AlterForm"
       />
     </Provider>,
@@ -221,6 +224,13 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
     expect(errors.variable).toBe(
       '"Cat" is written without validation by another stage, so it cannot be used as a form field',
     );
+  });
+
+  it('allows moving a variable from this stage attribute writer into its form', () => {
+    const editorValidate = renderForm({ entity: 'node', type: 'person' }, 1);
+    const errors = editorValidate({ variable: 'cat', validation: {} });
+
+    expect(errors).toEqual({});
   });
 
   it('escapes when the pick equals the field’s original committed variable', () => {

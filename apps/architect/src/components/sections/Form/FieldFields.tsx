@@ -42,11 +42,13 @@ type PromptFieldsProps = {
   form: string;
   entity?: string | null;
   type?: string | null;
+  currentStageIndex?: number;
 };
 const PromptFields = ({
   form,
   entity = null,
   type = null,
+  currentStageIndex,
 }: PromptFieldsProps) => {
   const dispatch = useAppDispatch();
   const {
@@ -65,6 +67,7 @@ const PromptFields = ({
     form,
     entity: entity ?? '',
     type: type ?? '',
+    currentStageIndex,
   });
   const showValidationHints = useSelector(
     (state: RootState) =>

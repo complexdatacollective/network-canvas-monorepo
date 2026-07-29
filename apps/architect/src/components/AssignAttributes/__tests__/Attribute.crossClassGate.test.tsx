@@ -103,6 +103,7 @@ const renderRow = (
   protocol: unknown,
   committedRow?: AttributeValue,
   draftValidatedVariables: ReadonlySet<string> = new Set(),
+  currentStageIndex?: number,
 ): void => {
   for (const key of Object.keys(capturedValidation)) {
     delete capturedValidation[key];
@@ -134,6 +135,7 @@ const renderRow = (
       draftValidatedVariables={draftValidatedVariables}
       entity="node"
       type="person"
+      currentStageIndex={currentStageIndex}
     />
   );
   const ReduxHarness = reduxForm<FormValues>({ form: 'attribute-gate-test' })(
@@ -195,6 +197,27 @@ describe('Attribute (additionalAttributes stamp) cross-class gate', () => {
       crossClassValidatorFor('additionalAttributes[0].variable')('flagged'),
     ).toBe(
       '"Flagged" is collected by this stage\'s form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)',
+    );
+  });
+
+  it('allows moving a variable from this stage form into an attribute stamp', () => {
+    renderRow(protocolWith([FORM_STAGE]), undefined, new Set(), 0);
+    expect(
+      crossClassValidatorFor('additionalAttributes[0].variable')('flagged'),
+    ).toBeUndefined();
+  });
+
+  it('still blocks a form use owned by another stage', () => {
+    renderRow(
+      protocolWith([FORM_STAGE, NOMINATION_STAGE]),
+      undefined,
+      new Set(),
+      1,
+    );
+    expect(
+      crossClassValidatorFor('additionalAttributes[0].variable')('flagged'),
+    ).toBe(
+      '"Flagged" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
     );
   });
 

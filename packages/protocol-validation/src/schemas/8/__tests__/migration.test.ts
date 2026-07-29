@@ -5719,7 +5719,7 @@ describe('Migration V7 to V8', () => {
     });
   });
 
-  describe('otherVariable and quickAdd required backfill', () => {
+  describe('special writer requiredness', () => {
     const migrate = (protocol: Record<string, unknown>) =>
       migrationV7toV8.migrate(protocol as unknown as Protocol<7>, {
         name: 'Test Protocol',
@@ -5738,17 +5738,28 @@ describe('Migration V7 to V8', () => {
       stages,
     });
 
-    it('sets required on otherVariable and quickAdd targets, overriding explicit false', () => {
+    it('does not make variables shared with ordinary forms globally required', () => {
       const migrated = migrate(
         protocolWith(
           {
-            other: { name: 'other', type: 'text' },
+            category: {
+              name: 'category',
+              type: 'categorical',
+              options: [
+                { label: 'One', value: 1 },
+                { label: 'Two', value: 2 },
+              ],
+            },
+            other: {
+              name: 'other',
+              type: 'text',
+              validation: { maxLength: 10 },
+            },
             quick: {
               name: 'quick',
               type: 'text',
-              validation: { required: false },
+              validation: { required: false, maxLength: 12 },
             },
-            untouched: { name: 'untouched', type: 'text' },
           },
           [
             {
@@ -5760,7 +5771,7 @@ describe('Migration V7 to V8', () => {
                 {
                   id: 'p1',
                   text: 'T',
-                  variable: 'untouched',
+                  variable: 'category',
                   otherVariable: 'other',
                   otherVariablePrompt: 'W',
                   otherOptionLabel: 'O',
@@ -5775,53 +5786,32 @@ describe('Migration V7 to V8', () => {
               quickAdd: 'quick',
               prompts: [{ id: 'p2', text: 'T' }],
             },
+            {
+              id: 's3',
+              type: 'AlterForm',
+              label: 'Form',
+              subject: { entity: 'node', type: 'person' },
+              form: {
+                fields: [
+                  { variable: 'other', prompt: 'Other' },
+                  { variable: 'quick', prompt: 'Quick' },
+                ],
+              },
+            },
           ],
         ),
       );
       const variables = migrated.codebook.node.person.variables;
-      expect(variables.other).toHaveProperty('validation.required', true);
-      expect(variables.quick).toHaveProperty('validation.required', true);
-      expect(variables.untouched).not.toHaveProperty('validation.required');
-    });
-
-    it('leaves other rules on the target intact', () => {
-      const migrated = migrate(
-        protocolWith(
-          {
-            other: {
-              name: 'other',
-              type: 'text',
-              validation: { maxLength: 10 },
-            },
-          },
-          [
-            {
-              id: 's1',
-              type: 'CategoricalBin',
-              label: 'Bin',
-              subject: { entity: 'node', type: 'person' },
-              prompts: [
-                {
-                  id: 'p1',
-                  text: 'T',
-                  variable: 'other2x',
-                  otherVariable: 'other',
-                  otherVariablePrompt: 'W',
-                  otherOptionLabel: 'O',
-                },
-              ],
-            },
-          ],
-        ),
-      );
-      expect(migrated.codebook.node.person.variables.other).toHaveProperty(
-        'validation.maxLength',
-        10,
-      );
-      expect(migrated.codebook.node.person.variables.other).toHaveProperty(
-        'validation.required',
-        true,
-      );
+      expect(variables.other).toEqual({
+        name: 'other',
+        type: 'text',
+        validation: { maxLength: 10 },
+      });
+      expect(variables.quick).toEqual({
+        name: 'quick',
+        type: 'text',
+        validation: { required: false, maxLength: 12 },
+      });
     });
   });
 

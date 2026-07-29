@@ -61,10 +61,8 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
             expect(node.promptIDs).toHaveLength(1);
           }
 
-          // No-fallback design: this quickAdd variable carries no validation
-          // rules, so it is genuinely optional — pressing Enter on an empty
-          // input creates a node (its label falls back to the node type's
-          // display name in the UI) instead of being rejected.
+          // Quick Add remains locally required even when its codebook variable
+          // carries no validation block.
           const toggle = page.getByTestId('quick-add-toggle');
           const input = page.getByTestId('quick-add-input');
           if ((await toggle.getAttribute('aria-pressed')) !== 'true') {
@@ -72,17 +70,31 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           }
           await input.fill('');
           await input.press('Enter');
-          await expect(stage.getNode('Person')).toBeVisible();
+          await expect(
+            page.getByText(/you must answer this question/i),
+          ).toBeVisible();
 
           const afterEmpty = await protocol.getNetworkState(
             interview.interviewId,
           );
-          expect(afterEmpty?.nodes).toHaveLength(3);
-          const emptyNode = afterEmpty!.nodes.find(
-            (n) => n[entityAttributesProperty][nameVarId] === '',
+          expect(afterEmpty?.nodes).toHaveLength(2);
+
+          // A valid value still creates the third node. Reusing the previous
+          // fallback label keeps the scenario's final accessibility state
+          // stable while proving the stored attribute is no longer empty.
+          await input.fill('Person');
+          await input.press('Enter');
+          await expect(stage.getNode('Person')).toBeVisible();
+
+          const afterValid = await protocol.getNetworkState(
+            interview.interviewId,
           );
-          expect(emptyNode).toBeDefined();
-          expect(emptyNode?.promptIDs).toHaveLength(1);
+          expect(afterValid?.nodes).toHaveLength(3);
+          const thirdNode = afterValid!.nodes.find(
+            (n) => n[entityAttributesProperty][nameVarId] === 'Person',
+          );
+          expect(thirdNode).toBeDefined();
+          expect(thirdNode?.promptIDs).toHaveLength(1);
         },
       };
     })(),

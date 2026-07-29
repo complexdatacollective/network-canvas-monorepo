@@ -19,7 +19,10 @@ import {
   EMPTY_VARIABLES,
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import {
+  getVariableRoleMapOutsideStage,
+  roleMapKey,
+} from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
 
 import {
@@ -67,6 +70,8 @@ const Form = ({
   type = null,
   entity = null,
   disableFormTitle = false,
+  stagePath,
+  stagePosition,
 }: FormProps) => {
   // Memoized on the primitives so the subject object identity is stable
   // across renders, matching getVariablesForSubjectSelector's reselect
@@ -79,7 +84,10 @@ const Form = ({
   const allVariables = useSelector((state: RootState) =>
     subject ? getVariablesForSubjectSelector(state, subject) : EMPTY_VARIABLES,
   );
-  const roleMap = useSelector(getVariableRoleMap);
+  const currentStageIndex = stagePath === null ? undefined : stagePosition;
+  const roleMap = useSelector((state: RootState) =>
+    getVariableRoleMapOutsideStage(state, currentStageIndex),
+  );
   const stages = useSelector((state: RootState) => getProtocol(state)?.stages);
   const resolvedComposerViews = useMemo(
     () =>
@@ -106,9 +114,8 @@ const Form = ({
     () => [sharedFormValidationView(formFields), ...resolvedComposerViews],
     [formFields, resolvedComposerViews],
   );
-  // Backs makeFieldEditorValidate's save-time gate: a form field may not pick
-  // a variable an unvalidated writer already uses in either the saved
-  // protocol or this stage's still-unsaved prompt drafts.
+  // Backs makeFieldEditorValidate's save-time gate: other stages' saved roles
+  // and this stage's live prompt roles replace this stage's stale saved roles.
   const hasUnvalidatedUse = useCallback(
     (variableId: string): boolean | string => {
       if (!subject) return false;
@@ -167,7 +174,7 @@ const Form = ({
         componentProps={{
           addTitle: 'Edit Field',
           editorFieldsComponent: FieldFields,
-          editorProps: { type, entity },
+          editorProps: { type, entity, currentStageIndex },
           editorTitle: 'Edit Field',
           editorValidate,
           itemLabel: 'field',

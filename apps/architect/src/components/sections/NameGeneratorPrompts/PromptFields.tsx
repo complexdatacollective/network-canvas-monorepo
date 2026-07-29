@@ -7,12 +7,14 @@ type PromptFieldsProps = {
   stageForm?: string;
   entity: string | null;
   type: string | null;
+  currentStageIndex?: number;
 };
 const PromptFields = ({
   form,
   stageForm,
   entity = null,
   type = null,
+  currentStageIndex,
 }: PromptFieldsProps) => {
   return (
     <>
@@ -36,6 +38,7 @@ const PromptFields = ({
               name="additionalAttributes"
               type={type}
               entity={entity as 'node' | 'edge' | 'ego'}
+              currentStageIndex={currentStageIndex}
             />
           )}
         </Row>

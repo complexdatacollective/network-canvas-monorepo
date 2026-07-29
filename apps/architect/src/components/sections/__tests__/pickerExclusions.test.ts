@@ -113,6 +113,27 @@ describe('excludeUnvalidatedUses (VALIDATED writer pickers: form fields, otherVa
 
     expect(result.map((o) => o.value)).toEqual(['cat', 'dog']);
   });
+
+  it('replaces the current stage persisted roles but keeps other-stage roles', () => {
+    expect(
+      excludeUnvalidatedUses(
+        stateWith(protocol),
+        subject,
+        options,
+        undefined,
+        1,
+      ).map((o) => o.value),
+    ).toEqual(['cat', 'dog']);
+    expect(
+      excludeUnvalidatedUses(
+        stateWith(protocol),
+        subject,
+        options,
+        undefined,
+        0,
+      ).map((o) => o.value),
+    ).toEqual(['dog']);
+  });
 });
 
 describe('excludeValidatedUses (UNVALIDATED writer pickers: bins, highlight, census, etc.)', () => {
@@ -131,6 +152,27 @@ describe('excludeValidatedUses (UNVALIDATED writer pickers: bins, highlight, cen
     );
 
     expect(result.map((o) => o.value)).toEqual(['cat', 'dog']);
+  });
+
+  it('replaces the current stage persisted roles but keeps other-stage roles', () => {
+    expect(
+      excludeValidatedUses(
+        stateWith(protocol),
+        subject,
+        options,
+        undefined,
+        0,
+      ).map((o) => o.value),
+    ).toEqual(['cat', 'dog']);
+    expect(
+      excludeValidatedUses(
+        stateWith(protocol),
+        subject,
+        options,
+        undefined,
+        1,
+      ).map((o) => o.value),
+    ).toEqual(['dog']);
   });
 });
 
@@ -276,6 +318,17 @@ describe('getAdditionalAttributesOptionsForSubject (AssignAttributes pool, UNVAL
 
     expect(result.map((o) => o.value)).toContain('qa');
     expect(result.map((o) => o.value)).not.toContain('cat');
+  });
+
+  it('offers a variable after its current-stage form use is removed from the draft', () => {
+    const result = getAdditionalAttributesOptionsForSubject(
+      stateWith(validatedOnly),
+      subject,
+      undefined,
+      0,
+    );
+
+    expect(result.map((o) => o.value)).toContain('cat');
   });
 });
 

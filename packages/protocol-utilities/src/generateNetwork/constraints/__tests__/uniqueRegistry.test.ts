@@ -53,6 +53,23 @@ describe('UniqueRegistry', () => {
     expect(registry.isTaken('node:person', 'rank', 2)).toBe(true);
   });
 
+  it('separates claims when colons make concatenated slot names equal', () => {
+    const registry = new UniqueRegistry();
+    registry.claim('node:a', 'b:c', 2);
+
+    expect(registry.isTaken('node:a', 'b:c', 2)).toBe(true);
+    expect(registry.isTaken('node:a:b', 'c', 2)).toBe(false);
+    expect(registry.claimedCount('node:a', 'b:c')).toBe(1);
+    expect(registry.claimedCount('node:a:b', 'c')).toBe(0);
+
+    registry.claim('node:a:b', 'c', 2);
+    registry.release('node:a', 'b:c', 2);
+
+    expect(registry.isTaken('node:a', 'b:c', 2)).toBe(false);
+    expect(registry.isTaken('node:a:b', 'c', 2)).toBe(true);
+    expect(registry.claimedCount('node:a:b', 'c')).toBe(1);
+  });
+
   it('ignores a release of a value the slot never issued', () => {
     const registry = new UniqueRegistry();
     registry.claim('node:person', 'band', 2);
@@ -98,6 +115,20 @@ describe('UniqueRegistry', () => {
     expect(registry.isReserved('node:person', 'band', 2)).toBe(false);
   });
 
+  it('separates reservations when colons make concatenated slot names equal', () => {
+    const registry = new UniqueRegistry();
+    registry.reserve('node:a', 'b:c', 2);
+
+    expect(registry.isReserved('node:a', 'b:c', 2)).toBe(true);
+    expect(registry.isReserved('node:a:b', 'c', 2)).toBe(false);
+
+    registry.reserve('node:a:b', 'c', 2);
+    registry.unreserve('node:a', 'b:c', 2);
+
+    expect(registry.isReserved('node:a', 'b:c', 2)).toBe(false);
+    expect(registry.isReserved('node:a:b', 'c', 2)).toBe(true);
+  });
+
   it('ignores an unreserve of a value nothing is holding', () => {
     const registry = new UniqueRegistry();
     registry.reserve('node:person', 'band', 2);
@@ -108,5 +139,13 @@ describe('UniqueRegistry', () => {
     registry.unreserve('node:person', 'band', 2);
 
     expect(registry.isReserved('node:person', 'band', 2)).toBe(false);
+  });
+
+  it('separates sequences when colons make concatenated slot names equal', () => {
+    const registry = new UniqueRegistry();
+
+    expect(registry.nextSeq('node:a', 'b:c')).toBe(0);
+    expect(registry.nextSeq('node:a', 'b:c')).toBe(1);
+    expect(registry.nextSeq('node:a:b', 'c')).toBe(0);
   });
 });

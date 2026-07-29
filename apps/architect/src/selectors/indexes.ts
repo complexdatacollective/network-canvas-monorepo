@@ -133,7 +133,31 @@ const getVariableIndex = createSelector(
 export const roleMapKey = (
   subject: { entity: string; type?: string },
   variableId: string,
-): string => `${subject.entity}:${subject.type ?? ''}:${variableId}`;
+): string => JSON.stringify([subject.entity, subject.type ?? null, variableId]);
+
+type VariableRoleMap = Record<
+  string,
+  { validated: number; unvalidated: number }
+>;
+
+const buildVariableRoleMap = (
+  protocol: unknown,
+  excludedStageIndex?: number,
+): VariableRoleMap => {
+  if (!protocol) return {};
+  const map: VariableRoleMap = {};
+  for (const group of collectVariableRoleHits(protocol)) {
+    const countOutsideStage = (hits: typeof group.validated): number =>
+      excludedStageIndex === undefined
+        ? hits.length
+        : hits.filter((hit) => hit.stageIndex !== excludedStageIndex).length;
+    map[roleMapKey(group.subject, group.variableId)] = {
+      validated: countOutsideStage(group.validated),
+      unvalidated: countOutsideStage(group.unvalidated),
+    };
+  }
+  return map;
+};
 
 /**
  * Counts of validated- vs unvalidated-usage hits per subject-scoped variable,
@@ -143,17 +167,21 @@ export const roleMapKey = (
  */
 export const getVariableRoleMap = createSelector(
   getProtocol,
-  (protocol): Record<string, { validated: number; unvalidated: number }> => {
-    if (!protocol) return {};
-    const map: Record<string, { validated: number; unvalidated: number }> = {};
-    for (const group of collectVariableRoleHits(protocol)) {
-      map[roleMapKey(group.subject, group.variableId)] = {
-        validated: group.validated.length,
-        unvalidated: group.unvalidated.length,
-      };
-    }
-    return map;
-  },
+  (protocol): VariableRoleMap => buildVariableRoleMap(protocol),
+);
+
+/**
+ * Counts saved writer roles outside the stage currently being edited. The
+ * editor overlays that stage's live Redux Form draft separately.
+ */
+export const getVariableRoleMapOutsideStage = createSelector(
+  [
+    getProtocol,
+    (_state: unknown, excludedStageIndex: number | undefined) =>
+      excludedStageIndex,
+  ],
+  (protocol, excludedStageIndex): VariableRoleMap =>
+    buildVariableRoleMap(protocol, excludedStageIndex),
 );
 
 /**

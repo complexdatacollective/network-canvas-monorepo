@@ -499,8 +499,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
       let otherVarId = '';
       let nameVarId = '';
       return {
-        id: 'other-bin-empty-submit-accepted',
-        covers: ['other-dialog-submit-empty-accepted-when-rule-less'],
+        id: 'other-bin-empty-submit-rejected',
+        covers: ['other-dialog-submit-empty-rejected-when-rule-less'],
         seedNetwork: true,
         build: () => {
           const synth = new SyntheticInterview();
@@ -518,11 +518,9 @@ export const categoricalBinScenarios: InterfaceScenarios = {
             ],
           });
           // No `component` and no `validation` block: this is the state
-          // Architect's "Create New Variable" dialog produces by default
-          // (the schema permits it). otherReason is genuinely optional, so
-          // an empty dialog submission must be accepted (no-fallback
-          // design) — and the writer must not require a component either,
-          // since it renders its own Field/InputField regardless.
+          // Architect's "Create New Variable" dialog produces by default.
+          // The special writer must still be locally required without needing
+          // a component because it renders its own Field/InputField.
           const otherReason = personType.addVariable({
             name: 'otherReason',
             type: 'text',
@@ -560,25 +558,25 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           const dialog = page.getByRole('dialog');
           await expect(dialog.getByText('Please specify:')).toBeVisible();
 
-          // Submit with nothing typed: accepted, no rejection tooltip — the
-          // dialog closes rather than staying open with a validation error.
+          // Submit with nothing typed: the writer-local required rule rejects
+          // it even though the codebook variable carries no validation block.
           await page.getByTestId('dialog-submit').click();
-          await expect(dialog).not.toBeVisible();
+          await expect(dialog).toBeVisible();
+          await expect(
+            page.getByTestId(`${otherVarId}-field-error`),
+          ).toBeVisible();
 
           const state = await protocol.getNetworkState(interview.interviewId);
           const alice = state!.nodes.find(
             (n) => n[entityAttributesProperty][nameVarId] === 'Alice',
           )!;
-          // An untouched field submits as `undefined`, which the dialog
-          // writes through as null (not ''), same as Category — so the node
-          // has neither a category nor an "other" value and lands back in
-          // the drawer as unplaced, rather than in the Other bin.
-          expect(
-            alice[entityAttributesProperty][categoryVarId] ?? null,
-          ).toBeNull();
+          expect(alice[entityAttributesProperty][categoryVarId]).toEqual([]);
           expect(
             alice[entityAttributesProperty][otherVarId] ?? null,
           ).toBeNull();
+          await dialog.getByRole('button', { name: 'Cancel' }).click();
+          await expect(dialog).not.toBeVisible();
+
           expect(await stage.categoricalBin.getNodeCountInBin('Other')).toBe(0);
           await expect(stage.categoricalBin.drawerToggle).toContainText(
             '1 unplaced',
@@ -657,7 +655,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           await page.getByTestId('dialog-submit').click();
           await expect(dialog).toBeVisible();
           await expect(
-            page.getByTestId('otherVariable-field-error'),
+            page.getByTestId(`${otherVarId}-field-error`),
           ).toBeVisible();
 
           let state = await protocol.getNetworkState(interview.interviewId);

@@ -209,9 +209,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       // Derive the other variable's validation props directly from its
       // codebook definition — the other-input renders its own Field/component
       // and only ever needs `.validation`, so this skips component
-      // resolution entirely (see selectValidationMetadataForVariable). A
-      // variable with no validation rules renders a genuinely optional
-      // field.
+      // resolution entirely (see selectValidationMetadataForVariable).
       const otherValidationMetadata = selectValidationMetadataForVariable(
         stageVariables,
         otherVariable,
@@ -266,6 +264,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               component={InputField}
               name={otherVariable}
               {...otherValidationProps}
+              required
               validationContext={validationContext}
               autoFocus
             />

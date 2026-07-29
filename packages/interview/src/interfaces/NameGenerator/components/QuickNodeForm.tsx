@@ -53,9 +53,7 @@ const QuickNodeForm = ({
   // Derive the target variable's validation props directly from its
   // codebook definition — quick-add renders its own QuickAddField and only
   // ever needs `.validation`, so this skips component resolution entirely
-  // (see selectValidationMetadataForVariable). A variable with no validation
-  // rules renders a genuinely optional field, and an empty submission
-  // creates the node (no runtime fallback to required).
+  // (see selectValidationMetadataForVariable).
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const targetValidationMetadata = selectValidationMetadataForVariable(
     stageVariables,
@@ -125,6 +123,7 @@ const QuickNodeForm = ({
             placeholder="Type a label and press enter..."
             onShowInput={onShowForm ?? undefined}
             {...validationProps}
+            required
             validationContext={validationContext}
           />
         </Form>

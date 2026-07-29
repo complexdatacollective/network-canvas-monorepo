@@ -47,6 +47,7 @@ type AssignAttributesProps = {
   type: string;
   variableOptions: VariableOption[];
   draftValidatedVariables: ReadonlySet<string>;
+  currentStageIndex?: number;
 };
 
 const AssignAttributes = ({
@@ -55,6 +56,7 @@ const AssignAttributes = ({
   entity,
   name,
   draftValidatedVariables,
+  currentStageIndex,
 }: AssignAttributesProps) => (
   <FieldArray
     name={name}
@@ -66,6 +68,7 @@ const AssignAttributes = ({
       type,
       variableOptions,
       draftValidatedVariables,
+      currentStageIndex,
     }}
     itemTemplate={() => ({}) satisfies Partial<AttributeValue>}
     itemClasses="p-0! shadow-none"
@@ -92,12 +95,14 @@ export const getAdditionalAttributesOptionsForSubject = (
   state: RootState,
   subject: { entity: 'node' | 'edge' | 'ego'; type: string },
   committedVariables?: readonly string[],
+  excludedStageIndex?: number,
 ) =>
   excludeValidatedUses(
     state,
     subject,
     getVariableOptionsForSubject(state, subject),
     committedVariables,
+    excludedStageIndex,
   );
 
 const mapStateToProps = (
@@ -108,6 +113,7 @@ const mapStateToProps = (
     form,
     name,
     stageForm,
+    currentStageIndex,
   }: Omit<AssignAttributesProps, 'variableOptions' | 'draftValidatedVariables'>,
 ) => {
   const usedVariables = (
@@ -124,6 +130,7 @@ const mapStateToProps = (
     state,
     { entity, type },
     committedVariables,
+    currentStageIndex,
   );
   const draftValidatedVariables = draftFormFieldVariableIds(
     stageForm ? formValueSelector(stageForm)(state, 'form.fields') : undefined,

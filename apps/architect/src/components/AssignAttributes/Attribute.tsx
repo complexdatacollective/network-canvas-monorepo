@@ -22,7 +22,10 @@ import {
 } from '~/components/Validations/contradictions';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import {
+  getVariableRoleMapOutsideStage,
+  roleMapKey,
+} from '~/selectors/indexes';
 
 import withCreateVariableHandler from '../enhancers/withCreateVariableHandler';
 import VariablePicker from '../Form/Fields/VariablePicker/VariablePicker';
@@ -49,6 +52,7 @@ type AttributeOwnProps = FrescoReduxArrayFieldItemProps<AttributeValue> & {
   draftValidatedVariables: ReadonlySet<string>;
   entity: 'node' | 'edge' | 'ego';
   type: string;
+  currentStageIndex?: number;
 };
 
 type CreateVariableHandlerProps = {
@@ -74,6 +78,7 @@ const Attribute = ({
   entity,
   type,
   draftValidatedVariables,
+  currentStageIndex,
 }: AttributeProps) => {
   const variable = useSelector(
     (state: RootState) =>
@@ -85,11 +90,13 @@ const Attribute = ({
   // as NetworkComposer's quickAdd): this stamp is an UNVALIDATED writer, so
   // its variable may not be one a form elsewhere already collects. Sync field
   // validation blocks the prompt dialog's save, backstopping the pool
-  // exclusion in AssignAttributes.tsx for a stale draft. The saved protocol
-  // role map and this Name Generator stage's still-unsaved form fields are
-  // both authoritative writer-role sources.
+  // exclusion in AssignAttributes.tsx for a stale draft. Saved roles from
+  // other stages and this stage's live form fields are the authoritative
+  // sources; this stage's saved roles are stale once editing begins.
   const subject = useMemo(() => ({ entity, type }), [entity, type]);
-  const roleMap = useSelector(getVariableRoleMap);
+  const roleMap = useSelector((state: RootState) =>
+    getVariableRoleMapOutsideStage(state, currentStageIndex),
+  );
   const allVariables = useSelector((state: RootState) =>
     getVariablesForSubject(state, subject),
   );

@@ -1,6 +1,10 @@
 import type { RootState } from '~/ducks/modules/root';
 
-import { getVariableRoleMap, roleMapKey } from './indexes';
+import {
+  getVariableRoleMap,
+  getVariableRoleMapOutsideStage,
+  roleMapKey,
+} from './indexes';
 
 type Subject = { entity: string; type?: string };
 type Option = { value: string; label: string };
@@ -17,8 +21,9 @@ export const excludeUnvalidatedUses = <T extends Option>(
   subject: Subject,
   options: T[],
   currentValue?: string | readonly string[],
+  excludedStageIndex?: number,
 ): T[] => {
-  const map = getVariableRoleMap(state);
+  const map = getVariableRoleMapOutsideStage(state, excludedStageIndex);
   const escaped = escapeSet(currentValue);
   return options.filter(
     (option) =>
@@ -33,8 +38,9 @@ export const excludeValidatedUses = <T extends Option>(
   subject: Subject,
   options: T[],
   currentValue?: string | readonly string[],
+  excludedStageIndex?: number,
 ): T[] => {
-  const map = getVariableRoleMap(state);
+  const map = getVariableRoleMapOutsideStage(state, excludedStageIndex);
   const escaped = escapeSet(currentValue);
   return options.filter(
     (option) =>

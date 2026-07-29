@@ -177,10 +177,10 @@ const openField = async () => {
 };
 
 describe('QuickNodeForm honours codebook validation', () => {
-  it('rejects an empty entry and an entry over maxLength when the codebook requires the field', async () => {
+  it('keeps the special writer required while honoring the other codebook rules', async () => {
     const addNode = vi.fn(async () => {});
     renderQuickNodeForm({
-      validation: { required: true, maxLength: 10 },
+      validation: { required: false, maxLength: 10 },
       addNode,
     });
 
@@ -201,18 +201,22 @@ describe('QuickNodeForm honours codebook validation', () => {
     expect(addNode).not.toHaveBeenCalled();
   });
 
-  it('accepts an empty submission and creates the node when the codebook has no validation rules (no runtime fallback)', async () => {
+  it('requires an entry when the codebook has no validation rules', async () => {
     const addNode = vi.fn(async () => {});
     renderQuickNodeForm({ validation: undefined, addNode });
 
     const input = await openField();
 
-    // No text typed: submitting an empty, rule-less field still creates the
-    // node — the agreed no-fallback behaviour.
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(input).not.toBeDisabled());
+    expect(addNode).not.toHaveBeenCalled();
+
+    await userEvent.type(input, 'Alice');
     fireEvent.submit(input.closest('form')!);
 
     await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
-    expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: '' });
+    expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: 'Alice' });
   });
 
   it('resolves a unique-across-the-network rule via the threaded validationContext, proving context reaches quick-add (no currentEntityId needed at creation)', async () => {

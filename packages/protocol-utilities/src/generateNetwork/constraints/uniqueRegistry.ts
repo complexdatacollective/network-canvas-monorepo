@@ -42,7 +42,7 @@ export class UniqueRegistry {
   private readonly sequences = new Map<string, number>();
 
   private slot(scope: string, variableId: string): string {
-    return `${scope}:${variableId}`;
+    return JSON.stringify([scope, variableId]);
   }
 
   isTaken(scope: string, variableId: string, value: VariableValue): boolean {
