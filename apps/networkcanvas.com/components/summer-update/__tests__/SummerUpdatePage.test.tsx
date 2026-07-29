@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -451,6 +452,76 @@ describe('SummerUpdatePage', () => {
     ).toBeInTheDocument();
   });
 
+  it('selects a compatibility row when its app cell is clicked', () => {
+    renderWithIntl(<SummerUpdatePage />);
+
+    const frescoCompatibilityRow = screen.getByRole('button', {
+      name: 'Fresco 3.1.2, Browser: Schema 7 Native; Schema 8 Not supported',
+    });
+
+    fireEvent.click(within(frescoCompatibilityRow).getByText('Fresco'));
+
+    expect(frescoCompatibilityRow).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('explains every Classic app term and provides an accessible download link', async () => {
+    renderWithIntl(<SummerUpdatePage />);
+
+    const architectClassicTerms = screen
+      .getAllByText('Architect Classic')
+      .filter((term) => term.getAttribute('tabindex') === '0');
+    const interviewerClassicTerms = screen
+      .getAllByText('Interviewer Classic')
+      .filter((term) => term.getAttribute('tabindex') === '0');
+
+    expect(architectClassicTerms).toHaveLength(6);
+    expect(interviewerClassicTerms).toHaveLength(5);
+
+    const [architectClassicTerm] = architectClassicTerms;
+    if (!architectClassicTerm) {
+      throw new Error('Expected an Architect Classic definition trigger.');
+    }
+
+    await act(async () => {
+      architectClassicTerm.focus();
+    });
+
+    const definitionPopover = screen.getByRole('dialog');
+    expect(definitionPopover).toHaveTextContent(
+      'The original downloadable desktop app for designing Network Canvas protocols. It remains available for in-progress studies and is fully supported, but is in maintenance mode and will not receive new features. Download it here.',
+    );
+
+    const downloadLink = within(definitionPopover).getByRole('link', {
+      name: 'here',
+    });
+    expect(downloadLink).toHaveAttribute('href', '/get-started/#design');
+    expect(downloadLink).not.toHaveAttribute('tabindex', '-1');
+    expect(
+      screen.getByText(
+        (_, element) => element?.textContent === 'Architect Classic\u00a06.6.0',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('links Interviewer Classic to the collect-data section', async () => {
+    renderWithIntl(<SummerUpdatePage />);
+
+    const [interviewerClassicTerm] = screen
+      .getAllByText('Interviewer Classic')
+      .filter((term) => term.getAttribute('tabindex') === '0');
+    if (!interviewerClassicTerm) {
+      throw new Error('Expected an Interviewer Classic definition trigger.');
+    }
+
+    await act(async () => {
+      interviewerClassicTerm.focus();
+    });
+
+    expect(
+      within(screen.getByRole('dialog')).getByRole('link', { name: 'here' }),
+    ).toHaveAttribute('href', '/get-started/#collect');
+  });
+
   it('introduces the redesigned project website and documentation', () => {
     renderWithIntl(<SummerUpdatePage />);
 
@@ -629,7 +700,7 @@ describe('SummerUpdatePage', () => {
     );
   });
 
-  it('localizes feature interactions, images, and compatibility statuses in Spanish', () => {
+  it('localizes feature interactions, images, and compatibility statuses in Spanish', async () => {
     renderWithIntl(<SummerUpdatePage />, 'es');
 
     expect(
@@ -652,6 +723,25 @@ describe('SummerUpdatePage', () => {
         name: 'Panel de Interviewer que muestra tarjetas de protocolos y una acción para reanudar una entrevista',
       }),
     ).toBeInTheDocument();
+
+    const [architectClassicTerm] = screen
+      .getAllByText('Architect Classic')
+      .filter((term) => term.getAttribute('tabindex') === '0');
+    if (!architectClassicTerm) {
+      throw new Error('Expected an Architect Classic definition trigger.');
+    }
+
+    await act(async () => {
+      architectClassicTerm.focus();
+    });
+
+    const definitionPopover = screen.getByRole('dialog');
+    expect(definitionPopover).toHaveTextContent(
+      'La aplicación de escritorio descargable original para diseñar protocolos de Network Canvas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas. Descárguela aquí.',
+    );
+    expect(
+      within(definitionPopover).getByRole('link', { name: 'aquí' }),
+    ).toHaveAttribute('href', '/get-started/#design');
 
     fireEvent.click(screen.getByRole('button', { name: 'Anonimización' }));
 
