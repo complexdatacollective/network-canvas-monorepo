@@ -2735,7 +2735,7 @@ describe('record schema conformance — contradiction refinement', () => {
 });
 
 describe('R1 — absolute floors on count-valued rules', () => {
-  it('rejects maxLength 0 and negative minLength', () => {
+  it('accepts maxLength 0 and rejects negative minLength', () => {
     expect(
       VariableSchema.safeParse({
         name: 'first_name',
@@ -2743,7 +2743,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
         component: 'Text',
         validation: { maxLength: 0 },
       }).success,
-    ).toBe(false);
+    ).toBe(true);
     expect(
       VariableSchema.safeParse({
         name: 'first_name',
@@ -2754,7 +2754,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
     ).toBe(false);
   });
 
-  it('rejects maxSelected 0 and negative minSelected', () => {
+  it('accepts maxSelected 0 and rejects negative minSelected', () => {
     const categorical = (validation: Record<string, number>) => ({
       name: 'colors',
       type: 'categorical',
@@ -2767,7 +2767,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
     });
     expect(
       VariableSchema.safeParse(categorical({ maxSelected: 0 })).success,
-    ).toBe(false);
+    ).toBe(true);
     expect(
       VariableSchema.safeParse(categorical({ minSelected: -1 })).success,
     ).toBe(false);

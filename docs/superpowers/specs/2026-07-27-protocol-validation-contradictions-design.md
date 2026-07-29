@@ -59,8 +59,8 @@ cross-variable check is local to one entity.
 5. DatePicker `parameters.min`/`max`: not a real calendar date, not written
    exactly at the picker's resolution (`yyyy`, `yyyy-MM`, `yyyy-MM-dd` per
    `parameters.type`, which defaults to `full`), or `min > max`
-6. **R1 — absolute floors**: `minLength ≥ 0`, `maxLength ≥ 1`,
-   `minSelected ≥ 0`, `maxSelected ≥ 1`. `maxLength: 0` plus `required` is a
+6. **R1 — absolute floors**: `minLength ≥ 0`, `maxLength ≥ 0`,
+   `minSelected ≥ 0`, `maxSelected ≥ 0`. `maxLength: 0` plus `required` is a
    contradiction of exactly the class this project removes. `minValue`/
    `maxValue` are untouched — negative numbers are a legitimate domain
 

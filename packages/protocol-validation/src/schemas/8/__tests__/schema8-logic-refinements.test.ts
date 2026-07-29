@@ -475,16 +475,11 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       expect(result.success).toBe(true);
     });
 
-    // Twenty-first-wave Finding 4, correcting ninth-wave Finding 6: the
-    // anchor floor is 0100, not 1000. fresco-ui's `addDays` runtime
-    // arithmetic (form/utils/ymd.ts) builds `Date.UTC(year, ...)`, which only
-    // two-digit-coerces a year in 0-99 onto 1900-1999 — years 0100-0999
-    // round-trip correctly, so they must be accepted rather than rejected.
-    it('accepts an anchor year in the previously-rejected 0100-0999 range', () => {
+    it('accepts RelativeDatePicker anchors throughout the native date range', () => {
       expect(
         ProtocolSchemaV8.safeParse(
           buildProtocolWithParams({
-            anchor: '0100-01-01',
+            anchor: '0001-01-01',
             before: 1,
             after: 5,
           }),
@@ -493,7 +488,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       expect(
         ProtocolSchemaV8.safeParse(
           buildProtocolWithParams({
-            anchor: '0999-12-31',
+            anchor: '0099-12-31',
             before: 1,
             after: 5,
           }),
@@ -501,15 +496,15 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       ).toBe(true);
     });
 
-    it('still rejects an anchor year that Date.UTC actually coerces (0-99)', () => {
+    it('rejects a RelativeDatePicker anchor before the native date range', () => {
       const belowFloor = ProtocolSchemaV8.safeParse(
-        buildProtocolWithParams({ anchor: '0099-12-31', before: 1, after: 5 }),
+        buildProtocolWithParams({ anchor: '0000-12-31', before: 1, after: 5 }),
       );
       expect(belowFloor.success).toBe(false);
       if (!belowFloor.success) {
         expect(
           belowFloor.error.issues.some((issue) =>
-            issue.message.includes('Date.UTC maps years 0-99'),
+            issue.message.includes('native date input starts at year 0001'),
           ),
         ).toBe(true);
       }

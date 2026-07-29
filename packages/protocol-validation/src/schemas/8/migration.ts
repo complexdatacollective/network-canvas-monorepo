@@ -255,7 +255,8 @@ const RELATIVE_DATE_PICKER_KEYS = new Set(['anchor', 'before', 'after']);
 /**
  * Normalises a RelativeDatePicker `parameters` record in place, mirroring
  * `normalizeDatePickerParameters` above: a real ISO `anchor` date (the shared
- * `isIsoDate`) whose year is at least 1000, non-negative integer
+ * `isIsoDate`) whose year is inside the native date input's range,
+ * non-negative integer
  * `before`/`after` offsets, and only those three keys — the schema is a
  * strictObject, so one unrecognised key fails the whole object rather than
  * just itself. Tenth-wave Finding 4: used by the codebook-variable datetime
@@ -271,14 +272,9 @@ const normalizeRelativeDatePickerParameters = (
   }
   if (typeof parameters.anchor !== 'string' || !isIsoDate(parameters.anchor)) {
     delete parameters.anchor;
-  } else if (Number(parameters.anchor.slice(0, 4)) < 100) {
-    // Twenty-first-wave Finding 4, correcting ninth-wave Finding 6: fresco-ui's
-    // `addDays` (form/utils/ymd.ts) builds `Date.UTC(year, ...)`, which only
-    // two-digit-coerces a year in 0-99 onto 1900-1999 — years 0100-0999
-    // round-trip correctly, so only an anchor below 0100 already produced a
-    // wrong runtime window. Deleting it reverts the picker to its
-    // interview-date default rather than keeping a value that was already
-    // broken at runtime.
+  } else if (Number(parameters.anchor.slice(0, 4)) === 0) {
+    // The native date input starts at year 0001. Removing an earlier anchor
+    // reverts the picker to its interview-date default.
     delete parameters.anchor;
   }
   for (const bound of ['before', 'after'] as const) {
@@ -400,9 +396,9 @@ const migrationV7toV8 = createMigration({
 - A CategoricalBin prompt with \`otherVariable\` set now requires both \`otherVariablePrompt\` and \`otherOptionLabel\` (previously a missing label silently dropped the whole "other" bin). A missing value is backfilled from the other authored one, else "Please specify" / "Other".
 - A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean variable to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
-- Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules now have floors (\`minLength\`/\`minSelected\` at least 0, \`maxLength\`/\`maxSelected\` at least 1); values below them are removed.
+- Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to a variable of a different type. Count-valued rules must be non-negative; negative values are removed.
 - DatePicker \`min\`/\`max\` parameters must be real dates written exactly at the picker's resolution, with \`min\` not after \`max\`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed. Any parameter key other than \`type\`, \`min\`, or \`max\` — e.g. a RelativeDatePicker \`anchor\` left over from a component switch — is also removed.
-- A datetime codebook variable's RelativeDatePicker \`anchor\` must be a real date using a year of 0100 or later — the interview's date arithmetic (\`Date.UTC\`) maps a two-digit year (0-99) onto 1900-1999, so such an anchor already produced a wrong window, while years 0100-0999 round-trip correctly — and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
+- A datetime codebook variable's RelativeDatePicker \`anchor\` must be a real date inside the native input's year range of 0001–9999, and its \`before\`/\`after\` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.
 - A datetime variable's \`parameters\` must be a plain object; a wrong-typed value (a string, number, list, or null) is removed, reverting the picker to its defaults.
 - Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the variable's type (e.g. \`minValue\` on a text variable, or \`requiredAcceptsNull\` anywhere). A removed \`minValue\`/\`minLength\`/\`minSelected\` still marks the variable required, preserving the old implied-required behaviour. Layout variables take no validation at all; theirs is removed.
 - A variable's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout variables, which have no control, have it removed.
@@ -1397,10 +1393,9 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // Ninth-wave Finding 5: count-valued rules have absolute floors
-        // (minLength/minSelected at least 0, maxLength/maxSelected at least
-        // 1); an inert below-floor value (e.g. minLength: -1, which v7 never
-        // enforced) is removed. This MUST run before the min-implies-required
+        // Count-valued rules must be non-negative; a below-floor value (e.g.
+        // minLength: -1, which v7 never enforced) is removed. This MUST run
+        // before the min-implies-required
         // backfill below: that step infers requiredness from a min*
         // validator's mere presence, so a below-floor minLength/minSelected
         // still in place there would fabricate `required: true` for a rule
@@ -1425,11 +1420,11 @@ const migrationV7toV8 = createMigration({
           if (!variables || typeof variables !== 'object') return variables;
           const floors = {
             minLength: 0,
-            maxLength: 1,
+            maxLength: 0,
             minValue: undefined,
             maxValue: undefined,
             minSelected: 0,
-            maxSelected: 1,
+            maxSelected: 0,
           } as const;
           for (const variable of Object.values(
             variables as Record<string, unknown>,

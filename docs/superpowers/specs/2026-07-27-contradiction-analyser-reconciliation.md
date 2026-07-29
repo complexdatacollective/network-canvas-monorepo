@@ -164,11 +164,11 @@ it.
    can dismiss the hint and hit a hard stop moments later. Update the hint's copy to say preview will
    refuse if the entity count exceeds the available values. Copy change in Architect; no logic.
 2. **Mark the now-defensive code.** #1107 makes several of our checks unreachable from valid protocols:
-   R1 floors (`maxLength ≥ 1`, `maxSelected ≥ 1`), R2 same-typed reference targets (which makes our
-   mixed-type equality-group branch unreachable), DatePicker exact-resolution bounds (which makes
-   `b9b43a917`'s runtime resolution guard belt-and-braces), and integer `minValue`/`maxValue` (which
-   makes `valueSpaceSize`'s integer-free grid fallback unreachable). Add a one-line comment at each
-   naming the schema rule that now prevents it.
+   R1 non-negative bounds (`maxLength ≥ 0`, `maxSelected ≥ 0`), R2 same-typed reference targets
+   (which makes our mixed-type equality-group branch unreachable), DatePicker exact-resolution bounds
+   (which makes `b9b43a917`'s runtime resolution guard belt-and-braces), and integer
+   `minValue`/`maxValue` (which makes `valueSpaceSize`'s integer-free grid fallback unreachable). Add
+   a one-line comment at each naming the schema rule that now prevents it.
    **Do not delete any of it.** `generateNetwork` is called with hand-built codebooks by
    `SyntheticInterview`, by tests, and by external hosts such as Fresco, none of which are guaranteed
    to have passed the schema.

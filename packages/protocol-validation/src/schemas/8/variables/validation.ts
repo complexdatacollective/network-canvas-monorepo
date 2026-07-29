@@ -7,11 +7,11 @@ export const validations = {
   requiredAcceptsNull: z.boolean().optional(),
   minLength: z.number().int().min(0).optional(),
 
-  maxLength: z.number().int().min(1).optional(),
+  maxLength: z.number().int().min(0).optional(),
   minValue: z.number().int().optional(),
   maxValue: z.number().int().optional(),
   minSelected: z.number().int().min(0).optional(),
-  maxSelected: z.number().int().min(1).optional(),
+  maxSelected: z.number().int().min(0).optional(),
   unique: z.boolean().optional(),
   differentFrom: entityAttributeReference({
     subject: 'owningVariable',

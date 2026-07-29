@@ -326,21 +326,11 @@ export const relativeDatePickerParametersSchema = z
             'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
           path: ['anchor'],
         });
-      } else if (Number(parameters.anchor.slice(0, 4)) < 100) {
-        // Twenty-first-wave Finding 4, correcting ninth-wave Finding 6: the
-        // wave-8 coarse-resolution floor above is unrelated — it exists
-        // because the interview builds that resolution's year options via
-        // unpadded `y.toString()`. RelativeDatePicker's `anchor` is always a
-        // full, zero-padded YYYY-MM-DD ISO date, so it has no such padding
-        // problem. Its actual runtime hazard is fresco-ui's `addDays` (see
-        // form/utils/ymd.ts), which builds `Date.UTC(year, ...)`; per the
-        // spec, `Date.UTC` maps only a two-digit year (0-99) onto 1900-1999,
-        // so years 0100-0999 round-trip correctly and only 0-99 need
-        // rejecting here.
+      } else if (Number(parameters.anchor.slice(0, 4)) === 0) {
         ctx.addIssue({
           code: 'custom' as const,
           message:
-            'RelativeDatePicker anchor must use a year of 0100 or later — Date.UTC maps years 0-99 onto 1900-1999',
+            'RelativeDatePicker anchor must use a year of 0001 or later — the native date input starts at year 0001',
           path: ['anchor'],
         });
       }

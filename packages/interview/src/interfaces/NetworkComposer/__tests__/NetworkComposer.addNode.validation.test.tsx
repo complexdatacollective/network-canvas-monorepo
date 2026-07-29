@@ -12,7 +12,10 @@ import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { Codebook, Validation } from '@codaco/protocol-validation';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
@@ -85,9 +88,11 @@ function buildCodebook(
 function renderInterface({
   validation,
   omitComponent,
+  existingNames = [],
 }: {
   validation?: Validation;
   omitComponent?: boolean;
+  existingNames?: string[];
 } = {}) {
   const stage = buildStage();
   const store = configureStore({
@@ -97,7 +102,14 @@ function renderInterface({
         id: 's',
         promptIndex: 0,
         network: {
-          nodes: [],
+          nodes: existingNames.map((name, index) => ({
+            [entityPrimaryKeyProperty]: `node-${index}`,
+            type: NODE_TYPE,
+            [entityAttributesProperty]: {
+              [QUICK_ADD_VAR]: name,
+              [LAYOUT_VAR]: { x: 0.5, y: 0.5 },
+            },
+          })),
           edges: [],
           ego: { [entityAttributesProperty]: {} },
         },
@@ -245,5 +257,21 @@ describe('NetworkComposer quick-add honours codebook validation', () => {
         'Alice',
       );
     });
+  });
+
+  it('validates the trimmed value that quick-add persists', async () => {
+    const { store } = renderInterface({
+      validation: { unique: true },
+      existingNames: ['Alice'],
+    });
+
+    const input = await openAddInput();
+    await userEvent.type(input, ' Alice ');
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    });
+
+    await waitFor(() => expect(input).toHaveValue('Alice'));
+    expect(store.getState().session.network.nodes).toHaveLength(1);
   });
 });

@@ -4611,17 +4611,13 @@ describe('Migration V7 to V8', () => {
       expect(variables?.a).toHaveProperty('parameters.before', 30);
     });
 
-    // Twenty-first-wave Finding 4, correcting ninth-wave Finding 6: the floor
-    // is 0100, not 1000 — fresco-ui's `addDays` runtime arithmetic
-    // (`Date.UTC`) only two-digit-coerces a year in 0-99 onto 1900-1999, so
-    // only an anchor below 0100 already produced a wrong runtime window.
-    it('removes a RelativeDatePicker anchor whose year is below 100', () => {
+    it('removes a RelativeDatePicker anchor before the native date range', () => {
       const migratedRaw = migrateVariables({
         a: {
           name: 'relative',
           type: 'datetime',
           component: 'RelativeDatePicker',
-          parameters: { anchor: '0099-12-31', before: 30 },
+          parameters: { anchor: '0000-12-31', before: 30 },
         },
       });
       const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
@@ -4631,26 +4627,26 @@ describe('Migration V7 to V8', () => {
       expect(variables?.a).toHaveProperty('parameters.before', 30);
     });
 
-    it('preserves a RelativeDatePicker anchor whose year is in the previously-rejected 0100-0999 range', () => {
+    it('preserves RelativeDatePicker anchors throughout the native date range', () => {
       const migratedRaw = migrateVariables({
         a: {
-          name: 'relative_100',
+          name: 'relative_1',
           type: 'datetime',
           component: 'RelativeDatePicker',
-          parameters: { anchor: '0100-01-01', before: 30 },
+          parameters: { anchor: '0001-01-01', before: 30 },
         },
         b: {
-          name: 'relative_999',
+          name: 'relative_99',
           type: 'datetime',
           component: 'RelativeDatePicker',
-          parameters: { anchor: '0999-12-31', before: 30 },
+          parameters: { anchor: '0099-12-31', before: 30 },
         },
       });
       const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
-      expect(variables?.a).toHaveProperty('parameters.anchor', '0100-01-01');
-      expect(variables?.b).toHaveProperty('parameters.anchor', '0999-12-31');
+      expect(variables?.a).toHaveProperty('parameters.anchor', '0001-01-01');
+      expect(variables?.b).toHaveProperty('parameters.anchor', '0099-12-31');
     });
 
     it('removes negative and non-integer RelativeDatePicker offsets', () => {
@@ -4714,7 +4710,7 @@ describe('Migration V7 to V8', () => {
       const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
-      expect(variables?.a).not.toHaveProperty('parameters.anchor');
+      expect(variables?.a).toHaveProperty('parameters.anchor', '0050-01-01');
       expect(variables?.a).not.toHaveProperty('parameters.before');
       expect(variables?.b).toHaveProperty('parameters.anchor', '2020-01-01');
       expect(variables?.b).not.toHaveProperty('parameters.after');
@@ -4754,7 +4750,7 @@ describe('Migration V7 to V8', () => {
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('parameters.min', '2020');
-      expect(variables?.b).not.toHaveProperty('parameters.anchor');
+      expect(variables?.b).toHaveProperty('parameters.anchor', '0050-01-01');
       expect(variables?.b).not.toHaveProperty('parameters.before');
     });
 
@@ -4785,7 +4781,7 @@ describe('Migration V7 to V8', () => {
     // analyser's `isRelativeDatePickerShape`, which now reads an explicitly
     // null `component` (and a null member key) as absent. Testing `component
     // === undefined` here left a null-component relative record on the
-    // DatePicker normaliser, so its small-year anchor and negative offset
+    // DatePicker normaliser, so its relative anchor and negative offset
     // survived untouched while the analyser — running over these same raw
     // records in the contradiction-strip step — read it as a relative window.
     it('normalises a null-component relative-shaped parameters record', () => {
@@ -4807,9 +4803,9 @@ describe('Migration V7 to V8', () => {
           codebook: { ego: { variables: Record<string, unknown> } };
         }
       ).codebook.ego.variables;
-      expect(variables.a).not.toHaveProperty('parameters.anchor');
+      expect(variables.a).toHaveProperty('parameters.anchor', '0050-01-01');
       expect(variables.a).not.toHaveProperty('parameters.before');
-      expect(variables.b).not.toHaveProperty('parameters.anchor');
+      expect(variables.b).toHaveProperty('parameters.anchor', '0050-01-01');
       expect(variables.b).not.toHaveProperty('parameters.after');
     });
 
@@ -4884,7 +4880,7 @@ describe('Migration V7 to V8', () => {
       expect(variables?.a).not.toHaveProperty('parameters.min');
     });
 
-    it('strips count-valued rules below their floors and keeps legal ones', () => {
+    it('strips negative count-valued rules and preserves zero-valued maxima', () => {
       const migratedRaw = migrateVariables({
         a: {
           name: 'first_name',
@@ -4896,15 +4892,25 @@ describe('Migration V7 to V8', () => {
           type: 'text',
           validation: { minLength: 0, maxLength: 1 },
         },
+        c: {
+          name: 'tags',
+          type: 'categorical',
+          options: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+          validation: { maxSelected: 0 },
+        },
       });
       const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
-      expect(variables?.a).not.toHaveProperty('validation.maxLength');
+      expect(variables?.a).toHaveProperty('validation.maxLength', 0);
       expect(variables?.a).not.toHaveProperty('validation.minLength');
       expect(variables?.a).toHaveProperty('validation.required', true);
       expect(variables?.b).toHaveProperty('validation.minLength', 0);
       expect(variables?.b).toHaveProperty('validation.maxLength', 1);
+      expect(variables?.c).toHaveProperty('validation.maxSelected', 0);
     });
 
     // V8 puts `.int()` on all six numeric bound rules (minLength, maxLength,

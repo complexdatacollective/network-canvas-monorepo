@@ -60,13 +60,15 @@ function AddNodeField({
       event.preventDefault();
 
       void (async () => {
+        const name =
+          typeof fieldProps.value === 'string' ? fieldProps.value.trim() : '';
+        fieldProps.onChange(name);
+
         // Gate on the target variable's codebook validation (required,
         // maxLength, unique, ...) before creating anything.
         const isValid = await validateForm();
         if (!isValid) return;
 
-        const name =
-          typeof fieldProps.value === 'string' ? fieldProps.value.trim() : '';
         // Preserves the pre-existing guard: a blank/whitespace-only name is a
         // silent no-op, independent of codebook rules (no fallback to
         // `required` — a rule-less variable behaves exactly as before).
