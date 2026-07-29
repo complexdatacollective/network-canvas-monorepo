@@ -1923,7 +1923,7 @@ export class SyntheticInterview {
    * a rule nothing enforces yields a value that is valid either way.
    */
   private generationContext(today: string): GenerationContext {
-    const rendered = this.composerRenderings();
+    const rendered = this.composerRenderings(today);
 
     const constraintsOf = (
       variables: Map<string, VariableEntry>,
@@ -1997,7 +1997,7 @@ export class SyntheticInterview {
    * a protocol: without this a builder can be handed dates or Boolean values
    * its own stage would reject.
    */
-  private composerRenderings(): ComposerRenderings {
+  private composerRenderings(today: string): ComposerRenderings {
     const fields: ComposerField[] = [];
 
     for (const stage of this.stages) {
@@ -2024,6 +2024,7 @@ export class SyntheticInterview {
           ? this.nodeTypes.get(field.type)
           : this.edgeTypes.get(field.type)
         )?.variables.get(field.variable)?.parameters,
+      today,
     );
 
     if (disagreements.length > 0) {

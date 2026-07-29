@@ -24,6 +24,7 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
+import AddNodeInput from '../AddNodeInput';
 import NetworkComposer from '../NetworkComposer';
 
 beforeAll(() => {
@@ -298,5 +299,45 @@ describe('NetworkComposer quick-add honours codebook validation', () => {
     expect(
       screen.queryByText('You must answer this question before continuing.'),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('NetworkComposer quick-add submission lifecycle', () => {
+  it('waits for node creation before accepting another submission', async () => {
+    let finishCreate: (() => void) | undefined;
+    const onCreate = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishCreate = resolve;
+        }),
+    );
+
+    render(
+      <AddNodeInput
+        entityLabel="Person"
+        targetVariable={QUICK_ADD_VAR}
+        onCreate={onCreate}
+      />,
+    );
+
+    const input = screen.getByRole('textbox', { name: /person name/i });
+    await userEvent.type(input, 'Alice');
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => {
+      expect(onCreate).toHaveBeenCalledTimes(1);
+      expect(input).toBeDisabled();
+    });
+
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    expect(onCreate).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      finishCreate?.();
+    });
+    await waitFor(() => {
+      expect(input).toBeEnabled();
+      expect(input).toHaveValue('');
+    });
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
@@ -16,7 +16,7 @@ type AddNodeInputProps = {
   /** Codebook variable the quick-add name is written to. */
   targetVariable: string;
   /** Create a node with the given name. The input stays open for the next one. */
-  onCreate: (name: string) => void;
+  onCreate: (name: string) => Promise<void>;
   /**
    * Context required for context-dependent validations like unique, sameAs,
    * etc. — forwarded to useField exactly as QuickNodeForm's quick-add field
@@ -46,10 +46,13 @@ function AddNodeField({
   const validateForm = useFormStore((state) => state.validateForm);
   const resetField = useFormStore((state) => state.resetField);
   const [fieldToReset, setFieldToReset] = useState<string>();
+  const submissionInProgress = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { id, meta, fieldProps, containerProps } = useField({
     name: targetVariable,
     initialValue: '',
+    disabled: isSubmitting,
     validateOnChange: true,
     validateOnChangeDelay: 0,
     validationContext,
@@ -68,22 +71,31 @@ function AddNodeField({
       event.preventDefault();
 
       void (async () => {
-        const name =
-          typeof fieldProps.value === 'string' ? fieldProps.value.trim() : '';
-        fieldProps.onChange(name);
+        if (submissionInProgress.current) return;
+        submissionInProgress.current = true;
+        setIsSubmitting(true);
 
-        // Gate on the target variable's codebook validation (required,
-        // maxLength, unique, ...) before creating anything.
-        const isValid = await validateForm();
-        if (!isValid) return;
+        try {
+          const name =
+            typeof fieldProps.value === 'string' ? fieldProps.value.trim() : '';
+          fieldProps.onChange(name);
 
-        // Preserves the pre-existing guard: a blank/whitespace-only name is a
-        // silent no-op, independent of codebook rules (no fallback to
-        // `required` — a rule-less variable behaves exactly as before).
-        if (name === '') return;
+          // Gate on the target variable's codebook validation (required,
+          // maxLength, unique, ...) before creating anything.
+          const isValid = await validateForm();
+          if (!isValid) return;
 
-        onCreate(name);
-        setFieldToReset(targetVariable);
+          // Preserves the pre-existing guard: a blank/whitespace-only name is a
+          // silent no-op, independent of codebook rules (no fallback to
+          // `required` — a rule-less variable behaves exactly as before).
+          if (name === '') return;
+
+          await onCreate(name);
+          setFieldToReset(targetVariable);
+        } finally {
+          submissionInProgress.current = false;
+          setIsSubmitting(false);
+        }
       })();
     },
     [validateForm, fieldProps, onCreate, targetVariable],

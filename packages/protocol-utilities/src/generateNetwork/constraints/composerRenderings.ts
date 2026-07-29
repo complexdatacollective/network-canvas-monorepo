@@ -6,6 +6,9 @@ import type {
   Variables,
 } from '@codaco/protocol-validation';
 
+import type { VariableEntry } from '../../types';
+import { buildVariableConstraints } from './buildConstraints';
+import type { DateWindow } from './dateWindow';
 import type { ConstraintConflict } from './error';
 
 /**
@@ -68,11 +71,10 @@ export type ComposerRenderingDisagreement = {
  * `SyntheticInterview` — refuse it in the same words.
  */
 export const COMPOSER_RENDERING_CONFLICT = {
-  summary:
-    'this protocol renders one variable with two different date controls',
+  summary: 'this protocol renders one variable with incompatible date controls',
   rules: ['component', 'parameters'],
   reason:
-    'two Network Composer stages render this variable with different date controls, ' +
+    'two Network Composer stages render this variable with date controls that have no common window at one resolution, ' +
     'and the one value it holds is submitted through both',
 } as const;
 
@@ -187,10 +189,55 @@ function renderingOf(
   };
 }
 
+function isDateRendering(
+  rendering: ComposerRendering,
+): rendering is ComposerDateRendering {
+  return (
+    rendering.component === 'DatePicker' ||
+    rendering.component === 'RelativeDatePicker'
+  );
+}
+
+function dateWindowOf(
+  rendering: ComposerDateRendering,
+  today: string,
+): DateWindow {
+  const entry: VariableEntry = {
+    id: 'composer-rendering',
+    name: 'Network Composer date field',
+    type: 'datetime',
+    ...rendering,
+  };
+  const window = buildVariableConstraints(entry, today).dateWindow;
+  if (window === undefined) {
+    throw new Error('A datetime control must resolve to a date window.');
+  }
+  return window;
+}
+
+function laterBound(
+  a: string | undefined,
+  b: string | undefined,
+): string | undefined {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  return a > b ? a : b;
+}
+
+function earlierBound(
+  a: string | undefined,
+  b: string | undefined,
+): string | undefined {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  return a < b ? a : b;
+}
+
 /** Combine compatible renderings of one stored value. */
 function mergedRendering(
   a: ComposerRendering,
   b: ComposerRendering,
+  today: string,
 ): ComposerRendering | undefined {
   if (
     (a.component === 'Boolean' || a.component === 'Toggle') &&
@@ -206,38 +253,38 @@ function mergedRendering(
     };
   }
 
-  if (a.component === 'DatePicker') {
-    return b.component === 'DatePicker' &&
-      a.parameters.type === b.parameters.type &&
-      a.parameters.min === b.parameters.min &&
-      a.parameters.max === b.parameters.max
-      ? a
-      : undefined;
-  }
+  if (!isDateRendering(a) || !isDateRendering(b)) return undefined;
 
-  return a.component === 'RelativeDatePicker' &&
-    b.component === 'RelativeDatePicker' &&
-    a.parameters.anchor === b.parameters.anchor &&
-    a.parameters.before === b.parameters.before &&
-    a.parameters.after === b.parameters.after
-    ? a
-    : undefined;
+  const aWindow = dateWindowOf(a, today);
+  const bWindow = dateWindowOf(b, today);
+  if (aWindow.resolution !== bWindow.resolution) return undefined;
+
+  const min = laterBound(aWindow.min, bWindow.min);
+  const max = earlierBound(aWindow.max, bWindow.max);
+  if (min !== undefined && max !== undefined && min > max) return undefined;
+
+  return {
+    component: 'DatePicker',
+    parameters: {
+      type: aWindow.resolution,
+      ...(min !== undefined ? { min } : {}),
+      ...(max !== undefined ? { max } : {}),
+    },
+  };
 }
 
 /**
  * The rendering each variable is generated against, folded from every composer
  * field naming it.
  *
- * Two fields rendering one variable with different windows are reported as a
- * disagreement rather than resolved, because the interview gives the variable a
- * single stored value and both stages can submit it. A composer's canvas lists
- * every node of its subject type — `getNetworkNodesForType`, not the nodes that
- * stage created — so a node built anywhere in the interview can be opened in
- * either stage's inspector, and a value satisfying one window is refused by the
- * other. Choosing between them would emit data one of the two rejects, and
- * narrowing to their overlap would refuse a pair of `<select>`s at different
- * resolutions that no overlap can describe: the coarser control cannot even
- * display the finer control's value.
+ * Date controls at one resolution are narrowed to their common window. An empty
+ * intersection or different resolutions are reported as a disagreement,
+ * because the interview gives the variable a single stored value and both
+ * stages can submit it. A composer's canvas lists every node of its subject
+ * type — `getNetworkNodesForType`, not the nodes that stage created — so a node
+ * built anywhere in the interview can be opened in either stage's inspector.
+ * A pair of controls at different resolutions has no overlap one stored value
+ * can describe: the coarser control cannot display the finer control's value.
  *
  * `parametersOf` supplies the codebook variable's own parameters, which a field
  * declaring none reads through its chosen control.
@@ -245,6 +292,7 @@ function mergedRendering(
 export function resolveComposerRenderings(
   fields: readonly ComposerField[],
   parametersOf: (field: ComposerField) => Record<string, unknown> | undefined,
+  today: string,
 ): {
   renderings: ComposerRenderings;
   disagreements: ComposerRenderingDisagreement[];
@@ -267,7 +315,7 @@ export function resolveComposerRenderings(
       byVariable.set(field.variable, rendering);
       continue;
     }
-    const merged = mergedRendering(existing, rendering);
+    const merged = mergedRendering(existing, rendering, today);
     if (merged !== undefined) {
       byVariable.set(field.variable, merged);
       continue;
@@ -372,6 +420,7 @@ function renderedVariables(
 export function applyComposerRenderings(
   codebook: StructuralCodebook,
   stages: Stage[],
+  today: string,
 ): { codebook: StructuralCodebook; conflicts: ConstraintConflict[] } {
   const fields = composerFields(stages);
   if (fields.length === 0) return { codebook, conflicts: [] };
@@ -387,6 +436,7 @@ export function applyComposerRenderings(
         ? variable.parameters
         : undefined;
     },
+    today,
   );
 
   const conflicts = disagreements.map((disagreement) => {

@@ -40,7 +40,7 @@ type ToolPaletteProps = {
   nodeLabel: string;
   /** Codebook variable the quick-add name is written to. */
   quickAddTargetVariable: string;
-  onAddNode: (name: string) => void;
+  onAddNode: (name: string) => Promise<void>;
   /** Validation props derived from quickAddTargetVariable's codebook definition. */
   quickAddValidationProps?: Partial<ValidationPropsCatalogue>;
   quickAddValidationContext?: ValidationContext;

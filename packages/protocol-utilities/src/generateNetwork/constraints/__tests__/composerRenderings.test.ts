@@ -323,7 +323,7 @@ describe('NetworkComposer field renderings', () => {
 
   // One stored value reaches every stage that renders it — a composer's canvas
   // lists every node of its subject type, whoever created it — so two stages
-  // rendering one variable through different windows is a contradiction, not a
+  // rendering one variable through disjoint windows is a contradiction, not a
   // choice to make quietly.
   it('refuses two composer stages that render one variable differently', () => {
     const generate = () =>
@@ -356,7 +356,7 @@ describe('NetworkComposer field renderings', () => {
       });
 
     expect(generate).toThrow(
-      'this protocol renders one variable with two different date controls',
+      'this protocol renders one variable with incompatible date controls',
     );
     try {
       generate();
@@ -392,6 +392,49 @@ describe('NetworkComposer field renderings', () => {
     expect(new Set(valuesOf(network.nodes, 'born'))).toEqual(
       new Set(['2020-06-15']),
     );
+  });
+
+  it('intersects overlapping composer date windows at the same resolution', () => {
+    const { network } = generateNetwork({
+      codebook: codebookWith({}),
+      stages: [
+        composerStage({
+          id: 'composer-1',
+          nodeFields: [
+            {
+              variable: 'born',
+              component: 'DatePicker',
+              parameters: {
+                type: 'full',
+                min: '2000-01-01',
+                max: '2020-12-31',
+              },
+            },
+          ],
+        }),
+        composerStage({
+          id: 'composer-2',
+          nodeFields: [
+            {
+              variable: 'born',
+              component: 'DatePicker',
+              parameters: {
+                type: 'full',
+                min: '2010-01-01',
+                max: '2030-12-31',
+              },
+            },
+          ],
+        }),
+      ],
+      seed: 11,
+      config: { today: TODAY },
+    });
+
+    for (const value of valuesOf(network.nodes, 'born')) {
+      expect(String(value) >= '2010-01-01').toBe(true);
+      expect(String(value) <= '2020-12-31').toBe(true);
+    }
   });
 
   it('draws only the values offered by a Boolean choice control', () => {

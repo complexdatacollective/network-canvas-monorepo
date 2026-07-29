@@ -277,11 +277,11 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // Nodes are added by name from the tool palette (not by tapping the canvas),
   // each landing on the next free grid cell from the top-left.
   const handleAddNode = useCallback(
-    (name: string) => {
+    async (name: string) => {
       const occupied = nodes
         .map((n) => n[entityAttributesProperty]?.[layoutVariable])
         .filter(isPosition);
-      void actions.createNodeAt(name, nextGridPosition(occupied));
+      await actions.createNodeAt(name, nextGridPosition(occupied));
     },
     [nodes, layoutVariable, actions],
   );

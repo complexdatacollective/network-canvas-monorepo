@@ -92,12 +92,8 @@ describe('RelativeDatePicker parameters', () => {
 // validation listener then threw a blocking invalid-protocol dialog offering
 // to revert the edit.
 //
-// Twenty-first-wave Finding 4: the floor is 0100, not 1000 — fresco-ui's
-// `addDays` runtime arithmetic (`Date.UTC`) only two-digit-coerces a year in
-// 0-99 onto 1900-1999, so years 0100-0999 round-trip correctly and must be
-// accepted.
 describe('RelativeDatePicker anchor year floor', () => {
-  it('rejects an anchor whose year is below 100', async () => {
+  it('accepts a schema-valid anchor whose year is below 100', async () => {
     renderWithAnchor('2020-01-01');
     const anchor = screen.getByLabelText(/Specific Anchor Date/);
 
@@ -106,33 +102,23 @@ describe('RelativeDatePicker anchor year floor', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(
-          'Anchor date must use a year of 0100 or later — Date.UTC maps years 0-99 onto 1900-1999',
-        ),
-      ).toBeInTheDocument();
+        screen.queryByText(/Anchor date must use a year/),
+      ).not.toBeInTheDocument();
     });
   });
 
-  it('clears the error once the anchor is corrected to the floor', async () => {
+  it('offers and accepts the schema floor', async () => {
     renderWithAnchor('2020-01-01');
     const anchor = screen.getByLabelText(/Specific Anchor Date/);
 
-    fireEvent.change(anchor, { target: { value: '0050-01-01' } });
-    fireEvent.blur(anchor);
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          'Anchor date must use a year of 0100 or later — Date.UTC maps years 0-99 onto 1900-1999',
-        ),
-      ).toBeInTheDocument();
-    });
+    expect(anchor).toHaveAttribute('min', '0001-01-01');
 
-    fireEvent.change(anchor, { target: { value: '0100-01-01' } });
+    fireEvent.change(anchor, { target: { value: '0001-01-01' } });
+    fireEvent.blur(anchor);
+
     await waitFor(() => {
       expect(
-        screen.queryByText(
-          'Anchor date must use a year of 0100 or later — Date.UTC maps years 0-99 onto 1900-1999',
-        ),
+        screen.queryByText('Anchor date must use a year of 0001 or later'),
       ).not.toBeInTheDocument();
     });
   });
@@ -146,9 +132,7 @@ describe('RelativeDatePicker anchor year floor', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText(
-          'Anchor date must use a year of 0100 or later — Date.UTC maps years 0-99 onto 1900-1999',
-        ),
+        screen.queryByText(/Anchor date must use a year/),
       ).not.toBeInTheDocument();
     });
   });

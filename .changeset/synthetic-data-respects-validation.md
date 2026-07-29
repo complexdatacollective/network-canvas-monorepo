@@ -14,4 +14,9 @@ If a protocol's rules cannot all be satisfied at once — for example a minimum 
 
 When skip logic and filtering are respected, controls on stages proven unreachable no longer create synthetic-data rendering conflicts with reachable Network Composer stages.
 
+When multiple reachable Network Composer stages render one date variable at the
+same resolution, generation now uses the intersection of their accepted
+windows. It refuses only controls at incompatible resolutions or controls whose
+windows do not overlap.
+
 `@codaco/fresco-ui` adds a `./form/validation/helpers` export subpath so consumers can build the same validator stack the interview uses. `@codaco/interview` now fails loudly, naming the variable, when a protocol carries a validation rule of the wrong type, rather than passing it to a validator that would report a generic error.

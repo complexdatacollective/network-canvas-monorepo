@@ -122,10 +122,14 @@ export function generateNetwork(
   // before anything reads it, so the count and the draw are given the same one;
   // see `applyComposerRenderings`.
   //
-  // Its own refusal comes first and alone: where two composer stages disagree
-  // about a variable's control there is no single window to analyse, so there
-  // is nothing for feasibility to say about it yet.
-  const composed = applyComposerRenderings(codebook, feasibilityStages);
+  // Its own refusal comes first and alone: where two composer controls have no
+  // common window at one resolution there is nothing for feasibility to say
+  // about the variable yet.
+  const composed = applyComposerRenderings(
+    codebook,
+    feasibilityStages,
+    resolvedConfig.today,
+  );
   if (composed.conflicts.length > 0) {
     throw new SyntheticDataConstraintError(
       composed.conflicts,
