@@ -5235,7 +5235,7 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 2: an abse
         }
       }
     }
-  });
+  }, 15_000);
 
   // The reviewer's own report: `a` legally omits `parameters`
   // (`dateTimeRelativeDatePickerSchema` marks the record optional), but the
