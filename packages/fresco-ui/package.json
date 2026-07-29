@@ -759,7 +759,7 @@
     "@tiptap/react": "^3.29.2",
     "@tiptap/starter-kit": "^3.29.2",
     "comlink": "^4.4.2",
-    "cva": "1.0.0-beta.4",
+    "cva": "1.0.0-beta.8",
     "es-toolkit": "catalog:",
     "fuse.js": "catalog:",
     "immer": "^11.1.8",
