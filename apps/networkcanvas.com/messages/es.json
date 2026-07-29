@@ -272,7 +272,9 @@
     },
     "definitions": {
       "pwa": "<dfn>Las aplicaciones web progresivas</dfn> son sitios web diseñados para instalarse en un dispositivo y ofrecer una experiencia similar a la de una aplicación nativa. Puede abrirlas desde un icono propio, cuentan con su propio almacenamiento y funcionan sin conexión.",
-      "protocolSchema": "Los esquemas de protocolo son las especificaciones técnicas que definen cómo se estructuran los archivos de protocolo y cómo los interpretan las aplicaciones. Garantizan la compatibilidad de los protocolos entre distintas versiones de las aplicaciones y proporcionan un marco para implementar nuevas funciones e interfaces."
+      "protocolSchema": "Los esquemas de protocolo son las especificaciones técnicas que definen cómo se estructuran los archivos de protocolo y cómo los interpretan las aplicaciones. Garantizan la compatibilidad de los protocolos entre distintas versiones de las aplicaciones y proporcionan un marco para implementar nuevas funciones e interfaces.",
+      "architectClassic": "La aplicación de escritorio descargable original para diseñar protocolos de Network Canvas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas. Descárguela <link>aquí</link>.",
+      "interviewerClassic": "La aplicación de escritorio y tableta descargable original para recopilar datos de entrevistas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas. Descárguela <link>aquí</link>."
     },
     "common": {
       "documentation": "Documentación"
@@ -301,7 +303,7 @@
       },
       "classic": {
         "title": "¿Qué ocurre con las aplicaciones originales para computadoras y tabletas?",
-        "description": "Las aplicaciones originales para computadoras y tabletas ahora se llaman <strong>Architect Classic</strong> e <strong>Interviewer Classic</strong>. Siguen disponibles para los estudios en curso y cuentan con <strong>soporte completo</strong>, pero están en modo de mantenimiento y no recibirán funciones nuevas."
+        "description": "Las aplicaciones originales para computadoras y tabletas ahora se llaman <architectClassic>Architect Classic</architectClassic> e <interviewerClassic>Interviewer Classic</interviewerClassic>. Siguen disponibles para los estudios en curso y cuentan con <strong>soporte completo</strong>, pero están en modo de mantenimiento y no recibirán funciones nuevas."
       }
     },
     "apps": {
@@ -317,7 +319,7 @@
           "templates": "Incluye <strong>plantillas de protocolos</strong> diseñadas para ayudarle a comenzar rápidamente y evitar errores habituales"
         },
         "open": "Abrir Architect",
-        "classicNote": "Architect Classic sigue disponible para quienes necesiten continuar usando versiones anteriores de Interviewer (por ejemplo, la 6.6.0). Está en modo de mantenimiento —solo recibe correcciones de errores— y continúa generando protocolos del esquema 7."
+        "classicNote": "<architectClassic>Architect Classic</architectClassic> sigue disponible para quienes necesiten continuar usando versiones anteriores de Interviewer (por ejemplo, la 6.6.0). Está en modo de mantenimiento —solo recibe correcciones de errores— y continúa generando protocolos del esquema 7."
       },
       "interviewer": {
         "label": "Entrevistas presenciales",
@@ -331,7 +333,7 @@
           "compatibility": "Compatible con computadoras y tabletas, incluidos iPad y tabletas Android"
         },
         "open": "Abrir Interviewer",
-        "classicNote": "Interviewer Classic sigue disponible para los estudios en curso. Al igual que Architect Classic, está exclusivamente en modo de mantenimiento y no recibe las funciones nuevas."
+        "classicNote": "<interviewerClassic>Interviewer Classic</interviewerClassic> sigue disponible para los estudios en curso. Al igual que <architectClassic>Architect Classic</architectClassic>, está exclusivamente en modo de mantenimiento y no recibe las funciones nuevas."
       },
       "fresco": {
         "label": "Entrevistas autoadministradas a distancia",
@@ -575,11 +577,11 @@
       "rows": {
         "interviewerClassic": {
           "platform": "Computadora y tableta",
-          "note": "Interviewer Classic ejecuta el esquema 7 de forma nativa, pero no puede abrir protocolos del esquema 8. Continúe utilizándolo para los estudios en curso con el esquema 7; seguirá recibiendo correcciones de errores."
+          "note": "<interviewerClassic>Interviewer Classic</interviewerClassic> ejecuta el esquema 7 de forma nativa, pero no puede abrir protocolos del esquema 8. Continúe utilizándolo para los estudios en curso con el esquema 7; seguirá recibiendo correcciones de errores."
         },
         "architectClassic": {
           "platform": "Computadora",
-          "note": "Architect Classic sigue generando protocolos del esquema 7 y está en modo de mantenimiento. Utilícelo solo si necesita seguir ejecutando versiones anteriores de Interviewer (por ejemplo, la 6.6.0)."
+          "note": "<architectClassic>Architect Classic</architectClassic> sigue generando protocolos del esquema 7 y está en modo de mantenimiento. Utilícelo solo si necesita seguir ejecutando versiones anteriores de Interviewer (por ejemplo, la 6.6.0)."
         },
         "frescoClassic": {
           "platform": "Navegador",
@@ -591,7 +593,7 @@
         },
         "architect": {
           "platform": "Navegador y PWA",
-          "note": "El nuevo Architect crea protocolos del esquema 8, y abre y actualiza automáticamente los protocolos anteriores del esquema 7 creados en Architect Classic."
+          "note": "El nuevo Architect crea protocolos del esquema 8, y abre y actualiza automáticamente los protocolos anteriores del esquema 7 creados en <architectClassic>Architect Classic</architectClassic>."
         },
         "fresco": {
           "platform": "Navegador",
@@ -606,7 +608,7 @@
         "label": "Precaución",
         "heading": "La migración de protocolos es unidireccional.",
         "description": "Si abre un protocolo del esquema 7 en cualquier aplicación de nueva generación, se actualizará automáticamente al esquema 8. Después no podrá volver a convertirlo ni abrirlo en las aplicaciones anteriores. Esto es especialmente importante si modifica un protocolo en Architect, ya que se actualizará al esquema 8 cuando lo guarde.",
-        "fileNote": "Conserve una copia del archivo <file>.netcanvas</file> original si necesita seguir ejecutándolo en Interviewer Classic, Architect Classic o Fresco 3.x."
+        "fileNote": "Conserve una copia del archivo <file>.netcanvas</file> original si necesita seguir ejecutándolo en <interviewerClassic>Interviewer Classic</interviewerClassic>, <architectClassic>Architect Classic</architectClassic> o Fresco 3.x."
       },
       "upgrade": {
         "label": "¿Debe actualizar?",
@@ -619,7 +621,7 @@
         "ongoing": {
           "label": "¿Está realizando un estudio?",
           "heading": "¡No hay prisa!",
-          "description": "Interviewer Classic y Architect Classic siguen recibiendo soporte y correcciones de errores. Actualice cuando sea conveniente para su proyecto, teniendo presente que la migración es unidireccional."
+          "description": "<interviewerClassic>Interviewer Classic</interviewerClassic> y <architectClassic>Architect Classic</architectClassic> siguen recibiendo soporte y correcciones de errores. Actualice cuando sea conveniente para su proyecto, teniendo presente que la migración es unidireccional."
         }
       }
     },

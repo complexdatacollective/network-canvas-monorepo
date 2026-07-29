@@ -196,9 +196,9 @@ export class NetworkComposerFixture {
     await this.page.mouse.click(midX, midY);
   }
 
-  /** Selection-bar "Add all to X" button (2+ nodes selected). */
+  /** Group-membership toggle for a multi-node selection. */
   getSelectionBarButton(label: string): Locator {
-    return this.page.getByRole('button', { name: `Add all to ${label}` });
+    return this.page.getByRole('button', { name: label, exact: true });
   }
 
   async toggleAutomaticLayout(): Promise<void> {

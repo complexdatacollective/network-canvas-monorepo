@@ -563,9 +563,7 @@ describe('useComposerActions', () => {
     expect(afterUndo[entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
   });
 
-  // addGroupMembership applies a value to many nodes as one undo step, skipping
-  // any node that already has it; a single undo reverts all the additions.
-  it('addGroupMembership adds the value to nodes lacking it, skips one that has it; single undo reverts', async () => {
+  it('setGroupMembership adds and removes a value across many nodes as one undo step', async () => {
     const store = makeStore([
       {
         [entityPrimaryKeyProperty]: 'a',
@@ -601,7 +599,12 @@ describe('useComposerActions', () => {
     );
 
     await act(async () => {
-      await result.current.addGroupMembership(['a', 'b', 'c'], GROUP_VAR, 'a');
+      await result.current.setGroupMembership(
+        ['a', 'b', 'c'],
+        GROUP_VAR,
+        'a',
+        true,
+      );
     });
 
     const byId = (id: string) =>
@@ -616,6 +619,27 @@ describe('useComposerActions', () => {
 
     // A single undo reverts the additions on a and c back to no membership,
     // while b (which was skipped) is untouched.
+    await act(async () => {
+      await undoStore.getState().undo();
+    });
+
+    expect(byId('a')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+    expect(byId('b')![entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
+    expect(byId('c')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+
+    await act(async () => {
+      await result.current.setGroupMembership(
+        ['a', 'b', 'c'],
+        GROUP_VAR,
+        'a',
+        false,
+      );
+    });
+
+    expect(byId('a')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+    expect(byId('b')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+    expect(byId('c')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+
     await act(async () => {
       await undoStore.getState().undo();
     });
