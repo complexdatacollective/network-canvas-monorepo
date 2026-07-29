@@ -1,5 +1,30 @@
 # @codaco/architect
 
+## 8.0.0-beta.11
+
+### Patch Changes
+
+- Refine the Codebook screen layout: the search bar, entity tables, and the
+  unused-variables alert now share a single width; the "Show unused only" toggle
+  moves onto the search row with its label beside the checkbox; and there is more
+  separation between entity types and between individual entities.
+- Fix two variable dropdowns that could produce protocols failing validation. The
+  sort-order rules for the sociogram bucket and bin (ordinal bin, categorical bin,
+  and one-to-many dyad census) now offer Ascending/Descending in the direction
+  dropdown instead of a list of variables. Scalar (visual analog scale) variables
+  now offer only the validation rules that scale supports — Required alongside the
+  comparison rules — and no longer offer "must be unique", "different from", or
+  "same as", which the schema has never accepted for a scale.
+- Reduce spacing around editable list item previews.
+- Protocol previews now reflect the refined interview typography, which scales
+  smoothly with the window size instead of stepping between fixed sizes.
+- Use medium-sized edit and delete buttons throughout editable lists.
+- The installed app's icon now fills its tile on the dock, home screen, and task
+  switcher, instead of sitting inside a white border, and renders at a consistent
+  size whether the app was installed from Safari or Chrome.
+- Protocol validation failures during import and stage preview now show a readable list of problems (one `path: message` line per issue) instead of raw JSON.
+- Add the Life Transitions & Turning Points protocol to Architect's built-in templates.
+
 ## 8.0.0-beta.10
 
 ### Minor Changes
