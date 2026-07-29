@@ -1,5 +1,10 @@
 import { get } from 'es-toolkit/compat';
 
+import {
+  type ComponentType,
+  VARIABLE_TYPE_COMPONENTS,
+} from '@codaco/protocol-validation';
+
 import BooleanVariable from '../images/variables/boolean-variable.svg';
 import CategoricalVariable from '../images/variables/categorical-variable.svg';
 import DateVariable from '../images/variables/date-variable.svg';
@@ -169,30 +174,60 @@ const COMPONENTS = {
   },
 };
 
+// Architect's presentation metadata keyed by the control value the protocol
+// schema uses. The `COMPONENTS` keys above are not those values — TextInput is
+// 'Text', NumberInput is 'Number', BooleanChoice is 'Boolean' — so the schema's
+// lists can only be resolved through this map. Typing it as a record over the
+// schema's own `ComponentType` union means a control the schema gains without a
+// matching entry here fails typechecking rather than drifting silently.
+const COMPONENTS_BY_CONTROL = {
+  Boolean: COMPONENTS.BooleanChoice,
+  CheckboxGroup: COMPONENTS.CheckboxGroup,
+  DatePicker: COMPONENTS.DatePicker,
+  LikertScale: COMPONENTS.LikertScale,
+  Number: COMPONENTS.NumberInput,
+  RadioGroup: COMPONENTS.RadioGroup,
+  RelativeDatePicker: COMPONENTS.RelativeDatePicker,
+  Text: COMPONENTS.TextInput,
+  TextArea: COMPONENTS.TextArea,
+  Toggle: COMPONENTS.Toggle,
+  ToggleButtonGroup: COMPONENTS.ToggleButtonGroup,
+  VisualAnalogScale: COMPONENTS.VisualAnalogScale,
+} satisfies Record<ComponentType, ComponentConfig>;
+
+// The variable types the schema gives at least one input control. Layout and
+// location have empty lists — they have no participant-facing control — so they
+// have no place in the input-control dropdown.
+type RenderableVariableType = {
+  [Type in keyof typeof VARIABLE_TYPE_COMPONENTS]: (typeof VARIABLE_TYPE_COMPONENTS)[Type]['length'] extends 0
+    ? never
+    : Type;
+}[keyof typeof VARIABLE_TYPE_COMPONENTS];
+
+const variableTypeGroup = (
+  type: RenderableVariableType,
+  heading: string,
+): [string, ComponentConfig[], string] => {
+  const controls: readonly ComponentType[] = VARIABLE_TYPE_COMPONENTS[type];
+
+  return [
+    type,
+    controls.map((control) => COMPONENTS_BY_CONTROL[control]),
+    heading,
+  ];
+};
+
+// Display order and group headings are Architect's own: the schema record orders
+// its keys differently, so iterating it directly would reorder the dropdown.
+// Only the per-type control lists come from the schema.
 const VARIABLE_TYPES_COMPONENTS: [string, ComponentConfig[], string][] = [
-  ['number', [COMPONENTS.NumberInput], '-- Number Types -- '],
-  ['scalar', [COMPONENTS.VisualAnalogScale], '-- Scalar Types --'],
-  [
-    'datetime',
-    [COMPONENTS.DatePicker, COMPONENTS.RelativeDatePicker],
-    '-- Date Types --',
-  ],
-  ['text', [COMPONENTS.TextInput, COMPONENTS.TextArea], '-- Text Types --'],
-  [
-    'boolean',
-    [COMPONENTS.BooleanChoice, COMPONENTS.Toggle],
-    '-- Boolean Types --',
-  ],
-  [
-    'ordinal',
-    [COMPONENTS.RadioGroup, COMPONENTS.LikertScale],
-    '-- Ordinal Types --',
-  ],
-  [
-    'categorical',
-    [COMPONENTS.CheckboxGroup, COMPONENTS.ToggleButtonGroup],
-    '-- Categorical Types --',
-  ],
+  variableTypeGroup('number', '-- Number Types -- '),
+  variableTypeGroup('scalar', '-- Scalar Types --'),
+  variableTypeGroup('datetime', '-- Date Types --'),
+  variableTypeGroup('text', '-- Text Types --'),
+  variableTypeGroup('boolean', '-- Boolean Types --'),
+  variableTypeGroup('ordinal', '-- Ordinal Types --'),
+  variableTypeGroup('categorical', '-- Categorical Types --'),
 ];
 
 // Internal config - not exported

@@ -89,13 +89,23 @@ describe('buildDatePickerBoundProps', () => {
       vi.useRealTimers();
     });
 
-    it('defaults to today, 180 days before and 0 days after', () => {
-      expect(
-        buildDatePickerBoundProps({
-          component: 'RelativeDatePicker',
-          parameters: {},
-        }),
-      ).toEqual({ min: '2026-01-28', max: '2026-07-27' });
-    });
+    // The empty and absent records must produce the SAME window:
+    // RelativeDatePickerField destructures its defaults whether or not a
+    // `parameters` record exists, so the rendered control constrains the
+    // participant either way and submission validation has to match it.
+    it.each([
+      ['an empty parameters record', {}],
+      ['an absent parameters record', undefined],
+    ] as const)(
+      'defaults to today, 180 days before and 0 days after with %s',
+      (_label, parameters) => {
+        expect(
+          buildDatePickerBoundProps({
+            component: 'RelativeDatePicker',
+            ...(parameters !== undefined ? { parameters } : {}),
+          }),
+        ).toEqual({ min: '2026-01-28', max: '2026-07-27' });
+      },
+    );
   });
 });

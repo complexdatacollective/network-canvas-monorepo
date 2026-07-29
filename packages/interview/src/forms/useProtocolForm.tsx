@@ -166,6 +166,21 @@ export default function useProtocolForm({
     [numberFieldNames],
   );
 
+  // Audit sweep: the input control each field actually renders with, keyed by
+  // variable and resolved exactly as the rendered Field resolves it (stage
+  // field first, then codebook variable). Analytics needs the real control
+  // name, and the shared `FormFieldSchema` is a strictObject with no
+  // `component` key — only NetworkComposer fields carry their own — so the
+  // form interfaces' `'component' in field` test recorded 'unknown' for every
+  // field of every non-composer form.
+  const componentByVariable = useMemo(
+    () =>
+      Object.fromEntries(
+        fieldsMetadata.map((field) => [field.variable, field.component]),
+      ),
+    [fieldsMetadata],
+  );
+
   const fieldsWithMetadata = fieldsMetadata.map((field, index) => {
     const fieldName = field.variable;
 
@@ -208,13 +223,14 @@ export default function useProtocolForm({
       props.initialValue = initialValues[field.variable];
     }
 
+    // Pass validation properties derived from the protocol validation object
     if ('validation' in field && field.validation) {
       Object.assign(
         props,
         buildFieldValidationProps({
           type: field.type,
           variable: fieldName,
-          validation: field.validation as Record<string, unknown>,
+          validation: field.validation,
         }),
       );
     }
@@ -254,7 +270,11 @@ export default function useProtocolForm({
       if (typeof params.maxLabel === 'string') props.maxLabel = params.maxLabel;
     }
 
-    // Handle DatePicker parameters
+    // Forward a DatePicker's resolution to the control. Its min/max validation
+    // bounds come from buildDatePickerBoundProps below, which forwards only
+    // AUTHORED bounds verbatim — with none authored, fresco-ui's
+    // DatePickerField deliberately leaves a full-resolution input unbounded
+    // (see 35ff5dfd1), so submission validation must stay unbounded too.
     if (field.component === 'DatePicker' && field.parameters) {
       const params = field.parameters;
       if (typeof params.type === 'string') props.type = params.type;
@@ -281,7 +301,9 @@ export default function useProtocolForm({
     // RelativeDatePicker fields so the Field-level min/max validators fire on
     // submission. Without this, RelativeDatePicker's internally-computed
     // min/max would only constrain the native picker UI — keyboard-typed
-    // out-of-range values would pass through validation.
+    // out-of-range values would pass through validation. Runs whether or not
+    // a `parameters` record exists: a RelativeDatePicker with an ABSENT
+    // record still renders its default window (see buildDatePickerBoundProps).
     Object.assign(
       props,
       buildDatePickerBoundProps({
@@ -307,5 +329,5 @@ export default function useProtocolForm({
     renderedFields
   );
 
-  return { fieldComponents, coerceValues };
+  return { fieldComponents, coerceValues, componentByVariable };
 }

@@ -19,23 +19,34 @@ type BoundedField = {
  * conformance test can assert against exactly the bounds the interview
  * validates submissions with.
  *
- * - DatePicker forwards `parameters.min`/`parameters.max` verbatim.
+ * - DatePicker forwards `parameters.min`/`parameters.max` verbatim, and ONLY
+ *   authored bounds: with none authored, fresco-ui's DatePickerField
+ *   deliberately leaves a full-resolution input unbounded (see 35ff5dfd1)
+ *   rather than falling back to its 1920-to-today default window, and
+ *   month/year resolutions render closed dropdown lists that can't accept an
+ *   out-of-window typed value in the first place. Synthesizing a bound here
+ *   would reject values the control accepts — and disagree with
+ *   `@codaco/protocol-validation`'s contradiction analyser, which models an
+ *   unbounded full-resolution DatePicker as contributing no interval.
  * - RelativeDatePicker pre-computes absolute bounds from
  *   `parameters.anchor`/`before`/`after`, defaulting to today and the shared
  *   before/after span — the same constants, and the same clamp onto the dates a
  *   picker can represent, that RelativeDatePickerField applies to its own native
- *   min/max attributes.
+ *   min/max attributes. An ABSENT `parameters` record gets the same default
+ *   window as an empty one: RelativeDatePickerField destructures its defaults
+ *   (before=180, after=0, anchor=today) whether or not the record exists, so
+ *   the control constrains the participant either way, and the analyser's
+ *   `dateWindowInterval` models the same absent-record default. Returning `{}`
+ *   here would leave submission validation looser than both.
  *
- * Returns `{}` for any other component, or when the field has no
- * `parameters` object at all (matching DatePickerField/RelativeDatePickerField,
- * which only receive computed `min`/`max` props when this function is called
- * with one).
+ * Returns `{}` for any other component, or for a DatePicker with no authored
+ * bounds.
  */
 export function buildDatePickerBoundProps(
   field: BoundedField,
 ): Partial<ValidationPropsCatalogue> {
-  const { component, parameters } = field;
-  if (!parameters) return {};
+  const { component } = field;
+  const parameters = field.parameters ?? {};
 
   if (component === 'DatePicker') {
     const { min, max } = parameters;

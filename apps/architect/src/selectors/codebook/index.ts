@@ -72,15 +72,25 @@ const getTypeSelector = createSelector(
 export const getType = (state: RootState, subject: Subject) =>
   getTypeSelector(state, subject);
 
+// Referentially-stable empty result. Reselect's single-slot memoization only
+// caches the LAST call, so any unrelated codebook edit (which always changes
+// the top-level codebook reference) forces a recompute; without this, a
+// subject with no matching codebook slice would fall through to a freshly
+// allocated `{}` on every such recompute, defeating consumers that memoize on
+// the returned reference (e.g. makeFieldEditorValidate's useMemo). Callers
+// guarding an invalid subject should also return this same reference rather
+// than an inline `{}`.
+export const EMPTY_VARIABLES: Variables = Object.freeze({});
+
 // Memoized selector for getting variables for a subject
 export const getVariablesForSubjectSelector = createSelector(
   [getCodebook, (_state: RootState, subject: Subject) => subject],
   (codebook, subject): Variables => {
-    if (!subject || !codebook) return {};
+    if (!subject || !codebook) return EMPTY_VARIABLES;
     const path = subject.type
       ? [subject.entity, subject.type, 'variables']
       : [subject.entity, 'variables'];
-    return get(codebook, path, {}) as Variables;
+    return get(codebook, path, EMPTY_VARIABLES) as Variables;
   },
 );
 

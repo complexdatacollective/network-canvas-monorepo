@@ -30,10 +30,15 @@ type OwnProps = {
 type Entity = 'node' | 'edge' | 'ego';
 
 type InjectedProps = {
+  // `validation` is an opt-in seed for the newly created variable's
+  // `configuration.validation` (e.g. NameGeneratorQuickAdd's `required: true`
+  // — see `QuickAdd.tsx`). Callers that omit it keep today's unseeded
+  // configuration shape.
   handleCreateVariable: (
     variableName: string,
     variableType?: VariableType,
     field?: string,
+    validation?: { required: true },
   ) => Promise<string | undefined>;
   handleDeleteVariable: (variableId: string) => void;
   normalizeKeyDown: typeof normalizeKeyDown;
@@ -51,12 +56,15 @@ const withCreateVariableHandler =
         variableName: string,
         variableType?: VariableType,
         field?: string,
+        validation?: { required: true },
       ) => {
         const withType = variableType ? { type: variableType } : {};
+        const withValidation = validation ? { validation } : {};
 
         const configuration = {
           name: variableName,
           ...withType,
+          ...withValidation,
         };
 
         let variable: string;

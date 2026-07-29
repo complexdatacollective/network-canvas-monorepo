@@ -219,4 +219,314 @@ describe('ComposerFormFieldSchema', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  // Third-wave Finding 7: a DatePicker/RelativeDatePicker stage field's
+  // `parameters` must satisfy the same shape+refinement as the codebook
+  // DatePicker/RelativeDatePicker (variable.ts) — previously `parameters` was
+  // an unrestricted record here, escaping the DatePicker refinement entirely.
+  it('rejects a nodeForm DatePicker field with a bound finer than its resolution', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_date',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year', min: '2020-05-03' },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // Eighth-wave Finding 2: the composer field schema reuses
+  // `datePickerParametersSchema` (variable.ts) directly, so the year-below-
+  // 1000 floor at year/month resolution applies here without any
+  // composer-specific code.
+  it('rejects a nodeForm DatePicker field with a year-resolution bound below 1000', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_year',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year', min: '0099' },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // Eleventh-wave Finding 1: the year-zero full-resolution rejection also
+  // arrives here through the shared `datePickerParametersSchema` — the native
+  // date input cannot select any date in year 0000.
+  it('rejects a nodeForm DatePicker field with a full-resolution year-zero bound', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_date',
+            component: ComponentTypes.DatePicker,
+            parameters: { max: '0000-12-31' },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a nodeForm DatePicker field with min after max', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_date',
+            component: ComponentTypes.DatePicker,
+            parameters: { min: '2021-06-01', max: '2020-01-01' },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an edge form RelativeDatePicker field with a negative before offset', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'met_date',
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { before: -1 },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // Twenty-first-wave Finding 4, correcting ninth-wave Finding 6: the anchor
+  // floor is 0100, not 1000. fresco-ui's runtime ymd arithmetic (`addDays`,
+  // built on `Date.UTC`) only two-digit-coerces a year in 0-99 onto
+  // 1900-1999 — years 0100-0999 round-trip correctly, so only a year below
+  // 0100 produces a wrong window.
+  it('rejects an edge form RelativeDatePicker field with an anchor year below 100', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'met_date',
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { anchor: '0099-12-31' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts an edge form RelativeDatePicker field with an anchor year at exactly 100', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'met_date',
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { anchor: '0100-01-01' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts an edge form RelativeDatePicker field with an anchor year in the previously-rejected 0100-0999 range', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'met_date',
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { anchor: '0999-12-31' },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a valid nodeForm DatePicker window and a valid edge RelativeDatePicker window', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_year',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year', min: '1990', max: '2020' },
+          },
+        ],
+      },
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                variable: 'met_date',
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { anchor: '2020-01-01', before: 180, after: 0 },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('leaves an unrestricted parameters record alone for non-date components', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'closeness',
+            component: ComponentTypes.VisualAnalogScale,
+            parameters: { minLabel: 'Distant', maxLabel: 'Close', extra: true },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+// Thirteenth-wave Finding 1: every field renders under its variable's name
+// (interview's useProtocolForm passes `name: field.variable`), so two fields
+// for one variable collide on a single form value while each contributes its
+// own control and parameters — e.g. two required DatePickers pinned to
+// disjoint singleton windows, which no value can satisfy.
+describe('ComposerFormSchema duplicate variables', () => {
+  it('rejects a nodeForm listing the same variable twice, anchored at the second field', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'birth_year',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year', min: '1990', max: '1990' },
+          },
+          {
+            variable: 'birth_year',
+            component: ComponentTypes.DatePicker,
+            parameters: { type: 'year', min: '2000', max: '2000' },
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('duplicate variable "birth_year"'),
+    );
+    expect(issue?.path).toEqual(['nodeForm', 'fields', 1, 'variable']);
+  });
+
+  it('rejects a duplicate variable in an edge form', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              { variable: 'met_date', component: ComponentTypes.DatePicker },
+              { variable: 'met_date', component: ComponentTypes.DatePicker },
+            ],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const issue = result.error.issues.find((candidate) =>
+      candidate.message.includes('duplicate variable "met_date"'),
+    );
+    expect(issue?.path).toEqual(['edges', 0, 'form', 'fields', 1, 'variable']);
+  });
+
+  // The check is scoped to ONE form: a nodeForm field and an edge form field
+  // resolve against different subjects and render in different form
+  // instances, so a repeat across the two is not a collision. (A protocol
+  // could not express this anyway — the codebook rejects a variable record
+  // key reused across entity types — which is exactly why the scoping is
+  // pinned here, at stage level, where no codebook is in play.)
+  it('accepts the same variable name once in nodeForm and once in an edge form', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [{ variable: 'note', component: ComponentTypes.Text }],
+      },
+      edges: [
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [{ variable: 'note', component: ComponentTypes.Text }],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts two fields for different variables', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          { variable: 'age', component: ComponentTypes.Number },
+          { variable: 'name', component: ComponentTypes.Text },
+        ],
+      },
+    });
+    expect(result.success).toBe(true);
+  });
 });
