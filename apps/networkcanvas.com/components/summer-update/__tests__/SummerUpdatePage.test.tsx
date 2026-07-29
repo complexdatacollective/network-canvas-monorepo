@@ -452,6 +452,22 @@ describe('SummerUpdatePage', () => {
     ).toBeInTheDocument();
   });
 
+  it('selects a compatibility row when its app cell is clicked', () => {
+    renderWithIntl(<SummerUpdatePage />);
+
+    const frescoCompatibilityRow = screen.getByRole('button', {
+      name: 'Fresco 3.1.2, Browser: Schema 7 Native; Schema 8 Not supported',
+    });
+
+    fireEvent.click(within(frescoCompatibilityRow).getByText('Fresco'));
+
+    expect(
+      screen.getByText(
+        /Fresco 3\.1\.2 supports Schema 7 protocols but does not support Schema 8 protocols/,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('explains every Classic app term and provides an accessible download link', async () => {
     renderWithIntl(<SummerUpdatePage />);
 
@@ -705,10 +721,7 @@ describe('SummerUpdatePage', () => {
     );
     expect(
       within(definitionPopover).getByRole('link', { name: 'aquí' }),
-    ).toHaveAttribute(
-      'href',
-      '/get-started',
-    );
+    ).toHaveAttribute('href', '/get-started');
 
     fireEvent.click(screen.getByRole('button', { name: 'Anonimización' }));
 

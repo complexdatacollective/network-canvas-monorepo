@@ -93,7 +93,8 @@ describe('Definition', () => {
         interactive
         definition={
           <>
-            The original desktop app. Download it <a href="/get-started">here</a>.
+            The original desktop app. Download it{' '}
+            <a href="/get-started">here</a>.
           </>
         }
       >
@@ -128,7 +129,8 @@ describe('Definition', () => {
         interactive
         definition={
           <>
-            The original desktop app. Download it <a href="/get-started">here</a>.
+            The original desktop app. Download it{' '}
+            <a href="/get-started">here</a>.
           </>
         }
       >

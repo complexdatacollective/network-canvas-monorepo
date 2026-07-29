@@ -803,6 +803,9 @@ export function SummerUpdatePage() {
                     </div>
                     {compatibilityRows.map((row, index) => {
                       const previousGroup = compatibilityRows[index - 1]?.group;
+                      const hasClassicAppDefinition =
+                        row.id === 'architectClassic' ||
+                        row.id === 'interviewerClassic';
                       return (
                         <div key={`${row.app}-${row.version ?? 'current'}`}>
                           {row.group !== previousGroup ? (
@@ -822,14 +825,6 @@ export function SummerUpdatePage() {
                                 'bg-sea-serpent/10',
                             )}
                           >
-                            <span className="text-text font-bold">
-                              {renderCompatibilityAppName(row.id, row.app)}{' '}
-                              {row.version ? (
-                                <span className="font-monospace text-xs font-normal text-current/50">
-                                  {row.version}
-                                </span>
-                              ) : null}
-                            </span>
                             <button
                               type="button"
                               aria-label={t(
@@ -849,15 +844,38 @@ export function SummerUpdatePage() {
                                 },
                               )}
                               aria-pressed={selectedCompatibilityRow === index}
-                              className="focusable col-span-3 grid grid-cols-3 items-center gap-4 text-left"
+                              className="focusable col-span-4 grid grid-cols-4 items-center gap-4 text-left"
                               onClick={() => setSelectedCompatibilityRow(index)}
                             >
+                              <span
+                                className={cn(
+                                  'text-text font-bold',
+                                  hasClassicAppDefinition && 'invisible',
+                                )}
+                              >
+                                {row.app}{' '}
+                                {row.version ? (
+                                  <span className="font-monospace text-xs font-normal text-current/50">
+                                    {row.version}
+                                  </span>
+                                ) : null}
+                              </span>
                               <span className="text-sm text-current/65">
                                 {row.platform}
                               </span>
                               <StatusChip status={row.schema7} />
                               <StatusChip status={row.schema8} />
                             </button>
+                            {hasClassicAppDefinition ? (
+                              <span className="text-text z-10 col-start-1 row-start-1 font-bold">
+                                {renderCompatibilityAppName(row.id, row.app)}{' '}
+                                {row.version ? (
+                                  <span className="font-monospace text-xs font-normal text-current/50">
+                                    {row.version}
+                                  </span>
+                                ) : null}
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                       );
