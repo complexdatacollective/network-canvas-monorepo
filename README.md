@@ -106,6 +106,24 @@ pnpm --filter "./packages/*" build
 pnpm --filter "./apps/*" dev
 ```
 
+### Architect Template Editor Mode
+
+Architect includes a development-only template editor mode for maintainers of
+the bundled research templates. Start it from the monorepo root:
+
+```bash
+pnpm --filter @codaco/architect dev:protocols
+```
+
+Open a protocol from Architect's **Templates** tab (or the Sample or
+Development protocol), then use **Save to source** in the editor toolbar. The
+mode validates the protocol and writes it back to its canonical entry in
+[`packages/protocols`](./packages/protocols), including the associated assets.
+It also removes asset files that the saved protocol no longer references, so
+review the resulting Git diff before committing. This workflow is unavailable
+in production builds and does not save ordinary protocols created or imported
+by a researcher.
+
 ### Working with Cloudflare Workers
 
 ```bash
