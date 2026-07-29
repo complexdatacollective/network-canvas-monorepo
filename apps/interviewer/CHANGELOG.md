@@ -1,5 +1,23 @@
 # @codaco/interviewer
 
+## 8.0.0-beta.10
+
+### Minor Changes
+
+- Finished interviews can now be reviewed without saving changes, or marked
+  unfinished when further editing is needed.
+
+### Patch Changes
+
+- Bring the Import a protocol card to the front when a protocol file is dragged
+  over Interviewer, and improve the card's text and icon scaling on smaller
+  screens.
+- The installed app's icon is now optically centred, correcting a slight rightward
+  lean, and renders at a consistent size whether the app was installed from Safari
+  or Chrome.
+- Interview text now scales smoothly with your screen size — comfortably compact
+  on smaller screens and larger on wide or high-resolution displays.
+
 ## 8.0.0-beta.9
 
 ### Minor Changes
