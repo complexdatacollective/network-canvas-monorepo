@@ -602,62 +602,66 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       />
       <AnimatePresence initial={false}>
         {selectionGroupOptions.length > 0 && (
-          <MotionSurface
+          <div
             key="selection-group-membership"
-            floating
-            noContainer
-            shadow="sm"
-            spacing="none"
-            initial={{ x: '-50%', y: '120%', scale: 0.96, opacity: 0 }}
-            animate={{ x: '-50%', y: 0, scale: 1, opacity: 1 }}
-            exit={{ x: '-50%', y: '120%', scale: 0.96, opacity: 0 }}
-            transition={
-              shouldReduceMotion
-                ? { duration: 0 }
-                : {
-                    default: {
-                      type: 'spring',
-                      stiffness: 180,
-                      damping: 22,
-                      mass: 1.25,
-                    },
-                    opacity: { duration: 0.2 },
-                  }
-            }
-            className="absolute bottom-4 left-1/2 z-10 w-full max-w-4xl"
+            className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center pr-4 pl-24 min-[68rem]:px-4"
           >
-            <ScrollArea
-              aria-label="Group membership options"
-              orientation="vertical"
-              className="h-auto max-h-64 max-w-full"
-              viewportClassName="px-3"
-            >
-              <ToggleGroup
-                multiple
-                aria-label="Group membership for selected people"
-                value={selectedGroupValues}
-                onValueChange={handleSelectionGroupValueChange}
-                className="grid w-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(--spacing(36),1fr))] gap-2"
-              >
-                {selectionGroupOptions.map((option) => (
-                  <Toggle
-                    key={option.value}
-                    value={option.value}
-                    className="focusable spring-short h-full min-w-0 rounded border-2 border-transparent px-3 py-2 text-sm leading-tight font-medium wrap-break-word text-white shadow data-pressed:border-white data-pressed:font-bold data-pressed:shadow-xl data-pressed:ring-4 data-pressed:ring-white/80 data-pressed:ring-inset"
-                    style={
-                      option.colorIndex !== undefined
-                        ? {
-                            backgroundColor: `var(--cat-${option.colorIndex})`,
-                          }
-                        : undefined
+            <MotionSurface
+              floating
+              noContainer
+              shadow="sm"
+              spacing="none"
+              initial={{ y: '120%', scale: 0.96, opacity: 0 }}
+              animate={{ y: 0, scale: 1, opacity: 1 }}
+              exit={{ y: '120%', scale: 0.96, opacity: 0 }}
+              transition={
+                shouldReduceMotion
+                  ? { duration: 0 }
+                  : {
+                      default: {
+                        type: 'spring',
+                        stiffness: 180,
+                        damping: 22,
+                        mass: 1.25,
+                      },
+                      opacity: { duration: 0.2 },
                     }
-                  >
-                    {option.label}
-                  </Toggle>
-                ))}
-              </ToggleGroup>
-            </ScrollArea>
-          </MotionSurface>
+              }
+              className="pointer-events-auto w-full max-w-4xl"
+            >
+              <ScrollArea
+                aria-label="Group membership options"
+                orientation="vertical"
+                className="h-auto max-h-64 max-w-full"
+                viewportClassName="px-3"
+              >
+                <ToggleGroup
+                  multiple
+                  aria-label="Group membership for selected people"
+                  value={selectedGroupValues}
+                  onValueChange={handleSelectionGroupValueChange}
+                  className="grid w-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(--spacing(36),1fr))] gap-2"
+                >
+                  {selectionGroupOptions.map((option) => (
+                    <Toggle
+                      key={option.value}
+                      value={option.value}
+                      className="focusable spring-short h-full min-w-0 rounded border-2 border-transparent px-3 py-2 text-sm leading-tight font-medium wrap-break-word text-white shadow data-pressed:border-white data-pressed:font-bold data-pressed:shadow-xl data-pressed:ring-4 data-pressed:ring-white/80 data-pressed:ring-inset"
+                      style={
+                        option.colorIndex !== undefined
+                          ? {
+                              backgroundColor: `var(--cat-${option.colorIndex})`,
+                            }
+                          : undefined
+                      }
+                    >
+                      {option.label}
+                    </Toggle>
+                  ))}
+                </ToggleGroup>
+              </ScrollArea>
+            </MotionSurface>
+          </div>
         )}
       </AnimatePresence>
       <ComposerCanvas

@@ -528,6 +528,21 @@ export const networkComposerScenarios: InterfaceScenarios = {
           1,
         );
 
+        await page.setViewportSize({ width: 768, height: 1024 });
+        const toolbarBox = await page
+          .getByRole('toolbar', { name: 'Network composer tools' })
+          .boundingBox();
+        const membershipGroupBox = await membershipGroup.boundingBox();
+        if (toolbarBox === null || membershipGroupBox === null) {
+          throw new Error(
+            'Toolbar or group membership selector is not visible',
+          );
+        }
+        expect(membershipGroupBox.x).toBeGreaterThanOrEqual(
+          toolbarBox.x + toolbarBox.width,
+        );
+        await page.setViewportSize({ width: 1920, height: 1080 });
+
         await composer.getSelectionBarButton('Work').click();
         await expect(composer.getSelectionBarButton('Work')).toHaveAttribute(
           'aria-pressed',
