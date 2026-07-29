@@ -14,27 +14,27 @@ variable from prompt options, and the census/pedigree nomination prompts write
 directly. A validation rule configured on such a variable is never enforced by
 that writer.
 
-That is harmless until the same variable is *also* rendered in a form, at which
+That is harmless until the same variable is _also_ rendered in a form, at which
 point the form validates values an unvalidated writer set. Measured on a
 protocol where two variables sit in both a name generator's form and a
 following bin stage: 57 of 80 generated nodes fail validation, versus 0 of 80
 with the form alone — 45 failing `minSelected: 2` and 24 failing
 `differentFrom`.
 
-A second, related defect: CategoricalBin's `otherVariable` *is* rendered in a
+A second, related defect: CategoricalBin's `otherVariable` _is_ rendered in a
 `Field`, but that field hard-codes `required` and never receives the codebook
 variable's validation — a form-rendered yet unvalidated writer.
 
 ## Decisions
 
-| Decision | Choice | Why |
-| --- | --- | --- |
-| Rule | A variable may not be referenced by both a **validatedAttribute** writer and an **unvalidatedAttribute** writer | The mechanism, not the UI context, is what makes dual use incoherent |
-| Classification | Declarative `usage` tags on `entityAttributeReference` descriptors at writer sites, static in the schema source | Variable moves reclassify automatically (the collector walks the protocol against the schema); only a new stage schema ever writes a tag, which forces the classification decision at exactly the right moment. A hand-maintained path list would silently drift |
-| Tag scope | Every attribute-writing site in schema 8, this project | The taxonomy names the hazard generally; bins are just the measured instance. Read-only references stay untagged and outside the rule |
-| Enforcement | Architect editor gates + a non-destructive protocol-wide alert. **No schema rejection, no export block** | A hard rejection cannot be paired with a repairing migration — stripping either side destroys research design (the form field loses data collection; the stage loses an interview step). Pre-existing conflicts must be researcher-resolved |
-| `otherVariable` | Redesigned into a proper validated writer (see below), classified `validatedAttribute` | Fixes the form-rendered-yet-unvalidated defect at its root instead of fencing it off |
-| Sequencing | Branch from `main` after PR #1107 (validation contradictions) merges | Reuses its editor machinery: `makeFieldEditorValidate`, the save-gate `_error` patterns, the behaviour-test harness |
+| Decision        | Choice                                                                                                          | Why                                                                                                                                                                                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rule            | A variable may not be referenced by both a **validatedAttribute** writer and an **unvalidatedAttribute** writer | The mechanism, not the UI context, is what makes dual use incoherent                                                                                                                                                                                             |
+| Classification  | Declarative `usage` tags on `entityAttributeReference` descriptors at writer sites, static in the schema source | Variable moves reclassify automatically (the collector walks the protocol against the schema); only a new stage schema ever writes a tag, which forces the classification decision at exactly the right moment. A hand-maintained path list would silently drift |
+| Tag scope       | Every attribute-writing site in schema 8, this project                                                          | The taxonomy names the hazard generally; bins are just the measured instance. Read-only references stay untagged and outside the rule                                                                                                                            |
+| Enforcement     | Architect editor gates + a non-destructive protocol-wide alert. **No schema rejection, no export block**        | A hard rejection cannot be paired with a repairing migration — stripping either side destroys research design (the form field loses data collection; the stage loses an interview step). Pre-existing conflicts must be researcher-resolved                      |
+| `otherVariable` | Redesigned into a proper validated writer (see below), classified `validatedAttribute`                          | Fixes the form-rendered-yet-unvalidated defect at its root instead of fencing it off                                                                                                                                                                             |
+| Sequencing      | Branch from `main` after PR #1107 (validation contradictions) merges                                            | Reuses its editor machinery: `makeFieldEditorValidate`, the save-gate `_error` patterns, the behaviour-test harness                                                                                                                                              |
 
 ### The `otherVariable` redesign
 
@@ -63,12 +63,12 @@ migrated to v8 classifies identically to a native v8 one.
 
 **validatedAttribute** — writers that apply codebook validation:
 
-| Site | Path |
-| --- | --- |
-| `FormFieldSchema.variable` | `stages[].form.fields[].variable` (EgoForm, AlterForm, AlterEdgeForm, NameGenerator) and `stages[].nodeConfig.form[].variable` (FamilyPedigree) |
-| `ComposerFormFieldSchema.variable` | `stages[].nodeForm.fields[].variable`, `stages[].edges[].form.fields[].variable` (NetworkComposer) |
-| `NameGeneratorQuickAdd.quickAdd` | `stages[].quickAdd` — validated **after this project's redesign**: today `QuickNodeForm` passes hard-coded `required` + `minLength: 1` and ignores codebook rules; the rewire threads the codebook variable's validation through the same field-metadata path, exactly like the `otherVariable` redesign. The migration sets `required: true` on quickAdd targets unless already `true`, and Architect seeds `required: true` on newly created quickAdd variables. (NetworkComposer's `quickAdd` has no field machinery — direct `addNode` — and stays `unvalidatedAttribute`.) |
-| `categoricalBinPromptSchema.otherVariable` | `stages[].prompts[].otherVariable` — validated after the redesign above |
+| Site                                       | Path                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FormFieldSchema.variable`                 | `stages[].form.fields[].variable` (EgoForm, AlterForm, AlterEdgeForm, NameGenerator) and `stages[].nodeConfig.form[].variable` (FamilyPedigree)                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `ComposerFormFieldSchema.variable`         | `stages[].nodeForm.fields[].variable`, `stages[].edges[].form.fields[].variable` (NetworkComposer)                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `NameGeneratorQuickAdd.quickAdd`           | `stages[].quickAdd` — validated **after this project's redesign**: today `QuickNodeForm` passes hard-coded `required` + `minLength: 1` and ignores codebook rules; the rewire threads the codebook variable's validation through the same field-metadata path, exactly like the `otherVariable` redesign. The migration sets `required: true` on quickAdd targets unless already `true`, and Architect seeds `required: true` on newly created quickAdd variables. (NetworkComposer's `quickAdd` has no field machinery — direct `addNode` — and stays `unvalidatedAttribute`.) |
+| `categoricalBinPromptSchema.otherVariable` | `stages[].prompts[].otherVariable` — validated after the redesign above                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 **unvalidatedAttribute** — writers that bypass validation (the definitive
 sweep, every site traced to its interview dispatch): OrdinalBin and
@@ -80,7 +80,7 @@ Sociogram `prompts[].highlight.variable` (tap toggle) and
 Geospatial `prompts[].variable`; FamilyPedigree
 `nominationPrompts[].variable` (toggle) and all eight
 `nodeConfig`/`edgeConfig` variables (wizard/transform writes); NetworkComposer
-`quickAdd`, `layoutVariable`, and `convexHullVariable`.
+`quickAdd` and `layoutVariable`.
 
 **Read-only (untagged for usage, outside the rule)**: Narrative preset
 `layoutVariable`/`groupVariable`/`highlight[]`, NarrativePedigree
@@ -88,6 +88,19 @@ Geospatial `prompts[].variable`; FamilyPedigree
 six validation reference rules, shape-mapping variables, filter-rule
 attributes, and the untagged sort keys. DyadCensus and OneToManyDyadCensus
 create edges only and write no attributes.
+
+**Untagged by decision, despite writing**: NetworkComposer
+`convexHullVariable`. This slot does persist attribute values — the Groups
+tool and lasso bulk-add write group membership directly
+(`toggleGroupMembership`/`addGroupMembership` → `updateNode`, no codebook
+rules applied) — but it is deliberately left untagged so grouping/display use
+never restricts a variable's use elsewhere, extending to it the authoring
+freedom Narrative's `groupVariable`/`highlight` presets get (commit
+`9e5365c63`; `32dad0950` removed the matching Architect picker exclusion and
+save-time gate). Accepted trade-off: a variable used both as a validated
+composer form field and as `convexHullVariable` can acquire membership values
+the form's rules would reject (e.g. a `maxSelected: 1` categorical gaining a
+second value), and `findVariableRoleConflicts` will not report the pairing.
 
 Two collector facts the implementation must handle: the FamilyPedigree and
 NarrativePedigree stages declare no top-level `subject`, so their hits carry
