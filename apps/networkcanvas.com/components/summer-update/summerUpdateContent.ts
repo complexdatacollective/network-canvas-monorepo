@@ -281,7 +281,6 @@ export function useSummerUpdateContent() {
         : 'compatibility.groups.new',
     ),
     platform: t(`compatibility.rows.${row.id}.platform`),
-    note: t(`compatibility.rows.${row.id}.note`),
   }));
 
   const destinationLinks: Destination[] = destinationDefinitions.map(

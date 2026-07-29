@@ -451,6 +451,37 @@ describe('SummerUpdatePage', () => {
     ).toBeInTheDocument();
   });
 
+  it('explains every Classic app term and provides an accessible download link', () => {
+    renderWithIntl(<SummerUpdatePage />);
+
+    const architectClassicTerms = screen.getAllByRole('button', {
+      name: 'Architect Classic',
+    });
+    const interviewerClassicTerms = screen.getAllByRole('button', {
+      name: 'Interviewer Classic',
+    });
+
+    expect(architectClassicTerms).toHaveLength(6);
+    expect(interviewerClassicTerms).toHaveLength(5);
+
+    const [architectClassicTerm] = architectClassicTerms;
+    if (!architectClassicTerm) {
+      throw new Error('Expected an Architect Classic definition trigger.');
+    }
+
+    fireEvent.click(architectClassicTerm);
+
+    expect(
+      screen.getByText(
+        'The original downloadable desktop app for designing Network Canvas protocols. It remains available for in-progress studies and is fully supported, but is in maintenance mode and will not receive new features.',
+      ),
+    ).toBeInTheDocument();
+
+    const downloadLink = screen.getByRole('link', { name: 'here' });
+    expect(downloadLink).toHaveAttribute('href', '/get-started');
+    expect(downloadLink).not.toHaveAttribute('tabindex', '-1');
+  });
+
   it('introduces the redesigned project website and documentation', () => {
     renderWithIntl(<SummerUpdatePage />);
 
@@ -652,6 +683,25 @@ describe('SummerUpdatePage', () => {
         name: 'Panel de Interviewer que muestra tarjetas de protocolos y una acción para reanudar una entrevista',
       }),
     ).toBeInTheDocument();
+
+    const [architectClassicTerm] = screen.getAllByRole('button', {
+      name: 'Architect Classic',
+    });
+    if (!architectClassicTerm) {
+      throw new Error('Expected an Architect Classic definition trigger.');
+    }
+
+    fireEvent.click(architectClassicTerm);
+
+    expect(
+      screen.getByText(
+        'La aplicación de escritorio descargable original para diseñar protocolos de Network Canvas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'aquí' })).toHaveAttribute(
+      'href',
+      '/get-started',
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Anonimización' }));
 

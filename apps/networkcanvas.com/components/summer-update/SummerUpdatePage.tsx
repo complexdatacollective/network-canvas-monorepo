@@ -15,12 +15,18 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Definition from '@codaco/fresco-ui/Definition';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@codaco/fresco-ui/Popover';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
 import { Footer } from '~/components/layout/Footer';
 import { Reveal } from '~/components/ui/Reveal';
 import { cn } from '~/lib/cn';
+import { Link } from '~/lib/i18n/navigation';
 
 import { ActionButton } from './ActionButton';
 import { BenefitCard } from './BenefitCard';
@@ -47,6 +53,84 @@ function renderDefinitionName(chunks: ReactNode) {
 
 function renderStrong(chunks: ReactNode) {
   return <strong>{chunks}</strong>;
+}
+
+type ClassicAppId = 'architectClassic' | 'interviewerClassic';
+
+function renderGetStartedLink(chunks: ReactNode) {
+  return (
+    <Link
+      className="text-link focusable rounded-sm underline underline-offset-3"
+      href="/get-started"
+    >
+      {chunks}
+    </Link>
+  );
+}
+
+function ClassicAppDefinition({
+  app,
+  children,
+}: {
+  app: ClassicAppId;
+  children: ReactNode;
+}) {
+  const t = useTranslations('SummerUpdate');
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="text-link focusable inline-block cursor-help rounded-sm underline decoration-dashed decoration-2 underline-offset-3"
+        >
+          {children}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-max max-w-[min(var(--available-width),var(--container-sm))] text-pretty">
+        <Paragraph intent="smallText" margin="none">
+          {t(`definitions.${app}.description`)}
+        </Paragraph>
+        <Paragraph intent="smallText" margin="none" className="mt-3">
+          {t.rich(`definitions.${app}.download`, {
+            link: renderGetStartedLink,
+          })}
+        </Paragraph>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function renderArchitectClassic(chunks: ReactNode) {
+  return (
+    <ClassicAppDefinition app="architectClassic">{chunks}</ClassicAppDefinition>
+  );
+}
+
+function renderInterviewerClassic(chunks: ReactNode) {
+  return (
+    <ClassicAppDefinition app="interviewerClassic">
+      {chunks}
+    </ClassicAppDefinition>
+  );
+}
+
+function renderCompatibilityAppName(id: string, app: string) {
+  if (id === 'architectClassic') {
+    return (
+      <ClassicAppDefinition app="architectClassic">{app}</ClassicAppDefinition>
+    );
+  }
+
+  if (id === 'interviewerClassic') {
+    return (
+      <ClassicAppDefinition app="interviewerClassic">
+        {app}
+      </ClassicAppDefinition>
+    );
+  }
+
+  return app;
 }
 
 function ProgressiveWebAppTerm({
@@ -159,7 +243,12 @@ export function SummerUpdatePage() {
       ? undefined
       : compatibilityRows[selectedCompatibilityRow];
   const compatibilityNote =
-    selectedCompatibility?.note ?? t('compatibility.defaultNote');
+    selectedCompatibility === undefined
+      ? t('compatibility.defaultNote')
+      : t.rich(`compatibility.rows.${selectedCompatibility.id}.note`, {
+          architectClassic: renderArchitectClassic,
+          interviewerClassic: renderInterviewerClassic,
+        });
   if (!activeInterface) return null;
 
   return (
@@ -227,6 +316,8 @@ export function SummerUpdatePage() {
               <AlertTitle>{t('overview.classic.title')}</AlertTitle>
               <AlertDescription>
                 {t.rich('overview.classic.description', {
+                  architectClassic: renderArchitectClassic,
+                  interviewerClassic: renderInterviewerClassic,
                   strong: renderStrong,
                 })}
               </AlertDescription>
@@ -314,7 +405,9 @@ export function SummerUpdatePage() {
                   emphasis="muted"
                   className="mt-6 text-current/55"
                 >
-                  {t('apps.architect.classicNote')}
+                  {t.rich('apps.architect.classicNote', {
+                    architectClassic: renderArchitectClassic,
+                  })}
                 </Paragraph>
               </Reveal>
 
@@ -400,7 +493,10 @@ export function SummerUpdatePage() {
                   emphasis="muted"
                   className="mt-6 text-current/55"
                 >
-                  {t('apps.interviewer.classicNote')}
+                  {t.rich('apps.interviewer.classicNote', {
+                    architectClassic: renderArchitectClassic,
+                    interviewerClassic: renderInterviewerClassic,
+                  })}
                 </Paragraph>
               </Reveal>
 
@@ -768,42 +864,50 @@ export function SummerUpdatePage() {
                               {row.group}
                             </div>
                           ) : null}
-                          <button
-                            type="button"
-                            aria-label={t(
-                              row.version
-                                ? 'compatibility.rowAccessibleNameWithVersion'
-                                : 'compatibility.rowAccessibleName',
-                              {
-                                app: row.app,
-                                platform: row.platform,
-                                schema7: t(
-                                  `compatibility.statuses.${row.schema7}`,
-                                ),
-                                schema8: t(
-                                  `compatibility.statuses.${row.schema8}`,
-                                ),
-                                version: row.version ?? '',
-                              },
+                          <div
+                            className={cn(
+                              'border-text/10 has-[button:hover]:bg-text/5 grid grid-cols-4 items-center gap-4 border-t px-6 py-4 transition first:border-t-0',
+                              selectedCompatibilityRow === index &&
+                                'bg-sea-serpent/10',
                             )}
-                            aria-pressed={selectedCompatibilityRow === index}
-                            className="focusable border-text/10 hover:bg-text/5 aria-pressed:bg-sea-serpent/10 grid w-full grid-cols-4 items-center gap-4 border-t px-6 py-4 text-left transition first:border-t-0"
-                            onClick={() => setSelectedCompatibilityRow(index)}
                           >
                             <span className="text-text font-bold">
-                              {row.app}{' '}
+                              {renderCompatibilityAppName(row.id, row.app)}{' '}
                               {row.version ? (
                                 <span className="font-monospace text-xs font-normal text-current/50">
                                   {row.version}
                                 </span>
                               ) : null}
                             </span>
-                            <span className="text-sm text-current/65">
-                              {row.platform}
-                            </span>
-                            <StatusChip status={row.schema7} />
-                            <StatusChip status={row.schema8} />
-                          </button>
+                            <button
+                              type="button"
+                              aria-label={t(
+                                row.version
+                                  ? 'compatibility.rowAccessibleNameWithVersion'
+                                  : 'compatibility.rowAccessibleName',
+                                {
+                                  app: row.app,
+                                  platform: row.platform,
+                                  schema7: t(
+                                    `compatibility.statuses.${row.schema7}`,
+                                  ),
+                                  schema8: t(
+                                    `compatibility.statuses.${row.schema8}`,
+                                  ),
+                                  version: row.version ?? '',
+                                },
+                              )}
+                              aria-pressed={selectedCompatibilityRow === index}
+                              className="focusable col-span-3 grid grid-cols-3 items-center gap-4 text-left"
+                              onClick={() => setSelectedCompatibilityRow(index)}
+                            >
+                              <span className="text-sm text-current/65">
+                                {row.platform}
+                              </span>
+                              <StatusChip status={row.schema7} />
+                              <StatusChip status={row.schema8} />
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -844,7 +948,9 @@ export function SummerUpdatePage() {
                   </Paragraph>
                   <Paragraph className="border-mustard/35 bg-mustard/10 rounded-sm border p-4">
                     {t.rich('compatibility.caution.fileNote', {
+                      architectClassic: renderArchitectClassic,
                       file: renderProtocolFile,
+                      interviewerClassic: renderInterviewerClassic,
                     })}
                   </Paragraph>
                 </div>
@@ -891,7 +997,10 @@ export function SummerUpdatePage() {
                     {t('compatibility.upgrade.ongoing.heading')}
                   </Heading>
                   <Paragraph className="">
-                    {t('compatibility.upgrade.ongoing.description')}
+                    {t.rich('compatibility.upgrade.ongoing.description', {
+                      architectClassic: renderArchitectClassic,
+                      interviewerClassic: renderInterviewerClassic,
+                    })}
                   </Paragraph>
                 </Surface>
               </Reveal>

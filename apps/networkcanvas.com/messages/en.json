@@ -272,7 +272,15 @@
     },
     "definitions": {
       "pwa": "<dfn>Progressive Web Apps</dfn> are specially crafted websites that can be installed on your device and provide a native app-like experience. This means they have an icon you can click to open them, they have their own storage, and they work offline.",
-      "protocolSchema": "Protocol Schemas are the technical specifications that define how protocol files are structured and interpreted by the apps. They ensure that protocols are compatible across different versions of the apps and provide a framework for implementing new features and interfaces."
+      "protocolSchema": "Protocol Schemas are the technical specifications that define how protocol files are structured and interpreted by the apps. They ensure that protocols are compatible across different versions of the apps and provide a framework for implementing new features and interfaces.",
+      "architectClassic": {
+        "description": "The original downloadable desktop app for designing Network Canvas protocols. It remains available for in-progress studies and is fully supported, but is in maintenance mode and will not receive new features.",
+        "download": "Download it <link>here</link>."
+      },
+      "interviewerClassic": {
+        "description": "The original downloadable desktop and tablet app for collecting interview data. It remains available for in-progress studies and is fully supported, but is in maintenance mode and will not receive new features.",
+        "download": "Download it <link>here</link>."
+      }
     },
     "common": {
       "documentation": "Documentation"
@@ -301,7 +309,7 @@
       },
       "classic": {
         "title": "What about the original desktop and tablet apps?",
-        "description": "The original desktop and tablet apps are now named <strong>Architect Classic</strong> and <strong>Interviewer Classic</strong>. They remain available for in-progress studies and are <strong>fully supported</strong>, but are in maintenance mode and will not receive new features."
+        "description": "The original desktop and tablet apps are now named <architectClassic>Architect Classic</architectClassic> and <interviewerClassic>Interviewer Classic</interviewerClassic>. They remain available for in-progress studies and are <strong>fully supported</strong>, but are in maintenance mode and will not receive new features."
       }
     },
     "apps": {
@@ -317,7 +325,7 @@
           "templates": "Includes <strong>protocol templates</strong>, designed to help you get started quickly and avoid common mistakes"
         },
         "open": "Open Architect",
-        "classicNote": "Architect Classic remains available for researchers who need to keep using older versions of Interviewer (e.g. 6.6.0). It is in maintenance mode — bug fixes only — and continues to produce Schema 7 protocols."
+        "classicNote": "<architectClassic>Architect Classic</architectClassic> remains available for researchers who need to keep using older versions of Interviewer (e.g. 6.6.0). It is in maintenance mode — bug fixes only — and continues to produce Schema 7 protocols."
       },
       "interviewer": {
         "label": "Face-to-face interviews",
@@ -331,7 +339,7 @@
           "compatibility": "Compatible with all desktop and tablet devices, including iPads and Android tablets"
         },
         "open": "Open Interviewer",
-        "classicNote": "Interviewer Classic remains available for in-progress studies. Like Architect Classic, it is in maintenance mode only, and does not benefit from new features."
+        "classicNote": "<interviewerClassic>Interviewer Classic</interviewerClassic> remains available for in-progress studies. Like <architectClassic>Architect Classic</architectClassic>, it is in maintenance mode only, and does not benefit from new features."
       },
       "fresco": {
         "label": "Remote self-administered interviews",
@@ -575,11 +583,11 @@
       "rows": {
         "interviewerClassic": {
           "platform": "Desktop & tablet",
-          "note": "Interviewer Classic runs Schema 7 natively, but cannot open Schema 8 protocols. Continue using it for in-progress Schema 7 studies — it remains supported with bug fixes."
+          "note": "<interviewerClassic>Interviewer Classic</interviewerClassic> runs Schema 7 natively, but cannot open Schema 8 protocols. Continue using it for in-progress Schema 7 studies — it remains supported with bug fixes."
         },
         "architectClassic": {
           "platform": "Desktop",
-          "note": "Architect Classic continues to produce Schema 7 protocols, in maintenance mode. Use it only if you need to keep running older versions of Interviewer (e.g. 6.6.0)."
+          "note": "<architectClassic>Architect Classic</architectClassic> continues to produce Schema 7 protocols, in maintenance mode. Use it only if you need to keep running older versions of Interviewer (e.g. 6.6.0)."
         },
         "frescoClassic": {
           "platform": "Browser",
@@ -591,7 +599,7 @@
         },
         "architect": {
           "platform": "Browser & PWA",
-          "note": "The new Architect builds Schema 8 protocols, and opens and automatically upgrades older Schema 7 protocols created in Architect Classic."
+          "note": "The new Architect builds Schema 8 protocols, and opens and automatically upgrades older Schema 7 protocols created in <architectClassic>Architect Classic</architectClassic>."
         },
         "fresco": {
           "platform": "Browser",
@@ -606,7 +614,7 @@
         "label": "Caution",
         "heading": "Protocol migration is one-way.",
         "description": "If you open a Schema 7 protocol in any new-generation app, it will be automatically upgraded to Schema 8. You will not be able to convert it back, or open it in the older apps afterward. This is especially important if you make changes to a protocol in Architect, as it will be upgraded to Schema 8 when you save it.",
-        "fileNote": "Keep a copy of your original <file>.netcanvas</file> file if you need to continue running it in Interviewer Classic, Architect Classic, or Fresco 3.x."
+        "fileNote": "Keep a copy of your original <file>.netcanvas</file> file if you need to continue running it in <interviewerClassic>Interviewer Classic</interviewerClassic>, <architectClassic>Architect Classic</architectClassic>, or Fresco 3.x."
       },
       "upgrade": {
         "label": "Should you upgrade?",
@@ -619,7 +627,7 @@
         "ongoing": {
           "label": "Running an ongoing study?",
           "heading": "There is no rush!",
-          "description": "Interviewer Classic and Architect Classic are still supported and will continue to receive bug fixes. Upgrade at a time that suits your project — just be mindful of the one-way migration when you do."
+          "description": "<interviewerClassic>Interviewer Classic</interviewerClassic> and <architectClassic>Architect Classic</architectClassic> are still supported and will continue to receive bug fixes. Upgrade at a time that suits your project — just be mindful of the one-way migration when you do."
         }
       }
     },
