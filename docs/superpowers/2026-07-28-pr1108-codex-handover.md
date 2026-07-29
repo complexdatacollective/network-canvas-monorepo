@@ -27,39 +27,100 @@ job; expect more waves after every push.
 
 ## Immediate state triage (do this first)
 
-1. `git status` — the tree may hold **uncommitted work from four subagent
-   tasks that were mid-flight at handover**. Expected file sets:
-   - **(a) feasibility/entityCounts wave**: `constraints/feasibility.ts`,
-     `constraints/entityCounts.ts`, their tests. Covers four review threads:
-     empty-subject form scopes (`PRRT_...UjLZy`), partial equality-group
-     writes (`PRRT_...UjLZ1`), roster keys counted once (`PRRT_...Ujybr`),
-     pedigree pins unpinned by later writers (`PRRT_...Ujybl`). Plus two
-     chores: the `copies` doc in entityCounts (stale since one-key-one-node),
-     and a stale comment at `feasibility.test.ts:1603` naming
-     `reserveFamilyPedigreeEgoValues` (renamed `...FixedValues`).
-   - **(b) buildConstraints wave**: `constraints/buildConstraints.ts`, maybe
-     `dateWindow.ts`/`attributes.ts`/`generateNetwork.ts`. Covers two threads:
-     truncate finer-than-picker date bounds before calendar validation
-     (`PRRT_...UjLZ3`), and NetworkComposer field `component`/`parameters`
-     overlays folded into constraint building (`PRRT_...UjLZ7`).
-   - **(c) ego baseline artefacts**: ONE ARIA snapshot
+1. `git status` — the tree may hold **uncommitted work from subagent tasks
+   mid-flight at handover**. Sets (a) and (d) LANDED (`ce16e21d1`,
+   `e2074fb37`); only (b) and (c) may still be uncommitted or half-applied.
+   - **(a) feasibility/entityCounts — COMMITTED `ce16e21d1`.** Empty-subject
+     form scopes, roster-keys-counted-once, and pedigree-pins-unpinned-by-
+     later-writers all VALID and fixed. Partial equality-group writes
+     REFUTED: the runtime's `sameAs` does no-op on an absent referent, but
+     the draw folds the whole group's bounds before `only` decides what is
+     emitted, so the unwritten sibling's `minLength` lands on the rendered
+     member's value and breaks its own `maxLength`. **Those four threads
+     still need replies + `resolveReviewThread`** (step 3).
+   - **(b) buildConstraints — MAY BE UNCOMMITTED**: `buildConstraints.ts`,
+     possibly `dateWindow.ts`/`attributes.ts`/`generateNetwork.ts`, plus an
+     untracked `composerRenderings.ts` + test. Two threads: truncate
+     finer-than-picker date bounds before calendar validation
+     (`PRRT_...UjLZ3`), and NetworkComposer `component`/`parameters` overlays
+     folded into constraint building (`PRRT_...UjLZ7`). Its test had
+     unresolved type errors at handover (branded
+     `EntityAttributeReference` strings, a `ComponentType` import) — finish
+     it; the design intent is in the thread and in the reconciliation spec's
+     executor notes, which flag the same premise.
+   - **(c) ego baseline artefacts — MAY BE UNCOMMITTED**: ONE ARIA snapshot
      (`packages/interview/e2e/aria-snapshots/chromium/matrix-ego-form-egoform-pre-population-from-ego-attributes-initial.aria.yml`)
      regenerated via the e2e harness, and `packages/interface-images`
      EgoForm WebPs (all-or-nothing generator; non-EgoForm drift must be
      `git restore`d). ARIA files must NEVER be hand-authored.
-   - **(d) story-pin fixes**: `Narrative.stories.tsx` (bare strings on a
-     categorical — must be arrays), `FamilyPedigree.consanguinity.stories.tsx`
-     - `.cousins.stories.tsx` (codebook option lists vs `['biological']`
-       pins). Hard rule: if a fix moves the rendered output, leave that story
-       unfixed and report — Chromatic baselines are the user's to accept.
+   - **(d) story-pin fixes — COMMITTED `e2074fb37`.** For the pedigree
+     stories the pins were right and the codebooks wrong: the schema's
+     `checkLockedOptions` requires a pedigree's relationship options to equal
+     `RELATIONSHIP_TYPE_OPTIONS` exactly. Three further story files carry the
+     same invalid list without pins — a task chip was filed, not fixed here.
 2. For each set present: verify it (tests below), commit it as its own
    feature commit, mutation-check anything that looks unproven. For any set
    half-applied or broken: prefer completing it over reverting; the intent
    for each is fully specified in the review threads themselves.
+
+   **Exact tree state when the session ended** (both remaining agents were
+   killed mid-task by the usage limit, so these are PARTIAL):
+
+   ```
+   M packages/interview/e2e/aria-snapshots/chromium/matrix-ego-form-egoform-pre-population-from-ego-attributes-initial.aria.yml
+   M packages/protocol-utilities/src/SyntheticInterview.ts
+   M packages/protocol-utilities/src/generateNetwork.ts
+   M packages/protocol-utilities/src/generateNetwork/constraints/buildConstraints.ts
+   M packages/protocol-utilities/src/generateNetwork/constraints/dateWindow.ts
+   M packages/protocol-utilities/src/generateNetwork/constraints/__tests__/buildConstraints.test.ts
+   ?? packages/protocol-utilities/src/generateNetwork/constraints/composerRenderings.ts
+   ?? packages/protocol-utilities/src/generateNetwork/constraints/__tests__/composerRenderings.test.ts
+   ?? packages/interview/e2e/aria-snapshots/chromium/ego-form-egoform-required-validation-and-pulse-initial.aria.yml
+   ?? packages/interview/e2e/specs/matrix/zzdebug.spec.ts
+   ```
+
+   - The ARIA agent had reported "only the expected file changed" and was
+     verifying the paired `-final` file when killed. **The untracked
+     `ego-form-egoform-required-validation-and-pulse-initial.aria.yml` is
+     unexplained** — investigate before keeping it; it may be a real new
+     snapshot or harness noise. `zzdebug.spec.ts` is scratch: DELETE it.
+     `interface-images` was not reached at all.
+   - The composer agent was on "SyntheticInterview parity" (its last step)
+     when killed; its `composerRenderings.ts` test had unresolved type errors
+     (branded `EntityAttributeReference` strings, a `ComponentType` import).
+     Nothing of its work is verified — treat as a draft.
+
 3. `gh api graphql` the PR's review threads. Every unresolved thread gets a
    substantive in-thread reply and GraphQL `resolveReviewThread` after its
    fix lands. Reply style used throughout: confirm/refute with evidence,
    name the commit, state corrections to the reviewer's remedy where made.
+
+   **Three threads were open at handover** (all others are replied+resolved):
+   - `PRRT_kwDOKqiw4s6UjLZ3` — buildConstraints: truncate finer-than-picker
+     date bounds before calendar validation. Set (b) work-in-progress.
+   - `PRRT_kwDOKqiw4s6UjLZ7` — generateNetwork: honour NetworkComposer field
+     `component`/`parameters` overlays. Set (b); ties to the reconciliation
+     spec's `stageEffectiveComponents` premise — resolve as ONE design.
+   - `PRRT_kwDOKqiw4s6Uj8Tk` — generateNetwork: exclude skipped stages from
+     the feasibility pre-pass. When Interviewer's "Respect skip logic and
+     filtering" is on, the pre-pass gets the full stage list but not the
+     option, so it refuses constraints belonging only to stages the run
+     skips. NOT started. Note the interaction: `generateNetwork` walks stages
+     once and only forwards (`resolveSkipLogicDestinationIndex` resolves only
+     strictly later), which is the reachability fact several counts already
+     rest on — extend that reading rather than inventing a second one.
+   - **AND one P1 arrived as the session ended, unread by me:**
+     `PRRT_kwDOKqiw4s6UkJEm` — feasibility.ts, "Retain pins for edges a
+     filtered writer may skip". **This directly attacks `ce16e21d1`'s
+     pin-dropping** (a later writer unpins a pedigree's written edge values).
+     The claim is presumably that a _filtered_ writer may skip some edges, so
+     dropping the pin outright is wrong where the filter excludes an edge.
+     Read it in full and treat it as the highest-priority correction — my
+     commit message for `ce16e21d1` already records that a wrongly-wide
+     overwriter set drops a pin that is genuinely final, which is exactly the
+     failure this finding describes. The narrow map it introduced is the
+     right place to fix it.
+
 4. Full verification (see bar below), push, watch CI + the next review wave.
 
 ## The review loop protocol
