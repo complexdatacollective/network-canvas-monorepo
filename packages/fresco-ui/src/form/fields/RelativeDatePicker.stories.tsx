@@ -359,6 +359,55 @@ export const WithCustomAnchor: Story = {
   },
 };
 
+export const AtTheEdgeOfTheCalendar: Story = {
+  name: 'Anchored At The Edge Of The Calendar',
+  render: () => {
+    const [latest, setLatest] = useState('');
+    const [earliest, setEarliest] = useState('');
+
+    return (
+      <div className="flex w-full max-w-md flex-col gap-6">
+        <div className="space-y-2">
+          <RelativeDatePickerField
+            anchor="9999-12-31"
+            before={30}
+            after={30}
+            value={latest}
+            onChange={(v) => setLatest(v ?? '')}
+            name="latest-date"
+          />
+          <Paragraph margin="none" className="text-xs text-current opacity-70">
+            Anchored to the last date a date input can hold (±30 days). The
+            window stops at 9999-12-31 rather than reaching 10000-01-30.
+          </Paragraph>
+        </div>
+        <div className="space-y-2">
+          <RelativeDatePickerField
+            anchor="0001-01-01"
+            before={400}
+            after={30}
+            value={earliest}
+            onChange={(v) => setEarliest(v ?? '')}
+            name="earliest-date"
+          />
+          <Paragraph margin="none" className="text-xs text-current opacity-70">
+            Anchored to the first date it can hold, reaching 400 days further
+            back. The window stops at 0001-01-01 rather than passing year zero.
+          </Paragraph>
+        </div>
+      </div>
+    );
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'An anchor and span can reach past the dates a date input can represent. A year outside 0001-9999 is not read as a date at all, so a bound derived there would be compared as plain text — and would reject every date the field can otherwise offer. Both ends of the window stop at the calendar instead.',
+      },
+    },
+  },
+};
+
 export const Playground: Story = {
   args: {
     before: 30,

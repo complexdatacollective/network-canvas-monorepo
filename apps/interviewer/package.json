@@ -14,7 +14,7 @@
     "dev": "vite",
     "build": "node scripts/build.mjs",
     "preview": "vite preview",
-    "typecheck": "tsc --build --noEmit",
+    "typecheck": "tsc --build --noEmit && tsc -p e2e/tsconfig.json --noEmit",
     "test": "vitest run --project=unit",
     "test:watch": "vitest --project=unit",
     "test:storybook": "vitest run --project=storybook",

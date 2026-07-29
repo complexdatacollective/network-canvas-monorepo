@@ -24,6 +24,8 @@ import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { SyntheticDataConstraintError } from '@codaco/protocol-utilities';
+import { GenerationFailureDescription } from '~/components/GenerationFailureDescription';
 import { HomeModal } from '~/components/HomeModal';
 import {
   ManageAuthenticator,
@@ -223,17 +225,51 @@ export function SettingsDialog({
         title: `Generated ${created} synthetic session${created === 1 ? '' : 's'}`,
         variant: 'success',
       });
-      await reloadSynthetic();
-      onDataChange?.();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.add({
-        title: 'Generation failed',
-        description: message,
-        variant: 'destructive',
-      });
+      // A refused generation (unsatisfiable validation rules) carries a
+      // structured `conflicts` array that renders as a readable list; any
+      // other failure falls back to its flat message. Either way, this needs
+      // a researcher to read and act on it, so it doesn't auto-dismiss.
+      if (error instanceof SyntheticDataConstraintError) {
+        toast.add({
+          title: 'Generation failed',
+          description: <GenerationFailureDescription error={error} />,
+          variant: 'destructive',
+          timeout: 0,
+        });
+      } else {
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
+        toast.add({
+          title: 'Generation failed',
+          description: message,
+          variant: 'destructive',
+          timeout: 0,
+        });
+      }
     } finally {
       setIsGenerating(false);
+      // Re-read storage on every outcome, not just success: a generation that
+      // fails part-way rolls its own sessions back, and the displayed count has
+      // to match what actually survived either way. This refresh gets its own
+      // try/catch, separate from the one above: sessions can already be
+      // written by the time this runs, so a rejection here must not be
+      // dropped silently — the researcher would be looking at a stale
+      // protocol list and count with no indication anything is wrong. Keep
+      // the message on screen until dismissed, same as the generation-failure
+      // toast above.
+      try {
+        await reloadSynthetic();
+      } catch {
+        toast.add({
+          title: 'Could not refresh synthetic session info',
+          description:
+            'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
+          variant: 'destructive',
+          timeout: 0,
+        });
+      }
+      onDataChange?.();
     }
   }, [
     selectedProtocolHash,
@@ -254,16 +290,45 @@ export function SettingsDialog({
       intent: 'destructive',
       onConfirm: async () => {
         setIsDeleting(true);
+        // deleteSyntheticSessions()'s own rejection is deliberately left
+        // uncaught here: useDialog's confirm() already gives a failed
+        // onConfirm its own handling — DialogProvider.handleConfirm catches
+        // it, keeps this confirm dialog open, and shows the error inline so
+        // the researcher can retry (see fresco-ui's "Async Confirm — Error
+        // Handling" story). Catching it here too would swallow that
+        // rejection, which would make handleConfirm see a *resolved*
+        // promise and close the dialog as if the delete had succeeded —
+        // exactly the "looks fine, actually didn't happen" failure mode this
+        // fix is about, just moved one level up.
         try {
           const deleted = await deleteSyntheticSessions();
           toast.add({
             title: `Deleted ${deleted} synthetic session${deleted === 1 ? '' : 's'}`,
             variant: 'success',
           });
-          await reloadSynthetic();
-          onDataChange?.();
         } finally {
           setIsDeleting(false);
+          // Separate try/catch, same reasoning as handleGenerate: by the time
+          // this runs the delete may already have succeeded (the toast above
+          // already fired), so a rejection here must not be attributed back
+          // to the delete itself. Left uncaught, it would propagate to the
+          // same handleConfirm catch described above and report a successful
+          // deletion as a failed one — a contradictory inline error next to
+          // the success toast, and a confirm dialog reopened to "retry" a
+          // delete that already happened. Report it here instead, and keep it
+          // on screen until dismissed.
+          try {
+            await reloadSynthetic();
+          } catch {
+            toast.add({
+              title: 'Could not refresh synthetic session info',
+              description:
+                'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
+              variant: 'destructive',
+              timeout: 0,
+            });
+          }
+          onDataChange?.();
         }
       },
     });

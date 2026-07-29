@@ -24,5 +24,6 @@ export { default as Shell, type NavigationOrientation } from './Shell';
 
 export { createInitialNetwork } from './contract/network';
 // Public utilities (consumed by sibling monorepo packages, e.g. network-exporters)
+export { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 export { getInterviewProgress } from './selectors/utils';
 export { getNodeLabelAttribute } from './utils/getNodeLabelAttribute';

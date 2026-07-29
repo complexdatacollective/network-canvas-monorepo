@@ -70,15 +70,21 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   // protocol hash, for the progress column's "step X of Y" label. Derived via
   // getInterviewProgress so the host never hard-codes the +1 for the finish
   // stage.
-  const protocolTotalSteps = useMemo(() => {
-    const map = new Map<string, number>();
+  const { protocolTotalSteps, protocolStages } = useMemo(() => {
+    const totalSteps = new Map<string, number>();
+    const stagesByHash = new Map<
+      string,
+      ProtocolWithCounts['protocol']['stages']
+    >();
     for (const protocol of protocols) {
-      map.set(
-        protocol.hash,
-        getInterviewProgress(protocol.protocol.stages ?? [], 0).totalSteps,
-      );
+      const stages = protocol.protocol.stages ?? [];
+      totalSteps.set(protocol.hash, getInterviewProgress(stages, 0).totalSteps);
+      stagesByHash.set(protocol.hash, stages);
     }
-    return map;
+    return {
+      protocolTotalSteps: totalSteps,
+      protocolStages: stagesByHash,
+    };
   }, [protocols]);
 
   const protocolOptions = useMemo(() => {
@@ -131,8 +137,10 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   const {
     exporting,
     deleting,
+    markingUnfinishedId,
     handleExport,
     handleDelete,
+    handleMarkUnfinished,
     handleShareReady,
     pendingShare,
   } = useSessionMutations({
@@ -150,6 +158,13 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
     togglePageSelected,
     allOnPageSelected,
     someOnPageSelected,
+    markingUnfinishedId,
+    onMarkUnfinished: (session) => {
+      void handleMarkUnfinished(
+        session,
+        protocolStages.get(session.protocolHash) ?? [],
+      );
+    },
   });
 
   const table = useReactTable({

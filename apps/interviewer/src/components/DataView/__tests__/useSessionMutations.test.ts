@@ -1,9 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+
 import { useSessionMutations } from '../useSessionMutations';
 
 const markSessionsExported = vi.fn().mockResolvedValue(undefined);
+const markSessionUnfinished = vi.fn().mockResolvedValue(undefined);
 const deleteSessions = vi.fn().mockResolvedValue(undefined);
 const getSettings = vi.fn().mockResolvedValue({
   requireUnlockOnExport: false,
@@ -20,6 +23,7 @@ const toastAdd = vi.fn();
 
 vi.mock('~/lib/db/api', () => ({
   markSessionsExported: (...args: unknown[]) => markSessionsExported(...args),
+  markSessionUnfinished: (...args: unknown[]) => markSessionUnfinished(...args),
   deleteSessions: (...args: unknown[]) => deleteSessions(...args),
   getSettings: () => getSettings(),
 }));
@@ -129,5 +133,55 @@ describe('useSessionMutations — Save export marks exported from the save outco
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Export failed' }),
     );
+  });
+});
+
+describe('useSessionMutations — mark unfinished', () => {
+  const stages: CurrentProtocol['stages'] = [];
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('changes completion state after confirmation', async () => {
+    openDialog.mockResolvedValue(true);
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleMarkUnfinished(
+        {
+          id: 's1',
+          caseId: 'case-1',
+        },
+        stages,
+      );
+    });
+
+    expect(openDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Mark unfinished?',
+      }),
+    );
+    expect(markSessionUnfinished).toHaveBeenCalledWith('s1', stages);
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Interview marked unfinished' }),
+    );
+  });
+
+  it('keeps the interview finished when confirmation is cancelled', async () => {
+    openDialog.mockResolvedValue(false);
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleMarkUnfinished(
+        {
+          id: 's1',
+          caseId: 'case-1',
+        },
+        stages,
+      );
+    });
+
+    expect(markSessionUnfinished).not.toHaveBeenCalled();
   });
 });

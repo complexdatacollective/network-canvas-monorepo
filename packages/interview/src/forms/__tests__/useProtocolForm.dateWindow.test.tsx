@@ -6,12 +6,15 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
+import { todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import {
   asEntityAttributeReference,
   type FormField,
 } from '@codaco/protocol-validation';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  dateWithinPickerRange,
+  entityAttributesProperty,
+} from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import protocol from '../../store/modules/protocol';
@@ -146,7 +149,9 @@ describe.each([
         'RelativeDatePicker',
         parameters,
       );
-      const belowMin = addDays(todayYmd(), -181);
+      // dateWithinPickerRange is plain day arithmetic this far from the
+      // calendar's ends (fresco-ui's ymd module no longer exports addDays).
+      const belowMin = dateWithinPickerRange(todayYmd(), -181);
 
       typeAndSubmit(container, belowMin);
 
@@ -161,7 +166,7 @@ describe.each([
         'RelativeDatePicker',
         parameters,
       );
-      const withinWindow = addDays(todayYmd(), -10);
+      const withinWindow = dateWithinPickerRange(todayYmd(), -10);
 
       typeAndSubmit(container, withinWindow);
 

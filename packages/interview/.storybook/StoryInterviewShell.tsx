@@ -128,13 +128,17 @@ const StoryInterviewShell = (props: {
   /** Renders the Navigation exit button when provided, so stories can
    * demonstrate the exit-confirmation flow. */
   onExit?: () => void;
+  reviewMode?: boolean;
+  initialStep?: number;
 }) => {
   const { payload, initialStep, assetUrls } = useMemo(() => {
     const raw = SuperJSON.parse<RawSyntheticPayload>(props.rawPayload);
     return buildPayload(raw);
   }, [props.rawPayload]);
 
-  const [currentStep, setCurrentStep] = useState<number>(initialStep);
+  const [currentStep, setCurrentStep] = useState<number>(
+    props.initialStep ?? initialStep,
+  );
 
   const onStepChange = useCallback<StepChangeHandler>((step) => {
     setCurrentStep(step);
@@ -173,6 +177,7 @@ const StoryInterviewShell = (props: {
       navigationOrientation={props.navigationOrientation}
       allowStageNavigation={props.allowStageNavigation}
       onExit={props.onExit}
+      reviewMode={props.reviewMode}
     />
   );
 };

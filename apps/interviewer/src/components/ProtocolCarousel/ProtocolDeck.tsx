@@ -129,6 +129,7 @@ export function ProtocolDeck({
     getRootProps: getImportRootProps,
     getInputProps: getImportInputProps,
     isDragActive: isImportDragActive,
+    isDragGlobal,
     open: openImportDialog,
   } = useDropzone({
     onDrop: handleDrop,
@@ -250,6 +251,18 @@ export function ProtocolDeck({
     },
     [slides],
   );
+
+  useEffect(() => {
+    // File names are not reliably exposed until drop, so global drag state
+    // selects the target card while its dropzone remains the validation boundary.
+    if (!isDragGlobal || newSessionActive) return;
+    const importIndex = slides.findIndex(
+      (slide) => slide.entry.kind === 'import',
+    );
+    if (importIndex >= 0 && importIndex !== activeIndex) {
+      setActiveIndex(importIndex);
+    }
+  }, [activeIndex, isDragGlobal, newSessionActive, setActiveIndex, slides]);
 
   // Slot keys that were pending in the last committed deck, so a slot that
   // just TURNED pending (a user-started import) can be detected below.
@@ -394,6 +407,11 @@ export function ProtocolDeck({
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center">
+      <output className="sr-only" aria-live="polite">
+        {isDragGlobal && !newSessionActive
+          ? 'Import a protocol card selected'
+          : ''}
+      </output>
       <AnimatePresence>
         {newSessionActive ? (
           <motion.button

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useCallback, useRef, useState } from 'react';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolWithCounts } from '~/lib/db/types';
@@ -49,7 +49,11 @@ async function uploadProtocolFile(canvas: ReturnType<typeof within>) {
 // to it, then the slot fills with the installed protocol), delete a
 // protocol (scale out, neighbours close the gap), and install the sample
 // (the slot's content swaps in place with simulated progress).
-function DeckHarness() {
+function DeckHarness({
+  newSessionProtocolHash,
+}: {
+  newSessionProtocolHash?: string;
+}) {
   const [protocols, setProtocols] = useState<ProtocolWithCounts[]>([
     makeProtocol('Friendship Ties', 'A quick two-prompt name generator.'),
     makeProtocol(
@@ -133,6 +137,8 @@ function DeckHarness() {
         }
         onInstallSample={installSample}
         onDismissSample={() => setShowSample(false)}
+        newSessionProtocolHash={newSessionProtocolHash}
+        onCancelNewSession={() => {}}
       />
     </div>
   );
@@ -173,6 +179,76 @@ export const ChevronAndDotNavigation: Story = {
     await userEvent.click(canvas.getByLabelText('Previous protocol'));
     await waitFor(() =>
       expect(dots[2]).toHaveAttribute('aria-current', 'true'),
+    );
+  },
+};
+
+export const FileDragActivatesImportCard: Story = {
+  render: () => <DeckHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dots = await canvas.findAllByLabelText(/Go to card/);
+    const importDot = dots[dots.length - 1];
+    if (!importDot) throw new Error('Import card navigation dot not found');
+
+    await expect(dots[0]).toHaveAttribute('aria-current', 'true');
+
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(
+      new File(['netcanvas'], 'study.netcanvas', {
+        type: 'application/x-netcanvas',
+      }),
+    );
+    const dragEvent = (type: string) =>
+      new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      });
+
+    await fireEvent(document.body, dragEvent('dragenter'));
+
+    await waitFor(() =>
+      expect(importDot).toHaveAttribute('aria-current', 'true'),
+    );
+    await expect(canvas.getByRole('status')).toHaveTextContent(
+      'Import a protocol card selected',
+    );
+
+    await fireEvent(document.body, dragEvent('dragleave'));
+  },
+};
+
+export const FileDragDoesNotAnnounceSelectionDuringNewSession: Story = {
+  render: () => <DeckHarness newSessionProtocolHash="hash-Friendship Ties" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const status = canvas.getByRole('status');
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(
+      new File(['netcanvas'], 'study.netcanvas', {
+        type: 'application/x-netcanvas',
+      }),
+    );
+
+    await fireEvent(
+      document.body,
+      new DragEvent('dragenter', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      }),
+    );
+
+    await expect(status).toBeEmptyDOMElement();
+
+    await fireEvent(
+      document.body,
+      new DragEvent('dragleave', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      }),
     );
   },
 };

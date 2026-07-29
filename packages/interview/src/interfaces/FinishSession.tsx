@@ -8,12 +8,16 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import { useContractHandlers } from '../contract/context';
+import {
+  useContractHandlers,
+  useFinishConfirmationDescription,
+} from '../contract/context';
 import { getInterviewId } from '../selectors/session';
 
 const FinishSession = () => {
   const interviewId = useSelector(getInterviewId);
   const { onFinish } = useContractHandlers();
+  const finishConfirmationDescription = useFinishConfirmationDescription();
   const { confirm } = useDialog();
 
   const finishInterviewConfirmation = async () => {
@@ -21,8 +25,7 @@ const FinishSession = () => {
 
     await confirm({
       title: 'Are you sure you want to finish the interview?',
-      description:
-        'Your responses cannot be changed after you finish the interview.',
+      description: finishConfirmationDescription,
       confirmLabel: 'Finish Interview',
       onConfirm: async (signal: AbortSignal) => {
         await onFinish(interviewId, signal);

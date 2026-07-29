@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { DATE_PICKER_DEFAULT_MIN } from '@codaco/shared-consts';
+
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
+import { todayYmd } from '../utils/ymd';
 import InputField from './InputField';
 import SelectField from './Select/Native';
 import type { SelectOption } from './Select/shared';
@@ -60,13 +63,15 @@ function parseYmd(value: string): Ymd | null {
   return { year, month, day };
 }
 
-function todayYmd(): Ymd {
-  const now = new Date();
-  return {
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
-    day: now.getDate(),
-  };
+// The shared default arrives in the same YYYY-MM-DD form a caller-supplied
+// bound does, so it is read by the same parser rather than restated as parts
+// here. A malformed shared value is a source mistake, not a bound to ignore.
+function requireYmd(value: string): Ymd {
+  const parsed = parseYmd(value);
+  if (!parsed) {
+    throw new Error(`Expected a YYYY-MM-DD date bound, received "${value}".`);
+  }
+  return parsed;
 }
 
 function compareYmd(a: Ymd, b: Ymd): number {
@@ -82,7 +87,7 @@ function formatYmd(ymd: Ymd): string {
   return `${year}-${month}-${day}`;
 }
 
-const DEFAULT_MIN: Ymd = { year: 1920, month: 1, day: 1 };
+const DEFAULT_MIN: Ymd = requireYmd(DATE_PICKER_DEFAULT_MIN);
 
 // The coarse year/month dropdowns store `y.toString()` with no zero-padding,
 // so the protocol schema's YYYY/YYYY-MM coarse values can only round-trip a
@@ -194,7 +199,12 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     useMemo(() => {
       const authoredMin = min ? parseYmd(min) : null;
       const authoredMax = max ? parseYmd(max) : null;
-      const today = todayYmd();
+      // "Today" is read in UTC, from the same helper the relative picker
+      // anchors on and the same one that produces the dates this field is
+      // asked to display. A local reading would put this ceiling a day either
+      // side of every other date in the system, so the offered months would
+      // disagree with the value.
+      const today = requireYmd(todayYmd());
       const defaultWindowSpanYears = today.year - DEFAULT_MIN.year;
 
       const resolvedMin =

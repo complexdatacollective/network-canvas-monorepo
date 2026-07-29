@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import Field from '../../Field/Field';
 import UnconnectedField from '../../Field/UnconnectedField';
@@ -160,6 +160,20 @@ describe('DatePickerField month mode', () => {
     expect(years[years.length - 1]).toBe('2000');
     expect(years).not.toContain('1999');
     expect(years).not.toContain('2021');
+  });
+
+  // The floor is stated here rather than read from DATE_PICKER_DEFAULT_MIN:
+  // @codaco/protocol-utilities generates dates against that constant without
+  // being able to see this component, so moving it has to be a deliberate edit
+  // in both places rather than a silent shift on one side.
+  it('offers no year before 1920 when no min is given', () => {
+    render(<DatePickerField type="month" name="date" max="2020-12-31" />);
+    const [yearSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect) throw new Error('year select not rendered');
+
+    const years = optionValues(yearSelect);
+    expect(years[years.length - 1]).toBe('1920');
+    expect(years).not.toContain('1919');
   });
 
   it('omits months before min.month when min year is selected', () => {
@@ -815,5 +829,87 @@ describe('DatePickerField within Form — submit path', () => {
       expect(screen.getByTestId('birthDate-field-error')).toBeInTheDocument();
     });
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+// With no `max`, the year and month dropdowns are ceilinged at today. "Today"
+// is read in UTC, matching every other date helper in the ecosystem — the
+// relative picker's anchor, and the generator that produces the values this
+// field displays. A local reading would sit a day either side of those for
+// most of the world.
+//
+// Each case pins an instant where the UTC date and the local date fall in
+// different months or years, so a local reading is visibly wrong. Which case
+// catches it depends on the runner's offset: a runner ahead of UTC fails the
+// UTC-July and UTC-2026 cases, one behind fails the UTC-August case. On a
+// runner at UTC exactly the two readings coincide and nothing here can tell
+// them apart.
+describe('DatePickerField ceiling with no max', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function monthOptionsFor2026(): string[] {
+    render(<DatePickerField type="month" name="date" value="2026-01" />);
+    const [, monthSelect] = screen.getAllByRole('combobox');
+    if (!monthSelect) throw new Error('month select not rendered');
+    return optionValues(monthSelect);
+  }
+
+  it('stops at the UTC month when the local date has already rolled over', () => {
+    vi.useFakeTimers();
+    // UTC 31 July; 1 August anywhere from UTC+1 east.
+    vi.setSystemTime('2026-07-31T23:00:00.000Z');
+
+    expect(monthOptionsFor2026()).toEqual([
+      '01',
+      '02',
+      '03',
+      '04',
+      '05',
+      '06',
+      '07',
+    ]);
+  });
+
+  it('reaches the UTC month when the local date has not yet rolled over', () => {
+    vi.useFakeTimers();
+    // UTC 1 August; still 31 July anywhere from UTC-1 west.
+    vi.setSystemTime('2026-08-01T00:30:00.000Z');
+
+    expect(monthOptionsFor2026()).toContain('08');
+  });
+
+  it('stops at the UTC year on the last night of December', () => {
+    vi.useFakeTimers();
+    // UTC 31 December 2026; already 2027 anywhere from UTC+1 east.
+    vi.setSystemTime('2026-12-31T23:30:00.000Z');
+
+    render(<DatePickerField type="month" name="date" value="2026-01" />);
+    const [yearSelect] = screen.getAllByRole('combobox');
+    if (!yearSelect) throw new Error('year select not rendered');
+
+    expect(optionValues(yearSelect)[0]).toBe('2026');
+  });
+
+  // That ceiling belongs to the two dropdowns, which have to list the dates
+  // they offer and so need an end to count from. Full resolution is a native
+  // date input, which offers whatever its `max` attribute allows: with none
+  // declared its range is open, and a date after today is one a participant can
+  // select and submit. Synthetic data generation depends on the difference —
+  // protocol-utilities' `resolveDateWindow` refuses a month or year field whose
+  // floor sits above today as an empty range, and raises the ceiling of a
+  // full-date one to meet that floor instead.
+  it('leaves the native full-date input unbounded above', () => {
+    const { container } = render(
+      <DatePickerField type="full" name="date" value="2030-01-01" />,
+    );
+    const input = container.querySelector('input[name="date"]');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('date input not rendered');
+    }
+
+    expect(input).not.toHaveAttribute('max');
+    expect(input).toHaveValue('2030-01-01');
   });
 });

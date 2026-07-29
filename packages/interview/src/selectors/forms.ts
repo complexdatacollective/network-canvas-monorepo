@@ -10,6 +10,7 @@ import type {
   Variable,
 } from '@codaco/protocol-validation';
 
+import { buildFieldValidationProps } from '../forms/buildFieldValidationProps';
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
 import { getNetwork, getStageSubject } from './session';
@@ -189,71 +190,32 @@ export function selectValidationMetadataForVariable(
   };
 }
 
+/** ValidationSource keeps `validation` untyped; the mapping wants a record. */
+function isRuleRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 /**
  * Derive a Field's validation props (required, maxLength, sameAs, etc.) from
- * a codebook variable's `validation` block. Shared by useProtocolForm (the
- * main form system) and any other writer that renders a single ad-hoc Field
- * for a codebook variable outside the form system (e.g. CategoricalBin's
- * "other" dialog, QuickNodeForm's quick-add field — see
- * `selectValidationMetadataForVariable`), so every writer honours the same
- * rules from one mapping. A variable with no `validation` block returns an
- * empty object — there is no runtime fallback to `required`.
+ * a codebook variable's `validation` block. Shared by any writer that renders
+ * a single ad-hoc Field for a codebook variable outside the form system (e.g.
+ * CategoricalBin's "other" dialog, QuickNodeForm's quick-add field — see
+ * `selectValidationMetadataForVariable`). Delegates to the same
+ * `buildFieldValidationProps` mapping useProtocolForm applies to its rendered
+ * fields — and that the synthetic-data conformance test asserts against — so
+ * every writer honours the same rules from one mapping. A variable with no
+ * `validation` block returns an empty object — there is no runtime fallback
+ * to `required`.
  */
 export function validationPropsFor(
   field: ValidationSource,
 ): Partial<ValidationPropsCatalogue> {
-  const props: Partial<ValidationPropsCatalogue> = {};
-
-  if (!('validation' in field) || !field.validation) {
-    return props;
-  }
-
-  const validation = field.validation as Record<string, unknown>;
-
-  if (validation.required !== undefined)
-    props.required = validation.required as boolean;
-  if (validation.minLength !== undefined)
-    props.minLength = validation.minLength as number;
-  if (validation.maxLength !== undefined)
-    props.maxLength = validation.maxLength as number;
-  if (validation.minValue !== undefined)
-    props.minValue = validation.minValue as number;
-  if (validation.maxValue !== undefined)
-    props.maxValue = validation.maxValue as number;
-  if (validation.minSelected !== undefined)
-    props.minSelected = validation.minSelected as number;
-  if (validation.maxSelected !== undefined)
-    props.maxSelected = validation.maxSelected as number;
-  if (validation.pattern !== undefined)
-    props.pattern = validation.pattern as ValidationPropsCatalogue['pattern'];
-  // For 'unique', the protocol uses boolean but validation needs the attribute name
-  if (validation.unique === true) props.unique = field.variable;
-  if (validation.differentFrom !== undefined)
-    props.differentFrom = validation.differentFrom as string;
-  if (validation.sameAs !== undefined)
-    props.sameAs = validation.sameAs as string;
-  if (validation.greaterThanVariable !== undefined)
-    props.greaterThanVariable = {
-      attribute: validation.greaterThanVariable as string,
-      type: field.type,
-    };
-  if (validation.lessThanVariable !== undefined)
-    props.lessThanVariable = {
-      attribute: validation.lessThanVariable as string,
-      type: field.type,
-    };
-  if (validation.greaterThanOrEqualToVariable !== undefined)
-    props.greaterThanOrEqualToVariable = {
-      attribute: validation.greaterThanOrEqualToVariable as string,
-      type: field.type,
-    };
-  if (validation.lessThanOrEqualToVariable !== undefined)
-    props.lessThanOrEqualToVariable = {
-      attribute: validation.lessThanOrEqualToVariable as string,
-      type: field.type,
-    };
-
-  return props;
+  const { validation } = field;
+  return buildFieldValidationProps({
+    type: field.type,
+    variable: field.variable,
+    ...(isRuleRecord(validation) ? { validation } : {}),
+  });
 }
 
 /**

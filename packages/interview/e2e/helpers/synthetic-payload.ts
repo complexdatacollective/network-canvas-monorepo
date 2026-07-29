@@ -5,7 +5,10 @@ import {
   CurrentProtocolSchema,
   hashProtocol,
 } from '@codaco/protocol-validation';
-import { StageMetadataSchema } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  StageMetadataSchema,
+} from '@codaco/shared-consts';
 
 import type {
   ProtocolPayload,
@@ -118,9 +121,23 @@ export function buildSyntheticPayload(
     finishTime: null,
     exportTime: null,
     lastUpdated: new Date().toISOString(),
+    // An unseeded run starts from a network nobody has answered anything in,
+    // and that includes ego: `getNetwork()` draws its attributes the same way
+    // it draws a node's, so leaving them in place would open every EgoForm
+    // scenario on a form already filled out. A scenario about what an
+    // unanswered form does could then not express itself, and one about
+    // pre-population says so by asking for the seeded network.
     network: opts.seedNetwork
       ? raw.network
-      : { ...raw.network, nodes: [], edges: [] },
+      : {
+          ...raw.network,
+          nodes: [],
+          edges: [],
+          ego: {
+            ...raw.network.ego,
+            [entityAttributesProperty]: {},
+          },
+        },
     ...(parsedStageMetadata.success && opts.stageMetadata != null
       ? { stageMetadata: parsedStageMetadata.data }
       : {}),

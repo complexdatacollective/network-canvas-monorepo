@@ -4,7 +4,11 @@ import { expect } from '@playwright/test';
 // Enrols a real vault by driving the setup wizard (a valid unlockable record
 // requires real crypto — it cannot be hand-seeded), and unlocks via LockScreen.
 export class VaultFixture {
-  constructor(private page: Page) {}
+  private page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private async typeSegmented(
     fieldName: string,

@@ -529,7 +529,7 @@ describe('generateNetwork', () => {
       expect(StageMetadataSchema.safeParse(stageMetadata).success).toBe(true);
     });
 
-    it('DyadCensus writes [promptIndex, fromId, toId, false] tuples keyed by stage step', () => {
+    it('DyadCensus writes [promptIndex, fromId, toId, answer] tuples keyed by stage step', () => {
       const codebook = makeCodebook();
       const stages = [makeNameGeneratorStage(), makeDyadCensusStage()];
 
@@ -555,13 +555,19 @@ describe('generateNetwork', () => {
         expect(tuple[0] as number).toBeLessThan(promptCount);
         expect(nodeIds.has(tuple[1] as string)).toBe(true);
         expect(nodeIds.has(tuple[2] as string)).toBe(true);
-        expect(tuple[3]).toBe(false);
+        expect(typeof tuple[3]).toBe('boolean');
       }
+
+      // Both answers, as DyadCensus records them: a connected pair writes
+      // `true` beside its edge and an unconnected one writes `false`.
+      const answers = (meta as unknown[][]).map((tuple) => tuple[3]);
+      expect(answers).toContain(true);
+      expect(answers).toContain(false);
 
       expect(StageMetadataSchema.safeParse(stageMetadata).success).toBe(true);
     });
 
-    it('TieStrengthCensus writes the same tuple shape as DyadCensus', () => {
+    it('TieStrengthCensus writes negatives only, as its interface does', () => {
       const codebook = makeCodebook();
       const stages = [makeNameGeneratorStage(), makeTieStrengthCensusStage()];
 

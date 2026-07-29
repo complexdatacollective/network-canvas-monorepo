@@ -40,6 +40,7 @@ import { useStageSelector } from './useStageSelector';
 
 export default function useInterviewNavigation(
   initialStageOverrideIndex?: number,
+  reviewMode = false,
 ) {
   const dispatch = useDispatch();
   const interviewStore = useStore<RootState>();
@@ -59,6 +60,15 @@ export default function useInterviewNavigation(
   currentStepRef.current = currentStep;
 
   const [forceNavigationDisabled, setForceNavigationDisabled] = useState(false);
+  const [beforeNextHandlerCount, setBeforeNextHandlerCount] = useState(0);
+  const [reviewBoundaryReached, setReviewBoundaryReached] = useState(false);
+  // Whether any navigation has been attempted since the displayed stage
+  // mounted. A registered beforeNext handler only keeps Back enabled past the
+  // interview start once this is true: a freshly-mounted stage is at its
+  // internal starting position, so stage-internal Back has nothing to step
+  // back to yet.
+  const [hasAttemptedStageNavigation, setHasAttemptedStageNavigation] =
+    useState(false);
 
   // `showStage` toggles the rendered stage in/out of the JSX entirely so that
   // AnimatePresence sees "no child" during a transition (rather than a child
@@ -131,6 +141,7 @@ export default function useInterviewNavigation(
           beforeNextHandlers.current.set(key, fn);
         }
       }
+      setBeforeNextHandlerCount(beforeNextHandlers.current.size);
     },
     [],
   ) as RegisterBeforeNext;
@@ -171,11 +182,13 @@ export default function useInterviewNavigation(
 
   const moveForward = useCallback(async () => {
     setForceNavigationDisabled(true);
+    setHasAttemptedStageNavigation(true);
 
     try {
       const stageAllowsNavigation = await canNavigate('forwards', 'step');
 
       if (!stageAllowsNavigation) {
+        setReviewBoundaryReached(false);
         return;
       }
 
@@ -193,6 +206,11 @@ export default function useInterviewNavigation(
         currentStepRef.current,
       );
       const nextStep = navigation.nextValidStageIndex;
+      if (reviewMode && nextStep >= protocolStages.length) {
+        setReviewBoundaryReached(true);
+        return;
+      }
+      setReviewBoundaryReached(false);
       const meta = getInterviewProgress(protocolStages, nextStep);
       setProgress(meta.progress);
       registerBeforeNext(null);
@@ -208,20 +226,24 @@ export default function useInterviewNavigation(
     promptIndex,
     registerBeforeNext,
     protocolStages,
+    reviewMode,
     setStep,
     interviewStore,
   ]);
 
   const moveBackward = useCallback(async () => {
     setForceNavigationDisabled(true);
+    setHasAttemptedStageNavigation(true);
 
     try {
       const stageAllowsNavigation = await canNavigate('backwards', 'step');
 
       if (!stageAllowsNavigation) {
+        setReviewBoundaryReached(false);
         return;
       }
 
+      setReviewBoundaryReached(false);
       if (stageAllowsNavigation !== 'FORCE' && !isFirstPrompt) {
         dispatch(updatePrompt(promptIndex - 1));
         return;
@@ -232,6 +254,12 @@ export default function useInterviewNavigation(
         currentStepRef.current,
       );
       const previousStep = navigation.previousValidStageIndex;
+      // No earlier stage on the active route: there is nowhere to go, so bail
+      // out before clearing handlers — a same-step setStep never remounts the
+      // stage, and clearing would permanently detach its beforeNext handlers.
+      if (previousStep === currentStepRef.current) {
+        return;
+      }
       const meta = getInterviewProgress(protocolStages, previousStep);
       setProgress(meta.progress);
       registerBeforeNext(null);
@@ -260,6 +288,7 @@ export default function useInterviewNavigation(
       }
 
       setForceNavigationDisabled(true);
+      setHasAttemptedStageNavigation(true);
 
       try {
         const direction: Direction =
@@ -302,6 +331,7 @@ export default function useInterviewNavigation(
         }
 
         const meta = getInterviewProgress(protocolStages, targetIndex);
+        setReviewBoundaryReached(false);
         setProgress(meta.progress);
         registerBeforeNext(null);
         setStep(targetIndex, meta);
@@ -338,6 +368,9 @@ export default function useInterviewNavigation(
     commitDisplayedStep();
     dispatch(transitionStage());
     beforeNextHandlers.current.clear();
+    setBeforeNextHandlerCount(0);
+    setReviewBoundaryReached(false);
+    setHasAttemptedStageNavigation(false);
     setShowStage(true);
   }, [commitDisplayedStep, dispatch]);
 
@@ -351,17 +384,44 @@ export default function useInterviewNavigation(
         previousValidStageIndex: currentNavigation.previousValidStageIndex,
         nextValidStageIndex: currentNavigation.nextValidStageIndex,
       });
+      if (reviewMode && recoveryStep >= protocolStages.length) {
+        setForcedStep(currentStep);
+        return;
+      }
       setStep(recoveryStep, getInterviewProgress(protocolStages, recoveryStep));
     }
-  }, [setStep, currentNavigation, currentStep, forcedStep, protocolStages]);
+  }, [
+    setStep,
+    currentNavigation,
+    currentStep,
+    forcedStep,
+    protocolStages,
+    reviewMode,
+  ]);
 
   const { canMoveForward, canMoveBackward } =
     useStageSelector(getNavigationInfo);
   const isTransitioning = currentStep !== displayedStep;
   const hasPreviousAvailableStage =
     currentNavigation.previousValidStageIndex !== currentStep;
+  const displayedRecoveryStep = resolveRecoveryStep({
+    currentStep: displayedStep,
+    currentAvailability: displayedNavigation.currentAvailability,
+    previousValidStageIndex: displayedNavigation.previousValidStageIndex,
+    nextValidStageIndex: displayedNavigation.nextValidStageIndex,
+  });
+  const isReviewRecoveryBoundary =
+    reviewMode &&
+    !displayedNavigation.isCurrentStepValid &&
+    displayedRecoveryStep >= protocolStages.length;
   const canRenderDisplayedStage =
-    displayedNavigation.isCurrentStepValid || displayedStep === forcedStep;
+    displayedNavigation.isCurrentStepValid ||
+    displayedStep === forcedStep ||
+    isReviewRecoveryBoundary;
+  const isAtReviewEnd =
+    reviewMode &&
+    currentNavigation.nextValidStageIndex >= protocolStages.length &&
+    isLastPrompt;
 
   return {
     // Stage rendering
@@ -380,13 +440,20 @@ export default function useInterviewNavigation(
     moveBackward,
     goToStage,
     disableMoveForward:
-      forceNavigationDisabled || isTransitioning || !canMoveForward,
+      forceNavigationDisabled ||
+      isTransitioning ||
+      !canMoveForward ||
+      (isAtReviewEnd &&
+        (beforeNextHandlerCount === 0 || reviewBoundaryReached)),
     disableMoveBackward:
       forceNavigationDisabled ||
       isTransitioning ||
       ((!canMoveBackward || (isFirstPrompt && !hasPreviousAvailableStage)) &&
-        beforeNextHandlers.current.size === 0),
-    pulseNext: isReadyForNextStage,
+        (beforeNextHandlerCount === 0 || !hasAttemptedStageNavigation)),
+    pulseNext:
+      (!isAtReviewEnd ||
+        (beforeNextHandlerCount > 0 && !reviewBoundaryReached)) &&
+      isReadyForNextStage,
     progress,
   };
 }
