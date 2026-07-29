@@ -183,7 +183,6 @@ const NodePanel = ({
       <IconButton
         icon={<Trash2 />}
         aria-label="Remove side panel"
-        size="lg"
         color="destructive"
         disabled={interactionDisabled}
         onClick={handleDelete}

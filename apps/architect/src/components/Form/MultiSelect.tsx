@@ -170,7 +170,6 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
         <IconButton
           icon={<Trash2 />}
           aria-label="Remove item"
-          size="lg"
           color="destructive"
           disabled={interactionDisabled}
           className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"

@@ -110,10 +110,7 @@ export class ProtocolFixture {
       assets,
     };
 
-    await this.page.evaluate(
-      (p: ProtocolPayload) => window.__test.installProtocol(p),
-      payload,
-    );
+    await this.installProtocolInHost(payload);
 
     for (const asset of assets) {
       if (asset.type === 'apikey') continue;
@@ -154,11 +151,7 @@ export class ProtocolFixture {
       assets: [],
     };
 
-    await this.page.evaluate(
-      (installedPayload: ProtocolPayload) =>
-        window.__test.installProtocol(installedPayload),
-      payload,
-    );
+    await this.installProtocolInHost(payload);
 
     this.installedProtocolIds.push(protocolId);
 
@@ -218,6 +211,16 @@ export class ProtocolFixture {
     return assets;
   }
 
+  private installProtocolInHost(payload: ProtocolPayload): Promise<void> {
+    return this.page.evaluate(
+      (serializedPayload: string) =>
+        window.__test.installProtocol(
+          JSON.parse(serializedPayload) as ProtocolPayload,
+        ),
+      JSON.stringify(payload),
+    );
+  }
+
   /**
    * Install a SyntheticInterview-built payload (synthetic-payload adapter
    * output). Mirrors install(): copies asset files under
@@ -237,10 +240,7 @@ export class ProtocolFixture {
       await fs.copyFile(file.localPath, destPath);
     }
 
-    await this.page.evaluate(
-      (p: ProtocolPayload) => window.__test.installProtocol(p),
-      result.protocol,
-    );
+    await this.installProtocolInHost(result.protocol);
 
     for (const file of result.assetFiles) {
       const resolvedUrl = `${this.assetServerUrl}/${protocolId}/${file.source}`;

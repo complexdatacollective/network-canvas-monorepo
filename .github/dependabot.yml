@@ -75,6 +75,7 @@ updates:
       tailwindcss:
         patterns:
           - 'tailwindcss'
+          - '@tailwindcss/cli'
           - '@tailwindcss/postcss'
           - '@tailwindcss/vite'
 

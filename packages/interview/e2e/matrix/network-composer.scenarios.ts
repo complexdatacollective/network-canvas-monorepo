@@ -528,6 +528,11 @@ export const networkComposerScenarios: InterfaceScenarios = {
           1,
         );
 
+        const matrixViewport = page.viewportSize();
+        if (matrixViewport === null) {
+          throw new Error('Network Composer matrix tests require a viewport');
+        }
+
         await page.setViewportSize({ width: 768, height: 1024 });
         const toolbarBox = await page
           .getByRole('toolbar', { name: 'Network composer tools' })
@@ -541,7 +546,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         expect(membershipGroupBox.x).toBeGreaterThanOrEqual(
           toolbarBox.x + toolbarBox.width,
         );
-        await page.setViewportSize({ width: 1920, height: 1080 });
+        await page.setViewportSize(matrixViewport);
 
         await composer.getSelectionBarButton('Work').click();
         await expect(composer.getSelectionBarButton('Work')).toHaveAttribute(

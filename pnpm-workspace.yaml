@@ -37,11 +37,11 @@ catalog:
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
   '@microsoft/api-extractor': ^7.58.9
-  '@next/bundle-analyzer': ^16.2.10
-  '@next/third-parties': ^16.2.10
+  '@next/bundle-analyzer': ^16.2.12
+  '@next/third-parties': ^16.2.12
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
-  '@playwright/test': ^1.61.1
+  '@playwright/test': ^1.62.0
   '@posthog/react': ^1.10.3
   '@radix-ui/react-dialog': ^1.1.15
   '@radix-ui/react-slot': ^1.2.4
@@ -50,10 +50,11 @@ catalog:
   '@storybook/addon-docs': ^10.5.3
   '@storybook/addon-vitest': ^10.5.3
   '@storybook/react-vite': ^10.5.3
+  '@tailwindcss/cli': ^4.3.3
   '@tailwindcss/container-queries': ^0.1.1
-  '@tailwindcss/postcss': ^4.3.2
+  '@tailwindcss/postcss': ^4.3.3
   '@tailwindcss/typography': ^0.5.20
-  '@tailwindcss/vite': ^4.3.2
+  '@tailwindcss/vite': ^4.3.3
   '@tanstack/react-table': ^8.21.3
   '@testing-library/jest-dom': ^6.9.1
   '@testing-library/react': ^16.3.2
@@ -78,13 +79,13 @@ catalog:
   jszip: ^3.10.1
   lucide-react: ^1.17.0
   motion: ^12.40.0
-  next: ^16.2.11
+  next: ^16.2.12
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
-  playwright: ^1.61.1
+  playwright: ^1.62.0
   posthog-js: ^1.376.5
-  react: ^19.2.7
-  react-dom: ^19.2.7
+  react: ^19.2.8
+  react-dom: ^19.2.8
   react-dropzone: ^15.0.0
   react-redux: ^9.3.0
   redux-form: ^8.3.10
@@ -92,7 +93,7 @@ catalog:
   sass: ^1.100.0
   storybook: ^10.5.3
   tailwind-merge: ^3.6.0
-  tailwindcss: ^4.3.2
+  tailwindcss: ^4.3.3
   tsx: ^4.23.0
   typescript: npm:@typescript/typescript6@^6.0.2
   uuid: ^14.0.0

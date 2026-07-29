@@ -128,7 +128,6 @@ const Option = ({
           <IconButton
             icon={<Pencil />}
             aria-label={`Edit option ${index + 1}`}
-            size="lg"
             color="dynamic"
             disabled={interactionDisabled}
             onClick={onEdit}
@@ -136,7 +135,6 @@ const Option = ({
           <IconButton
             icon={<Trash2 />}
             aria-label={`Remove option ${index + 1}`}
-            size="lg"
             color="destructive"
             disabled={interactionDisabled}
             onClick={handleDelete}
@@ -171,7 +169,6 @@ const Option = ({
         <IconButton
           icon={<Trash2 />}
           aria-label={`Remove option ${index + 1}`}
-          size="lg"
           color="destructive"
           disabled={interactionDisabled}
           onClick={handleDelete}

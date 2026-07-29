@@ -110,7 +110,6 @@ const DialogItem = ({
       <IconButton
         icon={<Pencil />}
         aria-label={`Edit ${itemLabel}`}
-        size="lg"
         color="dynamic"
         disabled={interactionDisabled}
         onClick={onEdit}
@@ -118,7 +117,6 @@ const DialogItem = ({
       <IconButton
         icon={<Trash2 />}
         aria-label={`Remove ${itemLabel}`}
-        size="lg"
         color="destructive"
         disabled={interactionDisabled}
         onClick={handleDelete}

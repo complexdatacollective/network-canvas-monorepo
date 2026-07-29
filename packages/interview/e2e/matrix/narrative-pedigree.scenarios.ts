@@ -5,6 +5,7 @@ import {
   RELATIONSHIP_TYPE_OPTIONS,
 } from '@codaco/shared-consts';
 
+import type { ProtocolPayload } from '../../src/contract/types.js';
 import { expect } from '../fixtures/matrix-test.js';
 import { buildSyntheticPayload } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
@@ -1014,8 +1015,11 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         const corrupted = { ...built.protocol, stages: corruptedStages };
 
         await page.evaluate(
-          (protocolPayload) => window.__test.installProtocol(protocolPayload),
-          corrupted,
+          (serializedPayload: string) =>
+            window.__test.installProtocol(
+              JSON.parse(serializedPayload) as ProtocolPayload,
+            ),
+          JSON.stringify(corrupted),
         );
         const interviewId = await protocol.createInterview(
           corrupted.id,
