@@ -41,7 +41,7 @@ catalog:
   '@next/third-parties': ^16.2.10
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
-  '@playwright/test': ^1.61.1
+  '@playwright/test': ^1.62.0
   '@posthog/react': ^1.10.3
   '@radix-ui/react-dialog': ^1.1.15
   '@radix-ui/react-slot': ^1.2.4
@@ -81,7 +81,7 @@ catalog:
   next: ^16.2.11
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
-  playwright: ^1.61.1
+  playwright: ^1.62.0
   posthog-js: ^1.376.5
   react: ^19.2.8
   react-dom: ^19.2.8
