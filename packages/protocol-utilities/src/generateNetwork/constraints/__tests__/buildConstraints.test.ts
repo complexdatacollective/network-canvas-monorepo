@@ -126,11 +126,7 @@ describe('buildVariableConstraints', () => {
     },
   );
 
-  // The field lists what it offers from its ceiling down to its floor, so a
-  // floor declared above today leaves it offering nothing. Reported as the
-  // empty window it is, rather than raised to meet the floor and generate the
-  // one date the control can neither select nor display.
-  it('holds the implicit ceiling under a floor declared later than today', () => {
+  it('extends a coarse missing ceiling from a floor later than today', () => {
     const result = buildVariableConstraints(
       {
         id: 'v1',
@@ -145,8 +141,152 @@ describe('buildVariableConstraints', () => {
     expect(result.dateWindow).toEqual({
       resolution: 'year',
       min: '2030',
-      max: '2026',
+      max: '2136',
     });
+  });
+
+  it.each([
+    {
+      type: 'year',
+      parameters: {},
+      expected: { resolution: 'year', min: '1920', max: '2026' },
+    },
+    {
+      type: 'year',
+      parameters: { max: '1800' },
+      expected: { resolution: 'year', min: '1694', max: '1800' },
+    },
+    {
+      type: 'month',
+      parameters: { max: '1800' },
+      expected: { resolution: 'month', min: '1694-01', max: '1800-01' },
+    },
+    {
+      type: 'month',
+      parameters: { min: '2030' },
+      expected: { resolution: 'month', min: '2030-01', max: '2136-12' },
+    },
+  ])(
+    'matches the today-dependent $type dropdown window for $parameters',
+    ({ type, parameters, expected }) => {
+      expect(
+        buildVariableConstraints(
+          {
+            id: 'v1',
+            name: 'Born',
+            type: 'datetime',
+            component: 'DatePicker',
+            parameters: { type, ...parameters },
+          },
+          TODAY,
+        ).dateWindow,
+      ).toEqual(expected);
+    },
+  );
+
+  it('keeps every exact coarse window through 2120 inside the horizon model', () => {
+    const fixtures = [
+      {
+        type: 'year' as const,
+        parameters: {},
+        horizon: { min: '1920', max: '2120' },
+      },
+      {
+        type: 'year' as const,
+        parameters: { max: '1800' },
+        horizon: { min: '1600', max: '1800' },
+      },
+      {
+        type: 'year' as const,
+        parameters: { min: '3000' },
+        horizon: { min: '3000', max: '3200' },
+      },
+      {
+        type: 'year' as const,
+        parameters: { max: '1100' },
+        horizon: { min: '1000', max: '1100' },
+      },
+      {
+        type: 'year' as const,
+        parameters: { min: '9900' },
+        horizon: { min: '9900', max: '9999' },
+      },
+      {
+        type: 'month' as const,
+        parameters: { max: '2020' },
+        horizon: { min: '1920-01', max: '2020-01' },
+      },
+    ];
+
+    for (let year = 2026; year <= 2120; year++) {
+      for (let month = 1; month <= 12; month++) {
+        const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        for (let day = 1; day <= days; day++) {
+          const today =
+            `${String(year).padStart(4, '0')}-` +
+            `${String(month).padStart(2, '0')}-` +
+            String(day).padStart(2, '0');
+          for (const fixture of fixtures) {
+            const window = buildVariableConstraints(
+              {
+                id: 'v1',
+                name: 'Born',
+                type: 'datetime',
+                component: 'DatePicker',
+                parameters: {
+                  type: fixture.type,
+                  ...fixture.parameters,
+                },
+              },
+              today,
+            ).dateWindow;
+            expect((window?.min ?? '') >= fixture.horizon.min).toBe(true);
+            expect((window?.max ?? '') <= fixture.horizon.max).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
+  it('keeps every exact relative window through 2120 inside the symbolic model', () => {
+    const fixtures = [
+      { parameters: {}, model: { min: -180, max: 0 } },
+      { parameters: { before: 30, after: 10 }, model: { min: -30, max: 10 } },
+    ];
+
+    for (let year = 2026; year <= 2120; year++) {
+      for (let month = 1; month <= 12; month++) {
+        const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        for (let day = 1; day <= days; day++) {
+          const today =
+            `${String(year).padStart(4, '0')}-` +
+            `${String(month).padStart(2, '0')}-` +
+            String(day).padStart(2, '0');
+          for (const fixture of fixtures) {
+            const window = buildVariableConstraints(
+              {
+                id: 'v1',
+                name: 'Seen',
+                type: 'datetime',
+                component: 'RelativeDatePicker',
+                parameters: fixture.parameters,
+              },
+              today,
+            ).dateWindow;
+            const runtimeMin =
+              window?.min === undefined
+                ? Number.NEGATIVE_INFINITY
+                : -stepsBetween(window.min, today, 'full');
+            const runtimeMax =
+              window?.max === undefined
+                ? Number.POSITIVE_INFINITY
+                : stepsBetween(today, window.max, 'full');
+            expect(runtimeMin >= fixture.model.min).toBe(true);
+            expect(runtimeMax <= fixture.model.max).toBe(true);
+          }
+        }
+      }
+    }
   });
 
   // The full resolution is the one control that does not stop at today: a
@@ -438,6 +578,7 @@ describe('buildVariableConstraints', () => {
     { parameter: 'min', value: '0099', type: 'year' },
     { parameter: 'max', value: '0999', type: 'year' },
     { parameter: 'min', value: '0099-03', type: 'month' },
+    { parameter: 'min', value: '0800-01', type: 'month' },
   ])(
     'refuses a $type-picker $parameter of "$value"',
     ({ parameter, value, type }) => {
@@ -782,7 +923,8 @@ describe('buildVariableConstraints', () => {
 // full-date field whose floor is later than today is one the native input
 // offers and the interview accepts, so refusing it would block a preview of a
 // protocol nothing is wrong with. The year picker beside it is the control that
-// genuinely stops at today, and stays refused.
+// extends around that authored floor by the picker's default window span, so
+// both controls remain writable.
 describe('a date field whose floor is later than today, through feasibility', () => {
   type DatePickerParameters = {
     type: 'full' | 'month' | 'year';
@@ -830,16 +972,14 @@ describe('a date field whose floor is later than today, through feasibility', ()
     expect(conflicts).toEqual([]);
   });
 
-  it('reports the empty range for a year picker', () => {
+  it('reports no conflict for a year picker', () => {
     const conflicts = analyseFeasibility(
       codebookWith({ type: 'year', min: '2030' }),
       [nameGenerator],
       config,
     );
 
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.variableNames).toEqual(['Due']);
-    expect(conflicts[0]?.reason).toContain('2030 to 2026');
+    expect(conflicts).toEqual([]);
   });
 });
 

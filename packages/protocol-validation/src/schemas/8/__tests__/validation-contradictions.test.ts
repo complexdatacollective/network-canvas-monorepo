@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { dateWithinPickerRange } from '@codaco/shared-consts';
+
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 import { findValidationContradictions } from '../variables/validation-contradictions.ts';
@@ -2946,12 +2948,15 @@ describe('DatePicker parameters refinement', () => {
     }
   });
 
-  it('rejects a month-resolution bound whose year is below 1000', () => {
-    expect(
-      VariableSchema.safeParse(datePicker({ type: 'month', max: '0099-12' }))
-        .success,
-    ).toBe(false);
-  });
+  it.each(['0099-12', '0800-01'])(
+    'rejects a month-resolution bound %s whose year is below 1000',
+    (bound) => {
+      expect(
+        VariableSchema.safeParse(datePicker({ type: 'month', max: bound }))
+          .success,
+      ).toBe(false);
+    },
+  );
 
   it('accepts a year-resolution bound at the four-digit-year floor', () => {
     expect(
@@ -5193,6 +5198,45 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 2: an abse
     validation,
   });
 
+  it('contains every exact runtime window through 2120 in the symbolic model', () => {
+    const fixtures = [
+      { before: 180, after: 0 },
+      { before: 30, after: 10 },
+    ];
+    const dayMs = 86_400_000;
+    const dayNumberOf = (value: string): number => {
+      const [year = 0, month = 1, day = 1] = value.split('-').map(Number);
+      const date = new Date(0);
+      date.setUTCFullYear(year, month - 1, day);
+      return date.getTime() / dayMs;
+    };
+
+    for (let year = 2026; year <= 2120; year++) {
+      for (let month = 1; month <= 12; month++) {
+        const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        for (let day = 1; day <= days; day++) {
+          const today =
+            `${String(year).padStart(4, '0')}-` +
+            `${String(month).padStart(2, '0')}-` +
+            String(day).padStart(2, '0');
+          const todayDay = dayNumberOf(today);
+          for (const model of fixtures) {
+            const runtimeMin =
+              dayNumberOf(dateWithinPickerRange(today, -model.before)) -
+              todayDay;
+            const runtimeMax =
+              dayNumberOf(dateWithinPickerRange(today, model.after)) - todayDay;
+            if (runtimeMin < -model.before || runtimeMax > model.after) {
+              throw new Error(
+                `Symbolic window does not contain the runtime window for ${JSON.stringify({ model, year, month, day })}`,
+              );
+            }
+          }
+        }
+      }
+    }
+  });
+
   // The reviewer's own report: `a` legally omits `parameters`
   // (`dateTimeRelativeDatePickerSchema` marks the record optional), but the
   // control it renders is identical to an empty record's — fresco-ui's
@@ -5658,6 +5702,44 @@ describe('findValidationContradictions — Twenty-fifth wave: derivation fidelit
   // The latest in-horizon interview date. No wall clock: the fixture is a
   // constant, and the analyser's own model is date-independent by design.
   const HORIZON_TODAY: MirrorYmd = { year: 2120, month: 12, day: 31 };
+
+  it('contains every today-dependent coarse window through the analysis horizon', () => {
+    const fixtures = [
+      {},
+      { max: '1800' },
+      { min: '3000' },
+      { max: '1100' },
+      { min: '9900' },
+      { max: '2020' },
+    ];
+
+    for (let year = 2026; year <= HORIZON_TODAY.year; year++) {
+      for (let month = 1; month <= 12; month++) {
+        const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        for (let day = 1; day <= days; day++) {
+          const today = { year, month, day };
+          for (const bounds of fixtures) {
+            const horizon = mirrorRuntimeWindow(bounds, HORIZON_TODAY);
+            const runtime = mirrorRuntimeWindow(bounds, today);
+            if (
+              mirrorCompareYmd(horizon.min, runtime.min) > 0 ||
+              mirrorCompareYmd(horizon.max, runtime.max) < 0
+            ) {
+              throw new Error(
+                `Horizon window does not contain the runtime window for ${JSON.stringify({ bounds, today, horizon, runtime })}`,
+              );
+            }
+          }
+        }
+      }
+    }
+
+    expect(mirrorRuntimeWindow({ max: '2020' }, HORIZON_TODAY).max).toEqual({
+      year: 2020,
+      month: 1,
+      day: 1,
+    });
+  });
 
   it('synthesizes exactly the runtime lower bound at the horizon span', () => {
     const window = mirrorRuntimeWindow({ max: '1800' }, HORIZON_TODAY);

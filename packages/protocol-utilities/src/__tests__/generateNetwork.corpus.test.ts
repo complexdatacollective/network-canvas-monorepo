@@ -11,6 +11,7 @@ import {
 import { generateNetwork } from '../generateNetwork';
 import { resolveGenerationConfig } from '../generateNetwork/config';
 import { analyseFeasibility } from '../generateNetwork/constraints/feasibility';
+import { delegatedValidationContradictions } from '../generateNetwork/constraints/validationContradictions';
 
 /**
  * Randomised acceptance corpus for the finite-domain solver.
@@ -804,6 +805,7 @@ type CorpusEntry = {
   feasible: boolean;
   satisfiable: boolean;
   conflictCount: number;
+  delegatedRejection: boolean;
 };
 
 let cached: CorpusEntry[] | undefined;
@@ -817,6 +819,13 @@ function corpus(): CorpusEntry[] {
       codebookFor(shape),
       stagesFor(shape),
       config,
+    );
+    const delegatedRejection = [
+      codebookVariables(shape.variables),
+      codebookVariables(shape.edgeVariables),
+    ].some(
+      (variables) =>
+        delegatedValidationContradictions(variables, new Set()).length > 0,
     );
     entries.push({
       shape,
@@ -836,6 +845,7 @@ function corpus(): CorpusEntry[] {
         ) &&
         oracleUniqueRoom(shape),
       conflictCount: conflicts.length,
+      delegatedRejection,
     });
   }
   cached = entries;
@@ -915,6 +925,19 @@ describe(`solver acceptance corpus (${SHAPES} shapes, shard ${SHARD})`, () => {
       expect(mismatches).toEqual([]);
     },
   );
+
+  it('refuses every seeded record the delegated analyser rejects', () => {
+    expect(
+      corpus()
+        .filter((entry) => entry.delegatedRejection && entry.feasible)
+        .map((entry) => ({
+          index: entry.shape.index,
+          family: entry.shape.family,
+          variables: entry.shape.variables,
+          edgeVariables: entry.shape.edgeVariables,
+        })),
+    ).toEqual([]);
+  });
 
   it(
     `generates every accepted shape on ${SEEDS} consecutive seeds with valid values`,

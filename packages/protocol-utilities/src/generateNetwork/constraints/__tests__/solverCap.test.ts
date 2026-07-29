@@ -49,17 +49,22 @@ function oddRingVariables(): Record<string, unknown> {
 }
 
 describe('solver search budget exhaustion', () => {
-  it('never refuses a protocol because the search ran out of budget', () => {
-    // With the full budget this odd ring is proven unsatisfiable and refused
-    // (see the feasibility suite). Under a three-node budget the search stops
-    // at "unknown" — and unknown must read as "cannot judge", not "refuse".
+  it('keeps delegated contradiction proofs independent of the search budget', () => {
+    // The generation solver reaches "unknown" under this budget, but
+    // protocol-validation proves Boolean parity directly. Delegating that
+    // proof must not weaken it according to a generation-only search limit.
     const codebook = {
       node: {
         person: { color: 'node-color-seq-1', variables: oddRingVariables() },
       },
     } as unknown as StructuralCodebook;
 
-    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([]);
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([
+      expect.objectContaining({
+        rules: ['differentFrom'],
+        variableNames: ['V0', 'V1', 'V2', 'V3', 'V4'],
+      }),
+    ]);
   });
 
   it('generates through the greedy path when the search budget runs out', () => {

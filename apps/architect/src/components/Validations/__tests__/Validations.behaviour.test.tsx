@@ -234,6 +234,11 @@ describe('Validations behaviour', () => {
     expect(
       screen.getByText(/This variable has only 2 possible values/),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Interview preview will refuse to generate synthetic data if more than 2 entities can hold a value/,
+      ),
+    ).toBeInTheDocument();
   });
 
   // Fifteenth-wave Finding 2: a boolean restricted to one option really does

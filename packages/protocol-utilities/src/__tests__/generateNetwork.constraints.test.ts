@@ -82,6 +82,33 @@ function heldEqualOrdinals(a: number[], b: number[]): Record<string, unknown> {
 }
 
 describe('generateNetwork constraint conformance', () => {
+  it('keeps the fixed-seed constraint draw byte-identical', () => {
+    const { network } = generateNetwork({
+      seed: 20260728,
+      ...egoProtocol({
+        a: {
+          name: 'Score',
+          type: 'number',
+          validation: { minValue: 10, maxValue: 20 },
+        },
+        b: {
+          name: 'Recorded',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: {
+            type: 'month',
+            min: '2020-03',
+            max: '2020-08',
+          },
+        },
+      }),
+    });
+
+    expect(
+      JSON.stringify(network.ego?.[entityAttributesProperty] ?? {}),
+    ).toMatchInlineSnapshot(`"{"a":20,"b":"2020-05"}"`);
+  });
+
   it('holds two ego variables equal when one declares sameAs the other', () => {
     const { network } = generateNetwork({
       seed: 3,

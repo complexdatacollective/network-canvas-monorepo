@@ -284,6 +284,7 @@ function valueKind(type: VariableEntry['type']): string {
 function incompatibleGroupTypes(
   members: readonly ConstrainedVariable[],
 ): EmptyGroupBound[] {
+  // Schema R2 requires same-typed reference targets; hand-built codebooks may bypass it.
   const kinds = new Set(members.map(({ entry }) => valueKind(entry.type)));
   if (kinds.size < 2) return [];
 

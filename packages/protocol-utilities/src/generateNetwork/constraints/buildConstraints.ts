@@ -55,6 +55,10 @@ const RESOLUTION_SHAPE = {
   full: 'YYYY-MM-DD',
 } as const satisfies Record<DateResolution, string>;
 
+const DATE_PICKER_DEFAULT_MIN_YEAR = 1920;
+const COARSE_DATE_PICKER_MIN_YEAR = 1000;
+const COARSE_DATE_PICKER_MAX_YEAR = 9999;
+
 /** Which end of a window a declared bound closes. */
 type BoundEnd = 'floor' | 'ceiling';
 
@@ -114,6 +118,7 @@ function requireCalendarBound(
 ): DateResolution {
   const written = pickerBoundResolution(value);
 
+  // The DatePicker schema requires exact-resolution bounds; hand-built codebooks may bypass it.
   if (
     written === undefined ||
     boundResolution(truncateToResolution(value, resolution)) === undefined
@@ -211,6 +216,16 @@ function resolveDeclaredBound(
     : truncateToResolution(value, resolution);
 }
 
+function coarseBound(
+  year: number,
+  resolution: Exclude<DateResolution, 'full'>,
+  month: 'first' | 'last',
+): string {
+  return resolution === 'year'
+    ? String(year).padStart(4, '0')
+    : `${String(year).padStart(4, '0')}-${month === 'first' ? '01' : '12'}`;
+}
+
 /**
  * A RelativeDatePicker's anchor, which is the one date parameter that has to be
  * a full one.
@@ -289,48 +304,55 @@ function resolveDateWindow(
     min: readString(parameters, 'min'),
     max: readString(parameters, 'max'),
   };
-  const min =
+  const declaredMin =
     declared.min !== undefined
       ? resolveDeclaredBound(entry, 'min', declared.min, resolution, 'floor')
       : undefined;
-  // DatePicker offers no date after today when the protocol declares no maximum
-  // (its own `maxYmd` fallback), and the draw already ceilings an open window
-  // there. Closing the window here rather than at the draw is what lets
-  // `valueSpaceSize` count it: the count has to stay a pure function of the
-  // descriptor, or a seeded run would stop reproducing across midnight.
-  //
-  // Where the protocol declares a floor later than today, what that ceiling
-  // does next is the one thing the three resolutions disagree about, because
-  // only two of them render a control that stops at today.
-  //
-  // A month- or year-resolution field is a `<select>`, whose options are built
-  // by counting years down from the ceiling to the floor: a floor above it
-  // leaves the control offering nothing at all, so the ceiling holds and the
-  // window is left inverted. Raising it would generate the one date nobody can
-  // select or display. Left inverted, feasibility reports the empty range under
-  // the variable's own name.
-  //
-  // A full-resolution field is a native `<input type="date">`, handed the
-  // declared bound verbatim: with no maximum declared it carries no `max`
-  // attribute, and `buildDatePickerBoundProps` gives the interview's validators
-  // none either, so every date from the floor onward is one a participant can
-  // select and submit. Refusing such a field as an empty range would block a
-  // preview of a protocol nothing is wrong with, so the floor raises the
-  // ceiling to meet it. It rises exactly that far and no further because that
-  // is where the draw stops: `ValueGenerator` ceilings an open window at today
-  // too, so a floor above today leaves it a span of zero and the floor itself
-  // is the only date it writes. A wider window would be a count of values
-  // nothing can reach, and this descriptor's window is the one the draw walks.
-  const latestOffered = truncateToResolution(today, resolution);
-  const openCeiling =
-    resolution === 'full' && min !== undefined && min > latestOffered
-      ? min
-      : latestOffered;
-
-  const max =
+  const declaredMax =
     declared.max !== undefined
       ? resolveDeclaredBound(entry, 'max', declared.max, resolution, 'ceiling')
-      : openCeiling;
+      : undefined;
+  const latestOffered = truncateToResolution(today, resolution);
+  const defaultWindowSpanYears =
+    Number(today.slice(0, 4)) - DATE_PICKER_DEFAULT_MIN_YEAR;
+  // Coarse pickers are closed dropdowns. Their missing floor is the stable
+  // 1920 default, except below that default where the runtime extends back by
+  // its today-dependent default span and clamps at the year-1000 control floor.
+  const min =
+    declaredMin ??
+    (resolution === 'full'
+      ? undefined
+      : coarseBound(
+          declaredMax !== undefined &&
+            Number(declaredMax.slice(0, 4)) < DATE_PICKER_DEFAULT_MIN_YEAR
+            ? Math.max(
+                COARSE_DATE_PICKER_MIN_YEAR,
+                Number(declaredMax.slice(0, 4)) - defaultWindowSpanYears,
+              )
+            : DATE_PICKER_DEFAULT_MIN_YEAR,
+          resolution,
+          'first',
+        ));
+  // A missing coarse ceiling normally lands on today. If the authored floor is
+  // later, the runtime extends the dropdown forward by the same default span
+  // and clamps it at year 9999. Full resolution has no submission validator on
+  // the missing side; generation deliberately samples the floor alone when it
+  // lies in the future, which stays inside that wider submission domain.
+  const openCeiling =
+    min !== undefined && min > latestOffered
+      ? resolution === 'full'
+        ? min
+        : coarseBound(
+            Math.min(
+              COARSE_DATE_PICKER_MAX_YEAR,
+              Number(min.slice(0, 4)) + defaultWindowSpanYears,
+            ),
+            resolution,
+            'last',
+          )
+      : latestOffered;
+
+  const max = declaredMax ?? openCeiling;
 
   return {
     resolution,

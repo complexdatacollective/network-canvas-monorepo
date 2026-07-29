@@ -4,6 +4,7 @@ import {
   collectEntityTypeReferences,
   type Stage,
   type StructuralCodebook,
+  type ValidationContradiction,
   type Variables,
 } from '@codaco/protocol-validation';
 import type { NcNode, VariableValue } from '@codaco/shared-consts';
@@ -46,6 +47,7 @@ import {
   type EntityConstraints,
 } from './types';
 import { valueKey } from './uniqueRegistry';
+import { delegatedValidationContradictions } from './validationContradictions';
 import {
   distinctOptionValues,
   MAX_TEXT_DRAW_LENGTH,
@@ -543,6 +545,191 @@ function comparatorComponents(edges: readonly ComparatorEdge[]): string[][] {
   return components;
 }
 
+type DelegatedConflict = {
+  variableIds: string[];
+  rules: string[];
+  reason: string;
+};
+
+/**
+ * Preserves generation's researcher-facing diagnostics while the validation
+ * package owns the decision that a contradiction exists.
+ */
+function adaptDelegatedContradiction(
+  contradiction: ValidationContradiction,
+  entity: EntityConstraints,
+  groups: ReadonlyMap<string, ConstrainedVariable>,
+  groupOf: ReadonlyMap<string, string>,
+  membersOf: ReadonlyMap<string, string[]>,
+): DelegatedConflict {
+  const participants = new Set(contradiction.variableIds);
+  const variableIds = [...entity.keys()].filter((id) => participants.has(id));
+  const strippedRules = [
+    ...new Set(contradiction.strips.map(({ rule }) => rule)),
+  ];
+
+  if (contradiction.class === 'invertedBounds') {
+    const variable = entity.get(variableIds[0] ?? '');
+    const [minimum, maximum] = contradiction.strips;
+    if (maximum === undefined) {
+      return {
+        variableIds,
+        rules: strippedRules,
+        reason: contradiction.message,
+      };
+    }
+    const valueOf = (rule: string): number | undefined => {
+      if (rule === 'minLength' || rule === 'maxLength') {
+        return variable?.constraints[rule];
+      }
+      if (rule === 'minValue' || rule === 'maxValue') {
+        return variable?.constraints[rule];
+      }
+      if (rule === 'minSelected' || rule === 'maxSelected') {
+        return variable?.constraints[rule];
+      }
+      return undefined;
+    };
+    const minimumValue = valueOf(minimum.rule);
+    const maximumValue = valueOf(maximum.rule);
+    if (minimumValue !== undefined && maximumValue !== undefined) {
+      return {
+        variableIds,
+        rules: strippedRules,
+        reason: `${minimum.rule} ${minimumValue} exceeds ${maximum.rule} ${maximumValue}`,
+      };
+    }
+  }
+
+  if (contradiction.class === 'minSelectedExceedsOptions') {
+    const variable = entity.get(variableIds[0] ?? '');
+    const minimum = variable?.constraints.minSelected;
+    const optionCount =
+      variable === undefined
+        ? undefined
+        : distinctOptionValues(variable.entry).length;
+    if (minimum !== undefined && optionCount !== undefined) {
+      return {
+        variableIds,
+        rules: strippedRules,
+        reason: `minSelected ${minimum} exceeds the ${optionCount} available options`,
+      };
+    }
+  }
+
+  if (contradiction.class === 'conflictingReferencePair') {
+    return {
+      variableIds,
+      rules: ['sameAs', 'differentFrom'],
+      reason: 'these variables are required to be both equal and different',
+    };
+  }
+
+  if (contradiction.class === 'strictComparatorCycle') {
+    return {
+      variableIds,
+      rules: REFERENCE_RULES.filter((rule) =>
+        variableIds.some(
+          (id) => entity.get(id)?.constraints[rule] !== undefined,
+        ),
+      ),
+      reason:
+        'these variables reference each other in a cycle that no assignment can satisfy',
+    };
+  }
+
+  const representatives = new Set(
+    variableIds.map((id) => groupOf.get(id) ?? id),
+  );
+  if (variableIds.length > 1 && representatives.size === 1) {
+    const [representative] = representatives;
+    const memberIds = membersOf.get(representative ?? '') ?? variableIds;
+    if (memberIds.length > 1) {
+      const intersected = groups.get(representative ?? '');
+      const members = memberIds.flatMap((id) => {
+        const member = entity.get(id);
+        return member === undefined ? [] : [member];
+      });
+
+      if (intersected !== undefined) {
+        const crossings = emptyGroupBounds(members, intersected.constraints);
+        if (crossings.length > 0) {
+          const held = MERGING_RULES.filter((rule) =>
+            memberIds.some((id) => {
+              const target = entity.get(id)?.constraints[rule];
+              return target !== undefined && memberIds.includes(target);
+            }),
+          );
+          return {
+            variableIds,
+            rules: [
+              ...held,
+              ...crossings.flatMap((crossing) => crossing.rules),
+            ],
+            reason:
+              'these variables are held to a single value, but their bounds do not ' +
+              `overlap: ${crossings.map((crossing) => crossing.detail).join('; ')}`,
+          };
+        }
+      }
+
+      const offerings = variableIds.map((id) => {
+        const member = entity.get(id);
+        return {
+          name: member?.entry.name ?? id,
+          values:
+            member === undefined ? [] : distinctOptionValues(member.entry),
+        };
+      });
+      if (
+        offerings.length > 1 &&
+        offerings.every(({ values }) => values.length > 0)
+      ) {
+        const shared = offerings.reduce<Set<string | number | boolean>>(
+          (intersection, { values }) =>
+            new Set(values.filter((value) => intersection.has(value))),
+          new Set(offerings[0]?.values ?? []),
+        );
+        if (shared.size === 0) {
+          return {
+            variableIds,
+            rules: ['sameAs'],
+            reason: `the options offered by ${offerings
+              .map(
+                ({ name, values }) =>
+                  `"${name}" (${values.map(String).join(', ')})`,
+              )
+              .join(' and by ')} have no value in common`,
+          };
+        }
+      }
+    }
+  }
+
+  if (contradiction.class === 'disjointBounds') {
+    return {
+      variableIds,
+      rules: REFERENCE_RULES.filter((rule) =>
+        variableIds.some(
+          (id) => entity.get(id)?.constraints[rule] !== undefined,
+        ),
+      ),
+      reason:
+        'the comparisons between these variables do not fit inside the bounds they declare',
+    };
+  }
+
+  const solvedRules = solvedComponentRules(entity, variableIds);
+  return {
+    variableIds,
+    rules: [...new Set([...solvedRules, ...strippedRules])],
+    reason:
+      contradiction.class === 'sameAsGroupConflict'
+        ? contradiction.message
+        : 'no combination of values these rules allow can satisfy all of them at once',
+  };
+}
+
 function analyseEntity(
   scope: EntityScope,
   config: ResolvedGenerationConfig,
@@ -655,6 +842,20 @@ function analyseEntity(
     });
   };
 
+  for (const contradiction of delegatedValidationContradictions(
+    scope.variables,
+    scope.unvalidated,
+  )) {
+    const delegated = adaptDelegatedContradiction(
+      contradiction,
+      entity,
+      groups,
+      groupOf,
+      membersOf,
+    );
+    report(delegated.variableIds, delegated.rules, delegated.reason);
+  }
+
   // A value a prompt fixes is settled before anything is drawn: the protocol
   // states it, so what the finished node holds is what the protocol wrote.
   // Nothing a seed does can rescue a value the variable's own rules reject, or
@@ -680,19 +881,7 @@ function analyseEntity(
   }
 
   for (const [id, variable] of entity) {
-    const { constraints, entry } = variable;
-
-    if (
-      constraints.minLength !== undefined &&
-      constraints.maxLength !== undefined &&
-      constraints.minLength > constraints.maxLength
-    ) {
-      report(
-        [id],
-        ['minLength', 'maxLength'],
-        `minLength ${constraints.minLength} exceeds maxLength ${constraints.maxLength}`,
-      );
-    }
+    const { constraints } = variable;
 
     // The schema bounds neither length rule, so an imported protocol can ask
     // for a value no run can build: a floor of a billion characters reaches
@@ -716,30 +905,7 @@ function analyseEntity(
       );
     }
 
-    if (
-      constraints.minValue !== undefined &&
-      constraints.maxValue !== undefined &&
-      constraints.minValue > constraints.maxValue
-    ) {
-      report(
-        [id],
-        ['minValue', 'maxValue'],
-        `minValue ${constraints.minValue} exceeds maxValue ${constraints.maxValue}`,
-      );
-    }
-
-    if (
-      constraints.minSelected !== undefined &&
-      constraints.maxSelected !== undefined &&
-      constraints.minSelected > constraints.maxSelected
-    ) {
-      report(
-        [id],
-        ['minSelected', 'maxSelected'],
-        `minSelected ${constraints.minSelected} exceeds maxSelected ${constraints.maxSelected}`,
-      );
-    }
-
+    // Schema R1 prevents this in validated protocols; hand-built codebooks still need the guard.
     // `maxSelected: 0` leaves the empty selection as the only drawable value,
     // and `required` is the one rule that rejects it. Without this the draw
     // emits `[]` and the interview refuses it — invalid data rather than a
@@ -752,6 +918,7 @@ function analyseEntity(
       );
     }
 
+    // Schema R1 prevents this in validated protocols; hand-built codebooks still need the guard.
     // The same contradiction in the length rules: `maxLength: 0` leaves the
     // empty string as the only value it permits, and `required` rejects it.
     // `textDrawLength` picks length 0 and `fitToLength` emits `""`.
@@ -763,6 +930,7 @@ function analyseEntity(
       );
     }
 
+    // Schema R1 prevents this in validated protocols; hand-built codebooks still need the guard.
     // A ceiling below zero needs no `required` to contradict: no string's
     // length can be at or under it, so the runtime's maxLength validator
     // rejects every string it is handed — `""` included, with "Too long. Enter
@@ -778,6 +946,7 @@ function analyseEntity(
       );
     }
 
+    // Schema R1 prevents this in validated protocols; hand-built codebooks still need the guard.
     // The selection sibling, on the same reasoning: a negative `maxSelected`
     // rejects every array including the empty one, while a negative
     // `minSelected` is vacuous. Value bounds are not checked this way —
@@ -787,23 +956,6 @@ function analyseEntity(
         [id],
         ['maxSelected'],
         `maxSelected ${constraints.maxSelected} permits no selection at all`,
-      );
-    }
-
-    // Counted over distinct values, not entries: two options carrying one
-    // value offer a participant one thing to pick, and the draw collapses them
-    // to a single selection. Counting entries would accept a floor no answer
-    // can reach and leave the draw to emit a short selection the form rejects.
-    const optionCount = distinctOptionValues(entry).length;
-    if (
-      constraints.minSelected !== undefined &&
-      optionCount > 0 &&
-      constraints.minSelected > optionCount
-    ) {
-      report(
-        [id],
-        ['minSelected'],
-        `minSelected ${constraints.minSelected} exceeds the ${optionCount} available options`,
       );
     }
 
@@ -913,40 +1065,6 @@ function analyseEntity(
     }
   }
 
-  // A group's members all hold one value, so it has to satisfy every member's
-  // bounds at once. Merged by `sameAs` or by a cycle of non-strict comparators,
-  // members whose own ranges are each satisfiable can still leave no range
-  // between them, and no draw can be inside a range that is not there.
-  for (const [group, memberIds] of membersOf) {
-    if (memberIds.length < 2) continue;
-
-    const intersected = groups.get(group);
-    if (intersected === undefined) continue;
-
-    const members: ConstrainedVariable[] = [];
-    for (const id of memberIds) {
-      const member = entity.get(id);
-      if (member !== undefined) members.push(member);
-    }
-
-    const crossings = emptyGroupBounds(members, intersected.constraints);
-    if (crossings.length === 0) continue;
-
-    const held = MERGING_RULES.filter((rule) =>
-      memberIds.some((id) => {
-        const target = entity.get(id)?.constraints[rule];
-        return target !== undefined && memberIds.includes(target);
-      }),
-    );
-
-    report(
-      memberIds,
-      [...held, ...crossings.flatMap((crossing) => crossing.rules)],
-      'these variables are held to a single value, but their bounds do not ' +
-        `overlap: ${crossings.map((crossing) => crossing.detail).join('; ')}`,
-    );
-  }
-
   // Comparators only contradict each other as a system: `a < b < c` on `[0, 1]`
   // has three pairs that each fit and no assignment that does. Propagation
   // settles the whole system, and a group left with an empty range is a chain
@@ -966,6 +1084,7 @@ function analyseEntity(
 
   for (const component of comparatorComponents(edges)) {
     if (!component.some((group) => inverted.has(group))) continue;
+    if (component.some((group) => implicated.has(group))) continue;
     // A cycle is reported below with the reason that describes it; its members'
     // bounds crossing over is that same contradiction counted twice.
     if (component.some((group) => cyclicGroups.has(group))) continue;
@@ -991,6 +1110,7 @@ function analyseEntity(
   }
 
   for (const cycle of cycles) {
+    if (cycle.some((id) => implicated.has(groupOf.get(id) ?? id))) continue;
     const rules = REFERENCE_RULES.filter((rule) =>
       cycle.some((id) => entity.get(id)?.constraints[rule] !== undefined),
     );

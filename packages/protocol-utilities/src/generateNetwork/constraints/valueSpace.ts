@@ -509,6 +509,7 @@ export function valueSpaceSize(
       const integers = Math.floor(max) - Math.ceil(min) + 1;
       if (integers > 0) return cap(integers);
 
+      // Schema-valid number bounds are integers; hand-built codebooks can still reach this grid.
       // A range holding no integer spans less than one unit, and the draw falls
       // back to the rounding grid inside it — plus whichever bound rounding
       // steps outside and the clamp brings back, which is a value the draw

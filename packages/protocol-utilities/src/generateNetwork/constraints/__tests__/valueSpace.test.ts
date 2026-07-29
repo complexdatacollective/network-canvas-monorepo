@@ -497,8 +497,8 @@ describe('valueSpaceSize', () => {
   // be distinct. Counting it as unbounded is what let a `unique` date pass this
   // analysis and then run out of years partway through the network.
   it.each([
-    { unique: false, type: 'year', size: 41 },
-    { unique: false, type: 'month', size: 481 },
+    { unique: false, type: 'year', size: 107 },
+    { unique: false, type: 'month', size: 1279 },
     { unique: false, type: 'full', size: 3651 },
     { unique: true, type: 'year', size: 107 },
     { unique: true, type: 'month', size: 1279 },
@@ -514,8 +514,8 @@ describe('valueSpaceSize', () => {
   // reports at least one value per entity, so every value counted has to be
   // reachable by a distinct sequence number, and none beyond them.
   it.each([
-    { unique: false, type: 'year', size: 41 },
-    { unique: false, type: 'month', size: 481 },
+    { unique: false, type: 'year', size: 107 },
+    { unique: false, type: 'month', size: 1279 },
     { unique: false, type: 'full', size: 3651 },
     { unique: true, type: 'year', size: 107 },
     { unique: true, type: 'month', size: 1279 },
@@ -566,10 +566,9 @@ describe('valueSpaceSize', () => {
     expect(valueSpaceSize(variable, 1_000)).toBe(27);
   });
 
-  // A floor later than today sits above the last date the picker offers, so
-  // the field lists no year at all. Counted as the empty space it is, which is
-  // what refuses the protocol rather than generating the one unselectable date.
-  it('counts a date floor beyond today as an empty space', () => {
+  // A floor later than today makes the picker extend its coarse window forward
+  // by the default span, so the count and draw cover that whole dropdown.
+  it('counts the extended window for a date floor beyond today', () => {
     const variable = make({
       id: 'v',
       name: 'V',
@@ -578,7 +577,7 @@ describe('valueSpaceSize', () => {
       parameters: { type: 'year', min: '2030-01-01' },
       validation: { unique: true },
     });
-    expect(valueSpaceSize(variable, 1_000)).toBe(0);
+    expect(valueSpaceSize(variable, 1_000)).toBe(107);
   });
 
   it('returns zero rather than a negative count for an inverted date window', () => {

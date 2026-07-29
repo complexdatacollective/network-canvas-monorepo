@@ -247,9 +247,10 @@ const Validation = ({
           </p>
           {itemKey === 'unique' && uniqueValueCount !== undefined && (
             <Paragraph className="text-sm text-current/70">
-              This variable has only {uniqueValueCount} possible values, so
-              &lsquo;Must be unique&rsquo; may become impossible to satisfy once
-              more than {uniqueValueCount} entities hold a value.
+              This variable has only {uniqueValueCount} possible values.
+              Interview preview will refuse to generate synthetic data if more
+              than {uniqueValueCount} entities can hold a value while
+              &lsquo;Must be unique&rsquo; is enabled.
             </Paragraph>
           )}
         </div>
@@ -297,9 +298,10 @@ const Validation = ({
         </div>
         {draftKey === 'unique' && uniqueValueCount !== undefined && (
           <Paragraph className="text-sm text-current/70">
-            This variable has only {uniqueValueCount} possible values, so
-            &lsquo;Must be unique&rsquo; may become impossible to satisfy once
-            more than {uniqueValueCount} entities hold a value.
+            This variable has only {uniqueValueCount} possible values. Interview
+            preview will refuse to generate synthetic data if more than{' '}
+            {uniqueValueCount} entities can hold a value while &lsquo;Must be
+            unique&rsquo; is enabled.
           </Paragraph>
         )}
         {draftKey && isValidationWithNumberValue(draftKey) && (
