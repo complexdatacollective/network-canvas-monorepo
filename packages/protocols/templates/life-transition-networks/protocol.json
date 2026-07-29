@@ -441,6 +441,7 @@
       "id": "composer-network",
       "type": "NetworkComposer",
       "label": "The people in your story",
+      "interviewScript": "Build this map alongside the participant's narration. Add people when they are mentioned, using the first name or nickname the participant chooses, and let the participant guide where each person sits. Do not impose a fixed meaning on distances, circles, or clusters unless your study's field manual defines one. Ask open questions about how people are connected and record the configured details without interrupting the story more than necessary.\n\nWhen naming slows, use the same sequence of cues with every participant. First ask whether there is anyone else they would like to add. Then prompt across contexts such as family, friends, work or study, neighborhood, community or faith groups, services and professionals, and online ties. Follow up on groups and people who know one another, while allowing uncertainty, multiple group memberships, and relationships that changed over time. Visual mapping can feel exposing, so invite corrections, avoid pressuring the participant to rank or place anyone precisely, and follow your study's privacy and distress procedures.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -532,6 +533,7 @@
       "id": "narrative-review",
       "type": "Narrative",
       "label": "Your network, before and since",
+      "interviewScript": "Use the completed map as a prompt for narration, not as an objective or complete account of the participant's network. Move through the presets selectively and ask the participant what they notice. Invite them to explain what clusters, gaps, bridges, isolated people, and changes in closeness mean in their own story. Ask about ties between people and how those relationships changed across the transition, and let the participant reposition people or draw on the canvas as they reflect.\n\nTreat the map and the spoken account as complementary evidence. If they appear to diverge, explore the difference rather than correcting either one. Keep questions open, give the participant time to reflect, and follow their lead around sensitive relationships. Remind them that they may skip a question or change the map. Capture the conversation using your approved study procedure, because this stage does not save the discussion or free-draw annotations.",
       "subject": {
         "entity": "node",
         "type": "person"
