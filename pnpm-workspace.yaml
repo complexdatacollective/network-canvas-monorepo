@@ -83,8 +83,8 @@ catalog:
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.61.1
   posthog-js: ^1.376.5
-  react: ^19.2.7
-  react-dom: ^19.2.7
+  react: ^19.2.8
+  react-dom: ^19.2.8
   react-dropzone: ^15.0.0
   react-redux: ^9.3.0
   redux-form: ^8.3.10
