@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import Definition from './Definition';
 
@@ -111,6 +111,11 @@ describe('Definition', () => {
 
     expect(term).toHaveFocus();
 
+    const definitionDialog = await screen.findByRole('dialog', {
+      name: 'Architect Classic',
+    });
+    expect(definitionDialog).toHaveAttribute('aria-labelledby', term.id);
+
     const downloadLink = await screen.findByRole('link', { name: 'here' });
     expect(downloadLink).toHaveAttribute('href', '/get-started');
     expect(downloadLink).not.toHaveAttribute('tabindex', '-1');
@@ -146,5 +151,48 @@ describe('Definition', () => {
       'href',
       '/get-started',
     );
+  });
+
+  it('composes consumer focus handlers for linked definitions', () => {
+    const onFocus = vi.fn();
+    const onBlur = vi.fn();
+
+    render(
+      <Definition
+        interactive
+        definition="The original desktop app."
+        onFocus={onFocus}
+        onBlur={onBlur}
+      >
+        Architect Classic
+      </Definition>,
+    );
+
+    const term = screen.getByText('Architect Classic');
+
+    fireEvent.focus(term);
+    fireEvent.blur(term, { relatedTarget: document.body });
+
+    expect(onFocus).toHaveBeenCalledOnce();
+    expect(onBlur).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a focus-opened linked definition open after the pointer leaves', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Definition interactive definition="The original desktop app.">
+        Architect Classic
+      </Definition>,
+    );
+
+    const term = screen.getByText('Architect Classic');
+
+    await user.tab();
+    await user.hover(term);
+    await user.unhover(term);
+
+    expect(term).toHaveFocus();
+    await waitFor(() => expect(term).toHaveAttribute('aria-expanded', 'true'));
   });
 });

@@ -41,7 +41,10 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
       sideOffset,
       showArrow,
       className,
+      id: idProp,
       'aria-describedby': ariaDescribedByProp,
+      onBlur,
+      onFocus,
       onClick,
       ...props
     },
@@ -53,7 +56,8 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
     const interactiveContentRef = React.useRef<HTMLDivElement | null>(null);
     const Element = asAbbreviation ? 'abbr' : 'span';
     const descriptionId = React.useId();
-    const triggerId = React.useId();
+    const generatedTriggerId = React.useId();
+    const triggerId = idProp ?? generatedTriggerId;
     const setInteractiveTriggerRef = React.useCallback(
       (element: HTMLElement | null) => {
         interactiveTriggerRef.current = element;
@@ -88,7 +92,17 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
         <Popover
           open={interactiveOpen}
           triggerId={triggerId}
-          onOpenChange={setInteractiveOpen}
+          onOpenChange={(nextOpen, eventDetails) => {
+            if (
+              !nextOpen &&
+              eventDetails.reason === 'trigger-hover' &&
+              keepInteractivePopoverOpen(document.activeElement)
+            ) {
+              return;
+            }
+
+            setInteractiveOpen(nextOpen);
+          }}
         >
           <PopoverTrigger
             id={triggerId}
@@ -102,9 +116,14 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
                   className,
                 )}
                 {...props}
+                id={triggerId}
                 aria-describedby={ariaDescribedByProp}
-                onFocus={() => setInteractiveOpen(true)}
+                onFocus={(event) => {
+                  onFocus?.(event);
+                  setInteractiveOpen(true);
+                }}
                 onBlur={(event) => {
+                  onBlur?.(event);
                   if (!keepInteractivePopoverOpen(event.relatedTarget)) {
                     setInteractiveOpen(false);
                   }
@@ -130,6 +149,7 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
             align={align}
             sideOffset={sideOffset}
             showArrow={showArrow}
+            aria-labelledby={triggerId}
             initialFocus={false}
             onFocus={() => setInteractiveOpen(true)}
             onBlur={(event) => {
@@ -158,7 +178,10 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
                 className,
               )}
               {...props}
+              id={triggerId}
               aria-describedby={ariaDescribedBy}
+              {...(onFocus ? { onFocus } : {})}
+              {...(onBlur ? { onBlur } : {})}
               {...(onClick ? { onClick } : {})}
               tabIndex={0}
             />
