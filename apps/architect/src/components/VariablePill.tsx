@@ -72,7 +72,7 @@ const BaseVariablePill = React.forwardRef<
         <div className="flex shrink-0 basis-12 items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
           <img className="icon opacity-80" src={icon} alt={type} />
         </div>
-        <div className="flex w-[calc(100%-3rem)] flex-1 items-center justify-between">
+        <div className="flex w-[calc(100%-3rem)] min-w-0 flex-1 items-center justify-between">
           {children}
         </div>
       </div>
@@ -195,7 +195,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
         {editing ? (
           <motion.div
             key="edit"
-            className="flex-1"
+            className="min-w-0 flex-1"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -203,7 +203,7 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
             <Tooltip open={!!validation}>
               <TooltipTrigger
                 render={
-                  <div className="w-full flex-auto">
+                  <div className="w-full min-w-0 flex-auto">
                     <InputField
                       autoFocus
                       placeholder="Enter a new variable name..."
