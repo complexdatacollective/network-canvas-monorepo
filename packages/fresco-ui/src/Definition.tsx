@@ -74,7 +74,7 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
 
         return Boolean(
           interactiveTriggerRef.current?.contains(nextFocusedElement) ||
-            interactiveContentRef.current?.contains(nextFocusedElement),
+          interactiveContentRef.current?.contains(nextFocusedElement),
         );
       },
       [],
@@ -117,7 +117,6 @@ const Definition = React.forwardRef<HTMLElement, DefinitionProps>(
                   onClick?.(event);
                   event.preventBaseUIHandler?.();
                 }}
-                role={undefined}
                 tabIndex={0}
               >
                 {children}
