@@ -17,6 +17,7 @@ import type {
   VariableConstraints,
 } from './types';
 import {
+  booleanDomainValues,
   decimalGrid,
   decimalGridStep,
   numberDrawBounds,
@@ -43,17 +44,19 @@ export function tighten<T extends number | string>(
 }
 
 /**
- * The values a variable's own type lets it hold, where that type is one whose
- * domain a researcher writes out as options. `ordinal` and `categorical` are
- * the two the codebook gives an option list to, and the two a draw picks from.
- * A boolean's `options` label `true` and `false` rather than describing a
- * domain — nothing draws from them, and the codebook's boolean values are
- * dropped on the way in — so a boolean has none of its own here.
+ * The values a variable's rendered control lets it hold where that domain is
+ * discrete and finite.
  */
 function optionDomain(
   variable: ConstrainedVariable,
 ): VariableOptionInput[] | undefined {
   const { entry } = variable;
+  if (entry.type === 'boolean') {
+    return booleanDomainValues(entry).map((value) => ({
+      label: String(value),
+      value,
+    }));
+  }
   if (entry.type !== 'ordinal' && entry.type !== 'categorical') {
     return undefined;
   }
@@ -106,14 +109,32 @@ function intersectEntry(
   representative: ConstrainedVariable,
   members: readonly ConstrainedVariable[],
 ): VariableEntry {
-  const options = representative.entry.options;
-  if (optionDomain(representative) === undefined || options === undefined) {
-    return representative.entry;
-  }
+  const own = optionDomain(representative);
+  if (own === undefined) return representative.entry;
 
   const shared = sharedOptionValues(members);
   if (shared === undefined) return representative.entry;
 
+  const options = representative.entry.options;
+  if (representative.entry.type === 'boolean') {
+    if (
+      shared.size === 0 ||
+      (shared.size === own.length &&
+        own.every((option) => shared.has(option.value)))
+    ) {
+      return representative.entry;
+    }
+    return {
+      ...representative.entry,
+      component: 'Boolean',
+      options: [...shared].map((value) => ({
+        label: String(value),
+        value,
+      })),
+    };
+  }
+
+  if (options === undefined) return representative.entry;
   const narrowed = options.filter((option) => shared.has(option.value));
   if (narrowed.length === 0 || narrowed.length === options.length) {
     return representative.entry;

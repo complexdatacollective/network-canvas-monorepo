@@ -19,10 +19,13 @@ import type { PromptFixedValues } from './nodes';
 export function toVariableEntry(id: string, variable: Variable): VariableEntry {
   const options =
     'options' in variable
-      ? variable.options?.filter(
-          (o): o is { label: string; value: string | number } =>
-            typeof o.value !== 'boolean',
-        )
+      ? variable.options?.map((option) => ({
+          label: option.label,
+          value: option.value,
+          ...('negative' in option && option.negative !== undefined
+            ? { negative: option.negative }
+            : {}),
+        }))
       : undefined;
 
   return {

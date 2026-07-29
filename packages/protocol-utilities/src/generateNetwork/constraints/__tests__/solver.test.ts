@@ -130,6 +130,8 @@ describe('solvableComponents', () => {
       flag: {
         name: 'Flag',
         type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
         validation: { differentFrom: ref('other') },
       },
       other: { name: 'Other', type: 'boolean' },
@@ -186,7 +188,8 @@ describe('solvableComponents', () => {
 
     expect(domainOf('n')).toEqual([3, 4, 5]);
     expect(domainOf('m')).toEqual([4]);
-    expect(domainOf('flag')).toEqual([false, true]);
+    expect(domainOf('flag')).toEqual([true]);
+    expect(domainOf('other')).toEqual([false, true]);
     expect(domainOf('band')).toEqual([1, 2]);
     // The scalar is capped below 1 by the comparator, so its propagated grid
     // runs 0.00-0.99.

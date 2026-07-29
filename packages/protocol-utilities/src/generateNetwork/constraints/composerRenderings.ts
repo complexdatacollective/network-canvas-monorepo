@@ -28,14 +28,10 @@ export type ComposerField = {
  * A date control a composer field renders, with the parameters that control
  * actually reads.
  *
- * Only the two date pickers are modelled, because they are the only controls
- * whose parameters bound the value a field will accept: `buildDatePickerBoundProps`
- * turns exactly these into the interview's hard `min`/`max` validators and
- * returns `{}` for every other component. A composer rendering a datetime
- * variable with, say, a Text control therefore contributes no bound at all,
- * which is why such a field leaves the codebook's own window in place rather
- * than widening it — the value the codebook's window produces is one that
- * control submits happily.
+ * Date pickers are modelled because their parameters bound the value a field
+ * accepts. Boolean and Toggle are also modelled below because they can expose
+ * different Boolean domains; other controls do not change a generated
+ * variable's value space.
  */
 export type ComposerDateRendering =
   | {
@@ -50,6 +46,14 @@ export type ComposerDateRendering =
       component: 'RelativeDatePicker';
       parameters: { anchor?: string; before?: number; after?: number };
     };
+
+export type ComposerBooleanRendering = {
+  component: 'Boolean' | 'Toggle';
+};
+
+export type ComposerRendering =
+  | ComposerDateRendering
+  | ComposerBooleanRendering;
 
 /** A variable two composer fields render with different date controls. */
 export type ComposerRenderingDisagreement = {
@@ -74,8 +78,8 @@ export const COMPOSER_RENDERING_CONFLICT = {
 
 /** One rendering per variable, by entity type. */
 export type ComposerRenderings = {
-  node: Map<string, Map<string, ComposerDateRendering>>;
-  edge: Map<string, Map<string, ComposerDateRendering>>;
+  node: Map<string, Map<string, ComposerRendering>>;
+  edge: Map<string, Map<string, ComposerRendering>>;
 };
 
 function readString(
@@ -126,8 +130,8 @@ function composerFields(stages: Stage[]): ComposerField[] {
 }
 
 /**
- * The date bounds one composer field renders with, or `undefined` where it
- * renders no date control at all.
+ * The bounded rendering one composer field contributes, or `undefined` where
+ * its control does not alter a generated variable's value space.
  *
  * Read through the same guards `buildConstraints` reads a codebook variable's
  * parameters with, and narrowed to the keys the control consults: a
@@ -137,10 +141,14 @@ function composerFields(stages: Stage[]): ComposerField[] {
  * the keys it ignores here is what lets the result be a codebook variable the
  * schema's own union describes.
  */
-function dateRenderingOf(
+function renderingOf(
   field: ComposerField,
   codebookParameters: Record<string, unknown> | undefined,
-): ComposerDateRendering | undefined {
+): ComposerRendering | undefined {
+  if (field.component === 'Boolean' || field.component === 'Toggle') {
+    return { component: field.component };
+  }
+
   if (
     field.component !== 'DatePicker' &&
     field.component !== 'RelativeDatePicker'
@@ -179,31 +187,46 @@ function dateRenderingOf(
   };
 }
 
-/** Whether two fields put the same window in front of a participant. */
-function sameRendering(
-  a: ComposerDateRendering,
-  b: ComposerDateRendering,
-): boolean {
+/** Combine compatible renderings of one stored value. */
+function mergedRendering(
+  a: ComposerRendering,
+  b: ComposerRendering,
+): ComposerRendering | undefined {
+  if (
+    (a.component === 'Boolean' || a.component === 'Toggle') &&
+    (b.component === 'Boolean' || b.component === 'Toggle')
+  ) {
+    // Toggle offers both values, so a Boolean choice control is the tighter
+    // domain whenever the same variable is rendered through both.
+    return {
+      component:
+        a.component === 'Boolean' || b.component === 'Boolean'
+          ? 'Boolean'
+          : 'Toggle',
+    };
+  }
+
   if (a.component === 'DatePicker') {
-    return (
-      b.component === 'DatePicker' &&
+    return b.component === 'DatePicker' &&
       a.parameters.type === b.parameters.type &&
       a.parameters.min === b.parameters.min &&
       a.parameters.max === b.parameters.max
-    );
+      ? a
+      : undefined;
   }
 
-  return (
+  return a.component === 'RelativeDatePicker' &&
     b.component === 'RelativeDatePicker' &&
     a.parameters.anchor === b.parameters.anchor &&
     a.parameters.before === b.parameters.before &&
     a.parameters.after === b.parameters.after
-  );
+    ? a
+    : undefined;
 }
 
 /**
- * The one date rendering each variable is generated against, folded from every
- * composer field naming it.
+ * The rendering each variable is generated against, folded from every composer
+ * field naming it.
  *
  * Two fields rendering one variable with different windows are reported as a
  * disagreement rather than resolved, because the interview gives the variable a
@@ -231,12 +254,12 @@ export function resolveComposerRenderings(
   const reported = new Set<string>();
 
   for (const field of fields) {
-    const rendering = dateRenderingOf(field, parametersOf(field));
+    const rendering = renderingOf(field, parametersOf(field));
     if (rendering === undefined) continue;
 
     const byVariable =
       renderings[field.entity].get(field.type) ??
-      new Map<string, ComposerDateRendering>();
+      new Map<string, ComposerRendering>();
     renderings[field.entity].set(field.type, byVariable);
 
     const existing = byVariable.get(field.variable);
@@ -244,7 +267,11 @@ export function resolveComposerRenderings(
       byVariable.set(field.variable, rendering);
       continue;
     }
-    if (sameRendering(existing, rendering)) continue;
+    const merged = mergedRendering(existing, rendering);
+    if (merged !== undefined) {
+      byVariable.set(field.variable, merged);
+      continue;
+    }
 
     const key = `${field.entity}:${field.type}:${field.variable}`;
     if (reported.has(key)) continue;
@@ -263,27 +290,32 @@ export function resolveComposerRenderings(
  * The same variable, rendered by the control a composer field puts in front of
  * the participant.
  *
- * Applied only to a datetime variable. The constraint machinery reads a
- * variable's `component` and `parameters` in exactly one place —
- * `resolveDateWindow`, which returns nothing for any other type — so overlaying
- * a control onto, say, a text variable would change no generated value while
- * making the codebook say something the codebook never said. (A composer *can*
- * render a text variable with a date picker, and the interview would then
- * validate that text against date bounds. Nothing here models that: the draw
- * takes its shape from the variable's declared type, so there is no date for a
- * window to bound.)
+ * Applied only where generation models a control-defined domain: date windows
+ * on datetime variables and the Boolean/Toggle choice set on booleans.
  */
 function renderedVariable(
   variable: Variable,
-  rendering: ComposerDateRendering,
+  rendering: ComposerRendering,
 ): Variable {
-  if (variable.type !== 'datetime') return variable;
-  return { ...variable, ...rendering };
+  if (
+    variable.type === 'datetime' &&
+    (rendering.component === 'DatePicker' ||
+      rendering.component === 'RelativeDatePicker')
+  ) {
+    return { ...variable, ...rendering };
+  }
+  if (
+    variable.type === 'boolean' &&
+    (rendering.component === 'Boolean' || rendering.component === 'Toggle')
+  ) {
+    return { ...variable, component: rendering.component };
+  }
+  return variable;
 }
 
 function renderedVariables(
   variables: Variables,
-  byVariable: ReadonlyMap<string, ComposerDateRendering>,
+  byVariable: ReadonlyMap<string, ComposerRendering>,
 ): Variables {
   return Object.fromEntries(
     Object.entries(variables).map(([id, variable]) => {
@@ -311,6 +343,9 @@ function renderedVariables(
  * variable as a RelativeDatePicker fixed to one anchor day looks like whatever
  * broad window the codebook declared, and every node the stage creates is given
  * a date its own form rejects.
+ *
+ * Boolean fields are folded for the same reason: Boolean uses its configured
+ * options as the offered domain, while Toggle always offers both values.
  *
  * Folded into the codebook rather than kept beside it so that the count and the
  * draw cannot come apart: `analyseFeasibility` and the draw's constraint maps

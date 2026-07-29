@@ -101,6 +101,7 @@ export function SettingsDialog({
   const auth = useAuth();
   const analytics = useAnalytics();
   const toast = useToast();
+  const addToast = toast.add;
   const { confirm } = useDialog();
   const { openSetupWizard } = useSetupWizard({ preserveExistingData: true });
   const [section, setSection] = useState<Section>('about');
@@ -164,19 +165,33 @@ export function SettingsDialog({
     });
   }, []);
 
+  const reloadSyntheticWithFeedback = useCallback(async () => {
+    try {
+      await reloadSynthetic();
+    } catch {
+      addToast({
+        title: 'Could not refresh synthetic session info',
+        description:
+          'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
+        variant: 'destructive',
+        timeout: 0,
+      });
+    }
+  }, [addToast, reloadSynthetic]);
+
   useEffect(() => {
     if (!open) return;
     void reload();
-    void reloadSynthetic();
-  }, [open, reload, reloadSynthetic]);
+    void reloadSyntheticWithFeedback();
+  }, [open, reload, reloadSyntheticWithFeedback]);
 
   // Re-query protocols whenever the Synthetic tab is (re)selected, so a protocol
   // imported moments before Settings opened — its DB write lands ~0.6-2.1s after
   // the deck shows its pending name — becomes selectable without reopening.
   useEffect(() => {
     if (!open || section !== 'synthetic') return;
-    void reloadSynthetic();
-  }, [open, section, reloadSynthetic]);
+    void reloadSyntheticWithFeedback();
+  }, [open, section, reloadSyntheticWithFeedback]);
 
   const persist = useCallback(
     async (patch: Partial<Omit<StoredSettings, 'id'>>) => {
@@ -249,26 +264,7 @@ export function SettingsDialog({
       }
     } finally {
       setIsGenerating(false);
-      // Re-read storage on every outcome, not just success: a generation that
-      // fails part-way rolls its own sessions back, and the displayed count has
-      // to match what actually survived either way. This refresh gets its own
-      // try/catch, separate from the one above: sessions can already be
-      // written by the time this runs, so a rejection here must not be
-      // dropped silently — the researcher would be looking at a stale
-      // protocol list and count with no indication anything is wrong. Keep
-      // the message on screen until dismissed, same as the generation-failure
-      // toast above.
-      try {
-        await reloadSynthetic();
-      } catch {
-        toast.add({
-          title: 'Could not refresh synthetic session info',
-          description:
-            'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
-          variant: 'destructive',
-          timeout: 0,
-        });
-      }
+      await reloadSyntheticWithFeedback();
       onDataChange?.();
     }
   }, [
@@ -277,7 +273,7 @@ export function SettingsDialog({
     simulateDropOut,
     respectSkipLogicAndFiltering,
     toast,
-    reloadSynthetic,
+    reloadSyntheticWithFeedback,
     onDataChange,
   ]);
 
@@ -308,31 +304,18 @@ export function SettingsDialog({
           });
         } finally {
           setIsDeleting(false);
-          // Separate try/catch, same reasoning as handleGenerate: by the time
-          // this runs the delete may already have succeeded (the toast above
-          // already fired), so a rejection here must not be attributed back
-          // to the delete itself. Left uncaught, it would propagate to the
-          // same handleConfirm catch described above and report a successful
-          // deletion as a failed one — a contradictory inline error next to
-          // the success toast, and a confirm dialog reopened to "retry" a
-          // delete that already happened. Report it here instead, and keep it
-          // on screen until dismissed.
-          try {
-            await reloadSynthetic();
-          } catch {
-            toast.add({
-              title: 'Could not refresh synthetic session info',
-              description:
-                'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
-              variant: 'destructive',
-              timeout: 0,
-            });
-          }
+          await reloadSyntheticWithFeedback();
           onDataChange?.();
         }
       },
     });
-  }, [confirm, onDataChange, reloadSynthetic, syntheticCount, toast]);
+  }, [
+    confirm,
+    onDataChange,
+    reloadSyntheticWithFeedback,
+    syntheticCount,
+    toast,
+  ]);
 
   const storagePercent = storage.percent !== null ? storage.percent / 100 : 0;
   const storageHasValues = storage.usage !== null && storage.quota !== null;

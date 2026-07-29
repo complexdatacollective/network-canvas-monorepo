@@ -32,8 +32,8 @@ import { resolveGenerationConfig } from './generateNetwork/config';
 import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints';
 import {
   COMPOSER_RENDERING_CONFLICT,
-  type ComposerDateRendering,
   type ComposerField,
+  type ComposerRendering,
   type ComposerRenderings,
   resolveComposerRenderings,
 } from './generateNetwork/constraints/composerRenderings';
@@ -1927,17 +1927,19 @@ export class SyntheticInterview {
 
     const constraintsOf = (
       variables: Map<string, VariableEntry>,
-      renderings?: ReadonlyMap<string, ComposerDateRendering>,
+      renderings?: ReadonlyMap<string, ComposerRendering>,
     ): EntityConstraints =>
       new Map(
         [...variables].map(([varId, declared]) => {
           const rendering = renderings?.get(varId);
-          // Only a date variable takes the stage's control, for the reason
-          // `applyComposerRenderings` gives: the constraint machinery reads a
-          // control and its parameters in one place, and that place has nothing
-          // to say about any other type.
           const entry =
-            rendering !== undefined && declared.type === 'datetime'
+            rendering !== undefined &&
+            ((declared.type === 'datetime' &&
+              (rendering.component === 'DatePicker' ||
+                rendering.component === 'RelativeDatePicker')) ||
+              (declared.type === 'boolean' &&
+                (rendering.component === 'Boolean' ||
+                  rendering.component === 'Toggle')))
               ? { ...declared, ...rendering }
               : declared;
           return [
@@ -1986,15 +1988,14 @@ export class SyntheticInterview {
   }
 
   /**
-   * The date control each variable is generated against, where a
+   * The domain-defining control each variable is generated against, where a
    * NetworkComposer stage renders one.
    *
    * The builder's composer fields carry the same `component`/`parameters`
    * override the schema's do, and its draws go through the same constraint
    * machinery, so the hole is the same one `applyComposerRenderings` closes for
-   * a protocol: without this a builder that renders a date variable through a
-   * fixed anchor is handed values its own stage would reject, and the stories
-   * built on it show data no participant could have entered.
+   * a protocol: without this a builder can be handed dates or Boolean values
+   * its own stage would reject.
    */
   private composerRenderings(): ComposerRenderings {
     const fields: ComposerField[] = [];

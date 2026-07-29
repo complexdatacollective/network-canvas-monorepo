@@ -333,6 +333,26 @@ describe('SettingsDialog synthetic tab — protocol import race', () => {
     });
     expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled();
   });
+
+  it('reports an initial synthetic-data refresh failure instead of leaving an unhandled rejection', async () => {
+    mockListProtocols.mockRejectedValueOnce(
+      new Error('the database connection was closed'),
+    );
+
+    render(<SettingsDialog open onClose={vi.fn()} />);
+
+    await waitFor(() =>
+      expect(mockToastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Could not refresh synthetic session info',
+          description:
+            'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
+          variant: 'destructive',
+          timeout: 0,
+        }),
+      ),
+    );
+  });
 });
 
 async function generateWithSelectedProtocol() {

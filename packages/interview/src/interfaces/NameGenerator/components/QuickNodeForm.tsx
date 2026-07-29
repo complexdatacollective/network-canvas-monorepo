@@ -65,13 +65,9 @@ const QuickNodeForm = ({
     ? validationPropsFor(targetValidationMetadata)
     : {};
 
-  // Context-dependent rules (unique, sameAs, differentFrom,
-  // greaterThanVariable, etc.) resolve against the live network and this
-  // stage's subject — mirror useProtocolForm's ValidationContext. Quick-add
-  // only ever creates a new node, so — exactly like NodeForm's new-node case,
-  // where `currentEntityId` is `selectedNode?.[entityPrimaryKeyProperty]` and
-  // therefore undefined — currentEntityId is omitted: there is no entity yet
-  // to scope `unique` exclusions or sibling comparisons to.
+  // Context-dependent rules resolve against the live network and this stage's
+  // subject. Prompt-fixed attributes are the new node's sibling values even
+  // though only the quick-add target is registered as a form field.
   // stageSubject is only ever null for stage types that carry no subject at
   // all (Information/Anonymisation/FamilyPedigree/NarrativePedigree);
   // NameGenerator always has a node subject, so the undefined fallback here
@@ -83,6 +79,7 @@ const QuickNodeForm = ({
           codebook: baseValidationContext.codebook,
           network: baseValidationContext.network,
           stageSubject: baseValidationContext.stageSubject,
+          currentEntityAttributes: newNodeAttributes,
         }
       : undefined;
 

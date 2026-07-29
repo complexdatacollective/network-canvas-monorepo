@@ -31,6 +31,9 @@ type ComposerField = {
 function codebookWith(options: {
   nodeParameters?: DatePickerParameters;
   nodeValidation?: { unique?: boolean };
+  booleanComponent?: 'Boolean' | 'Toggle';
+  booleanOptions?: { label: string; value: boolean }[];
+  booleanValidation?: { unique?: boolean };
 }): StructuralCodebook {
   return {
     node: {
@@ -49,6 +52,17 @@ function codebookWith(options: {
               : {}),
             ...(options.nodeValidation !== undefined
               ? { validation: options.nodeValidation }
+              : {}),
+          },
+          flag: {
+            name: 'Flag',
+            type: 'boolean',
+            component: options.booleanComponent ?? 'Boolean',
+            ...(options.booleanOptions !== undefined
+              ? { options: options.booleanOptions }
+              : {}),
+            ...(options.booleanValidation !== undefined
+              ? { validation: options.booleanValidation }
               : {}),
           },
         },
@@ -326,5 +340,56 @@ describe('NetworkComposer field renderings', () => {
     expect(new Set(valuesOf(network.nodes, 'born'))).toEqual(
       new Set(['2020-06-15']),
     );
+  });
+
+  it('draws only the values offered by a Boolean choice control', () => {
+    const { network } = generateNetwork({
+      codebook: codebookWith({
+        booleanOptions: [{ label: 'Yes', value: true }],
+      }),
+      stages: [composerStage({})],
+      seed: 7,
+      config: { today: TODAY },
+    });
+
+    expect(new Set(valuesOf(network.nodes, 'flag'))).toEqual(new Set([true]));
+  });
+
+  it('uses the full Boolean pair when a composer overrides the choice control with Toggle', () => {
+    const values = new Set<VariableValue>();
+
+    for (let seed = 0; seed < 20; seed++) {
+      const { network } = generateNetwork({
+        codebook: codebookWith({
+          booleanOptions: [{ label: 'Yes', value: true }],
+        }),
+        stages: [
+          composerStage({
+            nodeFields: [{ variable: 'flag', component: 'Toggle' }],
+          }),
+        ],
+        seed,
+        config: { today: TODAY },
+      });
+      for (const value of valuesOf(network.nodes, 'flag')) values.add(value);
+    }
+
+    expect(values).toEqual(new Set([false, true]));
+  });
+
+  it('counts Boolean choices when checking unique feasibility', () => {
+    const generate = () =>
+      generateNetwork({
+        codebook: codebookWith({
+          booleanOptions: [{ label: 'Yes', value: true }],
+          booleanValidation: { unique: true },
+        }),
+        stages: [composerStage({})],
+        seed: 7,
+        config: { today: TODAY },
+      });
+
+    expect(generate).toThrow(SyntheticDataConstraintError);
+    expect(generate).toThrow('only 1 distinct values');
   });
 });

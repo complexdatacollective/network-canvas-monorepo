@@ -128,6 +128,30 @@ function heldEqualOrdinals(a: number[], b: number[]): EntityConstraints {
   );
 }
 
+function heldEqualBooleans(a: boolean[], b: boolean[]): EntityConstraints {
+  const choices = (values: boolean[]) =>
+    values.map((value) => ({ label: String(value), value }));
+
+  return buildEntityConstraints(
+    {
+      a: {
+        name: 'Flag A',
+        type: 'boolean',
+        component: 'Boolean',
+        options: choices(a),
+      },
+      b: {
+        name: 'Flag B',
+        type: 'boolean',
+        component: 'Boolean',
+        options: choices(b),
+        validation: { sameAs: asEntityAttributeReference('a') },
+      },
+    },
+    TODAY,
+  );
+}
+
 function optionValues(variable: ConstrainedVariable | undefined) {
   return variable?.entry.options?.map((option) => option.value);
 }
@@ -165,6 +189,26 @@ describe('intersectGroupConstraints', () => {
 
     expect(optionValues(groups.get('a'))).toEqual([1, 2]);
   });
+
+  it('narrows a two-valued Boolean member to the choice shared by its group', () => {
+    const entity = buildEntityConstraints(
+      {
+        a: { name: 'Flag A', type: 'boolean', component: 'Toggle' },
+        b: {
+          name: 'Flag B',
+          type: 'boolean',
+          component: 'Boolean',
+          options: [{ label: 'Yes', value: true }],
+          validation: { sameAs: asEntityAttributeReference('a') },
+        },
+      },
+      TODAY,
+    );
+
+    const variable = groupsOf(entity).get('a');
+    expect(variable?.entry.component).toBe('Boolean');
+    expect(optionValues(variable)).toEqual([true]);
+  });
 });
 
 describe('emptyGroupBounds', () => {
@@ -174,6 +218,16 @@ describe('emptyGroupBounds', () => {
         rules: ['options'],
         detail:
           'the options offered by "Rating A" (1, 2) and by "Rating B" (3, 4) have no value in common',
+      },
+    ]);
+  });
+
+  it('reports Boolean choices held equal with no value in common', () => {
+    expect(crossings(heldEqualBooleans([true], [false]))).toEqual([
+      {
+        rules: ['options'],
+        detail:
+          'the options offered by "Flag A" (true) and by "Flag B" (false) have no value in common',
       },
     ]);
   });

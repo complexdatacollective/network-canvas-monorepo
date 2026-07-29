@@ -15,6 +15,7 @@ import type {
   VariableConstraints,
 } from './generateNetwork/constraints/types';
 import {
+  booleanDomainValues,
   categoricalSelectionAt,
   decimalGrid,
   decimalGridValueAt,
@@ -106,7 +107,7 @@ export class ValueGenerator {
   neutralForVariable(variable: VariableEntry): VariableValue {
     switch (variable.type) {
       case 'boolean':
-        return false;
+        return booleanDomainValues(variable)[0] ?? false;
       case 'text':
         return '';
       case 'categorical':
@@ -281,10 +282,19 @@ export class ValueGenerator {
         );
       }
 
-      case 'boolean':
-        return seq !== undefined
-          ? seq % 2 === 0
-          : this.faker.datatype.boolean();
+      case 'boolean': {
+        const values = booleanDomainValues(entry);
+        if (values.length === 0) return null;
+        const hasDefaultPair = values.includes(false) && values.includes(true);
+        if (seq !== undefined && hasDefaultPair) return seq % 2 === 0;
+
+        const randomBoolean =
+          seq === undefined ? this.faker.datatype.boolean() : undefined;
+        if (randomBoolean !== undefined && hasDefaultPair) return randomBoolean;
+
+        const value = values[(seq ?? 0) % values.length];
+        return value ?? null;
+      }
 
       case 'ordinal': {
         // Walked over the values the options offer rather than over the options

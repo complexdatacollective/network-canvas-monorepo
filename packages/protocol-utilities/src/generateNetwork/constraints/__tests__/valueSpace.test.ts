@@ -147,6 +147,35 @@ describe('valueSpaceSize', () => {
     ).toBe(2);
   });
 
+  it('counts and draws the distinct choices offered by a Boolean control', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'Also yes', value: true },
+      ],
+    });
+
+    expect(valueSpaceSize(variable, 100)).toBe(1);
+    expect(drawnBySequence(variable, 4)).toEqual([true, true, true, true]);
+  });
+
+  it('keeps Toggle two-valued even when the codebook carries choice options', () => {
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'boolean',
+      component: 'Toggle',
+      options: [{ label: 'Yes', value: true }],
+    });
+
+    expect(valueSpaceSize(variable, 100)).toBe(2);
+    expect(drawnBySequence(variable, 4)).toEqual([true, false, true, false]);
+  });
+
   it('gives ordinal its option count', () => {
     const variable = make({
       id: 'v',

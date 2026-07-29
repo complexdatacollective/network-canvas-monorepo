@@ -29,6 +29,7 @@ vi.mock('../../../../hooks/useCelebrate', () => ({
 
 const NODE_TYPE = 'person';
 const TARGET_VARIABLE = 'name';
+const SIBLING_VARIABLE = 'alias';
 const STAGE_ID = 'quick-add-stage';
 const PROMPT_ID = 'prompt-1';
 
@@ -54,6 +55,11 @@ function buildCodebook(
             ...(omitComponent ? {} : { component: 'Text' }),
             ...(validation ? { validation } : {}),
           },
+          [SIBLING_VARIABLE]: {
+            name: 'Flag',
+            type: 'boolean',
+            component: 'Toggle',
+          },
         },
       },
     },
@@ -64,7 +70,7 @@ function buildCodebook(
 
 type QuickAddStage = StageProps<'NameGeneratorQuickAdd'>['stage'];
 
-function buildStage(): QuickAddStage {
+function buildStage(fixedSiblingValue?: boolean): QuickAddStage {
   return {
     id: STAGE_ID,
     type: 'NameGeneratorQuickAdd',
@@ -75,6 +81,16 @@ function buildStage(): QuickAddStage {
       {
         id: PROMPT_ID,
         text: 'Name the people in your network',
+        ...(fixedSiblingValue === undefined
+          ? {}
+          : {
+              additionalAttributes: [
+                {
+                  variable: asEntityAttributeReference(SIBLING_VARIABLE),
+                  value: fixedSiblingValue,
+                },
+              ],
+            }),
       },
     ],
   };
@@ -101,6 +117,7 @@ function buildSession(existingNodes: NcNode[] = []): SessionState {
 function buildProtocol(
   validation?: Validation,
   omitComponent = false,
+  fixedSiblingValue?: boolean,
 ): ProtocolPayload {
   return {
     id: 'protocol',
@@ -110,18 +127,20 @@ function buildProtocol(
     name: 'Test protocol',
     schemaVersion: 8,
     codebook: buildCodebook(validation, omitComponent),
-    stages: [buildStage()],
+    stages: [buildStage(fixedSiblingValue)],
   };
 }
 
 function renderQuickNodeForm({
   validation,
   omitComponent,
+  fixedSiblingValue,
   existingNodes,
   addNode,
 }: {
   validation?: Validation;
   omitComponent?: boolean;
+  fixedSiblingValue?: boolean;
   existingNodes?: NcNode[];
   addNode: (
     attributes: NcNode[typeof entityAttributesProperty],
@@ -131,7 +150,7 @@ function renderQuickNodeForm({
     reducer: { session, protocol, ui },
     preloadedState: {
       session: buildSession(existingNodes),
-      protocol: buildProtocol(validation, omitComponent),
+      protocol: buildProtocol(validation, omitComponent, fixedSiblingValue),
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
@@ -253,5 +272,24 @@ describe('QuickNodeForm honours codebook validation', () => {
 
     await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
     expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: 'Alice' });
+  });
+
+  it('compares the target against prompt-fixed sibling attributes on the new node', async () => {
+    const addNode = vi.fn(async () => {});
+    renderQuickNodeForm({
+      validation: {
+        sameAs: asEntityAttributeReference(SIBLING_VARIABLE),
+      },
+      fixedSiblingValue: true,
+      addNode,
+    });
+
+    const input = await openField();
+
+    await userEvent.type(input, 'true');
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(input).not.toBeDisabled());
+    expect(addNode).not.toHaveBeenCalled();
   });
 });

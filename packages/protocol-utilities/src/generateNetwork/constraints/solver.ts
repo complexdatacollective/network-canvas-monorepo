@@ -12,6 +12,7 @@ import {
 import type { ConstrainedVariable } from './types';
 import { valueKey } from './uniqueRegistry';
 import {
+  booleanDomainValues,
   type DecimalGrid,
   decimalGrid,
   decimalGridValueAt,
@@ -192,7 +193,7 @@ function domainSize(
 
   switch (entry.type) {
     case 'boolean':
-      return flat(2);
+      return flat(booleanDomainValues(entry).length);
 
     case 'ordinal': {
       const count = distinctOptionValues(entry).length;
@@ -275,7 +276,7 @@ function enumerateDomain(
 
   switch (entry.type) {
     case 'boolean':
-      return [false, true];
+      return booleanDomainValues(entry);
 
     case 'ordinal': {
       const values = distinctOptionValues(entry);

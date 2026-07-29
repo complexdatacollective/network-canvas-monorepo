@@ -459,6 +459,23 @@ export function distinctOptionValues(
 }
 
 /**
+ * The values the rendered Boolean control offers. Toggle ignores codebook
+ * options, while the choice control uses them and defaults only when absent.
+ */
+export function booleanDomainValues(entry: VariableEntry): boolean[] {
+  if (entry.component !== 'Boolean' || entry.options === undefined) {
+    return [false, true];
+  }
+
+  if (entry.options.length === 0) return [];
+
+  const values = distinctOptionValues(entry).filter(
+    (value): value is boolean => typeof value === 'boolean',
+  );
+  return values.length > 0 ? values : [false, true];
+}
+
+/**
  * How many distinct values the generator can produce for this variable, or
  * `'unbounded'` once the count reaches `ceiling`.
  *
@@ -476,7 +493,7 @@ export function valueSpaceSize(
 
   switch (entry.type) {
     case 'boolean':
-      return 2;
+      return cap(booleanDomainValues(entry).length);
 
     case 'ordinal':
       return cap(distinctOptionValues(entry).length);
