@@ -4,19 +4,23 @@ import { createSelector } from '@reduxjs/toolkit';
 import { Plus } from 'lucide-react';
 import {
   useCallback,
+  useId,
   useMemo,
   useState,
   type ComponentType,
   type FocusEventHandler,
+  type ReactNode,
 } from 'react';
 import { useSelector } from 'react-redux';
 import type { WrappedFieldProps } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
+import Hint from '@codaco/fresco-ui/form/Hint';
+import { Label } from '@codaco/fresco-ui/Label';
 import NewTypeDialog from '~/components/Dialog/NewTypeDialog';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
+import { getReduxFieldErrorState } from '~/components/Form/reduxFieldMeta';
 import { cx } from '~/utils/cva';
 
 import { getEdgeTypes, getNodeTypes } from '../../../../selectors/codebook';
@@ -133,132 +137,187 @@ export const EntitySelectControl = ({
   );
 
   return (
-    <fieldset
-      aria-labelledby={ariaLabelledBy}
-      aria-label={
-        ariaLabelledBy
-          ? undefined
-          : `${entityType === 'node' ? 'Node' : 'Edge'} type field`
-      }
-      aria-describedby={ariaDescribedBy}
-      aria-disabled={readOnly || undefined}
-      disabled={disabled}
-      data-name={name}
-      onBlur={onBlur}
-      onFocus={onFocus}
-      className={cx(
-        'bg-input text-input-contrast flex w-full flex-col items-start gap-4 rounded border-2 border-transparent p-4',
-        ariaInvalid && 'border-destructive',
-        disabled && 'opacity-50',
-        readOnly && 'opacity-70',
-      )}
-    >
-      {options.length > 0 ? (
-        <RadioGroup
-          id={id}
-          value={value ?? ''}
-          onValueChange={(nextValue) => {
-            if (typeof nextValue === 'string') handleSelectItem(nextValue);
-          }}
-          disabled={disabled}
-          readOnly={readOnly}
-          required={required}
+    <>
+      <div
+        data-name={name}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        className="flex w-full flex-col items-start gap-4"
+      >
+        <fieldset
+          aria-labelledby={ariaLabelledBy}
           aria-label={
             ariaLabelledBy
               ? undefined
-              : `${entityType === 'node' ? 'Node' : 'Edge'} type options`
+              : `${entityType === 'node' ? 'Node' : 'Edge'} type field`
           }
-          aria-labelledby={ariaLabelledBy}
           aria-describedby={ariaDescribedBy}
-          aria-invalid={ariaInvalid || undefined}
-          aria-required={ariaRequired || required || undefined}
-          className="flex flex-row flex-wrap justify-start gap-3"
-        >
-          {options.map(
-            ({ label: optionLabel, color, shape, value: optionValue }) => (
-              <Radio.Root
-                key={optionValue}
-                value={optionValue}
-                nativeButton
-                render={(renderProps, state) =>
-                  entityType === 'edge' ? (
-                    <PreviewEdge
-                      {...renderProps}
-                      label={optionLabel}
-                      color={color ?? 'edge-color-seq-1'}
-                      selected={state.checked}
-                      surface={2}
-                    />
-                  ) : (
-                    <PreviewNode
-                      {...renderProps}
-                      label={optionLabel}
-                      color={color ?? 'node-color-seq-1'}
-                      shape={shape}
-                      selected={state.checked}
-                    />
-                  )
-                }
-              />
-            ),
+          aria-disabled={readOnly || undefined}
+          disabled={disabled}
+          className={cx(
+            'bg-input text-input-contrast flex w-full flex-col items-start rounded border-2 p-4',
+            ariaInvalid && 'border-destructive',
+            disabled && 'opacity-50',
+            readOnly && 'opacity-70',
           )}
-        </RadioGroup>
-      ) : (
-        <Paragraph className="mb-0">
-          No {entityType} types currently defined. Use the button below to
-          create one.
-        </Paragraph>
-      )}
-
-      <Button
-        icon={<Plus />}
-        onClick={() => {
-          if (refuseBlockedChange()) return;
-          setShowNewTypeDialog(true);
-        }}
-        color="primary"
-        disabled={disabled || readOnly}
-      >
-        Create new {entityType} type
-      </Button>
+        >
+          {options.length > 0 ? (
+            <RadioGroup
+              id={id}
+              value={value ?? ''}
+              onValueChange={(nextValue) => {
+                if (typeof nextValue === 'string') handleSelectItem(nextValue);
+              }}
+              disabled={disabled}
+              readOnly={readOnly}
+              required={required}
+              aria-label={
+                ariaLabelledBy
+                  ? undefined
+                  : `${entityType === 'node' ? 'Node' : 'Edge'} type options`
+              }
+              aria-labelledby={ariaLabelledBy}
+              aria-describedby={ariaDescribedBy}
+              aria-invalid={ariaInvalid || undefined}
+              aria-required={ariaRequired || required || undefined}
+              className="flex flex-row flex-wrap justify-start gap-3"
+            >
+              {options.map(
+                ({ label: optionLabel, color, shape, value: optionValue }) => (
+                  <Radio.Root
+                    key={optionValue}
+                    value={optionValue}
+                    nativeButton
+                    render={(renderProps, state) =>
+                      entityType === 'edge' ? (
+                        <PreviewEdge
+                          {...renderProps}
+                          label={optionLabel}
+                          color={color ?? 'edge-color-seq-1'}
+                          selected={state.checked}
+                          surface={2}
+                        />
+                      ) : (
+                        <PreviewNode
+                          {...renderProps}
+                          label={optionLabel}
+                          color={color ?? 'node-color-seq-1'}
+                          shape={shape}
+                          selected={state.checked}
+                        />
+                      )
+                    }
+                  />
+                ),
+              )}
+            </RadioGroup>
+          ) : (
+            <p className="w-full py-6 text-center text-sm text-current/70 italic">
+              No {entityType} types currently defined
+            </p>
+          )}
+        </fieldset>
+        <Button
+          type="button"
+          icon={<Plus />}
+          onClick={() => {
+            if (refuseBlockedChange()) return;
+            setShowNewTypeDialog(true);
+          }}
+          color="primary"
+          disabled={disabled || readOnly}
+        >
+          Create new {entityType} type
+        </Button>
+      </div>
       <NewTypeDialog
         show={showNewTypeDialog}
         entityType={entityType}
         onComplete={handleNewTypeComplete}
         onCancel={() => setShowNewTypeDialog(false)}
       />
-    </fieldset>
+    </>
   );
 };
 
 type EntitySelectFieldProps = WrappedFieldProps & {
   entityType: 'node' | 'edge';
   label?: string | null;
+  labelHidden?: boolean;
+  hint?: ReactNode;
   promptBeforeChange?: string | null;
   blockChangeReason?: string | null;
   disabled?: boolean;
   readOnly?: boolean;
+  required?: boolean;
 };
 
-const FrescoEntitySelectControl = EntitySelectControl as ComponentType<
-  Record<string, unknown>
->;
-const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
-  Record<string, unknown>
->;
-
 const EntitySelectFieldBase = ({
+  input,
+  meta,
   entityType,
   label,
+  labelHidden = false,
+  hint,
+  required = false,
   ...props
-}: EntitySelectFieldProps) => (
-  <ReduxFieldAdapter
-    {...props}
-    entityType={entityType}
-    label={label ?? `${entityType === 'node' ? 'Node' : 'Edge'} type`}
-    fieldComponent={FrescoEntitySelectControl}
-  />
-);
+}: EntitySelectFieldProps) => {
+  const id = useId();
+  const { errors, showErrors } = getReduxFieldErrorState(meta);
+  const describedBy = [
+    required && `${id}-required`,
+    hint && `${id}-hint`,
+    errors.length > 0 && `${id}-error`,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const fieldLabel = label ?? `${entityType === 'node' ? 'Node' : 'Edge'} type`;
+
+  return (
+    <div
+      className="group flex w-full grow flex-col not-last:mb-8"
+      data-field-name={input.name}
+    >
+      <div className={cx((!labelHidden || Boolean(hint)) && 'mb-2')}>
+        <Label
+          id={`${id}-label`}
+          htmlFor={id}
+          required={required}
+          className={labelHidden ? 'sr-only' : undefined}
+        >
+          {fieldLabel}
+        </Label>
+        {required && (
+          <span id={`${id}-required`} className="sr-only">
+            Required
+          </span>
+        )}
+        {hint && <Hint id={`${id}-hint`}>{hint}</Hint>}
+      </div>
+      <EntitySelectControl
+        {...props}
+        id={id}
+        name={input.name}
+        entityType={entityType}
+        value={typeof input.value === 'string' ? input.value : undefined}
+        onChange={(value) => input.onChange(value)}
+        onBlur={() => input.onBlur?.(undefined)}
+        onFocus={input.onFocus}
+        required={required}
+        aria-required={required || undefined}
+        aria-labelledby={`${id}-label`}
+        aria-describedby={describedBy || undefined}
+        aria-invalid={showErrors}
+      />
+      <FieldErrors
+        id={`${id}-error`}
+        name={input.name}
+        errors={errors}
+        show={showErrors}
+      />
+    </div>
+  );
+};
 
 const EntitySelectField = EntitySelectFieldBase as unknown as ComponentType<
   Record<string, unknown>

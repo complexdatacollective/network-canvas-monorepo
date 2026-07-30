@@ -81,7 +81,7 @@ export const ShapePickerControl = ({
       onBlur={onBlur}
       onFocus={onFocus}
       className={cx(
-        'flex flex-wrap gap-3 rounded border-2 border-transparent',
+        'flex flex-wrap gap-3 rounded border-2',
         !small && 'bg-input text-input-contrast p-4',
         ariaInvalid && 'border-destructive',
         disabled && 'opacity-50',

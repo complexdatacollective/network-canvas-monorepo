@@ -58,6 +58,7 @@ const TooltipContent = React.forwardRef<
           <AnimatePresence>
             <BaseTooltip.Popup
               ref={ref}
+              role="tooltip"
               render={
                 <MotionSurface
                   floating

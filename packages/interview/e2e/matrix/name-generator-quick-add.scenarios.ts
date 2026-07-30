@@ -84,6 +84,8 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           // stable while proving the stored attribute is no longer empty.
           await input.fill('Person');
           await input.press('Enter');
+          await expect(stage.getNode('Alice')).toBeVisible();
+          await expect(stage.getNode('Bob')).toBeVisible();
           await expect(stage.getNode('Person')).toBeVisible();
 
           const afterValid = await protocol.getNetworkState(

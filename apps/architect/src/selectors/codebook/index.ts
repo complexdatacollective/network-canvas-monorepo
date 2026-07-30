@@ -8,6 +8,7 @@ import type {
   NodeDefinition,
   VariableOptions,
   Variables,
+  VariableType,
 } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/store';
 
@@ -26,7 +27,7 @@ type VariableWithEntity = {
   name: string;
   entity: 'node' | 'edge' | 'ego';
   entityType: string | null;
-  type: string;
+  type: VariableType;
 };
 
 type VariableOption = {
@@ -155,10 +156,10 @@ const getAllVariablesByEntitySelector = createSelector(
         if (!variable || typeof variable !== 'object') continue;
         variables.push({
           uuid,
-          name: (variable as { name: string }).name,
+          name: variable.name,
           entity: 'node',
           entityType: nodeType,
-          type: (variable as { type: string }).type,
+          type: variable.type,
         });
       }
     }
@@ -173,10 +174,10 @@ const getAllVariablesByEntitySelector = createSelector(
         if (!variable || typeof variable !== 'object') continue;
         variables.push({
           uuid,
-          name: (variable as { name: string }).name,
+          name: variable.name,
           entity: 'edge',
           entityType: edgeType,
-          type: (variable as { type: string }).type,
+          type: variable.type,
         });
       }
     }
@@ -187,10 +188,10 @@ const getAllVariablesByEntitySelector = createSelector(
       if (!variable || typeof variable !== 'object') continue;
       variables.push({
         uuid,
-        name: (variable as { name: string }).name,
+        name: variable.name,
         entity: 'ego',
         entityType: null,
-        type: (variable as { type: string }).type,
+        type: variable.type,
       });
     }
 
@@ -217,10 +218,10 @@ export const getAllVariableUUIDsByEntity = (
       if (!variable || typeof variable !== 'object') continue;
       variables.push({
         uuid,
-        name: (variable as { name: string }).name,
+        name: variable.name,
         entity: 'node',
         entityType: nodeType,
-        type: (variable as { type: string }).type,
+        type: variable.type,
       });
     }
   }
@@ -235,10 +236,10 @@ export const getAllVariableUUIDsByEntity = (
       if (!variable || typeof variable !== 'object') continue;
       variables.push({
         uuid,
-        name: (variable as { name: string }).name,
+        name: variable.name,
         entity: 'edge',
         entityType: edgeType,
-        type: (variable as { type: string }).type,
+        type: variable.type,
       });
     }
   }
@@ -249,10 +250,10 @@ export const getAllVariableUUIDsByEntity = (
     if (!variable || typeof variable !== 'object') continue;
     variables.push({
       uuid,
-      name: (variable as { name: string }).name,
+      name: variable.name,
       entity: 'ego',
       entityType: null,
-      type: (variable as { type: string }).type,
+      type: variable.type,
     });
   }
 

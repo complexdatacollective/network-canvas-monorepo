@@ -146,7 +146,8 @@ export default function QuickAddField({
   }, [successfulSubmissionCount, resetAfterSuccessfulSubmission]);
 
   // Reset field (but stay open) when form submission succeeds, or show
-  // validation errors on failed submission attempts.
+  // validation errors on failed submission attempts. Standalone consumers
+  // (stories and focused tests) fall back to observing the submitting state.
   useEffect(() => {
     // Detect transition from submitting to not submitting
     if (wasSubmittingRef.current && !isFormSubmitting) {
@@ -344,7 +345,7 @@ export default function QuickAddField({
                     animate={{ y: 0 }}
                     exit={{ y: '-100%' }}
                     className={cx(
-                      'flex h-full items-center justify-center',
+                      'flex h-full w-full items-center justify-center',
                       // Counter-rotate content inside the rotated diamond,
                       // mirroring the Node component's treatment.
                       nodeShape === 'diamond' && 'scale-[1.176] -rotate-45',

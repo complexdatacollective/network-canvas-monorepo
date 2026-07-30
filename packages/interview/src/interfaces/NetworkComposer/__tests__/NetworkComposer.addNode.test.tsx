@@ -248,6 +248,7 @@ describe('NetworkComposer add-node flow', () => {
 
     // The same field stays open and is cleared, ready for the next name.
     expect((input as HTMLInputElement).value).toBe('');
+    expect(input).toHaveFocus();
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'Bob' } });

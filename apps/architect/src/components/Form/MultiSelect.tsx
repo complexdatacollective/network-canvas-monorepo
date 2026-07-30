@@ -119,7 +119,6 @@ const ItemComponent: React.FC<ItemComponentProps> = ({
             onMove={onMove}
             disabled={interactionDisabled}
             label={`Reorder item ${index + 1} of ${itemCount}`}
-            size="lg"
             className="text-sortable-contrast"
           />
         </div>

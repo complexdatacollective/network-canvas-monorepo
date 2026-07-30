@@ -323,8 +323,8 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const bc = edges.find((e) => e[entityPrimaryKeyProperty] === 'bc');
         expect(ab?.attributes['met-at']).toBe('Work');
         // SyntheticInterview materialises every declared variable on manual
-        // entities with its type-neutral value, matching runtime-created
-        // entities rather than leaving the key absent.
+        // entities with its type-neutral value. The filtered edge remains
+        // untouched; only the visible A-B edge receives the submitted answer.
         expect(bc?.attributes['met-at']).toBe('');
         expect(edges).toHaveLength(2);
       },
@@ -1056,6 +1056,8 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await expect(stage.form.getFieldError('story')).toBeVisible();
         await expect(stage.form.getFieldError('contexts')).toBeVisible();
         const before = await protocol.getNetworkState(interview.interviewId);
+        // Manually seeded entities carry the variable type's neutral value
+        // until a valid submission replaces it.
         expect((before?.edges ?? [])[0]?.attributes.closeness).toBeNull();
 
         // Attempt 2: too many selected (3 > 2); text too long; radio now valid.

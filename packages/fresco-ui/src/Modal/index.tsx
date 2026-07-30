@@ -17,6 +17,9 @@ import { ModalBackdrop } from './ModalBackdrop';
  *
  * @param open Whether the modal is open.
  * @param onOpenChange Callback when the open state changes.
+ * @param forceBackdrop Whether to render the backdrop when this modal is nested
+ * within another dialog.
+ * @param backdropClassName Additional classes for the modal backdrop.
  * @param children The content of the modal.
  *
  *
@@ -24,10 +27,14 @@ import { ModalBackdrop } from './ModalBackdrop';
 export default function Modal({
   open,
   onOpenChange,
+  forceBackdrop = false,
+  backdropClassName,
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  forceBackdrop?: boolean;
+  backdropClassName?: string;
   children: ReactNode;
 }) {
   const portalContainer = usePortalContainer();
@@ -40,7 +47,10 @@ export default function Modal({
             container={portalContainer ?? undefined}
             keepMounted
           >
-            <ModalBackdrop />
+            <ModalBackdrop
+              forceRender={forceBackdrop}
+              className={backdropClassName}
+            />
             {children}
           </BaseDialog.Portal>
         )}

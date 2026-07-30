@@ -47,6 +47,8 @@ function AddNodeField({
   const resetField = useFormStore((state) => state.resetField);
   const [fieldToReset, setFieldToReset] = useState<string>();
   const submissionInProgress = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const shouldRestoreFocus = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { id, meta, fieldProps, containerProps } = useField({
@@ -65,6 +67,12 @@ function AddNodeField({
     setFieldToReset(undefined);
   }, [fieldToReset, resetField]);
 
+  useEffect(() => {
+    if (isSubmitting || !shouldRestoreFocus.current) return;
+    shouldRestoreFocus.current = false;
+    inputRef.current?.focus();
+  }, [isSubmitting]);
+
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.nativeEvent.isComposing || event.key !== 'Enter') return;
@@ -73,6 +81,7 @@ function AddNodeField({
       void (async () => {
         if (submissionInProgress.current) return;
         submissionInProgress.current = true;
+        shouldRestoreFocus.current = true;
         setIsSubmitting(true);
 
         try {
@@ -112,6 +121,7 @@ function AddNodeField({
         id={id}
         name={targetVariable}
         {...fieldProps}
+        ref={inputRef}
         value={fieldProps.value as string}
         onChange={fieldProps.onChange}
         onKeyDown={handleKeyDown}

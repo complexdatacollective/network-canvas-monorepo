@@ -21,6 +21,8 @@ type ValidationSectionProps = {
   disabled?: boolean;
   form: string;
   entity: string;
+  id?: string;
+  summary?: string;
   variableType?: string;
   existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
   allVariables: Record<string, Variable>;
@@ -30,6 +32,8 @@ const ValidationSection = ({
   disabled = false,
   form,
   entity,
+  id = getFieldId('validation'),
+  summary = 'Add one or more validation rules to this form field.',
   variableType = '',
   existingVariables,
   allVariables,
@@ -77,13 +81,9 @@ const ValidationSection = ({
   return (
     <Section
       layout="vertical"
-      id={getFieldId('validation')}
+      id={id}
       title="Validation"
-      summary={
-        <Paragraph>
-          Add one or more validation rules to this form field.
-        </Paragraph>
-      }
+      summary={<Paragraph>{summary}</Paragraph>}
       disabled={disabled}
       toggleable
       startExpanded={!!hasValidation}

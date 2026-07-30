@@ -51,7 +51,7 @@ independently:
 | --- | --- | --- |
 | \`editable={false}\`, \`animated={false}\` | Non-interactive \`<data>\` with a static type-colored border. | Picker options, query previews, stage configuration, and printable output. This is the default. |
 | \`editable={false}\`, \`animated\` | Non-interactive \`<data>\` with an animated border. | A static on-screen reference needs extra visual emphasis. Never use this for printable output. |
-| \`editable\` | A button with a details popover and modal name editor. | The variable itself can be inspected and renamed. Provide \`onLabelChange\` to persist edits. |
+| \`editable\` | A button that opens the anchored name editor directly. Hover, focus, and tooltip affordances communicate the action. | The variable can be renamed. Provide \`onLabelChange\` to persist edits. |
 | \`ConnectedVariablePill\` | Resolves \`label\` and \`type\` from a variable UUID, validates uniqueness, then renders \`VariablePill\`. | Architect state owns the variable and edits must update the protocol codebook. |
 
 \`\`\`tsx
@@ -84,7 +84,10 @@ independently:
   \`VariableSpotlight\`; unless \`maxWidth\` is also supplied, that width is
   used as the maximum.
 - \`animated\` changes only the border treatment.
-- \`editable\` changes the semantic element and enables the editing workflow.
+- \`editable\` changes the semantic element to a button, adds the raised
+  interaction affordance and edit tooltip, and enables the editing workflow.
+- On entering edit mode, the pill expands from its current width to
+  \`maxWidth\` while remaining anchored around the same center point.
 `,
       },
     },
@@ -125,7 +128,8 @@ independently:
     },
     editable: {
       control: 'boolean',
-      description: 'Enables the details popover and modal name editor.',
+      description:
+        'Makes the pill a directly editable button with a tooltip and anchored name editor.',
     },
   },
   render: (args) => (

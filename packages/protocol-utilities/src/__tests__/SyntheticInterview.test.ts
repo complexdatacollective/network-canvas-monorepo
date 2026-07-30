@@ -1946,11 +1946,11 @@ describe('validation rules on generated nodes', () => {
   it('draws a codebook carrying no cross-variable rule to the values it always has', () => {
     // Every Storybook story's fixture is a codebook of this shape, so a drift
     // in what it draws rewrites every visual baseline at once. These values are
-    // the ones the builder produced before nodes were drawn as whole entities,
-    // pinned so that moving them has to be a deliberate act rather than a side
-    // effect of a change to the constraint machinery. Date variables are left
-    // out: an open date window ends at today, which no fixed expectation
-    // survives.
+    // the ones the builder produces with personal names drawn from their own
+    // deterministic stream, pinned so that moving them has to be a deliberate
+    // act rather than a side effect of a change to the constraint machinery.
+    // Date variables are left out: an open date window ends at today, which no
+    // fixed expectation survives.
     const si = new SyntheticInterview(42);
     const nt = si.addNodeType();
     nt.addVariable({ type: 'text', name: 'label' });
@@ -1999,46 +1999,46 @@ describe('validation rules on generated nodes', () => {
     expect(byName).toEqual([
       {
         name: 'Mohammad',
-        label: 'Charlie',
-        age: 22,
-        small: 1,
-        active: false,
+        label: 'Mohammad',
+        age: 61,
+        small: -44,
+        active: true,
         rating: 1,
         interests: ['family'],
-        closeness: 0.71,
+        closeness: 0.06,
         position: { x: 0.1, y: 0.1 },
       },
       {
-        name: 'Rey',
-        label: 'Claudia',
-        age: 40,
-        small: -20,
-        active: true,
+        name: 'Charlie',
+        label: 'Maybelle',
+        age: 19,
+        small: 8,
+        active: false,
         rating: 2,
         interests: ['work', 'school'],
-        closeness: 0.29,
+        closeness: 0.21,
         position: { x: 0.27, y: 0.33 },
       },
       {
-        name: 'Edgar',
-        label: 'Pearl',
-        age: 32,
-        small: -21,
-        active: false,
+        name: 'Laury',
+        label: 'Esther',
+        age: 56,
+        small: -26,
+        active: true,
         rating: 3,
         interests: ['school'],
-        closeness: 0.05,
+        closeness: 0.61,
         position: { x: 0.44000000000000006, y: 0.56 },
       },
       {
-        name: 'Arnold',
-        label: 'Presley',
-        age: 40,
-        small: -47,
-        active: false,
+        name: 'Warren',
+        label: 'Hannah',
+        age: 51,
+        small: -4,
+        active: true,
         rating: 4,
         interests: ['neighborhood', 'family'],
-        closeness: 0.44,
+        closeness: 0.51,
         position: { x: 0.61, y: 0.79 },
       },
     ]);

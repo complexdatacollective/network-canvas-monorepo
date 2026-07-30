@@ -18,6 +18,7 @@ import { getFieldId } from '~/utils/issues';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
+import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import { getSortOrderOptionGetter } from './optionGetters';
 import withVariableHandlers from './withVariableHandlers';
 import withVariableOptions from './withVariableOptions';
@@ -181,6 +182,15 @@ const PromptFields = ({
             }}
           />
         </Row>
+        {otherVariable && (
+          <CodebookVariableValidationSection
+            form={form}
+            fieldName="otherVariable"
+            entity={entity}
+            type={type}
+            variableId={otherVariable}
+          />
+        )}
         <Row>
           <ValidatedField
             name="otherOptionLabel"
