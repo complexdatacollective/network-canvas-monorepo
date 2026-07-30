@@ -105,6 +105,20 @@ describe('RichText markdown adapter', () => {
     );
   });
 
+  it('keeps a link spanning mixed formatting as a single link', () => {
+    const markdown =
+      '[Ryan L, Mulholland J (2014). Talking Ties. _Sociological Research Online_ 19(2).](https://doi.org/10.5153/sro.3404)';
+
+    expect(roundTrip(markdown)).toBe(markdown);
+  });
+
+  it('keeps adjacent links to different destinations separate', () => {
+    const markdown =
+      '[One](https://example.com/one)[Two](https://example.com/two)';
+
+    expect(roundTrip(markdown)).toBe(markdown);
+  });
+
   it('escapes link destinations and titles', () => {
     const content: RichTextContent = {
       type: 'doc',
