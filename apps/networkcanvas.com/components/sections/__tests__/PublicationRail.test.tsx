@@ -222,21 +222,24 @@ describe('PublicationRail', () => {
 
     const section = screen.getByRole('region', {
       name: 'Recent publications',
+      // jsdom 30 cannot resolve the pinned calc(100svh + <px>) height while
+      // Testing Library performs its CSS visibility check. The role and
+      // accessible name are still asserted; visibility is not under test.
+      hidden: true,
     });
     const stage = screen.getByTestId('publication-rail-stage');
     const viewport = screen.getByTestId('publication-rail-viewport');
-    const track = screen.getByRole('list');
+    const track = screen.getByRole('list', { hidden: true });
     const heading = screen.getByRole('heading', {
       name: 'Recent publications',
+      hidden: true,
     });
 
     await waitFor(() => {
       expect(section).toHaveAttribute('data-publication-rail-mode', 'pinned');
     });
 
-    expect(section).toHaveStyle({
-      height: 'calc(100svh + 800px)',
-    });
+    expect(section.style.height).toBe('calc(800px + 100svh)');
     expect(stage).toHaveClass('sticky', 'top-0', 'h-svh');
     expect(viewport).toHaveAccessibleName('Recent publications carousel');
     expect(viewport).toHaveClass('overflow-x-hidden');
@@ -305,6 +308,7 @@ describe('PublicationRail', () => {
     const { rerender } = renderRail();
     const section = screen.getByRole('region', {
       name: 'Recent publications',
+      hidden: true,
     });
     const viewport = screen.getByTestId('publication-rail-viewport');
 
