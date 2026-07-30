@@ -248,6 +248,7 @@ describe('QuickNodeForm honours codebook validation', () => {
 
     await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(input).toHaveValue(''));
+    expect(input).not.toHaveAttribute('aria-invalid', 'true');
     expect(store.getState().session.network.nodes).toHaveLength(1);
     expect(
       store.getState().session.network.nodes[0]?.[entityAttributesProperty][

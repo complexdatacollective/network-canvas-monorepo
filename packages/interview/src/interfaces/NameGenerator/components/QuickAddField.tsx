@@ -110,6 +110,7 @@ export default function QuickAddField({
   });
 
   const isFormSubmitting = useFormStore((state) => state.isSubmitting);
+  const resetFormField = useFormStore((state) => state.resetField);
   const wasSubmittingRef = useRef(false);
   const explicitSuccessPendingRef = useRef(false);
   const previousSuccessfulSubmissionCountRef = useRef(
@@ -122,11 +123,14 @@ export default function QuickAddField({
   const celebrate = useCelebrate(circleRef, { particles: true });
 
   const resetAfterSuccessfulSubmission = useCallback(() => {
-    fieldProps.onChange('');
+    // A successful write starts a fresh entry rather than entering a new,
+    // invalid blank value. Resetting restores the field's initial value and
+    // clears its dirty/blurred/error state without running required validation.
+    resetFormField(targetVariable);
     setSubmissionCount((count) => count + 1);
     setShowErrors(false);
     celebrate();
-  }, [fieldProps, celebrate]);
+  }, [resetFormField, targetVariable, celebrate]);
 
   useEffect(() => {
     if (
@@ -312,6 +316,7 @@ export default function QuickAddField({
           <button
             type="button"
             ref={buttonRef}
+            aria-label={checked ? 'Quick add input' : undefined}
             className="focusable relative aspect-square size-28 rounded-full"
             data-testid="quick-add-toggle"
           >
