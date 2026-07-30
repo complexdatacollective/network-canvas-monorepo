@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 
 import type { VariableType } from '@codaco/protocol-validation';
-import { SimpleVariablePill } from '~/components/VariablePill';
+import { VariablePill } from '~/components/VariablePill';
 
 import DualLink from './DualLink';
 import { getVariableMeta, getVariableName } from './helpers';
@@ -21,9 +21,7 @@ const Variable = ({ id }: VariableProps) => {
 
   return (
     <DualLink to={`#variable-${id}`}>
-      <SimpleVariablePill summary label={name} type={meta.type as VariableType}>
-        {name}
-      </SimpleVariablePill>
+      <VariablePill label={name} type={meta.type as VariableType} />
     </DualLink>
   );
 };

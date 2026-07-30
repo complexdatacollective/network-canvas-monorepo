@@ -2,7 +2,7 @@ import { get, isArray, isNil, join } from 'es-toolkit/compat';
 import type { CSSProperties } from 'react';
 
 import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
-import { SimpleVariablePill } from '~/components/VariablePill';
+import { VariablePill } from '~/components/VariablePill';
 
 import PreviewEdge from '../../sections/fields/EntitySelectField/PreviewEdge';
 import PreviewNode from '../../sections/fields/EntitySelectField/PreviewNode';
@@ -133,7 +133,7 @@ const RuleEntity = ({ type, color, shape, label }: RuleEntityProps) =>
     <PreviewNode color={color} shape={shape} label={label} size="xs" />
   );
 
-const PreviewText = ({ type, options, summary }: PreviewTextProps) => {
+const PreviewText = ({ type, options }: PreviewTextProps) => {
   if (type === 'ego') {
     return (
       <>
@@ -145,8 +145,7 @@ const PreviewText = ({ type, options, summary }: PreviewTextProps) => {
           style={EGO_NODE_STYLE}
         />
         <Copy>has</Copy>
-        <SimpleVariablePill
-          summary={summary}
+        <VariablePill
           label={options.attribute ?? ''}
           type={
             (options.variableType as
@@ -160,9 +159,7 @@ const PreviewText = ({ type, options, summary }: PreviewTextProps) => {
               | 'layout'
               | 'location') ?? 'text'
           }
-        >
-          {options.attribute ?? ''}
-        </SimpleVariablePill>
+        />
         <Operator value={options.operator} isEgo />
         <Value value={options.value} />
       </>
@@ -205,8 +202,7 @@ const PreviewText = ({ type, options, summary }: PreviewTextProps) => {
         label={options.typeLabel ?? ''}
       />
       <Copy>where</Copy>
-      <SimpleVariablePill
-        summary={summary}
+      <VariablePill
         label={options.attribute ?? ''}
         type={
           (options.variableType as
@@ -220,9 +216,7 @@ const PreviewText = ({ type, options, summary }: PreviewTextProps) => {
             | 'layout'
             | 'location') ?? 'text'
         }
-      >
-        {options.attribute ?? ''}
-      </SimpleVariablePill>
+      />
       <Operator value={options.operator} />
       <Value value={options.value} />
     </>
@@ -243,7 +237,6 @@ type PreviewTextOptions = {
 type PreviewTextProps = {
   type: string;
   options: PreviewTextOptions;
-  summary?: boolean;
 };
 
 export default PreviewText;

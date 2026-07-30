@@ -5,12 +5,10 @@ import { Field, reducer as formReducer, reduxForm } from 'redux-form';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 vi.mock('~/components/VariablePill', () => ({
-  default: () => (
-    <div data-testid="editable-variable-pill">EditableVariablePill</div>
+  ConnectedVariablePill: () => (
+    <div data-testid="connected-variable-pill">ConnectedVariablePill</div>
   ),
-  SimpleVariablePill: () => (
-    <div data-testid="simple-variable-pill">SimpleVariablePill</div>
-  ),
+  VariablePill: () => <div data-testid="variable-pill">VariablePill</div>,
 }));
 
 vi.mock('../VariableSpotlight', () => ({
@@ -106,16 +104,16 @@ describe('VariablePicker', () => {
   it('renders the selected variable using the appropriate pill', () => {
     setup('age');
 
-    expect(screen.getByTestId('editable-variable-pill')).toBeInTheDocument();
+    expect(screen.getByTestId('connected-variable-pill')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Change variable' }),
     ).toBeInTheDocument();
   });
 
-  it('renders an untyped selected variable using the simple pill', () => {
+  it('renders an untyped selected variable using the unconnected pill', () => {
     setup('new-variable');
 
-    expect(screen.getByTestId('simple-variable-pill')).toBeInTheDocument();
+    expect(screen.getByTestId('variable-pill')).toBeInTheDocument();
   });
 
   it('persists a spotlight selection to Redux Form', () => {

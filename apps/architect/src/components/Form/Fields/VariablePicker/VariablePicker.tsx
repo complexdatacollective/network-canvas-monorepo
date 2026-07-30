@@ -6,9 +6,7 @@ import type { WrappedFieldProps } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
 import type { VariableType } from '@codaco/protocol-validation';
-import EditableVariablePill, {
-  SimpleVariablePill,
-} from '~/components/VariablePill';
+import { ConnectedVariablePill, VariablePill } from '~/components/VariablePill';
 import { cx } from '~/utils/cva';
 
 import FrescoReduxField from '../../FrescoReduxField';
@@ -81,7 +79,9 @@ export const VariablePickerControl = ({
     if (!selectedOption) return null;
 
     if (has(selectedOption, 'type') && selectedOption.type) {
-      return <EditableVariablePill uuid={selectedOption.value} />;
+      return (
+        <ConnectedVariablePill animated editable uuid={selectedOption.value} />
+      );
     }
 
     const selectedLabel = get(selectedOption, 'label', null);
@@ -89,11 +89,7 @@ export const VariablePickerControl = ({
     const finalLabel = selectedLabel || selectedValue || '';
     const variableType = (selectedOption.type ?? 'text') as VariableType;
 
-    return (
-      <SimpleVariablePill label={finalLabel} type={variableType}>
-        <span />
-      </SimpleVariablePill>
-    );
+    return <VariablePill label={finalLabel} type={variableType} />;
   };
 
   return (

@@ -3,9 +3,8 @@ import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { loadEnv, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { defineConfig } from 'vitest/config';
 
 import { version } from './package.json';
 import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-authoring';
@@ -307,23 +306,6 @@ export default defineConfig(({ mode }) => {
           main: resolve(rootDir, 'index.html'),
           preview: resolve(rootDir, 'preview/index.html'),
         },
-      },
-    },
-    test: {
-      globals: true,
-      environment: 'jsdom',
-      // Parallelised with the rest of the workspace's tests in the CI quality
-      // job; a borderline jsdom test can be starved past the 5s default under
-      // peak runner load, so give generous headroom.
-      testTimeout: 20_000,
-      setupFiles: ['./src/test-setup.ts'],
-      // e2e/ holds Playwright specs — run via test:e2e, not vitest.
-      exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
-      // Honour the app's own analytics gate (analytics.ts) so PostHog doesn't
-      // init a real client (in debug mode) against the production host during
-      // unit tests, spamming stderr with config dumps and $pageview payloads.
-      env: {
-        VITE_DISABLE_ANALYTICS: 'true',
       },
     },
   };
