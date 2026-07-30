@@ -260,7 +260,7 @@ export const WithValidation: Story = {
     docs: {
       description: {
         story:
-          'QuickAddField with validation rules. The field requires a minimum of 2 characters and a maximum of 50.',
+          "QuickAddField with validation rules. The field requires a minimum of 2 characters and a maximum of 50. These props mirror what QuickNodeForm now derives from the target variable's codebook `validation` block — see the QuickNodeForm story for that derivation.",
       },
     },
   },

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { expect, waitFor, within } from 'storybook/test';
 
 import { Button } from './Button';
 import { type ToastVariant, useToast } from './Toast';
@@ -199,4 +200,106 @@ function LoadingDemo() {
 
 export const Loading: Story = {
   render: () => <LoadingDemo />,
+};
+
+function toastRootFor(closeButton: HTMLElement): HTMLElement {
+  const root = closeButton.closest('[data-testid="toast-viewport"] > *');
+  if (!(root instanceof HTMLElement)) {
+    throw new Error('Close button is not inside a toast');
+  }
+  return root;
+}
+
+function LongDescriptionDemo() {
+  const toast = useToast();
+  // `useToast()` returns a fresh object every render, so guard with a ref
+  // instead of an effect dependency on `toast` itself.
+  const shown = useRef(false);
+
+  useEffect(() => {
+    if (shown.current) return;
+    shown.current = true;
+    const description = Array.from(
+      { length: 60 },
+      (_, i) =>
+        `Line ${i + 1} of a description long enough to overflow the toast.`,
+    ).join(' ');
+    toast.add({
+      title: 'Long description',
+      description,
+      variant: 'destructive',
+      timeout: 0,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
+}
+
+/**
+ * A description long enough to overflow the toast is capped and scrolls
+ * internally (see `DESCRIPTION_MAX_HEIGHT` in `Toast.tsx`), so the title and
+ * Close control stay on screen and reachable regardless of how much content a
+ * consumer renders — the toast viewport anchors to the bottom of the screen
+ * and grows upward, so unbounded content would otherwise be clipped by the
+ * browser window with no way to read or dismiss it.
+ */
+export const LongDescription: Story = {
+  render: () => <LongDescriptionDemo />,
+  play: async ({ canvasElement }) => {
+    const doc = canvasElement.ownerDocument;
+    const screen = within(doc.body);
+
+    // Base UI hides Toast.Close from the accessibility tree until the toast
+    // is hovered or focused, so it has no ARIA role to query by until then —
+    // match the label attribute instead, which reflects presence either way.
+    const close = await screen.findByLabelText('Close');
+    const toastRoot = toastRootFor(close);
+
+    // The toast slides in from below over ~0.5s, so an in-flight frame can
+    // transiently read as overflowing in either direction — check the root's
+    // box and the Close control's box together in one `waitFor` so it only
+    // resolves once the entrance animation has actually settled.
+    await waitFor(() => {
+      const box = toastRoot.getBoundingClientRect();
+      const closeBox = close.getBoundingClientRect();
+      // Anchored to the bottom and growing up, overflow shows as a negative
+      // top: the title and Close control leaving the top of the screen.
+      expect(box.top).toBeGreaterThanOrEqual(0);
+      expect(box.height).toBeLessThanOrEqual(window.innerHeight);
+      // The Close control has to be on screen to be clickable at all.
+      expect(closeBox.top).toBeGreaterThanOrEqual(0);
+      expect(closeBox.bottom).toBeLessThanOrEqual(window.innerHeight);
+    });
+
+    // ...and it has to be the topmost element at its own centre, or the click
+    // lands on whatever covers it.
+    const closeBox = close.getBoundingClientRect();
+    const atCentre = doc.elementFromPoint(
+      closeBox.left + closeBox.width / 2,
+      closeBox.top + closeBox.height / 2,
+    );
+    expect(close.contains(atCentre)).toBe(true);
+
+    // The description is what `aria-describedby` points at, and is now the
+    // element that scrolls internally rather than growing the toast.
+    const descriptionId = toastRoot.getAttribute('aria-describedby');
+    if (!descriptionId) {
+      throw new Error('Toast has no aria-describedby');
+    }
+    const description = doc.getElementById(descriptionId);
+    if (!description) {
+      throw new Error('Toast description element not found');
+    }
+    expect(description.scrollHeight).toBeGreaterThan(description.clientHeight);
+    description.scrollTop = description.scrollHeight;
+    await waitFor(() => expect(description.scrollTop).toBeGreaterThan(0));
+
+    // A scrollable region with no focusable content is unreachable by
+    // keyboard unless it is in the tab order itself — `focus()` alone would
+    // still pass with `tabindex="-1"`, which no amount of tabbing can reach.
+    expect(description.tabIndex).toBeGreaterThanOrEqual(0);
+    description.focus();
+    expect(doc.activeElement).toBe(description);
+  },
 };

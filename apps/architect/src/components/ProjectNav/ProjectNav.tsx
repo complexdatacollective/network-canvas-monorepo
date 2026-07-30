@@ -10,7 +10,11 @@ import { motion } from 'motion/react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
 
-import { getHasUnusedAssets, getHasUnusedVariables } from '~/selectors/issues';
+import {
+  getHasUnusedAssets,
+  getHasUnusedVariables,
+  getHasVariableRoleConflicts,
+} from '~/selectors/issues';
 import { getProtocolName } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
@@ -35,10 +39,14 @@ const ProjectNav = () => {
   const protocolName = useSelector(getProtocolName);
   const hasUnusedAssets = useSelector(getHasUnusedAssets);
   const hasUnusedVariables = useSelector(getHasUnusedVariables);
+  const hasVariableRoleConflicts = useSelector(getHasVariableRoleConflicts);
 
   // Per-tab warning descriptions, keyed by href. A defined value renders a
   // warning indicator on that tab and provides its screen-reader label.
   const tabWarnings: Record<string, string | undefined> = {
+    '/protocol': hasVariableRoleConflicts
+      ? 'has variables written both with and without validation'
+      : undefined,
     '/protocol/assets': hasUnusedAssets ? 'has unused resources' : undefined,
     '/protocol/codebook': hasUnusedVariables
       ? 'has unused variables'

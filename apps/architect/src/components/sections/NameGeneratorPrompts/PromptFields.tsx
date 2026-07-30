@@ -4,13 +4,17 @@ import { Row, Section } from '~/components/EditorLayout';
 import PromptText from '~/components/sections/PromptText';
 type PromptFieldsProps = {
   form: string;
+  stageForm?: string;
   entity: string | null;
   type: string | null;
+  currentStageIndex?: number;
 };
 const PromptFields = ({
   form,
+  stageForm,
   entity = null,
   type = null,
+  currentStageIndex,
 }: PromptFieldsProps) => {
   return (
     <>
@@ -30,9 +34,11 @@ const PromptFields = ({
           {entity && type && (
             <AssignAttributes
               form={form}
+              stageForm={stageForm}
               name="additionalAttributes"
               type={type}
               entity={entity as 'node' | 'edge' | 'ego'}
+              currentStageIndex={currentStageIndex}
             />
           )}
         </Row>

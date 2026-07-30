@@ -58,10 +58,19 @@ const RelativeDatePickerParameters = ({
           label="Specific Anchor Date"
           component={DatePicker}
           name={`${name}.anchor`}
-          validation={{ required: !useInterviewDate, ISODate: dateFormat }}
+          // The picker boundary and validation rule must match the schema's
+          // earliest full date so the editor cannot commit an invalid anchor.
+          validation={{
+            required: !useInterviewDate,
+            ISODate: dateFormat,
+            minDate: {
+              value: '0001-01-01',
+              message: 'Anchor date must use a year of 0001 or later',
+            },
+          }}
           componentProps={{
             parameters: {
-              min: '1000-01-01',
+              min: '0001-01-01',
               max: '3000-01-01',
             },
           }}

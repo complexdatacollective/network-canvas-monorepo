@@ -58,7 +58,7 @@ describe('Validation', () => {
     expect(onEdit).toHaveBeenCalled();
   });
 
-  it('only commits a changed value once the save action is used', () => {
+  it('only commits an integer changed value once the save action is used', () => {
     const onUpdate = vi.fn();
     const onCancel = vi.fn();
 
@@ -75,7 +75,7 @@ describe('Validation', () => {
     );
 
     fireEvent.change(screen.getByRole('spinbutton'), {
-      target: { value: '3.14' },
+      target: { value: '3' },
     });
 
     // Editing the value alone must not write to the redux-form field yet.
@@ -85,8 +85,33 @@ describe('Validation', () => {
       screen.getByRole('button', { name: 'Save validation rule' }),
     );
 
-    expect(onUpdate).toHaveBeenCalledWith('minValue', 3.14, 'minValue');
+    expect(onUpdate).toHaveBeenCalledWith('minValue', 3, 'minValue');
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('uses integer input steps and refuses to save a fractional value', () => {
+    const onUpdate = vi.fn();
+
+    render(
+      <Validation
+        itemKey="minValue"
+        itemValue={1}
+        options={options}
+        existingVariables={{}}
+        onUpdate={onUpdate}
+        isBeingEdited
+      />,
+    );
+
+    const input = screen.getByRole('spinbutton');
+    expect(input).toHaveAttribute('step', '1');
+    fireEvent.change(input, { target: { value: '3.14' } });
+
+    expect(screen.getByText('minValue must be a whole number')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Save validation rule' }),
+    ).toBeDisabled();
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 
   it('discards edits and exits editing mode when cancelled', () => {

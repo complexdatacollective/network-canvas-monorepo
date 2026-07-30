@@ -46,6 +46,7 @@ let comparisonEndVarId: string;
 
 let relativeDateVarId: string;
 let prePopNameVarId: string;
+let prePopSeededName: string;
 let backNavAgeVarId: string;
 
 export const egoFormScenarios: InterfaceScenarios = {
@@ -1016,15 +1017,11 @@ export const egoFormScenarios: InterfaceScenarios = {
     {
       id: 'pre-population-from-ego-attributes',
       covers: ['pre-population-from-ego-attributes'],
+      // The only EgoForm scenario whose subject is the seeded network itself.
+      // Every other one opens on a form nobody has answered, which is what
+      // buildSyntheticPayload hands a scenario that does not ask for this.
+      seedNetwork: true,
       build: () => {
-        // SyntheticInterview.getNetwork() hard-codes the ego's attributes to
-        // `{}` and there is no setEgoAttribute (SyntheticInterview.ts is out of
-        // scope for this task), so a value cannot be seeded into the initial
-        // network. Instead we drive the value through the form, navigate away
-        // (autosubmit persists it to the live store), then return in-app (no
-        // reload — the store survives) and assert the field is pre-populated
-        // from the persisted ego attribute on the second mount
-        // (getEgoAttributes, EgoForm.tsx:88-95).
         const synth = new SyntheticInterview();
         const nameVar = synth.addEgoVariable({
           type: 'text',
@@ -1044,22 +1041,38 @@ export const egoFormScenarios: InterfaceScenarios = {
           prompt: 'What is your name?',
         });
         synth.addInformationStage({ title: 'Next', text: 'Continue.' });
+
+        // Read back from the same builder the runner installs, so run()
+        // expects the seeded value itself rather than a copy of it. A network
+        // that stopped answering ego fails here, at build, rather than as an
+        // unexplained empty field.
+        const seeded =
+          synth.getNetwork().ego[entityAttributesProperty][prePopNameVarId];
+        if (typeof seeded !== 'string' || seeded === '') {
+          throw new Error(
+            `Expected the generated network to answer ego variable "${prePopNameVarId}", got ${String(seeded)}`,
+          );
+        }
+        prePopSeededName = seeded;
         return synth;
       },
       run: async ({ page, interview, protocol }) => {
         const nameField = page.getByLabel('What is your name?');
-        await expect(nameField).toHaveValue('');
 
-        // Enter a value and autosubmit on forward navigation.
+        // What the scenario is named for: the field mounts holding the value
+        // the seeded network's ego already carries, read through
+        // getEgoAttributes (EgoForm.tsx:89-96).
+        await expect(nameField).toHaveValue(prePopSeededName);
+
+        // And pre-populates the same way from a value the participant entered.
+        // Navigate away — autosubmit persists it — then return in-app, with no
+        // reload, so the mount reads it back off the live store.
         await nameField.fill('Bob');
         await interview.next();
         await expect(page).toHaveURL(/step=1/);
 
-        // Return in-app (no page reload) so the live store keeps the ego value.
         await page.getByTestId('previous-button').click();
         await expect(page).toHaveURL(/step=0/);
-
-        // The field is pre-populated from the persisted ego attribute.
         await expect(nameField).toHaveValue('Bob');
 
         await nameField.fill('Carol');

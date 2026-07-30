@@ -8,6 +8,10 @@ import {
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { ComponentTypes } from '../variables/types.ts';
+import {
+  datePickerParametersSchema,
+  relativeDatePickerParametersSchema,
+} from '../variables/variable.ts';
 import { baseStageSchema } from './base.ts';
 
 // Every input control the form system can render. Layout/location variables
@@ -34,18 +38,48 @@ const ComposerComponentSchema = z.enum([
 // this field (see interview/src/selectors/forms.ts). `label` captions the
 // field in the drawer; it is optional — the drawer falls back to the codebook
 // variable's name.
-export const ComposerFormFieldSchema = z.strictObject({
-  // Architect assigns a stable id (uuid) on creation so the editor's
-  // OrderedList / motion Reorder keying survives reorder + delete; it is
-  // persisted, so the schema must tolerate it.
-  id: z.string().optional(),
-  variable: entityAttributeReference({ subject: 'stageSubject' }),
-  component: ComposerComponentSchema,
-  parameters: z.record(z.string(), z.unknown()).optional(),
-  label: z.string().optional(),
-  hint: z.string().optional(),
-  showValidationHints: z.boolean().optional(),
-});
+export const ComposerFormFieldSchema = z
+  .strictObject({
+    // Architect assigns a stable id (uuid) on creation so the editor's
+    // OrderedList / motion Reorder keying survives reorder + delete; it is
+    // persisted, so the schema must tolerate it.
+    id: z.string().optional(),
+    variable: entityAttributeReference({
+      subject: 'stageSubject',
+      usage: 'validatedAttribute',
+    }),
+    component: ComposerComponentSchema,
+    parameters: z.record(z.string(), z.unknown()).optional(),
+    label: z.string().optional(),
+    hint: z.string().optional(),
+    showValidationHints: z.boolean().optional(),
+  })
+  .superRefine((field, ctx) => {
+    // A DatePicker/RelativeDatePicker field's `parameters` must satisfy the
+    // same shape and refinement as the codebook variable's own DatePicker/
+    // RelativeDatePicker parameters (see variable.ts) — otherwise a stage
+    // field could carry an out-of-resolution or min>max window the codebook
+    // schema would reject anywhere else. Every other component's parameters
+    // keep the unrestricted record shape above: `field.parameters` there
+    // stays a loose `Record<string, unknown>` rather than narrowing per
+    // component, matching how interview's forms.ts consumes it.
+    const parametersSchema =
+      field.component === ComponentTypes.DatePicker
+        ? datePickerParametersSchema
+        : field.component === ComponentTypes.RelativeDatePicker
+          ? relativeDatePickerParametersSchema
+          : undefined;
+    if (!parametersSchema) return;
+    const result = parametersSchema.optional().safeParse(field.parameters);
+    if (result.success) return;
+    for (const issue of result.error.issues) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: issue.message,
+        path: ['parameters', ...issue.path],
+      });
+    }
+  });
 export type ComposerFormField = z.infer<typeof ComposerFormFieldSchema>;
 
 // Title-less, and (unlike TitlelessFormSchema) `fields` is optional / may be
@@ -53,7 +87,38 @@ export type ComposerFormField = z.infer<typeof ComposerFormFieldSchema>;
 // strips an empty fields array on save. The runtime renders "No attributes to
 // edit" for an empty/absent form.
 export const ComposerFormSchema = z.strictObject({
-  fields: z.array(ComposerFormFieldSchema).optional(),
+  fields: z
+    .array(ComposerFormFieldSchema)
+    .superRefine((fields, ctx) => {
+      // Thirteenth-wave Finding 1: one form may not write the same variable
+      // twice. Every field renders under its variable's name (interview's
+      // useProtocolForm passes `name: field.variable` to each Field), so two
+      // fields for one variable collide on a single form value while each
+      // still contributing its own component/parameters and validation — two
+      // required DatePicker fields pinned to disjoint singleton windows would
+      // leave no satisfiable answer. The stage-effective overlay in schema.ts
+      // cannot catch that either: it keys by variable, so only the last
+      // field's overrides survive. Two fields writing one attribute is
+      // incoherent authoring whatever the parameters, so reject the second
+      // occurrence outright. The scope is one form: nodeForm and each edge
+      // type's form resolve their references against different subjects, so
+      // they are checked independently (the codebook separately forbids one
+      // variable key from spanning entity types, so a shared key cannot in
+      // practice reach both).
+      const seen = new Set<string>();
+      for (const [index, field] of fields.entries()) {
+        if (seen.has(field.variable)) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Network Composer form fields contain duplicate variable "${field.variable}"`,
+            path: [index, 'variable'],
+          });
+          continue;
+        }
+        seen.add(field.variable);
+      }
+    })
+    .optional(),
 });
 export type ComposerForm = z.infer<typeof ComposerFormSchema>;
 
@@ -61,18 +126,28 @@ export const networkComposerStage = baseStageSchema.extend({
   type: z.literal('NetworkComposer'),
   subject: NodeStageSubjectSchema,
   // The text variable populated by the inline quick-add name field when a node
-  // is added from the tool palette.
-  quickAdd: entityAttributeReference({ subject: 'stageSubject' }),
+  // is added from the tool palette. The quick-add field now runs the variable's
+  // codebook validation (see interview's AddNodeInput), so it is a validated
+  // writer like any other form field.
+  quickAdd: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'validatedAttribute',
+  }),
   // The layout variable that stores each node's { x, y } position.
-  layoutVariable: entityAttributeReference({ subject: 'stageSubject' }),
+  layoutVariable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+  }),
   // Attribute form shown in the inspector when a node is selected.
   nodeForm: ComposerFormSchema.optional(),
   // The categorical variable whose values are drawn as convex hulls.
   // Participants toggle a node's group membership (a value of this variable)
   // via the Groups tool or by lasso-selecting nodes; membership also drives
-  // the automatic layout's group-cohesion force.
+  // the automatic layout's group-cohesion force. Those interactions write
+  // directly to the node without applying the variable's validation rules.
   convexHullVariable: entityAttributeReference({
     subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
   }).optional(),
   background: imageOrCirclesBackgroundSchema,
   behaviours: z

@@ -4,6 +4,7 @@ import { isArray, values } from 'es-toolkit/compat';
 import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  collectVariableRoleHits,
 } from '@codaco/protocol-validation';
 
 import collectPath, {
@@ -95,23 +96,93 @@ const getNodeIndex = createSelector(getProtocol, (protocol) =>
   collectTypeIndex(protocol, 'node'),
 );
 
+// Memoises getVariableIndex's entity-attribute walk so re-deriving the index
+// doesn't re-collect hits unless the protocol changes. (getVariableRoleMap
+// below has its own grouping needs and calls collectVariableRoleHits directly
+// rather than consuming this.)
+const getEntityAttributeHits = createSelector(getProtocol, (protocol) =>
+  protocol ? collectEntityAttributeReferences(protocol) : [],
+);
+
 /**
  * Returns index of used variables.
  * Keys use the dotted-array format produced by collectEntityAttributeReferences,
  * e.g. `stages.0.prompts.0.variable`. Values are the variable id strings.
  * @returns {object} in format: { [dotted-path]: variableId }
  */
-const getVariableIndex = createSelector(getProtocol, (protocol) => {
+const getVariableIndex = createSelector(
+  [getEntityAttributeHits, getProtocol],
+  (hits, protocol) => {
+    if (!protocol) return {};
+    const index: Record<string, string> = {};
+    for (const hit of hits) {
+      index[hit.path.join('.')] = hit.variableId;
+    }
+    // Sort keys are untagged plain strings in the schema, so a variable used
+    // only as a sort key would otherwise read "not in use" and be safely
+    // deletable.
+    Object.assign(index, collectPaths(paths.sortVariables, protocol));
+    return index;
+  },
+);
+
+/**
+ * Composite key scoping a variable to its writer subject (entity + type), so
+ * identically-named variables on different node/edge types never collide.
+ */
+export const roleMapKey = (
+  subject: { entity: string; type?: string },
+  variableId: string,
+): string => JSON.stringify([subject.entity, subject.type ?? null, variableId]);
+
+type VariableRoleMap = Record<
+  string,
+  { validated: number; unvalidated: number }
+>;
+
+const buildVariableRoleMap = (
+  protocol: unknown,
+  excludedStageIndex?: number,
+): VariableRoleMap => {
   if (!protocol) return {};
-  const index: Record<string, string> = {};
-  for (const hit of collectEntityAttributeReferences(protocol)) {
-    index[hit.path.join('.')] = hit.variableId;
+  const map: VariableRoleMap = {};
+  for (const group of collectVariableRoleHits(protocol)) {
+    const countOutsideStage = (hits: typeof group.validated): number =>
+      excludedStageIndex === undefined
+        ? hits.length
+        : hits.filter((hit) => hit.stageIndex !== excludedStageIndex).length;
+    map[roleMapKey(group.subject, group.variableId)] = {
+      validated: countOutsideStage(group.validated),
+      unvalidated: countOutsideStage(group.unvalidated),
+    };
   }
-  // Sort keys are untagged plain strings in the schema, so a variable used only
-  // as a sort key would otherwise read "not in use" and be safely deletable.
-  Object.assign(index, collectPaths(paths.sortVariables, protocol));
-  return index;
-});
+  return map;
+};
+
+/**
+ * Counts of validated- vs unvalidated-usage hits per subject-scoped variable,
+ * keyed by `roleMapKey`. Backs the writer-picker exclusions and save-time
+ * gates that keep a variable from being written both by a form (validated)
+ * and by a bin/highlight/census/etc. (unvalidated).
+ */
+export const getVariableRoleMap = createSelector(
+  getProtocol,
+  (protocol): VariableRoleMap => buildVariableRoleMap(protocol),
+);
+
+/**
+ * Counts saved writer roles outside the stage currently being edited. The
+ * editor overlays that stage's live Redux Form draft separately.
+ */
+export const getVariableRoleMapOutsideStage = createSelector(
+  [
+    getProtocol,
+    (_state: unknown, excludedStageIndex: number | undefined) =>
+      excludedStageIndex,
+  ],
+  (protocol, excludedStageIndex): VariableRoleMap =>
+    buildVariableRoleMap(protocol, excludedStageIndex),
+);
 
 /**
  * Returns index of used assets

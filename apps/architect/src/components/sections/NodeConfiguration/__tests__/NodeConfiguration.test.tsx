@@ -112,6 +112,9 @@ vi.mock('redux-form', () => ({
     if (field === 'behaviours.automaticLayout') return null;
     return undefined;
   },
+  // The Task 9 cross-class gate's escape reads this — no committed stage in
+  // this test's fake state, so no original value to escape against.
+  getFormInitialValues: () => () => undefined,
   change: (form: string, field: string, value: unknown) => ({
     type: 'CHANGE',
     form,
@@ -128,9 +131,16 @@ type ChangeAction = {
   value: unknown;
 };
 const dispatchSpy = vi.fn<(action: ChangeAction) => void>();
+// The Task 9 cross-class gate's role-map/allVariables reads go through
+// useAppSelector with REAL selectors (getVariableRoleMap,
+// getVariablesForSubjectSelector) — `activeProtocol: {}` is enough for those
+// to resolve to empty/no-conflict results without crashing on a missing
+// `.present`. This file's other tests don't exercise the gate itself (see
+// NodeConfiguration.crossClassGate.test.tsx for that).
 vi.mock('~/ducks/hooks', () => ({
   useAppDispatch: () => dispatchSpy,
-  useAppSelector: (selector: (state: unknown) => unknown) => selector({}),
+  useAppSelector: (selector: (state: unknown) => unknown) =>
+    selector({ activeProtocol: {} }),
 }));
 
 vi.mock('~/components/EditableAttributesList/EditableAttributesList', () => ({

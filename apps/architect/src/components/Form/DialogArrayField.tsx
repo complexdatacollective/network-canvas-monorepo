@@ -125,11 +125,21 @@ const DialogItem = ({
   );
 };
 
+// `editorValidate`'s optional second argument carries the edit context
+// (currently the edited row's array index) — see InlineEditScreen/Form's
+// WrappedFormProps (eleventh-wave Finding 4). Single-argument validators
+// remain assignable, so callers without array context are unaffected.
+type EditorValidate = (
+  values: Record<string, unknown>,
+  props?: { editIndex?: number },
+) => Record<string, unknown>;
+
 type DialogEditorProps = FrescoReduxArrayFieldEditorProps<ArrayItem> & {
   addTitle: string;
   editorFieldsComponent: Renderer;
   editorProps?: Record<string, unknown>;
   editorTitle: string;
+  editorValidate?: EditorValidate;
   itemSelector?: ItemSelector;
   normalizeItem: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
@@ -138,6 +148,7 @@ type DialogEditorProps = FrescoReduxArrayFieldEditorProps<ArrayItem> & {
 
 const DialogEditor = ({
   item,
+  index,
   isNewItem,
   onSave,
   onCancel,
@@ -148,6 +159,7 @@ const DialogEditor = ({
   editorFieldsComponent,
   editorProps,
   editorTitle,
+  editorValidate,
   itemSelector,
   normalizeItem,
   onBeforeSave,
@@ -161,6 +173,12 @@ const DialogEditor = ({
   const editFormName =
     requestedEditFormName ??
     `${form}-${arrayName.replaceAll(/[^a-zA-Z0-9]+/g, '-')}-item-editor`;
+  // Eleventh-wave Finding 4: an existing item's committed array index. A new
+  // item is not in the committed array yet, so it has no index to report.
+  // Seventeenth-wave follow-up: derived once because both the validate props
+  // and the fields component need the same value — the editor's pickers must
+  // scope themselves to exactly the row the validate is judging.
+  const editIndex = isNewItem || index === null ? undefined : index;
   const initialValues = isRecord(selectedItem)
     ? selectedItem
     : stripManagedProperties(item);
@@ -239,11 +257,16 @@ const DialogEditor = ({
         id={editFormName}
         onSubmit={handleSave}
         initialValues={initialValues}
+        // Surfaced to `editorValidate` via redux-form's (values, props)
+        // validate signature.
+        editIndex={editIndex}
+        validate={editorValidate}
       >
         <Layout>
           {createElement(editorFieldsComponent, {
             ...initialValues,
             ...editorProps,
+            editIndex,
             form: editFormName,
           })}
         </Layout>
@@ -265,6 +288,7 @@ type DialogArrayFieldOwnProps<T extends ArrayItem> = Omit<
   editorFieldsComponent: Renderer;
   editorProps?: Record<string, unknown>;
   editorTitle: string;
+  editorValidate?: EditorValidate;
   itemLabel?: string;
   itemSelector?: ItemSelector;
   itemTemplate?: () => Partial<T>;
@@ -283,6 +307,7 @@ function DialogArrayFieldBase<T extends ArrayItem>({
   editorFieldsComponent,
   editorProps,
   editorTitle,
+  editorValidate,
   itemLabel = 'item',
   itemSelector,
   itemTemplate = () => ({}),
@@ -336,6 +361,7 @@ function DialogArrayFieldBase<T extends ArrayItem>({
         editorFieldsComponent,
         editorProps,
         editorTitle,
+        editorValidate,
         itemSelector,
         normalizeItem,
         onBeforeSave,

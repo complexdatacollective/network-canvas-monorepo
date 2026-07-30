@@ -5,6 +5,7 @@ import type { FilterRule } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/store';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { getCodebook } from '~/selectors/protocol';
+import { excludeValidatedUses } from '~/selectors/roleFilters';
 import { asOptions } from '~/selectors/utils';
 
 export const getLayoutVariablesForSubject = (
@@ -25,19 +26,20 @@ export const getLayoutVariablesForSubject = (
 export const getHighlightVariablesForSubject = (
   state: RootState,
   { type, entity }: { type: string; entity: string },
+  currentValue?: string,
 ) => {
+  const subject = { entity: entity as 'node' | 'edge' | 'ego', type };
   // All defined variables that match nodeType
-  const variableOptions = getVariableOptionsForSubject(state, {
-    entity: entity as 'node' | 'edge' | 'ego',
-    type,
-  });
+  const variableOptions = getVariableOptionsForSubject(state, subject);
 
   // Boolean variables which aren't already used (+ currently selected)
   const highlightVariables = variableOptions.filter(
     ({ type: variableType }) => variableType === 'boolean',
   );
 
-  return highlightVariables;
+  // The highlight-toggle picker is an UNVALIDATED writer: drop options a form
+  // elsewhere already validates.
+  return excludeValidatedUses(state, subject, highlightVariables, currentValue);
 };
 
 export const getEdgesForSubject = createSelector([getCodebook], (codebook) => {

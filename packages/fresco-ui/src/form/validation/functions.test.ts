@@ -471,6 +471,10 @@ describe('Validation Functions', () => {
     });
 
     it('should accept an empty array (required owns emptiness)', () => {
+      // Deliberate: a checkbox group produces the same `[]` whether the
+      // field was never touched or ticked then unticked, so `minSelected`
+      // cannot flag `[]` without also flagging an untouched field. Pair
+      // `minSelected` with `required: true` to reject an empty selection.
       const validator = validations.minSelected(1, createMockContext())({});
 
       expect(validator.safeParse([]).success).toBe(true);

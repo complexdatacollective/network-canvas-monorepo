@@ -1,7 +1,11 @@
 import type * as z from 'zod/mini';
 
 import type { Codebook, StageSubject } from '@codaco/protocol-validation';
-import type { NcNetwork } from '@codaco/shared-consts';
+import type {
+  EntityAttributesProperty,
+  NcNetwork,
+  NcNode,
+} from '@codaco/shared-consts';
 
 // Re-export FieldValue for convenience
 export type { FieldValue } from '../Field/types';
@@ -59,6 +63,7 @@ export type ValidationContext = {
   codebook: Codebook;
   network: NcNetwork;
   currentEntityId?: string;
+  currentEntityAttributes?: NcNode[EntityAttributesProperty];
 };
 
 // ═══════════════════════════════════════════════════════════════

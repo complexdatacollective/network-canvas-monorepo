@@ -1,4 +1,5 @@
 import type { Codebook } from '../schemas/8/schema.ts';
+import { VARIABLE_REFERENCE_VALIDATIONS } from '../schemas/8/variables/validation.ts';
 import type { Protocol } from '../schemas/index.ts';
 import {
   collectEntityAttributeReferences,
@@ -14,6 +15,10 @@ export type ReferenceIssue = {
   message: string;
   path: (string | number)[];
 };
+
+const VALIDATION_REFERENCE_RULES = new Set<string>(
+  VARIABLE_REFERENCE_VALIDATIONS,
+);
 
 export const validateReferences = (
   codebook: Codebook,
@@ -38,6 +43,29 @@ export const validateReferences = (
         issues.push({
           code: 'custom',
           message: `The variable "${hit.variableId}" must be of type ${hit.requireType.join(' or ')}`,
+          path: hit.path,
+        });
+      }
+    }
+    // A validation reference (sameAs, differentFrom, the comparators) must
+    // target a variable of the same type as its source. The hit's path shape
+    // identifies these: [..., 'variables', <sourceId>, 'validation', <rule>].
+    const rule = hit.path[hit.path.length - 1];
+    const sourceId = hit.path[hit.path.length - 3];
+    if (
+      hit.path[hit.path.length - 4] === 'variables' &&
+      hit.path[hit.path.length - 2] === 'validation' &&
+      typeof rule === 'string' &&
+      VALIDATION_REFERENCE_RULES.has(rule) &&
+      typeof sourceId === 'string'
+    ) {
+      const subjectVariables = getVariablesForSubject(codebook, hit.subject);
+      const source = subjectVariables[sourceId];
+      const target = subjectVariables[hit.variableId];
+      if (source && target && source.type !== target.type) {
+        issues.push({
+          code: 'custom',
+          message: `The "${rule}" rule on variable "${source.name}" must reference another ${source.type} variable, but "${target.name}" is ${target.type}`,
           path: hit.path,
         });
       }

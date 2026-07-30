@@ -1,10 +1,17 @@
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { defineMain } from '@storybook/react-vite/node';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineMain({
-  addons: ['@storybook/addon-docs', '@storybook/addon-a11y'],
+  addons: [
+    getAbsolutePath('@storybook/addon-docs'),
+    getAbsolutePath('@storybook/addon-a11y'),
+    getAbsolutePath('@storybook/addon-mcp'),
+  ],
   framework: {
-    name: '@storybook/react-vite',
+    name: getAbsolutePath('@storybook/react-vite'),
     options: {},
   },
   typescript: {
@@ -16,3 +23,7 @@ export default defineMain({
     return config;
   },
 });
+
+function getAbsolutePath(value: string): string {
+  return dirname(fileURLToPath(import.meta.resolve(`${value}/package.json`)));
+}

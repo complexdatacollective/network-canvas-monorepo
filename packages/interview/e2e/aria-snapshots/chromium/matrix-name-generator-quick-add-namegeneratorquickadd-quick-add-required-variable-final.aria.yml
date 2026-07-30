@@ -1,0 +1,12 @@
+- main:
+  - status:
+    - heading "Who do you know?" [level=2]
+  - listbox "Added Nodes":
+    - option "Priya"
+  - textbox "Type a label and press enter...": Priya
+  - button "Priya" [pressed]
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -7,7 +7,10 @@ export const FormFieldSchema = z.strictObject({
   // OrderedList / motion Reorder keying survives reorder + delete; it is
   // persisted, so the schema must tolerate it.
   id: z.string().optional(),
-  variable: entityAttributeReference({ subject: 'stageSubject' }),
+  variable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'validatedAttribute',
+  }),
   prompt: z.string().min(1),
   hint: z.string().optional(),
   showValidationHints: z.boolean().optional(),

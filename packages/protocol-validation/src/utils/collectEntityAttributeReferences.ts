@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { StageSubject } from '../schemas/8/common/index.ts';
 import {
   getEntityAttributeReferenceDescriptor,
+  type AttributeWriterUsage,
   type SubjectResolution,
 } from '../schemas/8/entity-attribute-reference.ts';
 import { getEntityTypeReferenceDescriptor } from '../schemas/8/entity-type-reference.ts';
@@ -14,6 +15,7 @@ export type EntityAttributeReferenceHit = {
   variableId: string;
   subject?: StageSubject;
   requireType?: readonly VariableType[];
+  usage?: AttributeWriterUsage;
 };
 
 export type EntityTypeReferenceHit = {
@@ -226,6 +228,7 @@ const walk = (
           variableId: value,
           subject: resolveSubject(attributeDescriptor.subject, path, ctx),
           requireType: attributeDescriptor.requireType,
+          usage: attributeDescriptor.usage,
         },
       ];
     }
