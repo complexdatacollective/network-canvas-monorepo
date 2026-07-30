@@ -139,9 +139,9 @@ export const EntitySelectControl = ({
   return (
     <>
       <div
-      data-name={name}
-      onBlur={onBlur}
-      onFocus={onFocus}
+        data-name={name}
+        onBlur={onBlur}
+        onFocus={onFocus}
         className="flex w-full flex-col items-start gap-4"
       >
         <fieldset
@@ -271,8 +271,7 @@ const EntitySelectFieldBase = ({
   ]
     .filter(Boolean)
     .join(' ');
-  const fieldLabel =
-    label ?? `${entityType === 'node' ? 'Node' : 'Edge'} type`;
+  const fieldLabel = label ?? `${entityType === 'node' ? 'Node' : 'Edge'} type`;
 
   return (
     <div

@@ -93,10 +93,7 @@ const getResolvedMaximumWidth = (
   if (computedMaxWidth.endsWith('%')) {
     const containingWidth =
       element.parentElement?.getBoundingClientRect().width ?? currentWidth;
-    return Math.max(
-      currentWidth,
-      containingWidth * (numericMaxWidth / 100),
-    );
+    return Math.max(currentWidth, containingWidth * (numericMaxWidth / 100));
   }
 
   return Math.max(currentWidth, numericMaxWidth);
@@ -218,19 +215,17 @@ export const VariablePill = ({
   }, [editing, label]);
 
   const handleStartEditing = () => {
-    const triggerBounds = triggerRef.current?.getBoundingClientRect();
-    if (!triggerBounds) {
+    const trigger = triggerRef.current;
+    if (!trigger) {
       return;
     }
+    const triggerBounds = trigger.getBoundingClientRect();
 
     closingRef.current = false;
     setClosing(false);
     setEditorAnchor({
       left: triggerBounds.left,
-      maxWidth: getResolvedMaximumWidth(
-        triggerRef.current,
-        triggerBounds.width,
-      ),
+      maxWidth: getResolvedMaximumWidth(trigger, triggerBounds.width),
       top: triggerBounds.top,
       width: triggerBounds.width,
     });
@@ -324,8 +319,7 @@ export const VariablePill = ({
     return {
       targetPillWidth,
       style: {
-        left:
-          editorAnchor.left + editorAnchor.width / 2 - frameWidth / 2,
+        left: editorAnchor.left + editorAnchor.width / 2 - frameWidth / 2,
         top: editorAnchor.top - EDITOR_FRAME_PADDING,
         width: frameWidth,
       } satisfies React.CSSProperties,
@@ -383,9 +377,7 @@ export const VariablePill = ({
             </button>
           }
         />
-        <TooltipContent side="top">
-          Edit variable name: {label}
-        </TooltipContent>
+        <TooltipContent side="top">Edit variable name: {label}</TooltipContent>
       </Tooltip>
 
       <Modal
@@ -411,9 +403,7 @@ export const VariablePill = ({
           >
             <motion.div
               initial={
-                reduceMotion
-                  ? false
-                  : { scale: 1, width: editorAnchor?.width }
+                reduceMotion ? false : { scale: 1, width: editorAnchor?.width }
               }
               animate={{
                 scale: reduceMotion ? 1 : EDIT_MODE_SCALE,
@@ -424,9 +414,7 @@ export const VariablePill = ({
                 width: editorAnchor?.width,
               }}
               transition={
-                reduceMotion
-                  ? { duration: 0 }
-                  : EDIT_MODE_LAYOUT_SPRING
+                reduceMotion ? { duration: 0 } : EDIT_MODE_LAYOUT_SPRING
               }
               className={getVariablePillClassName({
                 animated: false,
@@ -461,9 +449,7 @@ export const VariablePill = ({
 
             <motion.div
               className="flex items-center gap-3"
-              initial={
-                reduceMotion ? false : { opacity: 0, y: -12 }
-              }
+              initial={reduceMotion ? false : { opacity: 0, y: -12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{

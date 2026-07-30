@@ -81,10 +81,7 @@ function fitToLength(value: string, constraints: VariableConstraints): string {
   return result;
 }
 
-function fitsLength(
-  value: string,
-  constraints: VariableConstraints,
-): boolean {
+function fitsLength(value: string, constraints: VariableConstraints): boolean {
   const { minLength, maxLength } = constraints;
   return (
     (minLength === undefined || value.length >= minLength) &&

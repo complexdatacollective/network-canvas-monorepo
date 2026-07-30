@@ -1225,14 +1225,10 @@ function drawGroup(
           ? attempt
           : undefined;
 
-      const value = ctx.valueGen.generateConstrained(
-        bounded,
-        index,
-        {
-          ...(seq !== undefined ? { distinctSeq: seq } : {}),
-          ...(attempt === 0 ? { preferRealisticName: true } : {}),
-        },
-      );
+      const value = ctx.valueGen.generateConstrained(bounded, index, {
+        ...(seq !== undefined ? { distinctSeq: seq } : {}),
+        ...(attempt === 0 ? { preferRealisticName: true } : {}),
+      });
       const excluded = forbidden.has(valueKey(value));
       const taken = unique && ctx.uniqueRegistry.isTaken(registry, slot, value);
 

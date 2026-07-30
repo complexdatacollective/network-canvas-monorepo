@@ -6,7 +6,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section, Subsection } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import { getReduxFieldErrorState } from '~/components/Form/reduxFieldMeta';
 import ValidatedField from '~/components/Form/ValidatedField';

@@ -156,10 +156,10 @@ const getAllVariablesByEntitySelector = createSelector(
         if (!variable || typeof variable !== 'object') continue;
         variables.push({
           uuid,
-          name: (variable as { name: string }).name,
+          name: variable.name,
           entity: 'node',
           entityType: nodeType,
-          type: (variable as { type: string }).type,
+          type: variable.type,
         });
       }
     }
@@ -174,10 +174,10 @@ const getAllVariablesByEntitySelector = createSelector(
         if (!variable || typeof variable !== 'object') continue;
         variables.push({
           uuid,
-          name: (variable as { name: string }).name,
+          name: variable.name,
           entity: 'edge',
           entityType: edgeType,
-          type: (variable as { type: string }).type,
+          type: variable.type,
         });
       }
     }
@@ -188,10 +188,10 @@ const getAllVariablesByEntitySelector = createSelector(
       if (!variable || typeof variable !== 'object') continue;
       variables.push({
         uuid,
-        name: (variable as { name: string }).name,
+        name: variable.name,
         entity: 'ego',
         entityType: null,
-        type: (variable as { type: string }).type,
+        type: variable.type,
       });
     }
 
@@ -218,10 +218,10 @@ export const getAllVariableUUIDsByEntity = (
       if (!variable || typeof variable !== 'object') continue;
       variables.push({
         uuid,
-        name: (variable as { name: string }).name,
+        name: variable.name,
         entity: 'node',
         entityType: nodeType,
-        type: (variable as { type: string }).type,
+        type: variable.type,
       });
     }
   }
@@ -236,10 +236,10 @@ export const getAllVariableUUIDsByEntity = (
       if (!variable || typeof variable !== 'object') continue;
       variables.push({
         uuid,
-        name: (variable as { name: string }).name,
+        name: variable.name,
         entity: 'edge',
         entityType: edgeType,
-        type: (variable as { type: string }).type,
+        type: variable.type,
       });
     }
   }
@@ -250,10 +250,10 @@ export const getAllVariableUUIDsByEntity = (
     if (!variable || typeof variable !== 'object') continue;
     variables.push({
       uuid,
-      name: (variable as { name: string }).name,
+      name: variable.name,
       entity: 'ego',
       entityType: null,
-      type: (variable as { type: string }).type,
+      type: variable.type,
     });
   }
 

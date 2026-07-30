@@ -129,13 +129,7 @@ export default function ModalPopup({
 
       void exitAnimation();
     }
-  }, [
-    isPresent,
-    scope,
-    safeToRemove,
-    animate,
-    usesDeclarativeAnimation,
-  ]);
+  }, [isPresent, scope, safeToRemove, animate, usesDeclarativeAnimation]);
 
   const popup = (
     <Dialog.Popup

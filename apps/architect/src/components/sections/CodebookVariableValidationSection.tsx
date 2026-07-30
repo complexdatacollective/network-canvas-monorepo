@@ -1,10 +1,6 @@
 import { isEqual, omit } from 'es-toolkit/compat';
 import { useCallback, useMemo } from 'react';
-import {
-  change,
-  reduxForm,
-  type InjectedFormProps,
-} from 'redux-form';
+import { change, reduxForm, type InjectedFormProps } from 'redux-form';
 
 import type { Variable } from '@codaco/protocol-validation';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
@@ -117,9 +113,7 @@ const CodebookVariableValidationSection = ({
     [entity, type],
   );
   const variables = useAppSelector((state) =>
-    subject
-      ? getVariablesForSubjectSelector(state, subject)
-      : EMPTY_VARIABLES,
+    subject ? getVariablesForSubjectSelector(state, subject) : EMPTY_VARIABLES,
   );
   const variable =
     typeof variableId === 'string' ? variables[variableId] : undefined;

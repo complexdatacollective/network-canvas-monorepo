@@ -159,11 +159,7 @@ const PromptFields = ({
               value={!!showValidationHints}
               onChange={(checked) =>
                 dispatch(
-                  change(
-                    form,
-                    'showValidationHints',
-                    checked,
-                  ) as UnknownAction,
+                  change(form, 'showValidationHints', checked) as UnknownAction,
                 )
               }
             />

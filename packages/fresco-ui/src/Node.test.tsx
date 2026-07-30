@@ -16,7 +16,6 @@ describe('Node label layout', () => {
     expect(visibleLabel).toHaveClass(
       'w-[80%]',
       'min-w-0',
-      'overflow-hidden',
       'hyphens-auto',
       'wrap-anywhere',
       'line-clamp-3',

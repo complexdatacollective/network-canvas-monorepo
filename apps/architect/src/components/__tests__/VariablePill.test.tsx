@@ -88,9 +88,7 @@ describe('ConnectedVariablePill', () => {
   });
 
   it('uses an accessible button to open the variable name editor directly', async () => {
-    render(
-      <ConnectedVariablePill animated editable uuid="node-subject" />,
-    );
+    render(<ConnectedVariablePill animated editable uuid="node-subject" />);
     const pill = screen.getByRole('button', {
       name: 'Edit variable name: subject_var',
     });
@@ -117,7 +115,7 @@ describe('ConnectedVariablePill', () => {
       name: 'Edit variable name: subject_var',
     });
 
-    pill.focus();
+    fireEvent.focus(pill);
 
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
       'Edit variable name: subject_var',
