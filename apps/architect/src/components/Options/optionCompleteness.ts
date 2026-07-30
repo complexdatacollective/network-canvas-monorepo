@@ -4,7 +4,8 @@ export const isOptionValueEmpty = (value: unknown) =>
 export const isOptionComplete = (option: unknown) => {
   if (!option || typeof option !== 'object') return false;
 
-  const { label, value } = option as { label?: unknown; value?: unknown };
+  const label = 'label' in option ? option.label : undefined;
+  const value = 'value' in option ? option.value : undefined;
 
   return (
     typeof label === 'string' &&

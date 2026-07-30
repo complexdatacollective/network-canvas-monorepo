@@ -47,10 +47,7 @@ const setup = (options: OptionValue[] = TWO_VALID_OPTIONS) => {
 
   return {
     isFormValid: () => isValid(FORM)(store.getState()),
-    getOptions: () =>
-      (store.getState() as { form: Record<string, { values?: unknown }> }).form[
-        FORM
-      ]?.values,
+    getOptions: () => store.getState().form[FORM]?.values,
   };
 };
 
