@@ -181,7 +181,7 @@ There are two ways to import a protocol into the devices running Interviewer. Wh
 
 <AppOnly axis="interviewer" app="current">
 
-There are two ways to import a protocol into Interviewer: from a `.netcanvas` file on your device, or from a URL. Each protocol is validated on import, and any protocol built against an older schema is migrated to schema 8 automatically, with a notification telling you the migration occurred.
+Protocols are imported into Interviewer from a `.netcanvas` file on the device. Each protocol is validated on import, and any protocol built against an older schema is migrated to schema 8 automatically, with a notification telling you the migration occurred.
 
 ![The Import a protocol dialog in Interviewer](/assets/img/interviewer-guide/import-protocol.png)
 
@@ -189,7 +189,19 @@ There are two ways to import a protocol into Interviewer: from a `.netcanvas` fi
 
 ### Importing a file directly
 
-This option provides a simple means to import a protocol file that is already stored on your device. It can be accessed either from the file menu (if running Interviewer on a desktop operating system), or from the protocols section of the start screen.
+This option provides a simple means to import a protocol file that is already stored on your device.
+
+<AppOnly axis="interviewer" app="classic">
+
+It can be accessed either from the file menu (if running Interviewer on a desktop operating system), or from the protocols section of the start screen.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Click the **Import a protocol** card at the end of the protocol carousel on the start screen to open a file picker, or drag a `.netcanvas` file onto it.
+
+</AppOnly>
 
 <TipBox>
 
@@ -654,3 +666,4 @@ Now that you have experienced the general flow of an interview in Network Canvas
 - Learn how to create your own protocol in [getting started with Architect](/en/design-protocols/getting-started)
 - Export your interview data using the [Data Export guide](/en/analyze-data/data-export)
 - Explore the full [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows) for conducting research
+- Plan how protocols and data will move on and off your devices with [Interviewer Online and Offline Workflows](/en/collect-data/interviewer-online-and-offline-workflows)

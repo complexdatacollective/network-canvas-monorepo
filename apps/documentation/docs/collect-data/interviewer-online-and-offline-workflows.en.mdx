@@ -1,0 +1,194 @@
+---
+navOrder: 2
+title: Interviewer Online and Offline Workflows
+wip: false
+toc: true
+---
+
+<SummaryCard duration="20 minutes">
+<SummarySection>
+
+This tutorial covers in more detail the Interviewer online and offline workflows introduced in [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows): how to get your protocol onto every interview device, and how to get the data those devices collect back to you.
+
+</SummarySection>
+<PrerequisitesSection>
+
+To follow along, you should:
+
+- Be familiar with [Interviewer or Interviewer Classic](/en/collect-data/interviewer) and how interviews are run.
+- Have created or obtained the `.netcanvas` protocol file you want to deploy (see [building a protocol](/en/design-protocols/building-a-protocol)).
+- Have access to the devices you will use to run interviews.
+- For the online workflow, have an account with a cloud file sharing service — your institution's shared drive, or a third-party provider — that your whole team can use.
+- For the offline workflow, have a USB flash drive or other external storage that both your computer and your interview devices can read.
+
+</PrerequisitesSection>
+</SummaryCard>
+
+## Introduction
+
+Interviewer keeps everything it stores — protocols, interviews, and settings — on the device it runs on. That means two things to plan for:
+
+- **Protocol deployment** — getting the protocol file onto each interview device before data collection begins.
+- **Data export** — getting the data each device holds off it and back to a location you control.
+
+How you bridge them depends on whether your interview devices can reach the internet. This tutorial describes both options:
+
+- **[The online workflow](#the-online-workflow)** — use a cloud file sharing service as the hub in both directions.
+- **[The offline workflow](#the-offline-workflow)** — carry files in both directions on a USB flash drive or other external storage.
+
+<TipBox>
+
+This page is about **Interviewer and Interviewer Classic**. If you are running your study in [Fresco](/en/collect-data/fresco/about), neither workflow applies: protocols are uploaded once to your dashboard and all data is exported from it centrally. See [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows) for the big-picture comparison.
+
+</TipBox>
+
+The shape of each workflow is the same whichever version of Interviewer you run, but the in-app import and export steps differ. Choose your version below — the version-specific steps throughout this tutorial update to match.
+
+<AppSwitch axis="interviewer">
+  <AppOption label="Interviewer"></AppOption>
+  <AppOption label="Interviewer Classic"></AppOption>
+</AppSwitch>
+
+## The online workflow
+
+If your interview devices can reach the internet — at least at the start and end of each field session — use a **cloud file sharing service** as the hub for both directions. It gives you one place to update the protocol, and one place where every interviewer's data lands.
+
+<ImageFullWidth src="/assets/img/offline-data/online.png" alt="Online workflow diagram"></ImageFullWidth>
+
+### Deploying protocols with a cloud file sharing service
+
+This is the preferred method for deploying protocols. It has the significant advantage of providing a single location for the protocol file that can be updated as needed and which can be accessed by multiple people at the same time.
+
+1. Place your `.netcanvas` file on a cloud storage service (e.g., Box, Dropbox, Google Drive). You can generally accomplish this by dragging and dropping the file into a dedicated folder on the computer you are using to author the protocol. Alternatively, many providers allow you to upload files via a web interface.
+2. Install the cloud service's app on each interview device, or open the service in the device's web browser, and sign in.
+3. Import the protocol file on the interview device. Typically you accomplish this by browsing to a special location in the file browser that corresponds to the cloud storage provider (e.g., "Dropbox" or "Google Drive"). If your provider is not visible in the file browser, try to copy the protocol file to the storage of your device from within the provider's app.
+
+<AppOnly axis="interviewer" app="current">
+
+Use the **Import a protocol** card on the start screen to open the file browser, or drag the `.netcanvas` file onto it. The protocol is validated on import, and any protocol built against an older schema is migrated to schema 8 automatically.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Use the **Import from File** button on the start screen.
+
+Interviewer Classic can also import a protocol straight from a web address, which works well when the protocol is unlikely to change frequently, or where you want to document the setup process in writing. Generate a shareable link in your cloud service — or host the `.netcanvas` file on any file hosting service (e.g., GitHub Pages, SharePoint) — check the link is publicly accessible by opening it in a web browser, then use the **Import from URL** button on the start screen and paste it in. We recommend this method for teams distributing protocol files to multiple devices.
+
+</AppOnly>
+
+### Exporting data to a cloud file sharing service
+
+The same service can consolidate your interview data, by having each interviewer upload their exports directly to it.
+
+1. Create a dedicated folder on your cloud storage service to store the interview data. Choose a location that is easily accessible and organized. If you are operating within a large team, consider creating individual folders for each person conducting interviews, and consider setting permissions to "write only" (or similar) so that interviewers can only add files to their own folder.
+2. Install the cloud service's app on each interview device and ensure that the interviewer is logged in and has access to the folder you created in step 1.
+3. Export sessions from the device, saving the resulting `.zip` archive into that folder.
+
+<AppOnly axis="interviewer" app="current">
+
+Select the sessions you want in the **Interviews** area and click **Export selected**. Interviewer builds the archive, then shows a **Save export** button — click that to save the file. The file formats and options are configured ahead of time in **Settings → Data export**, so nothing is chosen at export time. Where the `.zip` goes depends on the device and browser:
+
+- In a desktop browser, you are usually prompted to choose a location — navigate to the cloud service's synced folder on the device.
+- On a tablet, the system share sheet opens — choose the cloud service's app, then the folder you created in step 1.
+- Otherwise the archive is saved to the browser's downloads folder, and you upload it to the cloud service yourself.
+
+Sessions are marked as exported only once the file has actually been saved, so cancelling the save leaves them selectable for another attempt.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Navigate to the **Manage or Export Sessions** card on the Interviewer Classic start screen, select the files you wish to export, and choose your file types and export options. You will then be prompted to choose a location to save the export.
+
+- If you are using a tablet device, you will be prompted to choose an app to handle the export. Choose the cloud service's app. The app will then open and you will be prompted to choose a location to save the export.
+- If you are using a PC or Mac, you will be prompted to choose a location on the device's filesystem to save the export. Navigate to the cloud service's folder that you created in step 1.
+
+</AppOnly>
+
+### Other transfer methods
+
+It is possible to transmit the zip files created by Interviewer through many other mechanisms than those described above. However, these are generally not recommended as a primary workflow as they can be more insecure and error-prone than using a cloud file sharing service, and may not be compatible with the Institutional Review Board (IRB) requirements of your research.
+
+If you are comfortable with the potential risks, it should be possible to use the same approach as above to "share" your exported data to a number of apps and services, including via email, Slack, SharePoint, and so on.
+
+## The offline workflow
+
+If your interview devices have no internet connection, use a USB flash drive or other external storage to carry files in both directions.
+
+<TipBox>
+
+The offline workflow assumes every interface in your protocol works offline. Some schema-8 interfaces in **Interviewer** — notably [Geospatial](/en/design-protocols/interface-documentation/geospatial), which loads maps over the internet — require a connection _during the interview_, so a protocol that uses them cannot be run fully offline. Protocols that need a connection show a **Requires internet** indicator on their protocol card. Schema-7 protocols in **Interviewer Classic** are unaffected.
+
+</TipBox>
+
+<ImageFullWidth src="/assets/img/offline-data/offline.png" alt="Offline workflow diagram"></ImageFullWidth>
+
+### Deploying protocols via USB
+
+In an offline setting, the only option for deploying protocols is to transfer the protocol file physically from your computer to each interview device.
+
+1. Determine the path to your protocol file (where it is saved on your computer). It typically follows the format `C:\Folder\Subfolder\file.netcanvas` for Windows or `/Users/Username/Folder/Subfolder/file.netcanvas` for Mac.
+2. Open the file browser on your computer and navigate to the location of the protocol file.
+3. Insert your USB flash drive or other external storage device into your computer.
+4. Copy the protocol file to the external storage device.
+5. Eject the external storage device from your computer.
+6. Insert the external storage device into the interview device.
+7. Import the protocol from the external storage device.
+
+<AppOnly axis="interviewer" app="current">
+
+Open Interviewer and use the **Import a protocol** card on the start screen, then navigate to the external storage device and select the protocol file. You can also drag the file from the storage device onto the card.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Open Interviewer Classic and use the **Import from File** button on the start screen, then navigate to the external storage device's folder and select the protocol file.
+
+</AppOnly>
+
+<TipBox>
+
+Refer to the documentation from your operating system or device manufacturer
+(or simply test ahead of time) to ensure that the storage device you are using
+to transfer the protocol file can be read by the interview device _and_ the
+computer you used to author the protocol.
+
+</TipBox>
+
+### Exporting data via USB
+
+As above, the only option for exporting data in an offline setting is to use external storage to carry the data files from the interview device back to a computer.
+
+1. Create a dedicated folder on your external storage device to store the interview data. Choose a location that is easily accessible and organized. If you are operating within a large team, consider creating individual folders for each person conducting interviews.
+2. Once you have conducted your interviews, export the sessions to that folder.
+
+<AppOnly axis="interviewer" app="current">
+
+Select the sessions you want in the **Interviews** area, click **Export selected**, then click **Save export** once the archive is ready.
+
+- In a desktop browser, you are usually prompted to choose a location — navigate to the folder you created on the external storage device.
+- On a tablet, the system share sheet opens — choose a file manager app, then navigate to the external storage device.
+- Otherwise the archive is saved to the browser's downloads folder, and you copy it to the external storage device yourself.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+Navigate to the **Manage or Export Sessions** card on the start screen of Interviewer Classic and select the files you wish to export. You will be prompted to choose a location to save the export.
+
+- If you are using a PC or Mac, you will be prompted to choose a location on the device's filesystem to save the export. Navigate to the external storage device's folder that you created in step 1.
+- If you are using a tablet device, you will be prompted to choose an app to handle the export. The export functionality on tablet devices works using the "share" feature built into both Android and iOS. This means that options for saving exported data are determined by which apps you have installed on your device. You therefore need to install a third-party file management app such as "[CX File Explorer](https://play.google.com/store/apps/details?id=com.cxinventor.file.explorer)". Once installed, choose the file manager app from the share menu. The app will then open and you will be prompted to choose a location to save the export. Navigate to the external storage device's folder that you created in step 1.
+
+</AppOnly>
+
+## After the transfer
+
+Whichever workflow you use, once your data is off the device:
+
+- **Organize and back up your exports.** A single copy in one cloud folder — or on one USB drive — is not a backup. See the [data organization and backup best practices](/en/collect-data/protocol-and-data-workflows#data-organization-and-backup-best-practices).
+- **Export regularly, and clear devices once data is safely stored.** Interview data exists only on the device until you export it. See [Data Storage and Safety](/en/collect-data/interviewer/data-storage) for what can destroy it.
+- **Rehearse the whole cycle before collecting real data.** [Piloting Your Study](/en/get-started/planning-a-study/piloting-your-study) shows how to run a protocol and its export pipeline end to end first.
+
+For a complete description of what the exported files contain and what each export option does, see the [Data Export guide](/en/analyze-data/data-export).
