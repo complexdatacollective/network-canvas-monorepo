@@ -2,6 +2,7 @@ import { toNumber } from 'es-toolkit/compat';
 import { Check, Pencil, Trash2 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useEffect, useRef } from 'react';
+import { touch } from 'redux-form';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -11,6 +12,7 @@ import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import type { FrescoReduxArrayFieldItemProps } from '~/components/Form/FrescoReduxArrayField';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
+import { useAppDispatch } from '~/ducks/hooks';
 import { cx } from '~/utils/cva';
 import {
   markdownToRichTextContent,
@@ -18,7 +20,9 @@ import {
   type RichTextContent,
 } from '~/utils/markdownAdapter';
 
+import { isOptionComplete, isOptionValueEmpty } from './optionCompleteness';
 import type { OptionValue } from './Options';
+
 const isNumberLike = (value: string) =>
   Number.parseInt(value, 10).toString() === value; // eslint-disable-line
 
@@ -34,9 +38,6 @@ const optionLabelFromRedux = (value: unknown) =>
 const optionLabelToRedux = (value: unknown) =>
   richTextContentToMarkdown(value as RichTextContent | undefined, true);
 
-const isValueEmpty = (value: unknown) =>
-  value === undefined || value === null || value === '';
-
 // Background and rounding live on the ArrayField item Surface (see Options.tsx
 // itemClasses); this inner wrapper only owns layout + the error-state border.
 const ROW_CLASSES =
@@ -47,6 +48,7 @@ type OptionProps = FrescoReduxArrayFieldItemProps<OptionValue>;
 const Option = ({
   item,
   fieldName,
+  form,
   index,
   itemCount,
   isSortable,
@@ -61,6 +63,7 @@ const Option = ({
   showErrors,
 }: OptionProps) => {
   const { confirm } = useDialog();
+  const dispatch = useAppDispatch();
   const interactionDisabled = disabled || readOnly;
 
   // immediateAdd (see Options.tsx) commits a new option straight into the
@@ -71,10 +74,19 @@ const Option = ({
   const hasAutoOpenedRef = useRef(false);
   useEffect(() => {
     if (hasAutoOpenedRef.current || isBeingEdited) return;
-    if (item.label || !isValueEmpty(item.value)) return;
+    if (item.label || !isOptionValueEmpty(item.value)) return;
     hasAutoOpenedRef.current = true;
     onEdit();
   }, [isBeingEdited, item.label, item.value, onEdit]);
+
+  const handleFinishEditing = () => {
+    if (!isOptionComplete(item)) {
+      dispatch(touch(form, `${fieldName}.label`, `${fieldName}.value`));
+      return;
+    }
+
+    onCancel();
+  };
 
   const handleDelete = () => {
     void confirm({
@@ -89,7 +101,7 @@ const Option = ({
 
   if (!isBeingEdited) {
     const hasLabel = typeof item.label === 'string' && item.label.length > 0;
-    const hasValue = !isValueEmpty(item.value);
+    const hasValue = !isOptionValueEmpty(item.value);
 
     return (
       <div
@@ -154,7 +166,7 @@ const Option = ({
       onKeyDown={(event) => {
         if (event.key !== 'Escape') return;
         event.stopPropagation();
-        onCancel();
+        handleFinishEditing();
       }}
     >
       <div className="flex items-center justify-end gap-2">
@@ -164,7 +176,7 @@ const Option = ({
           size="lg"
           color="primary"
           disabled={interactionDisabled}
-          onClick={onCancel}
+          onClick={handleFinishEditing}
         />
         <IconButton
           icon={<Trash2 />}
