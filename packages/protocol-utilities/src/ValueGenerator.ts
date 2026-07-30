@@ -102,11 +102,14 @@ function clamp(value: number, min?: number, max?: number): number {
 
 export class ValueGenerator {
   private faker: Faker;
+  private nameFaker: Faker;
   private readonly today: string;
 
   constructor(seed: number, today: string = todayYmd()) {
     this.faker = new Faker({ locale: [en] });
     this.faker.seed(seed);
+    this.nameFaker = new Faker({ locale: [en] });
+    this.nameFaker.seed(seed);
     this.today = today;
   }
 
@@ -181,8 +184,9 @@ export class ValueGenerator {
    */
   private generateConstrainedName(
     constraints: VariableConstraints,
+    source: Faker,
   ): string | undefined {
-    const firstName = this.faker.person.firstName();
+    const firstName = source.person.firstName();
     if (fitsLength(firstName, constraints)) return firstName;
     if (
       constraints.maxLength !== undefined &&
@@ -191,7 +195,7 @@ export class ValueGenerator {
       return undefined;
     }
 
-    const lastName = this.faker.person.lastName();
+    const lastName = source.person.lastName();
     const firstAndLast = `${firstName} ${lastName}`;
     if (fitsLength(firstAndLast, constraints)) return firstAndLast;
     if (
@@ -201,7 +205,7 @@ export class ValueGenerator {
       return undefined;
     }
 
-    const fullName = `${firstName} ${this.faker.person.middleName()} ${lastName}`;
+    const fullName = `${firstName} ${source.person.middleName()} ${lastName}`;
     return fitsLength(fullName, constraints) ? fullName : undefined;
   }
 
@@ -253,7 +257,10 @@ export class ValueGenerator {
         let attemptedRealisticName = false;
         if (nameVariable && opts?.preferRealisticName === true) {
           attemptedRealisticName = true;
-          const realisticName = this.generateConstrainedName(constraints);
+          const realisticName = this.generateConstrainedName(
+            constraints,
+            this.nameFaker,
+          );
           if (realisticName !== undefined) return realisticName;
         }
 
@@ -268,7 +275,7 @@ export class ValueGenerator {
           return (
             (attemptedRealisticName
               ? undefined
-              : this.generateConstrainedName(constraints)) ??
+              : this.generateConstrainedName(constraints, this.faker)) ??
             fitToLength(
               distinctText(index, textDrawLength(constraints)),
               constraints,

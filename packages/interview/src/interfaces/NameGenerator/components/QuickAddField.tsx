@@ -70,6 +70,12 @@ type QuickAddFieldProps = {
   disabled: boolean;
   onShowInput?: () => void;
   /**
+   * Monotonically increasing signal from the owning form after a successful
+   * node creation. Form submission state can be fully batched when async work
+   * resolves quickly, so this is the authoritative reset signal in production.
+   */
+  successfulSubmissions?: number;
+  /**
    * Context required for context-dependent validations like unique, sameAs,
    * etc. — forwarded to useField exactly as Field forwards it.
    */
@@ -81,6 +87,7 @@ export default function QuickAddField({
   name: targetVariable,
   disabled,
   onShowInput,
+  successfulSubmissions,
   validationContext,
   ...validationProps
 }: QuickAddFieldProps) {
@@ -101,6 +108,7 @@ export default function QuickAddField({
 
   const isFormSubmitting = useFormStore((state) => state.isSubmitting);
   const wasSubmittingRef = useRef(false);
+  const successfulSubmissionsRef = useRef(successfulSubmissions);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -108,8 +116,14 @@ export default function QuickAddField({
   const celebrate = useCelebrate(circleRef, { particles: true });
 
   // Reset field (but stay open) when form submission succeeds, or show
-  // validation errors on failed submission attempts.
+  // validation errors on failed submission attempts. Standalone consumers
+  // (stories and focused tests) fall back to observing the submitting state.
   useEffect(() => {
+    if (successfulSubmissions !== undefined) {
+      wasSubmittingRef.current = isFormSubmitting;
+      return;
+    }
+
     // Detect transition from submitting to not submitting
     if (wasSubmittingRef.current && !isFormSubmitting) {
       if (meta.isValid && fieldProps.value) {
@@ -123,7 +137,29 @@ export default function QuickAddField({
       inputRef.current?.focus();
     }
     wasSubmittingRef.current = isFormSubmitting;
-  }, [isFormSubmitting, meta.isValid, fieldProps, celebrate]);
+  }, [
+    isFormSubmitting,
+    meta.isValid,
+    fieldProps,
+    celebrate,
+    successfulSubmissions,
+  ]);
+
+  useEffect(() => {
+    if (
+      successfulSubmissions === undefined ||
+      successfulSubmissionsRef.current === successfulSubmissions
+    ) {
+      return;
+    }
+
+    successfulSubmissionsRef.current = successfulSubmissions;
+    fieldProps.onChange('');
+    setSubmissionCount((count) => count + 1);
+    setShowErrors(false);
+    celebrate();
+    inputRef.current?.focus();
+  }, [successfulSubmissions, fieldProps, celebrate]);
 
   const handleChange = useCallback(
     (value: string | undefined) => {

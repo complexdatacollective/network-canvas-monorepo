@@ -347,6 +347,11 @@ export const anonymisationScenarios: InterfaceScenarios = {
         });
         const { _secureAttributes } = SecureNodeSchema.parse(node);
         expect(_secureAttributes[nameVarId]).toBeDefined();
+
+        // Encryption completes asynchronously after the node first appears.
+        // Wait for the successful quick-add submission to finish resetting
+        // before the scenario's final accessibility snapshot is captured.
+        await expect(page.getByTestId('quick-add-input')).toHaveValue('');
       },
     },
 

@@ -275,6 +275,27 @@ describe('generateConstrained', () => {
     ).toBe('a'.repeat(maxLength));
   });
 
+  it('does not perturb the general random sequence for a preferred realistic name', () => {
+    const seed = 17;
+    const control = new ValueGenerator(seed);
+    const subject = new ValueGenerator(seed);
+
+    subject.generateConstrained(
+      make({
+        id: 'name',
+        name: 'name',
+        type: 'text',
+        validation: { unique: true },
+      }),
+      0,
+      { distinctSeq: 0, preferRealisticName: true },
+    );
+
+    expect(subject.randomInt(0, 1_000_000)).toBe(
+      control.randomInt(0, 1_000_000),
+    );
+  });
+
   it('produces distinct text for distinct sequence numbers within the budget', () => {
     const gen = new ValueGenerator(1);
     const variable = make({

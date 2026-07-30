@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
@@ -104,6 +105,42 @@ describe('QuickAddField', () => {
       'true',
     );
     expect(screen.getByTestId('quick-add-input')).toHaveValue('');
+  });
+
+  it('resets from the owning form success signal when submitting renders are batched', async () => {
+    function Harness() {
+      const [successfulSubmissions, setSuccessfulSubmissions] = useState(0);
+
+      return (
+        <Form
+          onSubmit={() => {
+            setSuccessfulSubmissions((count) => count + 1);
+            return { success: true };
+          }}
+        >
+          <QuickAddField
+            name="name"
+            placeholder="Type a name"
+            disabled={false}
+            successfulSubmissions={successfulSubmissions}
+          />
+        </Form>
+      );
+    }
+
+    render(<Harness />);
+
+    const input = await openField();
+    await userEvent.type(input, 'Alice');
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('quick-add-input')).toHaveValue(''),
+    );
+    expect(screen.getByTestId('quick-add-toggle')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   it('closes when the user blurs the enabled input', async () => {

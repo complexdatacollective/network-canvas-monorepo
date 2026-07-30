@@ -94,12 +94,13 @@ test(
         exact: true,
       }),
     ).toBeVisible();
-    // Each variable renders as a ConnectedVariablePill button whose accessible
-    // name identifies the variable and the details action (VariablePill.tsx);
+    // Each variable renders as an editable ConnectedVariablePill button whose
+    // accessible name identifies the variable and the edit action
+    // (VariablePill.tsx);
     // `biologicalSex` is unique to the `person` node type in the fixture.
     await expect(
       architectPage.getByRole('button', {
-        name: 'Variable biologicalSex, categorical. Show variable details',
+        name: 'Edit variable name: biologicalSex',
         exact: true,
       }),
     ).toBeVisible();
