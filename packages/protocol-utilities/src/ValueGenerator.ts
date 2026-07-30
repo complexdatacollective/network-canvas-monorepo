@@ -81,6 +81,21 @@ function fitToLength(value: string, constraints: VariableConstraints): string {
   return result;
 }
 
+function fitsLength(
+  value: string,
+  constraints: VariableConstraints,
+): boolean {
+  const { minLength, maxLength } = constraints;
+  return (
+    (minLength === undefined || value.length >= minLength) &&
+    (maxLength === undefined || value.length <= maxLength)
+  );
+}
+
+function isNameVariable(entry: VariableEntry): boolean {
+  return entry.name.trim().toLocaleLowerCase() === 'name';
+}
+
 function clamp(value: number, min?: number, max?: number): number {
   let result = value;
   if (max !== undefined) result = Math.min(result, max);
@@ -161,6 +176,38 @@ export class ValueGenerator {
     return stageType ?? 'Stage';
   }
 
+  /**
+   * Builds the shortest conventional personal name that satisfies the field's
+   * length rules. A sampled first name that is too short grows to first + last,
+   * then first + middle + last; a ceiling that the next composition crosses
+   * means no longer composition can fit.
+   */
+  private generateConstrainedName(
+    constraints: VariableConstraints,
+  ): string | undefined {
+    const firstName = this.faker.person.firstName();
+    if (fitsLength(firstName, constraints)) return firstName;
+    if (
+      constraints.maxLength !== undefined &&
+      firstName.length > constraints.maxLength
+    ) {
+      return undefined;
+    }
+
+    const lastName = this.faker.person.lastName();
+    const firstAndLast = `${firstName} ${lastName}`;
+    if (fitsLength(firstAndLast, constraints)) return firstAndLast;
+    if (
+      constraints.maxLength !== undefined &&
+      firstAndLast.length > constraints.maxLength
+    ) {
+      return undefined;
+    }
+
+    const fullName = `${firstName} ${this.faker.person.middleName()} ${lastName}`;
+    return fitsLength(fullName, constraints) ? fullName : undefined;
+  }
+
   generatePresetLabel(): string {
     return this.faker.word.words(2);
   }
@@ -181,7 +228,7 @@ export class ValueGenerator {
   generateConstrained(
     variable: ConstrainedVariable,
     index: number,
-    opts?: { distinctSeq?: number },
+    opts?: { distinctSeq?: number; preferRealisticName?: boolean },
   ): VariableValue {
     const { entry, constraints } = variable;
     const seq = opts?.distinctSeq;
@@ -205,12 +252,33 @@ export class ValueGenerator {
           );
         }
 
-        if (seq !== undefined) {
+        const nameVariable = isNameVariable(entry);
+        let attemptedRealisticName = false;
+        if (nameVariable && opts?.preferRealisticName === true) {
+          attemptedRealisticName = true;
+          const realisticName = this.generateConstrainedName(constraints);
+          if (realisticName !== undefined) return realisticName;
+        }
+
+        if (seq !== undefined || (nameVariable && constraints.unique)) {
           return fitToLength(
-            distinctText(seq, textDrawLength(constraints)),
+            distinctText(seq ?? index, textDrawLength(constraints)),
             constraints,
           );
         }
+
+        if (nameVariable) {
+          return (
+            (attemptedRealisticName
+              ? undefined
+              : this.generateConstrainedName(constraints)) ??
+            fitToLength(
+              distinctText(index, textDrawLength(constraints)),
+              constraints,
+            )
+          );
+        }
+
         return fitToLength(this.faker.person.firstName(), constraints);
       }
 

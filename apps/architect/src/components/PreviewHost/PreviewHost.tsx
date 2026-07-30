@@ -3,7 +3,6 @@ import { v4 as uuid } from 'uuid';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
-import CloseButton from '@codaco/fresco-ui/CloseButton';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -95,12 +94,9 @@ export function PreviewHost() {
   const [failure, setFailure] = useState<PreviewFailure | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   // Index of the stage receiving a one-stage preview override, or null.
-  // The notice only shows while that stage is the one being viewed.
   const [bypassedStageIndex, setBypassedStageIndex] = useState<number | null>(
     null,
   );
-  const [skipLogicNoticeDismissed, setSkipLogicNoticeDismissed] =
-    useState(false);
   const onRequestAsset = useAssetResolver(protocolId);
   // biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce is the deliberate retrigger key
   useEffect(() => {
@@ -139,7 +135,6 @@ export function PreviewHost() {
       setBypassedStageIndex(
         previewPayload.skipLogicBypassed ? previewPayload.startStage : null,
       );
-      setSkipLogicNoticeDismissed(false);
     };
     const onMessage = (event: MessageEvent) => {
       if (event.source !== opener) return;
@@ -288,21 +283,6 @@ export function PreviewHost() {
   }
   return (
     <div className="h-screen">
-      {currentStep === bypassedStageIndex && !skipLogicNoticeDismissed && (
-        <div className="fixed right-8 bottom-6 z-50 max-w-sm">
-          <Alert variant="info" icon={false} className="my-0">
-            <AlertDescription className="pr-10 text-sm">
-              This stage is being shown for preview. During an interview, skip
-              logic may make it unavailable.
-            </AlertDescription>
-            <CloseButton
-              size="sm"
-              onClick={() => setSkipLogicNoticeDismissed(true)}
-              className="absolute top-2 right-2"
-            />
-          </Alert>
-        </div>
-      )}
       <Shell
         payload={interviewPayload}
         onSync={noopSync}

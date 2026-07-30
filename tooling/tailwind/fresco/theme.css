@@ -582,8 +582,8 @@
   }
 
   body {
-    @apply theme-base;
-    position: relative; /* https://base-ui.com/react/overview/quick-start#ios-26-safari */
+    /* https://base-ui.com/react/overview/quick-start#ios-26-safari */
+    @apply theme-base relative text-base;
   }
 
   /* These tags are semantic, so I think its okay to apply styles to them directly in the global styles. */

@@ -207,7 +207,7 @@ export function ArrayFieldDragHandle({
   disabled = false,
   label = `Reorder item ${index + 1} of ${itemCount}`,
   className,
-  size = 'sm',
+  size = 'md',
 }: ArrayFieldDragHandleProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const refocusAfterMoveRef = useRef(false);

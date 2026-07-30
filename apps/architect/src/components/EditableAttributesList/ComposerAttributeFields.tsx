@@ -94,14 +94,25 @@ const ComposerAttributeFields = ({
   });
   const lockedOptions = getLockedOptions(existingVariables, variable);
   return (
-    <Section layout="vertical">
+    <>
       <ValidatedField
         name={COMPOSER_CONTRADICTION_FIELD}
         component={ContradictionAlert}
         validation={{}}
       />
-      <Subsection id={getFieldId('variable')} title="Variable">
-        {variable && !isNewVariable && (
+      <Section
+        layout="vertical"
+        id={getFieldId('variable')}
+        title="Variable"
+        summary={
+          <Paragraph>
+            Create or select a variable to collect this attribute. If you select
+            an existing variable, any changes you make to the input control or
+            validation options will also change other uses of this variable.
+          </Paragraph>
+        }
+      >
+        {/* {variable && !isNewVariable && (
           <Alert variant="info" className="my-7">
             <AlertDescription>
               When selecting an existing variable, changes you make to the input
@@ -109,9 +120,10 @@ const ComposerAttributeFields = ({
               variable.
             </AlertDescription>
           </Alert>
-        )}
+        )} */}
         <ValidatedField
           name="variable"
+          labelHidden
           component={VariablePicker as ComponentType<Record<string, unknown>>}
           validation={{ required: true }}
           componentProps={{
@@ -122,9 +134,10 @@ const ComposerAttributeFields = ({
             onChange: handleChangeVariable,
           }}
         />
-      </Subsection>
+      </Section>
 
-      <Subsection
+      <Section
+        layout="vertical"
         id={getFieldId('label')}
         title="Label"
         disabled={!variable}
@@ -146,9 +159,10 @@ const ComposerAttributeFields = ({
             placeholder: 'Defaults to the variable name',
           }}
         />
-      </Subsection>
+      </Section>
 
-      <Subsection
+      <Section
+        layout="vertical"
         id={getFieldId('component')}
         title="Input Control"
         disabled={!variable}
@@ -214,10 +228,11 @@ const ComposerAttributeFields = ({
               />
             </div>
           )}
-      </Subsection>
+      </Section>
 
       {isOrdinalOrCategoricalType(variableType) && (
-        <Subsection
+        <Section
+          layout="vertical"
           id={getFieldId('options')}
           title="Categorical/Ordinal options"
           summary={
@@ -240,27 +255,35 @@ const ComposerAttributeFields = ({
           ) : (
             <Options name="options" label="Options" />
           )}
-        </Subsection>
+        </Section>
       )}
       {isBooleanWithOptions(component) && (
         // BooleanChoice writes to the `options` field, so anchor it there (it is
         // mutually exclusive with the Categorical/Ordinal options subsection
         // above, so the shared id never collides at runtime).
-        <Subsection id={getFieldId('options')} title="BooleanChoice Options">
+        <Section
+          layout="vertical"
+          id={getFieldId('options')}
+          title="BooleanChoice Options"
+        >
           <BooleanChoice form={form} />
-        </Subsection>
+        </Section>
       )}
       {isVariableTypeWithParameters(variableType) && (
-        <Subsection id={getFieldId('parameters')} title="Input Options">
+        <Section
+          layout="vertical"
+          id={getFieldId('parameters')}
+          title="Input Options"
+        >
           <Parameters
             type={variableType}
             component={component ?? ''}
             name="parameters"
             form={form}
           />
-        </Subsection>
+        </Section>
       )}
-    </Section>
+    </>
   );
 };
 export default ComposerAttributeFields;

@@ -294,7 +294,7 @@ export default function QuickAddField({
                     animate={{ y: 0 }}
                     exit={{ y: '-100%' }}
                     className={cx(
-                      'flex h-full items-center justify-center',
+                      'flex h-full w-full items-center justify-center',
                       // Counter-rotate content inside the rotated diamond,
                       // mirroring the Node component's treatment.
                       nodeShape === 'diamond' && 'scale-[1.176] -rotate-45',

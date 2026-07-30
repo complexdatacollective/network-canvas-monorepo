@@ -15,7 +15,7 @@
 
 @layer base {
   [data-theme-interview] {
-    --theme-root-size: 0.9rem;
+    --theme-root-size: 1rem;
     font-size: var(--theme-root-size);
   }
 }

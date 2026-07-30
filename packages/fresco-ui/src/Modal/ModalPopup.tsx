@@ -70,6 +70,9 @@ export default function ModalPopup({
   ...props
 }: ModalPopupProps) {
   const hasLayoutId = 'layoutId' in props && props.layoutId !== undefined;
+  const hasCustomAnimation =
+    'initial' in props || 'animate' in props || 'exit' in props;
+  const usesDeclarativeAnimation = hasLayoutId || hasCustomAnimation;
 
   const id = useId();
 
@@ -87,10 +90,10 @@ export default function ModalPopup({
 
   const [scope, animate] = useSafeAnimate();
 
-  const [isPresent, safeToRemove] = usePresence(!hasLayoutId);
+  const [isPresent, safeToRemove] = usePresence(!usesDeclarativeAnimation);
 
   useEffect(() => {
-    if (hasLayoutId) {
+    if (usesDeclarativeAnimation) {
       return;
     }
 
@@ -126,7 +129,13 @@ export default function ModalPopup({
 
       void exitAnimation();
     }
-  }, [isPresent, scope, safeToRemove, animate, hasLayoutId]);
+  }, [
+    isPresent,
+    scope,
+    safeToRemove,
+    animate,
+    usesDeclarativeAnimation,
+  ]);
 
   const popup = (
     <Dialog.Popup

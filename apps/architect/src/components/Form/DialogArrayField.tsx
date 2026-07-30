@@ -95,7 +95,6 @@ const DialogItem = ({
           onMove={onMove}
           disabled={interactionDisabled}
           label={`Reorder ${itemLabel} ${index + 1} of ${itemCount}`}
-          size="lg"
         />
       )}
       <div className="min-w-0 flex-1">

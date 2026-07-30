@@ -107,7 +107,6 @@ const Option = ({
             onMove={onMove}
             disabled={interactionDisabled}
             label={`Reorder option ${index + 1} of ${itemCount}`}
-            size="lg"
           />
         )}
         <div className="min-w-0 flex-1 truncate">

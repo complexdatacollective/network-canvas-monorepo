@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
@@ -72,19 +72,12 @@ vi.mock('~/selectors/codebook', async (importOriginal) => {
 
 const { ConnectedVariablePill, VariablePill } = await import('../VariablePill');
 
-const openDetails = async (uuid: string) => {
+const startEditing = async (uuid: string) => {
   render(<ConnectedVariablePill animated editable uuid={uuid} />);
   const pill = screen.getByRole('button', {
-    name: /Show variable details/,
+    name: 'Edit variable name: subject_var',
   });
   fireEvent.click(pill);
-
-  return screen.findByRole('button', { name: 'Edit variable name' });
-};
-
-const startEditing = async (uuid: string) => {
-  const editButton = await openDetails(uuid);
-  fireEvent.click(editButton);
 
   return screen.findByRole('textbox', { name: 'Variable name' });
 };
@@ -94,31 +87,41 @@ describe('ConnectedVariablePill', () => {
     subjectsSeen.length = 0;
   });
 
-  it('uses a button to reveal the full variable name and editing action', async () => {
-    const editButton = await openDetails('node-subject');
-    const details = screen.getByRole('dialog', { name: 'Variable details' });
+  it('uses an accessible button to open the variable name editor directly', async () => {
+    render(
+      <ConnectedVariablePill animated editable uuid="node-subject" />,
+    );
     const pill = screen.getByRole('button', {
-      name: /Show variable details/,
+      name: 'Edit variable name: subject_var',
     });
 
-    expect(within(details).getByText('subject_var')).toBeInTheDocument();
-    expect(editButton).toBeInTheDocument();
-    expect(pill).toHaveClass('effect-shadow', '-translate-y-0.5');
-    expect(pill).not.toHaveClass('effect-shadow-sm');
+    expect(pill).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(pill).toHaveClass(
+      'cursor-pointer',
+      'effect-shadow-sm',
+      'hover:effect-shadow',
+      'hover:-translate-y-0.5',
+      'focus-visible:effect-shadow',
+      'focus-visible:-translate-y-0.5',
+    );
+
+    fireEvent.click(pill);
+    expect(
+      await screen.findByRole('dialog', { name: 'Edit variable name' }),
+    ).toBeInTheDocument();
   });
 
-  it('reveals variable details when the pill receives keyboard focus', async () => {
+  it('describes the edit action in a tooltip on keyboard focus', async () => {
     render(<ConnectedVariablePill animated editable uuid="node-subject" />);
     const pill = screen.getByRole('button', {
-      name: /Show variable details/,
+      name: 'Edit variable name: subject_var',
     });
 
-    fireEvent.keyDown(document.body, { key: 'Tab' });
     pill.focus();
 
-    expect(
-      await screen.findByRole('dialog', { name: 'Variable details' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Edit variable name: subject_var',
+    );
   });
 
   it('opens an autofocus modal editor with actions outside the pill', async () => {
@@ -129,7 +132,7 @@ describe('ConnectedVariablePill', () => {
     ).toBeInTheDocument();
     expect(input).toHaveFocus();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    const saveButton = screen.getByRole('button', { name: 'Save changes' });
+    const saveButton = screen.getByRole('button', { name: 'Save Changes' });
 
     expect(saveButton).toBeDisabled();
 
@@ -140,31 +143,25 @@ describe('ConnectedVariablePill', () => {
     expect(saveButton).toBeDisabled();
   });
 
-  it('keeps the details popover closed after saving an edit', async () => {
+  it('returns focus to the pill after saving an edit', async () => {
     const input = await startEditing('node-subject');
     fireEvent.change(input, { target: { value: 'renamed_var' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
 
     const pill = screen.getByRole('button', {
-      name: /Show variable details/,
+      name: 'Edit variable name: subject_var',
     });
     expect(pill).toHaveFocus();
-    expect(
-      screen.queryByRole('dialog', { name: 'Variable details' }),
-    ).not.toBeInTheDocument();
   });
 
-  it('keeps the details popover closed after cancelling an edit', async () => {
+  it('returns focus to the pill after cancelling an edit', async () => {
     await startEditing('node-subject');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     const pill = screen.getByRole('button', {
-      name: /Show variable details/,
+      name: 'Edit variable name: subject_var',
     });
     expect(pill).toHaveFocus();
-    expect(
-      screen.queryByRole('dialog', { name: 'Variable details' }),
-    ).not.toBeInTheDocument();
   });
 
   it('rejects renaming an ego variable to an existing ego variable name', async () => {
@@ -204,6 +201,8 @@ describe('VariablePill', () => {
     expect(pill).toHaveAttribute('value', 'subject_var');
     expect(pill).toHaveClass('bg-(--variable-pill-accent)');
     expect(pill).toHaveClass('cursor-default');
+    expect(pill).toHaveClass('effect-shadow-sm');
+    expect(pill).not.toHaveClass('hover:effect-shadow');
     expect(pill).not.toHaveClass('variable-pill-effect-border');
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });

@@ -8,6 +8,7 @@ import type {
   NodeDefinition,
   VariableOptions,
   Variables,
+  VariableType,
 } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/store';
 
@@ -26,7 +27,7 @@ type VariableWithEntity = {
   name: string;
   entity: 'node' | 'edge' | 'ego';
   entityType: string | null;
-  type: string;
+  type: VariableType;
 };
 
 type VariableOption = {

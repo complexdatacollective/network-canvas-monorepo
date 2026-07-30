@@ -338,6 +338,7 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
     await waitFor(() => {
       expect(input).toBeEnabled();
       expect(input).toHaveValue('');
+      expect(input).toHaveFocus();
     });
   });
 });

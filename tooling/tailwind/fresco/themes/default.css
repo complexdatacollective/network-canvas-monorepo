@@ -18,7 +18,7 @@
      * bigger content. The whole type + spacing system multiplies against this
      * sentinel.
      */
-    --theme-root-size: 0.9rem;
+    --theme-root-size: 1rem;
 
     /*
      * Opt-in fluid ramp for presentation surfaces (the marketing site, the
@@ -29,7 +29,7 @@
      * and because the per-size --text-* caps are root-multiples, lifting root
      * also lifts every heading's ceiling.
      */
-    --theme-root-size-fluid: clamp(0.9rem, 0.45rem + 0.5vw, 1.1rem);
+    --theme-root-size-fluid: clamp(1rem, 0.45rem + 0.5vw, 1.1rem);
 
     --heading-font: 'Nunito Variable', sans-serif;
     --body-font: 'Inclusive Sans Variable', sans-serif;

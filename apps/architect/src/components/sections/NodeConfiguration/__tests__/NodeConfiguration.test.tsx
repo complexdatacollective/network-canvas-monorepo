@@ -214,6 +214,24 @@ describe('NodeConfiguration', () => {
     );
   });
 
+  it('creates quick-add variables with required validation', () => {
+    const handleCreateVariable = vi.fn();
+    renderSection({ handleCreateVariable });
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /create option for quickAdd/i,
+      }),
+    );
+
+    expect(handleCreateVariable).toHaveBeenCalledWith(
+      'new-quickAdd',
+      'text',
+      'quickAdd',
+      { required: true },
+    );
+  });
+
   it('renders the automatic layout toggle and seeds the on-by-default value', () => {
     dispatchSpy.mockClear();
     renderSection();

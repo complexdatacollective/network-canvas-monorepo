@@ -43,7 +43,6 @@
 @layer theme {
   :root {
     --rules-assert: oklch(var(--sea-green));
-
     --timeline: oklch(var(--neon-coral));
     --timeline-contrast: oklch(var(--white));
     --sortable-contrast: oklch(var(--white));
@@ -60,7 +59,6 @@
 
 @theme inline {
   --color-rules-assert: var(--rules-assert);
-
   --color-timeline: var(--timeline);
   --color-timeline-contrast: var(--timeline-contrast);
   --color-sortable-contrast: var(--sortable-contrast);
@@ -83,13 +81,10 @@
 @layer base {
   html,
   body {
-    @apply h-full w-full;
+    @apply h-full w-full text-base;
   }
   body {
     @apply overflow-hidden;
-  }
-  strong {
-    @apply font-extrabold;
   }
 }
 

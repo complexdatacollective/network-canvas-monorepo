@@ -148,6 +148,133 @@ describe('generateConstrained', () => {
     }
   });
 
+  it('uses the shortest realistic composition that satisfies a name variable minimum', () => {
+    const seed = 17;
+    const firstName = String(
+      new ValueGenerator(seed).generateConstrained(
+        make({ id: 'name', name: 'Name', type: 'text' }),
+        0,
+      ),
+    );
+
+    const firstAndLast = String(
+      new ValueGenerator(seed).generateConstrained(
+        make({
+          id: 'name',
+          name: 'Name',
+          type: 'text',
+          validation: { minLength: firstName.length + 1 },
+        }),
+        0,
+      ),
+    );
+    expect(firstAndLast.startsWith(`${firstName} `)).toBe(true);
+
+    const lastName = firstAndLast.slice(firstName.length + 1);
+    const fullName = String(
+      new ValueGenerator(seed).generateConstrained(
+        make({
+          id: 'name',
+          name: 'Name',
+          type: 'text',
+          validation: { minLength: firstAndLast.length + 1 },
+        }),
+        0,
+      ),
+    );
+    expect(fullName.startsWith(`${firstName} `)).toBe(true);
+    expect(fullName.endsWith(` ${lastName}`)).toBe(true);
+    expect(fullName.length).toBeGreaterThan(firstAndLast.length);
+  });
+
+  it('prefers a realistic name before the distinct sequence for a unique draw', () => {
+    const seed = 17;
+    const expected = new ValueGenerator(seed).generateConstrained(
+      make({ id: 'name', name: 'name', type: 'text' }),
+      0,
+    );
+    const actual = new ValueGenerator(seed).generateConstrained(
+      make({
+        id: 'name',
+        name: 'name',
+        type: 'text',
+        validation: { unique: true },
+      }),
+      0,
+      { distinctSeq: 0, preferRealisticName: true },
+    );
+
+    expect(actual).toBe(expected);
+  });
+
+  it('uses the text sequence when no realistic name composition meets the minimum', () => {
+    const seed = 17;
+    const firstName = String(
+      new ValueGenerator(seed).generateConstrained(
+        make({ id: 'name', name: 'name', type: 'text' }),
+        0,
+      ),
+    );
+    const firstAndLast = String(
+      new ValueGenerator(seed).generateConstrained(
+        make({
+          id: 'name',
+          name: 'name',
+          type: 'text',
+          validation: { minLength: firstName.length + 1 },
+        }),
+        0,
+      ),
+    );
+    const fullName = String(
+      new ValueGenerator(seed).generateConstrained(
+        make({
+          id: 'name',
+          name: 'name',
+          type: 'text',
+          validation: { minLength: firstAndLast.length + 1 },
+        }),
+        0,
+      ),
+    );
+    const minLength = fullName.length + 1;
+
+    expect(
+      new ValueGenerator(seed).generateConstrained(
+        make({
+          id: 'name',
+          name: 'name',
+          type: 'text',
+          validation: { minLength },
+        }),
+        0,
+      ),
+    ).toBe('a'.repeat(minLength));
+  });
+
+  it('uses the text sequence when a realistic first name exceeds the maximum', () => {
+    const seed = 17;
+    const firstName = String(
+      new ValueGenerator(seed).generateConstrained(
+        make({ id: 'name', name: 'name', type: 'text' }),
+        0,
+      ),
+    );
+    const maxLength = Math.max(0, firstName.length - 1);
+
+    expect(
+      new ValueGenerator(seed).generateConstrained(
+        make({
+          id: 'name',
+          name: 'name',
+          type: 'text',
+          validation: { maxLength },
+        }),
+        0,
+      ),
+    ).toBe('a'.repeat(maxLength));
+  });
+
   it('produces distinct text for distinct sequence numbers within the budget', () => {
     const gen = new ValueGenerator(1);
     const variable = make({

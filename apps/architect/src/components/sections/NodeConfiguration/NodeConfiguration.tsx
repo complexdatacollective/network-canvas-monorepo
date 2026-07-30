@@ -37,6 +37,7 @@ import {
 } from '~/selectors/roleFilters';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
+import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import withComposerFormHandlers from '../Form/withComposerFormHandlers';
 import { getLayoutVariablesForSubject } from '../SociogramPrompts/selectors';
 
@@ -83,6 +84,7 @@ export type NodeConfigurationProps = {
     value: string,
     variableType: string,
     fieldName: string,
+    validation?: { required: true },
   ) => void;
   handleChangeFields: (field: Record<string, unknown>) => unknown;
   layoutVariablesForSubject: LayoutVariableOption[];
@@ -104,6 +106,9 @@ export const NodeConfigurationComponent = ({
   const dispatch = useAppDispatch();
   const rawAutomaticLayout = useAppSelector((state) =>
     formValueSelector(form)(state, 'behaviours.automaticLayout'),
+  );
+  const quickAddVariable = useAppSelector((state) =>
+    formValueSelector(form)(state, 'quickAdd'),
   );
   const automaticLayout =
     typeof rawAutomaticLayout === 'boolean' ? rawAutomaticLayout : true;
@@ -272,10 +277,21 @@ export const NodeConfigurationComponent = ({
               entity,
               options: quickAddOptionsForSubject,
               onCreateOption: (value: string) =>
-                handleCreateVariable(value, 'text', 'quickAdd'),
+                handleCreateVariable(value, 'text', 'quickAdd', {
+                  required: true,
+                }),
             }}
           />
         </Row>
+        {typeof quickAddVariable === 'string' && (
+          <CodebookVariableValidationSection
+            form={form}
+            fieldName="quickAdd"
+            entity={entity}
+            type={type}
+            variableId={quickAddVariable}
+          />
+        )}
       </Subsection>
 
       <Subsection

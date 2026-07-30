@@ -36,7 +36,7 @@ export type NodeColorSequence = (typeof NodeColors)[number];
 const nodeVariants = cva({
   base: [
     'focusable relative inline-flex items-center justify-center',
-    'aspect-square',
+    'aspect-square min-w-0 shrink-0',
     'text-white',
     '[--base:var(--node-1)] [--dark:oklch(from_var(--base)_calc(l-0.05)_c_h)]',
   ],
@@ -114,16 +114,16 @@ const shapeLayerVariants = cva({
 
 export const labelVariants = cva({
   base: [
-    'overflow-hidden text-center hyphens-auto whitespace-pre-line',
-    'px-2 leading-5! text-wrap wrap-break-word',
+    'w-[80%] min-w-0 overflow-hidden text-center',
+    'wrap-anywhere hyphens-auto whitespace-pre-line',
   ],
   variants: {
     size: {
-      xxs: 'text-xs',
-      xs: 'text-xs',
-      sm: 'text-sm',
-      md: 'text-base',
-      lg: 'text-lg',
+      xxs: 'line-clamp-1 text-xs leading-none!',
+      xs: 'line-clamp-2 text-xs leading-4!',
+      sm: 'line-clamp-3 text-sm leading-5!',
+      md: 'line-clamp-3 text-base leading-5!',
+      lg: 'line-clamp-3 text-lg leading-6!',
     },
   },
   defaultVariants: {
@@ -210,8 +210,6 @@ export default function Node(props: UINodeProps) {
     ...buttonProps
   } = props;
 
-  const labelWithEllipsis = truncateNodeLabel(label);
-
   // Infer interaction mode from props
   const hasClickHandler = !!onClick;
 
@@ -285,9 +283,7 @@ export default function Node(props: UINodeProps) {
   const nodeContent = (
     <>
       {loading && <Loader2 className="animate-spin" size={24} />}
-      {!loading && (
-        <span className={labelVariants({ size })}>{labelWithEllipsis}</span>
-      )}
+      {!loading && <span className={labelVariants({ size })}>{label}</span>}
     </>
   );
 
@@ -369,7 +365,7 @@ export default function Node(props: UINodeProps) {
         </AnimatePresence>
       </span>
       {/* Content layer - positioned so it paints above the shape layer */}
-      <span className="relative flex size-full items-center justify-center">
+      <span className="relative flex size-full min-w-0 items-center justify-center overflow-hidden rounded-[inherit]">
         {nodeContent}
         {props.children}
       </span>

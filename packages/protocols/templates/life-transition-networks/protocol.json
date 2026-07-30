@@ -226,53 +226,6 @@
               }
             ]
           },
-          "relationship": {
-            "name": "relationship",
-            "type": "categorical",
-            "component": "CheckboxGroup",
-            "options": [
-              {
-                "label": "Partner or spouse",
-                "value": "partner"
-              },
-              {
-                "label": "Parent",
-                "value": "parent"
-              },
-              {
-                "label": "Child",
-                "value": "child"
-              },
-              {
-                "label": "Sibling",
-                "value": "sibling"
-              },
-              {
-                "label": "Other family member",
-                "value": "other_family"
-              },
-              {
-                "label": "Friend",
-                "value": "friend"
-              },
-              {
-                "label": "Colleague or classmate",
-                "value": "colleague"
-              },
-              {
-                "label": "Neighbor",
-                "value": "neighbor"
-              },
-              {
-                "label": "A professional, or someone from a service",
-                "value": "professional"
-              },
-              {
-                "label": "Someone else",
-                "value": "other"
-              }
-            ]
-          },
           "closeness_before": {
             "name": "closeness_before",
             "type": "ordinal",
@@ -458,11 +411,6 @@
       },
       "nodeForm": {
         "fields": [
-          {
-            "variable": "relationship",
-            "component": "CheckboxGroup",
-            "label": "How are they related to you?"
-          },
           {
             "variable": "knew_before",
             "component": "Toggle",

@@ -86,6 +86,67 @@ function allWithin(
 }
 
 describe('generateEntityAttributes', () => {
+  it('generates distinct realistic values for a unique name variable', () => {
+    const entity = buildEntityConstraints(
+      {
+        name: {
+          name: 'name',
+          type: 'text',
+          validation: { unique: true },
+        },
+      },
+      TODAY,
+    );
+    const ctx = makeContext(17);
+
+    const first = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'person' },
+      0,
+    );
+    const second = generateEntityAttributes(
+      entity,
+      ctx,
+      { entity: 'node', type: 'person' },
+      1,
+    );
+
+    expect(String(first.name)).toMatch(/^\p{Lu}/u);
+    expect(String(second.name)).toMatch(/^\p{Lu}/u);
+    expect(first.name).not.toBe(second.name);
+  });
+
+  it('generates distinct realistic values for name variables linked by differentFrom', () => {
+    const entity = buildEntityConstraints(
+      {
+        preferredName: {
+          name: 'name',
+          type: 'text',
+        },
+        legalName: {
+          name: 'Name',
+          type: 'text',
+          validation: {
+            differentFrom: asEntityAttributeReference('preferredName'),
+          },
+        },
+      },
+      TODAY,
+    );
+
+    const attributes = generateEntityAttributes(
+      entity,
+      makeContext(17),
+      { entity: 'node', type: 'person' },
+      0,
+    );
+
+    expect(String(attributes.preferredName)).toMatch(/^\p{Lu}/u);
+    expect(String(attributes.legalName)).toMatch(/^\p{Lu}/u);
+    expect(attributes.preferredName).not.toBe(attributes.legalName);
+  });
+
   it('satisfies the motivating ego form: two required 24-character fields, one sameAs the other', () => {
     const entity = buildEntityConstraints(
       {
