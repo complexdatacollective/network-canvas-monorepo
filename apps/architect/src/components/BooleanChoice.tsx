@@ -68,7 +68,7 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
         enabled, this will make the option red when selected, and use a cross
         icon rather than a tick.
       </Paragraph>
-      <div className="grid grid-cols-2 gap-x-5">
+      <div className="grid grid-cols-1 gap-5">
         <div className="bg-surface-3 text-surface-3-contrast rounded p-7 [&_h3]:mt-0">
           <Heading level="h3">Option One</Heading>
           <Paragraph>

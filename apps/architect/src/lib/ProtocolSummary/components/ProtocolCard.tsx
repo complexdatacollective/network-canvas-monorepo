@@ -20,7 +20,7 @@ const ProtocolCard = ({
   lastModified,
   schemaVersion,
 }: ProtocolCardProps) => (
-  <div className="text-navy-taupe bg-platinum border-platinum-dark relative w-full max-w-[12cm] zoom-120 overflow-hidden rounded border shadow-xl">
+  <div className="text-navy-taupe bg-platinum border-platinum-dark relative w-full max-w-[12cm] zoom-120 overflow-hidden rounded-sm border shadow-xl">
     {/* The pattern fills the whole card; a top-to-bottom gradient lets it read
         at the top, then fades to opaque platinum so the content below stays
         legible. Mirrors the timeline's ProtocolInfoCard. */}

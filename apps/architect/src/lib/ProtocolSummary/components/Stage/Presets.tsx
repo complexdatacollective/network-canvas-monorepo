@@ -22,9 +22,9 @@ const Presets = ({ presets = null }: PresetsProps) => {
 
   return (
     <SectionFrame title="Presets">
-      <ol className="m-0 ps-10">
+      <div className="flex flex-col gap-5 pt-5">
         {presets.map((preset) => (
-          <li className="my-5 pl-5" key={preset.label}>
+          <div key={preset.label}>
             <SectionFrame title={preset.label}>
               <MiniTable
                 rotated
@@ -67,9 +67,9 @@ const Presets = ({ presets = null }: PresetsProps) => {
                 ]}
               />
             </SectionFrame>
-          </li>
+          </div>
         ))}
-      </ol>
+      </div>
     </SectionFrame>
   );
 };

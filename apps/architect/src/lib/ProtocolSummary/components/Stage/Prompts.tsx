@@ -1,5 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 
+import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
+
 import Prompt from './Prompt';
 import SectionFrame from './SectionFrame';
 
@@ -20,13 +22,13 @@ const Prompts = ({ prompts = null }: PromptsProps) => {
 
   return (
     <SectionFrame title="Prompts">
-      <ol className="m-0 ps-10">
+      <UnorderedList>
         {prompts.map((prompt) => (
-          <li className="my-5 pl-5" key={prompt.id}>
+          <li className="my-5" key={prompt.id}>
             <Prompt {...prompt} />
           </li>
         ))}
-      </ol>
+      </UnorderedList>
     </SectionFrame>
   );
 };

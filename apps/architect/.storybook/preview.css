@@ -1,0 +1,19 @@
+/*
+ * Storybook's Tailwind entry mirrors the Architect renderer without importing
+ * app-only protocol summary print styles. Fonts are imported from preview.tsx
+ * so their URLs resolve through Vite.
+ */
+@import '@codaco/tailwind-config/fresco.css';
+@import '@codaco/fresco-ui/styles.css';
+@import '../src/styles/architect-theme.css';
+
+@layer base {
+  body {
+    @apply bg-background text-text;
+  }
+
+  /* Autodocs previews render outside the normal story canvas. */
+  .sbdocs-preview {
+    @apply bg-background!;
+  }
+}

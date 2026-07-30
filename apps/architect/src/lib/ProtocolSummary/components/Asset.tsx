@@ -11,9 +11,14 @@ type AssetProps = {
 
 const mediaClass =
   'inline-block w-1/2 bg-[#808080] text-[0] [&_img]:w-full [&_video]:w-full';
+const imagePreviewClass =
+  'inline-block aspect-video w-1/2 overflow-hidden bg-[#808080] text-[0] [&_img]:block [&_img]:size-full [&_img]:object-contain [&_img]:object-center';
+const responsiveSvgPreviewClass =
+  'inline-block h-[180px] w-[320px] overflow-hidden bg-[#808080] text-[0] [&_img]:block [&_img]:h-[720px] [&_img]:w-[1280px] [&_img]:max-w-none [&_img]:origin-top-left [&_img]:scale-[0.25] [&_img]:object-contain [&_img]:object-center';
 
 const Asset = ({ id, size = null }: AssetProps) => {
   const { url, type, name, variables } = useAssetData(id);
+  const isSvg = name?.toLowerCase().endsWith('.svg') ?? false;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -55,7 +60,12 @@ const Asset = ({ id, size = null }: AssetProps) => {
             // eslint-disable-next-line jsx-a11y/media-has-caption
             [
               'Preview',
-              <div key="image-preview" className={mediaClass}>
+              <div
+                key="image-preview"
+                className={
+                  isSvg ? responsiveSvgPreviewClass : imagePreviewClass
+                }
+              >
                 <img src={url} alt={name} />
               </div>,
             ],

@@ -11,7 +11,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import EditableVariablePill from '~/components/VariablePill';
+import { ConnectedVariablePill } from '~/components/VariablePill';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
 
@@ -75,7 +75,12 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         ),
         sortingFn: caseInsensitiveSort,
         cell: ({ row }) => (
-          <EditableVariablePill uuid={row.original.id} width="25rem" />
+          <ConnectedVariablePill
+            animated
+            editable
+            uuid={row.original.id}
+            width="25rem"
+          />
         ),
       },
       {

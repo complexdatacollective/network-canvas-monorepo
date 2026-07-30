@@ -56,7 +56,6 @@
   .page-break-marker {
     background: white;
     padding: var(--margin);
-    display: block;
     overflow: visible;
     position: relative;
     width: var(--page-size-width);

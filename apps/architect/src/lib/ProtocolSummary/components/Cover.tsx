@@ -18,14 +18,18 @@ const Cover = () => {
   return (
     <div className="relative flex h-(--page-size-height) flex-col items-center justify-center print:h-screen">
       <div className="border-platinum absolute top-0 left-0 flex w-full items-center justify-between border-b-2">
-        <Heading level="h2">Protocol Summary Document</Heading>
+        <Heading level="h2" margin="none">
+          Protocol Summary Document
+        </Heading>
         <div className="flex items-center justify-end">
           <img
             className="size-19"
             src={networkCanvasLogo}
             alt="A Network Canvas project"
           />
-          <Heading level="h2">Network Canvas</Heading>
+          <span className="font-heading text-xl leading-none font-bold">
+            Network Canvas
+          </span>
         </div>
       </div>
       <ProtocolCard

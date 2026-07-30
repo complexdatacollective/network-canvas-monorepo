@@ -18,7 +18,7 @@ import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
-import { SimpleVariablePill } from '~/components/VariablePill';
+import { VariablePill } from '~/components/VariablePill';
 import type { RootState } from '~/ducks/store';
 import { cx } from '~/utils/cva';
 import { documentationLinks } from '~/utils/documentationLinks';
@@ -312,9 +312,11 @@ const VariableSpotlight = ({
         )}
       >
         {item.kind === 'variable' && (
-          <SimpleVariablePill label={item.label} type={item.variableType}>
-            <span />
-          </SimpleVariablePill>
+          <VariablePill
+            label={item.label}
+            type={item.variableType}
+            width="100%"
+          />
         )}
         {item.kind === 'create' && (
           <div className={CREATE_NEW_CLASSES}>
