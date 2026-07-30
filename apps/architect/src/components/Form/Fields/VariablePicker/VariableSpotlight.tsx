@@ -312,7 +312,11 @@ const VariableSpotlight = ({
         )}
       >
         {item.kind === 'variable' && (
-          <VariablePill label={item.label} type={item.variableType} />
+          <VariablePill
+            label={item.label}
+            type={item.variableType}
+            width="100%"
+          />
         )}
         {item.kind === 'create' && (
           <div className={CREATE_NEW_CLASSES}>

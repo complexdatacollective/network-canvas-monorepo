@@ -12,6 +12,10 @@ const EGO_NODE_STYLE: CSSProperties = {
   ['--base' as string]: 'oklch(var(--platinum))',
 };
 
+const SUMMARY_EGO_NODE_STYLE: CSSProperties = {
+  ['--base' as string]: 'oklch(var(--cyber-grape))',
+};
+
 const operatorsAsText = (isEgo: boolean) => ({
   EXISTS: 'where',
   NOT_EXISTS: 'without',
@@ -67,15 +71,21 @@ const formatValue = (
 
 type JoinProps = {
   value?: string;
+  variant?: 'default' | 'summary';
 };
 
-export const Join = ({ value = '' }: JoinProps) => (
-  <fieldset className="border-platinum h-0 w-full border-t-4 px-10 py-5 text-center">
-    <legend className="text-platinum-dark px-5 uppercase italic">
+export const Join = ({ value = '', variant = 'default' }: JoinProps) =>
+  variant === 'summary' ? (
+    <div className="w-full py-5 text-center text-current/70 uppercase italic">
       {value.toLowerCase()}
-    </legend>
-  </fieldset>
-);
+    </div>
+  ) : (
+    <fieldset className="border-platinum h-0 w-full border-t-4 px-10 py-5 text-center">
+      <legend className="text-platinum-dark px-5 uppercase italic">
+        {value.toLowerCase()}
+      </legend>
+    </fieldset>
+  );
 
 type VariableProps = {
   children?: React.ReactNode;
@@ -102,12 +112,19 @@ const TypeOperator = ({ value = '' }: TypeOperatorProps) => (
 
 type ValueProps = {
   value?: string | number | boolean | Array<string | number>;
+  plain?: boolean;
 };
 
-const Value = ({ value = '' }: ValueProps) => {
+const Value = ({ value = '', plain = false }: ValueProps) => {
   const formattedValue = formatValue(value);
   return (
-    <div className="border-rules-assert mx-1 -mb-0.75 border-b-[3px] border-dotted font-semibold">
+    <div
+      className={
+        plain
+          ? 'font-semibold'
+          : 'border-rules-assert mx-1 -mb-0.75 border-b-[3px] border-dotted font-semibold'
+      }
+    >
       {formattedValue}
     </div>
   );
@@ -133,8 +150,50 @@ const RuleEntity = ({ type, color, shape, label }: RuleEntityProps) =>
     <PreviewNode color={color} shape={shape} label={label} size="xs" />
   );
 
-const PreviewText = ({ type, options }: PreviewTextProps) => {
+const PreviewText = ({
+  type,
+  options,
+  variant = 'default',
+}: PreviewTextProps) => {
+  const isSummary = variant === 'summary';
+
   if (type === 'ego') {
+    if (isSummary) {
+      return (
+        <div className="grid w-full grid-cols-[minmax(16rem,2fr)_minmax(8rem,1fr)_minmax(0,2fr)] items-center gap-6">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <Node
+              label="Ego"
+              color="custom"
+              size="xxs"
+              className="shrink-0"
+              style={SUMMARY_EGO_NODE_STYLE}
+            />
+            <Copy>has</Copy>
+            <VariablePill
+              label={options.attribute ?? ''}
+              type={
+                (options.variableType as
+                  | 'number'
+                  | 'text'
+                  | 'boolean'
+                  | 'ordinal'
+                  | 'categorical'
+                  | 'scalar'
+                  | 'datetime'
+                  | 'layout'
+                  | 'location') ?? 'text'
+              }
+              minWidth="0"
+              width="100%"
+            />
+          </div>
+          <Operator value={options.operator} isEgo />
+          <Value value={options.value} plain />
+        </div>
+      );
+    }
+
     return (
       <>
         <Node
@@ -193,6 +252,42 @@ const PreviewText = ({ type, options }: PreviewTextProps) => {
       </>
     );
   }
+
+  if (isSummary) {
+    return (
+      <div className="grid w-full grid-cols-[minmax(16rem,2fr)_minmax(8rem,1fr)_minmax(0,2fr)] items-center gap-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <RuleEntity
+            type={type}
+            color={options.typeColor ?? ''}
+            shape={options.typeShape}
+            label={options.typeLabel ?? ''}
+          />
+          <Copy>where</Copy>
+          <VariablePill
+            label={options.attribute ?? ''}
+            type={
+              (options.variableType as
+                | 'number'
+                | 'text'
+                | 'boolean'
+                | 'ordinal'
+                | 'categorical'
+                | 'scalar'
+                | 'datetime'
+                | 'layout'
+                | 'location') ?? 'text'
+            }
+            minWidth="0"
+            width="100%"
+          />
+        </div>
+        <Operator value={options.operator} />
+        <Value value={options.value} plain />
+      </div>
+    );
+  }
+
   return (
     <>
       <RuleEntity
@@ -237,6 +332,7 @@ type PreviewTextOptions = {
 type PreviewTextProps = {
   type: string;
   options: PreviewTextOptions;
+  variant?: 'default' | 'summary';
 };
 
 export default PreviewText;

@@ -34,7 +34,7 @@ const Items = ({ items = null }: ItemsProps) => {
                 <MiniTable
                   rotated
                   rows={[
-                    ['Block Size', size],
+                    ...(type === 'text' ? [] : [['Block Size', size]]),
                     ['Type', 'Text'],
                     // eslint-disable-next-line jsx-a11y/media-has-caption
                     [

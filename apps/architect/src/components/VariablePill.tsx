@@ -25,29 +25,37 @@ import {
 import { cx } from '~/utils/cva';
 import { validations } from '~/utils/validations';
 
-export type VariablePillProps = {
+type VariablePillSizingProps = {
+  width?: string;
+  minWidth?: string;
+  maxWidth?: string;
+};
+
+export type VariablePillProps = VariablePillSizingProps & {
   label: string;
   type: VariableType;
-  width?: string;
   animated?: boolean;
   editable?: boolean;
   onLabelChange?: (label: string) => void;
   validateLabel?: (label: string) => string | null | undefined;
 };
 
-export type ConnectedVariablePillProps = {
+export type ConnectedVariablePillProps = VariablePillSizingProps & {
   uuid: string;
-  width?: string;
   animated?: boolean;
   editable?: boolean;
 };
 
 type VariablePillStyle = React.CSSProperties & {
   '--variable-pill-accent': string;
-  '--variable-pill-width'?: string;
+  '--variable-pill-width': string;
+  '--variable-pill-min-width': string;
+  '--variable-pill-max-width': string;
 };
 
 const DARK_COLOR_SUFFIX = '-dark';
+const DEFAULT_MIN_WIDTH = '12rem';
+const DEFAULT_MAX_WIDTH = '20rem';
 const EDIT_MODE_SCALE = 1.05;
 const EDIT_MODE_LAYOUT_SPRING = {
   type: 'spring',
@@ -63,38 +71,42 @@ const getRawColorToken = (color: string) =>
 
 const getVariablePillStyle = (
   type: VariableType,
-  width?: string,
+  {
+    width,
+    minWidth,
+    maxWidth,
+  }: Pick<VariablePillProps, 'width' | 'minWidth' | 'maxWidth'>,
 ): VariablePillStyle => {
   const accentColor = getRawColorToken(getColorForType(type));
-  const style: VariablePillStyle = {
+  return {
     '--variable-pill-accent': `oklch(var(--${accentColor}))`,
+    '--variable-pill-width': width ?? 'fit-content',
+    '--variable-pill-min-width': minWidth ?? DEFAULT_MIN_WIDTH,
+    '--variable-pill-max-width': maxWidth ?? width ?? DEFAULT_MAX_WIDTH,
   };
-
-  if (width) {
-    style['--variable-pill-width'] = width;
-  }
-
-  return style;
 };
 
 const getVariablePillClassName = ({
   animated,
+  fluid,
   interactive,
   modal,
   raised,
 }: {
   animated?: boolean;
+  fluid?: boolean;
   interactive?: boolean;
   modal?: boolean;
   raised?: boolean;
 }) =>
   cx(
-    // `variable-pill` marker — hook for two remaining same-area cascades:
-    // `VariablePicker.tsx` (mb on nested pills) and `PreviewRule.tsx` (zoom).
-    'variable-pill font-monospace inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap rounded-full p-0.5 text-base',
+    // `variable-pill` marker — hook for same-area cascades in VariablePicker
+    // (nested margin), PreviewRule (zoom), and the printable summary (scale).
+    'variable-pill font-monospace inline-flex h-12 w-(--variable-pill-width) max-w-(--variable-pill-max-width) min-w-(--variable-pill-min-width) flex-nowrap rounded-full p-0.5 text-base',
     raised ? 'effect-shadow' : 'effect-shadow-sm',
     animated ? 'variable-pill-effect-border' : 'bg-(--variable-pill-accent)',
     !interactive && 'cursor-default',
+    fluid && 'flex-1',
     interactive &&
       'focusable hover:effect-shadow cursor-pointer appearance-none border-0 text-left transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5',
     raised && '-translate-y-0.5',
@@ -132,6 +144,8 @@ export const VariablePill = ({
   animated = false,
   editable = false,
   label,
+  maxWidth,
+  minWidth,
   onLabelChange,
   type,
   validateLabel,
@@ -226,14 +240,17 @@ export const VariablePill = ({
     }
   };
 
-  const style = getVariablePillStyle(type, width);
+  const style = getVariablePillStyle(type, { width, minWidth, maxWidth });
   const modalStyle = { ...style, scale: EDIT_MODE_SCALE };
 
   if (!editable) {
     return (
       <data
         value={label}
-        className={getVariablePillClassName({ animated })}
+        className={getVariablePillClassName({
+          animated,
+          fluid: width === '100%',
+        })}
         style={style}
       >
         <VariablePillContents type={type}>
@@ -262,6 +279,7 @@ export const VariablePill = ({
                   layoutId={layoutId}
                   className={getVariablePillClassName({
                     animated,
+                    fluid: width === '100%',
                     interactive: true,
                     raised: popoverOpen,
                   })}
@@ -402,6 +420,8 @@ export const VariablePill = ({
 const ConnectedVariablePillComponent = ({
   animated = false,
   editable = false,
+  maxWidth,
+  minWidth,
   uuid,
   width,
 }: ConnectedVariablePillProps) => {
@@ -440,6 +460,8 @@ const ConnectedVariablePillComponent = ({
       animated={animated}
       editable={editable}
       label={name ?? ''}
+      maxWidth={maxWidth}
+      minWidth={minWidth}
       type={type as VariableType}
       width={width}
       onLabelChange={(nextName) => {

@@ -22,11 +22,11 @@ const AssetManifest = () => {
     return null;
   }
   return (
-    <div className="page-break-marker break-before-page [&_h2]:capitalize">
+    <div className="page-break-marker flex break-before-page flex-col gap-6 [&_h2]:capitalize">
       <Heading level="h1">Resource Library</Heading>
       {assets &&
         map(assets, (typeAssets, type) => (
-          <div className="mt-10" key={type}>
+          <div key={type}>
             <Heading level="h2">{type}</Heading>
             {typeAssets.map(([id]) => (
               <Asset id={id} key={id} />

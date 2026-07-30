@@ -53,29 +53,21 @@ const SummaryPage = () => {
             description="Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets."
           />
         </div>
-        <div className="protocol-summary-surface">
+        <div className="protocol-summary-surface [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8]">
           {/* Cover is the first marker; an explicit page break here would be
             a no-op (CSS Fragmentation: forced breaks at the start of a
             fragment are discarded) so it's omitted. */}
-          <div className="page-break-marker">
+          <div className="page-break-marker flex flex-col gap-6">
             <Cover />
           </div>
 
-          <div className="page-break-marker break-before-page">
+          <div className="page-break-marker flex break-before-page flex-col gap-6">
             <Contents />
           </div>
 
-          <div>
-            <Stages />
-          </div>
-
-          <div>
-            <Codebook />
-          </div>
-
-          <div>
-            <AssetManifest />
-          </div>
+          <Stages />
+          <Codebook />
+          <AssetManifest />
         </div>
       </Layout>
     </SummaryContext.Provider>

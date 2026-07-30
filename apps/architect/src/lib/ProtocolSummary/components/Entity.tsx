@@ -9,22 +9,16 @@ type EntityProps = {
 };
 const Entity = ({ type, entity, variables }: EntityProps) => (
   <div
-    className="page-break-marker mb-14 break-before-page"
+    className="page-break-marker flex break-before-page flex-col gap-6"
     id={entity === 'ego' ? 'ego' : `entity-${type ?? ''}`}
   >
     {entity !== 'ego' && type && entity && (
-      <EntityBadge type={type} entity={entity} />
+      <EntityBadge type={type} entity={entity} iconSize="tiny" />
     )}
 
-    {entity === 'ego' && (
-      <div>
-        <Heading level="h1">Ego</Heading>
-      </div>
-    )}
+    {entity === 'ego' && <Heading level="h1">Ego</Heading>}
 
-    <div className="mt-10">
-      <Variables variables={variables} />
-    </div>
+    <Variables variables={variables} />
   </div>
 );
 export default Entity;

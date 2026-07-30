@@ -32,14 +32,16 @@ const Rules = ({ filter = null }: RulesProps) => {
         const key = `rule-${type}-${JSON.stringify(options)}`;
         return (
           <React.Fragment key={key}>
-            <div className="flex w-full grow items-center not-last:mb-2.5">
+            <div className="flex w-full grow items-center gap-6 not-last:mb-2.5">
               <Rule
                 type={type}
                 options={options}
                 codebook={protocol.codebook}
               />
             </div>
-            {index !== rules.length - 1 && join && <Join value={join} />}
+            {index !== rules.length - 1 && join && (
+              <Join value={join} variant="summary" />
+            )}
           </React.Fragment>
         );
       })}

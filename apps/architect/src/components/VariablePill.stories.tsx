@@ -19,7 +19,7 @@ const VARIABLE_TYPES = [
 
 type StoryArgs = Pick<
   VariablePillProps,
-  'animated' | 'editable' | 'label' | 'type' | 'width'
+  'animated' | 'editable' | 'label' | 'maxWidth' | 'minWidth' | 'type' | 'width'
 >;
 
 const StoryVariablePill = ({ label, ...props }: StoryArgs) => {
@@ -55,20 +55,34 @@ independently:
 | \`ConnectedVariablePill\` | Resolves \`label\` and \`type\` from a variable UUID, validates uniqueness, then renders \`VariablePill\`. | Architect state owns the variable and edits must update the protocol codebook. |
 
 \`\`\`tsx
-<VariablePill label="participant_age" type="number" width="20rem" />
+// Content-sized between the default 12rem minimum and 20rem maximum.
+<VariablePill label="participant_age" type="number" />
+
+// Custom bounds; the label truncates after reaching maxWidth.
+<VariablePill
+  label="participant_neighbourhood_connection_frequency"
+  type="number"
+  minWidth="10rem"
+  maxWidth="16rem"
+/>
 
 <ConnectedVariablePill
   animated
   editable
   uuid={variableId}
-  width="20rem"
+  width="100%"
 />
 \`\`\`
 
 - \`label\` is both the visible name and the machine-readable \`data\` value
   when the pill is not editable.
 - \`type\` selects the variable icon and accent color.
-- \`width\` accepts any CSS width and defaults to \`20rem\`.
+- Without \`width\`, the pill grows with its content between \`minWidth\`
+  (default \`12rem\`) and \`maxWidth\` (default \`20rem\`).
+- Labels truncate with an ellipsis only after reaching \`maxWidth\`.
+- \`width\` forces a preferred CSS width for contexts such as
+  \`VariableSpotlight\`; unless \`maxWidth\` is also supplied, that width is
+  used as the maximum.
 - \`animated\` changes only the border treatment.
 - \`editable\` changes the semantic element and enables the editing workflow.
 `,
@@ -78,7 +92,6 @@ independently:
   args: {
     label: 'participant_age',
     type: 'number',
-    width: '20rem',
     animated: false,
     editable: false,
   },
@@ -94,7 +107,17 @@ independently:
     },
     width: {
       control: 'text',
-      description: 'CSS width applied to the pill.',
+      description:
+        'Optional preferred CSS width. By default, width follows the content.',
+    },
+    minWidth: {
+      control: 'text',
+      description: 'Minimum CSS width. Defaults to 12rem.',
+    },
+    maxWidth: {
+      control: 'text',
+      description:
+        'Maximum CSS width, after which the label truncates. Defaults to 20rem.',
     },
     animated: {
       control: 'boolean',
@@ -139,17 +162,35 @@ export const LongLabel: Story = {
     animated: true,
     editable: true,
     label: 'participant_neighbourhood_connection_frequency',
+    maxWidth: '16rem',
   },
 };
 
-export const Narrow: Story = {
+export const MinimumWidth: Story = {
   args: {
-    width: '14rem',
+    label: 'age',
   },
 };
 
-export const Wide: Story = {
+export const ContentSized: Story = {
   args: {
-    width: '28rem',
+    label: 'participant_neighbourhood',
+  },
+};
+
+export const MaximumWidth: Story = {
+  args: {
+    label:
+      'participant_neighbourhood_connection_frequency_during_the_last_year',
+    maxWidth: '16rem',
+  },
+};
+
+export const FullWidth: Story = {
+  args: {
+    width: '100%',
+  },
+  parameters: {
+    layout: 'padded',
   },
 };

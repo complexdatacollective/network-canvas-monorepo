@@ -47,7 +47,7 @@ const Contents = () => {
             <ul>
               {nodes.map(([id]) => (
                 <li key={id}>
-                  <EntityBadge type={id} entity="node" link small />
+                  <EntityBadge type={id} entity="node" link tiny />
                 </li>
               ))}
             </ul>
@@ -57,7 +57,7 @@ const Contents = () => {
                 <ul>
                   {edges.map(([id]) => (
                     <li key={id}>
-                      <EntityBadge type={id} entity="edge" link small />
+                      <EntityBadge type={id} entity="edge" link tiny />
                     </li>
                   ))}
                 </ul>
