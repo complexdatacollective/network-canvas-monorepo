@@ -448,15 +448,16 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
-      - name: Run tests (PRs run only tasks affected by the PR diff)
+      - name: Run tests (PRs and merge groups run only affected tasks)
+        env:
+          DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
-          # PR checkouts are a synthetic merge of the PR into its base, so
-          # HEAD^1 is the base tip and --affected scopes the run to tasks
-          # whose declared inputs the PR touches, plus their dependents
-          # (turbo.json enables futureFlags.affectedUsingTaskInputs so
+          # PR and merge-group checkouts are synthetic merges. Diff against
+          # the event's base SHA so merge groups that contain multiple PRs
+          # include the whole group's combined change. --affected scopes the
+          # run to tasks whose declared inputs the diff touches, plus their
+          # dependents (turbo.json enables affectedUsingTaskInputs so
           # selection matches what cache hashing considers an input).
-          # Anything skipped here is still covered by the full merge-queue
-          # run before it can land.
           #
           # Fail closed: a change outside the workspace package trees (this
           # workflow, composite actions, .nvmrc, pnpm-workspace.yaml, root
@@ -465,15 +466,23 @@ jobs:
           # lockfile stays on the affected path because turbo hashes it
           # granularly per package; docs, changesets, and markdown are inert
           # to tests.
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
-            && git diff --quiet HEAD^1 HEAD -- . \
-              ':(exclude)packages' ':(exclude)apps' ':(exclude)workers' \
-              ':(exclude)tooling' ':(exclude)docs' ':(exclude).changeset' \
-              ':(exclude)pnpm-lock.yaml' ':(exclude)*.md'; then
-            TURBO_SCM_BASE=$(git rev-parse HEAD^1) pnpm exec turbo run test --affected
-          else
-            pnpm exec turbo run test
-          fi
+          case "$GITHUB_EVENT_NAME" in
+            pull_request|merge_group)
+              if [[ -n "$DIFF_BASE_SHA" ]] \
+                && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
+                && git diff --quiet "$DIFF_BASE_SHA" HEAD -- . \
+                  ':(exclude)packages' ':(exclude)apps' ':(exclude)workers' \
+                  ':(exclude)tooling' ':(exclude)docs' ':(exclude).changeset' \
+                  ':(exclude)pnpm-lock.yaml' ':(exclude)*.md'; then
+                echo "Running test tasks affected by $DIFF_BASE_SHA..HEAD"
+                TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test --affected
+                exit 0
+              fi
+              ;;
+          esac
+
+          echo "Running the full test suite for $GITHUB_EVENT_NAME"
+          pnpm exec turbo run test
 
   quality:
     needs:
