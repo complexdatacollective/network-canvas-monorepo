@@ -1,3 +1,5 @@
+import { todayYmd } from './constraints/dateWindow';
+
 /**
  * A closed `[min, max]` numeric range a random draw is sampled from.
  */
@@ -39,9 +41,24 @@ export type GenerationConfig = {
    * least one node), so the stage presents as partially complete.
    */
   inProgressClearRatio: number;
+  /**
+   * The date RelativeDatePicker bounds are resolved against, as YYYY-MM-DD.
+   * Omit it and the clock is read once per run; supply it to pin the run's
+   * date. Optional so that adding it did not break consumers who annotate a
+   * whole config — internally it is always present, as ResolvedGenerationConfig.
+   */
+  today?: string;
 };
 
-const DEFAULT_GENERATION_CONFIG: GenerationConfig = {
+/**
+ * A config every field of which has been settled. Generation reads `today` on
+ * every date draw, so resolving it once up front is what keeps a seeded run
+ * reproducible: reading the clock per draw made a fixed seed stop reproducing
+ * across UTC midnight.
+ */
+export type ResolvedGenerationConfig = GenerationConfig & { today: string };
+
+const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> = {
   rosterDrawRatio: 0.7,
   nodeCount: { min: 1, max: 8 },
   dropOutFactor: 0.15,
@@ -55,6 +72,14 @@ const DEFAULT_GENERATION_CONFIG: GenerationConfig = {
 
 export function resolveGenerationConfig(
   overrides?: Partial<GenerationConfig>,
-): GenerationConfig {
-  return { ...DEFAULT_GENERATION_CONFIG, ...overrides };
+): ResolvedGenerationConfig {
+  // `today` is destructured out rather than spread over the default, so an
+  // explicit `{ today: undefined }` still resolves to a date instead of
+  // clobbering one.
+  const { today, ...tuning } = overrides ?? {};
+  return {
+    ...DEFAULT_GENERATION_CONFIG,
+    ...tuning,
+    today: today ?? todayYmd(),
+  };
 }

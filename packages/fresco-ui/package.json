@@ -129,6 +129,7 @@
     "./form/utils/focusFirstError": "./src/form/utils/focusFirstError.ts",
     "./form/utils/getInputState": "./src/form/utils/getInputState.ts",
     "./form/utils/ymd": "./src/form/utils/ymd.ts",
+    "./form/validation/helpers": "./src/form/validation/helpers.tsx",
     "./styles.css": "./src/styles.css",
     "./DataTable/DataTable": "./src/DataTable/DataTable.tsx",
     "./DataTable/DataTablePagination": "./src/DataTable/DataTablePagination.tsx",
@@ -613,6 +614,10 @@
       "./form/utils/ymd": {
         "types": "./dist/form/utils/ymd.d.ts",
         "default": "./dist/form/utils/ymd.js"
+      },
+      "./form/validation/helpers": {
+        "types": "./dist/form/validation/helpers.d.ts",
+        "default": "./dist/form/validation/helpers.js"
       },
       "./styles.css": "./dist/styles.css",
       "./DataTable/DataTable": {

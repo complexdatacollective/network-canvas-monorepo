@@ -15,6 +15,8 @@ type OuterProps = {
   variableType: string;
   entity: string;
   existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  currentVariableId?: string;
 };
 
 export default compose<ComponentProps<typeof Validations>, OuterProps>(

@@ -62,11 +62,16 @@ type FieldErrorEntry = {
  * codebook variable references in some validation kinds; we accept that
  * leak for the diagnostic value.
  */
+// Audit sweep: `componentByVariable` comes from `useProtocolForm`, which
+// resolves each field's control the way the rendered Field does. The shared
+// `FormFieldSchema` has no `component` key of its own, so reading one off the
+// stage field recorded 'unknown' for every field, always.
 function buildFieldErrors(
   formErrors:
     | { fieldErrors?: Record<string, string[] | undefined> }
     | undefined,
-  fields: ReadonlyArray<{ variable: string; component?: string }>,
+  fields: ReadonlyArray<{ variable: string }>,
+  componentByVariable: Record<string, string>,
 ): FieldErrorEntry[] {
   const result: FieldErrorEntry[] = [];
   const fieldErrors = formErrors?.fieldErrors;
@@ -75,11 +80,7 @@ function buildFieldErrors(
     if (!Array.isArray(messages) || messages.length === 0) continue;
     const idx = fields.findIndex((f) => f.variable === name);
     if (idx === -1) continue;
-    const f = fields[idx];
-    const component =
-      f && 'component' in f && typeof f.component === 'string'
-        ? f.component
-        : 'unknown';
+    const component = componentByVariable[name] ?? 'unknown';
     for (const message of messages) {
       result.push({ field_index: idx, component, message });
     }
@@ -168,13 +169,14 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
         ) as Record<string, FieldValue>)
       : undefined;
 
-    const { fieldComponents, coerceValues } = useProtocolForm({
-      fields: form.fields,
-      autoFocus: false,
-      initialValues,
-      subject,
-      currentEntityId: id,
-    });
+    const { fieldComponents, coerceValues, componentByVariable } =
+      useProtocolForm({
+        fields: form.fields,
+        autoFocus: false,
+        initialValues,
+        subject,
+        currentEntityId: id,
+      });
 
     const handleSubmit: FormSubmitHandler = (values) => {
       // Coerce values to their declared codebook type (e.g. number fields,
@@ -211,8 +213,8 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
     useEffect(() => {
       track('form_opened', {
         form_kind,
-        field_details: form.fields.map((f) =>
-          'component' in f ? f.component : 'unknown',
+        field_details: form.fields.map(
+          (f) => componentByVariable[f.variable] ?? 'unknown',
         ),
         ...(form_kind === 'alter' || form_kind === 'alter_edge'
           ? { entity_id: id }
@@ -230,7 +232,11 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
       isDirty: () => storeApi!.getState().isDirty,
       focusFirstError: () => focusFirstError(formErrorsRef.current),
       getFieldErrors: () =>
-        buildFieldErrors(formErrorsRef.current, form.fields),
+        buildFieldErrors(
+          formErrorsRef.current,
+          form.fields,
+          componentByVariable,
+        ),
     }));
 
     return (

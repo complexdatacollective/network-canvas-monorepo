@@ -11,8 +11,17 @@ import Button from './Button';
 import CloseButton from './CloseButton';
 import { surfaceVariants } from './layout/Surface';
 import { usePortalContainer } from './PortalContainer';
+import { ScrollArea } from './ScrollArea';
 import Heading from './typography/Heading';
 import { cva, cx, type VariantProps } from './utils/cva';
+
+// Caps how tall a toast's description can grow before it scrolls internally,
+// so a consumer that renders a lot of content (a long message, a list of
+// errors) can't push the toast's own title and Close control off the top of
+// the screen — the viewport anchors every toast to the bottom and grows it
+// upward, so unbounded content is clipped by the browser window with no way
+// back, not by anything the toast itself renders.
+const DESCRIPTION_MAX_HEIGHT = 'max-h-[40dvh]';
 
 export const toastVariants = cva({
   base: 'publish-colors border bg-clip-padding',
@@ -124,7 +133,13 @@ function ToastItem({ toast }: ToastItemProps) {
               className="block w-full cursor-pointer text-left"
             >
               <Toast.Title render={<Heading level="h4" />} />
+              {/* A native <button> may not contain interactive/tabbable
+                  descendants, so this branch can't use ScrollArea (its
+                  viewport is keyboard-focusable). Long content still gets
+                  bounded and mouse/touch-scrollable; the whole toast is
+                  already a single keyboard-operable control here. */}
               <Toast.Description
+                className={cx(DESCRIPTION_MAX_HEIGHT, 'overflow-y-auto')}
                 render={<div className="font-body text-pretty" />}
               />
             </button>
@@ -132,7 +147,13 @@ function ToastItem({ toast }: ToastItemProps) {
             <>
               <Toast.Title render={<Heading level="h4" />} />
               <Toast.Description
-                render={<div className="font-body text-pretty not-last:mb-4" />}
+                className={cx(
+                  DESCRIPTION_MAX_HEIGHT,
+                  'overflow-hidden not-last:mb-4',
+                )}
+                render={
+                  <ScrollArea viewportClassName="font-body text-pretty pr-2" />
+                }
               />
             </>
           )}

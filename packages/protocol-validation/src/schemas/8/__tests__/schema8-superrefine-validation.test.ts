@@ -516,6 +516,49 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(true);
     });
 
+    it('rejects a non-text CategoricalBin otherVariable at the reference path', () => {
+      const result = ProtocolSchemaV8.safeParse({
+        ...baseValidProtocol,
+        stages: [
+          {
+            id: 'categoricalBin1',
+            type: 'CategoricalBin',
+            label: 'Categorical Bin',
+            subject: {
+              entity: 'node',
+              type: 'person',
+            },
+            prompts: [
+              {
+                id: 'prompt1',
+                text: 'Sort by category',
+                variable: 'category',
+                otherVariable: 'category',
+                otherOptionLabel: 'Other',
+                otherVariablePrompt: 'Please specify',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find((candidate) =>
+          candidate.message.includes(
+            'The variable "category" must be of type text',
+          ),
+        );
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'prompts',
+          0,
+          'otherVariable',
+        ]);
+      }
+    });
+
     it('rejects prompt with non-existent otherVariable reference', () => {
       const invalidProtocol = {
         ...baseValidProtocol,

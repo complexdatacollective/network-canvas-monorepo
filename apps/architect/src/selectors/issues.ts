@@ -1,11 +1,12 @@
 import { createSelector } from '@reduxjs/toolkit';
 
+import { findVariableRoleConflicts } from '@codaco/protocol-validation';
 import { TESTING_MAPBOX_TOKEN } from '~/templates/testingMapboxToken';
 
 import { getAllVariablesByUUID } from './codebook';
 import { getIsUsed } from './codebook/isUsed';
 import { getAssetIndex, utils } from './indexes';
-import { getAssetManifest, getCodebook } from './protocol';
+import { getAssetManifest, getCodebook, getProtocol } from './protocol';
 
 /**
  * Selectors that surface protocol "issues" — things that are valid but
@@ -88,4 +89,20 @@ export const getUsesTestingMapboxToken = createSelector(
       (asset) =>
         asset.type === 'apikey' && asset.value === TESTING_MAPBOX_TOKEN,
     ),
+);
+
+/**
+ * Variables written both by a form (validated) and by a bin/highlight/census/
+ * etc. (unvalidated) elsewhere in the same protocol. Values written outside a
+ * form bypass the variable's validation rules, so a form collecting the same
+ * variable can receive values it would otherwise reject.
+ */
+export const getVariableRoleConflicts = createSelector(
+  [getProtocol],
+  (protocol) => (protocol ? findVariableRoleConflicts(protocol) : []),
+);
+
+export const getHasVariableRoleConflicts = createSelector(
+  [getVariableRoleConflicts],
+  (conflicts) => conflicts.length > 0,
 );

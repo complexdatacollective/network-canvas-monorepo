@@ -12,6 +12,10 @@ import {
 
 import QuickNodeForm from './QuickNodeForm';
 
+// `component` on the "name" variable here is incidental, not required:
+// QuickNodeForm derives validation directly from the codebook variable
+// without resolving a component, so a target variable created without one
+// (e.g. via Architect's "Create New Variable" dialog) works identically.
 const mockProtocol = {
   id: 'test-protocol',
   codebook: {
@@ -25,6 +29,7 @@ const mockProtocol = {
           name: {
             name: 'Name',
             type: 'text',
+            component: 'Text',
           },
         },
       } satisfies NodeDefinition,
@@ -207,7 +212,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          'The QuickNodeForm provides a quick way to add nodes with a single field. Click the button to reveal the input, type a name, and press Enter to add.',
+          'The QuickNodeForm provides a quick way to add nodes with a single required field. Click the button to reveal the input, type a name, and press Enter to add.',
       },
     },
   },
@@ -254,6 +259,22 @@ export const DisabledState: Story = {
     docs: {
       description: {
         story: 'The disabled state prevents form interaction.',
+      },
+    },
+  },
+};
+
+export const RequiredEntry: Story = {
+  args: {
+    disabled: false,
+    targetVariable: 'name',
+  },
+  render: (args) => <QuickNodeFormWrapper {...args} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Quick Add always requires a non-empty entry, while any additional validation rules still come from the codebook. Pressing Enter with nothing typed is rejected.',
       },
     },
   },

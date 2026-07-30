@@ -45,6 +45,17 @@ export {
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
 export {
+  findValidationContradictions,
+  type ValidationContradiction,
+} from './schemas/8/variables/validation-contradictions.ts';
+export {
+  collectVariableRoleHits,
+  findVariableRoleConflicts,
+  type VariableRoleConflict,
+  type VariableRoleGroup,
+  type VariableRoleHit,
+} from './utils/findVariableRoleConflicts.ts';
+export {
   asEntityAttributeReference,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,

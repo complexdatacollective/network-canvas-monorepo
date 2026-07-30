@@ -40,18 +40,22 @@ export const NodeConfigSchema = z.strictObject({
   // Text variable used to store the node's display label
   nodeLabelVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'node' },
+    usage: 'unvalidatedAttribute',
   }),
   // Boolean variable marking the ego node
   egoVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'node' },
+    usage: 'unvalidatedAttribute',
   }),
   // String variable storing the relationship to ego (e.g. 'sibling', 'parent')
   relationshipVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'node' },
+    usage: 'unvalidatedAttribute',
   }),
   // Variable storing the biological sex of this node (female/male/intersex/unknown)
   biologicalSexVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'node' },
+    usage: 'unvalidatedAttribute',
   }),
   // Optional form fields collected when creating a node
   form: z.array(FormFieldSchema).optional(),
@@ -63,18 +67,22 @@ export const EdgeConfigSchema = z.strictObject({
   // Variable storing the relationship type value (discriminant for the Edge union)
   relationshipTypeVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
+    usage: 'unvalidatedAttribute',
   }),
   // Variable storing whether the relationship is currently active
   isActiveVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
+    usage: 'unvalidatedAttribute',
   }),
   // Variable storing gestational carrier status (parent edges only)
   isGestationalCarrierVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
+    usage: 'unvalidatedAttribute',
   }),
   // Variable storing the gamete role for this edge (which gamete each participant contributed)
   gameteRoleVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
+    usage: 'unvalidatedAttribute',
   }),
 });
 

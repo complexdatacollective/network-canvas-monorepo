@@ -276,6 +276,21 @@ const DATE_TIME_RE =
   /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
 const TIME_RE = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
+function utcDateFromParts(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+  second = 0,
+): Date {
+  // Date.UTC treats years 0-99 as 1900-1999; setUTCFullYear preserves them.
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(hour, minute, second, 0);
+  return date;
+}
+
 /**
  * Format a min/max bound for human-readable display in validation hints.
  * Uses the runtime's locale via Intl.DateTimeFormat with timeZone: 'UTC' so
@@ -294,7 +309,7 @@ function formatBoundForDisplay(bound: string): string {
       year: 'numeric',
       month: 'long',
       timeZone: 'UTC',
-    }).format(new Date(Date.UTC(year, month - 1, 1)));
+    }).format(utcDateFromParts(year, month, 1));
   }
 
   const dateTime = DATE_TIME_RE.exec(bound);
@@ -304,15 +319,13 @@ function formatBoundForDisplay(bound: string): string {
     const day = Number(dateTime[3]);
     const hour = dateTime[4];
     if (hour !== undefined) {
-      const date = new Date(
-        Date.UTC(
-          year,
-          month - 1,
-          day,
-          Number(hour),
-          Number(dateTime[5]),
-          dateTime[6] !== undefined ? Number(dateTime[6]) : 0,
-        ),
+      const date = utcDateFromParts(
+        year,
+        month,
+        day,
+        Number(hour),
+        Number(dateTime[5]),
+        dateTime[6] !== undefined ? Number(dateTime[6]) : 0,
       );
       return new Intl.DateTimeFormat(undefined, {
         dateStyle: 'long',
@@ -323,7 +336,7 @@ function formatBoundForDisplay(bound: string): string {
     return new Intl.DateTimeFormat(undefined, {
       dateStyle: 'long',
       timeZone: 'UTC',
-    }).format(new Date(Date.UTC(year, month - 1, day)));
+    }).format(utcDateFromParts(year, month, day));
   }
 
   const time = TIME_RE.exec(bound);
@@ -463,7 +476,18 @@ const max: ValidationFunction<number | string> = (maxParam) => () => {
  *
  * Short-circuits on an empty/unanswered field (undefined/null or an empty
  * array) so this optional rule only applies once a selection has been made;
- * `required` owns emptiness.
+ * `required` owns emptiness. This is deliberate, not a gap, and has been
+ * re-verified: `[]` is indistinguishable from "unanswered" at the value
+ * level — CheckboxGroup (see CheckboxGroup.tsx `handleChange`) produces the
+ * exact same `[]` whether a field was never touched or was ticked then
+ * unticked, so there is no way to flag "cleared on purpose" without also
+ * flagging "never answered". The protocol schema agrees: `minSelected` no
+ * longer implies `required` as of the v8 migration (see
+ * protocol-validation/src/schemas/8/migration.ts, the "min* validator no
+ * longer implies required" note and backfill step), and
+ * `categoricalValidations` in protocol-validation's variable.ts lets a
+ * codebook pick `minSelected` without `required`. Pair `minSelected` with
+ * `required: true` on the variable to also reject an empty selection.
  */
 const minSelected: ValidationFunction<number> = (minParam) => () => {
   invariant(typeof minParam === 'number', 'Min items must be specified');

@@ -319,6 +319,93 @@ describe('Migration V7 to V8', () => {
       ).toHaveProperty('options');
     });
 
+    // Thirteenth-wave Finding 2: the v8 schema now rejects an explicitly
+    // empty boolean options array (the control renders no buttons at all, so
+    // the variable can never be answered). Removing the property restores the
+    // runtime's Yes/No default, keeping existing protocols valid.
+    it('removes an explicitly empty options array from a Boolean variable', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                hasChildren: {
+                  name: 'HasChildren',
+                  type: 'boolean',
+                  component: 'Boolean',
+                  options: [],
+                  validation: { required: true },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as unknown as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      expect(
+        parsed.data?.codebook.node?.person?.variables?.hasChildren,
+      ).not.toHaveProperty('options');
+      expect(
+        parsed.data?.codebook.node?.person?.variables?.hasChildren,
+      ).toHaveProperty('validation.required', true);
+    });
+
+    // Twenty-eighth-wave Finding 1: the v8 shape rule now accepts
+    // `options: []` on a componentless boolean directly (variable.ts), so
+    // this strip is no longer the only thing standing between a v7 import and
+    // rejection here — but it still runs ahead of the v8 parse, so a
+    // componentless v7 boolean with an empty options array was never
+    // import-blocked in the first place, and keeps migrating to the Yes/No
+    // default (rather than surfacing as a value-less `options: []` a v8
+    // Boolean-rendered NetworkComposer field could still choke on).
+    it('removes an explicitly empty options array from a componentless boolean variable too', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                hasChildren: {
+                  name: 'HasChildren',
+                  type: 'boolean',
+                  options: [],
+                  validation: { required: true },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as unknown as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      expect(
+        parsed.data?.codebook.node?.person?.variables?.hasChildren,
+      ).not.toHaveProperty('options');
+      expect(
+        parsed.data?.codebook.node?.person?.variables?.hasChildren,
+      ).toHaveProperty('validation.required', true);
+    });
+
     it('does not affect non-boolean variables', () => {
       const v7Protocol = {
         schemaVersion: 7 as const,
@@ -1816,6 +1903,46 @@ describe('Migration V7 to V8', () => {
         'validation',
       );
     });
+
+    // Ninth-wave Finding 5: an inert below-floor minLength (v7 never enforced
+    // a floor, so -1 constrained nothing) must be stripped BEFORE this
+    // backfill runs, or the backfill fabricates requiredness the protocol
+    // never actually had. The floor strip removes minLength first, so by the
+    // time this step inspects the validation map there is no minLength left
+    // to trigger it.
+    it('does not fabricate required from a below-floor minLength that gets stripped', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                nickname: {
+                  name: 'Nickname',
+                  type: 'text',
+                  component: 'Text',
+                  validation: { minLength: -1 },
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      } as Protocol<7>;
+
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+
+      const nickname = parsed.codebook.node?.person?.variables?.nickname;
+      expect(nickname).not.toHaveProperty('validation.required');
+      expect(nickname).not.toHaveProperty('validation.minLength');
+    });
   });
 
   describe('ego unique validation removal', () => {
@@ -2451,6 +2578,27 @@ describe('Migration V7 to V8', () => {
           'Please specify',
         );
       }
+    });
+
+    it('drops a non-text otherVariable and its associated configuration', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildBinProtocol({
+          otherVariable: 'cat',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        }),
+        { name: 'Test Protocol' },
+      );
+      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      if (stage && 'prompts' in stage) {
+        expect(stage.prompts[0]).not.toHaveProperty('otherVariable');
+        expect(stage.prompts[0]).not.toHaveProperty('otherOptionLabel');
+        expect(stage.prompts[0]).not.toHaveProperty('otherVariablePrompt');
+      }
+      expect(parsed.codebook.node?.person?.variables?.cat).not.toHaveProperty(
+        'validation.required',
+      );
     });
   });
 
@@ -4271,6 +4419,1716 @@ describe('Migration V7 to V8', () => {
       if (migrationV7toV8.notes) {
         expect(migrationV7toV8.notes.length).toBeGreaterThan(0);
       }
+    });
+  });
+
+  describe('DatePicker parameter and validation floor normalisation', () => {
+    const migrateVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          ego: { variables },
+        },
+        stages: [],
+      };
+      return migrationV7toV8.migrate(v7Protocol as unknown as Protocol<7>, {
+        name: 'Test Protocol',
+      });
+    };
+
+    it('truncates finer-than-resolution bounds and strips coarser ones', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'year_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'year', min: '2020-05-03', max: '2021' },
+        },
+        b: {
+          name: 'full_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '2020', max: '2021-06-15' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.min', '2020');
+      expect(variables?.a).toHaveProperty('parameters.max', '2021');
+      expect(variables?.b).not.toHaveProperty('parameters.min');
+      expect(variables?.b).toHaveProperty('parameters.max', '2021-06-15');
+    });
+
+    it('strips both bounds when min is after max, and malformed values', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'window',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'month', min: '2021-06', max: '2020-01' },
+        },
+        b: {
+          name: 'junk',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: 'not-a-date' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
+      expect(variables?.a).not.toHaveProperty('parameters.max');
+      expect(variables?.b).not.toHaveProperty('parameters.min');
+    });
+
+    it('deletes a value that merely slices into a valid-looking prefix', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'full_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '2020-01-01oops' },
+        },
+        b: {
+          name: 'year_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'year', min: '2020garbage' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
+      expect(variables?.b).not.toHaveProperty('parameters.min');
+    });
+
+    // Eleventh-wave Finding 1: a year-zero full-resolution bound is a real,
+    // round-tripping ISO date, but the native HTML date input starts at year
+    // 0001, so no selectable value could ever satisfy it — the migration
+    // strips it the same way as the other unusable bounds. Years 0001-0999
+    // survive (the deliberate full-resolution small-year support).
+    it('strips a full-resolution year-zero bound but keeps a small-year one', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'year_zero',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { max: '0000-12-31' },
+        },
+        b: {
+          name: 'small_year',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '0001-01-01' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.max');
+      expect(variables?.b).toHaveProperty('parameters.min', '0001-01-01');
+    });
+
+    // Sixth-wave Finding 1: an unsupported `type` (e.g. a legacy 'week'
+    // resolution) was treated as 'full' for the bounds logic but left in
+    // place, so the migrated document failed the strictObject's
+    // full/month/year enum. The stray key must be deleted, falling back to
+    // the schema's own 'full' default.
+    it('deletes an unsupported DatePicker type and keeps a valid bound', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'week_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'week', min: '2020-01-01' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.type');
+      expect(variables?.a).toHaveProperty('parameters.min', '2020-01-01');
+    });
+
+    // Twenty-third-wave Finding 7: this normaliser only touched `type`,
+    // `min`, and `max`, leaving every other key in place. `datePickerParametersSchema`
+    // (variable.ts) is a strictObject accepting only those three keys, so a
+    // v7 DatePicker parameters record carrying a stray key from elsewhere —
+    // e.g. a RelativeDatePicker `anchor` — failed the v8 schema outright and
+    // blocked the protocol from being imported at all, unlike
+    // `normalizeRelativeDatePickerParameters`, which already stripped keys
+    // outside its own set.
+    it('removes an unsupported parameter key (e.g. a RelativeDatePicker anchor) from a DatePicker record', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'anchor_leftover',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '2020-01-01', anchor: '2020-01-01' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.anchor');
+      expect(variables?.a).toHaveProperty('parameters.min', '2020-01-01');
+    });
+
+    it('removes an arbitrary stray DatePicker parameter key', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'stray_key',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '2020-01-01', foo: 1 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.foo');
+      expect(variables?.a).toHaveProperty('parameters.min', '2020-01-01');
+    });
+
+    it('leaves a fully valid DatePicker parameters record untouched', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'valid_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'month', min: '2020-01', max: '2020-06' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters', {
+        type: 'month',
+        min: '2020-01',
+        max: '2020-06',
+      });
+    });
+
+    // Tenth-wave Finding 4: the codebook step previously skipped
+    // RelativeDatePicker variables entirely, so a loose v7 parameters record
+    // (small-year anchor, negative or fractional offsets, stray keys)
+    // migrated into a document the v8 strictObject rejects on import.
+    it('preserves a fully valid RelativeDatePicker parameters record untouched', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'relative',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '2020-01-01', before: 30 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.anchor', '2020-01-01');
+      expect(variables?.a).toHaveProperty('parameters.before', 30);
+    });
+
+    it('removes a RelativeDatePicker anchor before the native date range', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'relative',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '0000-12-31', before: 30 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.anchor');
+      expect(variables?.a).toHaveProperty('parameters.before', 30);
+    });
+
+    it('preserves RelativeDatePicker anchors throughout the native date range', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'relative_1',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '0001-01-01', before: 30 },
+        },
+        b: {
+          name: 'relative_99',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '0099-12-31', before: 30 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.anchor', '0001-01-01');
+      expect(variables?.b).toHaveProperty('parameters.anchor', '0099-12-31');
+    });
+
+    it('removes negative and non-integer RelativeDatePicker offsets', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'relative_negative',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '2020-01-01', before: -5 },
+        },
+        b: {
+          name: 'relative_fractional',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '2020-01-01', after: 1.5 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.before');
+      expect(variables?.a).toHaveProperty('parameters.anchor', '2020-01-01');
+      expect(variables?.b).not.toHaveProperty('parameters.after');
+      expect(variables?.b).toHaveProperty('parameters.anchor', '2020-01-01');
+    });
+
+    it('removes a stray RelativeDatePicker parameter key', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'relative',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '2020-01-01', min: '2019-01-01' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
+      expect(variables?.a).toHaveProperty('parameters.anchor', '2020-01-01');
+    });
+
+    // Nineteenth-wave Finding 1: `component` is OPTIONAL on both datetime
+    // members, so a v7 codebook variable can declare an anchor/before/after
+    // window with no component at all. Routing it to the DatePicker
+    // normaliser left `anchor`/`before` untouched and the v8 variable union
+    // then rejected the whole protocol on import.
+    it('normalises a componentless relative-shaped parameters record', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'relative_small_year',
+          type: 'datetime',
+          parameters: { anchor: '0050-01-01', before: -2 },
+        },
+        b: {
+          name: 'relative_valid_anchor',
+          type: 'datetime',
+          parameters: { anchor: '2020-01-01', after: -3 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.anchor', '0050-01-01');
+      expect(variables?.a).not.toHaveProperty('parameters.before');
+      expect(variables?.b).toHaveProperty('parameters.anchor', '2020-01-01');
+      expect(variables?.b).not.toHaveProperty('parameters.after');
+    });
+
+    it('still applies DatePicker truncation to a componentless picker', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'componentless_year_picker',
+          type: 'datetime',
+          parameters: { type: 'year', min: '2020-05-03' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.min', '2020');
+      expect(variables?.a).toHaveProperty('parameters.type', 'year');
+    });
+
+    it('leaves declared-component datetime variables on their own normaliser', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'declared_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'year', min: '2020-05-03' },
+        },
+        b: {
+          name: 'declared_relative',
+          type: 'datetime',
+          component: 'RelativeDatePicker',
+          parameters: { anchor: '0050-01-01', before: -2 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.min', '2020');
+      expect(variables?.b).toHaveProperty('parameters.anchor', '0050-01-01');
+      expect(variables?.b).not.toHaveProperty('parameters.before');
+    });
+
+    // A record carrying keys from BOTH parameter shapes matches neither
+    // strictObject member, so no inference is safe: the pre-existing
+    // DatePicker reading stands rather than guessing at relative intent.
+    // Twenty-third-wave Finding 7: the DatePicker normaliser now strips keys
+    // outside its own set, so the surviving relative-only `before` key is
+    // removed here too — the routing decision (DatePicker, made by the
+    // caller's `isRelativeDatePickerShape` check before this normaliser ever
+    // runs) is unaffected by that later strip.
+    it('keeps the DatePicker reading for a mixed-key componentless record, then strips the incompatible key', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'mixed_shape',
+          type: 'datetime',
+          parameters: { type: 'year', min: '2020-05-03', before: -2 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.min', '2020');
+      expect(variables?.a).not.toHaveProperty('parameters.before');
+    });
+
+    // Audit sweep: this step's componentless inference must agree with the
+    // analyser's `isRelativeDatePickerShape`, which now reads an explicitly
+    // null `component` (and a null member key) as absent. Testing `component
+    // === undefined` here left a null-component relative record on the
+    // DatePicker normaliser, so its relative anchor and negative offset
+    // survived untouched while the analyser — running over these same raw
+    // records in the contradiction-strip step — read it as a relative window.
+    it('normalises a null-component relative-shaped parameters record', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'null_component_relative',
+          type: 'datetime',
+          component: null,
+          parameters: { anchor: '0050-01-01', before: -2 },
+        },
+        b: {
+          name: 'null_member_key_relative',
+          type: 'datetime',
+          parameters: { anchor: '0050-01-01', after: -3, min: null },
+        },
+      });
+      const variables = (
+        migratedRaw as unknown as {
+          codebook: { ego: { variables: Record<string, unknown> } };
+        }
+      ).codebook.ego.variables;
+      expect(variables.a).toHaveProperty('parameters.anchor', '0050-01-01');
+      expect(variables.a).not.toHaveProperty('parameters.before');
+      expect(variables.b).toHaveProperty('parameters.anchor', '0050-01-01');
+      expect(variables.b).not.toHaveProperty('parameters.after');
+    });
+
+    // Third-wave Finding 2: isValidCalendarDate must not fall into
+    // Date.UTC's two-digit-year coercion (a year 0-99 silently becoming
+    // 1900-1999), which would falsely reject a real four-digit year like
+    // '0099' during normalisation.
+    it('keeps a real four-digit date whose year is below 100', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'full_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '0099-12-31' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('parameters.min', '0099-12-31');
+    });
+
+    it('still strips an impossible calendar date with a small year', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'full_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '0099-02-30' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
+    });
+
+    // Eighth-wave Finding 2: a coarse-resolution (year/month) bound whose
+    // year is below 1000 must be deleted, not truncated-and-kept — the
+    // interview builds that resolution's year options unpadded via
+    // `y.toString()`, so a zero-padded small-year bound could never match a
+    // stored value. Full resolution is unaffected (see the small-year test
+    // above, which keeps '0099-12-31' unchanged).
+    it('strips a year-resolution bound whose year is below 1000, keeping a valid sibling bound', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'year_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'year', min: '0099', max: '2020' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
+      expect(variables?.a).toHaveProperty('parameters.max', '2020');
+    });
+
+    it('strips a month-resolution bound truncated down from a small-year full date', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'month_picker',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'month', min: '0099-05-03' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('parameters.min');
+    });
+
+    it('strips negative count-valued rules and preserves optional zero-valued maxima', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'first_name',
+          type: 'text',
+          validation: { maxLength: 0, minLength: -2, required: true },
+        },
+        b: {
+          name: 'last_name',
+          type: 'text',
+          validation: { minLength: 0, maxLength: 1 },
+        },
+        c: {
+          name: 'tags',
+          type: 'categorical',
+          options: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+          validation: { maxSelected: 0 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.maxLength');
+      expect(variables?.a).not.toHaveProperty('validation.minLength');
+      expect(variables?.a).toHaveProperty('validation.required', true);
+      expect(variables?.b).toHaveProperty('validation.minLength', 0);
+      expect(variables?.b).toHaveProperty('validation.maxLength', 1);
+      expect(variables?.c).toHaveProperty('validation.maxSelected', 0);
+    });
+
+    it('normalizes selection-count floors on node and edge variables while preserving 0/1 boundaries', () => {
+      const categorical = (
+        name: string,
+        validation: Record<string, number>,
+      ) => ({
+        name,
+        type: 'categorical',
+        component: 'CheckboxGroup',
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'B', value: 'b' },
+        ],
+        validation,
+      });
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                nodeNegativeCounts: categorical('NodeNegativeCounts', {
+                  minSelected: -1,
+                  maxSelected: -1,
+                }),
+                nodeBoundaryCounts: categorical('NodeBoundaryCounts', {
+                  minSelected: 0,
+                  maxSelected: 1,
+                }),
+              },
+            },
+          },
+          edge: {
+            knows: {
+              name: 'Knows',
+              color: 'edge-color-seq-1',
+              variables: {
+                edgeNegativeCounts: categorical('EdgeNegativeCounts', {
+                  minSelected: -1,
+                  maxSelected: -1,
+                }),
+                edgeBoundaryCounts: categorical('EdgeBoundaryCounts', {
+                  minSelected: 0,
+                  maxSelected: 1,
+                }),
+              },
+            },
+          },
+          ego: {},
+        },
+        stages: [],
+      };
+      const parsed = ProtocolSchemaV8.parse(
+        migrationV7toV8.migrate(v7Protocol as unknown as Protocol<7>, {
+          name: 'Test Protocol',
+        }),
+      );
+      const nodeVariables = parsed.codebook.node?.person?.variables;
+      const edgeVariables = parsed.codebook.edge?.knows?.variables;
+
+      expect(nodeVariables?.nodeNegativeCounts).not.toHaveProperty(
+        'validation.minSelected',
+      );
+      expect(nodeVariables?.nodeNegativeCounts).not.toHaveProperty(
+        'validation.maxSelected',
+      );
+      expect(nodeVariables?.nodeBoundaryCounts).toHaveProperty(
+        'validation.minSelected',
+        0,
+      );
+      expect(nodeVariables?.nodeBoundaryCounts).toHaveProperty(
+        'validation.maxSelected',
+        1,
+      );
+      expect(edgeVariables?.edgeNegativeCounts).not.toHaveProperty(
+        'validation.minSelected',
+      );
+      expect(edgeVariables?.edgeNegativeCounts).not.toHaveProperty(
+        'validation.maxSelected',
+      );
+      expect(edgeVariables?.edgeBoundaryCounts).toHaveProperty(
+        'validation.minSelected',
+        0,
+      );
+      expect(edgeVariables?.edgeBoundaryCounts).toHaveProperty(
+        'validation.maxSelected',
+        1,
+      );
+    });
+
+    // V8 puts `.int()` on all six numeric bound rules (minLength, maxLength,
+    // minValue, maxValue, minSelected, maxSelected — validation.ts), but v7
+    // is a `looseObject` that never enforced it, so a hand-authored
+    // fractional value survives migration untouched and then fails v8
+    // validation on import — the exact class of import blocker the other
+    // repairs in this file close.
+    it('strips a fractional minValue and maxSelected while keeping an integer sibling rule', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'age',
+          type: 'number',
+          validation: { minValue: 1.5, maxValue: 10 },
+        },
+        b: {
+          name: 'tags',
+          type: 'categorical',
+          options: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+          validation: { minSelected: 1, maxSelected: 2.7 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.minValue');
+      expect(variables?.a).toHaveProperty('validation.maxValue', 10);
+      expect(variables?.b).not.toHaveProperty('validation.maxSelected');
+      expect(variables?.b).toHaveProperty('validation.minSelected', 1);
+    });
+
+    // minValue/maxValue have no floor (a number variable's range may be
+    // negative), so a negative INTEGER must survive while a fractional value
+    // on any of the six rules is stripped regardless of sign or magnitude.
+    it('strips fractional values from all six numeric bound rules, keeping their integer siblings', () => {
+      const migratedRaw = migrateVariables({
+        n: {
+          name: 'n',
+          type: 'number',
+          validation: { minValue: -5, maxValue: 10.5 },
+        },
+        t: {
+          name: 't',
+          type: 'text',
+          validation: { minLength: 2.5, maxLength: 20 },
+        },
+        c: {
+          name: 'c',
+          type: 'categorical',
+          options: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+          validation: { minSelected: 1, maxSelected: 2.7 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.n).toHaveProperty('validation.minValue', -5);
+      expect(variables?.n).not.toHaveProperty('validation.maxValue');
+      expect(variables?.t).not.toHaveProperty('validation.minLength');
+      expect(variables?.t).toHaveProperty('validation.maxLength', 20);
+      expect(variables?.c).toHaveProperty('validation.minSelected', 1);
+      expect(variables?.c).not.toHaveProperty('validation.maxSelected');
+    });
+
+    it('does not fabricate required from a fractional minValue that gets stripped', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'age',
+          type: 'number',
+          validation: { minValue: 1.5 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.minValue');
+      expect(variables?.a).not.toHaveProperty('validation.required');
+    });
+  });
+
+  describe('contradictory validation rule removal', () => {
+    const migrateVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          ego: { variables },
+        },
+        stages: [],
+      };
+      return migrationV7toV8.migrate(v7Protocol as unknown as Protocol<7>, {
+        name: 'Test Protocol',
+      });
+    };
+
+    it('strips zero maxima when migration backfills requiredness from a zero minimum', () => {
+      const migratedRaw = migrateVariables({
+        text: {
+          name: 'comment',
+          type: 'text',
+          validation: { minLength: 0, maxLength: 0 },
+        },
+        choices: {
+          name: 'choices',
+          type: 'categorical',
+          options: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+          validation: { minSelected: 0, maxSelected: 0 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.text).toHaveProperty('validation.required', true);
+      expect(variables?.text).toHaveProperty('validation.minLength', 0);
+      expect(variables?.text).not.toHaveProperty('validation.maxLength');
+      expect(variables?.choices).toHaveProperty('validation.required', true);
+      expect(variables?.choices).toHaveProperty('validation.minSelected', 0);
+      expect(variables?.choices).not.toHaveProperty('validation.maxSelected');
+    });
+
+    it('strips both members of an inverted pair', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'age',
+          type: 'number',
+          validation: { minValue: 10, maxValue: 2, required: true },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.minValue');
+      expect(variables?.a).not.toHaveProperty('validation.maxValue');
+      expect(variables?.a).toHaveProperty('validation.required', true);
+    });
+
+    it('strips sameAs and differentFrom when they name one target', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'text',
+          validation: { sameAs: 'b', differentFrom: 'b' },
+        },
+        b: { name: 'b', type: 'text' },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.sameAs');
+      expect(variables?.a).not.toHaveProperty('validation.differentFrom');
+    });
+
+    it('strips the comparators forming a strict cycle, keeping bounds', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: { minValue: 0, greaterThanVariable: 'b' },
+        },
+        b: {
+          name: 'b',
+          type: 'number',
+          validation: { greaterThanVariable: 'a' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.greaterThanVariable');
+      expect(variables?.b).not.toHaveProperty('validation.greaterThanVariable');
+      expect(variables?.a).toHaveProperty('validation.minValue', 0);
+    });
+
+    it('keeps sameAs when stripping a strict comparator inside its group', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: { sameAs: 'b', greaterThanVariable: 'b' },
+        },
+        b: { name: 'b', type: 'number' },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('validation.sameAs', 'b');
+      expect(variables?.a).not.toHaveProperty('validation.greaterThanVariable');
+    });
+
+    // Ninth-wave Finding 3: A's sameAs already forces the {a, b} group; the
+    // one-way `lessThanOrEqualToVariable` merely sits between the two — it
+    // did not itself group them (only a sameAs edge, or a genuine strongly-
+    // connected comparator cycle, does that). The minimal-strip repair takes
+    // the sameAs edge only, and the `<=` rule survives migration intact.
+    it('strips sameAs only when a one-way comparator sits inside a sameAs group, keeping the comparator', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: {
+            maxValue: 5,
+            sameAs: 'b',
+            lessThanOrEqualToVariable: 'b',
+          },
+        },
+        b: { name: 'b', type: 'number', validation: { minValue: 10 } },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.sameAs');
+      expect(variables?.a).toHaveProperty(
+        'validation.lessThanOrEqualToVariable',
+        'b',
+      );
+      expect(variables?.a).toHaveProperty('validation.maxValue', 5);
+      expect(variables?.b).toHaveProperty('validation.minValue', 10);
+    });
+
+    // Twentieth-wave Finding 2: the comparator SCC between the two pinned
+    // variables is what empties the group; c's sameAs is satisfiable and
+    // unrelated, so the repair must leave it standing.
+    it('strips the comparator cycle that empties a group, keeping an unrelated sameAs', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 0,
+            greaterThanOrEqualToVariable: 'b',
+          },
+        },
+        b: {
+          name: 'b',
+          type: 'number',
+          validation: {
+            minValue: 1,
+            maxValue: 1,
+            greaterThanOrEqualToVariable: 'a',
+          },
+        },
+        c: { name: 'c', type: 'number', validation: { sameAs: 'a' } },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.c).toHaveProperty('validation.sameAs', 'a');
+      expect(variables?.a).not.toHaveProperty(
+        'validation.greaterThanOrEqualToVariable',
+      );
+      expect(variables?.b).not.toHaveProperty(
+        'validation.greaterThanOrEqualToVariable',
+      );
+      expect(variables?.a).toHaveProperty('validation.minValue', 0);
+      expect(variables?.b).toHaveProperty('validation.maxValue', 1);
+    });
+
+    it('strips a sameAs categorical group whose option values share nothing', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'categorical',
+          options: [
+            { label: 'Red', value: 'red' },
+            { label: 'Blue', value: 'blue' },
+          ],
+          validation: { sameAs: 'b' },
+        },
+        b: {
+          name: 'b',
+          type: 'categorical',
+          options: [
+            { label: 'Green', value: 'green' },
+            { label: 'Yellow', value: 'yellow' },
+          ],
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.sameAs');
+    });
+
+    it('strips validation references to a differently-typed variable', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'text',
+          validation: { sameAs: 'b', required: true },
+        },
+        b: { name: 'b', type: 'number' },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.sameAs');
+      expect(variables?.a).toHaveProperty('validation.required', true);
+    });
+
+    it('leaves coherent rules untouched (negative control)', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'start',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 10, lessThanVariable: 'b' },
+        },
+        b: {
+          name: 'end',
+          type: 'number',
+          validation: { greaterThanVariable: 'a', maxValue: 100 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).toHaveProperty('validation.minValue', 0);
+      expect(variables?.a).toHaveProperty('validation.maxValue', 10);
+      expect(variables?.a).toHaveProperty('validation.lessThanVariable', 'b');
+      expect(variables?.b).toHaveProperty(
+        'validation.greaterThanVariable',
+        'a',
+      );
+    });
+
+    // Twenty-third-wave Finding 1: removing any ONE edge from an odd cycle
+    // makes the remainder bipartite, so the fixpoint loop's single-pass
+    // strip only needs to remove that one edge's declarations — not every
+    // edge in the triangle (the old over-strip behaviour, which discarded
+    // two otherwise-valid authored constraints alongside the truly
+    // contradictory one). The edge is chosen deterministically by its own
+    // canonical sorted key, which — for this authoring order, with no
+    // sameAs grouping — picks a's declaration.
+    it('strips only one differentFrom edge from an odd boolean cycle, keeping the rest satisfiable', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'boolean',
+          validation: { differentFrom: 'b', required: true },
+        },
+        b: {
+          name: 'b',
+          type: 'boolean',
+          validation: { differentFrom: 'c', required: true },
+        },
+        c: {
+          name: 'c',
+          type: 'boolean',
+          validation: { differentFrom: 'a', required: true },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.b).toHaveProperty('validation.differentFrom', 'c');
+      expect(variables?.c).toHaveProperty('validation.differentFrom', 'a');
+      expect(variables?.a).toHaveProperty('validation.required', true);
+      expect(variables?.b).toHaveProperty('validation.required', true);
+      expect(variables?.c).toHaveProperty('validation.required', true);
+    });
+
+    // Third-wave Finding 1: a triangle plus a branch rule hanging off one of
+    // its members. The old whole-component strip removed d's differentFrom
+    // too; the fix reconstructs only the triangle itself. Twenty-third-wave
+    // Finding 1 additionally keeps two of the triangle's own three edges.
+    it('keeps a branch differentFrom rule and two of the triangle edges hanging off an odd boolean cycle', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'boolean',
+          validation: { differentFrom: 'b' },
+        },
+        b: {
+          name: 'b',
+          type: 'boolean',
+          validation: { differentFrom: 'c' },
+        },
+        c: {
+          name: 'c',
+          type: 'boolean',
+          validation: { differentFrom: 'a' },
+        },
+        d: {
+          name: 'd',
+          type: 'boolean',
+          validation: { differentFrom: 'a' },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.b).toHaveProperty('validation.differentFrom', 'c');
+      expect(variables?.c).toHaveProperty('validation.differentFrom', 'a');
+      expect(variables?.d).toHaveProperty('validation.differentFrom', 'a');
+    });
+
+    // Twenty-third-wave Finding 1: the migration end-to-end test the finding
+    // asked for — a triangle among a/b/c plus TWO unrelated, satisfiable
+    // constraints elsewhere (e/f's own differentFrom pair, and g's own
+    // bounds) all survive the same migration pass that repairs the triangle.
+    it('keeps unrelated constraints untouched while repairing an odd boolean cycle end-to-end', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'boolean',
+          validation: { differentFrom: 'b' },
+        },
+        b: {
+          name: 'b',
+          type: 'boolean',
+          validation: { differentFrom: 'c' },
+        },
+        c: {
+          name: 'c',
+          type: 'boolean',
+          validation: { differentFrom: 'a' },
+        },
+        e: {
+          name: 'e',
+          type: 'boolean',
+          validation: { differentFrom: 'f' },
+        },
+        f: { name: 'f', type: 'boolean', validation: {} },
+        g: {
+          name: 'g',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 10 },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      // Exactly one edge of the triangle is gone; two survive.
+      expect(variables?.a).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.b).toHaveProperty('validation.differentFrom', 'c');
+      expect(variables?.c).toHaveProperty('validation.differentFrom', 'a');
+      // Wholly unrelated constraints are untouched.
+      expect(variables?.e).toHaveProperty('validation.differentFrom', 'f');
+      expect(variables?.g).toHaveProperty('validation.minValue', 0);
+      expect(variables?.g).toHaveProperty('validation.maxValue', 10);
+    });
+
+    // Third-wave Finding 4: A sameAs B (also stated as differentFrom, making
+    // the pair itself class-7 contradictory) plus a strict comparator inside
+    // the same sameAs group. Stripping sameAs+differentFrom alone already
+    // resolves the group; applying every contradiction's strips from the
+    // SAME pre-strip pass (the old behaviour) would additionally strip
+    // greaterThanVariable even though it is fine once the group is gone.
+    it('keeps a strict comparator that only looked group-internal in the same pre-strip pass', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: {
+            sameAs: 'b',
+            differentFrom: 'b',
+            greaterThanVariable: 'b',
+          },
+        },
+        b: { name: 'b', type: 'number' },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.sameAs');
+      expect(variables?.a).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.a).toHaveProperty(
+        'validation.greaterThanVariable',
+        'b',
+      );
+    });
+
+    // Fifth-wave Finding 2: the fixpoint loop's bound must scale with the
+    // data, not stay fixed — a fixed 100-pass cap is exhausted by a protocol
+    // with more than 100 independent contradictions, since each pass here
+    // only strips the rules of ONE contradiction. 101 variables, each with
+    // its own inverted minValue/maxValue pair, are 101 completely
+    // independent local (class 1) contradictions — no sameAs/comparator
+    // relationships between them — so repairing all of them needs at least
+    // 101 passes.
+    it('fully repairs more independent contradictions than a fixed 100-pass cap would allow', () => {
+      const variables: Record<string, unknown> = {};
+      for (let index = 0; index < 101; index++) {
+        variables[`v${index}`] = {
+          name: `v${index}`,
+          type: 'number',
+          validation: { minValue: 10, maxValue: 2 },
+        };
+      }
+      const migratedRaw = migrateVariables(variables);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const parsedVariables = parsed.data?.codebook.ego?.variables ?? {};
+      expect(Object.keys(parsedVariables)).toHaveLength(101);
+      for (const variable of Object.values(parsedVariables)) {
+        expect(variable).not.toHaveProperty('validation.minValue');
+        expect(variable).not.toHaveProperty('validation.maxValue');
+      }
+    });
+
+    // Thirteenth-wave Finding 4: independent LOCAL repairs are now applied in
+    // one batch per pass instead of one per pass. The migrated result must be
+    // identical to what the one-at-a-time loop produced.
+    it('produces the one-at-a-time result for many independent inverted-bound variables', () => {
+      const variables: Record<string, unknown> = {};
+      const expected: Record<string, unknown> = {};
+      for (let index = 0; index < 250; index++) {
+        variables[`v${index}`] = {
+          name: `v${index}`,
+          type: 'number',
+          validation: { minValue: 10, maxValue: 2, required: true },
+        };
+        expected[`v${index}`] = {
+          name: `v${index}`,
+          type: 'number',
+          validation: { required: true },
+        };
+      }
+      const migratedRaw = migrateVariables(variables);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      expect(parsed.data?.codebook.ego?.variables).toEqual(expected);
+    });
+
+    // Two local contradictions on ONE variable are not pairwise disjoint, so
+    // they cannot share a pass; the fixpoint still repairs both.
+    it('repairs two local contradictions on the same variable across passes', () => {
+      const migratedRaw = migrateVariables({
+        a: {
+          name: 'a',
+          type: 'categorical',
+          options: [
+            { label: 'x', value: 'x' },
+            { label: 'y', value: 'y' },
+          ],
+          validation: { minSelected: 5, maxSelected: 1, required: true },
+        },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+      expect(variables?.a).not.toHaveProperty('validation.minSelected');
+      expect(variables?.a).not.toHaveProperty('validation.maxSelected');
+      expect(variables?.a).toHaveProperty('validation.required', true);
+    });
+
+    // Local repairs batch; a/b's sameAs+differentFrom+greaterThanVariable
+    // trio reports two overlapping structural contradictions over the same
+    // {a, b} (a conflictingReferencePair and a sameAsGroupConflict), so
+    // batching's disjointness check still defers one of them to a later
+    // pass — the strict comparator that only looked group-internal before
+    // the sameAs group was dissolved survives.
+    it('batches local repairs without changing structural repair behaviour', () => {
+      const variables: Record<string, unknown> = {
+        a: {
+          name: 'a',
+          type: 'number',
+          validation: {
+            sameAs: 'b',
+            differentFrom: 'b',
+            greaterThanVariable: 'b',
+          },
+        },
+        b: { name: 'b', type: 'number' },
+      };
+      for (let index = 0; index < 50; index++) {
+        variables[`v${index}`] = {
+          name: `v${index}`,
+          type: 'number',
+          validation: { minValue: 10, maxValue: 2, required: true },
+        };
+      }
+      const migratedRaw = migrateVariables(variables);
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(parsed.success).toBe(true);
+      const parsedVariables = parsed.data?.codebook.ego?.variables;
+      expect(parsedVariables?.a).not.toHaveProperty('validation.sameAs');
+      expect(parsedVariables?.a).not.toHaveProperty('validation.differentFrom');
+      expect(parsedVariables?.a).toHaveProperty(
+        'validation.greaterThanVariable',
+        'b',
+      );
+      for (let index = 0; index < 50; index++) {
+        expect(parsedVariables?.[`v${index}`]).toEqual({
+          name: `v${index}`,
+          type: 'number',
+          validation: { required: true },
+        });
+      }
+    });
+
+    // Batching now extends beyond the local classes to every structural
+    // class whose `variableIds` names its full participant set (see
+    // `NON_BATCHABLE_CONTRADICTION_CLASSES` in migration.ts). This exercises
+    // several DISJOINT contradictions spanning different classes —
+    // invertedBounds (n), conflictingReferencePair (r1/r2), and a
+    // strictComparatorCycle (c1/c2) — alongside the classic INTERDEPENDENT
+    // cluster (x/y's sameAs+differentFrom+greaterThanVariable trio, which
+    // reports two contradictions over the same pair and so cannot fully
+    // resolve in the same pass as the disjoint ones). The whole protocol
+    // still migrates to something that validates, with exactly the expected
+    // rules stripped from every group.
+    it('batches disjoint repairs across several structural classes while still resolving an interdependent cluster', () => {
+      const migratedRaw = migrateVariables({
+        n: {
+          name: 'n',
+          type: 'number',
+          validation: { minValue: 10, maxValue: 2, required: true },
+        },
+        r1: {
+          name: 'r1',
+          type: 'text',
+          validation: { sameAs: 'r2', differentFrom: 'r2' },
+        },
+        r2: { name: 'r2', type: 'text' },
+        c1: {
+          name: 'c1',
+          type: 'number',
+          validation: { minValue: 0, greaterThanVariable: 'c2' },
+        },
+        c2: {
+          name: 'c2',
+          type: 'number',
+          validation: { greaterThanVariable: 'c1' },
+        },
+        x: {
+          name: 'x',
+          type: 'number',
+          validation: {
+            sameAs: 'y',
+            differentFrom: 'y',
+            greaterThanVariable: 'y',
+          },
+        },
+        y: { name: 'y', type: 'number' },
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const variables = parsed.data?.codebook.ego?.variables;
+
+      expect(variables?.n).not.toHaveProperty('validation.minValue');
+      expect(variables?.n).not.toHaveProperty('validation.maxValue');
+      expect(variables?.n).toHaveProperty('validation.required', true);
+
+      expect(variables?.r1).not.toHaveProperty('validation.sameAs');
+      expect(variables?.r1).not.toHaveProperty('validation.differentFrom');
+
+      expect(variables?.c1).not.toHaveProperty(
+        'validation.greaterThanVariable',
+      );
+      expect(variables?.c2).not.toHaveProperty(
+        'validation.greaterThanVariable',
+      );
+      expect(variables?.c1).toHaveProperty('validation.minValue', 0);
+
+      expect(variables?.x).not.toHaveProperty('validation.sameAs');
+      expect(variables?.x).not.toHaveProperty('validation.differentFrom');
+      expect(variables?.x).toHaveProperty(
+        'validation.greaterThanVariable',
+        'y',
+      );
+    });
+  });
+
+  describe('special writer requiredness', () => {
+    const migrate = (protocol: Record<string, unknown>) =>
+      migrationV7toV8.migrate(protocol as unknown as Protocol<7>, {
+        name: 'Test Protocol',
+      }) as unknown as {
+        codebook: {
+          node: { person: { variables: Record<string, unknown> } };
+        };
+      };
+
+    const protocolWith = (
+      variables: Record<string, unknown>,
+      stages: unknown[],
+    ) => ({
+      schemaVersion: 7 as const,
+      codebook: { node: { person: { name: 'Person', color: 'c', variables } } },
+      stages,
+    });
+
+    it('does not make variables shared with ordinary forms globally required', () => {
+      const migrated = migrate(
+        protocolWith(
+          {
+            category: {
+              name: 'category',
+              type: 'categorical',
+              options: [
+                { label: 'One', value: 1 },
+                { label: 'Two', value: 2 },
+              ],
+            },
+            other: {
+              name: 'other',
+              type: 'text',
+              validation: { maxLength: 10 },
+            },
+            quick: {
+              name: 'quick',
+              type: 'text',
+              validation: { required: false, maxLength: 12 },
+            },
+          },
+          [
+            {
+              id: 's1',
+              type: 'CategoricalBin',
+              label: 'Bin',
+              subject: { entity: 'node', type: 'person' },
+              prompts: [
+                {
+                  id: 'p1',
+                  text: 'T',
+                  variable: 'category',
+                  otherVariable: 'other',
+                  otherVariablePrompt: 'W',
+                  otherOptionLabel: 'O',
+                },
+              ],
+            },
+            {
+              id: 's2',
+              type: 'NameGeneratorQuickAdd',
+              label: 'QA',
+              subject: { entity: 'node', type: 'person' },
+              quickAdd: 'quick',
+              prompts: [{ id: 'p2', text: 'T' }],
+            },
+            {
+              id: 's3',
+              type: 'AlterForm',
+              label: 'Form',
+              subject: { entity: 'node', type: 'person' },
+              form: {
+                fields: [
+                  { variable: 'other', prompt: 'Other' },
+                  { variable: 'quick', prompt: 'Quick' },
+                ],
+              },
+            },
+          ],
+        ),
+      );
+      const variables = migrated.codebook.node.person.variables;
+      expect(variables.other).toEqual({
+        name: 'other',
+        type: 'text',
+        validation: { maxLength: 10 },
+      });
+      expect(variables.quick).toEqual({
+        name: 'quick',
+        type: 'text',
+        validation: { required: false, maxLength: 12 },
+      });
+    });
+  });
+
+  // Fuzz finding (migration-fuzz.test.ts): v7's loose validation object
+  // admits rule keys v8 has never defined, wrong-typed rule values, and
+  // rules parked on a variable type whose v8 rule set does not list them.
+  // All of them failed the v8 strict per-type pick and blocked the import.
+  describe('validation-rule shape strips', () => {
+    const migrateEgoVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: { variables } },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables ?? {};
+    };
+
+    it('strips a wrong-typed rule value without fabricating requiredness', () => {
+      const variables = migrateEgoVariables({
+        nickname: {
+          name: 'nickname',
+          type: 'text',
+          component: 'Text',
+          validation: { minLength: '3' },
+        },
+      });
+      expect(variables.nickname).not.toHaveProperty('validation.minLength');
+      expect(variables.nickname).not.toHaveProperty('validation.required');
+    });
+
+    it('strips unknown rule keys, keeping the known siblings', () => {
+      const variables = migrateEgoVariables({
+        nickname: {
+          name: 'nickname',
+          type: 'text',
+          component: 'Text',
+          validation: { pattern: '^a', minWords: 2, maxLength: 12 },
+        },
+      });
+      expect(variables.nickname).not.toHaveProperty('validation.pattern');
+      expect(variables.nickname).not.toHaveProperty('validation.minWords');
+      expect(variables.nickname).toHaveProperty('validation.maxLength', 12);
+    });
+
+    it('strips a wrong-typed reference target', () => {
+      const variables = migrateEgoVariables({
+        age: {
+          name: 'age',
+          type: 'number',
+          component: 'Number',
+          validation: { sameAs: 7 },
+        },
+      });
+      expect(variables.age).not.toHaveProperty('validation.sameAs');
+    });
+
+    it('strips a rule parked on a type v8 does not allow it on, preserving the implied requiredness', () => {
+      const variables = migrateEgoVariables({
+        nickname: {
+          name: 'nickname',
+          type: 'text',
+          component: 'Text',
+          validation: { minValue: 5 },
+        },
+      });
+      expect(variables.nickname).not.toHaveProperty('validation.minValue');
+      // v7 treated any min* validator as implying the field was required.
+      expect(variables.nickname).toHaveProperty('validation.required', true);
+    });
+
+    it('strips requiredAcceptsNull (no v8 variable type accepts it)', () => {
+      const variables = migrateEgoVariables({
+        age: {
+          name: 'age',
+          type: 'number',
+          component: 'Number',
+          validation: { requiredAcceptsNull: true, required: true },
+        },
+      });
+      expect(variables.age).not.toHaveProperty(
+        'validation.requiredAcceptsNull',
+      );
+      expect(variables.age).toHaveProperty('validation.required', true);
+    });
+
+    it('removes validation from a layout variable entirely', () => {
+      const variables = migrateEgoVariables({
+        pos: {
+          name: 'pos',
+          type: 'layout',
+          validation: { required: true },
+        },
+      });
+      expect(variables.pos).not.toHaveProperty('validation');
+    });
+  });
+
+  // Fuzz finding (migration-fuzz.test.ts): the v8 variable union has no
+  // member pairing a variable type with a control it cannot render, so a
+  // hand-edited or legacy pairing (or an unrecognised control name) failed
+  // every union member and blocked the import.
+  describe('component normalisation', () => {
+    const migrateEgoVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: { variables } },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables ?? {};
+    };
+
+    it("replaces a component that cannot render the variable's type with the type's standard control", () => {
+      const variables = migrateEgoVariables({
+        nickname: { name: 'nickname', type: 'text', component: 'Number' },
+      });
+      expect(variables.nickname).toHaveProperty('component', 'Text');
+    });
+
+    it("routes a datetime replacement by its parameters' shape", () => {
+      const variables = migrateEgoVariables({
+        lastSeen: {
+          name: 'lastSeen',
+          type: 'datetime',
+          component: 'Text',
+          parameters: { anchor: '2024-06-01', before: 180, after: 0 },
+        },
+        dob: {
+          name: 'dob',
+          type: 'datetime',
+          component: 'Toggle',
+          parameters: { type: 'year', min: '1950', max: '2026' },
+        },
+      });
+      expect(variables.lastSeen).toHaveProperty(
+        'component',
+        'RelativeDatePicker',
+      );
+      expect(variables.dob).toHaveProperty('component', 'DatePicker');
+    });
+
+    it('replaces a non-string component', () => {
+      const variables = migrateEgoVariables({
+        age: { name: 'age', type: 'number', component: 5 },
+      });
+      expect(variables.age).toHaveProperty('component', 'Number');
+    });
+
+    it('removes a component from a layout variable', () => {
+      const variables = migrateEgoVariables({
+        pos: { name: 'pos', type: 'layout', component: 'Text' },
+      });
+      expect(variables.pos).not.toHaveProperty('component');
+    });
+  });
+
+  // Fuzz finding (migration-fuzz.test.ts): v8 option values are strings or
+  // whole numbers with string labels, and boolean options are labelled
+  // true/false choices; v7-legal fractional values, numeric labels, and
+  // wrong-typed boolean entries all blocked the import.
+  describe('option entry normalisation', () => {
+    const migrateEgoVariables = (variables: Record<string, unknown>) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: { variables } },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables ?? {};
+    };
+
+    it('coerces a fractional numeric option value to its string form', () => {
+      const variables = migrateEgoVariables({
+        rating: {
+          name: 'rating',
+          type: 'ordinal',
+          component: 'RadioGroup',
+          options: [
+            { label: 'Half', value: 0.5 },
+            { label: 'One', value: 1 },
+          ],
+        },
+      });
+      const rating = variables.rating;
+      if (!rating || !('options' in rating)) {
+        throw new Error('expected rating options');
+      }
+      expect(rating.options).toEqual([
+        { label: 'Half', value: '0.5' },
+        { label: 'One', value: 1 },
+      ]);
+    });
+
+    it('coerces a numeric option label to its display string', () => {
+      const variables = migrateEgoVariables({
+        rating: {
+          name: 'rating',
+          type: 'categorical',
+          component: 'CheckboxGroup',
+          options: [
+            { label: 7, value: 'seven' },
+            { label: 'Eight', value: 'eight' },
+          ],
+        },
+      });
+      const rating = variables.rating;
+      if (!rating || !('options' in rating)) {
+        throw new Error('expected rating options');
+      }
+      expect(rating.options).toEqual([
+        { label: '7', value: 'seven' },
+        { label: 'Eight', value: 'eight' },
+      ]);
+    });
+
+    it('drops a malformed boolean option entry, keeping the well-formed one', () => {
+      const variables = migrateEgoVariables({
+        employed: {
+          name: 'employed',
+          type: 'boolean',
+          component: 'Boolean',
+          options: [
+            { label: 'Yes', value: 'true' },
+            { label: 'No', value: false },
+          ],
+        },
+      });
+      const employed = variables.employed;
+      if (!employed || !('options' in employed)) {
+        throw new Error('expected employed options');
+      }
+      expect(employed.options).toEqual([{ label: 'No', value: false }]);
+    });
+
+    it('removes boolean options entirely when no well-formed entry remains', () => {
+      const variables = migrateEgoVariables({
+        employed: {
+          name: 'employed',
+          type: 'boolean',
+          component: 'Boolean',
+          options: [
+            { label: 'Yes', value: 1 },
+            { label: 2, value: false },
+          ],
+        },
+      });
+      // Falls back to the runtime's standard Yes/No choices.
+      expect(variables.employed).not.toHaveProperty('options');
+    });
+  });
+
+  // Fuzz finding (migration-fuzz.test.ts): a datetime `parameters` that is
+  // not a plain object (a hand-edited string, list, or null) fails both v8
+  // parameters strictObjects and blocked the import.
+  describe('wrong-typed datetime parameters record', () => {
+    const migrateDatetime = (parameters: unknown) => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: {},
+          ego: {
+            variables: {
+              dob: {
+                name: 'dob',
+                type: 'datetime',
+                component: 'DatePicker',
+                parameters,
+              },
+            },
+          },
+        },
+        stages: [],
+      } as unknown as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return parsed.data?.codebook.ego?.variables?.dob;
+    };
+
+    it('removes a string parameters record', () => {
+      expect(migrateDatetime('full')).not.toHaveProperty('parameters');
+    });
+
+    it('removes an array parameters record', () => {
+      expect(migrateDatetime([])).not.toHaveProperty('parameters');
+    });
+
+    it('removes a null parameters record', () => {
+      expect(migrateDatetime(null)).not.toHaveProperty('parameters');
     });
   });
 });
