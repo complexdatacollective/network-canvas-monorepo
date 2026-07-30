@@ -70,6 +70,15 @@ type QuickAddFieldProps = {
   disabled: boolean;
   onShowInput?: () => void;
   /**
+   * Monotonically increasing count of successful parent submissions.
+   *
+   * QuickNodeForm supplies this because adding a node updates the live
+   * validation context before the form finishes submitting. That update
+   * re-registers the field and can reset `meta.isValid`, so the field cannot
+   * infer submission success from its post-submit validation state.
+   */
+  successfulSubmissionCount?: number;
+  /**
    * Context required for context-dependent validations like unique, sameAs,
    * etc. — forwarded to useField exactly as Field forwards it.
    */
@@ -81,6 +90,7 @@ export default function QuickAddField({
   name: targetVariable,
   disabled,
   onShowInput,
+  successfulSubmissionCount,
   validationContext,
   ...validationProps
 }: QuickAddFieldProps) {
@@ -101,29 +111,64 @@ export default function QuickAddField({
 
   const isFormSubmitting = useFormStore((state) => state.isSubmitting);
   const wasSubmittingRef = useRef(false);
+  const explicitSuccessPendingRef = useRef(false);
+  const previousSuccessfulSubmissionCountRef = useRef(
+    successfulSubmissionCount,
+  );
 
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const circleRef = useRef<HTMLDivElement>(null);
   const celebrate = useCelebrate(circleRef, { particles: true });
 
+  const resetAfterSuccessfulSubmission = useCallback(() => {
+    fieldProps.onChange('');
+    setSubmissionCount((count) => count + 1);
+    setShowErrors(false);
+    celebrate();
+  }, [fieldProps, celebrate]);
+
+  useEffect(() => {
+    if (
+      successfulSubmissionCount === undefined ||
+      successfulSubmissionCount === previousSuccessfulSubmissionCountRef.current
+    ) {
+      return;
+    }
+
+    previousSuccessfulSubmissionCountRef.current = successfulSubmissionCount;
+    explicitSuccessPendingRef.current = true;
+    resetAfterSuccessfulSubmission();
+  }, [successfulSubmissionCount, resetAfterSuccessfulSubmission]);
+
   // Reset field (but stay open) when form submission succeeds, or show
   // validation errors on failed submission attempts.
   useEffect(() => {
     // Detect transition from submitting to not submitting
     if (wasSubmittingRef.current && !isFormSubmitting) {
-      if (meta.isValid && fieldProps.value) {
-        fieldProps.onChange('');
-        setSubmissionCount((c) => c + 1);
-        setShowErrors(false);
-        celebrate();
+      if (explicitSuccessPendingRef.current) {
+        explicitSuccessPendingRef.current = false;
+      } else if (
+        successfulSubmissionCount === undefined &&
+        meta.isValid &&
+        fieldProps.value
+      ) {
+        // Standalone QuickAddField consumers do not have a parent success
+        // counter. Preserve the original inference for them.
+        resetAfterSuccessfulSubmission();
       } else {
         setShowErrors(true);
       }
       inputRef.current?.focus();
     }
     wasSubmittingRef.current = isFormSubmitting;
-  }, [isFormSubmitting, meta.isValid, fieldProps, celebrate]);
+  }, [
+    isFormSubmitting,
+    meta.isValid,
+    fieldProps.value,
+    resetAfterSuccessfulSubmission,
+    successfulSubmissionCount,
+  ]);
 
   const handleChange = useCallback(
     (value: string | undefined) => {

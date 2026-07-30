@@ -18,7 +18,10 @@ import {
 import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../../contract/types';
 import protocol from '../../../../store/modules/protocol';
-import session, { type SessionState } from '../../../../store/modules/session';
+import session, {
+  addNode as addSessionNode,
+  type SessionState,
+} from '../../../../store/modules/session';
 import ui from '../../../../store/modules/ui';
 import type { StageProps } from '../../../../types';
 import QuickNodeForm from '../QuickNodeForm';
@@ -217,6 +220,40 @@ describe('QuickNodeForm honours codebook validation', () => {
 
     await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
     expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: 'Alice' });
+  });
+
+  it('clears a successful value when adding the node updates the live validation context before submission finishes', async () => {
+    let store: ReturnType<typeof renderQuickNodeForm>['store'];
+    const addNode = vi.fn(
+      async (attributes: NcNode[typeof entityAttributesProperty]) => {
+        await store
+          .dispatch(
+            addSessionNode({
+              type: NODE_TYPE,
+              attributeData: attributes,
+              currentStep: 0,
+            }),
+          )
+          .unwrap();
+      },
+    );
+    ({ store } = renderQuickNodeForm({
+      validation: undefined,
+      addNode,
+    }));
+
+    const input = await openField();
+    await userEvent.type(input, 'Alice');
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(input).toHaveValue(''));
+    expect(store.getState().session.network.nodes).toHaveLength(1);
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        TARGET_VARIABLE
+      ],
+    ).toBe('Alice');
   });
 
   it('resolves a unique-across-the-network rule via the threaded validationContext, proving context reaches quick-add (no currentEntityId needed at creation)', async () => {

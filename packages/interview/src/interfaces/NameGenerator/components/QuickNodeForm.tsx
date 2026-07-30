@@ -1,5 +1,5 @@
 import { motion, type Variants } from 'motion/react';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import type {
@@ -49,6 +49,7 @@ const QuickNodeForm = ({
   addNode,
 }: QuickNodeFormProps) => {
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
+  const [successfulSubmissionCount, setSuccessfulSubmissionCount] = useState(0);
 
   // Derive the target variable's validation props directly from its
   // codebook definition — quick-add renders its own QuickAddField and only
@@ -97,6 +98,7 @@ const QuickNodeForm = ({
         ...newNodeAttributes,
         [targetVariable]: value[targetVariable] as string,
       });
+      setSuccessfulSubmissionCount((count) => count + 1);
 
       return {
         success: true,
@@ -122,6 +124,7 @@ const QuickNodeForm = ({
             disabled={disabled}
             placeholder="Type a label and press enter..."
             onShowInput={onShowForm ?? undefined}
+            successfulSubmissionCount={successfulSubmissionCount}
             {...validationProps}
             required
             validationContext={validationContext}

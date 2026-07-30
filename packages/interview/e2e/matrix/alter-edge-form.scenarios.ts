@@ -322,7 +322,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const ab = edges.find((e) => e[entityPrimaryKeyProperty] === 'ab');
         const bc = edges.find((e) => e[entityPrimaryKeyProperty] === 'bc');
         expect(ab?.attributes['met-at']).toBe('Work');
-        expect(bc?.attributes).not.toHaveProperty('met-at');
+        // SyntheticInterview materialises every declared variable on manual
+        // entities with its type-neutral value, matching runtime-created
+        // entities rather than leaving the key absent.
+        expect(bc?.attributes['met-at']).toBe('');
         expect(edges).toHaveLength(2);
       },
     },
@@ -1053,7 +1056,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await expect(stage.form.getFieldError('story')).toBeVisible();
         await expect(stage.form.getFieldError('contexts')).toBeVisible();
         const before = await protocol.getNetworkState(interview.interviewId);
-        expect((before?.edges ?? [])[0]?.attributes.closeness).toBeUndefined();
+        expect((before?.edges ?? [])[0]?.attributes.closeness).toBeNull();
 
         // Attempt 2: too many selected (3 > 2); text too long; radio now valid.
         await stage.form.selectCheckbox('contexts', 'Social');
@@ -1246,7 +1249,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           (before?.edges ?? []).find(
             (e) => e[entityPrimaryKeyProperty] === 'e2',
           )?.attributes['code-name'],
-        ).toBeUndefined();
+        ).toBe('');
 
         // Fix every violation.
         await stage.form.fillText('code-name', 'different');
