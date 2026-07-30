@@ -71,7 +71,7 @@ const TapBehaviour = ({ form, type, entity }: TapBehaviourProps) => {
     getFormValue(state, 'highlight.variable'),
   );
   const highlightVariablesForSubject = useSelector((state: RootState) =>
-    getHighlightVariablesForSubject(state, { type, entity }),
+    getHighlightVariablesForSubject(state, { type, entity }, highlightVariable),
   );
   const handleCreateVariable = createVariableHandler(
     dispatch,

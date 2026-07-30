@@ -5,6 +5,7 @@ import type {
   Item,
   Stage,
   StageType,
+  StructuralCodebook,
   VariableType,
 } from '@codaco/protocol-validation';
 import {
@@ -22,6 +23,43 @@ import {
   NODE_COLORS,
   ORDINAL_COLORS,
 } from './constants';
+import {
+  claimFixedValues,
+  constraintsFor,
+  generateAttributesForEntity,
+} from './generateNetwork/attributes';
+import { resolveGenerationConfig } from './generateNetwork/config';
+import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints';
+import {
+  COMPOSER_RENDERING_CONFLICT,
+  type ComposerField,
+  type ComposerRendering,
+  type ComposerRenderings,
+  resolveComposerRenderings,
+} from './generateNetwork/constraints/composerRenderings';
+import { todayYmd } from './generateNetwork/constraints/dateWindow';
+import {
+  type ConstraintConflict,
+  SyntheticDataConstraintError,
+} from './generateNetwork/constraints/error';
+import {
+  type EntityScopeRef,
+  scopeKey,
+  uniqueSlotMembers,
+} from './generateNetwork/constraints/generateEntityAttributes';
+import {
+  COMPARISON_RULES,
+  type EntityConstraints,
+} from './generateNetwork/constraints/types';
+import {
+  UniqueRegistry,
+  valueKey,
+} from './generateNetwork/constraints/uniqueRegistry';
+import type { GenerationContext } from './generateNetwork/context';
+import {
+  crossRuleBrokenByFixedValues,
+  ownRuleBrokenByFixedValues,
+} from './generateNetwork/nodes';
 import type {
   AddCategoricalBinPromptInput,
   AddDiseaseNominationStepInput,
@@ -66,6 +104,58 @@ import { ValueGenerator } from './ValueGenerator';
 type VariableRef = {
   id: string;
 };
+
+// Every constraint whose value is another variable's id, so a value written
+// onto one variable can reach the other's draw.
+const REFERENCE_RULES = [
+  'sameAs',
+  'differentFrom',
+  ...COMPARISON_RULES,
+] as const;
+
+/**
+ * The variables a set of written values can have decided, as the ids reachable
+ * from them through the rules that relate one variable to another.
+ *
+ * Followed transitively and in both directions: `sameAs` hands a value straight
+ * on, and a comparator bounds the draw by whatever the variable it names holds,
+ * whichever end declared it. Anything a chain of those reaches is a value the
+ * caller's own settled rather than one the rules alone chose.
+ */
+function reachedByFixedValues(
+  entity: EntityConstraints,
+  fixed: Record<string, VariableValue>,
+): Set<string> {
+  const neighbours = new Map<string, Set<string>>();
+  const link = (from: string, to: string): void => {
+    const linked = neighbours.get(from) ?? new Set<string>();
+    linked.add(to);
+    neighbours.set(from, linked);
+  };
+
+  for (const [id, { constraints }] of entity) {
+    for (const rule of REFERENCE_RULES) {
+      const target = constraints[rule];
+      if (target === undefined || !entity.has(target)) continue;
+      link(id, target);
+      link(target, id);
+    }
+  }
+
+  const reached = new Set(Object.keys(fixed).filter((id) => entity.has(id)));
+  const pending = [...reached];
+  while (pending.length > 0) {
+    const id = pending.pop();
+    if (id === undefined) break;
+    for (const next of neighbours.get(id) ?? []) {
+      if (reached.has(next)) continue;
+      reached.add(next);
+      pending.push(next);
+    }
+  }
+
+  return reached;
+}
 
 type NodeTypeHandle = {
   id: string;
@@ -1563,29 +1653,110 @@ export class SyntheticInterview {
   }
 
   getNetwork(): NcNetwork {
-    const valueGen = new ValueGenerator(this.seed);
+    // One date for the whole network, so a run that straddles midnight cannot
+    // resolve two nodes' relative-date windows against different anchors.
+    const today = todayYmd();
+    const ctx = this.generationContext(today);
     const stagesById = new Map(this.stages.map((stage) => [stage.id, stage]));
+
+    const explicitOf = (nodeEntry: NodeEntry): Record<string, VariableValue> =>
+      this.explicitValuesOf(
+        this.nodeTypes.get(nodeEntry.type)?.variables,
+        nodeEntry.explicitAttributes,
+      );
+
+    // An edge has no attribute store of its own: `addEdges` opens an empty one
+    // and `setEdgeAttribute` writes into it, so what it holds is exactly what
+    // the caller wrote — an edge's explicit values and a node's are the same
+    // thing under different names.
+    const explicitOfEdge = (
+      edgeEntry: EdgeEntry,
+    ): Record<string, VariableValue> =>
+      this.explicitValuesOf(
+        this.edgeTypes.get(edgeEntry.type)?.variables,
+        edgeEntry.attributes,
+      );
+
+    // Recorded before any node is drawn, not as each node is reached: a
+    // `unique` value written onto the last node is still one the first node's
+    // draw must not be issued. Each node is checked against what the nodes
+    // before it claimed, then claims its own, so a value two of them were
+    // given is refused rather than copied into the network twice.
+    for (const nodeEntry of this.nodes) {
+      const explicit = explicitOf(nodeEntry);
+      this.refuseContradictoryFixedValues(
+        ctx,
+        { entity: 'node', type: nodeEntry.type },
+        explicit,
+      );
+      this.refuseDuplicateFixedValues(
+        ctx,
+        { entity: 'node', type: nodeEntry.type },
+        explicit,
+      );
+      claimFixedValues(ctx, { entity: 'node', type: nodeEntry.type }, explicit);
+    }
+
+    // Edges take the same pass, against their own registry scope: `unique` is
+    // declared per variable, and an edge variable's values are shared among
+    // edges rather than with any node.
+    for (const edgeEntry of this.edges) {
+      const explicit = explicitOfEdge(edgeEntry);
+      this.refuseContradictoryFixedValues(
+        ctx,
+        { entity: 'edge', type: edgeEntry.type },
+        explicit,
+      );
+      this.refuseDuplicateFixedValues(
+        ctx,
+        { entity: 'edge', type: edgeEntry.type },
+        explicit,
+      );
+      claimFixedValues(ctx, { entity: 'edge', type: edgeEntry.type }, explicit);
+    }
 
     const ncNodes = this.nodes.map((nodeEntry, index) => {
       const nodeType = this.nodeTypes.get(nodeEntry.type);
+      const explicit = explicitOf(nodeEntry);
       const attributes: Record<string, VariableValue> = {};
 
       if (nodeType) {
+        // Procedurally-generated nodes are drawn as one entity, so `sameAs`,
+        // `differentFrom`, the comparators and `unique` are satisfied against
+        // the values the node actually holds — the caller's own among them.
+        // Manually-seeded nodes keep unset attributes neutral so the caller's
+        // scenario isn't corrupted by random data.
+        const drawn = nodeEntry.manual
+          ? undefined
+          : generateAttributesForEntity(
+              ctx,
+              { entity: 'node', type: nodeEntry.type },
+              index,
+              {
+                existing: explicit,
+                only: new Set(
+                  [...nodeType.variables.keys()].filter(
+                    (varId) => !(varId in explicit),
+                  ),
+                ),
+              },
+            );
+
+        if (drawn) {
+          this.refuseUndrawableValues(
+            ctx,
+            { entity: 'node', type: nodeEntry.type },
+            drawn,
+            explicit,
+          );
+        }
+
         for (const [varId, variable] of nodeType.variables) {
-          if (varId in nodeEntry.explicitAttributes) {
-            attributes[varId] = nodeEntry.explicitAttributes[
-              varId
-            ] as VariableValue;
-          } else {
-            // Procedurally-generated nodes get random synthetic values;
-            // manually-seeded nodes keep unset attributes neutral so the
-            // caller's scenario isn't corrupted by random data.
-            attributes[varId] = (
-              nodeEntry.manual
-                ? valueGen.neutralForVariable(variable)
-                : valueGen.generateForVariable(variable, index)
-            ) as VariableValue;
-          }
+          const value = varId in explicit ? explicit[varId] : drawn?.[varId];
+          attributes[varId] =
+            value === undefined
+              ? ctx.valueGen.neutralForVariable(variable)
+              : value;
         }
       }
 
@@ -1610,21 +1781,92 @@ export class SyntheticInterview {
       };
     });
 
-    const ncEdges = this.edges.map((edgeEntry) => ({
-      [entityPrimaryKeyProperty]: edgeEntry.uid,
-      type: edgeEntry.type,
-      from: edgeEntry.from,
-      to: edgeEntry.to,
-      [entityAttributesProperty]: edgeEntry.attributes as Record<
-        string,
-        VariableValue
-      >,
-    }));
+    const ncEdges = this.edges.map((edgeEntry, index) => {
+      const edgeType = this.edgeTypes.get(edgeEntry.type);
+      const explicit = explicitOfEdge(edgeEntry);
+      const attributes: Record<string, VariableValue> = {};
+
+      if (edgeType) {
+        // The node treatment, for the same reasons: an edge type's variables
+        // carry validation rules too, and an edge the builder created is one
+        // the interview would have collected answers for. Copying its empty
+        // attribute store left every rule unsatisfied — a required variable
+        // absent rather than answered.
+        const drawn = edgeEntry.manual
+          ? undefined
+          : generateAttributesForEntity(
+              ctx,
+              { entity: 'edge', type: edgeEntry.type },
+              index,
+              {
+                existing: explicit,
+                only: new Set(
+                  [...edgeType.variables.keys()].filter(
+                    (varId) => !(varId in explicit),
+                  ),
+                ),
+              },
+            );
+
+        if (drawn) {
+          this.refuseUndrawableValues(
+            ctx,
+            { entity: 'edge', type: edgeEntry.type },
+            drawn,
+            explicit,
+          );
+        }
+
+        for (const [varId, variable] of edgeType.variables) {
+          const value = varId in explicit ? explicit[varId] : drawn?.[varId];
+          attributes[varId] =
+            value === undefined
+              ? ctx.valueGen.neutralForVariable(variable)
+              : value;
+        }
+      }
+
+      return {
+        [entityPrimaryKeyProperty]: edgeEntry.uid,
+        type: edgeEntry.type,
+        from: edgeEntry.from,
+        to: edgeEntry.to,
+        [entityAttributesProperty]: attributes,
+      };
+    });
+
+    // Ego is drawn last. It shares no rule with any node or edge — ego
+    // variables live in their own codebook section and their own registry
+    // scope — so where it sits decides nothing but which part of the value
+    // stream its draws consume, and drawing after the entities leaves every
+    // node and edge value exactly where it was before ego was drawn at all.
+    //
+    // Nothing about ego is fixed: there is one of it, the codebook describes it
+    // entirely, and the builder offers no way to write an attribute onto it. So
+    // there is no manual case either — ego is always drawn, the way a
+    // procedural node is. The fixed-value guard runs against that empty set
+    // regardless, so an ego attribute API added later cannot reach the network
+    // without passing it.
+    const egoExplicit: Record<string, VariableValue> = {};
+    this.refuseContradictoryFixedValues(ctx, { entity: 'ego' }, egoExplicit);
+    this.refuseUnsupportedEgoConstraints(ctx);
+
+    const drawnEgo = generateAttributesForEntity(ctx, { entity: 'ego' }, 0, {
+      existing: egoExplicit,
+    });
+    this.refuseUndrawableValues(ctx, { entity: 'ego' }, drawnEgo, egoExplicit);
+
+    const egoAttributes: Record<string, VariableValue> = {};
+    for (const [varId, variable] of this.egoVariables) {
+      const value = drawnEgo[varId];
+      egoAttributes[varId] =
+        value === undefined ? ctx.valueGen.neutralForVariable(variable) : value;
+    }
 
     return {
       ego: {
         [entityPrimaryKeyProperty]: `ego-${this.seed}`,
-        [entityAttributesProperty]: {},
+        [entityAttributesProperty]: egoAttributes,
       },
       nodes: ncNodes,
       edges: ncEdges,
@@ -1658,6 +1900,407 @@ export class SyntheticInterview {
   }
 
   // --- Internal builders ---
+
+  /**
+   * The context one `getNetwork()` call draws through: the same machinery
+   * `generateNetwork` uses, so a builder's validation rules are honoured by one
+   * implementation of those semantics rather than by a second copy of them.
+   *
+   * `today` is settled by the caller and threaded through both the value
+   * generator and every date window built here, because reading the clock per
+   * draw is what once stopped a fixed seed reproducing across UTC midnight.
+   *
+   * Only `entityConstraints` reaches a draw. The codebook carries the entity
+   * type names a refusal reports and nothing else, and the roster and
+   * skip-logic fields describe a `generateNetwork` run this entry point does
+   * not have: nodes here are the ones the caller asked for, not ones a stage
+   * fabricated.
+   *
+   * A rule the interview would not actually apply — a binning stage's prompt
+   * variable, which `generateNetwork` drops via `collectBinOnlyVariables` — is
+   * kept rather than dropped. Reading it needs the stage list typed as `Stage`,
+   * which this builder's stage configs only satisfy at runtime, and honouring
+   * a rule nothing enforces yields a value that is valid either way.
+   */
+  private generationContext(today: string): GenerationContext {
+    const rendered = this.composerRenderings(today);
+
+    const constraintsOf = (
+      variables: Map<string, VariableEntry>,
+      renderings?: ReadonlyMap<string, ComposerRendering>,
+    ): EntityConstraints =>
+      new Map(
+        [...variables].map(([varId, declared]) => {
+          const rendering = renderings?.get(varId);
+          const entry =
+            rendering !== undefined &&
+            ((declared.type === 'datetime' &&
+              (rendering.component === 'DatePicker' ||
+                rendering.component === 'RelativeDatePicker')) ||
+              (declared.type === 'boolean' &&
+                (rendering.component === 'Boolean' ||
+                  rendering.component === 'Toggle')))
+              ? { ...declared, ...rendering }
+              : declared;
+          return [
+            varId,
+            { entry, constraints: buildVariableConstraints(entry, today) },
+          ];
+        }),
+      );
+
+    const codebook: StructuralCodebook = {
+      node: Object.fromEntries(
+        [...this.nodeTypes].map(([id, entry]) => [id, { name: entry.name }]),
+      ),
+      edge: Object.fromEntries(
+        [...this.edgeTypes].map(([id, entry]) => [id, { name: entry.name }]),
+      ),
+    };
+
+    return {
+      codebook,
+      valueGen: new ValueGenerator(this.seed, today),
+      config: resolveGenerationConfig({ today }),
+      usedRosterUids: new Set(),
+      externalData: undefined,
+      respectSkipLogicAndFiltering: false,
+      uniqueRegistry: new UniqueRegistry(),
+      entityConstraints: {
+        // Ego takes no rendering: a NetworkComposer's subject is always a node
+        // and its edge forms name edge types, so no composer field resolves
+        // against ego.
+        ego: constraintsOf(this.egoVariables),
+        node: new Map(
+          [...this.nodeTypes].map(([id, entry]) => [
+            id,
+            constraintsOf(entry.variables, rendered.node.get(id)),
+          ]),
+        ),
+        edge: new Map(
+          [...this.edgeTypes].map(([id, entry]) => [
+            id,
+            constraintsOf(entry.variables, rendered.edge.get(id)),
+          ]),
+        ),
+      },
+    };
+  }
+
+  /**
+   * The shared control domain each variable is generated against where a
+   * NetworkComposer stage renders one, including any ordinary form that also
+   * submits the value through its codebook control.
+   *
+   * The builder's composer fields carry the same `component`/`parameters`
+   * override the schema's do, and its draws go through the same constraint
+   * machinery, so the hole is the same one `applyComposerRenderings` closes for
+   * a protocol: without this a builder can be handed dates or Boolean values
+   * its own stage would reject.
+   */
+  private composerRenderings(today: string): ComposerRenderings {
+    const fields: ComposerField[] = [];
+    const addOrdinaryField = (
+      entity: 'node' | 'edge',
+      type: string,
+      variable: string,
+    ): void => {
+      const declared = (
+        entity === 'node' ? this.nodeTypes.get(type) : this.edgeTypes.get(type)
+      )?.variables.get(variable);
+      if (declared?.component === undefined) return;
+      fields.push({
+        entity,
+        type,
+        variable,
+        component: declared.component,
+        ...(declared.parameters !== undefined
+          ? { parameters: declared.parameters }
+          : {}),
+      });
+    };
+
+    for (const stage of this.stages) {
+      if (stage.type === 'NetworkComposer') {
+        const nodeType = stage.subject?.type;
+        if (nodeType !== undefined) {
+          for (const field of stage.nodeForm?.fields ?? []) {
+            fields.push({ entity: 'node', type: nodeType, ...field });
+          }
+        }
+
+        for (const edge of stage.networkComposerEdges ?? []) {
+          for (const field of edge.form?.fields ?? []) {
+            fields.push({ entity: 'edge', type: edge.subject.type, ...field });
+          }
+        }
+        continue;
+      }
+
+      if (stage.form !== undefined && stage.subject !== undefined) {
+        for (const field of stage.form.fields) {
+          addOrdinaryField(
+            stage.subject.entity,
+            stage.subject.type,
+            field.variable,
+          );
+        }
+      }
+      if (stage.type === 'FamilyPedigree' && stage.nodeConfig !== undefined) {
+        for (const field of stage.nodeConfig.form ?? []) {
+          addOrdinaryField('node', stage.nodeConfig.type, field.variable);
+        }
+      }
+    }
+
+    const { renderings, disagreements } = resolveComposerRenderings(
+      fields,
+      (field) =>
+        (field.entity === 'node'
+          ? this.nodeTypes.get(field.type)
+          : this.edgeTypes.get(field.type)
+        )?.variables.get(field.variable)?.parameters,
+      today,
+    );
+
+    if (disagreements.length > 0) {
+      throw new SyntheticDataConstraintError(
+        disagreements.map((disagreement) =>
+          this.conflict(
+            { entity: disagreement.entity, type: disagreement.type },
+            [disagreement.variable],
+            [...COMPOSER_RENDERING_CONFLICT.rules],
+            { reason: COMPOSER_RENDERING_CONFLICT.reason },
+          ),
+        ),
+        COMPOSER_RENDERING_CONFLICT.summary,
+      );
+    }
+
+    return renderings;
+  }
+
+  /**
+   * The values the caller wrote onto one entity outright, restricted to the
+   * type's codebook variables — an attribute no variable declares has no rules
+   * to satisfy and no place in the network.
+   *
+   * A node keeps these apart from the attributes it reports, in
+   * `explicitAttributes`; an edge's store holds nothing else, because it starts
+   * empty and only `setEdgeAttribute` and `addManualEdge` write to it. Both
+   * arrive here as the same thing, so the draw treats them alike.
+   */
+  private explicitValuesOf(
+    variables: Map<string, VariableEntry> | undefined,
+    written: Record<string, unknown>,
+  ): Record<string, VariableValue> {
+    const explicit: Record<string, VariableValue> = {};
+    for (const varId of variables?.keys() ?? []) {
+      if (!(varId in written)) continue;
+      explicit[varId] = written[varId] as VariableValue;
+    }
+    return explicit;
+  }
+
+  /**
+   * Refuses a `unique` value the caller wrote onto two entities of one type.
+   *
+   * `UniqueRegistry.claim` keys a set, so claiming one value twice reports
+   * nothing, and a variable the caller set outright is excluded from the draw
+   * that would otherwise have objected — both duplicates would be copied into
+   * the network unchanged. Which is the point, as it is for a prompt fixing a
+   * `unique` value on a stage that creates two people: the values and the
+   * entities holding them are both the caller's, so whether two of them hold
+   * one value is settled before any drawing, on every seed.
+   *
+   * Read against what earlier entities claimed rather than per variable,
+   * because variables held equal by `sameAs` are issued from one slot: a single
+   * entity setting every member of such a group to one value spends one claim
+   * between them and is no duplicate.
+   *
+   * Nodes and edges share this because they share the rule: `unique` is
+   * declared per variable and scoped per type, and which of the two carries the
+   * variable changes nothing about what the registry was asked.
+   */
+  private refuseDuplicateFixedValues(
+    ctx: GenerationContext,
+    ref: { entity: 'node' | 'edge'; type: string },
+    fixed: Record<string, VariableValue>,
+  ): void {
+    const constraints = ctx.entityConstraints[ref.entity].get(ref.type);
+    if (!constraints) return;
+
+    const registry = scopeKey(ref);
+
+    for (const [slot, memberIds] of uniqueSlotMembers(constraints)) {
+      for (const id of memberIds) {
+        const value = fixed[id];
+        if (value === undefined) continue;
+        if (!ctx.uniqueRegistry.isTaken(registry, slot, value)) continue;
+
+        throw new SyntheticDataConstraintError(
+          [
+            this.conflict(ref, [...memberIds], ['unique'], {
+              // Reported as the key the collision was judged on rather than
+              // the value as written: it is what the registry compared, and a
+              // layout or categorical value has no useful `String()` form.
+              reason: `the caller sets ${memberIds.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${valueKey(value)} on two ${ref.entity}s, but unique allows one ${ref.entity} to hold a value`,
+            }),
+          ],
+          "this interview fixes values that its protocol's rules do not allow",
+        );
+      }
+    }
+  }
+
+  /**
+   * Refuses a pair of values the caller wrote onto one entity that the rule
+   * between them cannot hold: a `sameAs` pair given two different values, a
+   * comparator given its pair the wrong way round.
+   *
+   * Both values are the caller's own and no assignment honours both, so
+   * whichever the network ended up carrying would be one they did not ask for.
+   * That is the same reason a `unique` value written onto two entities is
+   * refused rather than resolved, and it reaches the same refusal.
+   *
+   * A value breaking a bound of its own variable — a number under `minValue`, an
+   * option the variable's list does not offer — is deliberately **not** refused.
+   * Writing a value onto an entity is how a story puts chosen data in front of
+   * an interface, data a participant could not have entered included, and
+   * stories rely on exactly that: FamilyPedigree's fixtures set an edge
+   * relationship their option list does not carry, and Narrative's set a bare
+   * string on a categorical. There is one value and the caller named it, so
+   * there is nothing to resolve and nobody else's intent to honour. What the
+   * draw produces is held to the rules instead — see
+   * {@link refuseUndrawableValues}.
+   */
+  private refuseContradictoryFixedValues(
+    ctx: GenerationContext,
+    ref: EntityScopeRef,
+    fixed: Record<string, VariableValue>,
+  ): void {
+    const broken = crossRuleBrokenByFixedValues(
+      constraintsFor(ctx, ref),
+      fixed,
+    );
+    if (broken === undefined) return;
+
+    const setTo = broken.values.map((value) => valueKey(value)).join(' and ');
+    throw new SyntheticDataConstraintError(
+      [
+        this.conflict(ref, broken.variableIds, [broken.rule], {
+          reason: `the caller sets these variables on one ${ref.entity} to ${setTo}, which ${broken.rule} cannot hold`,
+        }),
+      ],
+      "this interview fixes values that its protocol's rules do not allow",
+    );
+  }
+
+  /**
+   * Refuses `unique` on an ego variable.
+   *
+   * Ego has exactly one instance, so `unique` is trivially satisfiable and
+   * the draw below would happily emit it — there is only ever one value to
+   * place, so nothing here would ever collide. But the runtime `unique`
+   * validator invariants on `stageSubject.entity !== 'ego'` and throws the
+   * moment an EgoForm submits one (see `unique` in
+   * `packages/fresco-ui/src/form/validation/functions.ts`), and
+   * `generateNetwork`'s own feasibility pass refuses the same declaration
+   * before drawing anything for the same reason (see `analyseEntity` in
+   * `generateNetwork/constraints/feasibility.ts`). Mirrored here, before the
+   * draw, so a builder that declares this fails at construction instead of
+   * producing a schema-valid payload that crashes an EgoForm on submit.
+   */
+  private refuseUnsupportedEgoConstraints(ctx: GenerationContext): void {
+    const offending = [...ctx.entityConstraints.ego].filter(
+      ([, { constraints }]) => constraints.unique,
+    );
+    if (offending.length === 0) return;
+
+    throw new SyntheticDataConstraintError(
+      offending.map(([id]) =>
+        this.conflict({ entity: 'ego' }, [id], ['unique'], {
+          reason: 'unique is not supported on ego variables',
+        }),
+      ),
+    );
+  }
+
+  /**
+   * Refuses a value the draw produced that the rules it was drawn against
+   * reject.
+   *
+   * `generateNetwork` refuses a codebook no value can satisfy before it draws
+   * anything, judged against how many entities its stages would fabricate. This
+   * builder's entities are the ones the caller asked for rather than a worst
+   * case of them, so that pass would refuse counts nothing here generates — but
+   * a rule set no value satisfies needs no counting to find. The drawer fits its
+   * answer to whichever bound it can reach and emits it regardless, so
+   * `minLength: 10` under `maxLength: 5` arrives as a ten-character string and a
+   * `sameAs` pair whose ranges do not overlap arrives outside one of them.
+   * Reading each drawn value back against its own rules catches both, exactly
+   * for the entities that exist.
+   *
+   * Variables the caller's own values reach are left out. A written value is
+   * kept whatever its bounds say (see
+   * {@link refuseContradictoryFixedValues}), and `sameAs` copies it into every
+   * variable held equal to it, so judging what the draw did with it would refuse
+   * that value by another route.
+   */
+  private refuseUndrawableValues(
+    ctx: GenerationContext,
+    ref: EntityScopeRef,
+    drawn: Record<string, VariableValue>,
+    fixed: Record<string, VariableValue>,
+  ): void {
+    const constraints = constraintsFor(ctx, ref);
+    const reached = reachedByFixedValues(constraints, fixed);
+    const judged = Object.fromEntries(
+      Object.entries(drawn).filter(([id]) => !reached.has(id)),
+    );
+
+    const broken = ownRuleBrokenByFixedValues(constraints, judged);
+    if (broken === undefined) return;
+
+    throw new SyntheticDataConstraintError([
+      this.conflict(ref, broken.variableIds, [broken.rule], {
+        reason: `the closest value these rules leave drawable is ${valueKey(broken.values[0] ?? null)}, which ${broken.rule} rejects`,
+      }),
+    ]);
+  }
+
+  /**
+   * One conflict, named the way a consumer reading the codebook would name it.
+   *
+   * Ego carries no type at all — the codebook holds one ego section rather than
+   * a map of named types — so it is reported without `entityType` or
+   * `entityTypeName`, the same shape generation's own refusals give it.
+   */
+  private conflict(
+    ref: EntityScopeRef,
+    variableIds: string[],
+    rules: string[],
+    { reason }: { reason: string },
+  ): ConstraintConflict {
+    const entityType =
+      ref.entity === 'ego'
+        ? undefined
+        : ref.entity === 'node'
+          ? this.nodeTypes.get(ref.type)
+          : this.edgeTypes.get(ref.type);
+    const variables =
+      ref.entity === 'ego' ? this.egoVariables : entityType?.variables;
+
+    return {
+      entity: ref.entity,
+      ...(ref.entity === 'ego' ? {} : { entityType: ref.type }),
+      ...(entityType ? { entityTypeName: entityType.name } : {}),
+      variableIds,
+      variableNames: variableIds.map((id) => variables?.get(id)?.name ?? id),
+      rules,
+      reason,
+    };
+  }
 
   private buildCodebook() {
     const node: Record<string, unknown> = {};
@@ -1940,7 +2583,14 @@ export class SyntheticInterview {
     to: string,
     attributes: Record<string, unknown>,
   ): void {
-    this.edges.push({ uid, type: edgeTypeId, from, to, attributes });
+    this.edges.push({
+      uid,
+      type: edgeTypeId,
+      from,
+      to,
+      attributes,
+      manual: true,
+    });
   }
 
   /**

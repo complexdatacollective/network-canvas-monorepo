@@ -10,10 +10,9 @@ import type { FieldValue, ValidationContext } from '../../store/types';
  * have been answered on a different form/stage and live only in the persisted
  * entity attributes — not in the current form's values. Form values take
  * precedence (they reflect in-progress edits); otherwise the value is sourced
- * from the entity being edited (ego, or the node/edge identified by
- * currentEntityId). `present` is false only when the variable is neither a
- * current-form field nor a recorded attribute, in which case the validator
- * should no-op (it can't compare against an absent value).
+ * from pending attributes for a new entity, then from the persisted entity
+ * being edited. `present` is false only when the variable is absent from every
+ * source, in which case the validator should no-op.
  */
 export function getComparisonValue(
   formValues: Record<string, FieldValue>,
@@ -28,7 +27,12 @@ export function getComparisonValue(
     return { present: false, value: undefined };
   }
 
-  const { stageSubject, network, currentEntityId } = context;
+  const { stageSubject, network, currentEntityId, currentEntityAttributes } =
+    context;
+
+  if (currentEntityAttributes && attribute in currentEntityAttributes) {
+    return { present: true, value: currentEntityAttributes[attribute] };
+  }
 
   const attributes =
     stageSubject.entity === 'ego'

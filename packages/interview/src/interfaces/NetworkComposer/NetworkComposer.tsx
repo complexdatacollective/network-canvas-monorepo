@@ -6,6 +6,7 @@ import { AnimatePresence, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
+import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Node from '@codaco/fresco-ui/Node';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
@@ -25,7 +26,13 @@ import { createCanvasStore } from '../../canvas/useCanvasStore';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import type { Subject } from '../../selectors/forms';
+import {
+  getValidationContext,
+  selectValidationMetadataForVariable,
+  type Subject,
+  validationPropsFor,
+} from '../../selectors/forms';
+import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import {
   getNetworkEdges,
   getNetworkNodesForType,
@@ -105,6 +112,37 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const codebook = useSelector(getCodebook);
   const nodeLabel =
     codebook?.node?.[stage.subject.type]?.name ?? stage.subject.type;
+
+  // Derive the quick-add target variable's validation props directly from its
+  // codebook definition — AddNodeInput renders its own input and only ever
+  // needs `.validation`, so this skips component resolution entirely (see
+  // selectValidationMetadataForVariable). A variable with no validation rules
+  // renders a genuinely optional field, and an empty submission is a no-op
+  // (the pre-existing behaviour, unrelated to codebook validation — no
+  // runtime fallback to required). Mirrors QuickNodeForm's rewired quick-add.
+  const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
+  const quickAddValidationMetadata = selectValidationMetadataForVariable(
+    stageVariables,
+    stage.quickAdd,
+  );
+  const quickAddValidationProps = quickAddValidationMetadata
+    ? validationPropsFor(quickAddValidationMetadata)
+    : {};
+
+  // Context-dependent rules (unique, sameAs, differentFrom,
+  // greaterThanVariable, etc.) resolve against the live network and this
+  // stage's subject — mirror useProtocolForm's ValidationContext. Quick-add
+  // only ever creates a new node, so currentEntityId is omitted: there is no
+  // entity yet to scope `unique` exclusions or sibling comparisons to.
+  const baseValidationContext = useStageSelector(getValidationContext);
+  const quickAddValidationContext: ValidationContext | undefined =
+    baseValidationContext.stageSubject
+      ? {
+          codebook: baseValidationContext.codebook,
+          network: baseValidationContext.network,
+          stageSubject: baseValidationContext.stageSubject,
+        }
+      : undefined;
 
   const canvasStoreRef = useRef(createCanvasStore());
   const canvasStore = canvasStoreRef.current;
@@ -239,11 +277,11 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // Nodes are added by name from the tool palette (not by tapping the canvas),
   // each landing on the next free grid cell from the top-left.
   const handleAddNode = useCallback(
-    (name: string) => {
+    async (name: string) => {
       const occupied = nodes
         .map((n) => n[entityAttributesProperty]?.[layoutVariable])
         .filter(isPosition);
-      void actions.createNodeAt(name, nextGridPosition(occupied));
+      await actions.createNodeAt(name, nextGridPosition(occupied));
     },
     [nodes, layoutVariable, actions],
   );
@@ -593,7 +631,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         undoStore={undoStore}
         edges={edgeEntries}
         nodeLabel={nodeLabel}
+        quickAddTargetVariable={stage.quickAdd}
         onAddNode={handleAddNode}
+        quickAddValidationProps={quickAddValidationProps}
+        quickAddValidationContext={quickAddValidationContext}
         groupVariable={groupVariable}
         activeGroup={activeGroup}
         onSelectGroup={handleSelectGroup}

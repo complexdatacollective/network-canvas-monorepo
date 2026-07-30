@@ -1,26 +1,13 @@
-// YYYY-MM-DD string helpers. Arithmetic runs in UTC so derived bounds are
-// stable regardless of the runtime timezone — critical because the form's
-// min/max validators compare YYYY-MM-DD strings lexically; any drift would
-// introduce off-by-one-day validation errors near DST transitions or across
-// timezone boundaries.
+// YYYY-MM-DD string helpers. `todayYmd` reads the clock in UTC so it names
+// the same calendar day regardless of the runtime timezone — critical because
+// `RelativeDatePickerField` and `buildDatePickerBoundProps` both default an
+// undeclared anchor to it, and the form's min/max validators compare
+// YYYY-MM-DD strings lexically; a local-time read would put this field's
+// ceiling a day either side of every other date-aware part of the system near
+// a DST transition or a timezone boundary.
 
 function formatYmd(year: number, month: number, day: number): string {
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-export function addDays(ymd: string, days: number): string {
-  const parts = ymd.split('-').map(Number);
-  const [year, month, day] = parts;
-  if (year === undefined || month === undefined || day === undefined) {
-    return ymd;
-  }
-  const date = new Date(Date.UTC(year, month - 1, day));
-  date.setUTCDate(date.getUTCDate() + days);
-  return formatYmd(
-    date.getUTCFullYear(),
-    date.getUTCMonth() + 1,
-    date.getUTCDate(),
-  );
 }
 
 export function todayYmd(): string {

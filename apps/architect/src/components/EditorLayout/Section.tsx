@@ -17,6 +17,13 @@ type SectionProps = {
   className?: string;
   toggleable?: boolean;
   startExpanded?: boolean;
+  /**
+   * Eleventh-wave Finding 3: forces the section open regardless of its
+   * internal toggle state (which is preserved, and resumes once the force is
+   * released). Used to surface content the user must see — e.g. a blocking
+   * form error inside a section whose children are unmounted while collapsed.
+   */
+  forceExpanded?: boolean;
   handleToggleChange?: (state: boolean) => Promise<boolean> | boolean;
   layout?: 'horizontal' | 'vertical';
   required?: boolean;
@@ -33,16 +40,21 @@ const Section = ({
   className = '',
   toggleable = false,
   startExpanded = true,
+  forceExpanded = false,
   handleToggleChange = (state) => state,
   layout = 'horizontal',
   required = true,
 }: SectionProps) => {
-  const [isOpen, setIsOpen] = useState(startExpanded);
+  const [internalOpen, setInternalOpen] = useState(startExpanded);
+  // Eleventh-wave Finding 3: a forced expansion wins over the internal toggle
+  // state without destroying it, so releasing the force restores whatever the
+  // user (or startExpanded) last chose.
+  const isOpen = forceExpanded || internalOpen;
 
   // If the startExpanded prop changes, update the state.
   // This happens when a stage is reset
   useEffect(() => {
-    setIsOpen(startExpanded);
+    setInternalOpen(startExpanded);
   }, [startExpanded]);
 
   const changeToggleState = useCallback(async () => {
@@ -54,7 +66,7 @@ const Section = ({
 
     // If result of the callback, update the state with intendedState
     if (result) {
-      setIsOpen(intendedState);
+      setInternalOpen(intendedState);
     }
   }, [isOpen, handleToggleChange]);
 

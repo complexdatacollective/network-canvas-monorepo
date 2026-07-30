@@ -22,6 +22,16 @@ const mapStateToProps = (
   return {
     validationOptions,
     value: formValueSelector(form)(state, name),
+    draftOptions: formValueSelector(form)(state, 'options'),
+    // Nineteenth-wave Finding 4: the row-level check judged reference rules
+    // against the COMMITTED component/parameters, so editing a datetime
+    // variable's window and adding a reference rule in one dialog session was
+    // rejected on the old window even though the form-level validator (which
+    // does see the draft) accepts it. Sourced exactly like `draftOptions`, so
+    // both checks read one set of live form values.
+    draftComponent: formValueSelector(form)(state, 'component'),
+    draftParameters: formValueSelector(form)(state, 'parameters'),
+    draftVariableName: formValueSelector(form)(state, '_createNewVariable'),
   };
 };
 

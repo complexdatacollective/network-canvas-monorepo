@@ -50,8 +50,16 @@ function buildInterview(args: StoryArgs) {
 
   const nodeType = interview.addNodeType({ name: 'Person' });
 
+  // `component` here is incidental, not required: the "Other" dialog derives
+  // validation directly from the codebook variable without resolving a
+  // component, so an otherVariable created without one (e.g. via Architect's
+  // "Create New Variable" dialog) works identically.
   const otherVariableId = args.hasOtherOption
-    ? nodeType.addVariable({ name: 'Other Reason', type: 'text' }).id
+    ? nodeType.addVariable({
+        name: 'Other Reason',
+        type: 'text',
+        component: 'Text',
+      }).id
     : undefined;
 
   const variables: string[] = [];
@@ -174,4 +182,20 @@ type Story = StoryObj<StoryArgs>;
 
 export const Default: Story = {
   render: (args) => <CategoricalBinStoryWrapper {...args} />,
+};
+
+export const OtherBinRequiresAReason: Story = {
+  args: {
+    hasOtherOption: true,
+    unassignedCount: 3,
+  },
+  render: (args) => <CategoricalBinStoryWrapper {...args} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The "Other" bin always requires a reason. Drop a node onto "Other" and submit the dialog empty to see the validation error.',
+      },
+    },
+  },
 };

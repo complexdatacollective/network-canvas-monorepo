@@ -5,13 +5,13 @@ import { entityAttributeReference } from '../entity-attribute-reference.ts';
 export const validations = {
   required: z.boolean().optional(),
   requiredAcceptsNull: z.boolean().optional(),
-  minLength: z.number().int().optional(),
+  minLength: z.number().int().min(0).optional(),
 
-  maxLength: z.number().int().optional(),
+  maxLength: z.number().int().min(0).optional(),
   minValue: z.number().int().optional(),
   maxValue: z.number().int().optional(),
-  minSelected: z.number().int().optional(),
-  maxSelected: z.number().int().optional(),
+  minSelected: z.number().int().min(0).optional(),
+  maxSelected: z.number().int().min(0).optional(),
   unique: z.boolean().optional(),
   differentFrom: entityAttributeReference({
     subject: 'owningVariable',

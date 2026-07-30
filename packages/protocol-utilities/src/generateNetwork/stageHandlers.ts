@@ -1,14 +1,27 @@
 import { v4 as uuid } from 'uuid';
 
 import {
+  type Stage,
+  VARIABLE_REFERENCE_VALIDATIONS,
+} from '@codaco/protocol-validation';
+import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
+  type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateAttributes, toVariableEntry } from './attributes';
+import { claimFixedValues, generateAttributesForEntity } from './attributes';
+import { pedigreeEdgeValues } from './constraints/entityCounts';
+import {
+  type EntityScopeRef,
+  scopeKey,
+  uniqueSlotMembers,
+} from './constraints/generateEntityAttributes';
+import type { EntityConstraints } from './constraints/types';
+import { valueKey } from './constraints/uniqueRegistry';
 import type { GenerationContext, NetworkDraft, StageOfType } from './context';
 import { createEdgesForPairs } from './edges';
 import { getStageFilteredEdges, getStageFilteredNodes } from './filtering';
@@ -27,11 +40,11 @@ export function handleNameGenerators(
     used: ctx.usedRosterUids,
     allowFabrication: stage.type !== 'NameGeneratorRoster',
   };
-  const form = 'form' in stage ? stage.form : undefined;
-  const subjectType = getSubjectType(stage.subject, 'node');
-  const nodeTypeDef =
-    subjectType !== undefined ? ctx.codebook.node?.[subjectType] : undefined;
 
+  // A stage form needs no fill pass of its own: `createNodesForStage` gives
+  // every node a value for every variable its type declares, so a form field
+  // naming one is already answered, and a field naming anything else has no
+  // codebook entry to generate from.
   let stageNodeCount = 0;
   for (const prompt of stage.prompts) {
     const newNodes = createNodesForStage(
@@ -43,26 +56,6 @@ export function handleNameGenerators(
       roster,
     );
     stageNodeCount += newNodes.length;
-
-    // A stage form fills any codebook variables a drawn node does not yet have.
-    // Values are indexed by the running node total (before these nodes are added).
-    if (form && nodeTypeDef?.variables) {
-      const formVarIds = new Set(form.fields.map((f) => f.variable));
-      for (const node of newNodes) {
-        const attrs = node[entityAttributesProperty];
-        for (const varId of formVarIds) {
-          const varDef = nodeTypeDef.variables[varId];
-          if (varDef && !(varId in attrs)) {
-            const entry = toVariableEntry(varId, varDef);
-            attrs[varId] = ctx.valueGen.generateForVariable(
-              entry,
-              draft.nodes.length,
-            );
-          }
-        }
-      }
-    }
-
     draft.nodes.push(...newNodes);
   }
 }
@@ -80,7 +73,7 @@ export function handleSociogram(
   for (const prompt of stage.prompts) {
     const createEdge = prompt.edges?.create;
     if (createEdge) {
-      const { edges: newEdges } = createEdgesForPairs(
+      const { created } = createEdgesForPairs(
         ctx,
         subjectNodes,
         createEdge,
@@ -88,9 +81,11 @@ export function handleSociogram(
           ctx.config.sociogramEdgeProbability.min,
           ctx.config.sociogramEdgeProbability.max,
         ),
-        ctx.codebook.edge?.[createEdge]?.variables,
+        draft.edges,
       );
-      draft.edges.push(...newEdges);
+      // Reused pairs need nothing written: `toggleEdge` only adds or deletes,
+      // and the Sociogram collects no variable of its own on an edge.
+      draft.edges.push(...created.map(({ edge }) => edge));
     }
 
     const layoutVariable = prompt.layout?.layoutVariable;
@@ -122,7 +117,18 @@ export function handleDyadCensus(
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
 
-  const negativeResponses: DyadCensusMetadataItem[] = [];
+  // Both answers, as DyadCensus records them: a "yes" writes
+  // `[promptIndex, a, b, true]` alongside the edge it may or may not have had
+  // to create, and a "no" writes the same tuple with `false`. A pair reusing a
+  // sibling prompt's edge is a "yes" — the interface pre-selects it from the
+  // shared graph — so it belongs here rather than among the negatives, and
+  // without it a resumed synthetic session would read that pair as unanswered.
+  //
+  // OneToManyDyadCensus shares this handler but records no stage metadata of
+  // its own in the runtime, so its tuples are inert. Left as they were: the
+  // divergence predates this and removing it is not a question about duplicate
+  // edges.
+  const responses: DyadCensusMetadataItem[] = [];
   for (let promptIndex = 0; promptIndex < stage.prompts.length; promptIndex++) {
     const createEdgeType = stage.prompts[promptIndex]!.createEdge;
     if (!createEdgeType) continue;
@@ -131,17 +137,27 @@ export function handleDyadCensus(
       ctx.config.censusEdgeProbability.min,
       ctx.config.censusEdgeProbability.max,
     );
-    const { edges: newEdges, negativeIndices } = createEdgesForPairs(
+    const { created, reused, negativeIndices } = createEdgesForPairs(
       ctx,
       subjectNodes,
       createEdgeType,
       probability,
-      ctx.codebook.edge?.[createEdgeType]?.variables,
+      draft.edges,
     );
-    draft.edges.push(...newEdges);
+    draft.edges.push(...created.map(({ edge }) => edge));
+
+    for (const { indices } of [...created, ...reused]) {
+      const [a, b] = indices;
+      responses.push([
+        promptIndex,
+        subjectNodes[a]![entityPrimaryKeyProperty],
+        subjectNodes[b]![entityPrimaryKeyProperty],
+        true,
+      ]);
+    }
 
     for (const [a, b] of negativeIndices) {
-      negativeResponses.push([
+      responses.push([
         promptIndex,
         subjectNodes[a]![entityPrimaryKeyProperty],
         subjectNodes[b]![entityPrimaryKeyProperty],
@@ -150,8 +166,8 @@ export function handleDyadCensus(
     }
   }
 
-  if (negativeResponses.length > 0) {
-    draft.stageMetadata[stageIndex] = negativeResponses;
+  if (responses.length > 0) {
+    draft.stageMetadata[stageIndex] = responses;
   }
 }
 
@@ -166,6 +182,10 @@ export function handleTieStrengthCensus(
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
 
+  // Negatives only, unlike DyadCensus: TieStrengthCensus records an ordinal
+  // answer as the value on the edge and *removes* any metadata entry for the
+  // pair, so its metadata never holds a positive tuple. A reused pair is an
+  // ordinal answer, so it writes nothing here.
   const negativeResponses: DyadCensusMetadataItem[] = [];
   for (let promptIndex = 0; promptIndex < stage.prompts.length; promptIndex++) {
     const prompt = stage.prompts[promptIndex]!;
@@ -177,27 +197,36 @@ export function handleTieStrengthCensus(
       ctx.config.censusEdgeProbability.min,
       ctx.config.censusEdgeProbability.max,
     );
-    const edgeTypeDef = ctx.codebook.edge?.[createEdgeType];
-    const { edges: newEdges, negativeIndices } = createEdgesForPairs(
+    const { created, reused, negativeIndices } = createEdgesForPairs(
       ctx,
       subjectNodes,
       createEdgeType,
       probability,
-      edgeTypeDef?.variables,
+      draft.edges,
     );
 
-    const edgeVarDef = edgeVariable
-      ? edgeTypeDef?.variables?.[edgeVariable]
-      : undefined;
-    if (edgeVariable && edgeVarDef) {
-      for (let edgeIdx = 0; edgeIdx < newEdges.length; edgeIdx++) {
-        const entry = toVariableEntry(edgeVariable, edgeVarDef);
-        newEdges[edgeIdx]![entityAttributesProperty][edgeVariable] =
-          ctx.valueGen.generateForVariable(entry, edgeIdx);
+    if (edgeVariable) {
+      // Over the reused edges as well as the new ones: an ordinal answer on a
+      // pair that already has an edge dispatches `updateEdge` with just
+      // `{ [edgeVariable]: value }`, and the reducer merges it into whatever
+      // the edge already held. Regeneration goes through the draw machinery,
+      // which releases the value it is replacing before drawing another.
+      const answered = [...created, ...reused];
+      for (let edgeIdx = 0; edgeIdx < answered.length; edgeIdx++) {
+        const attrs = answered[edgeIdx]!.edge[entityAttributesProperty];
+        Object.assign(
+          attrs,
+          generateAttributesForEntity(
+            ctx,
+            { entity: 'edge', type: createEdgeType },
+            edgeIdx,
+            { existing: attrs, only: new Set([edgeVariable]) },
+          ),
+        );
       }
     }
 
-    draft.edges.push(...newEdges);
+    draft.edges.push(...created.map(({ edge }) => edge));
 
     for (const [a, b] of negativeIndices) {
       negativeResponses.push([
@@ -214,6 +243,102 @@ export function handleTieStrengthCensus(
   }
 }
 
+/**
+ * The variables each node holds a value for that the `unique` registry did not
+ * issue it — today a binning stage's prompt variable, the only attribute
+ * written outside a form that a `unique` rule can reach (layout and location
+ * variables take no validation at all).
+ *
+ * Read where a node is regenerated: the release a redraw makes gives back the
+ * value the registry issued that node, and a value listed here is not one of
+ * them.
+ *
+ * Keyed by the node itself rather than threaded through {@link
+ * GenerationContext}, so it lives exactly as long as the nodes of the run that
+ * wrote it. Every entry is unreachable once its run's network is, and the only
+ * other entry point that builds a context — `SyntheticInterview`'s direct draw —
+ * runs no stage handler and so has nothing to carry.
+ */
+const outOfBandWrites = new WeakMap<NcNode, Set<string>>();
+
+/** The `unique` slot a node variable's value is issued from, if any. */
+function uniqueSlotFor(
+  ctx: GenerationContext,
+  nodeType: string,
+  variableId: string,
+): { slot: string; memberIds: string[] } | undefined {
+  const entity = ctx.entityConstraints.node.get(nodeType);
+  if (entity === undefined) return undefined;
+
+  for (const [slot, memberIds] of uniqueSlotMembers(entity)) {
+    if (memberIds.includes(variableId)) return { slot, memberIds };
+  }
+
+  return undefined;
+}
+
+/**
+ * Writes the value a binning stage's interaction decides onto a node, and
+ * squares the `unique` registry with it.
+ *
+ * The value is not claimed. Neither binning interface renders a form field for
+ * its prompt variable — OrdinalBin renders no `Field` at all, CategoricalBin one
+ * only for a prompt's `otherVariable` — so the interview never validates it, and
+ * two nodes sharing a bin is an arrangement the interface offers rather than a
+ * duplicate to be prevented (49142e017).
+ *
+ * What the write does do is take off the node whatever the registry issued it
+ * for that variable, and two things follow from that. The displaced value is
+ * given back, because no node holds it any more and leaving it claimed drains a
+ * space feasibility sized against the entity count. And the variable is recorded
+ * as one the registry did not issue: a later form regenerating it is handed the
+ * value the node currently holds, and would otherwise release a claim that is
+ * not this node's — where two bin assignments collided, releasing that value for
+ * the second node frees the first node's claim and the draw can issue it a
+ * second time.
+ */
+function assignBinValue(
+  ctx: GenerationContext,
+  node: NcNode,
+  scope: EntityScopeRef,
+  variableId: string,
+  value: VariableValue,
+  uniqueSlot: { slot: string; memberIds: string[] } | undefined,
+): void {
+  const attrs = node[entityAttributesProperty];
+  const previous = attrs[variableId];
+  attrs[variableId] = value;
+
+  if (uniqueSlot === undefined) return;
+
+  const written = outOfBandWrites.get(node) ?? new Set<string>();
+  // A value an earlier bin wrote was never issued to this node, so there is
+  // nothing of this node's for this write to displace.
+  const wasIssued = previous !== undefined && !written.has(variableId);
+
+  // A bin landing on the value the node already carried displaces nothing: the
+  // registry's claim still describes what the node holds, and the redraw a later
+  // form makes should give it back as it always did.
+  if (wasIssued && valueKey(value) === valueKey(previous)) return;
+
+  written.add(variableId);
+  outOfBandWrites.set(node, written);
+
+  if (!wasIssued) return;
+
+  // A `sameAs` sibling still carrying the issued value leaves the node holding
+  // it, so the claim stays; dropping this variable from a later regeneration's
+  // `existing` is what points the redraw's release at the sibling.
+  const previousKey = valueKey(previous);
+  const stillHeld = uniqueSlot.memberIds.some((id) => {
+    const held = attrs[id];
+    return held !== undefined && valueKey(held) === previousKey;
+  });
+  if (stillHeld) return;
+
+  ctx.uniqueRegistry.release(scopeKey(scope), uniqueSlot.slot, previous);
+}
+
 export function handleOrdinalBin(
   ctx: GenerationContext,
   draft: NetworkDraft,
@@ -224,6 +349,7 @@ export function handleOrdinalBin(
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
   const nodeTypeDef = ctx.codebook.node?.[subjectType];
+  const scope: EntityScopeRef = { entity: 'node', type: subjectType };
 
   for (const prompt of stage.prompts) {
     const varDef = nodeTypeDef?.variables?.[prompt.variable];
@@ -232,10 +358,18 @@ export function handleOrdinalBin(
     const variableOptions = 'options' in varDef ? (varDef.options ?? []) : [];
     if (variableOptions.length === 0) continue;
 
+    const uniqueSlot = uniqueSlotFor(ctx, subjectType, prompt.variable);
+
     for (const node of subjectNodes) {
       const optionIndex = ctx.valueGen.randomInt(0, variableOptions.length - 1);
-      node[entityAttributesProperty][prompt.variable] =
-        variableOptions[optionIndex]!.value;
+      assignBinValue(
+        ctx,
+        node,
+        scope,
+        prompt.variable,
+        variableOptions[optionIndex]!.value,
+        uniqueSlot,
+      );
     }
   }
 }
@@ -250,6 +384,7 @@ export function handleCategoricalBin(
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
   const nodeTypeDef = ctx.codebook.node?.[subjectType];
+  const scope: EntityScopeRef = { entity: 'node', type: subjectType };
 
   for (const prompt of stage.prompts) {
     const varDef = nodeTypeDef?.variables?.[prompt.variable];
@@ -260,6 +395,8 @@ export function handleCategoricalBin(
         ? (varDef.options?.filter((o) => typeof o.value !== 'boolean') ?? [])
         : [];
     if (variableOptions.length === 0) continue;
+
+    const uniqueSlot = uniqueSlotFor(ctx, subjectType, prompt.variable);
 
     for (const node of subjectNodes) {
       const count = ctx.valueGen.randomInt(
@@ -273,7 +410,7 @@ export function handleCategoricalBin(
           variableOptions[(startIdx + c) % variableOptions.length]!.value,
         );
       }
-      node[entityAttributesProperty][prompt.variable] = picked;
+      assignBinValue(ctx, node, scope, prompt.variable, picked, uniqueSlot);
     }
   }
 }
@@ -282,13 +419,51 @@ export function handleEgoForm(
   ctx: GenerationContext,
   draft: NetworkDraft,
 ): void {
-  const egoVars = ctx.codebook.ego?.variables;
-  if (egoVars) {
-    Object.assign(
-      draft.egoAttributes,
-      generateAttributes(egoVars, ctx.valueGen, 0),
-    );
-  }
+  Object.assign(
+    draft.egoAttributes,
+    generateAttributesForEntity(ctx, { entity: 'ego' }, 0),
+  );
+}
+
+/**
+ * The values a regeneration resolves against, with the ones a stage wrote out of
+ * band dropped from the variables being redrawn.
+ *
+ * A redraw gives a `unique` slot's value back before drawing the replacement,
+ * and reads that value from `existing`. That is right for a value the registry
+ * issued this entity, and wrong for one a binning stage wrote: the registry's
+ * claim on such a value, if it holds one at all, belongs to whichever entity was
+ * issued it, so handing it back frees a value somebody else still carries. A
+ * variable being redrawn contributes nothing else through `existing` — a
+ * comparison or `differentFrom` rule resolves against the *other* variables'
+ * values — so dropping it costs the draw nothing.
+ */
+function existingForRegeneration(
+  node: NcNode,
+  regenerated: ReadonlySet<string>,
+): Record<string, VariableValue> {
+  const attrs = node[entityAttributesProperty];
+  const written = outOfBandWrites.get(node);
+  if (written === undefined) return attrs;
+
+  const dropped = [...written].filter((id) => regenerated.has(id));
+  if (dropped.length === 0) return attrs;
+
+  const existing = { ...attrs };
+  for (const id of dropped) delete existing[id];
+  return existing;
+}
+
+/** Marks regenerated variables as the registry's again, now it has issued them. */
+function clearOutOfBandWrites(
+  node: NcNode,
+  regenerated: ReadonlySet<string>,
+): void {
+  const written = outOfBandWrites.get(node);
+  if (written === undefined) return;
+
+  for (const id of regenerated) written.delete(id);
+  if (written.size === 0) outOfBandWrites.delete(node);
 }
 
 export function handleAlterForm(
@@ -303,21 +478,23 @@ export function handleAlterForm(
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
-  const nodeTypeDef = ctx.codebook.node?.[subjectType];
-  if (!nodeTypeDef?.variables) return;
-
-  const formVarIds = form.fields.map((f) => f.variable);
+  const formVarIds = new Set(form.fields.map((field) => field.variable));
 
   for (let nodeIndex = 0; nodeIndex < subjectNodes.length; nodeIndex++) {
     const node = subjectNodes[nodeIndex]!;
-    for (const varId of formVarIds) {
-      const varDef = nodeTypeDef.variables[varId];
-      if (varDef) {
-        const entry = toVariableEntry(varId, varDef);
-        node[entityAttributesProperty][varId] =
-          ctx.valueGen.generateForVariable(entry, nodeIndex);
-      }
-    }
+    Object.assign(
+      node[entityAttributesProperty],
+      generateAttributesForEntity(
+        ctx,
+        { entity: 'node', type: subjectType },
+        nodeIndex,
+        {
+          existing: existingForRegeneration(node, formVarIds),
+          only: formVarIds,
+        },
+      ),
+    );
+    clearOutOfBandWrites(node, formVarIds);
   }
 }
 
@@ -333,20 +510,135 @@ export function handleAlterEdgeForm(
   if (subjectType === undefined) return;
 
   const subjectEdges = getStageFilteredEdges(ctx, draft, stage, subjectType);
-  const edgeTypeDef = ctx.codebook.edge?.[subjectType];
-  if (!edgeTypeDef?.variables) return;
-
-  const formVarIds = form.fields.map((f) => f.variable);
+  const formVarIds = new Set(form.fields.map((field) => field.variable));
 
   for (let edgeIndex = 0; edgeIndex < subjectEdges.length; edgeIndex++) {
-    const edge = subjectEdges[edgeIndex]!;
-    for (const varId of formVarIds) {
-      const varDef = edgeTypeDef.variables[varId];
-      if (varDef) {
-        const entry = toVariableEntry(varId, varDef);
-        edge[entityAttributesProperty][varId] =
-          ctx.valueGen.generateForVariable(entry, edgeIndex);
-      }
+    const attrs = subjectEdges[edgeIndex]![entityAttributesProperty];
+    Object.assign(
+      attrs,
+      generateAttributesForEntity(
+        ctx,
+        { entity: 'edge', type: subjectType },
+        edgeIndex,
+        { existing: attrs, only: formVarIds },
+      ),
+    );
+  }
+}
+
+/**
+ * Whether any rule of `entity` resolves against `variableId` — the variable
+ * declaring a rule that names another, or another naming it as their target.
+ *
+ * A value fixed for a variable nothing resolves against changes no other
+ * variable's, so this is what separates a pin the rest of the entity has to be
+ * generated around from one that can simply be written on afterwards. Read from
+ * the schema's own list of rules whose value is a variable id, so a rule added
+ * there is accounted for here without this being updated.
+ */
+function ruleResolvesAgainst(
+  entity: EntityConstraints,
+  variableId: string,
+): boolean {
+  for (const [id, { constraints }] of entity) {
+    for (const rule of VARIABLE_REFERENCE_VALIDATIONS) {
+      const target = constraints[rule];
+      if (target === undefined) continue;
+      if (id === variableId || target === variableId) return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Whether `variableId`'s value is one the `unique` registry issues — its own
+ * rule declaring it, or a rule holding it equal to a variable that does.
+ *
+ * Asked of the slots themselves rather than of the variable's own `unique`, so
+ * the judgement is the one {@link claimFixedValues} goes on to act against.
+ */
+function isUniqueSlotVariable(
+  entity: EntityConstraints,
+  variableId: string,
+): boolean {
+  for (const memberIds of uniqueSlotMembers(entity).values()) {
+    if (memberIds.includes(variableId)) return true;
+  }
+
+  return false;
+}
+
+/** Holds one written value back from every `unique` slot that would issue it. */
+function reserveWrittenValue(
+  ctx: GenerationContext,
+  ref: { entity: 'node' | 'edge'; type: string },
+  variableId: string,
+  value: VariableValue,
+): void {
+  const entity = ctx.entityConstraints[ref.entity].get(ref.type);
+  if (entity === undefined) return;
+
+  const registry = scopeKey(ref);
+  for (const [slot, memberIds] of uniqueSlotMembers(entity)) {
+    if (!memberIds.includes(variableId)) continue;
+    ctx.uniqueRegistry.reserve(registry, slot, value);
+  }
+}
+
+/**
+ * Holds back the values every FamilyPedigree stage is going to write itself,
+ * for the whole run and before any stage draws.
+ *
+ * These are values the interface writes rather than ones the generator picks,
+ * so a `unique` variable carrying one has it spoken for from the start. A draw
+ * that ran earlier knows nothing about it — the value only reaches the registry
+ * when the pedigree's own entities are built — and a name generator ahead of
+ * the pedigree is issued `true` on the first position of the slot's sequence,
+ * which the pedigree then writes on its proband as well: the duplicate `unique`
+ * forbids, on every seed. The pedigree's edge values are the same shape, and
+ * are held for the same reason.
+ *
+ * Only the proband's `true` is held of the ego flag. Every pedigree marks
+ * exactly one node ego whatever its node count, while the `false` on the others
+ * is written only where the stage builds more than one — and holding both would
+ * empty a boolean's domain, where a draw left nothing takes a reserved value
+ * anyway and lands back on the collision. A protocol where that `false` is
+ * genuinely contested has a pedigree of two or more nodes plus a node from
+ * somewhere else, which is more entities than a two-value space covers and is
+ * refused before any of this runs.
+ *
+ * The edge values are held once apiece for the same reason. A pedigree writing
+ * one value onto two or more edges of a `unique` variable is a contradiction no
+ * seed resolves and no reservation helps with, and is feasibility's to refuse
+ * rather than the registry's to work around — the same division the ego flag's
+ * `false` is settled by.
+ */
+export function reserveFamilyPedigreeFixedValues(
+  ctx: GenerationContext,
+  stages: Stage[],
+): void {
+  for (const stage of stages) {
+    if (stage.type !== 'FamilyPedigree') continue;
+
+    const nodeType = stage.nodeConfig?.type;
+    const egoVariable = stage.nodeConfig?.egoVariable;
+    if (nodeType !== undefined && egoVariable !== undefined) {
+      reserveWrittenValue(
+        ctx,
+        { entity: 'node', type: nodeType },
+        egoVariable,
+        true,
+      );
+    }
+
+    const edgeType = stage.edgeConfig?.type;
+    if (edgeType === undefined) continue;
+    const ref: EntityScopeRef = { entity: 'edge', type: edgeType };
+    for (const [variableId, value] of Object.entries(
+      pedigreeEdgeValues(stage.edgeConfig),
+    )) {
+      reserveWrittenValue(ctx, ref, variableId, value);
     }
   }
 }
@@ -363,19 +655,55 @@ export function handleFamilyPedigree(
   );
 
   const nodeType = stage.nodeConfig?.type;
-  const nodeTypeDef = nodeType ? ctx.codebook.node?.[nodeType] : undefined;
   const edgeType = stage.edgeConfig?.type;
   const egoVariable = stage.nodeConfig?.egoVariable;
 
   if (!nodeType) return;
 
+  // Attribute generation randomises egoVariable per node like any other boolean
+  // codebook variable, but the runtime marks exactly one pedigree node as ego
+  // (FamilyPedigree's egoCellTransform sets true on the proband and explicit
+  // false on every other alter/partner/child). That flag is therefore a value
+  // fixed for the node rather than drawn for it.
+  //
+  // Where the flag's value is read by anything outside the node, it is settled
+  // before anything is drawn and the rest of the node generated around it — the
+  // mechanism a roster row and a prompt's `additionalAttributes` use — and then
+  // claimed. Two things read it. A rule resolving against it: a `sameAs`
+  // counterpart would otherwise keep whatever the shared draw landed on and the
+  // finished node would break the rule generation had just satisfied. And the
+  // `unique` registry: drawing a value that is thrown away leaves the registry
+  // holding one no node carries while the value the node does carry is
+  // unrecorded, so a later entity can be issued the proband's own flag.
+  //
+  // Where neither reads it, the flag is written after generation instead:
+  // nothing resolves against it and no slot issues it, so drawing every
+  // variable as before costs the pin no RNG draws and leaves the stage's random
+  // stream where it was.
+  const scope: EntityScopeRef = { entity: 'node', type: nodeType };
+  const nodeVariables: EntityConstraints =
+    ctx.entityConstraints.node.get(nodeType) ?? new Map();
+  const drawnVariables =
+    egoVariable &&
+    (ruleResolvesAgainst(nodeVariables, egoVariable) ||
+      isUniqueSlotVariable(nodeVariables, egoVariable))
+      ? new Set([...nodeVariables.keys()].filter((id) => id !== egoVariable))
+      : undefined;
+
   const familyNodes: NcNode[] = [];
   for (let nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
-    const attrs = generateAttributes(
-      nodeTypeDef?.variables,
-      ctx.valueGen,
+    const fixed = egoVariable ? { [egoVariable]: nodeIndex === 0 } : undefined;
+
+    const attrs = generateAttributesForEntity(
+      ctx,
+      scope,
       draft.nodes.length + nodeIndex,
+      fixed && drawnVariables
+        ? { existing: fixed, only: drawnVariables }
+        : undefined,
     );
+    if (fixed) Object.assign(attrs, fixed);
+    if (fixed && drawnVariables) claimFixedValues(ctx, scope, fixed);
 
     familyNodes.push({
       [entityPrimaryKeyProperty]: uuid(),
@@ -385,21 +713,25 @@ export function handleFamilyPedigree(
     });
   }
 
-  // generateAttributes randomises egoVariable per node like any other boolean
-  // codebook variable, but the runtime marks exactly one pedigree node as ego
-  // (FamilyPedigree's egoCellTransform sets true on the proband and explicit
-  // false on every other alter/partner/child). Pin that here, after
-  // generation, so overwriting the attribute costs no RNG draws and the rest
-  // of the stage's random stream is undisturbed.
-  if (egoVariable) {
-    familyNodes.forEach((node, index) => {
-      node[entityAttributesProperty][egoVariable] = index === 0;
-    });
-  }
-
   draft.nodes.push(...familyNodes);
 
   if (edgeType && familyNodes.length > 1) {
+    // The relationship every parent-child edge records, written rather than
+    // drawn — see `pedigreeEdgeValues`, which the feasibility pass counts from
+    // as well. Written AFTER the parent index is drawn and never through the
+    // draw, so the values cost the stage no random numbers and leave every
+    // other value in the run exactly where it was.
+    //
+    // Nothing claims them into the `unique` registry the way a pedigree node's
+    // ego flag is claimed. A claim is what stops a value already in the network
+    // being issued a second time, and `reserveFamilyPedigreeFixedValues`
+    // already holds these back for the whole run — before the first stage and
+    // after the last, since nothing ever gives the hold back. The one thing a
+    // reservation does not survive is a slot with nothing else left, which is a
+    // protocol asking for more distinct values than it has, and feasibility's
+    // to refuse rather than the registry's to work around.
+    const edgeValues = pedigreeEdgeValues(stage.edgeConfig);
+
     for (let childIndex = 1; childIndex < familyNodes.length; childIndex++) {
       const parentIdx = ctx.valueGen.randomInt(
         0,
@@ -410,7 +742,9 @@ export function handleFamilyPedigree(
         type: edgeType,
         from: familyNodes[parentIdx]![entityPrimaryKeyProperty],
         to: familyNodes[childIndex]![entityPrimaryKeyProperty],
-        [entityAttributesProperty]: {},
+        // Its own copy, because a later AlterEdgeForm fills each edge's
+        // attributes in place and would otherwise write through every one.
+        [entityAttributesProperty]: { ...edgeValues },
       };
       draft.edges.push(edge);
     }
@@ -469,7 +803,7 @@ export function handleNetworkComposer(
   for (const edgeDef of stage.edges ?? []) {
     const edgeType = edgeDef.subject?.type;
     if (!edgeType) continue;
-    const { edges: newEdges } = createEdgesForPairs(
+    const { created } = createEdgesForPairs(
       ctx,
       newNodes,
       edgeType,
@@ -480,8 +814,10 @@ export function handleNetworkComposer(
         ctx.config.networkComposerEdgeProbability.min,
         ctx.config.networkComposerEdgeProbability.max,
       ),
-      ctx.codebook.edge?.[edgeType]?.variables,
+      draft.edges,
     );
-    draft.edges.push(...newEdges);
+    // Pushed inside the loop so two edge definitions naming one type see each
+    // other's edges, the way the composer's own canvas would.
+    draft.edges.push(...created.map(({ edge }) => edge));
   }
 }

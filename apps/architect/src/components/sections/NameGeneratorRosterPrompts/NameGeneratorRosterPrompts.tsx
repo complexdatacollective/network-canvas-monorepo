@@ -24,6 +24,7 @@ type NameGeneratorRosterPromptsProps = StageEditorSectionProps & {
   dataSource?: string;
 };
 const NameGeneratorRosterPrompts = ({
+  form,
   entity,
   type,
   disabled,
@@ -53,7 +54,7 @@ const NameGeneratorRosterPrompts = ({
         previewComponent: PromptPreview,
         editorTitle: 'Edit Prompt',
         itemLabel: 'prompt',
-        editorProps: { entity, type, dataSource },
+        editorProps: { entity, type, dataSource, stageForm: form },
         requestedEditFormName: 'editable-list-form',
         sortable: true,
       }}

@@ -26,6 +26,7 @@ vi.mock('react-redux', () => {
 vi.mock('redux-form', () => ({
   formValueSelector: () => () => 'person',
   getFormValues: () => () => ({}),
+  getFormInitialValues: () => () => ({}),
   change: (form: string, field: string, value: unknown) => ({
     type: 'CHANGE',
     form,
@@ -45,6 +46,7 @@ vi.mock('~/ducks/hooks', () => ({ useAppDispatch: () => noop }));
 
 vi.mock('~/selectors/codebook', () => ({
   getVariableOptionsForSubject: () => [],
+  getVariablesForSubjectSelector: () => ({}),
   makeGetVariable: () => () => undefined,
 }));
 

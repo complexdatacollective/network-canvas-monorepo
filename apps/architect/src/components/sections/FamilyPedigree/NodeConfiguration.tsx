@@ -1,12 +1,13 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
-import { difference, keys } from 'es-toolkit/compat';
-import { useCallback } from 'react';
+import { difference, get, keys } from 'es-toolkit/compat';
+import { useCallback, useMemo } from 'react';
 import { compose, withHandlers } from 'react-recompose';
 import { connect, type ConnectedProps, useSelector } from 'react-redux';
 import {
   change,
   type FormAction,
   formValueSelector,
+  getFormInitialValues,
   getFormValues,
   SubmissionError,
 } from 'redux-form';
@@ -25,6 +26,10 @@ import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
 import EntitySelectField from '~/components/sections/fields/EntitySelectField/EntitySelectField';
+import {
+  composerValidationViews,
+  sharedFormValidationView,
+} from '~/components/sections/Form/composerHelpers';
 import FieldFields from '~/components/sections/Form/FieldFields';
 import {
   CODEBOOK_PROPERTIES,
@@ -33,6 +38,12 @@ import {
   normalizeField,
 } from '~/components/sections/Form/helpers';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  crossClassPickIssue,
+  makeFieldEditorValidate,
+  validatedElsewhereMessage,
+  variableDisplayName,
+} from '~/components/Validations/contradictions';
 import { getTypeForComponent } from '~/config/variables';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -42,10 +53,14 @@ import {
 import { getFamilyPedigreeNodeTypeChangeBlock } from '~/ducks/modules/protocol/stages';
 import type { RootState } from '~/ducks/store';
 import {
+  EMPTY_VARIABLES,
   getVariableOptionsForSubject,
+  getVariablesForSubjectSelector,
   makeGetVariable,
 } from '~/selectors/codebook';
+import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
+import { excludeValidatedUses } from '~/selectors/roleFilters';
 import { ensureError } from '~/utils/ensureError';
 import { optionsMatch } from '~/utils/variables';
 
@@ -89,6 +104,12 @@ type VariableRowProps = {
     type?: string;
   }[];
   onCreateOption: (name: string) => void;
+  /**
+   * Save-time cross-class gate for this slot (an UNVALIDATED writer): a sync
+   * field validator, so an invalid pick blocks the stage editor's save — the
+   * same field-level `crossClassPick` shape NetworkComposer's quickAdd uses.
+   */
+  crossClassPick: (value: unknown, allValues?: unknown) => string | undefined;
 };
 const VariableRow = ({
   name,
@@ -97,6 +118,7 @@ const VariableRow = ({
   entityType,
   options,
   onCreateOption,
+  crossClassPick,
 }: VariableRowProps) => (
   <div className="flex items-start gap-5">
     <div className="flex flex-1 basis-0 flex-col gap-1 pt-2.5">
@@ -111,7 +133,7 @@ const VariableRow = ({
       <ValidatedField
         name={name}
         component={VariablePicker}
-        validation={{ required: true }}
+        validation={{ required: true, crossClassPick }}
         componentProps={{
           entity: 'node',
           type: entityType,
@@ -123,6 +145,16 @@ const VariableRow = ({
     </div>
   </div>
 );
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** The four nodeConfig slots that write node attributes without validation. */
+const NODE_SLOT_FIELDS = [
+  'nodeLabelVariable',
+  'egoVariable',
+  'relationshipVariable',
+  'biologicalSexVariable',
+] as const;
 type NodeConfigurationInnerProps = StageEditorSectionProps & {
   handleChangeFields: (
     fields: Record<string, unknown>,
@@ -170,6 +202,134 @@ const NodeConfigurationInner = ({
       ? getVariableOptionsForSubject(state, { entity: 'node', type: nodeType })
       : [],
   );
+  // Memoized on nodeType so the subject object identity is stable across
+  // renders, matching getVariablesForSubjectSelector's reselect memoization
+  // instead of defeating it every render.
+  const nodeVariablesSubject = useMemo(
+    () => (nodeType ? { entity: 'node' as const, type: nodeType } : null),
+    [nodeType],
+  );
+  const allVariables = useSelector((state: RootState) =>
+    nodeVariablesSubject
+      ? getVariablesForSubjectSelector(state, nodeVariablesSubject)
+      : EMPTY_VARIABLES,
+  );
+  const resolvedComposerViews = useMemo(
+    () =>
+      composerValidationViews(
+        stages,
+        { entity: 'node', type: nodeType ?? null },
+        stageId,
+      ),
+    [stages, nodeType, stageId],
+  );
+  const pedigreeFormFields = useSelector((state: RootState) =>
+    formSelector(state, 'nodeConfig.form'),
+  );
+  const resolvedFormViews = useMemo(
+    () => [
+      sharedFormValidationView(pedigreeFormFields),
+      ...resolvedComposerViews,
+    ],
+    [pedigreeFormFields, resolvedComposerViews],
+  );
+  const roleMap = useSelector(getVariableRoleMap);
+  const stageInitialValues = useSelector((state: RootState) =>
+    getFormInitialValues(form)(state),
+  );
+  const slotDraftValue = (
+    slotField: (typeof NODE_SLOT_FIELDS)[number],
+  ): string | undefined => {
+    const value: unknown = get(formValues, `nodeConfig.${slotField}`);
+    return typeof value === 'string' ? value : undefined;
+  };
+  const nodeLabelDraft = slotDraftValue('nodeLabelVariable');
+  const egoDraft = slotDraftValue('egoVariable');
+  const relationshipDraft = slotDraftValue('relationshipVariable');
+  const biologicalSexDraft = slotDraftValue('biologicalSexVariable');
+  // Memoized on the four scalar picks (NOT `formValues`, whose identity
+  // changes on every keystroke) so `hasUnvalidatedUse` — and through it
+  // `editorValidate` and its per-dialog-session baseline cache — keeps a
+  // stable identity while unrelated fields are edited.
+  const draftSlotVariables = useMemo(
+    () =>
+      [nodeLabelDraft, egoDraft, relationshipDraft, biologicalSexDraft].filter(
+        (value): value is string => typeof value === 'string',
+      ),
+    [nodeLabelDraft, egoDraft, relationshipDraft, biologicalSexDraft],
+  );
+  // Backs makeFieldEditorValidate's save-time gate: a form field may not pick
+  // a variable some bin/highlight/census/etc. elsewhere already writes.
+  // Identical wiring shape to Form.tsx (direct `makeFieldEditorValidate(...)`
+  // passthrough, no wrapping closure) — mount-level coverage of this exact
+  // shape (real role-map subscription, real roleMapKey subject scoping, the
+  // escape) lives in Form/__tests__/Form.crossClassGate.test.tsx rather than
+  // being duplicated here; only the subject derivation differs (`nodeType`
+  // from this stage's own form value vs. Form.tsx's `withSubject`).
+  // `draftSlotVariables` additionally closes the intra-draft case THIS stage
+  // type makes possible: its own nodeConfig slots (unvalidated writers) live
+  // on the same unsaved stage form as the form-field dialog, so a slot pick
+  // that has not reached the saved document yet still rejects the same
+  // variable here.
+  const hasUnvalidatedUse = useCallback(
+    (variableId: string) =>
+      !!nodeVariablesSubject &&
+      (draftSlotVariables.includes(variableId) ||
+        (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.unvalidated ??
+          0) > 0),
+    [roleMap, nodeVariablesSubject, draftSlotVariables],
+  );
+  const editorValidate = useMemo(
+    () =>
+      makeFieldEditorValidate(
+        allVariables,
+        undefined,
+        undefined,
+        hasUnvalidatedUse,
+        resolvedFormViews,
+      ),
+    [allVariables, hasUnvalidatedUse, resolvedFormViews],
+  );
+  // Save-time cross-class gate for a nodeConfig slot (an UNVALIDATED writer):
+  // rejects a pick a form elsewhere in the saved document already collects,
+  // OR one this stage's own still-unsaved nodeConfig.form draft collects
+  // (both writer classes live on this one stage form, so the sync validator
+  // sees the sibling draft directly through `allValues`). Escapes the slot's
+  // own committed value so a pre-existing conflict (e.g. an imported
+  // protocol) stays saveable — the timeline alert handles it
+  // non-destructively.
+  const makeSlotValidator =
+    (slotField: (typeof NODE_SLOT_FIELDS)[number]) =>
+    (value: unknown, allValues?: unknown): string | undefined => {
+      if (!nodeVariablesSubject) return undefined;
+      const variableId = typeof value === 'string' ? value : '';
+      if (!variableId) return undefined;
+      const committedRaw: unknown = get(
+        stageInitialValues,
+        `nodeConfig.${slotField}`,
+      );
+      const committed = typeof committedRaw === 'string' ? committedRaw : '';
+      if (variableId === committed) return undefined;
+      const draftFormFields: unknown = get(allValues, 'nodeConfig.form');
+      if (
+        Array.isArray(draftFormFields) &&
+        draftFormFields.some(
+          (field: unknown) => isRecord(field) && field.variable === variableId,
+        )
+      ) {
+        return validatedElsewhereMessage(
+          variableDisplayName(allVariables, variableId),
+        );
+      }
+      return crossClassPickIssue({
+        variableId,
+        originalVariableId: committed,
+        hasConflictingUse: (id) =>
+          (roleMap[roleMapKey(nodeVariablesSubject, id)]?.validated ?? 0) > 0,
+        allVariables,
+        message: validatedElsewhereMessage,
+      });
+    };
   const textNodeVariables = nodeVariableOptions.filter(
     (v) => v.type === 'text',
   );
@@ -185,6 +345,50 @@ const NodeConfigurationInner = ({
     (v) =>
       v.type === 'categorical' &&
       optionsMatch(v.options, BIOLOGICAL_SEX_OPTIONS),
+  );
+  // Each slot is an UNVALIDATED writer: drop options a form elsewhere already
+  // validates, keeping the slot's own current pick offered (the usual
+  // currentValue escape). Per-slot pools because two slots share a type pool
+  // but each escapes only its own value.
+  const nodeLabelVariableOptions = useSelector((state: RootState) =>
+    nodeVariablesSubject
+      ? excludeValidatedUses(
+          state,
+          nodeVariablesSubject,
+          textNodeVariables,
+          nodeLabelDraft,
+        )
+      : [],
+  );
+  const egoVariableOptions = useSelector((state: RootState) =>
+    nodeVariablesSubject
+      ? excludeValidatedUses(
+          state,
+          nodeVariablesSubject,
+          booleanNodeVariables,
+          egoDraft,
+        )
+      : [],
+  );
+  const relationshipVariableOptions = useSelector((state: RootState) =>
+    nodeVariablesSubject
+      ? excludeValidatedUses(
+          state,
+          nodeVariablesSubject,
+          textNodeVariables,
+          relationshipDraft,
+        )
+      : [],
+  );
+  const biologicalSexVariableOptions = useSelector((state: RootState) =>
+    nodeVariablesSubject
+      ? excludeValidatedUses(
+          state,
+          nodeVariablesSubject,
+          biologicalSexCompatible,
+          biologicalSexDraft,
+        )
+      : [],
   );
   const handleCreatedVariable = (...args: unknown[]) => {
     const [id, params] = args as [
@@ -264,32 +468,36 @@ const NodeConfigurationInner = ({
                 label="Node Label"
                 description="A text variable used to store the display label for each node in the pedigree."
                 entityType={nodeType}
-                options={textNodeVariables}
+                options={nodeLabelVariableOptions}
                 onCreateOption={handleNewNodeLabelVariable}
+                crossClassPick={makeSlotValidator('nodeLabelVariable')}
               />
               <VariableRow
                 name="nodeConfig.egoVariable"
                 label="Ego Identifier"
                 description="A boolean variable to identify which node represents the participant (ego) in the family pedigree."
                 entityType={nodeType}
-                options={booleanNodeVariables}
+                options={egoVariableOptions}
                 onCreateOption={handleNewEgoVariable}
+                crossClassPick={makeSlotValidator('egoVariable')}
               />
               <VariableRow
                 name="nodeConfig.relationshipVariable"
                 label="Relationship to Participant"
                 description="Stores each person's relationship to the participant (e.g., mother, uncle, daughter). Automatically calculated by the family pedigree interface."
                 entityType={nodeType}
-                options={textNodeVariables}
+                options={relationshipVariableOptions}
                 onCreateOption={handleNewRelationshipVariable}
+                crossClassPick={makeSlotValidator('relationshipVariable')}
               />
               <VariableRow
                 name="nodeConfig.biologicalSexVariable"
                 label="Biological Sex Variable"
                 description="Stores each family member’s sex recorded at birth (female/male/intersex/don’t know/prefer not to say), used for sex-linked inheritance."
                 entityType={nodeType}
-                options={biologicalSexCompatible}
+                options={biologicalSexVariableOptions}
                 onCreateOption={handleNewBiologicalSexVariable}
+                crossClassPick={makeSlotValidator('biologicalSexVariable')}
               />
             </div>
 
@@ -317,6 +525,7 @@ const NodeConfigurationInner = ({
                   editorProps: { type: nodeType, entity: 'node' },
                   previewComponent: NodeFormFieldPreview,
                   editorTitle: 'Edit Field',
+                  editorValidate,
                   itemLabel: 'field',
                   sortable: true,
                   onBeforeSave: (value: unknown) =>

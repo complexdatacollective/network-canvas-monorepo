@@ -18,7 +18,7 @@ const Harness = reduxForm({ form: FORM })(() => (
   <RelativeDatePickerField name="parameters" form={FORM} />
 ));
 
-const renderPicker = () => {
+const renderPicker = (initialValues?: Record<string, unknown>) => {
   const store = configureStore({
     reducer: { form: formReducer },
     middleware: (getDefaultMiddleware) =>
@@ -27,10 +27,15 @@ const renderPicker = () => {
 
   render(
     <Provider store={store}>
-      <Harness />
+      <Harness initialValues={initialValues} />
     </Provider>,
   );
 };
+
+// The anchor control only mounts once "Use interview date" is off, which the
+// component derives from whether an anchor is already set.
+const renderWithAnchor = (anchor: string) =>
+  renderPicker({ parameters: { anchor } });
 
 describe('RelativeDatePicker parameters', () => {
   it('gives the day-offset inputs accessible names', () => {
@@ -79,4 +84,56 @@ describe('RelativeDatePicker parameters', () => {
       });
     },
   );
+});
+
+// Audit sweep: `parameters.min` on the anchor control configures the picker's
+// selectable range; it does not validate the committed value. Without a
+// matching editor rule the dialog saved a below-floor anchor and the protocol
+// validation listener then threw a blocking invalid-protocol dialog offering
+// to revert the edit.
+//
+describe('RelativeDatePicker anchor year floor', () => {
+  it('accepts a schema-valid anchor whose year is below 100', async () => {
+    renderWithAnchor('2020-01-01');
+    const anchor = screen.getByLabelText(/Specific Anchor Date/);
+
+    fireEvent.change(anchor, { target: { value: '0050-01-01' } });
+    fireEvent.blur(anchor);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Anchor date must use a year/),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('offers and accepts the schema floor', async () => {
+    renderWithAnchor('2020-01-01');
+    const anchor = screen.getByLabelText(/Specific Anchor Date/);
+
+    expect(anchor).toHaveAttribute('min', '0001-01-01');
+
+    fireEvent.change(anchor, { target: { value: '0001-01-01' } });
+    fireEvent.blur(anchor);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Anchor date must use a year of 0001 or later'),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('accepts an anchor year in the previously-rejected 0100-0999 range', async () => {
+    renderWithAnchor('2020-01-01');
+    const anchor = screen.getByLabelText(/Specific Anchor Date/);
+
+    fireEvent.change(anchor, { target: { value: '0999-12-31' } });
+    fireEvent.blur(anchor);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Anchor date must use a year/),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

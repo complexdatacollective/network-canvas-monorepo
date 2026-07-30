@@ -44,7 +44,7 @@
  * - `required`, `minLength`, `maxLength`
  * - `minValue`, `maxValue`
  * - `minSelected`, `maxSelected`
- * - `pattern`, `unique`, `sameAs`, `differentFrom`
+ * - `unique`, `sameAs`, `differentFrom`
  * - `greaterThanVariable`, `lessThanVariable`
  *
  * ## Usage Example

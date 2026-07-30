@@ -52,9 +52,21 @@ const TextInput = ({ input }: WrappedFieldProps) => (
   <input aria-label="Item label" {...input} />
 );
 
-const EditorFields = () => <Field name="label" component={TextInput} />;
+let capturedEditorFieldsProps: Record<string, unknown> | undefined;
+const EditorFields = (props: Record<string, unknown>) => {
+  capturedEditorFieldsProps = props;
+  return <Field name="label" component={TextInput} />;
+};
+// Read through a call so control-flow analysis keeps the declared type: the
+// only writes happen inside EditorFields, which CFA cannot see, so a direct
+// read after `capturedEditorFieldsProps = undefined` narrows to `never`.
+const editorFieldsProps = () => capturedEditorFieldsProps;
 
 type OwnProps = {
+  editorValidate?: (
+    values: Record<string, unknown>,
+    props?: { editIndex?: number },
+  ) => Record<string, unknown>;
   normalizeItem?: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
 };
@@ -62,7 +74,11 @@ type OwnProps = {
 type HarnessProps = InjectedFormProps<Record<string, unknown>, OwnProps> &
   OwnProps;
 
-const Harness = ({ normalizeItem, onBeforeSave }: HarnessProps) => (
+const Harness = ({
+  editorValidate,
+  normalizeItem,
+  onBeforeSave,
+}: HarnessProps) => (
   <FieldArray
     name="items"
     component={DialogArrayField}
@@ -72,6 +88,7 @@ const Harness = ({ normalizeItem, onBeforeSave }: HarnessProps) => (
     addTitle="Add item"
     itemLabel="item"
     itemTemplate={() => ({ label: '' })}
+    editorValidate={editorValidate}
     normalizeItem={normalizeItem}
     onBeforeSave={onBeforeSave}
     rerenderOnEveryChange
@@ -85,10 +102,12 @@ const ReduxHarness = reduxForm<Record<string, unknown>, OwnProps>({
 
 const setup = ({
   initialItems = [],
+  editorValidate,
   normalizeItem,
   onBeforeSave,
 }: {
   initialItems?: Item[];
+  editorValidate?: OwnProps['editorValidate'];
   normalizeItem?: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
 } = {}) => {
@@ -103,6 +122,7 @@ const setup = ({
       <DialogProvider>
         <ReduxHarness
           initialValues={{ items: initialItems }}
+          editorValidate={editorValidate}
           normalizeItem={normalizeItem}
           onBeforeSave={onBeforeSave}
         />
@@ -251,6 +271,183 @@ describe('DialogArrayField', () => {
     });
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(getItems()).toEqual([]);
+  });
+
+  it('keeps the editor open when editorValidate rejects the item', async () => {
+    const editorValidate = vi.fn(() => ({ label: 'Blocked by validate' }));
+    const onBeforeSave = vi.fn((value: unknown) => value);
+    const { getItems } = setup({ editorValidate, onBeforeSave });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(onBeforeSave).not.toHaveBeenCalled();
+    expect(getItems()).toEqual([]);
+  });
+
+  // Eleventh-wave Finding 4: an existing item's committed array index is
+  // surfaced to editorValidate via redux-form's (values, props) validate
+  // signature, so a validate closure can scope itself to the edited row
+  // (e.g. excluding it from a sibling overlay) without relying on the row
+  // carrying an id. A new item is not in the committed array and reports no
+  // index.
+  it('surfaces the edited row’s index to editorValidate, and none for a new item', async () => {
+    const editorValidate = vi.fn<
+      (
+        values: Record<string, unknown>,
+        props?: { editIndex?: number },
+      ) => Record<string, unknown>
+    >(() => ({}));
+    setup({
+      initialItems: [
+        { id: 'item-1', label: 'First' },
+        { id: 'item-2', label: 'Second' },
+      ],
+      editorValidate,
+    });
+
+    const secondEditButton = screen.getAllByRole('button', {
+      name: 'Edit item',
+    })[1];
+    if (!secondEditButton) throw new Error('Expected two edit buttons');
+    fireEvent.click(secondEditButton);
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(editorValidate.mock.calls.at(-1)?.[1]).toMatchObject({
+      editIndex: 1,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    editorValidate.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(editorValidate.mock.calls.at(-1)?.[1]).toMatchObject({
+      editIndex: undefined,
+    });
+  });
+
+  // Task 9: the save-time cross-class gate's unchanged-pick escape
+  // (contradictions.ts's `makeFieldEditorValidate`) reads `props.initialValues`
+  // from editorValidate's second argument, on the inference that redux-form
+  // passes the decorated Form's own props — including `initialValues` — as
+  // `validate`'s second argument (same mechanism eleventh-wave Finding 4 relies
+  // on for `editIndex`, which the test above already pins). This test empirically
+  // settles that inference for the row this editor actually opens, rather than
+  // just reading redux-form's source: a fresh item reports no initialValues,
+  // and reopening the SAME edited item after a save reports its NEW committed
+  // values, not the stale pre-edit ones.
+  it('surfaces the edited row’s pre-edit committed values to editorValidate as props.initialValues', async () => {
+    const editorValidate = vi.fn<
+      (
+        values: Record<string, unknown>,
+        props?: { editIndex?: number; initialValues?: unknown },
+      ) => Record<string, unknown>
+    >(() => ({}));
+    setup({
+      initialItems: [{ id: 'item-1', label: 'Before' }],
+      editorValidate,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(editorValidate.mock.calls.at(-1)?.[1]?.initialValues).toEqual({
+      id: 'item-1',
+      label: 'Before',
+    });
+
+    // A brand-new item reports only its freshly-assigned uuid `id` and the
+    // template's blank label — not the earlier item's committed values.
+    editorValidate.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(editorValidate.mock.calls.at(-1)?.[1]?.initialValues).toEqual({
+      id: expect.any(String),
+      label: '',
+    });
+
+    // Saving the new item, then reopening it: initialValues now reflects the
+    // freshly-committed row, not the original item's — proving this is the
+    // REAL per-open committed snapshot, not a value fixed once at mount.
+    fireEvent.change(screen.getByRole('textbox', { name: 'Item label' }), {
+      target: { value: 'Second' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Edit item' })).toHaveLength(
+        2,
+      );
+    });
+    editorValidate.mockClear();
+    const secondEditBtn = screen.getAllByRole('button', {
+      name: 'Edit item',
+    })[1];
+    if (!secondEditBtn) throw new Error('Expected two edit buttons');
+    fireEvent.click(secondEditBtn);
+    await waitFor(() => {
+      expect(editorValidate).toHaveBeenCalled();
+    });
+    expect(
+      (
+        editorValidate.mock.calls.at(-1)?.[1]?.initialValues as
+          | { label?: string }
+          | undefined
+      )?.label,
+    ).toBe('Second');
+  });
+
+  // Seventeenth-wave follow-up: the fields component gets the SAME index the
+  // validate does, so an editor's pickers can scope themselves to exactly the
+  // row the validate is judging (e.g. offering only variables no sibling has
+  // claimed). If the two ever disagree, a picker hides something the validate
+  // accepts, or offers something it rejects.
+  it('gives the fields component the same edited-row index as editorValidate', async () => {
+    const editorValidate = vi.fn<
+      (
+        values: Record<string, unknown>,
+        props?: { editIndex?: number },
+      ) => Record<string, unknown>
+    >(() => ({}));
+    capturedEditorFieldsProps = undefined;
+    setup({
+      initialItems: [
+        { id: 'item-1', label: 'First' },
+        { id: 'item-2', label: 'Second' },
+      ],
+      editorValidate,
+    });
+
+    const secondEditButton = screen.getAllByRole('button', {
+      name: 'Edit item',
+    })[1];
+    if (!secondEditButton) throw new Error('Expected two edit buttons');
+    fireEvent.click(secondEditButton);
+    await waitFor(() => {
+      expect(editorFieldsProps()).toBeDefined();
+    });
+    expect(editorFieldsProps()?.editIndex).toBe(1);
+    expect(editorFieldsProps()?.editIndex).toBe(
+      editorValidate.mock.calls.at(-1)?.[1]?.editIndex,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    capturedEditorFieldsProps = undefined;
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    await waitFor(() => {
+      expect(editorFieldsProps()).toBeDefined();
+    });
+    expect(editorFieldsProps()?.editIndex).toBeUndefined();
   });
 
   it('prevents duplicate saves and dismissal while pre-save work is pending', async () => {
