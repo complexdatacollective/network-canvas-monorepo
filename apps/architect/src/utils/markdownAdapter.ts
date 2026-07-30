@@ -321,60 +321,148 @@ const getMark = (
 ): RichTextMark | undefined =>
   node.marks?.find((mark) => mark.type === markType);
 
-const serializeTextNode = (
-  node: RichTextContent,
-  options: SerializeInlineOptions = {},
-): string => {
+type LinkTarget = {
+  href: string;
+  title: string | null;
+};
+
+const getLinkTarget = (node: RichTextContent): LinkTarget | undefined => {
+  const link = getMark(node, 'link');
+  const href = link?.attrs?.href;
+
+  if (typeof href !== 'string') {
+    return undefined;
+  }
+
+  const safeHref = sanitizeLinkDestination(href);
+
+  if (!safeHref) {
+    return undefined;
+  }
+
+  const title = link?.attrs?.title;
+
+  return {
+    href: safeHref,
+    title: typeof title === 'string' && title.trim() !== '' ? title : null,
+  };
+};
+
+const isSameLinkTarget = (
+  target: LinkTarget,
+  other: LinkTarget | undefined,
+): boolean =>
+  other !== undefined &&
+  target.href === other.href &&
+  target.title === other.title;
+
+const serializeTextNode = (node: RichTextContent): string => {
   const text = escapeMarkdownText(node.text ?? '');
   const isBold = Boolean(getMark(node, 'bold'));
   const isItalic = Boolean(getMark(node, 'italic'));
-  const link = getMark(node, 'link');
-
-  let serialized = text;
 
   if (isBold && isItalic) {
-    serialized = `***${serialized}***`;
-  } else if (isBold) {
-    serialized = `**${serialized}**`;
-  } else if (isItalic) {
-    serialized = `_${serialized}_`;
+    return `***${text}***`;
   }
 
-  const href = link?.attrs?.href;
+  if (isBold) {
+    return `**${text}**`;
+  }
 
-  if (typeof href === 'string' && options.links !== false) {
-    const safeHref = sanitizeLinkDestination(href);
-    const title = link?.attrs?.title;
-    const titleText =
-      typeof title === 'string' && title.trim() !== ''
-        ? ` "${escapeLinkTitle(title)}"`
-        : '';
+  if (isItalic) {
+    return `_${text}_`;
+  }
 
-    if (safeHref) {
-      serialized = `[${serialized}](${escapeLinkDestination(safeHref)}${titleText})`;
+  return text;
+};
+
+const serializeLink = (content: string, target: LinkTarget): string => {
+  const titleText = target.title ? ` "${escapeLinkTitle(target.title)}"` : '';
+
+  return `[${content}](${escapeLinkDestination(target.href)}${titleText})`;
+};
+
+const serializeInlineNode = (
+  node: RichTextContent,
+  options: SerializeInlineOptions,
+): string => {
+  if (node.type === 'text') {
+    return serializeTextNode(node);
+  }
+
+  if (node.type === 'hardBreak') {
+    return '  \n';
+  }
+
+  return serializeInline(node.content, options);
+};
+
+/**
+ * A single link spanning mixed formatting is stored as one text node per
+ * formatting run, each carrying the same link mark. Find how far the run
+ * extends so it serializes as one markdown link rather than one per node.
+ */
+const findLinkRunEnd = (
+  nodes: RichTextContent[],
+  start: number,
+  target: LinkTarget,
+): number => {
+  let end = start + 1;
+
+  while (end < nodes.length) {
+    const node = nodes[end];
+
+    if (!node) {
+      break;
     }
+
+    if (node.type === 'text' && isSameLinkTarget(target, getLinkTarget(node))) {
+      end += 1;
+      continue;
+    }
+
+    break;
   }
 
-  return serialized;
+  return end;
 };
 
 const serializeInline = (
   content: RichTextContent[] | undefined,
   options: SerializeInlineOptions = {},
-): string =>
-  (content ?? [])
-    .map((node) => {
-      if (node.type === 'text') {
-        return serializeTextNode(node, options);
-      }
+): string => {
+  const nodes = content ?? [];
+  const parts: string[] = [];
+  let index = 0;
 
-      if (node.type === 'hardBreak') {
-        return '  \n';
-      }
+  while (index < nodes.length) {
+    const node = nodes[index];
 
-      return serializeInline(node.content, options);
-    })
-    .join('');
+    if (!node) {
+      index += 1;
+      continue;
+    }
+
+    const target = options.links === false ? undefined : getLinkTarget(node);
+
+    if (!target || node.type !== 'text') {
+      parts.push(serializeInlineNode(node, options));
+      index += 1;
+      continue;
+    }
+
+    const end = findLinkRunEnd(nodes, index, target);
+    const inner = nodes
+      .slice(index, end)
+      .map((runNode) => serializeInlineNode(runNode, options))
+      .join('');
+
+    parts.push(serializeLink(inner, target));
+    index = end;
+  }
+
+  return parts.join('');
+};
 
 const getInlineContent = (node: RichTextContent): RichTextContent[] => {
   switch (node.type) {
