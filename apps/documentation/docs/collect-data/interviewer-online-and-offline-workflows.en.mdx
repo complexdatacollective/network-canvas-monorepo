@@ -116,6 +116,16 @@ If you are comfortable with the potential risks, it should be possible to use th
 
 If your interview devices have no internet connection, use a USB flash drive or other external storage to carry files in both directions.
 
+<AppOnly axis="interviewer" app="current">
+
+<TipBox danger={true}>
+
+Interviewer runs in a web browser, so each device needs a connection **once, before it goes offline**: open Interviewer on the device — or install it as a Progressive Web App — while it is still connected. That first load is what stores the app on the device; after it, protocol import, interviews, and export all work with no connection at all. A device that has never loaded Interviewer cannot open it in the field.
+
+</TipBox>
+
+</AppOnly>
+
 <TipBox>
 
 The offline workflow assumes every interface in your protocol works offline. Some schema-8 interfaces in **Interviewer** — notably [Geospatial](/en/design-protocols/interface-documentation/geospatial), which loads maps over the internet — require a connection _during the interview_, so a protocol that uses them cannot be run fully offline. Protocols that need a connection show a **Requires internet** indicator on their protocol card. Schema-7 protocols in **Interviewer Classic** are unaffected.
