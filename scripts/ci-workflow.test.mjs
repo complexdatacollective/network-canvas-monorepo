@@ -82,6 +82,30 @@ test('e2e-policy can query the Actions API for the merge-queue fast path', () =>
   assert.match(policyJob, /GH_TOKEN: \$\{\{ github\.token \}\}/);
 });
 
+test('unit tests use affected task selection for PRs and merge groups', () => {
+  const testJob = job('test');
+  assert.ok(testJob, 'test job exists');
+  assert.match(
+    testJob,
+    /DIFF_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.merge_group\.base_sha \}\}/,
+    'test job diffs each event against its full base',
+  );
+  assert.match(
+    testJob,
+    /pull_request\|merge_group\)/,
+    'both PR and merge-group events enter the affected path',
+  );
+  assert.match(
+    testJob,
+    /TURBO_SCM_BASE="\$DIFF_BASE_SHA" pnpm exec turbo run test --affected/,
+  );
+  assert.match(
+    testJob,
+    /git cat-file -e "\$DIFF_BASE_SHA\^\{commit\}"/,
+    'a missing diff base fails closed to the full suite',
+  );
+});
+
 test('release job prunes ignored-lane changesets before changesets/action', () => {
   const releaseJob = job('release');
   assert.ok(releaseJob, 'release job exists');

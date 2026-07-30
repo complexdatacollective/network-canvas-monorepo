@@ -129,7 +129,7 @@ describe('Select migration contracts', () => {
       </div>,
     );
 
-    expect(screen.getByTestId('narrow-select')).toHaveStyle({ width: '8rem' });
+    expect(screen.getByTestId('narrow-select').style.width).toBe('8rem');
     await user.click(screen.getByRole('combobox'));
 
     const option = await screen.findByRole('option', { name: longLabel });
