@@ -310,6 +310,18 @@ function getOtherAttribute(
   return updatedNode?.[entityAttributesProperty][OTHER_VARIABLE];
 }
 
+async function waitForDialogToClose() {
+  // DialogProvider deliberately keeps a closing dialog mounted for 500ms.
+  // The full workspace CI run heavily contends this jsdom worker, so allow the
+  // transition the same kind of headroom as the suite's 20s test timeout.
+  await waitFor(
+    () => {
+      expect(screen.queryByTestId('dialog-submit')).not.toBeInTheDocument();
+    },
+    { timeout: 10_000 },
+  );
+}
+
 describe('CategoricalBin other-input honours codebook validation', () => {
   it('keeps the special writer required while honoring the other codebook rules', async () => {
     const { store, getDndStore } = renderCategoricalBin({
@@ -353,9 +365,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     fireEvent.change(input, { target: { value: 'a reason' } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('dialog-submit')).not.toBeInTheDocument();
-    });
+    await waitForDialogToClose();
 
     expect(getOtherAttribute(store)).toBe('a reason');
   });
@@ -382,9 +392,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     fireEvent.change(input, { target: { value: 'a genuinely new reason' } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('dialog-submit')).not.toBeInTheDocument();
-    });
+    await waitForDialogToClose();
 
     expect(getOtherAttribute(store)).toBe('a genuinely new reason');
   });
@@ -406,9 +414,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     fireEvent.change(input, { target: { value: 'a distinct reason' } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('dialog-submit')).not.toBeInTheDocument();
-    });
+    await waitForDialogToClose();
 
     expect(getOtherAttribute(store)).toBe('a distinct reason');
   });
@@ -436,9 +442,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     fireEvent.change(input, { target: { value: 'a genuinely new reason' } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('dialog-submit')).not.toBeInTheDocument();
-    });
+    await waitForDialogToClose();
 
     expect(getOtherAttribute(store)).toBe('a genuinely new reason');
   });
