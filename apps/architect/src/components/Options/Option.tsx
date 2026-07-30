@@ -20,7 +20,11 @@ import {
   type RichTextContent,
 } from '~/utils/markdownAdapter';
 
-import { isOptionComplete, isOptionValueEmpty } from './optionCompleteness';
+import {
+  isOptionComplete,
+  isOptionLabelEmpty,
+  isOptionValueEmpty,
+} from './optionCompleteness';
 import type { OptionValue } from './Options';
 
 const isNumberLike = (value: string) =>
@@ -100,7 +104,7 @@ const Option = ({
   };
 
   if (!isBeingEdited) {
-    const hasLabel = typeof item.label === 'string' && item.label.length > 0;
+    const hasLabel = !isOptionLabelEmpty(item.label);
     const hasValue = !isOptionValueEmpty(item.value);
 
     return (

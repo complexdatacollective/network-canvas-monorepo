@@ -86,6 +86,16 @@ describe('Option', () => {
     expect(isFormValid()).toBe(true);
   });
 
+  it('shows a whitespace-only label as untitled, matching the validator', () => {
+    const { isFormValid } = setup([
+      ...TWO_VALID_OPTIONS,
+      { label: '   ', value: 3 },
+    ]);
+
+    expect(screen.getByText('Untitled option')).toBeInTheDocument();
+    expect(isFormValid()).toBe(false);
+  });
+
   it('reports an incomplete option that was collapsed by adding another', async () => {
     const { isFormValid, getOptions } = setup();
 
