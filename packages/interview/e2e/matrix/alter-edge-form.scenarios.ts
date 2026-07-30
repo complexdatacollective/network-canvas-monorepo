@@ -322,8 +322,9 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const ab = edges.find((e) => e[entityPrimaryKeyProperty] === 'ab');
         const bc = edges.find((e) => e[entityPrimaryKeyProperty] === 'bc');
         expect(ab?.attributes['met-at']).toBe('Work');
-        // The filtered edge remains untouched at the text variable's neutral
-        // value; only the visible A-B edge receives the submitted answer.
+        // SyntheticInterview materialises every declared variable on manual
+        // entities with its type-neutral value. The filtered edge remains
+        // untouched; only the visible A-B edge receives the submitted answer.
         expect(bc?.attributes['met-at']).toBe('');
         expect(edges).toHaveLength(2);
       },

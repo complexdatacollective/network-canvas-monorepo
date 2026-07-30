@@ -105,16 +105,24 @@ describe('QuickAddField', () => {
       'true',
     );
     expect(screen.getByTestId('quick-add-input')).toHaveValue('');
+    expect(screen.getByTestId('quick-add-input')).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(screen.getByTestId('quick-add-toggle')).toHaveAccessibleName(
+      'Quick add input',
+    );
   });
 
   it('resets from the owning form success signal when submitting renders are batched', async () => {
     function Harness() {
-      const [successfulSubmissions, setSuccessfulSubmissions] = useState(0);
+      const [successfulSubmissionCount, setSuccessfulSubmissionCount] =
+        useState(0);
 
       return (
         <Form
           onSubmit={() => {
-            setSuccessfulSubmissions((count) => count + 1);
+            setSuccessfulSubmissionCount((count) => count + 1);
             return { success: true };
           }}
         >
@@ -122,7 +130,7 @@ describe('QuickAddField', () => {
             name="name"
             placeholder="Type a name"
             disabled={false}
-            successfulSubmissions={successfulSubmissions}
+            successfulSubmissionCount={successfulSubmissionCount}
           />
         </Form>
       );

@@ -6,9 +6,9 @@
     - option "Bob"
     - option "Person"
   - textbox "Type a label and press enter..."
-  - button [pressed]
+  - button "Quick add input" [pressed]
   - navigation:
-    - button "Previous Step"
+    - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { getValidations } from '~/utils/validations';
 
 import { parseOptionValue } from '../Option';
-import { minTwoOptions } from '../Options';
+import { completeOptions, minTwoOptions } from '../Options';
 
 describe('Options', () => {
   it('requires at least two options', () => {
@@ -18,6 +18,27 @@ describe('Options', () => {
         { label: 'Two', value: 2 },
       ]),
     ).toBeUndefined();
+  });
+
+  it('requires every option to have a label and a value', () => {
+    expect(
+      completeOptions([
+        { label: 'One', value: 1 },
+        { label: 'Two', value: 2 },
+      ]),
+    ).toBeUndefined();
+    expect(completeOptions([{ label: 'Zero', value: 0 }])).toBeUndefined();
+    expect(completeOptions(undefined)).toBeUndefined();
+
+    expect(completeOptions([{}])).toMatch(/label and a value/i);
+    expect(completeOptions([{ label: 'One' }])).toMatch(/label and a value/i);
+    expect(completeOptions([{ value: 1 }])).toMatch(/label and a value/i);
+    expect(completeOptions([{ label: '  ', value: 1 }])).toMatch(
+      /label and a value/i,
+    );
+    expect(completeOptions([{ label: 'One', value: '' }])).toMatch(
+      /label and a value/i,
+    );
   });
 
   it('normalizes integer-like input without collapsing other strings', () => {

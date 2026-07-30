@@ -48,8 +48,8 @@ const QuickNodeForm = ({
   onShowForm,
   addNode,
 }: QuickNodeFormProps) => {
-  const [successfulSubmissions, setSuccessfulSubmissions] = useState(0);
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
+  const [successfulSubmissionCount, setSuccessfulSubmissionCount] = useState(0);
 
   // Derive the target variable's validation props directly from its
   // codebook definition — quick-add renders its own QuickAddField and only
@@ -98,7 +98,7 @@ const QuickNodeForm = ({
         ...newNodeAttributes,
         [targetVariable]: value[targetVariable] as string,
       });
-      setSuccessfulSubmissions((count) => count + 1);
+      setSuccessfulSubmissionCount((count) => count + 1);
 
       return {
         success: true,
@@ -124,7 +124,7 @@ const QuickNodeForm = ({
             disabled={disabled}
             placeholder="Type a label and press enter..."
             onShowInput={onShowForm ?? undefined}
-            successfulSubmissions={successfulSubmissions}
+            successfulSubmissionCount={successfulSubmissionCount}
             {...validationProps}
             required
             validationContext={validationContext}
