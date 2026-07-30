@@ -14,7 +14,7 @@ const mediaClass =
 const imagePreviewClass =
   'inline-block aspect-video w-1/2 overflow-hidden bg-[#808080] text-[0] [&_img]:block [&_img]:size-full [&_img]:object-contain [&_img]:object-center';
 const responsiveSvgPreviewClass =
-  'inline-block h-[180px] w-[320px] overflow-hidden bg-[#808080] text-[0] [&_img]:block [&_img]:h-[720px] [&_img]:w-[1280px] [&_img]:max-w-none [&_img]:origin-top-left [&_img]:scale-[0.25]';
+  'inline-block h-[180px] w-[320px] overflow-hidden bg-[#808080] text-[0] [&_img]:block [&_img]:h-[720px] [&_img]:w-[1280px] [&_img]:max-w-none [&_img]:origin-top-left [&_img]:scale-[0.25] [&_img]:object-contain [&_img]:object-center';
 
 const Asset = ({ id, size = null }: AssetProps) => {
   const { url, type, name, variables } = useAssetData(id);

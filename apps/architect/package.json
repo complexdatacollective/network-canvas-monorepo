@@ -8,7 +8,7 @@
     "dev:protocols": "VITE_PROTOCOL_SOURCE_AUTHORING=true vite",
     "build": "node scripts/build.mjs",
     "preview": "vite preview",
-    "test": "vitest run --project=unit",
+    "test": "vitest run --project=unit --project=scripts",
     "test:storybook": "vitest run --project=storybook",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build --stats-json",

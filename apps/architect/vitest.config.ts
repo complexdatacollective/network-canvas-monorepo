@@ -56,6 +56,15 @@ export default defineConfig({
       },
       {
         extends: true,
+        test: {
+          name: 'scripts',
+          environment: 'node',
+          include: ['scripts/**/*.{test,spec}.{ts,tsx}'],
+          exclude: ['**/node_modules/**', '**/dist/**'],
+        },
+      },
+      {
+        extends: true,
         plugins: [
           storybookTest({
             configDir: resolve(here, '.storybook'),
