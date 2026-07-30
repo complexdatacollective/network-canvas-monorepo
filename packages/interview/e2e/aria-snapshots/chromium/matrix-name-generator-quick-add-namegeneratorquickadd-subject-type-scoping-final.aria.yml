@@ -6,8 +6,8 @@
   - listbox "Already added"
   - listbox "Added Nodes":
     - option "Priya"
-  - textbox "Type a label and press enter...": Priya
-  - button "Priya" [pressed]
+  - textbox "Type a label and press enter..."
+  - button "Quick add input" [pressed]
   - navigation:
     - button "Previous Step"
     - progressbar "Progress indicator": x

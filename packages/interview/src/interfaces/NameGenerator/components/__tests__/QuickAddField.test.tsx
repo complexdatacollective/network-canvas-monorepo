@@ -104,6 +104,13 @@ describe('QuickAddField', () => {
       'true',
     );
     expect(screen.getByTestId('quick-add-input')).toHaveValue('');
+    expect(screen.getByTestId('quick-add-input')).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(screen.getByTestId('quick-add-toggle')).toHaveAccessibleName(
+      'Quick add input',
+    );
   });
 
   it('closes when the user blurs the enabled input', async () => {

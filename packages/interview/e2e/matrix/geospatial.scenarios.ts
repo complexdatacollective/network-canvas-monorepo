@@ -963,7 +963,7 @@ function buildSearchFlowScenario(): ScenarioDefinition {
       );
       expect(
         stateAfterSearch!.nodes[0]![entityAttributesProperty][variableId],
-      ).toBeUndefined();
+      ).toBeNull();
 
       // Clear button empties the query.
       await stage.geospatial.search('Sidetrack');
