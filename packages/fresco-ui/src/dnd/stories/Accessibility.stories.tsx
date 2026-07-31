@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useCallback, useRef, useState } from 'react';
 
+import { withDndStoreProvider } from '../../storybook-support/withDndStoreProvider';
 import Heading from '../../typography/Heading';
 import Paragraph from '../../typography/Paragraph';
 import { UnorderedList } from '../../typography/UnorderedList';
@@ -138,6 +139,7 @@ function AccessibleDropZone({
 
 const meta: Meta = {
   title: 'Systems/DragAndDrop/Accessibility',
+  decorators: [withDndStoreProvider],
   parameters: {
     layout: 'fullscreen',
     docs: {

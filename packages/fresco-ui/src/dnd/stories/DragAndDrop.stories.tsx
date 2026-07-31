@@ -6,6 +6,7 @@ import { Collection } from '../../collection/components/Collection';
 import { useDragAndDrop } from '../../collection/dnd/useDragAndDrop';
 import { InlineGridLayout } from '../../collection/layout/InlineGridLayout';
 import Node from '../../Node';
+import { withDndStoreProvider } from '../../storybook-support/withDndStoreProvider';
 import Heading from '../../typography/Heading';
 import type { DragMetadata } from '../dnd';
 
@@ -212,6 +213,7 @@ function DragDropExample() {
 
 const meta: Meta = {
   title: 'Systems/DragAndDrop',
+  decorators: [withDndStoreProvider],
   parameters: {
     layout: 'fullscreen',
     docs: {

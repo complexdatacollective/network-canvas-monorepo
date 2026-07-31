@@ -14,6 +14,7 @@ import {
 import Button, { IconButton, MotionButton } from '../Button';
 import Dialog from '../dialogs/Dialog';
 import RichTextRenderer from '../RichTextRenderer';
+import { withDialogProvider } from '../storybook-support/withDialogProvider';
 import Heading from '../typography/Heading';
 import { cx } from '../utils/cva';
 import Field from './Field/Field';
@@ -420,6 +421,7 @@ function AdditionalAttributeItem({
 const meta: Meta<typeof Form> = {
   title: 'Systems/Form/Protocol Schemas',
   component: Form,
+  decorators: [withDialogProvider],
   parameters: {
     layout: 'centered',
   },

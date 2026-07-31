@@ -133,6 +133,19 @@ function compareRunsNewestFirst(a, b) {
   return Number(b.id ?? 0) - Number(a.id ?? 0);
 }
 
+function completedAt(job) {
+  const timestamp = Date.parse(job.completed_at ?? '');
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function compareVerdictsNewestFirst(a, b) {
+  const timeDelta = completedAt(b.job) - completedAt(a.job);
+  if (timeDelta !== 0) return timeDelta;
+  const jobDelta = Number(b.job.id ?? 0) - Number(a.job.id ?? 0);
+  if (jobDelta !== 0) return jobDelta;
+  return Number(b.run.id ?? 0) - Number(a.run.id ?? 0);
+}
+
 function ensureCommit(sha, cwd) {
   if (tryGit(['rev-parse', '--verify', `${sha}^{commit}`], cwd)) return true;
   // Force-pushed-away release tips stay fetchable by SHA on GitHub.
@@ -233,8 +246,11 @@ export async function equivalentValidatedSuites({
       let jobsListingDoubt = false;
       for (const [releaseBranch, trustedRuns] of trustedRunsByBranch) {
         if (!SUITES_BY_RELEASE_REF[releaseBranch][key]) continue;
-        // The newest conclusive verdict on each branch is authoritative: a
-        // failure is never walked past to an older green on that branch.
+        // A rerun retains its workflow's original created_at, so inspect every
+        // bounded candidate and rank conclusive suite jobs by completed_at.
+        // The most recently completed verdict on each branch is authoritative:
+        // a later rerun failure is never hidden by a newer-created green.
+        const conclusiveVerdicts = [];
         for (const run of trustedRuns) {
           const jobs = await jobsFor(run);
           if (jobs === null) {
@@ -245,10 +261,17 @@ export async function equivalentValidatedSuites({
             (candidate) => candidate.name === E2E_JOB_NAMES[key],
           );
           if (!job || !CONCLUSIVE.has(job.conclusion)) continue;
-          branchVerdicts.push({ job, releaseBranch, run });
-          break;
+          if (completedAt(job) === null) {
+            jobsListingDoubt = true;
+            break;
+          }
+          conclusiveVerdicts.push({ job, releaseBranch, run });
         }
         if (jobsListingDoubt) break;
+        const newestVerdict = conclusiveVerdicts.toSorted(
+          compareVerdictsNewestFirst,
+        )[0];
+        if (newestVerdict) branchVerdicts.push(newestVerdict);
       }
       if (jobsListingDoubt) continue;
 
@@ -283,8 +306,8 @@ export async function equivalentValidatedSuites({
         }
       }
       if (candidateDoubt) continue;
-      const newestEquivalent = equivalentVerdicts.toSorted((a, b) =>
-        compareRunsNewestFirst(a.run, b.run),
+      const newestEquivalent = equivalentVerdicts.toSorted(
+        compareVerdictsNewestFirst,
       )[0];
       validated[key] = newestEquivalent?.job.conclusion === 'success';
     }

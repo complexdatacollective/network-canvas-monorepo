@@ -1599,10 +1599,13 @@ jobs:
   # version is always the current apps/<app>/package.json version.
   legacy-release-detect:
     # Only ever runs on main — a manual workflow_dispatch from a feature branch
-    # must not mirror/publish branch-only code to the external app repos.
+    # must not mirror/publish branch-only code to the external app repos. An E2E
+    # benchmark dispatch is measurement-only and must not enter any release lane.
     if: >-
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      github.ref == 'refs/heads/main'
+      && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:

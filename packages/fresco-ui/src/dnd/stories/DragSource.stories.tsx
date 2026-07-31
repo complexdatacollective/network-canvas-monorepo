@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 
+import { withDndStoreProvider } from '../../storybook-support/withDndStoreProvider';
 import Heading from '../../typography/Heading';
 import Paragraph from '../../typography/Paragraph';
 import { type DragMetadata, useDragSource, useDropTarget } from '../dnd';
@@ -133,6 +134,7 @@ function DropZone({
 
 const meta: Meta = {
   title: 'Systems/DragAndDrop/DragSource',
+  decorators: [withDndStoreProvider],
   parameters: {
     layout: 'fullscreen',
     docs: {

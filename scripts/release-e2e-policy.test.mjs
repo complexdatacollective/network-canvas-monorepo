@@ -710,7 +710,14 @@ function fakeActionsApi({
     }
     if (failJobs) return { ok: false };
     const runId = url.match(/\/fake-jobs\/(\d+)\?/)?.[1];
-    const jobs = jobsByRun[runId] ?? [];
+    const jobs = (jobsByRun[runId] ?? []).map((job) =>
+      Object.hasOwn(job, 'completed_at')
+        ? job
+        : {
+            ...job,
+            completed_at: `2026-07-${String(runId).padStart(2, '0')}T01:00:00Z`,
+          },
+    );
     return {
       ok: true,
       json: async () => ({
@@ -872,6 +879,80 @@ test('the newest equivalent verdict across release lanes is authoritative', asyn
     }),
   );
   assert.deepEqual(validated, {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  });
+});
+
+test('cross-branch rerun verdicts are ordered by job completion time', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'app release refresh',
+  );
+
+  const validated = await interviewerLaneCall(
+    cwd,
+    headSha,
+    fakeActionsApi({
+      runsByBranch: {
+        [APP_RELEASE_REF]: [fakeRun(2, headSha, '2026-07-02T00:00:00Z')],
+        'changeset-release/main': [
+          fakeRun(1, validatedSha, '2026-07-01T00:00:00Z'),
+        ],
+      },
+      jobsByRun: {
+        2: [
+          {
+            name: 'interview-e2e',
+            conclusion: 'success',
+            completed_at: '2026-07-03T00:00:00Z',
+          },
+          {
+            name: 'interviewer-e2e',
+            conclusion: 'success',
+            completed_at: '2026-07-03T00:00:00Z',
+          },
+        ],
+        1: [
+          {
+            name: 'interview-e2e',
+            conclusion: 'failure',
+            completed_at: '2026-07-04T00:00:00Z',
+          },
+          {
+            name: 'interviewer-e2e',
+            conclusion: 'failure',
+            completed_at: '2026-07-04T00:00:00Z',
+          },
+        ],
+      },
+    }),
+  );
+
+  assert.deepEqual(validated, {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  });
+});
+
+test('equivalence reuse fails closed without a job completion time', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const fetcher = fakeActionsApi({
+    runs: [fakeRun(1, validatedSha)],
+    jobsByRun: {
+      1: INTERVIEWER_LANE_SUCCESS_JOBS.map((job) => ({
+        ...job,
+        completed_at: null,
+      })),
+    },
+  });
+
+  assert.deepEqual(await interviewerLaneCall(cwd, validatedSha, fetcher), {
     interview: false,
     interviewer: false,
     architect: false,

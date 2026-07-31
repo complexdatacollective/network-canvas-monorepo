@@ -2,12 +2,14 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useRef } from 'react';
 
 import { Button } from './Button';
+import { withToastProvider } from './storybook-support/withToastProvider';
 import { type ToastVariant, useToast } from './Toast';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
 const meta = {
   title: 'Components/Toast',
+  decorators: [withToastProvider],
   parameters: {
     layout: 'fullscreen',
   },

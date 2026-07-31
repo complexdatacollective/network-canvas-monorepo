@@ -90,6 +90,32 @@ test('manual Interview E2E benchmarks can select runner, workers, and shard', ()
   assert.match(interview, /--shard=\$E2E_SHARD/);
 });
 
+test('manual Interview E2E benchmarks cannot enter the legacy release lane', () => {
+  const detect = job('legacy-release-detect');
+  assert.ok(detect, 'legacy-release-detect job exists');
+  assert.match(
+    detect,
+    /!\(github\.event_name == 'workflow_dispatch'\n\s+&& inputs\.interview_e2e_benchmark == true\)/,
+  );
+
+  for (const jobName of [
+    'interviewer-release-build',
+    'architect-release-build',
+    'interviewer-mirror',
+    'interviewer-release-publish',
+    'architect-mirror',
+    'architect-release-publish',
+  ]) {
+    const downstream = job(jobName);
+    assert.ok(downstream, `${jobName} exists`);
+    assert.match(downstream, /needs:[\s\S]*?legacy-release-detect/);
+    assert.match(
+      downstream,
+      /needs\.legacy-release-detect\.outputs\.(?:architect|interviewer)_released == 'true'/,
+    );
+  }
+});
+
 test('pull requests lint only changed files while merge groups lint fully', () => {
   const lint = job('lint');
   assert.ok(lint, 'lint job exists');

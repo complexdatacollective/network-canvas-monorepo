@@ -6,7 +6,7 @@ import SuperJSON from 'superjson';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
+import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 type StageType = 'NameGenerator' | 'NameGeneratorQuickAdd';
 

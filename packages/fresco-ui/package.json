@@ -742,7 +742,7 @@
     "test:storybook": "vitest run --project=storybook",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build --stats-json",
-    "chromatic": "chromatic --only-changed --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static --storybook-base-dir=packages/fresco-ui",
+    "chromatic": "chromatic --only-changed --exit-zero-on-changes --storybook-build-dir=storybook-static --storybook-base-dir=packages/fresco-ui --storybook-config-dir=.storybook --untraced 'apps/architect/package.json' --untraced 'apps/architect-classic/package.json' --untraced 'apps/interviewer/package.json' --untraced 'apps/interviewer-classic/package.json' --untraced 'packages/interview/package.json' --untraced 'packages/site-navigation-element/package.json'",
     "prepublishOnly": "pnpm build",
     "clean": "rm -rf .turbo node_modules dist",
     "sync-exports": "node scripts/generate-publish-exports.mjs"

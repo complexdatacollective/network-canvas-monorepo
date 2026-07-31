@@ -30,6 +30,7 @@ const OXFMT_EXTENSIONS = new Set([
   '.mdx',
   '.scss',
   '.svelte',
+  '.toml',
   '.yaml',
   '.yml',
 ]);
@@ -65,8 +66,7 @@ export function requiresFullLint(path) {
 }
 
 export function planChangedLint(paths, fileExists = existsSync) {
-  const existing = paths.filter((path) => fileExists(path));
-  const fullRunTrigger = existing.find(requiresFullLint);
+  const fullRunTrigger = paths.find(requiresFullLint);
   if (fullRunTrigger) {
     return {
       full: true,
@@ -76,6 +76,7 @@ export function planChangedLint(paths, fileExists = existsSync) {
     };
   }
 
+  const existing = paths.filter((path) => fileExists(path));
   return {
     full: false,
     reason: '',
@@ -95,7 +96,7 @@ export function changedPaths(base, head = 'HEAD', cwd = process.cwd()) {
       'diff',
       '--name-only',
       '--no-renames',
-      '--diff-filter=ACMRTUXB',
+      '--diff-filter=ACDMRTUXB',
       '-z',
       base,
       head,
@@ -135,7 +136,9 @@ export async function runLint(plan) {
     jobs.push(['oxlint', run('pnpm', ['exec', 'oxlint', ...paths])]);
   }
   if (plan.full || plan.oxfmtFiles.length > 0) {
-    const paths = plan.full ? ['.'] : ['--', ...plan.oxfmtFiles];
+    const paths = plan.full
+      ? ['.']
+      : ['--no-error-on-unmatched-pattern', '--', ...plan.oxfmtFiles];
     jobs.push(['oxfmt', run('pnpm', ['exec', 'oxfmt', '--check', ...paths])]);
   }
   if (jobs.length === 0) {

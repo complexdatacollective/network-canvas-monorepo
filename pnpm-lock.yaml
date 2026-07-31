@@ -277,6 +277,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
 
   apps/architect:
     dependencies:

@@ -15,6 +15,13 @@ import {
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ROOT = resolve(SCRIPT_DIR, '../../../..');
 const BASELINE_SEGMENT = '/e2e/visual-snapshots/';
+const TEST_FILE_PATTERN = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
+
+const E2E_SUITE_DIRS = new Map([
+  ['apps/architect/e2e/', 'architect'],
+  ['packages/interview/e2e/', 'interview'],
+  ['apps/interviewer/e2e/', 'interviewer'],
+]);
 
 const NONVISUAL_PATH_PATTERNS = [
   /^\.agents\//,
@@ -24,7 +31,7 @@ const NONVISUAL_PATH_PATTERNS = [
   /^docs\//,
   /(^|\/)__tests__\//,
   /\.(?:md|mdx)$/,
-  /\.(?:test|spec)\.[cm]?[jt]sx?$/,
+  TEST_FILE_PATTERN,
   /\.d\.[cm]?ts$/,
 ];
 
@@ -45,12 +52,8 @@ function git(root, args) {
 }
 
 function gitLines(root, args) {
-  try {
-    const output = git(root, args);
-    return output ? output.split('\n').filter(Boolean) : [];
-  } catch {
-    return [];
-  }
+  const output = git(root, args);
+  return output ? output.split('\n').filter(Boolean) : [];
 }
 
 function isKnownNonvisual(path) {
@@ -74,6 +77,13 @@ function owningPackage(path, packages) {
   );
 }
 
+function e2eSuiteForPath(path) {
+  for (const [dir, suite] of E2E_SUITE_DIRS) {
+    if (path.startsWith(dir)) return suite;
+  }
+  return null;
+}
+
 export function classifyVisualChanges(paths, root = DEFAULT_ROOT) {
   const packages = collectWorkspacePackages(root);
   const relevance = new Map(
@@ -89,8 +99,16 @@ export function classifyVisualChanges(paths, root = DEFAULT_ROOT) {
   for (const path of [...new Set(paths)].toSorted((a, b) =>
     a.localeCompare(b),
   )) {
-    if (isKnownNonvisual(path)) {
+    const e2eSuite = e2eSuiteForPath(path);
+    const isE2ETest = e2eSuite && TEST_FILE_PATTERN.test(path);
+
+    if (isKnownNonvisual(path) && !isE2ETest) {
       ignored.push(path);
+      continue;
+    }
+
+    if (e2eSuite) {
+      suites[e2eSuite].push(path);
       continue;
     }
 
@@ -121,7 +139,7 @@ export function classifyVisualChanges(paths, root = DEFAULT_ROOT) {
   };
 }
 
-function changedPaths(root = DEFAULT_ROOT, baseRef = 'origin/main') {
+export function changedPaths(root = DEFAULT_ROOT, baseRef = 'origin/main') {
   const paths = new Set();
 
   try {
@@ -134,9 +152,11 @@ function changedPaths(root = DEFAULT_ROOT, baseRef = 'origin/main') {
     ])) {
       paths.add(path);
     }
-  } catch {
-    // A shallow/offline checkout may not have the base. Working-tree changes
-    // are still useful, and the CLI warns that committed changes were omitted.
+  } catch (error) {
+    throw new Error(
+      `Unable to compare committed changes with ${baseRef}; fetch the base ref and retry`,
+      { cause: error },
+    );
   }
 
   for (const args of [
@@ -188,7 +208,13 @@ if (
     process.stderr.write(`Not a Git worktree: ${root}\n`);
     process.exitCode = 1;
   } else {
-    const paths = changedPaths(root, base);
-    printReport(classifyVisualChanges(paths, root), paths);
+    try {
+      const paths = changedPaths(root, base);
+      printReport(classifyVisualChanges(paths, root), paths);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`${message}\n`);
+      process.exitCode = 1;
+    }
   }
 }

@@ -4,6 +4,20 @@ on:
   push:
     branches:
       - 'changeset-release/**'
+  # Once the three `UI Tests: ...` contexts are required on main, every PR and
+  # merge-group SHA must receive them. Normal trusted PRs and merge groups use
+  # Chromatic's zero-snapshot `--skip` path below; release PRs receive the same
+  # contexts from their real release-branch push run.
+  pull_request:
+  merge_group:
+  # Dependabot and fork PR events cannot read Actions secrets. Wait for the
+  # unprivileged CI run, then publish status-only Chromatic results from the
+  # trusted default-branch workflow without checking out proposed code.
+  workflow_run:
+    workflows:
+      - CI and Release
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       project:
@@ -20,9 +34,129 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # Keep release uploads separate from status-only PR runs so the PR event
+  # caused by a generated-branch push cannot cancel its real capture. Within an
+  # event class, only the newest run for a ref can publish statuses.
+  group: chromatic-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.event.merge_group.head_ref || github.event.workflow_run.pull_requests[0].number || github.ref_name || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
+  # GitHub required contexts apply to every PR targeting main, not only release
+  # PRs. Emit all three external UI Test statuses without publishing snapshots
+  # for normal PRs and merge-group commits. `workflow_run` handles Dependabot
+  # and forks only after their unprivileged CI run, checks out trusted
+  # default-branch code, and never executes the proposed head. Generated release
+  # PRs are deliberately excluded: their push run below publishes real or
+  # lane-proven `--skip` results at the same head SHA.
+  required-statuses:
+    name: Required UI Test statuses
+    if: >-
+      github.event_name == 'merge_group'
+      || (github.event_name == 'pull_request'
+      && github.actor != 'dependabot[bot]'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && !startsWith(github.event.pull_request.head.ref, 'changeset-release/'))
+      || (github.event_name == 'workflow_run'
+      && github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.pull_requests[0].number
+      && (github.event.workflow_run.actor.login == 'dependabot[bot]'
+      || github.event.workflow_run.head_repository.full_name != github.repository)
+      && !startsWith(github.event.workflow_run.head_branch, 'changeset-release/'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          # workflow_run defaults to the trusted default branch. No later step
+          # checks out or evaluates the untrusted PR head.
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch untrusted status commit without checking it out
+        id: verify-head
+        if: github.event_name == 'workflow_run'
+        env:
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          EXPECTED_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "refs/pull/$PR_NUMBER/head"
+          if [[ "$(git rev-parse FETCH_HEAD)" != "$EXPECTED_HEAD_SHA" ]]; then
+            echo "::notice::CI result was superseded by a newer PR head; no stale statuses published"
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "current=true" >> "$GITHUB_OUTPUT"
+      # This privileged status-only path deliberately avoids shared caches and
+      # installs only the three Chromatic workspaces from trusted code.
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+      - name: Install status-only dependencies
+        run: >-
+          pnpm install --frozen-lockfile --ignore-scripts
+          --filter @codaco/fresco-ui...
+          --filter @codaco/interview...
+          --filter @codaco/interviewer...
+      - name: Publish passing UI Test statuses without snapshots
+        if: steps.verify-head.outputs.current != 'false'
+        env:
+          CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.event.workflow_run.head_sha || github.sha }}
+          CHROMATIC_BRANCH: ${{ (github.event.pull_request.head.repo.full_name != github.repository && github.event.pull_request.head.label) || github.event.pull_request.head.ref || github.event.merge_group.head_ref || github.event.workflow_run.head_branch || github.ref_name }}
+          CHROMATIC_SLUG: ${{ github.repository }}
+          FRESCO_UI_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_FRESCO_UI }}
+          INTERVIEW_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEW }}
+          INTERVIEWER_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEWER }}
+        run: |
+          for token_name in FRESCO_UI_TOKEN INTERVIEW_TOKEN INTERVIEWER_TOKEN; do
+            if [[ -z "${!token_name}" ]]; then
+              echo "::error::Missing $token_name; required Chromatic statuses cannot be published"
+              exit 1
+            fi
+          done
+
+          run_skip() {
+            local project=$1
+            local package=$2
+            local token=$3
+            CHROMATIC_PROJECT_TOKEN="$token" \
+              pnpm --filter "$package" exec chromatic \
+              --skip --skip-update-check --no-interactive \
+              --log-file="$RUNNER_TEMP/chromatic-$project.log"
+          }
+
+          run_skip fresco-ui @codaco/fresco-ui "$FRESCO_UI_TOKEN" &
+          fresco_pid=$!
+          run_skip interview @codaco/interview "$INTERVIEW_TOKEN" &
+          interview_pid=$!
+          run_skip interviewer @codaco/interviewer "$INTERVIEWER_TOKEN" &
+          interviewer_pid=$!
+
+          result=0
+          wait "$fresco_pid" || result=1
+          wait "$interview_pid" || result=1
+          wait "$interviewer_pid" || result=1
+
+          node scripts/chromatic-observability.mjs \
+            fresco-ui "$RUNNER_TEMP/chromatic-fresco-ui.log" skipped
+          node scripts/chromatic-observability.mjs \
+            interview "$RUNNER_TEMP/chromatic-interview.log" skipped
+          node scripts/chromatic-observability.mjs \
+            interviewer "$RUNNER_TEMP/chromatic-interviewer.log" skipped
+          exit "$result"
+      - name: Upload Chromatic diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: chromatic-required-status-logs-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chromatic-*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
   detect:
-    if: github.actor != 'dependabot[bot]'
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     outputs:
       fresco_ui: ${{ steps.affected.outputs.fresco_ui }}
@@ -78,65 +212,17 @@ jobs:
           fi
 
           head_sha=$(git rev-parse HEAD)
-          base_sha=$BEFORE_SHA
+          selection=$(node scripts/chromatic-affected.mjs \
+            --base "$BEFORE_SHA" \
+            --head "$head_sha" \
+            --main "origin/$DEFAULT_BRANCH" \
+            --release-ref "$GITHUB_REF_NAME")
 
-          if [[ -z "$base_sha" || "$base_sha" =~ ^0+$ ]] \
-            || ! git cat-file -e "${base_sha}^{commit}" 2>/dev/null; then
-            base_sha=$(git merge-base "$head_sha" "origin/$DEFAULT_BRANCH" 2>/dev/null || true)
-          fi
+          fresco_ui=$(jq -r '.fresco_ui' <<< "$selection")
+          interview=$(jq -r '.interview' <<< "$selection")
+          interviewer=$(jq -r '.interviewer' <<< "$selection")
 
-          if [[ -z "$base_sha" ]]; then
-            echo "No comparison base is available; running every Chromatic project."
-            {
-              echo "fresco_ui=true"
-              echo "interview=true"
-              echo "interviewer=true"
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          shared_paths=(
-            .github/actions/turbo-ci-setup
-            .github/workflows/chromatic.yml
-            .nvmrc
-            package.json
-            pnpm-lock.yaml
-            pnpm-workspace.yaml
-            tooling/tailwind
-            turbo.json
-          )
-
-          affected() {
-            local package=$1
-            local paths=()
-
-            if ! git diff --quiet "$base_sha" "$head_sha" -- "${shared_paths[@]}"; then
-              echo true
-              return
-            fi
-
-            while IFS= read -r workspace_path; do
-              [[ -n "$workspace_path" ]] && paths+=("$workspace_path")
-            done < <(
-              pnpm exec turbo ls --filter="${package}..." --output=json \
-                | jq -r '.packages.items[].path'
-            )
-
-            if git diff --quiet "$base_sha" "$head_sha" -- "${paths[@]}"; then
-              echo false
-            else
-              echo true
-            fi
-          }
-
-          fresco_ui=$(affected @codaco/fresco-ui)
-          interview=$(affected @codaco/interview)
-          interviewer=$(affected @codaco/interviewer)
-
-          echo "Comparing $base_sha..$head_sha"
-          echo "Fresco UI affected: $fresco_ui"
-          echo "Interview affected: $interview"
-          echo "Interviewer affected: $interviewer"
+          echo "Chromatic selection: $selection"
 
           {
             echo "fresco_ui=$fresco_ui"
@@ -144,11 +230,101 @@ jobs:
             echo "interviewer=$interviewer"
           } >> "$GITHUB_OUTPUT"
 
+          {
+            echo "## Chromatic project selection"
+            echo
+            echo "Comparison: \`${BEFORE_SHA:-unavailable}..$head_sha\`"
+            echo
+            echo '| Project | Run snapshots | Reason |'
+            echo '| --- | --- | --- |'
+            echo "| fresco-ui | $fresco_ui | $(jq -r '(.reasons.fresco_ui // ["manual selection"]) | join("; ")' <<< "$selection") |"
+            echo "| interview | $interview | $(jq -r '(.reasons.interview // ["manual selection"]) | join("; ")' <<< "$selection") |"
+            echo "| interviewer | $interviewer | $(jq -r '(.reasons.interviewer // ["manual selection"]) | join("; ")' <<< "$selection") |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  skip-unaffected:
+    name: Mark unaffected projects passing
+    needs: detect
+    if: >-
+      needs.detect.result == 'success'
+      && (needs.detect.outputs.fresco_ui != 'true'
+      || needs.detect.outputs.interview != 'true'
+      || needs.detect.outputs.interviewer != 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+        with:
+          ignore-scripts: true
+      - name: Publish unaffected UI Test statuses without snapshots
+        env:
+          FRESCO_UI_AFFECTED: ${{ needs.detect.outputs.fresco_ui }}
+          INTERVIEW_AFFECTED: ${{ needs.detect.outputs.interview }}
+          INTERVIEWER_AFFECTED: ${{ needs.detect.outputs.interviewer }}
+          FRESCO_UI_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_FRESCO_UI }}
+          INTERVIEW_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEW }}
+          INTERVIEWER_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEWER }}
+        run: |
+          run_skip() {
+            local project=$1
+            local package=$2
+            local token=$3
+            if [[ -z "$token" ]]; then
+              echo "::error::Missing Chromatic token for $project"
+              return 1
+            fi
+            CHROMATIC_PROJECT_TOKEN="$token" \
+              pnpm --filter "$package" exec chromatic \
+              --skip --skip-update-check --no-interactive \
+              --log-file="$RUNNER_TEMP/chromatic-$project.log"
+          }
+
+          pids=()
+          projects=()
+          if [[ "$FRESCO_UI_AFFECTED" != "true" ]]; then
+            run_skip fresco-ui @codaco/fresco-ui "$FRESCO_UI_TOKEN" &
+            pids+=("$!")
+            projects+=(fresco-ui)
+          fi
+          if [[ "$INTERVIEW_AFFECTED" != "true" ]]; then
+            run_skip interview @codaco/interview "$INTERVIEW_TOKEN" &
+            pids+=("$!")
+            projects+=(interview)
+          fi
+          if [[ "$INTERVIEWER_AFFECTED" != "true" ]]; then
+            run_skip interviewer @codaco/interviewer "$INTERVIEWER_TOKEN" &
+            pids+=("$!")
+            projects+=(interviewer)
+          fi
+
+          result=0
+          for pid in "${pids[@]}"; do
+            wait "$pid" || result=1
+          done
+          for project in "${projects[@]}"; do
+            node scripts/chromatic-observability.mjs \
+              "$project" "$RUNNER_TEMP/chromatic-$project.log" skipped
+          done
+          exit "$result"
+      - name: Upload Chromatic diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: chromatic-unaffected-logs-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chromatic-*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
   fresco-ui:
     name: Fresco UI
     needs: detect
     if: needs.detect.outputs.fresco_ui == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -162,13 +338,32 @@ jobs:
       - name: Run Chromatic
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_FRESCO_UI }}
-        run: pnpm --filter @codaco/fresco-ui chromatic
+        run: |
+          pnpm --filter @codaco/fresco-ui chromatic -- \
+            --skip-update-check --no-interactive \
+            --log-file="$RUNNER_TEMP/chromatic-fresco-ui.log"
+      - name: Summarize Chromatic build
+        if: always()
+        run: >-
+          node scripts/chromatic-observability.mjs
+          fresco-ui
+          "$RUNNER_TEMP/chromatic-fresco-ui.log"
+          affected
+      - name: Upload Chromatic diagnostic log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: chromatic-fresco-ui-log-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chromatic-fresco-ui.log
+          if-no-files-found: ignore
+          retention-days: 7
 
   interview:
     name: Interview
     needs: detect
     if: needs.detect.outputs.interview == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -182,13 +377,32 @@ jobs:
       - name: Run Chromatic
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEW }}
-        run: pnpm --filter @codaco/interview chromatic
+        run: |
+          pnpm --filter @codaco/interview chromatic -- \
+            --skip-update-check --no-interactive \
+            --log-file="$RUNNER_TEMP/chromatic-interview.log"
+      - name: Summarize Chromatic build
+        if: always()
+        run: >-
+          node scripts/chromatic-observability.mjs
+          interview
+          "$RUNNER_TEMP/chromatic-interview.log"
+          affected
+      - name: Upload Chromatic diagnostic log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: chromatic-interview-log-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chromatic-interview.log
+          if-no-files-found: ignore
+          retention-days: 7
 
   interviewer:
     name: Interviewer
     needs: detect
     if: needs.detect.outputs.interviewer == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -202,4 +416,22 @@ jobs:
       - name: Run Chromatic
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEWER }}
-        run: pnpm --filter @codaco/interviewer chromatic
+        run: |
+          pnpm --filter @codaco/interviewer chromatic -- \
+            --skip-update-check --no-interactive \
+            --log-file="$RUNNER_TEMP/chromatic-interviewer.log"
+      - name: Summarize Chromatic build
+        if: always()
+        run: >-
+          node scripts/chromatic-observability.mjs
+          interviewer
+          "$RUNNER_TEMP/chromatic-interviewer.log"
+          affected
+      - name: Upload Chromatic diagnostic log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: chromatic-interviewer-log-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chromatic-interviewer.log
+          if-no-files-found: ignore
+          retention-days: 7

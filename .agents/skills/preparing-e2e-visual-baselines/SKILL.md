@@ -19,6 +19,10 @@ Linux PNG baselines with the rendering change.
    It examines committed feature-branch changes plus staged, unstaged, and
    untracked files. Treat its suites as a conservative upper bound.
 
+   If the classifier exits nonzero because it cannot resolve the comparison
+   base or merge base, do not trust a partial working-tree classification.
+   Fetch the base ref and retry, or treat all three suites as candidates.
+
 2. Inspect the actual diff for each candidate. Generate a suite only if the
    change can alter pixels or the state captured by that suite. Examples that
    normally do **not** require generation include documentation, types alone,
@@ -32,6 +36,9 @@ The classifier follows the workspace dependency graph. In particular:
 
 - `apps/architect` affects Architect only; `apps/interviewer` affects
   Interviewer only.
+- E2E specs, helpers, and configuration under a suite's own `e2e/` directory
+  affect only that suite. Committed visual baselines themselves are ignored to
+  avoid a regeneration loop.
 - `packages/interview` affects Interview and both host apps.
 - `packages/fresco-ui` affects all three when the changed component/style is
   rendered there.
