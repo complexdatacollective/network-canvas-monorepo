@@ -49,12 +49,24 @@ export async function generateMetadata({
   if (!protocol) notFound();
 
   const pathname = `/protocol-gallery/${protocol.slug}`;
+  const canonical = `https://networkcanvas.com/${locale}${pathname}`;
   return {
     title: protocol.title,
     description: protocol.description,
     alternates: {
-      canonical: `https://networkcanvas.com/${locale}${pathname}`,
+      canonical,
       languages: localeAlternates(pathname),
+    },
+    openGraph: {
+      title: protocol.title,
+      description: protocol.description,
+      url: canonical,
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary',
+      title: protocol.title,
+      description: protocol.description,
     },
   };
 }

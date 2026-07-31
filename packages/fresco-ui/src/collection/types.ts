@@ -77,7 +77,9 @@ export type ItemProps = {
   'data-dragging'?: boolean;
   'data-drop-target'?: boolean;
   'onFocus'?: React.FocusEventHandler;
+  'onClickCapture'?: React.MouseEventHandler;
   'onClick'?: React.MouseEventHandler;
+  'onKeyDownCapture'?: React.KeyboardEventHandler;
   'onKeyDown'?: React.KeyboardEventHandler;
   'onPointerDown'?: React.PointerEventHandler;
   'onPointerMove'?: React.PointerEventHandler;

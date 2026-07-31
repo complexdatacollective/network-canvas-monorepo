@@ -117,26 +117,13 @@ function GalleryProtocolCard({
         background={
           <ProtocolPattern
             name={protocol.title}
-            className="absolute inset-0 size-full opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[selected]:opacity-100 motion-reduce:transition-none"
+            className="absolute inset-0 size-full opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-40 group-focus-visible:opacity-40 group-data-[selected]:opacity-40 motion-reduce:transition-none"
           />
         }
-        className="elevation-low flex size-full min-h-[32rem]"
+        gradientClassName="hidden"
+        className="elevation-low bg-surface flex size-full min-h-[32rem]"
       >
-        <div className="relative z-10 flex size-full min-h-[32rem] flex-1 flex-col gap-[max(10px,2.5cqi)] p-[6cqi]">
-          <div className="flex flex-wrap gap-2">
-            {protocol.featured ? (
-              <Badge color="purple-pizazz">{t('featured')}</Badge>
-            ) : null}
-            {protocol.usesSociograms ? (
-              <Badge color="sea-serpent">{t('filters.sociograms')}</Badge>
-            ) : null}
-            {protocol.usesRosters ? (
-              <Badge color="mustard">{t('filters.rosters')}</Badge>
-            ) : null}
-            {protocol.usesDyadCensus ? (
-              <Badge color="neon-coral">{t('filters.dyadCensus')}</Badge>
-            ) : null}
-          </div>
+        <div className="relative z-10 flex size-full min-h-[32rem] flex-1 flex-col gap-4 p-7">
           <Heading
             level="h3"
             margin="none"
@@ -158,7 +145,18 @@ function GalleryProtocolCard({
           >
             {protocol.description}
           </Paragraph>
-          <span className="text-primary mt-auto flex items-center gap-2 pt-[max(16px,4cqi)] text-[max(13px,3.25cqi)] font-bold">
+          <div className="flex flex-wrap gap-2">
+            {protocol.usesSociograms ? (
+              <Badge color="sea-serpent">{t('filters.sociograms')}</Badge>
+            ) : null}
+            {protocol.usesRosters ? (
+              <Badge color="mustard">{t('filters.rosters')}</Badge>
+            ) : null}
+            {protocol.usesDyadCensus ? (
+              <Badge color="neon-coral">{t('filters.dyadCensus')}</Badge>
+            ) : null}
+          </div>
+          <span className="text-primary mt-auto flex items-center gap-2 pt-4 text-[max(13px,3.25cqi)] font-bold">
             {t('viewDetails')}
             <ArrowUpRight
               aria-hidden

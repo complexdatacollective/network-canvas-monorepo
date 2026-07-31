@@ -99,10 +99,30 @@ function CollectionItemComponent<T>({
   const itemId = `${collectionId}-item-${node.key}`;
   const contextValue = { key: node.key };
 
+  // Native links and buttons do not honor aria-disabled by themselves. Use
+  // capture handlers so consumers can keep their own activation handlers
+  // without accidentally bypassing Collection's disabled state.
+  const blockDisabledNativeClick = useCallback((event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+  const blockDisabledNativeKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [],
+  );
+
   // Build ItemProps to pass to renderItem
   const fullItemProps: ItemProps = {
     'ref': combinedRef,
-    'tabIndex': nativeItemSemantics ? undefined : itemProps.tabIndex,
+    'tabIndex': nativeItemSemantics
+      ? isDisabled
+        ? -1
+        : undefined
+      : itemProps.tabIndex,
     'role': nativeItemSemantics ? undefined : 'option',
     'aria-selected': nativeItemSemantics ? undefined : isSelected || undefined,
     'aria-disabled': isDisabled || undefined,
@@ -113,7 +133,13 @@ function CollectionItemComponent<T>({
     'data-dragging': undefined,
     'data-drop-target': undefined,
     'onFocus': nativeItemSemantics ? undefined : itemProps.onFocus,
+    'onClickCapture':
+      nativeItemSemantics && isDisabled ? blockDisabledNativeClick : undefined,
     'onClick': nativeItemSemantics ? undefined : itemProps.onClick,
+    'onKeyDownCapture':
+      nativeItemSemantics && isDisabled
+        ? blockDisabledNativeKeyDown
+        : undefined,
     'onKeyDown': nativeItemSemantics ? undefined : composedOnKeyDown,
     'onPointerDown': dndDragProps.onPointerDown as
       | React.PointerEventHandler

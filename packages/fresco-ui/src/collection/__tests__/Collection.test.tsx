@@ -143,6 +143,39 @@ describe('Collection', () => {
       expect(firstLink.closest('section')).toHaveAttribute('tabindex', '-1');
     });
 
+    it('blocks activation of disabled native links', async () => {
+      const user = userEvent.setup();
+      const onActivate = vi.fn();
+
+      render(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="none"
+          nativeItemSemantics
+          disabledKeys={['2']}
+          renderItem={(item, itemProps) => (
+            <a href={`#${item.id}`} onClick={onActivate} {...itemProps}>
+              {item.name}
+            </a>
+          )}
+        >
+          {(CollectionElements) => CollectionElements}
+        </Collection>,
+      );
+
+      const disabledLink = screen.getByRole('link', { name: 'Banana' });
+      expect(disabledLink).toHaveAttribute('aria-disabled', 'true');
+      expect(disabledLink).toHaveAttribute('tabindex', '-1');
+
+      await user.click(disabledLink);
+
+      expect(onActivate).not.toHaveBeenCalled();
+      expect(window.location.hash).not.toBe('#2');
+    });
+
     it('should render empty state when no items', () => {
       const layout = new ListLayout<Item>({ gap: 2 });
 
