@@ -1,6 +1,12 @@
 'use client';
 
-import { BookOpenText, Download, ExternalLink, FileText } from 'lucide-react';
+import {
+  BookOpenText,
+  Download,
+  ExternalLink,
+  FileText,
+  Images,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { buttonVariants } from '@codaco/fresco-ui/Button';
@@ -8,20 +14,25 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cn } from '~/lib/cn';
-import type { ProtocolDownload } from '~/lib/protocolGallery';
+import type {
+  ProtocolDownload,
+  ProtocolSupplementaryMaterial,
+} from '~/lib/protocolGallery';
 
 export function ProtocolDownloads({
   downloads,
+  supplementaryMaterials,
   sandboxUrl,
 }: {
   downloads: ProtocolDownload[];
-  sandboxUrl: string;
+  supplementaryMaterials: ProtocolSupplementaryMaterial[];
+  sandboxUrl?: string;
 }) {
   const t = useTranslations('ProtocolGallery.detail');
 
   return (
     <Surface spacing="lg" shadow="lg" className="overflow-visible">
-      <Heading level="h2" margin="none" className="text-3xl">
+      <Heading level="h2" margin="none" className="text-xl">
         {t('downloads')}
       </Heading>
       <Paragraph margin="none" className="text-text/70 mt-4 max-w-3xl">
@@ -35,7 +46,7 @@ export function ProtocolDownloads({
             className="border-outline/45 border-t pt-6 first:border-t-0 first:pt-0"
           >
             {downloads.length > 1 ? (
-              <Heading level="h3" margin="none" className="text-xl">
+              <Heading level="h3" margin="none" className="text-lg">
                 {t('wave', { wave: download.wave })}
               </Heading>
             ) : null}
@@ -73,19 +84,46 @@ export function ProtocolDownloads({
         ))}
       </div>
 
-      <a
-        href={sandboxUrl}
-        target="_blank"
-        rel="noreferrer"
-        className={cn(
-          buttonVariants({ color: 'default', variant: 'text' }),
-          'mt-7',
-        )}
-      >
-        <FileText aria-hidden className="size-5" />
-        {t('openSandbox')}
-        <ExternalLink aria-hidden className="size-4" />
-      </a>
+      {supplementaryMaterials.length > 0 ? (
+        <div className="border-outline/45 mt-7 border-t pt-6">
+          <Heading level="h3" margin="none" className="text-lg">
+            {t('supportingMaterials')}
+          </Heading>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {supplementaryMaterials.map((material) => (
+              <a
+                key={material.filename}
+                href={material.path}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonVariants({
+                  color: 'secondary',
+                  variant: 'outline',
+                })}
+              >
+                <Images aria-hidden className="size-5" />
+                {material.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {sandboxUrl ? (
+        <a
+          href={sandboxUrl}
+          target="_blank"
+          rel="noreferrer"
+          className={cn(
+            buttonVariants({ color: 'default', variant: 'text' }),
+            'mt-7',
+          )}
+        >
+          <FileText aria-hidden className="size-5" />
+          {t('openSandbox')}
+          <ExternalLink aria-hidden className="size-4" />
+        </a>
+      ) : null}
     </Surface>
   );
 }

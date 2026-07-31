@@ -171,9 +171,9 @@
       "filterLabel": "Filter protocols",
       "filters": {
         "all": "All",
-        "sociograms": "Sociograms",
-        "rosters": "Rosters",
-        "dyadCensus": "Dyad census"
+        "sociograms": "Uses sociograms",
+        "rosters": "Uses rosters",
+        "dyadCensus": "Uses dyad census"
       },
       "sortLabel": "Sort protocols",
       "sortOptions": {
@@ -218,7 +218,8 @@
       "publication": "Publication",
       "viewPublication": "View publication",
       "downloads": "Use this protocol",
-      "downloadDescription": "Download the Network Canvas protocol and its printable codebook, or explore the protocol in Fresco.",
+      "downloadDescription": "Download the Network Canvas protocol and its printable codebook. Additional supporting materials are included when available.",
+      "supportingMaterials": "Supporting materials",
       "wave": "Wave {wave}",
       "protocol": "Protocol file",
       "codebook": "Codebook PDF",

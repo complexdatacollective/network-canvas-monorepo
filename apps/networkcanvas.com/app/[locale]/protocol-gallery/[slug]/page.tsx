@@ -128,10 +128,9 @@ export default async function ProtocolDetailPage({
             ) : null}
             <Heading
               level="h1"
-              variant="display-heading"
               margin="none"
               className={cn(
-                'tablet-portrait:text-6xl text-4xl wrap-break-word',
+                'text-2xl font-black wrap-break-word',
                 protocol.featured && 'mt-7',
               )}
             >
@@ -139,7 +138,7 @@ export default async function ProtocolDetailPage({
             </Heading>
             <Paragraph
               margin="none"
-              className="text-text/65 mt-5 text-lg leading-relaxed"
+              className="text-text/65 mt-4 leading-relaxed"
             >
               {protocol.authors}
             </Paragraph>
@@ -149,19 +148,19 @@ export default async function ProtocolDetailPage({
         <div className="tablet-landscape:grid-cols-[minmax(0,1.5fr)_minmax(20rem,0.75fr)] mt-12 grid grid-cols-[minmax(0,1fr)] gap-8">
           <div className="min-w-0 space-y-8">
             <Surface spacing="lg" shadow="md">
-              <Heading level="h2" margin="none" className="text-3xl">
+              <Heading level="h2" margin="none" className="text-xl">
                 {t('detail.summary')}
               </Heading>
               <Paragraph
                 margin="none"
-                className="text-text/80 mt-5 text-lg leading-relaxed"
+                className="text-text/80 mt-4 leading-relaxed"
               >
                 {protocol.summary}
               </Paragraph>
             </Surface>
 
             <Surface spacing="lg" shadow="md">
-              <Heading level="h2" margin="none" className="text-3xl">
+              <Heading level="h2" margin="none" className="text-xl">
                 {t('detail.citation')}
               </Heading>
               <Paragraph
@@ -183,6 +182,7 @@ export default async function ProtocolDetailPage({
 
             <ProtocolDownloads
               downloads={protocol.downloads}
+              supplementaryMaterials={protocol.supplementaryMaterials}
               sandboxUrl={protocol.sandboxUrl}
             />
           </div>
@@ -193,7 +193,7 @@ export default async function ProtocolDetailPage({
             shadow="md"
             className="min-w-0 self-start"
           >
-            <Heading level="h2" margin="none" className="text-2xl">
+            <Heading level="h2" margin="none" className="text-xl">
               {t('detail.details')}
             </Heading>
             <dl className="mt-7 space-y-5">

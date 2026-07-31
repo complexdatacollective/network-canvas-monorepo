@@ -12,6 +12,12 @@ export type ProtocolDownload = {
   codebookPath: string;
 };
 
+export type ProtocolSupplementaryMaterial = {
+  filename: string;
+  path: string;
+  label: string;
+};
+
 export type GalleryProtocol = {
   [key: string]: unknown;
   slug: string;
@@ -31,11 +37,12 @@ export type GalleryProtocol = {
   usesDyadCensus: boolean;
   summary: string;
   description: string;
-  sandboxUrl: string;
+  sandboxUrl: string | undefined;
   featured: boolean;
   dateAdded: string;
   searchText: string;
   downloads: ProtocolDownload[];
+  supplementaryMaterials: ProtocolSupplementaryMaterial[];
 };
 
 const requiredText = z.string().trim().min(1);
@@ -67,6 +74,8 @@ const codebookFilename = filename.refine(
 );
 const optionalProtocolFilename = z.union([protocolFilename, z.literal('')]);
 const optionalCodebookFilename = z.union([codebookFilename, z.literal('')]);
+const optionalText = z.string().trim().optional().default('');
+const optionalHttpsUrl = z.union([httpsUrl, z.literal('')]);
 const yesNo = z.enum(['yes', 'no']);
 
 const protocolRowSchema = z
@@ -92,12 +101,16 @@ const protocolRowSchema = z
     'Codebook Summary (original)': requiredText,
     'Protocol File (asset)': protocolFilename,
     'Codebook Summary (asset)': codebookFilename,
-    'Fresco': httpsUrl,
+    'Fresco': optionalHttpsUrl,
     'Featured': yesNo,
     'Protocol File (asset) Wave 2': optionalProtocolFilename,
     'Codebook Summary (asset) Wave 2': optionalCodebookFilename,
     'Protocol File (asset) Wave 3': optionalProtocolFilename,
     'Codebook Summary (asset) Wave 3': optionalCodebookFilename,
+    'Supplementary Material Label': optionalText,
+    'Supplementary Material (asset)': optionalCodebookFilename
+      .optional()
+      .default(''),
     'Date Added': requiredText,
   })
   .strict();
@@ -178,25 +191,51 @@ function buildDownloads(row: ProtocolRow): ProtocolDownload[] {
   return downloads;
 }
 
+function buildSupplementaryMaterials(
+  row: ProtocolRow,
+): ProtocolSupplementaryMaterial[] {
+  const label = row['Supplementary Material Label'];
+  const materialFilename = row['Supplementary Material (asset)'];
+
+  if (!label && !materialFilename) return [];
+  if (!label || !materialFilename) {
+    throw new Error(
+      'Supplementary material: label and filename must be paired',
+    );
+  }
+
+  return [
+    {
+      filename: materialFilename,
+      path: assetPath(materialFilename),
+      label,
+    },
+  ];
+}
+
 async function assertAssetsExist(
   protocols: GalleryProtocol[],
   assetDirectory: string,
 ): Promise<void> {
   await Promise.all(
     protocols.flatMap((protocol) =>
-      protocol.downloads.flatMap((download) =>
-        [download.protocolFilename, download.codebookFilename].map(
-          async (assetFilename) => {
-            try {
-              await access(join(assetDirectory, assetFilename));
-            } catch (error) {
-              throw new Error(`Missing gallery asset: ${assetFilename}`, {
-                cause: error,
-              });
-            }
-          },
+      [
+        ...protocol.downloads.flatMap((download) => [
+          download.protocolFilename,
+          download.codebookFilename,
+        ]),
+        ...protocol.supplementaryMaterials.map(
+          ({ filename: materialFilename }) => materialFilename,
         ),
-      ),
+      ].map(async (assetFilename) => {
+        try {
+          await access(join(assetDirectory, assetFilename));
+        } catch (error) {
+          throw new Error(`Missing gallery asset: ${assetFilename}`, {
+            cause: error,
+          });
+        }
+      }),
     ),
   );
 }
@@ -284,7 +323,7 @@ export async function loadProtocolGallery(
       usesDyadCensus: normalizedEdgeGeneration.includes('dyad census'),
       summary: normalizeText(row['Qualitative Summary']),
       description,
-      sandboxUrl: row.Fresco,
+      sandboxUrl: row.Fresco || undefined,
       featured: row.Featured === 'yes',
       dateAdded: parseDateAdded(row['Date Added']),
       searchText: [
@@ -298,6 +337,7 @@ export async function loadProtocolGallery(
         .join(' ')
         .toLocaleLowerCase('en'),
       downloads: buildDownloads(row),
+      supplementaryMaterials: buildSupplementaryMaterials(row),
     };
   });
 

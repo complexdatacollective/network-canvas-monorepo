@@ -21,6 +21,7 @@ import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
+import Pill from '@codaco/fresco-ui/Pill';
 import { ProtocolCard as DeckProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
 import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -96,7 +97,7 @@ function GalleryProtocolCard({
             className="absolute inset-0 size-full"
           />
         }
-        className="elevation-low aspect-square"
+        className="elevation-low h-full min-h-[32rem]"
       >
         <div className="relative z-10 flex size-full flex-col gap-[max(10px,2.5cqi)] p-[6cqi]">
           <div className="flex flex-wrap gap-2">
@@ -113,13 +114,13 @@ function GalleryProtocolCard({
           <Heading
             level="h3"
             margin="none"
-            className="line-clamp-5 flex-1 content-center text-[max(18px,5cqi)] leading-[1.05] font-black wrap-break-word hyphens-auto"
+            className="flex-1 content-center text-[max(18px,5cqi)] leading-[1.05] font-black wrap-break-word hyphens-auto"
           >
             {protocol.title}
           </Heading>
           <Paragraph
             margin="none"
-            className="line-clamp-3 text-[max(12px,3.25cqi)] leading-tight text-current/80"
+            className="text-sm leading-relaxed text-current/80"
           >
             {protocol.description}
           </Paragraph>
@@ -278,7 +279,7 @@ export function ProtocolGallery({
         {(collectionElements) => (
           <>
             <div className="bg-surface/60 mt-10 rounded p-4 backdrop-blur-md">
-              <div className="tablet-landscape:grid-cols-[minmax(16rem,1fr)_auto] grid gap-4">
+              <div>
                 <UnconnectedField
                   name="protocol-search"
                   label={t('searchLabel')}
@@ -302,61 +303,78 @@ export function ProtocolGallery({
                     ) : undefined
                   }
                 />
-                <UnconnectedField
-                  name="protocol-sort"
-                  label={t('sortLabel')}
-                  labelHidden
-                  component={SelectField}
-                  value={sort}
-                  onChange={(value) => setSort(parseSortId(value))}
-                  options={sortIds.map((id) => ({
-                    value: id,
-                    label: t(`sortOptions.${id}`),
-                  }))}
-                  className="tablet-landscape:w-56 w-full"
-                />
               </div>
               <div className="tablet-landscape:flex-row tablet-landscape:items-center tablet-landscape:justify-between mt-4 flex flex-col gap-4">
-                <div className="overflow-x-auto pb-1">
+                <fieldset className="flex flex-wrap items-center gap-2">
+                  <legend className="sr-only">{t('filterLabel')}</legend>
+                  {[
+                    { value: 'all' as const, label: t('filters.all') },
+                    {
+                      value: 'sociograms' as const,
+                      label: t('filters.sociograms'),
+                      icon: <Waypoints aria-hidden className="size-4" />,
+                    },
+                    {
+                      value: 'rosters' as const,
+                      label: t('filters.rosters'),
+                      icon: <UsersRound aria-hidden className="size-4" />,
+                    },
+                    {
+                      value: 'dyadCensus' as const,
+                      label: t('filters.dyadCensus'),
+                      icon: <Rows3 aria-hidden className="size-4" />,
+                    },
+                  ].map((option) => {
+                    const isSelected = filter === option.value;
+                    return (
+                      <Pill
+                        key={option.value}
+                        as="button"
+                        size="lg"
+                        variant={isSelected ? 'filled' : 'outline'}
+                        aria-pressed={isSelected}
+                        icon={option.icon}
+                        onClick={() => setFilter(option.value)}
+                        className={
+                          isSelected
+                            ? 'focusable bg-primary text-primary-contrast border-primary hover:bg-primary/90'
+                            : 'focusable bg-surface text-text/70 hover:bg-primary/10 hover:text-primary'
+                        }
+                      >
+                        {option.label}
+                      </Pill>
+                    );
+                  })}
+                </fieldset>
+                <div className="tablet-landscape:w-auto flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+                  <UnconnectedField
+                    name="protocol-sort"
+                    label={t('sortLabel')}
+                    labelHidden
+                    component={SelectField}
+                    value={sort}
+                    onChange={(value) => setSort(parseSortId(value))}
+                    options={sortIds.map((id) => ({
+                      value: id,
+                      label: t(`sortOptions.${id}`),
+                    }))}
+                    className="tablet-landscape:w-56 w-full sm:w-56"
+                  />
                   <SegmentedSwitcher
-                    value={filter}
-                    onValueChange={setFilter}
-                    aria-label={t('filterLabel')}
+                    value={view}
+                    onValueChange={setView}
+                    aria-label={t('viewLabel')}
                     size="sm"
                     options={[
-                      { value: 'all', label: t('filters.all') },
                       {
-                        value: 'sociograms',
-                        label: t('filters.sociograms'),
-                        icon: Waypoints,
+                        value: 'cards',
+                        label: t('views.cards'),
+                        icon: LayoutGrid,
                       },
-                      {
-                        value: 'rosters',
-                        label: t('filters.rosters'),
-                        icon: UsersRound,
-                      },
-                      {
-                        value: 'dyadCensus',
-                        label: t('filters.dyadCensus'),
-                        icon: Rows3,
-                      },
+                      { value: 'table', label: t('views.table'), icon: Rows3 },
                     ]}
                   />
                 </div>
-                <SegmentedSwitcher
-                  value={view}
-                  onValueChange={setView}
-                  aria-label={t('viewLabel')}
-                  size="sm"
-                  options={[
-                    {
-                      value: 'cards',
-                      label: t('views.cards'),
-                      icon: LayoutGrid,
-                    },
-                    { value: 'table', label: t('views.table'), icon: Rows3 },
-                  ]}
-                />
               </div>
             </div>
 

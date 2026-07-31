@@ -171,9 +171,9 @@
       "filterLabel": "Filtrar protocolos",
       "filters": {
         "all": "Todos",
-        "sociograms": "Sociogramas",
-        "rosters": "Listas",
-        "dyadCensus": "Censo de díadas"
+        "sociograms": "Usa sociogramas",
+        "rosters": "Usa listas",
+        "dyadCensus": "Usa el censo de díadas"
       },
       "sortLabel": "Ordenar protocolos",
       "sortOptions": {
@@ -218,7 +218,8 @@
       "publication": "Publicación",
       "viewPublication": "Ver publicación",
       "downloads": "Utilizar este protocolo",
-      "downloadDescription": "Descargue el protocolo de Network Canvas y su libro de códigos imprimible, o explore el protocolo en Fresco.",
+      "downloadDescription": "Descargue el protocolo de Network Canvas y su libro de códigos imprimible. Se incluyen materiales de apoyo adicionales cuando están disponibles.",
+      "supportingMaterials": "Materiales de apoyo",
       "wave": "Oleada {wave}",
       "protocol": "Archivo de protocolo",
       "codebook": "PDF del libro de códigos",

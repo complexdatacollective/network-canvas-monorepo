@@ -20,7 +20,7 @@ describe('loadProtocolGallery', () => {
   it('loads the shipped protocols and resolves every local download', async () => {
     const protocols = await loadProtocolGallery();
 
-    expect(protocols).toHaveLength(6);
+    expect(protocols).toHaveLength(7);
     expect(protocols.find(({ featured }) => featured)?.slug).toBe(
       'test-to-prep',
     );
@@ -29,9 +29,22 @@ describe('loadProtocolGallery', () => {
         .find(({ slug }) => slug === 'sixhumene')
         ?.downloads.map(({ wave }) => wave),
     ).toEqual([1, 2, 3]);
+    expect(protocols.find(({ slug }) => slug === 'snaaps')).toMatchObject({
+      dateAdded: '2026-06-12',
+      sandboxUrl: undefined,
+      usesRosters: true,
+      usesSociograms: true,
+      usesDyadCensus: false,
+      supplementaryMaterials: [
+        {
+          filename: 'SNAAPS_v1.0 Sample Interview Screenshots.pdf',
+          label: 'Sample interview screenshots',
+        },
+      ],
+    });
 
     for (const protocol of protocols) {
-      expect(protocol.dateAdded).toBe('2025-10-22');
+      expect(protocol.dateAdded).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       for (const download of protocol.downloads) {
         expect(download.protocolFilename).not.toContain('/');
         expect(download.codebookFilename).not.toContain('/');
@@ -43,6 +56,11 @@ describe('loadProtocolGallery', () => {
         ).toBe(true);
         expect(download.protocolPath).not.toContain('assets.networkcanvas.com');
         expect(download.codebookPath).not.toContain('assets.networkcanvas.com');
+      }
+      for (const material of protocol.supplementaryMaterials) {
+        expect(material.filename).not.toContain('/');
+        expect(material.path).toContain('/protocols/protocol-gallery/');
+        expect(material.path).not.toContain('assets.networkcanvas.com');
       }
     }
   });
