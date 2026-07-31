@@ -117,10 +117,9 @@ function GalleryProtocolCard({
         background={
           <ProtocolPattern
             name={protocol.title}
-            className="absolute inset-0 size-full opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-40 group-focus-visible:opacity-40 group-data-[selected]:opacity-40 motion-reduce:transition-none"
+            className="absolute inset-0 size-full opacity-10 transition-opacity duration-500 ease-out group-hover:opacity-20 group-focus-visible:opacity-20 group-data-[selected]:opacity-20 motion-reduce:transition-none"
           />
         }
-        gradientClassName="hidden"
         className="elevation-low bg-surface flex size-full min-h-[32rem]"
       >
         <div className="relative z-10 flex size-full min-h-[32rem] flex-1 flex-col gap-4 p-7">
