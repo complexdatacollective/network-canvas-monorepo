@@ -21,18 +21,13 @@ const DB_NAME = 'ArchitectProtocolDB';
 // Deterministic id so create-from-scratch snapshots are stable across runs.
 const FIXED_ID = 'e2e-protocol';
 
-// Distinguishes each seedProtocol call's init script within a worker, so two
-// seeds in one test each apply exactly once (see the one-shot guard below).
-let seedCallCount = 0;
-
 // Writes a protocol straight into the app's real storage contract (raw
-// IndexedDB `protocols`/`assets` stores + the two redux-remember
-// sessionStorage keys) rather than driving an import UI, so specs can start
-// from an arbitrary protocol state in one fast, hook-free call. The row shape
+// IndexedDB `protocols`/`assets` stores + the redux-remember `app` key) rather
+// than driving an import UI, so specs can start from an arbitrary protocol
+// state in one fast, hook-free call. The row shape
 // mirrors `StoredProtocolRow`/`StoredAsset` in `~/utils/assetDB` (not imported
-// here — see `read-store.ts` for why) and the id is shared between both
-// `@@remember-*` keys, matching what the app's own autosave path
-// (`putStoredProtocol`) writes on every debounced flush.
+// here — see `read-store.ts` for why). Session storage remembers only the row
+// id; the protocol body is always restored from this canonical IndexedDB row.
 export async function seedProtocol(
   page: Page,
   protocol: CurrentProtocol,
@@ -40,41 +35,16 @@ export async function seedProtocol(
 ): Promise<string> {
   const id = opts.id ?? FIXED_ID;
   const name = opts.name ?? protocol.name;
-  // Mirror the app's own autosave invariant: protocolLibraryListener.ts always
-  // flushes `name: protocol.name` (protocolLibraryListener.ts:185), so the
-  // library row's display name and the protocol JSON's own `name` field are
+  // Mirror the app's commit invariant: protocolLibraryListener always writes
+  // `name: protocol.name`, so the library row's display name and the protocol
+  // JSON's own `name` field are
   // never independent. A caller-supplied `opts.name` must land in both, not
   // just the row's denormalized field, or a read-back of the protocol JSON
   // would disagree with what was asked to be seeded.
   const seededProtocol: CurrentProtocol =
     opts.name === undefined ? protocol : { ...protocol, name };
 
-  // 1. Seed sessionStorage BEFORE the app boots, so redux-remember rehydrates
-  //    straight into /protocol with this protocol active. Both keys must
-  //    carry the same id — a mismatch makes redux-remember discard `present`
-  //    on rehydrate. Init scripts run before EVERY document load in the
-  //    context, so guard with a per-call sessionStorage flag (sessionStorage
-  //    survives same-tab navigations): without it, a reload/navigation after
-  //    the spec edits the protocol would rewrite the redux-remember keys back
-  //    to the original seed, masking the autosaved edits under test.
-  const seedFlag = `__e2eSeeded:${++seedCallCount}`;
-  await page.addInitScript(
-    ([storageId, proto, flag]) => {
-      if (sessionStorage.getItem(flag)) return;
-      sessionStorage.setItem(flag, '1');
-      sessionStorage.setItem(
-        '@@remember-app',
-        JSON.stringify({ activeProtocolId: storageId }),
-      );
-      sessionStorage.setItem(
-        '@@remember-activeProtocol',
-        JSON.stringify({ present: proto, activeProtocolId: storageId }),
-      );
-    },
-    [id, seededProtocol, seedFlag] as const,
-  );
-
-  // 2. Navigate once so Dexie creates ArchitectProtocolDB, then write the
+  // 1. Navigate once so Dexie creates ArchitectProtocolDB, then write the
   //    durable protocol row + asset rows via raw IndexedDB (Dexie isn't on
   //    `window`, so this talks to the native API directly).
   await page.goto('/');
@@ -127,6 +97,7 @@ export async function seedProtocol(
           description: proto.description,
           sourceRef: { kind: 'e2e', id: 'e2e-fixture' },
           schemaVersion: proto.schemaVersion,
+          validated: true,
           createdAt: now,
           updatedAt: now,
         });
@@ -152,6 +123,19 @@ export async function seedProtocol(
       assets: opts.assets ?? [],
     },
   );
+
+  // 2. Remember only the active row id, then reload so startup exercises the
+  //    same canonical IndexedDB restore path as a real tab refresh. Delete the
+  //    legacy body key explicitly so a stale test context cannot mask a
+  //    regression by rehydrating protocol content from sessionStorage.
+  await page.evaluate((storageId) => {
+    sessionStorage.setItem(
+      '@@remember-app',
+      JSON.stringify({ activeProtocolId: storageId }),
+    );
+    sessionStorage.removeItem('@@remember-activeProtocol');
+  }, id);
+  await page.reload();
 
   return id;
 }

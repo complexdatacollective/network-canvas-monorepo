@@ -2,7 +2,8 @@ type InvalidProtocolDialogOpenEvent = {
   type: 'open';
   id: string;
   errorMessage: string;
-  onConfirm: () => void;
+  onRevert: () => void;
+  onReturnToStart: () => void;
   onClose: () => void;
 };
 

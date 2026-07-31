@@ -61,7 +61,7 @@ const AssetBrowser = ({
       void confirm({
         title: 'Delete Resource?',
         description:
-          'Are you sure you want to delete this resource? This action cannot be undone.',
+          'Are you sure you want to delete this resource? You can restore it with Undo while this protocol remains open.',
         confirmLabel: 'Delete Resource',
         cancelLabel: 'Cancel',
         intent: 'destructive',

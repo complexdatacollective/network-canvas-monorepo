@@ -1,62 +1,65 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { rememberEnhancer, rememberReducer } from 'redux-remember';
+import {
+  MigrateError,
+  REMEMBER_REHYDRATED,
+  RehydrateError,
+  rememberEnhancer,
+  rememberReducer,
+} from 'redux-remember';
 
 import { setActiveProtocolScope } from '~/utils/activeProtocolScope';
+import { reportError } from '~/utils/reportError';
 import { createSessionStorageDriver } from '~/utils/sessionStorageDriver';
 
-import {
-  deserializeActiveProtocol,
-  serializeActiveProtocol,
-} from './activeProtocolPersistence';
 import { analyticsListenerMiddleware } from './middleware/analyticsListener';
 import logger from './middleware/logger';
 import { protocolLibraryListenerMiddleware } from './middleware/protocolLibraryListener';
 import { protocolValidationListenerMiddleware } from './middleware/protocolValidationListener';
 import { scrollPositionsListenerMiddleware } from './middleware/scrollPositionsListener';
 import { stageEditorDraftListenerMiddleware } from './middleware/stageEditorDraftListener';
-import { getActiveProtocolId, setStorageUnavailable } from './modules/app';
+import { getActiveProtocolId } from './modules/app';
 import type { RootState } from './modules/root';
 import { rootReducer } from './modules/root';
+import { createStoreRehydrationGate } from './storeRehydration';
 
-// The session slices (which protocol is open + its undo timeline) persist to the
-// tab's own sessionStorage rather than the origin-wide localStorage, so two tabs
-// editing different protocols stay isolated. The durable protocol content lives
-// in IndexedDB (protocolLibrary); sessionStorage only holds the in-session view.
-const rememberedKeys = ['app', 'activeProtocol'];
+// sessionStorage remembers only which library row this tab had open. Protocol
+// content and its canonical validity live exclusively in IndexedDB; the undo
+// timeline is intentionally session-local and starts fresh after reload.
+const rememberedKeys = ['app'];
+const rememberDriver = createSessionStorageDriver();
+const serialize = (data: unknown): string => JSON.stringify(data);
+const unserialize = (data: string): unknown => JSON.parse(data);
 
-// If sessionStorage rejects writes or hits its quota, the driver silently
-// degrades to an in-memory map — which means a reload would rehydrate the stale
-// persisted `present` over the newer durable IndexedDB row, dropping autosaved
-// edits. Surface that via the storage-unavailable banner (and disable autosave)
-// instead. The driver notifies once; the store may not exist yet when the
-// driver is constructed, so dispatch is deferred behind a setter.
-let dispatchStorageUnavailable: (() => void) | null = null;
-// redux-remember rehydrates during store creation, so the driver can hit an
-// unavailable sessionStorage (its getItem fallback) before the setter below is
-// installed. Buffer that first signal so the banner still fires once the store
-// exists, rather than being lost to the no-op.
-let storageUnavailablePending = false;
-const rememberDriver = createSessionStorageDriver(() => {
-  if (dispatchStorageUnavailable) {
-    dispatchStorageUnavailable();
-  } else {
-    storageUnavailablePending = true;
+const rehydrationGate = createStoreRehydrationGate();
+export const storeRehydrated = rehydrationGate.promise;
+
+const rememberedReducer = rememberReducer(rootReducer);
+const reducer: typeof rootReducer = (state, action) => {
+  // If session restoration stalls, startup continues with the initial state.
+  // Ignore a late payload so it cannot install an active id after the matching
+  // canonical IndexedDB restore opportunity has passed.
+  if (
+    action.type === REMEMBER_REHYDRATED &&
+    rehydrationGate.getResult() === 'timed-out'
+  ) {
+    return rootReducer(state, action);
   }
-});
 
-// Persist only the timeline `present` (not the up-to-1000-entry undo history),
-// stamping the owning library id so a reload can reject a mismatched id/present
-// pair, and rebuild it into a full empty-history timeline on reload. The store
-// is created below, so read the current id lazily at serialise time.
-const serialize = (data: unknown, key: string): string =>
-  key === 'activeProtocol'
-    ? serializeActiveProtocol(data, getActiveProtocolId(store.getState()))
-    : JSON.stringify(data);
+  const nextState = rememberedReducer(state, action);
+  if (action.type === REMEMBER_REHYDRATED) {
+    // Promise continuations run after this dispatch completes, so startup sees
+    // the fully rehydrated activeProtocolId before reading IndexedDB.
+    rehydrationGate.settle('rehydrated');
+  }
+  return nextState;
+};
 
-const unserialize = (data: string, key: string): unknown =>
-  key === 'activeProtocol' ? deserializeActiveProtocol(data) : JSON.parse(data);
-
-const reducer = rememberReducer(rootReducer);
+const handleRememberError = (error: unknown): void => {
+  reportError(error, { operation: 'session-state-persistence' });
+  if (error instanceof RehydrateError || error instanceof MigrateError) {
+    rehydrationGate.settle('failed');
+  }
+};
 
 const store = configureStore({
   reducer,
@@ -80,20 +83,10 @@ const store = configureStore({
       rememberEnhancer(rememberDriver, rememberedKeys, {
         serialize,
         unserialize,
+        errorHandler: handleRememberError,
       }) as unknown as ReturnType<typeof getDefaultEnhancers>[0],
     ),
 });
-
-// Now the store exists, let the session-storage driver surface a write/quota
-// failure via the banner. Dispatched at most once (the driver only notifies on
-// its first fallback).
-dispatchStorageUnavailable = () => {
-  store.dispatch(setStorageUnavailable(true));
-};
-// Flush a fallback that happened during rehydration, before the setter existed.
-if (storageUnavailablePending) {
-  dispatchStorageUnavailable();
-}
 
 // Keep the non-redux asset scope in sync with the persisted active protocol id,
 // so asset utils resolve against the right protocol after dispatches and after

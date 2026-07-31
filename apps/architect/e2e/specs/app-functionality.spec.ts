@@ -141,6 +141,38 @@ test('imports a .netcanvas via the home dropzone', async ({
   await expect(architectPage).toHaveURL(/\/protocol$/);
 });
 
+test('reload restores the canonical protocol instead of a legacy session body', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'Canonical Reload' });
+  await gotoProtocol(architectPage);
+
+  await architectPage.evaluate(() => {
+    sessionStorage.setItem(
+      '@@remember-activeProtocol',
+      JSON.stringify({
+        activeProtocolId: 'e2e-protocol',
+        present: {
+          name: 'Invalid Session Copy',
+          schemaVersion: 8,
+          codebook: null,
+          stages: null,
+        },
+      }),
+    );
+  });
+  await architectPage.reload();
+
+  await expect(
+    architectPage.getByRole('textbox', { name: 'Protocol name' }),
+  ).toHaveValue('Canonical Reload');
+  await expect(
+    architectPage.getByRole('dialog', { name: 'Misconfigured Protocol' }),
+  ).toHaveCount(0);
+});
+
 test('does not leave a cleared protocol in browser history', async ({
   architectPage,
   seed,
@@ -196,16 +228,8 @@ test('undoes and redoes a protocol-name edit', async ({
   });
   await expect(nameField).toHaveValue('Undo Redo Seed');
 
-  // The undo timeline (ducks/middleware/timeline.ts) resets to an empty
-  // history on every rehydrate (activeProtocolPersistence.ts only persists
-  // `present`, never `past`/`future`), and its very first post-rehydrate
-  // action always seeds the timeline's baseline locus without pushing
-  // history — it doesn't yet know whether a following edit is "the" edit to
-  // make undoable. This priming edit absorbs that one-time no-history
-  // action deterministically, so the assertions below exercise a real,
-  // single-step undo/redo of the *second* edit rather than depending on
-  // incidental app-boot dispatches (validation, scroll-restore, etc.) to
-  // have already consumed that slot.
+  // Canonical restore seeds a fresh timeline baseline. Two edits below make
+  // the single-step undo/redo target explicit.
   await nameField.fill('Undo Redo Intermediate');
   await nameField.blur();
   await expect(nameField).toHaveValue('Undo Redo Intermediate');

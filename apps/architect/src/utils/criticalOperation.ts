@@ -7,8 +7,7 @@
 
 let importInProgress = false;
 let exportInProgress = false;
-let autosavePendingUntil = 0;
-let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+let protocolCommitsInProgress = 0;
 
 const listeners = new Set<() => void>();
 
@@ -28,32 +27,24 @@ export const setExportInProgress = (value: boolean) => {
   emit();
 };
 
-// Committing a stage edit clears the stage-editor draft-dirty flag immediately,
-// but the committed edit lives only in the redux slice until the autosave
-// listener's debounce (600ms) elapses and its async IndexedDB write resolves.
-// A reload during that window silently discards the just-committed edit. This
-// signal marks that window as critical without touching the autosave listener:
-// callers flag a commit, and it self-clears after a duration covering the
-// debounce plus write. Re-flagging extends the window (a fresh edit restarts the
-// debounce). The timer is deliberately not persisted or reference-counted — a
-// closed tab simply lets the window lapse.
-export const AUTOSAVE_PENDING_WINDOW_MS = 2_000;
-
-export const markAutosavePending = () => {
-  autosavePendingUntil = Date.now() + AUTOSAVE_PENDING_WINDOW_MS;
-  if (autosaveTimer !== null) {
-    clearTimeout(autosaveTimer);
-  }
-  autosaveTimer = setTimeout(() => {
-    autosaveTimer = null;
-    autosavePendingUntil = 0;
-    emit();
-  }, AUTOSAVE_PENDING_WINDOW_MS);
+// A commit is critical from the moment validation is queued until its accepted
+// snapshot has finished writing to IndexedDB. Reference-count the real async
+// lifecycle so overlapping commits are protected without a timer guess.
+export const beginProtocolCommit = (): (() => void) => {
+  protocolCommitsInProgress += 1;
   emit();
+
+  let finished = false;
+  return () => {
+    if (finished) return;
+    finished = true;
+    protocolCommitsInProgress = Math.max(0, protocolCommitsInProgress - 1);
+    emit();
+  };
 };
 
 export const isCriticalOperationInProgress = () =>
-  importInProgress || exportInProgress || Date.now() < autosavePendingUntil;
+  importInProgress || exportInProgress || protocolCommitsInProgress > 0;
 
 export const subscribeCriticalOperation = (listener: () => void) => {
   listeners.add(listener);

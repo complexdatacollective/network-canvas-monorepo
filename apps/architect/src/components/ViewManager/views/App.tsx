@@ -26,6 +26,10 @@ import {
   takeLaunchFiles,
   takeLaunchReadFailures,
 } from '~/utils/fileLaunchQueue';
+import {
+  subscribeStartupProtocolValidationFailures,
+  takeStartupProtocolValidationFailures,
+} from '~/utils/startupProtocolFailureQueue';
 
 const FileLaunchFailureReporter = () => {
   const { openDialog } = useDialog();
@@ -73,6 +77,26 @@ const AutosaveFailureReporter = () => {
 
     reportFailures();
     return subscribeAutosaveFailures(reportFailures);
+  }, [openDialog]);
+
+  return null;
+};
+
+const StartupProtocolFailureReporter = () => {
+  const { openDialog } = useDialog();
+
+  useEffect(() => {
+    const reportFailures = () => {
+      for (const message of takeStartupProtocolValidationFailures()) {
+        void showProtocolOpenResultDialog({
+          result: { status: 'validation-error', message },
+          openDialog,
+        });
+      }
+    };
+
+    reportFailures();
+    return subscribeStartupProtocolValidationFailures(reportFailures);
   }, [openDialog]);
 
   return null;
@@ -137,6 +161,7 @@ const AppContents = () => {
       <BackgroundLights intensity={lightsIntensity} />
       <FileLaunchFailureReporter />
       <AutosaveFailureReporter />
+      <StartupProtocolFailureReporter />
       <LaunchedProtocolOpener />
       <ProtocolValidationDialogReporter />
       <ScrollToTop />
