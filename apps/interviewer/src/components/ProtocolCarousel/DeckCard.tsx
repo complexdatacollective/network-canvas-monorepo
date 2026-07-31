@@ -16,6 +16,7 @@ import { Pattern } from '@codaco/art';
 import { buttonVariants, IconButton } from '@codaco/fresco-ui/Button';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
+import { ProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { Skeleton } from '@codaco/fresco-ui/Skeleton';
 import { proportionalLucideIconVariants } from '@codaco/fresco-ui/styles/controlVariants';
@@ -25,7 +26,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { protocolDataViewPath } from '~/components/DataView/dataViewUrlState';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
-import { cardBase, cardHeadingSizeClass } from './cardStyles';
+import { cardHeadingSizeClass } from './cardStyles';
 
 function Pill({
   children,
@@ -455,36 +456,25 @@ export function DeckCard(props: DeckCardProps) {
 
   return (
     <LayoutGroup id={id}>
-      <motion.div
+      <ProtocolCard
         layout
-        aria-label={`${protocol.name ?? 'Protocol'}${isActive ? ' (active)' : ''}`}
-        aria-busy={loading || undefined}
-        onKeyDown={onCardKeyDown}
-        // Border echoes the color the Pattern paints for this protocol's seed.
-        // style={{ borderColor: seedToPatternPalette(protocol.name).backgroundTop }}
-        className={cx(
-          cardBase(),
-          // No minimum size of its own: the card always fills the box it's
-          // given (the text budget degrades content gracefully), so it can
-          // never overflow its carousel slot or a story frame. The deck's
-          // readability floor lives in ProtocolDeck's card-size computation.
-          'text-navy-taupe bg-platinum publish-colors',
-          'effect-shadow-xl @container relative h-full w-full overflow-clip rounded',
-          isActive && 'spring-medium effect-shadow-2xl',
-          'border-platinum-dark border-[0.15cqi]',
-        )}
-      >
-        <AnimatePresence mode="popLayout" initial={false}>
+        background={
           <Pattern
-            key="pattern"
+            aria-hidden
             seed={protocol.name ?? ''}
             className="absolute inset-0 size-full"
           />
-          <div
-            key="gradient"
-            className="to-platinum from-rich-black/20 via-platinum/80 absolute inset-0 size-full bg-linear-to-b via-30% to-70%"
-          />
-
+        }
+        isActive={isActive}
+        className={cx(
+          'effect-shadow-xl h-full',
+          isActive && 'effect-shadow-2xl',
+        )}
+        aria-label={`${protocol.name ?? 'Protocol'}${isActive ? ' (active)' : ''}`}
+        aria-busy={loading || undefined}
+        onKeyDown={onCardKeyDown}
+      >
+        <AnimatePresence mode="popLayout" initial={false}>
           <div
             key="content"
             ref={budget.columnRef}
@@ -771,7 +761,7 @@ export function DeckCard(props: DeckCardProps) {
             </AnimatePresence>
           </div>
         </AnimatePresence>
-      </motion.div>
+      </ProtocolCard>
     </LayoutGroup>
   );
 }

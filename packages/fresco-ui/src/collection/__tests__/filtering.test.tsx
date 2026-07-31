@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Collection } from '../components/Collection';
@@ -54,6 +54,7 @@ function FilterableCollection({
   onFilterResultsChange,
   filterQuery,
   defaultFilterQuery,
+  filterExecution,
 }: {
   items?: Item[];
   filterKeys?: string[];
@@ -61,6 +62,7 @@ function FilterableCollection({
   onFilterResultsChange?: (keys: Set<Key>, count: number) => void;
   filterQuery?: string;
   defaultFilterQuery?: string;
+  filterExecution?: 'worker' | 'sync';
 }) {
   const layout = useMemo(() => new ListLayout<Item>({ gap: 8 }), []);
 
@@ -72,6 +74,7 @@ function FilterableCollection({
       layout={layout}
       aria-label="Filterable collection"
       filterKeys={filterKeys}
+      filterExecution={filterExecution}
       filterQuery={filterQuery}
       defaultFilterQuery={defaultFilterQuery}
       onFilterChange={onFilterChange}
@@ -338,6 +341,52 @@ describe('Collection Filtering', () => {
       await user.click(screen.getByText('Update Query'));
 
       expect(screen.getByPlaceholderText('Search...')).toHaveValue('updated');
+    });
+  });
+
+  describe('synchronous execution', () => {
+    it('filters without creating a worker', async () => {
+      render(
+        <FilterableCollection filterExecution="sync" filterQuery="Carrot" />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('item-3')).toBeInTheDocument();
+        expect(screen.queryByTestId('item-1')).not.toBeInTheDocument();
+      });
+      expect(mockSearch).not.toHaveBeenCalled();
+    });
+
+    it('restores every item when a controlled query is cleared', async () => {
+      function ControlledWrapper() {
+        const [query, setQuery] = useState('Carrot');
+        const [, setRenderCount] = useState(0);
+        useEffect(() => {
+          if (query === '') setRenderCount((count) => count + 1);
+        }, [query]);
+        return (
+          <>
+            <button type="button" onClick={() => setQuery('')}>
+              Clear controlled query
+            </button>
+            <FilterableCollection filterExecution="sync" filterQuery={query} />
+          </>
+        );
+      }
+
+      const user = userEvent.setup();
+      render(<ControlledWrapper />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('item-3')).toBeInTheDocument();
+        expect(screen.queryByTestId('item-1')).not.toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Clear controlled query'));
+
+      await waitFor(() => {
+        expect(screen.getAllByTestId(/^item-/)).toHaveLength(testItems.length);
+      });
     });
   });
 });

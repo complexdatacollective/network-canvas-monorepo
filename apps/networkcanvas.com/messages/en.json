@@ -148,6 +148,85 @@
     "twitter": "Twitter",
     "github": "GitHub"
   },
+  "ProtocolGallery": {
+    "metadata": {
+      "title": "Protocol Gallery",
+      "description": "Explore research protocols created with Network Canvas, including study summaries, codebooks, and ready-to-use protocol files."
+    },
+    "intro": {
+      "heading": "Protocol Gallery",
+      "introduction": "Explore protocols shared by researchers using Network Canvas. Review how each study was designed, download its codebook and protocol, or open it in Fresco.",
+      "count": "{count, plural, =1 {# shared protocol} other {# shared protocols}}",
+      "featured": "Featured protocol",
+      "exploreFeatured": "Explore {title}",
+      "viewFeatured": "Explore featured protocol"
+    },
+    "collection": {
+      "heading": "Explore the collection",
+      "introduction": "Search by study, author, field, population, or method, then filter and sort the results.",
+      "searchLabel": "Search protocols",
+      "searchPlaceholder": "Search protocols",
+      "clearSearch": "Clear search",
+      "results": "{count, plural, =1 {# protocol} other {# protocols}}",
+      "filterLabel": "Filter protocols",
+      "filters": {
+        "all": "All",
+        "sociograms": "Sociograms",
+        "rosters": "Rosters",
+        "dyadCensus": "Dyad census"
+      },
+      "sortLabel": "Sort protocols",
+      "sortOptions": {
+        "newest": "Newest first",
+        "oldest": "Oldest first",
+        "titleAsc": "Title A–Z",
+        "titleDesc": "Title Z–A"
+      },
+      "viewLabel": "Choose a gallery view",
+      "views": {
+        "cards": "Cards",
+        "table": "Table"
+      },
+      "emptyHeading": "No protocols found",
+      "emptyDescription": "Try changing your search or filter.",
+      "openProtocol": "Explore {title}",
+      "viewProtocol": "View protocol",
+      "fieldLabel": "Field",
+      "populationLabel": "Population",
+      "methodLabel": "Method",
+      "dateAddedLabel": "Added",
+      "tableHeaders": {
+        "study": "Study",
+        "field": "Field",
+        "population": "Population",
+        "methods": "Methods"
+      }
+    },
+    "detail": {
+      "back": "Back to all protocols",
+      "summary": "Study summary",
+      "citation": "Citation",
+      "details": "Study details",
+      "studyPi": "Study PI",
+      "grantNumber": "Grant number",
+      "contact": "Protocol contact",
+      "methods": "Edge generation methodology",
+      "fields": "Field",
+      "population": "Population",
+      "clinicalTrials": "Clinical trials registration",
+      "dateAdded": "Date added",
+      "publication": "Publication",
+      "viewPublication": "View publication",
+      "downloads": "Use this protocol",
+      "downloadDescription": "Download the Network Canvas protocol and its printable codebook, or explore the protocol in Fresco.",
+      "wave": "Wave {wave}",
+      "protocol": "Protocol file",
+      "codebook": "Codebook PDF",
+      "openSandbox": "Open in Fresco",
+      "downloadProtocol": "Download protocol",
+      "viewCodebook": "View codebook"
+    }
+  },
   "GetStarted": {
     "metadata": {
       "title": "Get Started",

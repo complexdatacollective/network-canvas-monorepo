@@ -65,8 +65,8 @@ export type TextValueExtractor<T> = (item: T) => string;
 export type ItemProps = {
   'ref': React.RefCallback<HTMLElement>;
   'id'?: string;
-  'tabIndex': number;
-  'role': string;
+  'tabIndex'?: number;
+  'role'?: string;
   'style'?: React.CSSProperties;
   'aria-selected'?: boolean;
   'aria-disabled'?: boolean;
@@ -199,6 +199,13 @@ export type CollectionProps<T> = SortProps &
     'disabledKeys'?: Iterable<Key>;
     /** Whether empty selection is allowed (default: true) */
     'disallowEmptySelection'?: boolean;
+
+    /**
+     * Preserve the native semantics and tab order of rendered items, such as
+     * links or buttons. This disables Collection's listbox role and roving
+     * item tabindex while retaining its layout, sorting, and filtering.
+     */
+    'nativeItemSemantics'?: boolean;
 
     // Animation props
     /** Enable stagger enter animation for items */

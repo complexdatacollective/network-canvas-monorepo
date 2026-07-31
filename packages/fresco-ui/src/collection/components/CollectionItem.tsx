@@ -1,7 +1,8 @@
-import { memo, useCallback, useRef } from 'react';
+import { memo, useCallback, useContext, useRef } from 'react';
 
 import {
   CollectionItemContext,
+  NativeItemSemanticsContext,
   useCollectionId,
   useSelectionManager,
 } from '../contexts';
@@ -24,6 +25,7 @@ function CollectionItemComponent<T>({
 }: CollectionItemProps<T>) {
   const selectionManager = useSelectionManager();
   const collectionId = useCollectionId() ?? 'collection';
+  const nativeItemSemantics = useContext(NativeItemSemanticsContext);
   const localRef = useRef<HTMLElement>(null);
 
   const { itemProps, isSelected, isFocused, isDisabled } = useSelectableItem({
@@ -100,9 +102,9 @@ function CollectionItemComponent<T>({
   // Build ItemProps to pass to renderItem
   const fullItemProps: ItemProps = {
     'ref': combinedRef,
-    'tabIndex': itemProps.tabIndex,
-    'role': 'option',
-    'aria-selected': isSelected || undefined,
+    'tabIndex': nativeItemSemantics ? undefined : itemProps.tabIndex,
+    'role': nativeItemSemantics ? undefined : 'option',
+    'aria-selected': nativeItemSemantics ? undefined : isSelected || undefined,
     'aria-disabled': isDisabled || undefined,
     'data-collection-item': true,
     'data-selected': isSelected || undefined,
@@ -110,9 +112,9 @@ function CollectionItemComponent<T>({
     'data-disabled': isDisabled || undefined,
     'data-dragging': undefined,
     'data-drop-target': undefined,
-    'onFocus': itemProps.onFocus,
-    'onClick': itemProps.onClick,
-    'onKeyDown': composedOnKeyDown,
+    'onFocus': nativeItemSemantics ? undefined : itemProps.onFocus,
+    'onClick': nativeItemSemantics ? undefined : itemProps.onClick,
+    'onKeyDown': nativeItemSemantics ? undefined : composedOnKeyDown,
     'onPointerDown': dndDragProps.onPointerDown as
       | React.PointerEventHandler
       | undefined,

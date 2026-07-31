@@ -61,6 +61,12 @@ export type FilterState = {
  * Props for configuring filter behavior on the Collection component.
  */
 export type FilterProps = {
+  /**
+   * Where the Fuse search index runs. The worker strategy is the default for
+   * large collections; sync is useful for small collections and runtimes that
+   * do not bundle module workers.
+   */
+  filterExecution?: 'worker' | 'sync';
   /** Controlled: Current filter query */
   filterQuery?: string;
   /** Default filter query (uncontrolled) */

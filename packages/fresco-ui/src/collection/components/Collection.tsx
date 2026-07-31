@@ -7,6 +7,7 @@ import { CollectionProvider } from '../CollectionProvider';
 import {
   CollectionIdContext,
   FilterManagerContext,
+  NativeItemSemanticsContext,
   SelectionManagerContext,
   SortManagerContext,
   useCollectionStore,
@@ -46,6 +47,7 @@ function CollectionContent<T extends Record<string, unknown>>({
   onSelectionChange,
   disabledKeys,
   disallowEmptySelection,
+  nativeItemSemantics = false,
   animate,
   animationKey,
   dragAndDropHooks,
@@ -66,6 +68,7 @@ function CollectionContent<T extends Record<string, unknown>>({
   sortRules,
   // Filter props
   filterQuery,
+  filterExecution,
   defaultFilterQuery,
   onFilterChange,
   onFilterResultsChange,
@@ -120,6 +123,7 @@ function CollectionContent<T extends Record<string, unknown>>({
   // Use filter state hook for filtering (only if filterKeys is provided)
   const filterManager = useFilterState({
     filterQuery,
+    filterExecution,
     defaultFilterQuery,
     onFilterChange,
     onFilterResultsChange,
@@ -174,20 +178,24 @@ function CollectionContent<T extends Record<string, unknown>>({
     >
       <ScrollArea
         ref={mergedRef}
-        role="listbox"
+        role={nativeItemSemantics ? undefined : 'listbox'}
         id={collectionId}
         viewportClassName={viewportClassName}
         fade={fade}
         orientation={orientation}
-        aria-label={ariaLabel}
-        aria-labelledby={ariaLabelledBy}
-        aria-multiselectable={selectionMode === 'multiple' || undefined}
+        aria-label={nativeItemSemantics ? undefined : ariaLabel}
+        aria-labelledby={nativeItemSemantics ? undefined : ariaLabelledBy}
+        aria-multiselectable={
+          nativeItemSemantics
+            ? undefined
+            : selectionMode === 'multiple' || undefined
+        }
         aria-activedescendant={
-          selectionManager.focusedKey !== null
+          !nativeItemSemantics && selectionManager.focusedKey !== null
             ? `${collectionId}-item-${selectionManager.focusedKey}`
             : undefined
         }
-        {...collectionProps}
+        {...(nativeItemSemantics ? {} : collectionProps)}
         {...restDndProps}
         className="size-full"
       >
@@ -227,9 +235,11 @@ function CollectionContent<T extends Record<string, unknown>>({
     <SelectionManagerContext.Provider value={selectionManager}>
       <SortManagerContext.Provider value={sortManager}>
         <FilterManagerContext.Provider value={filterManager}>
-          <CollectionIdContext.Provider value={collectionId}>
-            {children(collectionElements)}
-          </CollectionIdContext.Provider>
+          <NativeItemSemanticsContext.Provider value={nativeItemSemantics}>
+            <CollectionIdContext.Provider value={collectionId}>
+              {children(collectionElements)}
+            </CollectionIdContext.Provider>
+          </NativeItemSemanticsContext.Provider>
         </FilterManagerContext.Provider>
       </SortManagerContext.Provider>
     </SelectionManagerContext.Provider>
@@ -285,6 +295,7 @@ export function Collection<T extends Record<string, unknown>>({
   onSelectionChange,
   disabledKeys,
   disallowEmptySelection,
+  nativeItemSemantics,
   animate = true,
   animationKey,
   dragAndDropHooks,
@@ -305,6 +316,7 @@ export function Collection<T extends Record<string, unknown>>({
   sortRules,
   // Filter props
   filterQuery,
+  filterExecution,
   defaultFilterQuery,
   onFilterChange,
   onFilterResultsChange,
@@ -336,6 +348,7 @@ export function Collection<T extends Record<string, unknown>>({
         onSelectionChange={onSelectionChange}
         disabledKeys={disabledKeys}
         disallowEmptySelection={disallowEmptySelection}
+        nativeItemSemantics={nativeItemSemantics}
         animate={animate}
         animationKey={animationKey}
         dragAndDropHooks={dragAndDropHooks}
@@ -356,6 +369,7 @@ export function Collection<T extends Record<string, unknown>>({
         sortRules={sortRules}
         // Filter props
         filterQuery={filterQuery}
+        filterExecution={filterExecution}
         defaultFilterQuery={defaultFilterQuery}
         onFilterChange={onFilterChange}
         onFilterResultsChange={onFilterResultsChange}

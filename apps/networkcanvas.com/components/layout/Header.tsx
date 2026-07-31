@@ -11,9 +11,24 @@ import { Link } from '~/lib/i18n/navigation';
 
 function renderNavigationLink({
   children,
+  href,
+  target,
+  rel,
   ...props
 }: SiteNavigationLinkRenderProps) {
-  return <Link {...props}>{children}</Link>;
+  const isProtocolGallery =
+    href === 'https://protocolgallery.networkcanvas.com/';
+
+  return (
+    <Link
+      {...props}
+      href={isProtocolGallery ? '/protocol-gallery' : href}
+      target={isProtocolGallery ? undefined : target}
+      rel={isProtocolGallery ? undefined : rel}
+    >
+      {children}
+    </Link>
+  );
 }
 
 export function Header({
@@ -22,7 +37,7 @@ export function Header({
   containerClassName,
   entranceVariants,
 }: {
-  activeItemId?: 'home' | 'getStarted';
+  activeItemId?: 'home' | 'getStarted' | 'protocolGallery';
   className?: string;
   containerClassName?: string;
   entranceVariants?: Variants;

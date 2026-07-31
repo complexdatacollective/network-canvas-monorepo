@@ -161,6 +161,27 @@ describe('locale routing', () => {
     ).toBeUndefined();
   });
 
+  it('negotiates protocol gallery index and detail routes', () => {
+    expect(
+      getLocaleRedirect(
+        new Request('http://localhost/protocol-gallery', {
+          headers: { 'accept-language': 'es-ES,es;q=0.9' },
+        }),
+      )?.toString(),
+    ).toBe('http://localhost/es/protocol-gallery/');
+    expect(
+      getLocaleRedirect(
+        new Request('http://localhost/protocol-gallery/test-to-prep'),
+        'en-GB',
+      )?.toString(),
+    ).toBe('http://localhost/en-GB/protocol-gallery/test-to-prep/');
+    expect(
+      getLocaleRedirect(
+        new Request('http://localhost/es/protocol-gallery/test-to-prep/'),
+      ),
+    ).toBeUndefined();
+  });
+
   it('recognizes locale paths after Netlify normalizes their casing', () => {
     expect(
       getLocaleRedirect(new Request('http://localhost/en-us/get-started/')),

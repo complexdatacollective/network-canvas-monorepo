@@ -88,6 +88,32 @@ describe('Collection', () => {
       expect(screen.getByText('Elderberry')).toBeDefined();
     });
 
+    it('preserves native link semantics when requested', () => {
+      render(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<Item>({ gap: 2 })}
+          selectionMode="none"
+          nativeItemSemantics
+          renderItem={(item, itemProps) => (
+            <a {...itemProps} href={`#${item.id}`}>
+              {item.name}
+            </a>
+          )}
+        >
+          {(CollectionElements) => CollectionElements}
+        </Collection>,
+      );
+
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      expect(screen.getAllByRole('link')).toHaveLength(testItems.length);
+      expect(screen.getByRole('link', { name: 'Apple' })).not.toHaveAttribute(
+        'tabindex',
+      );
+    });
+
     it('should render empty state when no items', () => {
       const layout = new ListLayout<Item>({ gap: 2 });
 
