@@ -6,6 +6,13 @@ const workflow = readFileSync(
   new URL('../.github/workflows/ci-and-release.yml', import.meta.url),
   'utf8',
 );
+const snapshotWorkflow = readFileSync(
+  new URL(
+    '../.github/workflows/open-e2e-snapshot-update-pr.yml',
+    import.meta.url,
+  ),
+  'utf8',
+);
 
 const topLevelConcurrency = workflow.match(
   /^concurrency:\n(?<config>[\s\S]*?)\n\njobs:/m,
@@ -37,8 +44,9 @@ test('detect never runs on push-to-main (its consumers are PR/dispatch only)', (
   assert.ok(detectJob, 'detect job exists');
   assert.match(
     detectJob,
-    /if: github\.event_name != 'merge_group' && github\.event_name != 'push'/,
+    /github\.event_name != 'merge_group'\n\s+&& github\.event_name != 'push'/,
   );
+  assert.match(detectJob, /inputs\.interview_e2e_benchmark == true/);
 });
 
 test('each release E2E suite gates on its own policy flag', () => {
@@ -57,6 +65,63 @@ test('each release E2E suite gates on its own policy flag', () => {
       `${jobName} is gated on the ${flag} suite flag`,
     );
   }
+});
+
+test('automatic private E2E routing is idle-aware and library-lane only', () => {
+  const picker = job('pick-e2e-runner');
+  assert.ok(picker, 'pick-e2e-runner job exists');
+  assert.match(picker, /\.busy == false/);
+  assert.match(picker, /RELEASE_REF.*changeset-release\/main/s);
+  assert.match(picker, /RUNNER_OVERRIDE/);
+  assert.match(picker, /WORKER_OVERRIDE/);
+});
+
+test('manual Interview E2E benchmarks can select runner, workers, and shard', () => {
+  assert.match(workflow, /interview_e2e_benchmark:/);
+  assert.match(workflow, /interview_e2e_runner:/);
+  assert.match(workflow, /interview_e2e_workers:/);
+  assert.match(workflow, /interview_e2e_shard:/);
+
+  const interview = job('interview-e2e');
+  assert.ok(interview, 'interview-e2e job exists');
+  assert.match(interview, /PW_WORKERS:/);
+  assert.match(interview, /E2E_RUNNER_CLASS:/);
+  assert.match(interview, /E2E_SHARD:/);
+  assert.match(interview, /--shard=\$E2E_SHARD/);
+});
+
+test('pull requests lint only changed files while merge groups lint fully', () => {
+  const lint = job('lint');
+  assert.ok(lint, 'lint job exists');
+  assert.match(lint, /fetch-depth: 0/);
+  assert.match(lint, /pnpm lint:changed HEAD\^1/);
+  assert.match(lint, /pnpm exec turbo run \/\/#lint/);
+});
+
+test('short quality checks share one setup without joining the critical path', () => {
+  const support = job('quality-support');
+  assert.ok(support, 'quality-support job exists');
+  assert.match(support, /uses: \.\/\.github\/actions\/turbo-ci-setup/);
+  assert.match(support, /pnpm exec turbo run \/\/#knip/);
+  assert.match(support, /pnpm check:changesets/);
+  assert.match(support, /pnpm test:scripts/);
+  assert.match(support, /turbo run build --filter='\.\/packages\/\*'/);
+  assert.match(support, /turbo run typecheck/);
+
+  for (const removed of [
+    'knip',
+    'check-changesets',
+    'test-scripts',
+    'build',
+    'typecheck',
+  ]) {
+    assert.equal(job(removed), undefined, `${removed} job was consolidated`);
+  }
+
+  const quality = job('quality');
+  assert.ok(quality, 'quality job exists');
+  assert.match(quality, /- quality-support/);
+  assert.doesNotMatch(quality, /- knip|- check-changesets|- test-scripts/);
 });
 
 test('the quality gate verifies each required E2E suite individually', () => {
@@ -80,6 +145,11 @@ test('e2e-policy can query the Actions API for the merge-queue fast path', () =>
   const policyJob = job('e2e-policy');
   assert.ok(policyJob, 'e2e-policy job exists');
   assert.match(policyJob, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(policyJob, /fetch-depth: 0/);
+  assert.match(
+    policyJob,
+    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.merge_group\.base_sha \}\}/,
+  );
 });
 
 test('release job prunes ignored-lane changesets before changesets/action', () => {
@@ -116,6 +186,30 @@ test('generated release PRs use the dedicated PAT and rely on native PR CI', () 
   );
   assert.doesNotMatch(productReleaseJob, /gh workflow run ci-and-release\.yml/);
   assert.doesNotMatch(productReleaseJob, /actions: write/);
+});
+
+test('Architect and Interviewer share one generated app release lane', () => {
+  const productReleaseJob = job('product-release-pr');
+  assert.ok(productReleaseJob, 'product release PR job exists');
+  assert.match(productReleaseJob, /slug: apps/);
+  assert.match(
+    productReleaseJob,
+    /--package '@codaco\/architect' --package '@codaco\/interviewer'/,
+  );
+  assert.match(
+    productReleaseJob,
+    /branch: changeset-release\/\$\{\{ matrix\.slug \}\}/,
+  );
+  assert.match(productReleaseJob, /Retire superseded separate app release PRs/);
+  assert.doesNotMatch(productReleaseJob, /slug: architect/);
+  assert.doesNotMatch(productReleaseJob, /slug: interviewer/);
+});
+
+test('snapshot update workflow accepts only current release branches', () => {
+  assert.match(snapshotWorkflow, /'changeset-release\/apps'/);
+  assert.match(snapshotWorkflow, /'changeset-release\/main'/);
+  assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/architect'/);
+  assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/interviewer'/);
 });
 
 test('e2e-policy receives the equivalence-reuse inputs', () => {

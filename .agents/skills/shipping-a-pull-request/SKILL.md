@@ -19,13 +19,19 @@ to ship."
 
 ## Phase 1 — Open the PR
 
-1. **Changeset** — invoke `creating-a-changeset` to decide whether one is
+1. **Visual baselines** — invoke `preparing-e2e-visual-baselines` to inspect
+   the complete branch and working-tree diff. If pixels or captured UI state
+   may have changed, regenerate and visually inspect only the affected
+   Architect, Interview, and/or Interviewer baselines in pinned Docker before
+   staging. Record the suites in the test plan. Do not proceed with unexplained
+   PNG churn.
+2. **Changeset** — invoke `creating-a-changeset` to decide whether one is
    needed and, if so, author it in the correct lane (library vs app). Commit it
    with the rest of the change.
-2. **Commit** — stage the relevant files (never `-A`/`.`) and commit with a
+3. **Commit** — stage the relevant files (never `-A`/`.`) and commit with a
    message describing _why_, following this repo's commit conventions. Do not
    add AI co-author trailers unless the user explicitly requests them.
-3. **Push and open the PR**:
+4. **Push and open the PR**:
 
    ```bash
    git push -u origin <branch>
@@ -43,7 +49,7 @@ to ship."
    `.github/PULL_REQUEST_TEMPLATE/`) first and follow it if one exists. Keep the
    title under ~70 characters; put detail in the body.
 
-4. Capture the PR number from the `gh pr create` output — every command below
+5. Capture the PR number from the `gh pr create` output — every command below
    needs it.
 
 ## Phase 2 — Monitor until mergeable

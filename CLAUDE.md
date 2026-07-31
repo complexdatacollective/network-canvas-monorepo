@@ -139,13 +139,15 @@ pnpm publish-packages
 - **Publishable library packages** under `packages/*` release to npm via
   `changesets/action` (the "Version Packages" PR). Private packages stay in the
   same dependency graph but are not published.
-- **Each gated product** has its own release PR: Architect and Interviewer release
-  on a `-beta.N` line and create a GitHub release, while Documentation and
-  networkcanvas.com use normal semver and receive a Git tag. Merging a product's
-  release PR deploys only that product to Netlify production.
-- **One release lane per changeset.** Never put a gated product and a library—or
-  two gated products—in the same changeset. `pnpm check:changesets` rejects both;
-  write one changeset per product or library lane.
+- **Gated products** release through three lanes. Architect and Interviewer
+  share `changeset-release/apps`; each app with a pending changeset increments
+  its own `-beta.N`, deploys independently, and creates its own GitHub release
+  when the combined PR merges. Documentation and networkcanvas.com keep
+  independent stable-semver release PRs and Git tags.
+- **One release lane per changeset.** Never put a gated product and a library,
+  or products from different gated lanes, in the same changeset.
+  `pnpm check:changesets` rejects both. Architect and Interviewer may share one
+  changeset because they share the apps lane.
 - See the `creating-a-changeset` skill and
   `docs/superpowers/specs/2026-07-03-pwa-app-beta-releases-design.md`.
 
@@ -328,10 +330,11 @@ stories.
 CI runs the Architect, Interview, and Interviewer E2E suites only for
 generated release branches (`changeset-release/*`) and merge groups whose
 package or product version changes will trigger a release — and only the
-suites whose subject ships in that release lane: the library lane
-(`changeset-release/main`) runs all three; the Architect and Interviewer lanes
-run their own suite plus Interview (both apps bundle the interview runtime);
-the Documentation and Website lanes run none. The mapping lives in
+suites whose subjects ship in that release lane: the library lane
+(`changeset-release/main`) runs all three; the combined apps lane
+(`changeset-release/apps`) runs the changed app's suite plus Interview, or all
+three when both apps change; the Documentation and Website lanes run none. The
+mapping lives in
 `scripts/release-e2e-policy.mjs`, and its test derives the expected lanes from
 the real package.json dependency graph so the table cannot silently drift.
 The required `quality` check requires exactly the suites the policy selects.
@@ -339,8 +342,9 @@ Ordinary PRs skip E2E and never inherit an E2E verdict from an earlier
 commit.
 
 Generated release branches and their merge groups use equivalence reuse: a
-suite is skipped when a prior successful native pull-request run of it exists
-on the same branch and the diff since that commit touches only paths that
+suite is skipped when the newest equivalent native pull-request verdict across
+the generated release branches is successful and the diff since that commit
+touches only paths that
 provably cannot affect the suite — files in workspace packages outside the
 suite subject's declared workspace dependency closure (dependencies,
 devDependencies, peerDependencies, optionalDependencies), or the inert

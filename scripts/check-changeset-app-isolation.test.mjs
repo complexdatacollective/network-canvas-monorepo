@@ -40,7 +40,14 @@ test('fails and names the file when a changeset mixes an app and a library', () 
   assert.match(res.stderr, /pnpm changeset/);
 });
 
-test('fails and names the file when a changeset mixes gated products', () => {
+test('allows Architect and Interviewer in their shared app release lane', () => {
+  const cwd = fixture({
+    'apps.md': `---\n"@codaco/architect": minor\n"@codaco/interviewer": patch\n---\n\nshared apps`,
+  });
+  assert.equal(run(cwd).status, 0);
+});
+
+test('fails and names the file when a changeset mixes product lanes', () => {
   const cwd = fixture({
     'coupled.md': `---\n"@codaco/architect": minor\n"networkcanvas.com": patch\n---\n\ncoupled`,
   });
@@ -48,4 +55,5 @@ test('fails and names the file when a changeset mixes gated products', () => {
   assert.equal(res.status, 1);
   assert.match(res.stderr, /coupled\.md/);
   assert.match(res.stderr, /independent release PR/);
+  assert.match(res.stderr, /different lanes/);
 });

@@ -11,6 +11,9 @@ We have a quick list of common questions to get you started engaging with this p
 
 These private workspaces are in the `ignore` list, so `changeset version`
 preserves their changesets. Architect and Interviewer release on `-beta.N`;
-Documentation and networkcanvas.com release with normal semver. Each has its own
-generated production release PR. Do not combine a gated product with a library
-or another gated product in one changeset (`pnpm check:changesets` rejects it).
+Documentation and networkcanvas.com release with normal semver. Architect and
+Interviewer share the generated **Release apps** PR; Documentation and Website
+keep independent production release PRs. A changeset may therefore name both
+Architect and Interviewer, but it must not combine products from different
+release lanes or combine a gated product with a library (`pnpm
+check:changesets` rejects either case).

@@ -14,6 +14,7 @@ import {
   applyProductReleases,
   planProductReleases,
   renderPrBody,
+  validateTargetPackages,
 } from './version-beta-apps.mjs';
 
 function workspace() {
@@ -124,7 +125,49 @@ test('a targeted release preserves another product changeset', () => {
   );
 });
 
-test('renderPrBody summarises the plans', () => {
+test('combined app lane versions both products and consumes a shared changeset once', () => {
+  const cwd = workspace();
+  writeFileSync(
+    join(cwd, '.changeset/apps.md'),
+    `---\n"@codaco/architect": minor\n"@codaco/interviewer": patch\n---\n\nImprove both apps`,
+  );
+
+  const { plans, consumed } = planProductReleases(cwd, [
+    '@codaco/architect',
+    '@codaco/interviewer',
+  ]);
+  assert.deepEqual(
+    plans.map((plan) => plan.pkg),
+    ['@codaco/architect', '@codaco/interviewer'],
+  );
+  assert.deepEqual(consumed, ['apps']);
+  applyProductReleases(cwd, plans, consumed);
+
+  assert.equal(
+    JSON.parse(readFileSync(join(cwd, 'apps/architect/package.json'), 'utf8'))
+      .version,
+    '8.0.0-beta.1',
+  );
+  assert.equal(
+    JSON.parse(readFileSync(join(cwd, 'apps/interviewer/package.json'), 'utf8'))
+      .version,
+    '8.0.0-beta.1',
+  );
+  assert.equal(existsSync(join(cwd, '.changeset/apps.md')), false);
+});
+
+test('a partial app-lane plan never consumes a shared changeset', () => {
+  const cwd = workspace();
+  writeFileSync(
+    join(cwd, '.changeset/apps.md'),
+    `---\n"@codaco/architect": minor\n"@codaco/interviewer": patch\n---\n\nImprove both apps`,
+  );
+
+  const { consumed } = planProductReleases(cwd, ['@codaco/architect']);
+  assert.deepEqual(consumed, []);
+});
+
+test('renderPrBody summarises a combined app lane', () => {
   const body = renderPrBody([
     {
       pkg: '@codaco/architect',
@@ -133,12 +176,64 @@ test('renderPrBody summarises the plans', () => {
       to: '8.0.0-beta.1',
       entries: [{ type: 'minor', summary: 'Add search' }],
     },
+    {
+      pkg: '@codaco/interviewer',
+      dir: 'apps/interviewer',
+      from: '8.0.0-beta.0',
+      to: '8.0.0-beta.1',
+      entries: [{ type: 'patch', summary: 'Improve imports' }],
+    },
   ]);
   assert.match(
     body,
     /\| `@codaco\/architect` \| 8\.0\.0-beta\.0 \| 8\.0\.0-beta\.1 \|/,
   );
   assert.match(body, /Add search/);
+  assert.match(
+    body,
+    /\| `@codaco\/interviewer` \| 8\.0\.0-beta\.0 \| 8\.0\.0-beta\.1 \|/,
+  );
+  assert.match(body, /Improve imports/);
+  assert.match(
+    body,
+    /releases `@codaco\/architect` and `@codaco\/interviewer`/,
+  );
+});
+
+test('renderPrBody rejects plans from independent product lanes', () => {
+  assert.throws(
+    () =>
+      renderPrBody([
+        {
+          pkg: '@codaco/architect',
+          from: '8.0.0-beta.0',
+          to: '8.0.0-beta.1',
+          entries: [],
+        },
+        {
+          pkg: 'networkcanvas.com',
+          from: '0.1.0',
+          to: '0.1.1',
+          entries: [],
+        },
+      ]),
+    /exactly one product lane/,
+  );
+});
+
+test('validateTargetPackages requires one complete lane', () => {
+  assert.deepEqual(
+    validateTargetPackages(['@codaco/architect', '@codaco/interviewer']),
+    ['@codaco/architect', '@codaco/interviewer'],
+  );
+  assert.deepEqual(validateTargetPackages(['@codaco/documentation']), [
+    '@codaco/documentation',
+  ]);
+  assert.equal(validateTargetPackages(['@codaco/architect']), null);
+  assert.equal(
+    validateTargetPackages(['@codaco/architect', 'networkcanvas.com']),
+    null,
+  );
 });
 
 test('creates a normal semver documentation release and changelog', () => {
