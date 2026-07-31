@@ -183,6 +183,7 @@ function CollectionContent<T extends Record<string, unknown>>({
         viewportClassName={viewportClassName}
         fade={fade}
         orientation={orientation}
+        tabIndex={nativeItemSemantics ? -1 : undefined}
         aria-label={nativeItemSemantics ? undefined : ariaLabel}
         aria-labelledby={nativeItemSemantics ? undefined : ariaLabelledBy}
         aria-multiselectable={

@@ -109,9 +109,9 @@ describe('Collection', () => {
 
       expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
       expect(screen.getAllByRole('link')).toHaveLength(testItems.length);
-      expect(screen.getByRole('link', { name: 'Apple' })).not.toHaveAttribute(
-        'tabindex',
-      );
+      const firstLink = screen.getByRole('link', { name: 'Apple' });
+      expect(firstLink).not.toHaveAttribute('tabindex');
+      expect(firstLink.closest('section')).toHaveAttribute('tabindex', '-1');
     });
 
     it('should render empty state when no items', () => {

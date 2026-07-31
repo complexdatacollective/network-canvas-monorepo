@@ -9,6 +9,7 @@ import {
   Waypoints,
   X,
 } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -198,6 +199,7 @@ export function ProtocolGallery({
   const [view, setView] = useState<ViewId>('cards');
   const [query, setQuery] = useState('');
   const [resultCount, setResultCount] = useState(protocols.length);
+  const prefersReducedMotion = useReducedMotion();
 
   const filteredProtocols = useMemo(
     () => protocols.filter((protocol) => matchesFilter(protocol, filter)),
@@ -256,7 +258,7 @@ export function ProtocolGallery({
         sortBy={activeSort.property}
         sortDirection={activeSort.direction}
         sortType={activeSort.type}
-        animate
+        animate={prefersReducedMotion !== true}
         animationKey={`${filter}-${sort}-${view}-${query}`}
         emptyState={
           <div className="bg-surface/75 mx-auto max-w-lg rounded p-10 backdrop-blur-sm">

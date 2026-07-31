@@ -21,7 +21,7 @@ export function useSynchronousSearch<T extends Record<string, unknown>>({
     () =>
       items.map((item) => ({
         ...item,
-        _key: String(keyExtractor(item)),
+        _key: keyExtractor(item),
       })),
     [items, keyExtractor],
   );

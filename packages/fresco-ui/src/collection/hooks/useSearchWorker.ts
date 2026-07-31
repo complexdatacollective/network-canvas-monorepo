@@ -15,12 +15,12 @@ import type { Key, KeyExtractor } from '../types';
  */
 type SearchEngine = {
   init: (
-    items: (Record<string, unknown> & { _key: string })[],
+    items: (Record<string, unknown> & { _key: Key })[],
     keys: string[],
     options?: FuseOptions,
   ) => void;
   search: (query: string, minQueryLength?: number) => WorkerSearchResult;
-  updateItems: (items: (Record<string, unknown> & { _key: string })[]) => void;
+  updateItems: (items: (Record<string, unknown> & { _key: Key })[]) => void;
   isReady: () => boolean;
 };
 
@@ -126,7 +126,7 @@ export function useSearchWorker<T extends Record<string, unknown>>({
         // Serialize items for worker (add _key for tracking)
         const serializedItems = items.map((item) => ({
           ...item,
-          _key: String(keyExtractor(item)),
+          _key: keyExtractor(item),
         }));
 
         await apiRef.current.init(

@@ -388,5 +388,73 @@ describe('Collection Filtering', () => {
         expect(screen.getAllByTestId(/^item-/)).toHaveLength(testItems.length);
       });
     });
+
+    it('re-runs a controlled query when the item set changes', async () => {
+      function ControlledItemsWrapper() {
+        const [items, setItems] = useState(testItems.slice(0, 1));
+        return (
+          <>
+            <button type="button" onClick={() => setItems(testItems)}>
+              Show every category
+            </button>
+            <FilterableCollection
+              items={items}
+              filterExecution="sync"
+              filterQuery="Fruit"
+            />
+          </>
+        );
+      }
+
+      const user = userEvent.setup();
+      render(<ControlledItemsWrapper />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('item-1')).toBeInTheDocument();
+        expect(screen.queryByTestId('item-2')).not.toBeInTheDocument();
+      });
+
+      await user.click(
+        screen.getByRole('button', { name: 'Show every category' }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('item-2')).toBeInTheDocument();
+        expect(screen.getByTestId('item-4')).toBeInTheDocument();
+        expect(screen.queryByTestId('item-3')).not.toBeInTheDocument();
+      });
+    });
+
+    it('preserves numeric item keys', async () => {
+      const numericItems = [
+        { id: 1, name: 'Apple' },
+        { id: 2, name: 'Banana' },
+      ];
+
+      render(
+        <Collection
+          items={numericItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<(typeof numericItems)[number]>({ gap: 2 })}
+          filterExecution="sync"
+          filterQuery="Banana"
+          filterKeys={['name']}
+          filterDebounceMs={0}
+          renderItem={(item, itemProps) => (
+            <div {...itemProps} data-testid={`numeric-item-${item.id}`}>
+              {item.name}
+            </div>
+          )}
+        >
+          {(CollectionElements) => CollectionElements}
+        </Collection>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('numeric-item-2')).toBeInTheDocument();
+        expect(screen.queryByTestId('numeric-item-1')).not.toBeInTheDocument();
+      });
+    });
   });
 });

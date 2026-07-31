@@ -45,6 +45,10 @@ const cssCopyPlugin = () => ({
 });
 
 export default defineConfig({
+  // Keep worker and other emitted asset URLs package-relative. Published
+  // subpath exports execute from dist/, so root-relative /assets URLs would
+  // incorrectly resolve against the consuming application.
+  base: './',
   oxc: {
     jsx: { runtime: 'automatic' },
   },

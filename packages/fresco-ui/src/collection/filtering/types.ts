@@ -90,9 +90,9 @@ export type FilterProps = {
  * Uses arrays instead of Maps/Sets for structured clone transfer.
  */
 export type WorkerSearchResult = {
-  matchingKeys: string[];
+  matchingKeys: Key[];
   matchCount: number;
-  scores: [string, number][];
+  scores: [Key, number][];
 };
 
 /**

@@ -203,19 +203,26 @@ export function useFilterState<T extends Record<string, unknown>>(
     if (isControlled && isReady) {
       debouncedSearchRef.current?.(controlledFilterQuery ?? '');
     }
-  }, [isControlled, controlledFilterQuery, isReady, isFilteringEnabled]);
+  }, [
+    isControlled,
+    controlledFilterQuery,
+    isReady,
+    isFilteringEnabled,
+    search,
+  ]);
 
-  // Trigger initial search when worker becomes ready
+  // Trigger the initial uncontrolled search when the index becomes ready, and
+  // re-run it if a synchronous index is rebuilt for a different item set.
   useEffect(() => {
     if (!isFilteringEnabled) return;
-    if (isReady) {
+    if (!isControlled && isReady) {
       const store = storeApi.getState();
       const currentQuery = store.filterQuery;
       if (currentQuery) {
         debouncedSearchRef.current?.(currentQuery);
       }
     }
-  }, [isReady, storeApi, isFilteringEnabled]);
+  }, [isReady, storeApi, isFilteringEnabled, isControlled, search]);
 
   // Create FilterManager (or return default state if disabled)
   const filterManager = useMemo(() => {
