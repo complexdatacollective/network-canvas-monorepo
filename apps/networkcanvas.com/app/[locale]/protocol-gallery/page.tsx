@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
@@ -99,39 +100,54 @@ export default async function ProtocolGalleryPage({
             aria-label={t('intro.exploreFeatured', {
               title: featuredProtocol.title,
             })}
-            className="focusable elevation-high group bg-surface/80 tablet-landscape:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] grid grid-cols-[minmax(0,1fr)] overflow-clip rounded backdrop-blur-md"
+            className="focusable group block rounded"
           >
-            <div className="bg-surface-1 aspect-16/10 min-w-0 overflow-hidden">
+            <Surface
+              noContainer
+              spacing="none"
+              shadow="sm"
+              className="border-outline/20 relative min-h-[30rem] border"
+            >
               <ProtocolPattern
                 name={featuredProtocol.title}
-                className="size-full object-cover transition-transform duration-700 group-hover:scale-[1.025] group-focus-visible:scale-[1.025] motion-reduce:transform-none"
+                className="absolute inset-0 size-full transition-transform duration-700 group-hover:scale-[1.025] group-focus-visible:scale-[1.025] motion-reduce:transform-none"
               />
-            </div>
-            <div className="tablet-portrait:p-10 flex min-w-0 flex-col justify-center p-7">
-              <Badge color="neon-coral" className="self-start">
-                {t('intro.featured')}
-              </Badge>
-              <Heading
-                level="h2"
-                margin="none"
-                className="mt-7 text-3xl wrap-break-word"
-              >
-                {featuredProtocol.title}
-              </Heading>
-              <Paragraph margin="none" className="text-text/60 mt-3 text-sm">
-                {featuredProtocol.authors}
-              </Paragraph>
-              <Paragraph margin="none" className="text-text/75 mt-6 text-lg">
-                {featuredProtocol.description}
-              </Paragraph>
-              <span className="text-primary mt-8 flex items-center gap-2 font-bold">
-                {t('intro.viewFeatured')}
-                <ArrowUpRight
-                  aria-hidden
-                  className="size-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1 group-focus-visible:translate-x-1 group-focus-visible:-translate-y-1 motion-reduce:transform-none"
-                />
-              </span>
-            </div>
+              <div
+                aria-hidden
+                className="from-surface via-surface/95 tablet-landscape:bg-linear-to-r tablet-landscape:via-55% tablet-landscape:to-90% absolute inset-0 bg-linear-to-t via-65% to-transparent"
+              />
+              <div className="tablet-portrait:p-10 tablet-landscape:items-center relative z-10 flex min-h-[30rem] items-end p-7">
+                <div className="tablet-landscape:max-w-[62%] max-w-3xl min-w-0">
+                  <Badge color="neon-coral">{t('intro.featured')}</Badge>
+                  <Heading
+                    level="h2"
+                    margin="none"
+                    className="mt-6 text-3xl wrap-break-word"
+                  >
+                    {featuredProtocol.title}
+                  </Heading>
+                  <Paragraph
+                    margin="none"
+                    className="text-text/60 mt-3 text-sm"
+                  >
+                    {featuredProtocol.authors}
+                  </Paragraph>
+                  <Paragraph
+                    margin="none"
+                    className="text-text/80 mt-5 max-w-2xl text-lg leading-relaxed"
+                  >
+                    {featuredProtocol.description}
+                  </Paragraph>
+                  <span className="text-primary mt-7 flex items-center gap-2 font-bold">
+                    {t('intro.viewFeatured')}
+                    <ArrowUpRight
+                      aria-hidden
+                      className="size-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1 group-focus-visible:translate-x-1 group-focus-visible:-translate-y-1 motion-reduce:transform-none"
+                    />
+                  </span>
+                </div>
+              </div>
+            </Surface>
           </Link>
         </Container>
       ) : null}

@@ -22,7 +22,7 @@ import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
-import Pill from '@codaco/fresco-ui/Pill';
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ProtocolCard as DeckProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
 import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -47,30 +47,6 @@ const sortConfig: Record<
 const sortIds: SortId[] = ['newest', 'oldest', 'titleAsc', 'titleDesc'];
 const galleryFuseOptions = { threshold: 0.15 } as const;
 const galleryFilterKeys = ['searchText'];
-const filterPillClasses: Record<
-  FilterId,
-  { selected: string; unselected: string }
-> = {
-  all: {
-    selected: 'bg-primary text-primary-contrast font-bold hover:bg-primary/90',
-    unselected:
-      'bg-surface text-text/70 font-medium hover:bg-primary/10 hover:text-primary',
-  },
-  sociograms: {
-    selected:
-      'bg-sea-serpent text-charcoal font-bold hover:bg-sea-serpent-dark',
-    unselected:
-      'bg-sea-serpent/20 text-text font-medium hover:bg-sea-serpent/30',
-  },
-  rosters: {
-    selected: 'bg-mustard text-charcoal font-bold hover:bg-mustard-dark',
-    unselected: 'bg-mustard/20 text-text font-medium hover:bg-mustard/30',
-  },
-  dyadCensus: {
-    selected: 'bg-neon-coral text-white font-bold hover:bg-neon-coral-dark',
-    unselected: 'bg-neon-coral/20 text-text font-medium hover:bg-neon-coral/30',
-  },
-};
 
 function galleryProtocolKey(protocol: GalleryProtocol): string {
   return protocol.slug;
@@ -260,7 +236,7 @@ export function ProtocolGallery({
             {t('introduction')}
           </Paragraph>
         </div>
-        <p aria-live="polite" className="font-heading text-text/70 font-bold">
+        <p aria-live="polite" className="sr-only">
           {t('results', { count: resultCount })}
         </p>
       </div>
@@ -304,8 +280,13 @@ export function ProtocolGallery({
       >
         {(collectionElements) => (
           <>
-            <div className="bg-surface/60 mt-10 rounded p-4 backdrop-blur-md">
-              <div>
+            <Surface
+              noContainer
+              spacing="sm"
+              shadow="xs"
+              className="bg-surface/85 mt-10 backdrop-blur-md"
+            >
+              <div className="min-w-0">
                 <UnconnectedField
                   name="protocol-search"
                   label={t('searchLabel')}
@@ -328,51 +309,37 @@ export function ProtocolGallery({
                       />
                     ) : undefined
                   }
+                  size="lg"
                 />
               </div>
-              <div className="tablet-landscape:flex-row tablet-landscape:items-center tablet-landscape:justify-between mt-4 flex flex-col gap-4">
-                <fieldset className="flex flex-wrap items-center gap-2">
-                  <legend className="sr-only">{t('filterLabel')}</legend>
-                  {[
-                    { value: 'all' as const, label: t('filters.all') },
-                    {
-                      value: 'sociograms' as const,
-                      label: t('filters.sociograms'),
-                      icon: <Waypoints aria-hidden className="size-4" />,
-                    },
-                    {
-                      value: 'rosters' as const,
-                      label: t('filters.rosters'),
-                      icon: <UsersRound aria-hidden className="size-4" />,
-                    },
-                    {
-                      value: 'dyadCensus' as const,
-                      label: t('filters.dyadCensus'),
-                      icon: <Rows3 aria-hidden className="size-4" />,
-                    },
-                  ].map((option) => {
-                    const isSelected = filter === option.value;
-                    return (
-                      <Pill
-                        key={option.value}
-                        as="button"
-                        size="lg"
-                        variant="ghost"
-                        aria-pressed={isSelected}
-                        icon={option.icon}
-                        onClick={() => setFilter(option.value)}
-                        className={`focusable transition-colors ${
-                          isSelected
-                            ? filterPillClasses[option.value].selected
-                            : filterPillClasses[option.value].unselected
-                        }`}
-                      >
-                        {option.label}
-                      </Pill>
-                    );
-                  })}
-                </fieldset>
-                <div className="tablet-landscape:w-auto flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="desktop:flex-row desktop:items-center desktop:justify-between mt-5 flex min-w-0 flex-col gap-4">
+                <div className="min-w-0 overflow-x-auto pb-1">
+                  <SegmentedSwitcher
+                    value={filter}
+                    onValueChange={setFilter}
+                    aria-label={t('filterLabel')}
+                    size="lg"
+                    options={[
+                      { value: 'all', label: t('filters.all') },
+                      {
+                        value: 'sociograms',
+                        label: t('filters.sociograms'),
+                        icon: Waypoints,
+                      },
+                      {
+                        value: 'rosters',
+                        label: t('filters.rosters'),
+                        icon: UsersRound,
+                      },
+                      {
+                        value: 'dyadCensus',
+                        label: t('filters.dyadCensus'),
+                        icon: Rows3,
+                      },
+                    ]}
+                  />
+                </div>
+                <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
                   <UnconnectedField
                     name="protocol-sort"
                     label={t('sortLabel')}
@@ -384,25 +351,30 @@ export function ProtocolGallery({
                       value: id,
                       label: t(`sortOptions.${id}`),
                     }))}
-                    className="tablet-landscape:w-56 w-full sm:w-56"
+                    size="lg"
+                    className="w-full sm:w-56"
                   />
                   <SegmentedSwitcher
                     value={view}
                     onValueChange={setView}
                     aria-label={t('viewLabel')}
-                    size="sm"
+                    size="lg"
                     options={[
                       {
                         value: 'cards',
                         label: t('views.cards'),
                         icon: LayoutGrid,
                       },
-                      { value: 'table', label: t('views.table'), icon: Rows3 },
+                      {
+                        value: 'table',
+                        label: t('views.table'),
+                        icon: Rows3,
+                      },
                     ]}
                   />
                 </div>
               </div>
-            </div>
+            </Surface>
 
             {view === 'table' ? (
               <div

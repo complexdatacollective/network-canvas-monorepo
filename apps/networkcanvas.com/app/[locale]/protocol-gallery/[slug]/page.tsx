@@ -115,33 +115,38 @@ export default async function ProtocolDetailPage({
 
         <div
           data-protocol-detail-weave-target
-          className="elevation-high bg-surface/85 tablet-landscape:grid-cols-[minmax(0,1.05fr)_minmax(24rem,0.95fr)] mt-10 grid grid-cols-[minmax(0,1fr)] overflow-clip rounded backdrop-blur-md"
+          className="elevation-low bg-surface relative mt-10 min-h-[27rem] overflow-clip rounded"
         >
-          <div className="bg-surface-1 aspect-16/10 min-w-0 overflow-hidden">
-            <ProtocolPattern name={protocol.title} className="size-full" />
-          </div>
-          <div className="tablet-portrait:p-12 flex min-w-0 flex-col justify-center p-7">
-            {protocol.featured ? (
-              <Badge color="neon-coral" className="self-start">
-                {t('intro.featured')}
-              </Badge>
-            ) : null}
-            <Heading
-              level="h1"
-              margin="none"
-              className={cn(
-                'text-2xl font-black wrap-break-word',
-                protocol.featured && 'mt-7',
-              )}
-            >
-              {protocol.title}
-            </Heading>
-            <Paragraph
-              margin="none"
-              className="text-text/65 mt-4 leading-relaxed"
-            >
-              {protocol.authors}
-            </Paragraph>
+          <ProtocolPattern
+            name={protocol.title}
+            className="absolute inset-0 size-full"
+          />
+          <div
+            aria-hidden
+            className="from-surface via-surface/95 tablet-landscape:bg-linear-to-r tablet-landscape:via-55% tablet-landscape:to-90% absolute inset-0 bg-linear-to-t via-65% to-transparent"
+          />
+          <div className="tablet-portrait:p-12 tablet-landscape:items-center relative z-10 flex min-h-[27rem] items-end p-7">
+            <div className="tablet-landscape:max-w-[62%] max-w-3xl min-w-0">
+              {protocol.featured ? (
+                <Badge color="neon-coral">{t('intro.featured')}</Badge>
+              ) : null}
+              <Heading
+                level="h1"
+                margin="none"
+                className={cn(
+                  'text-2xl font-black wrap-break-word',
+                  protocol.featured && 'mt-6',
+                )}
+              >
+                {protocol.title}
+              </Heading>
+              <Paragraph
+                margin="none"
+                className="text-text/70 mt-4 max-w-2xl leading-relaxed"
+              >
+                {protocol.authors}
+              </Paragraph>
+            </div>
           </div>
         </div>
 
