@@ -29,14 +29,14 @@ pnpm --filter @codaco/architect exec playwright test --config e2e/playwright.con
 # Debug locators against the live app:
 pnpm --filter @codaco/architect test:e2e:headed          # (add --trace on / --debug)
 
-# Full run inside the pinned Playwright Docker image (the CI path; also compares visual baselines):
+# Full local functional run against native Playwright browsers (visual pixels skip locally):
 pnpm --filter @codaco/architect test:e2e
 ```
 
 ## Reading a failure
 
 - **A JSON stage-snapshot diff** (`specs/interfaces/*.spec.ts`, `*-stage.json`) means the **saved stage shape changed**. If the change is intended, regenerate: `… playwright test <spec> --update-snapshots` (JSON snapshots are font-independent, so regenerating locally is fine). If it's _not_ intended, it's a regression — fix the app, don't update the snapshot.
-- **A visual PNG diff** (`codebook`/`summary`, under `e2e/visual-snapshots/`) means rendered output changed. Invoke `regenerating-e2e-visual-snapshots` to generate the two `@visual` captures with the manual CI workflow, inspect them, and adopt only intended changes. These baselines are **ARM64-truth**: CI uses `ubuntu-24.04-arm`, and the local fallback, `pnpm --filter @codaco/architect test:e2e:update-snapshots`, uses the Playwright image's native `linux/arm64` variant on Apple Silicon. Non-ARM64 runs skip pixel comparison automatically (a `[visual] skipping` warning is expected there).
+- **A visual PNG diff** (`codebook`/`summary`, under `e2e/visual-snapshots/`) means rendered output changed. Invoke `regenerating-e2e-visual-snapshots` to generate the two `@visual` captures with the manual CI workflow, inspect them, and adopt only intended changes. These baselines are **ARM64-truth**: CI uses `ubuntu-24.04-arm`, and the local fallback, `pnpm --filter @codaco/architect test:e2e:update-snapshots`, uses the Playwright image's native `linux/arm64` variant on Apple Silicon. Runs outside Linux ARM64 skip pixel comparison automatically (a `[visual] skipping` warning is expected there).
 - **A locator timeout** usually means the editor UI changed (renamed/moved field, section, or control). Update the locator (below), don't loosen the assertion.
 
 ## Updating / adding e2e when a feature changes

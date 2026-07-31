@@ -8,8 +8,9 @@
 Architect, Interview, and Interviewer pixel snapshots use Linux ARM64 as their
 single rendering platform. Both normal release-gate comparison jobs and the
 focused regeneration workflow run on GitHub's native `ubuntu-24.04-arm`
-runner. The repository no longer routes Interview E2E through privately owned
-self-hosted hardware.
+runner. They install Playwright's native ARM64 browsers and execute directly on
+the host; Docker is not part of either CI path. The repository no longer routes
+Interview E2E through privately owned self-hosted hardware.
 
 This keeps generation and comparison on the same architecture, removes the
 single-slot availability/watchdog path, and makes the canonical environment
@@ -18,8 +19,9 @@ The existing screenshot tolerances are unchanged.
 
 ## Local Docker behavior
 
-Each E2E wrapper asks the Docker daemon for its server architecture and selects
-the matching Playwright image platform:
+Docker is reserved for local snapshot regeneration. Each local E2E wrapper asks
+the Docker daemon for its server architecture and selects the matching
+Playwright image platform:
 
 - `arm64` or `aarch64` maps to `linux/arm64`;
 - `amd64` or `x86_64` maps to `linux/amd64`;
@@ -30,9 +32,9 @@ architecture suffix. Apple Silicon therefore runs the native Playwright ARM64
 image and cannot reuse native binaries installed by an amd64 container.
 
 Pixel capture helpers accept and write committed baselines only when
-`process.arch` is `arm64`. An x64 developer can still run functional E2E
-coverage, but the run logs an explicit skip for pixel comparison instead of
-comparing against an incompatible ARM64 baseline.
+`process.platform` is `linux` and `process.arch` is `arm64`. Other developers
+can still run functional E2E coverage, but the run logs an explicit skip for
+pixel comparison instead of comparing against an incompatible baseline.
 
 ## Adoption gate
 

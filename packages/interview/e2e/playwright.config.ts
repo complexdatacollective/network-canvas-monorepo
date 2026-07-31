@@ -47,8 +47,8 @@ export default defineConfig({
       // re-bundles when it discovers a new @base-ui/react subpath at runtime
       // (e.g. the success toast that surfaces only after addNode), which forces
       // a full page reload and wipes the Shell's Redux state mid-test. The host
-      // bundle is built upstream (run.sh in Docker, or test:e2e:headed locally)
-      // so this command assumes e2e/host/dist/ exists.
+      // bundle is built upstream (the native CI/local commands or local Docker
+      // regeneration), so this command assumes e2e/host/dist/ exists.
       command:
         'pnpm --filter @codaco/interview exec vite preview --config e2e/host/vite.config.ts',
       port: 4101,

@@ -558,9 +558,8 @@ jobs:
 
   interview-e2e:
     # Runs when the release policy requires the interview suite (the lane
-    # ships @codaco/interview). The Dockerized suite builds its own dependency
-    # graph and cannot consume the host runner's Turbo cache, so start it as
-    # soon as the release policy completes.
+    # ships @codaco/interview). Start it as soon as the release policy
+    # completes, and run Playwright directly on the canonical native ARM64 host.
     needs: e2e-policy
     if: ${{ !cancelled() && needs.e2e-policy.outputs.interview == 'true' }}
     # Pixel baselines are ARM64-canonical. Run the complete suite on the same
@@ -579,9 +578,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          # The Dockerized test run mounts the workspace; don't leave the
-          # checkout token in .git/config for test/build code to read.
           persist-credentials: false
+      - uses: ./.github/actions/native-playwright-setup
+        with:
+          package: '@codaco/interview'
+          browsers: chromium firefox webkit
       - id: meta
         env:
           REF: ${{ github.head_ref || github.ref_name }}
@@ -592,7 +593,7 @@ jobs:
           SLUG=${SLUG:-unknown}
           printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
       - name: Run E2E tests
-        run: ./packages/interview/e2e/scripts/run.sh
+        run: ./scripts/run-e2e-native.sh interview
       - name: Classify snapshot-only failure
         id: snapshot_failure
         if: failure()
@@ -610,11 +611,6 @@ jobs:
       - name: Merge sharded blob reports
         if: ${{ env.PW_BLOB == '1' }}
         run: pnpm --filter @codaco/interview exec playwright merge-reports --reporter html ./blob-report
-      - name: Reclaim workspace ownership
-        # The Dockerized run executes as container root, so reclaim report
-        # output before the following host-side summary and upload steps.
-        if: always()
-        run: sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
       - name: Flag flaky tests
         # Reporting only — never gate the job on it (belt-and-suspenders with the
         # script's own guards).
@@ -631,7 +627,7 @@ jobs:
           retention-days: 14
 
   interviewer-e2e:
-    # See interview-e2e: this Dockerized suite owns its build too.
+    # See interview-e2e: this native suite owns its build too.
     needs: e2e-policy
     if: ${{ !cancelled() && needs.e2e-policy.outputs.interviewer == 'true' }}
     runs-on: ubuntu-24.04-arm
@@ -641,11 +637,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          # The Dockerized test run mounts the workspace; don't leave the
-          # checkout token in .git/config for test/build code to read.
           persist-credentials: false
+      - uses: ./.github/actions/native-playwright-setup
+        with:
+          package: '@codaco/interviewer'
+          browsers: chromium webkit
       - name: Run E2E tests
-        run: ./apps/interviewer/e2e/scripts/run.sh
+        run: ./scripts/run-e2e-native.sh interviewer
       - name: Classify snapshot-only failure
         id: snapshot_failure
         if: failure()
@@ -653,10 +651,6 @@ jobs:
           detected=$(node scripts/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
-      - name: Reclaim workspace ownership
-        # See interview-e2e: make Docker output readable to host-side steps.
-        if: always()
-        run: sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -667,7 +661,7 @@ jobs:
           retention-days: 14
 
   architect-e2e:
-    # See interview-e2e: this Dockerized suite owns its build too.
+    # See interview-e2e: this native suite owns its build too.
     needs: e2e-policy
     if: ${{ !cancelled() && needs.e2e-policy.outputs.architect == 'true' }}
     runs-on: ubuntu-24.04-arm
@@ -677,11 +671,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          # The Dockerized test run mounts the workspace; don't leave the
-          # checkout token in .git/config for test/build code to read.
           persist-credentials: false
+      - uses: ./.github/actions/native-playwright-setup
+        with:
+          package: '@codaco/architect'
+          browsers: chromium
       - name: Run E2E tests
-        run: ./apps/architect/e2e/scripts/run.sh
+        run: ./scripts/run-e2e-native.sh architect
       - name: Classify snapshot-only failure
         id: snapshot_failure
         if: failure()
@@ -689,10 +685,6 @@ jobs:
           detected=$(node scripts/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
-      - name: Reclaim workspace ownership
-        # See interview-e2e: make Docker output readable to host-side steps.
-        if: always()
-        run: sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -13,6 +13,13 @@ const snapshotWorkflow = readFileSync(
   ),
   'utf8',
 );
+const nativePlaywrightSetup = readFileSync(
+  new URL(
+    '../.github/actions/native-playwright-setup/action.yml',
+    import.meta.url,
+  ),
+  'utf8',
+);
 
 const topLevelConcurrency = workflow.match(
   /^concurrency:\n(?<config>[\s\S]*?)\n\njobs:/m,
@@ -65,12 +72,42 @@ test('each release E2E suite gates on its own policy flag', () => {
 });
 
 test('pixel comparison and generation use native GitHub-hosted ARM64', () => {
-  for (const jobName of ['interview-e2e', 'interviewer-e2e', 'architect-e2e']) {
+  for (const [jobName, browserList] of [
+    ['interview-e2e', 'chromium firefox webkit'],
+    ['interviewer-e2e', 'chromium webkit'],
+    ['architect-e2e', 'chromium'],
+  ]) {
     const body = job(jobName);
     assert.ok(body, `${jobName} job exists`);
     assert.match(body, /runs-on: ubuntu-24\.04-arm/);
+    assert.match(body, /uses: \.\/\.github\/actions\/native-playwright-setup/);
+    assert.match(body, new RegExp(`browsers: ${browserList}`));
+    assert.match(body, /run: \.\/scripts\/run-e2e-native\.sh/);
+    assert.doesNotMatch(body, /e2e\/scripts\/run\.sh|docker/i);
   }
   assert.match(snapshotWorkflow, /runs-on: ubuntu-24\.04-arm/);
+  assert.match(
+    snapshotWorkflow,
+    /uses: \.\/\.github\/actions\/native-playwright-setup/,
+  );
+  assert.match(snapshotWorkflow, /\.\/scripts\/run-e2e-native\.sh/);
+  assert.doesNotMatch(snapshotWorkflow, /e2e\/scripts\/run\.sh|docker/i);
+  assert.match(
+    snapshotWorkflow,
+    /if: inputs\.suite == 'interviewer'[\s\S]{0,180}browsers: chromium\n/,
+  );
+  assert.doesNotMatch(
+    snapshotWorkflow,
+    /if: inputs\.suite == 'interviewer'[\s\S]{0,180}browsers: chromium webkit/,
+  );
+
+  assert.match(
+    nativePlaywrightSetup,
+    /uses: \.\/\.github\/actions\/turbo-ci-setup/,
+  );
+  assert.match(nativePlaywrightSetup, /playwright install[\s\S]*--with-deps/);
+  assert.match(nativePlaywrightSetup, /--only-shell/);
+  assert.doesNotMatch(nativePlaywrightSetup, /actions\/cache|ms-playwright/);
 });
 
 test('release E2E has no self-hosted runner-selection machinery', () => {

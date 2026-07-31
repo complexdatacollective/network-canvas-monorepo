@@ -42,13 +42,14 @@ export function createCaptureInterview(
   opts: { enabled: boolean },
 ): CaptureInterviewFn {
   let stylesInjected = false;
-  const isBaselineArch = process.arch === 'arm64';
+  const isBaselinePlatform =
+    process.platform === 'linux' && process.arch === 'arm64';
 
   return async (name: string, options: CaptureInterviewOptions = {}) => {
     if (!opts.enabled) return;
-    if (!isBaselineArch) {
+    if (!isBaselinePlatform) {
       console.warn(
-        `[visual] skipping pixel comparison for "${name}" — baselines are ARM64-truth and this run is ${process.arch}`,
+        `[visual] skipping pixel comparison for "${name}" — baselines require Linux ARM64 and this run is ${process.platform}/${process.arch}`,
       );
       return;
     }

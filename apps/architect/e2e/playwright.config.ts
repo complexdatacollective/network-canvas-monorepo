@@ -48,7 +48,8 @@ export default defineConfig({
     // Serve the built PWA (not the dev server): the SW only exists in the build,
     // the app's build runs a PWA-integrity check on this exact output, and the
     // dev server's optimizeDeps re-bundle wipes app state mid-test. The build
-    // runs upstream in run.sh / test:e2e:headed, so this assumes dist/ exists.
+    // runs upstream in the native CI/local commands or local Docker
+    // regeneration, so this assumes dist/ exists.
     command:
       'pnpm --filter @codaco/architect exec vite preview --port 4301 --strictPort',
     port: 4301,

@@ -174,10 +174,10 @@ pnpm --filter @codaco/interview test:e2e:update-snapshots
 pnpm --filter @codaco/interviewer test:e2e:update-snapshots
 ```
 
-All three use pinned Playwright Docker images and ARM64-canonical baselines. The
-manual workflow runs natively on `ubuntu-24.04-arm`; on Apple Silicon the local
-commands select the image's native `linux/arm64` variant and architecture-
-specific dependency/cache volumes. Non-ARM64 runs skip pixel comparison and
-baseline writes. Interview generates only its three visual projects; it does
-not run the functional/ARIA matrix projects. Interviewer selects only the
-tagged visual capture cases.
+The manual workflow installs and runs Playwright directly on
+`ubuntu-24.04-arm`. The three local commands use pinned Playwright Docker images;
+on Apple Silicon they select the image's native `linux/arm64` variant and
+architecture-specific dependency/cache volumes. Runs outside Linux ARM64 skip
+pixel comparison and baseline writes. Interview generates only its three visual
+projects; it does not run the functional/ARIA matrix projects. Interviewer
+selects only the tagged visual capture cases.

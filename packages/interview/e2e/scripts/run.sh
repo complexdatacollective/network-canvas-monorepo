@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Run the @codaco/interview e2e suite inside the Playwright Docker image.
+# Regenerate @codaco/interview visual snapshots locally inside the pinned
+# Playwright Docker image.
 #
-# Snapshots are font-rendering sensitive, so we always run them in the same
-# Linux container regardless of host OS. Mirrors fresco-next/scripts/run-e2e.sh
-# in spirit but without the Postgres/testcontainers wiring (the interview
-# package is fully self-contained — vite host + asset server in same container).
+# Ordinary local tests and CI run natively. Local snapshot writes are
+# font-rendering sensitive, so their regeneration stays inside a Linux
+# container regardless of host OS. Mirrors fresco-next/scripts/run-e2e.sh in
+# spirit but without the Postgres/testcontainers wiring (the interview package
+# is fully self-contained — vite host + asset server in same container).
 #
 # Usage:
-#   ./e2e/scripts/run.sh                    # run all browsers
 #   pnpm test:e2e:update-snapshots           # regenerate pixel baselines only
 #   ./e2e/scripts/run.sh --project=chromium # filter to one browser
 #

@@ -8,8 +8,9 @@ import type { ScenarioContext } from '../../matrix/types.js';
  * interface across the `*-visual` Playwright projects (chromium/firefox/webkit),
  * capturing initial + final screenshots. Captures are CI-only (the matrix
  * fixture wires `createCaptureInterview` with `enabled: !!process.env.CI`), so
- * locally this validates the flow while the actual PNGs are written in the
- * pinned-Playwright Docker update run. Scenario `captureMask` locators (e.g.
+ * locally this validates the flow while actual PNGs are written by canonical
+ * Linux ARM64 CI or the local ARM64 Docker update run. Scenario `captureMask`
+ * locators (e.g.
  * Anonymisation's animated EncryptedBackground) are threaded into both captures.
  */
 for (const suite of ALL_SUITES) {

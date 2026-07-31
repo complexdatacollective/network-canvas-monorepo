@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Run the @codaco/interviewer e2e suite inside the Playwright Docker image so
-# visual baselines are font-rendering-stable regardless of host OS. Mirrors
-# packages/interview/e2e/scripts/run.sh.
+# Regenerate @codaco/interviewer visual snapshots locally inside the pinned
+# Playwright Docker image. Ordinary local tests and CI run natively; local
+# baseline writes remain containerized so macOS host rendering cannot enter a
+# baseline. Mirrors packages/interview/e2e/scripts/run.sh.
 #
 # Usage:
-#   ./e2e/scripts/run.sh                                  # run
 #   ./e2e/scripts/run.sh --grep @visual --update-snapshots # regenerate visual baselines
 set -euo pipefail
 

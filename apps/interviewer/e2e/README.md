@@ -7,11 +7,11 @@ manifest, and encrypted-vault behaviour match what actually ships.
 ## Quick start
 
 ```sh
-# Run the full suite in the official Playwright Docker image (visual
-# snapshots included)
+# Run the full suite against native Playwright browsers (visual pixels skip
+# locally)
 pnpm --filter @codaco/interviewer test:e2e
 
-# Regenerate visual baselines (also Docker — never regenerate locally)
+# Regenerate visual baselines locally in pinned Docker
 pnpm --filter @codaco/interviewer test:e2e:update-snapshots
 
 # Run headed against your local Playwright browsers for debugging — functional
@@ -33,7 +33,7 @@ e2e/
 │   └── visual.ts          makeCapture(page) + snapshot mask helpers
 ├── scripts/
 │   ├── build-e2e-protocol.mjs  Builds the lean e2e .netcanvas fixture
-│   └── run.sh              Docker entry for test:e2e
+│   └── run.sh              Local Docker entry for snapshot regeneration
 ├── specs/                  Playwright tests, one file per facet
 ├── visual-snapshots/       Per-project baseline PNGs (committed, CI-gated)
 ├── playwright.config.ts
@@ -43,9 +43,9 @@ e2e/
 ## Why the built app, not the dev server
 
 `playwright.config.ts`'s `webServer` runs `vite preview` on port **4180**
-against `dist/`, which `test:e2e` (via `run.sh`) and `test:e2e:headed` both
-build first with `turbo run build` (the app's `build` also runs the PWA
-integrity check). The dev server isn't usable here: it has no
+against `dist/`, which `test:e2e`, `test:e2e:update-snapshots`, and
+`test:e2e:headed` all build first with `turbo run build` (the app's `build` also
+runs the PWA integrity check). The dev server isn't usable here: it has no
 service worker, and Vite's dev-time `optimizeDeps` re-bundle can wipe app
 state mid-test. Each test gets a fresh browser context (Playwright default),
 so IndexedDB (`interviewer`) and `localStorage` are isolated per test with no
@@ -60,11 +60,12 @@ to go stale. In CI, `capture(name)` injects `VISUAL_STYLES` (hides the
 animated background blobs and focus rings) once per page and asserts against
 the committed baseline in `visual-snapshots/`.
 
-**Baselines must never be regenerated locally.** Font rendering is
-OS-sensitive; `test:e2e:update-snapshots` runs inside the pinned Playwright
-Docker image (`mcr.microsoft.com/playwright:v<version>-noble`, version
-derived from the lockfile by `scripts/run.sh`) so the baseline matches what
-CI will compare against.
+**Baselines must never be regenerated on the macOS host.** Font rendering is
+OS-sensitive; the local `test:e2e:update-snapshots` command runs inside the
+pinned Playwright Docker image
+(`mcr.microsoft.com/playwright:v<version>-noble`, version derived from the
+lockfile by `scripts/run.sh`). CI installs and runs Playwright directly on the
+canonical native Linux ARM64 host.
 
 For a manual CI regeneration, use the
 `regenerating-e2e-visual-snapshots` skill and dispatch `Regenerate E2E Visual
@@ -87,12 +88,13 @@ failures do not start regeneration.
 
 ## Running tests in CI vs locally
 
-`pnpm test:e2e` always runs inside the Playwright Docker image — mounts the
-monorepo, installs with a frozen lockfile, builds `@codaco/interviewer`, then
-runs Playwright with `CI=true` (so visual capture is active). `run.sh`
-forwards any extra arguments (e.g. `--update-snapshots`, a spec path).
+Local `pnpm test:e2e` builds `@codaco/interviewer`, then runs against native
+Playwright browsers with pixel capture disabled. Only
+`test:e2e:update-snapshots` invokes `run.sh`, which mounts the monorepo into the
+pinned Linux container, installs with a frozen lockfile, builds, and runs with
+`CI=true`.
 
 `pnpm test:e2e:headed` skips Docker: it builds locally, then runs Playwright
 headed against your own Chromium and WebKit installs. Useful for stepping
 through a spec, but visual assertions are skipped (see above) and results won't
-match the Docker/CI environment for anything font-sensitive.
+match the canonical Linux ARM64 environment for anything font-sensitive.

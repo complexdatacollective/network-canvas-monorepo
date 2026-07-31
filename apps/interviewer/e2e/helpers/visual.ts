@@ -22,17 +22,18 @@ export type CaptureFn = (
 export const APP_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
 // Returns a capture function that is a no-op unless running in CI. This keeps
-// local headed runs functional-only (no baselines needed) while CI asserts
-// against the committed Docker-generated baselines.
+// local headed runs functional-only (no baselines needed) while canonical CI
+// and local Docker regeneration both provide Linux ARM64 pixels.
 export function makeCapture(page: Page): CaptureFn {
   const isCI = !!process.env.CI;
-  const isBaselineArch = process.arch === 'arm64';
+  const isBaselinePlatform =
+    process.platform === 'linux' && process.arch === 'arm64';
 
   return async (name, options = {}) => {
     if (!isCI) return;
-    if (!isBaselineArch) {
+    if (!isBaselinePlatform) {
       console.warn(
-        `[visual] skipping pixel comparison for "${name}" — baselines are ARM64-truth and this run is ${process.arch}`,
+        `[visual] skipping pixel comparison for "${name}" — baselines require Linux ARM64 and this run is ${process.platform}/${process.arch}`,
       );
       return;
     }

@@ -80,7 +80,7 @@ function normalizeStage(input: unknown): unknown {
 // hook uses (rather than hand-reimplementing its print-width rules) is the
 // only way to guarantee byte-identity with whatever the hook produces.
 // oxfmt is a direct devDependency of @codaco/architect (so it is present in
-// the filtered Docker/CI install) and exposes an in-process `format` API —
+// the filtered E2E install) and exposes an in-process `format` API —
 // no per-assertion process spawn, let alone a `pnpm exec` round trip (pnpm
 // re-verifies the workspace on every invocation). The API is called without
 // options: the repo's .oxfmtrc.json JSON-affecting options (printWidth,

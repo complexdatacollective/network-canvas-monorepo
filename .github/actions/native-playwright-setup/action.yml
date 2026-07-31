@@ -1,0 +1,24 @@
+name: Native Playwright setup
+description: Install workspace dependencies and native Playwright browsers on GitHub-hosted ARM64.
+inputs:
+  package:
+    description: Workspace package that provides the Playwright CLI.
+    required: true
+  browsers:
+    description: Space-separated Playwright browser names to install.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/turbo-ci-setup
+    - name: Install native Playwright browsers and system dependencies
+      shell: bash
+      env:
+        PLAYWRIGHT_PACKAGE: ${{ inputs.package }}
+        PLAYWRIGHT_BROWSERS: ${{ inputs.browsers }}
+      run: |
+        read -r -a browsers <<< "$PLAYWRIGHT_BROWSERS"
+        pnpm --filter "$PLAYWRIGHT_PACKAGE" exec playwright install \
+          --with-deps \
+          --only-shell \
+          "${browsers[@]}"

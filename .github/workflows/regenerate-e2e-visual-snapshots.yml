@@ -31,16 +31,37 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: ./.github/actions/native-playwright-setup
+        if: inputs.suite == 'architect'
+        with:
+          package: '@codaco/architect'
+          browsers: chromium
+
+      - uses: ./.github/actions/native-playwright-setup
+        if: inputs.suite == 'interview'
+        with:
+          package: '@codaco/interview'
+          browsers: chromium firefox webkit
+
+      - uses: ./.github/actions/native-playwright-setup
+        if: inputs.suite == 'interviewer'
+        with:
+          package: '@codaco/interviewer'
+          browsers: chromium
+
       - name: Regenerate Architect visual snapshots
         if: inputs.suite == 'architect'
-        run: ./apps/architect/e2e/scripts/run.sh --grep @visual --update-snapshots
+        run: >-
+          ./scripts/run-e2e-native.sh architect
+          --grep @visual
+          --update-snapshots
 
       - name: Regenerate Interview visual snapshots
         if: inputs.suite == 'interview'
         env:
           PW_WORKERS: 4
         run: >-
-          ./packages/interview/e2e/scripts/run.sh
+          ./scripts/run-e2e-native.sh interview
           --project=chromium-visual
           --project=firefox-visual
           --project=webkit-visual
@@ -48,15 +69,10 @@ jobs:
 
       - name: Regenerate Interviewer visual snapshots
         if: inputs.suite == 'interviewer'
-        run: ./apps/interviewer/e2e/scripts/run.sh --grep @visual --update-snapshots
-
-      - name: Reclaim snapshot ownership
-        if: always()
-        run: |
-          sudo chown -R "$(id -u):$(id -g)" \
-            apps/architect/e2e/visual-snapshots \
-            packages/interview/e2e/visual-snapshots \
-            apps/interviewer/e2e/visual-snapshots 2>/dev/null || true
+        run: >-
+          ./scripts/run-e2e-native.sh interviewer
+          --grep @visual
+          --update-snapshots
 
       - name: Stage canonical snapshot paths
         env:

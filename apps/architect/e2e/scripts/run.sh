@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Run the @codaco/architect e2e suite inside the pinned Playwright Docker image.
-# Visual snapshots are font-sensitive, so baselines must be generated here, never
-# on the host. The image tag is derived from pnpm-lock.yaml so it stays in
+# Regenerate @codaco/architect visual snapshots locally inside the pinned
+# Playwright Docker image. Ordinary local tests and CI run natively; local
+# baseline writes remain containerized so macOS host rendering cannot enter a
+# baseline. The image tag is derived from pnpm-lock.yaml so it stays in
 # lock-step with the @playwright/test / playwright catalog pins.
 #
-#   ./e2e/scripts/run.sh                    # run all specs
 #   ./e2e/scripts/run.sh --grep @visual --update-snapshots # regenerate PNG baselines
 #   ./e2e/scripts/run.sh specs/foo.spec.ts --update-snapshots
 #     # scoped regen — extra args pass through to playwright verbatim. Put

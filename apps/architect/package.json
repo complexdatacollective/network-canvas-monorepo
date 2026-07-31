@@ -13,7 +13,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build --stats-json",
     "typecheck": "tsc --build --noEmit && tsc -p e2e/tsconfig.json --noEmit",
-    "test:e2e": "./e2e/scripts/run.sh",
+    "test:e2e": "VITE_DISABLE_ANALYTICS=true pnpm turbo run build --filter=@codaco/architect && playwright test --config e2e/playwright.config.ts",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --grep @visual --update-snapshots",
     "test:e2e:headed": "VITE_DISABLE_ANALYTICS=true pnpm turbo run build --filter=@codaco/architect && playwright test --config e2e/playwright.config.ts --headed"
   },
