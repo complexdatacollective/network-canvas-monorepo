@@ -5,10 +5,10 @@
     - heading "Family" [level=4]
   - button "Category Work, 0 items":
     - heading "Work" [level=4]
-  - button "Category Other, 0 items":
+  - button "Category Other, 1 items":
     - heading "Other" [level=4]
-  - button "Collapse drawer" [expanded]: 1 unplaced
-  - button "Alice"
+    - paragraph: Alice
+  - button "Expand drawer" [disabled]: 0 unplaced
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

@@ -24,6 +24,7 @@ type StoryArgs = {
   categoryCount: number;
   hasMissingValue: boolean;
   hasOtherOption: boolean;
+  otherReasonRequired: boolean;
   initialNodeCount: number;
   unassignedCount: number;
   promptCount: number;
@@ -53,12 +54,16 @@ function buildInterview(args: StoryArgs) {
   // `component` here is incidental, not required: the "Other" dialog derives
   // validation directly from the codebook variable without resolving a
   // component, so an otherVariable created without one (e.g. via Architect's
-  // "Create New Variable" dialog) works identically.
+  // "Create New Variable" dialog) works identically. `validation` is
+  // deliberately omitted unless `otherReasonRequired` is set, so the story can
+  // demonstrate that the dialog follows the codebook rule rather than imposing
+  // its own required state.
   const otherVariableId = args.hasOtherOption
     ? nodeType.addVariable({
         name: 'Other Reason',
         type: 'text',
         component: 'Text',
+        ...(args.otherReasonRequired ? { validation: { required: true } } : {}),
       }).id
     : undefined;
 
@@ -154,6 +159,11 @@ const meta: Meta<StoryArgs> = {
       control: 'boolean',
       description: 'Add an "Other" bin with a text input prompt',
     },
+    otherReasonRequired: {
+      control: 'boolean',
+      description:
+        'Apply a codebook `required` rule to the "Other" reason variable.',
+    },
     initialNodeCount: {
       control: { type: 'range', min: 0, max: 15 },
       description: 'Total number of nodes in the network',
@@ -171,6 +181,7 @@ const meta: Meta<StoryArgs> = {
     categoryCount: 4,
     hasMissingValue: false,
     hasOtherOption: false,
+    otherReasonRequired: false,
     initialNodeCount: 8,
     unassignedCount: 3,
     promptCount: 1,
@@ -187,6 +198,7 @@ export const Default: Story = {
 export const OtherBinRequiresAReason: Story = {
   args: {
     hasOtherOption: true,
+    otherReasonRequired: true,
     unassignedCount: 3,
   },
   render: (args) => <CategoricalBinStoryWrapper {...args} />,
@@ -194,7 +206,7 @@ export const OtherBinRequiresAReason: Story = {
     docs: {
       description: {
         story:
-          'The "Other" bin always requires a reason. Drop a node onto "Other" and submit the dialog empty to see the validation error.',
+          'The "Other" reason variable has a codebook `required` rule, so an empty submission is rejected. Turn `otherReasonRequired` off to allow an empty response.',
       },
     },
   },

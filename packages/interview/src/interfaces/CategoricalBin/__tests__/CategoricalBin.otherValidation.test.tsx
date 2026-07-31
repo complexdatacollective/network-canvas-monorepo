@@ -8,7 +8,7 @@ import {
 } from '@testing-library/react';
 import { useEffect } from 'react';
 import { Provider } from 'react-redux';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StoreApi } from 'zustand';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -33,6 +33,19 @@ import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import CategoricalBin from '../CategoricalBin';
 import { getCatBinDropTargetId } from '../components/CategoricalBinItem';
+
+const { celebrate, track } = vi.hoisted(() => ({
+  celebrate: vi.fn(),
+  track: vi.fn(),
+}));
+
+vi.mock('../../../hooks/useCelebrate', () => ({
+  useCelebrate: () => celebrate,
+}));
+
+vi.mock('../../../analytics/useTrack', () => ({
+  useTrack: () => track,
+}));
 
 class StubResizeObserver {
   observe() {}
@@ -78,6 +91,11 @@ beforeAll(() => {
   // (fresco-ui's focusFirstError) triggers it indirectly. Stub it so the
   // test's output stays clean.
   vi.stubGlobal('scrollTo', vi.fn());
+});
+
+beforeEach(() => {
+  celebrate.mockClear();
+  track.mockClear();
 });
 
 const NODE_TYPE = 'person';
@@ -323,9 +341,9 @@ async function waitForDialogToClose() {
 }
 
 describe('CategoricalBin other-input honours codebook validation', () => {
-  it('keeps the special writer required while honoring the other codebook rules', async () => {
+  it('rejects an empty entry and an entry over maxLength when the codebook requires the field', async () => {
     const { store, getDndStore } = renderCategoricalBin({
-      required: false,
+      required: true,
       maxLength: 5,
     });
 
@@ -350,24 +368,49 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     expect(getOtherAttribute(store)).toBeUndefined();
   });
 
-  it('requires an entry when the codebook has no validation rules for the field', async () => {
+  it('accepts an empty submission when the codebook has no validation rules and places the node in Other', async () => {
     const { store, getDndStore } = renderCategoricalBin(undefined);
 
     await dropNodeIntoOtherBin(getDndStore);
 
-    const input = await screen.findByRole('textbox');
-    fireEvent.click(screen.getByTestId('dialog-submit'));
-
-    await screen.findByTestId(`${OTHER_VARIABLE}-field-error`);
-    expect(screen.getByTestId('dialog-submit')).toBeInTheDocument();
-    expect(getOtherAttribute(store)).toBeUndefined();
-
-    fireEvent.change(input, { target: { value: 'a reason' } });
+    await screen.findByRole('textbox');
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
     await waitForDialogToClose();
 
-    expect(getOtherAttribute(store)).toBe('a reason');
+    expect(getOtherAttribute(store)).toBe('');
+    expect(
+      screen.getByRole('button', { name: 'Category Other, 1 items' }),
+    ).toBeInTheDocument();
+    expect(celebrate).toHaveBeenCalledOnce();
+    expect(track).toHaveBeenCalledWith('node_binned', {
+      node_id: node[entityPrimaryKeyProperty],
+      node_type: node.type,
+      bin_index: OTHER_BIN_INDEX,
+    });
+  });
+
+  it('returns a cancelled drop to the drawer without success feedback or analytics', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined);
+
+    await dropNodeIntoOtherBin(getDndStore);
+    await screen.findByRole('textbox');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('dialog-cancel'));
+      await new Promise((resolve) => setTimeout(resolve, 550));
+    });
+
+    await waitForDialogToClose();
+
+    expect(getOtherAttribute(store)).toBeUndefined();
+    expect(
+      screen.getByRole('button', { name: RESERVED_NOTE_VALUE }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Category Other, 0 items' }),
+    ).toBeInTheDocument();
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(track).not.toHaveBeenCalled();
   });
 
   it('rejects a value matching a sibling attribute on the same node and accepts a distinct one, proving validationContext (network + currentEntityId) reaches the dialog Field', async () => {
