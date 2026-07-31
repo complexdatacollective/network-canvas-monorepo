@@ -1,5 +1,12 @@
 # @codaco/development-protocol
 
+## 2.0.5
+
+### Patch Changes
+
+- c49e702: Synchronize the packaged development protocol after removing Network Composer
+  form fields that conflict with its unvalidated group-membership writer.
+
 ## 2.0.4
 
 ### Patch Changes

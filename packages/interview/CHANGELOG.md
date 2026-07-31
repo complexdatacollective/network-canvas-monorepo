@@ -1,5 +1,107 @@
 # @codaco/interview
 
+## 7.0.0
+
+### Minor Changes
+
+- b777dc1: The Categorical Bin "other" input and the Name Generator quick-add field now apply the referenced variable's configured validation rules, exactly as form fields do — including context-dependent rules such as `differentFrom` and `unique`. The Network Composer's add-node input applies the quick-add variable's codebook rules in the same way, a behaviour change for existing protocols whose quick-add variable carries validation. Previously these inputs ignored the codebook and enforced only their local requirements. In native v8 protocols, both Categorical Bin "other" and Name Generator quick-add are optional when their referenced variable has no required validation. The v7→v8 migration adds `required: true` to variables referenced by either writer, preserving existing protocols' required responses while retaining their other validation rules. Variables without an explicit input `component` work correctly. After a valid Network Composer node is added, its quick-add field now resets its value and validation state so the fresh blank entry does not announce a required-field error.
+
+  Network Composer also waits for a quick-add node to finish being stored before
+  clearing and reopening the input, preventing two rapid submissions from
+  bypassing uniqueness validation against the first node.
+
+  The Categorical Bin dialog registers its response under the referenced
+  codebook variable ID, so a sibling variable literally named `otherVariable`
+  cannot be mistaken for the live response by cross-variable validation.
+
+  Deferred invalid-field focus now remains safe when its form unmounts before
+  smooth scrolling finishes.
+
+### Patch Changes
+
+- 59625a8: The defaults a date field falls back on, when a protocol declares no bounds of its own, now live in one place.
+
+  `@codaco/shared-consts` exports `DATE_PICKER_DEFAULT_MIN`,
+  `DATE_PICKER_EARLIEST_DATE`, `DATE_PICKER_LATEST_DATE`,
+  `RELATIVE_DATE_PICKER_DEFAULT_BEFORE`, and
+  `RELATIVE_DATE_PICKER_DEFAULT_AFTER`. `@codaco/fresco-ui` renders its date
+  fields from them, `@codaco/interview` derives the bounds a submitted date is
+  validated against from them, `@codaco/protocol-validation` models those bounds
+  when detecting contradictions, and `@codaco/protocol-utilities` generates
+  synthetic dates to fit them. Each package previously kept some local copies and
+  tested only those copies, so widening or narrowing a bound in one place could
+  leave another package predicting a window that no longer existed. No default
+  or limit has changed value, and generated data is unchanged.
+
+  `@codaco/protocol-utilities` additionally exports `todayYmd`, the clock read behind `GenerationConfig.today`'s default.
+
+- 0807c3d: Form analytics now report each field's real input control. `form_opened` and
+  `form_validation_failed` read the control from the codebook variable rather
+  than from the form field, which never carried one — so every field was
+  previously recorded as `unknown`. Event shapes are unchanged.
+- 1b48714: Clear the Name Generator quick-add field after successful submissions, including when adding the node refreshes the live validation context.
+- a9a5900: `useProtocolForm` now precomputes the RelativeDatePicker submission-time
+  min/max window even when a protocol field or variable omits `parameters`
+  entirely. The rendered control always applies its default window (before =
+  180 days, after = 0, anchor = today) regardless of whether the record is
+  absent or empty, but the submission-time validator was previously only
+  derived when `parameters` was present — so a keyboard-typed date outside the
+  default window could bypass validation and be submitted. Absent and `{}`
+  `parameters` now behave identically, matching
+  `@codaco/protocol-validation`'s contradiction analyser.
+- 1a3fe60: Improve node entry and display across interview interfaces. Synthetic `name`
+  variables now use realistic personal names whenever their validation rules
+  allow it, long labels wrap and truncate without distorting node shapes, and
+  Network Composer quick add retains focus after submitting a node. Shared modal,
+  form-field, and theme refinements support the updated Architect editing
+  experience.
+- efc3a92: A relative date question anchored near either end of the calendar no longer refuses every date it offers.
+
+  A relative date question works out the dates it accepts by counting days forward and back from an anchor. With an anchor late in the calendar that count could pass the year 9999 — an anchor of 9999-12-31 accepting one day after it worked out a latest date of 10000-01-01 — and with an early anchor it could pass year zero, working out 0000-07-05 or, further back, something that was not a date at all. Neither is a date the software recognises, so the check on what a participant entered stopped comparing dates and compared plain text instead, where a five-digit year sorts before every four-digit one. Every date the question could offer was then rejected as too late, including the one the participant had just chosen. Both ends of the window now stop at the first and last dates a date field can hold.
+
+  `@codaco/shared-consts` exports `dateWithinPickerRange`, `DATE_PICKER_EARLIEST_DATE` and `DATE_PICKER_LATEST_DATE`. The field in `@codaco/fresco-ui`, the submission checks in `@codaco/interview` and the synthetic dates drawn by `@codaco/protocol-utilities` all work the window out from that one function, so the three cannot disagree about it. Questions anchored anywhere else are unaffected, and generated data for them is unchanged.
+
+- 7cffcc9: Synthetic interview data now respects the validation rules configured on your variables.
+
+  Previously, generated networks ignored the rules a protocol author sets in Architect, so previewing a protocol or bulk-generating interviews could produce data a participant could never have entered — names shorter than a required minimum length, numbers outside their permitted range, dates outside a date picker's window, duplicate values on a variable marked unique, or a "start date" later than the "end date" it is required to precede. Generated values now satisfy required, minimum/maximum length, minimum/maximum value, minimum/maximum selected, unique, same as, different from, and the greater/less than (or equal to) cross-variable comparisons, as well as the bounds a date picker or relative date picker imposes.
+
+  Where rules refer to one another, generation follows that order, so a variable compared against another is filled in after the variable it depends on.
+
+  If a protocol's rules cannot all be satisfied at once — for example a minimum length greater than its maximum length, a permitted range with no values in it, or a variable required to be both unique and drawn from fewer options than there are entities to fill — generation is now refused with a `SyntheticDataConstraintError` that names the variable and describes the conflict, instead of silently producing data that could never be collected. `SyntheticDataConstraintError` and the `ConstraintConflict` type it carries are exported from `@codaco/protocol-utilities`.
+
+  When skip logic and filtering are respected, controls on stages proven unreachable no longer create synthetic-data rendering conflicts with reachable Network Composer stages.
+
+  Read-only stage references no longer make validation rules apply to values written only by binning stages. Writers on stages proven unreachable by skip logic are likewise ignored consistently by both the feasibility check and the synthetic draw.
+
+  Manually seeded nodes and edges keep omitted Boolean attributes at the neutral
+  `false` value regardless of how the control's options are ordered.
+
+  When multiple reachable Network Composer stages render one date variable at the
+  same resolution, generation now uses the intersection of their accepted
+  windows. It refuses only controls at incompatible resolutions or controls whose
+  windows do not overlap. When an ordinary form also renders that variable,
+  generation includes its codebook control in the same intersection.
+
+  Categorical Bin "other" inputs must now target a text variable, matching the
+  text field the interview renders. Importing a version 7 protocol removes an
+  incompatible non-text "other" configuration instead of preserving a control
+  that cannot record the target variable's value.
+
+  `@codaco/fresco-ui` adds a `./form/validation/helpers` export subpath so consumers can build the same validator stack the interview uses. `@codaco/interview` now fails loudly, naming the variable, when a protocol carries a validation rule of the wrong type, rather than passing it to a validator that would report a generic error.
+
+- Updated dependencies [59625a8]
+- Updated dependencies [a124bc0]
+- Updated dependencies [1b4dc6b]
+- Updated dependencies [86603b4]
+- Updated dependencies [fd78d55]
+- Updated dependencies [a33e3cf]
+- Updated dependencies [b777dc1]
+- Updated dependencies [1a3fe60]
+- Updated dependencies [efc3a92]
+- Updated dependencies [7cffcc9]
+- Updated dependencies [457052e]
+  - @codaco/fresco-ui@5.0.0
+
 ## 6.0.0
 
 ### Minor Changes
