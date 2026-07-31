@@ -61,8 +61,13 @@ export function useFilterState<T extends Record<string, unknown>>(
     filterKeys: safeFilterKeys,
     fuseOptions: filterFuseOptions,
   });
+  const synchronousItems = useMemo(
+    () =>
+      isFilteringEnabled && filterExecution === 'sync' ? items : ([] as T[]),
+    [filterExecution, isFilteringEnabled, items],
+  );
   const synchronousSearch = useSynchronousSearch({
-    items: isFilteringEnabled ? items : [],
+    items: synchronousItems,
     keyExtractor,
     filterKeys: safeFilterKeys,
     fuseOptions: filterFuseOptions,

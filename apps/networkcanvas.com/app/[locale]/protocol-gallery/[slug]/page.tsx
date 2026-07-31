@@ -76,6 +76,35 @@ function DetailItem({
   );
 }
 
+const contactEmailPattern = /[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}/g;
+
+function ProtocolContact({ contact }: { contact: string }) {
+  const matches = [...contact.matchAll(contactEmailPattern)];
+  if (matches.length === 0) return contact;
+
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+
+  for (const match of matches) {
+    const email = match[0];
+    const index = match.index;
+    if (index > cursor) parts.push(contact.slice(cursor, index));
+    parts.push(
+      <a
+        key={`${index}-${email}`}
+        href={`mailto:${email}`}
+        className="focusable text-primary rounded-sm underline underline-offset-4"
+      >
+        {email}
+      </a>,
+    );
+    cursor = index + email.length;
+  }
+
+  if (cursor < contact.length) parts.push(contact.slice(cursor));
+  return parts;
+}
+
 export default async function ProtocolDetailPage({
   params,
 }: ProtocolDetailPageProps) {
@@ -95,9 +124,6 @@ export default async function ProtocolDetailPage({
   }).format(new Date(`${protocol.dateAdded}T00:00:00Z`));
   const clinicalTrialsIsUrl =
     protocol.clinicalTrialsRegistration.startsWith('https://');
-  const contactEmail = protocol.contact.match(
-    /[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}/,
-  )?.[0];
 
   return (
     <main className="relative isolate">
@@ -209,16 +235,7 @@ export default async function ProtocolDetailPage({
                 {protocol.grantNumber}
               </DetailItem>
               <DetailItem label={t('detail.contact')}>
-                {contactEmail ? (
-                  <a
-                    href={`mailto:${contactEmail}`}
-                    className="focusable text-primary rounded-sm underline underline-offset-4"
-                  >
-                    {protocol.contact}
-                  </a>
-                ) : (
-                  protocol.contact
-                )}
+                <ProtocolContact contact={protocol.contact} />
               </DetailItem>
               <DetailItem label={t('detail.methods')}>
                 {protocol.edgeGeneration}
