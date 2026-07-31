@@ -9,7 +9,6 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
 import { Header } from '~/components/layout/Header';
 import { ProtocolGallery } from '~/components/protocol-gallery/ProtocolGallery';
-import { Container } from '~/components/ui/Container';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
 import { routing } from '~/lib/i18n/routing';
 import { loadProtocolGallery } from '~/lib/protocolGallery';
@@ -88,9 +87,7 @@ export default async function ProtocolGalleryPage({
         </div>
       </div>
 
-      <Container maxWidth="full" className="mt-0!">
-        <ProtocolGallery protocols={protocols} />
-      </Container>
+      <ProtocolGallery protocols={protocols} />
 
       <Footer />
     </main>

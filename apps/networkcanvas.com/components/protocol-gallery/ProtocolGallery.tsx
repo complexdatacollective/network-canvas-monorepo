@@ -26,6 +26,7 @@ import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { ProtocolPattern } from '~/components/protocol-gallery/ProtocolPattern';
+import { Container } from '~/components/ui/Container';
 import { Link } from '~/lib/i18n/navigation';
 import type { GalleryProtocol } from '~/lib/protocolGallery';
 
@@ -74,9 +75,17 @@ function matchesFilter(protocol: GalleryProtocol, filter: FilterId): boolean {
 
 class ProtocolGalleryGridLayout extends GridLayout<GalleryProtocol> {
   override getItemStyles(key?: Key): CSSProperties {
-    if (key === undefined || this.getColumnCount() < 2) return {};
+    const styles: CSSProperties = {
+      height: '100%',
+      minWidth: 0,
+      width: '100%',
+    };
+
+    if (key === undefined || this.getColumnCount() < 2) return styles;
     const protocol = this.items.get(key)?.value;
-    return protocol?.featured ? { gridColumn: 'span 2 / span 2' } : {};
+    return protocol?.featured
+      ? { ...styles, gridColumn: 'span 2 / span 2' }
+      : styles;
   }
 }
 
@@ -95,7 +104,7 @@ function GalleryProtocolCard({
       data-featured={protocol.featured || undefined}
       href={`/protocol-gallery/${protocol.slug}`}
       aria-label={t('openProtocol', { title: protocol.title })}
-      className="focusable group block h-full rounded transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 motion-reduce:transform-none"
+      className="focusable group block size-full rounded transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 motion-reduce:transform-none"
     >
       <DeckProtocolCard
         background={
@@ -104,9 +113,9 @@ function GalleryProtocolCard({
             className="absolute inset-0 size-full"
           />
         }
-        className="elevation-low flex h-full min-h-[32rem]"
+        className="elevation-low flex size-full min-h-[32rem]"
       >
-        <div className="relative z-10 flex min-h-[32rem] w-full flex-1 flex-col gap-[max(10px,2.5cqi)] p-[6cqi]">
+        <div className="relative z-10 flex size-full min-h-[32rem] flex-1 flex-col gap-[max(10px,2.5cqi)] p-[6cqi]">
           <div className="flex flex-wrap gap-2">
             {protocol.featured ? (
               <Badge color="purple-pizazz">{t('featured')}</Badge>
@@ -172,7 +181,7 @@ export function ProtocolGallery({
     [filter, protocols],
   );
   const layout = useMemo(
-    () => new ProtocolGalleryGridLayout({ minItemWidth: 310, gap: 6 }),
+    () => new ProtocolGalleryGridLayout({ minItemWidth: 400, gap: 6 }),
     [],
   );
   const activeSort = sortConfig[sort];
@@ -185,24 +194,101 @@ export function ProtocolGallery({
 
   return (
     <section aria-labelledby="protocol-gallery-heading">
-      <div className="tablet-landscape:flex-row tablet-landscape:items-end tablet-landscape:justify-between flex flex-col gap-6">
-        <div className="max-w-2xl">
-          <Heading
-            id="protocol-gallery-heading"
-            level="h2"
-            margin="none"
-            className="text-4xl"
-          >
-            {t('heading')}
-          </Heading>
-          <Paragraph margin="none" className="text-text/70 mt-4 text-lg">
-            {t('introduction')}
-          </Paragraph>
+      <Container className="mt-0! mb-0!">
+        <div className="tablet-landscape:flex-row tablet-landscape:items-end tablet-landscape:justify-between flex flex-col gap-6">
+          <div className="max-w-2xl">
+            <Heading
+              id="protocol-gallery-heading"
+              level="h2"
+              margin="none"
+              className="text-4xl"
+            >
+              {t('heading')}
+            </Heading>
+            <Paragraph margin="none" className="text-text/70 mt-4 text-lg">
+              {t('introduction')}
+            </Paragraph>
+          </div>
+          <p aria-live="polite" className="sr-only">
+            {t('results', { count: resultCount })}
+          </p>
         </div>
-        <p aria-live="polite" className="sr-only">
-          {t('results', { count: resultCount })}
-        </p>
-      </div>
+
+        <Surface
+          noContainer
+          spacing="sm"
+          shadow="xs"
+          className="bg-surface/85 mt-10 backdrop-blur-md"
+        >
+          <div className="min-w-0">
+            <UnconnectedField
+              name="protocol-search"
+              label={t('searchLabel')}
+              labelHidden
+              component={InputField}
+              type="search"
+              value={query}
+              onChange={(value) => setQuery(value ?? '')}
+              placeholder={t('searchPlaceholder')}
+              className="w-full"
+              prefixComponent={<Search aria-hidden className="size-5" />}
+              suffixComponent={
+                query ? (
+                  <IconButton
+                    size="md"
+                    variant="text"
+                    aria-label={t('clearSearch')}
+                    icon={<X aria-hidden className="size-4" />}
+                    onClick={() => setQuery('')}
+                  />
+                ) : undefined
+              }
+              size="md"
+            />
+          </div>
+          <div className="tablet-landscape:flex-row tablet-landscape:items-center tablet-landscape:justify-between mt-4 flex min-w-0 flex-col gap-4">
+            <div className="min-w-0 overflow-x-auto pb-1">
+              <SegmentedSwitcher
+                value={filter}
+                onValueChange={setFilter}
+                aria-label={t('filterLabel')}
+                size="md"
+                options={[
+                  { value: 'all', label: t('filters.all') },
+                  {
+                    value: 'sociograms',
+                    label: t('filters.sociograms'),
+                    icon: Waypoints,
+                  },
+                  {
+                    value: 'rosters',
+                    label: t('filters.rosters'),
+                    icon: UsersRound,
+                  },
+                  {
+                    value: 'dyadCensus',
+                    label: t('filters.dyadCensus'),
+                    icon: Rows3,
+                  },
+                ]}
+              />
+            </div>
+            <SelectField
+              id="protocol-sort"
+              name="protocol-sort"
+              aria-label={t('sortLabel')}
+              value={sort}
+              onChange={(value) => setSort(parseSortId(value))}
+              options={sortIds.map((id) => ({
+                value: id,
+                label: t(`sortOptions.${id}`),
+              }))}
+              size="md"
+              className="w-fit shrink-0"
+            />
+          </div>
+        </Surface>
+      </Container>
 
       <Collection
         items={filteredProtocols}
@@ -223,6 +309,7 @@ export function ProtocolGallery({
         sortType={activeSort.type}
         animate={prefersReducedMotion !== true}
         animationKey={`${filter}-${sort}-${query}`}
+        className="[&_[data-stagger-item]]:size-full"
         emptyState={
           <div className="bg-surface/75 mx-auto max-w-lg rounded p-10 backdrop-blur-sm">
             <Heading level="h3" margin="none" className="text-2xl">
@@ -238,87 +325,12 @@ export function ProtocolGallery({
         )}
       >
         {(collectionElements) => (
-          <>
-            <Surface
-              noContainer
-              spacing="sm"
-              shadow="xs"
-              className="bg-surface/85 mt-10 backdrop-blur-md"
-            >
-              <div className="min-w-0">
-                <UnconnectedField
-                  name="protocol-search"
-                  label={t('searchLabel')}
-                  labelHidden
-                  component={InputField}
-                  type="search"
-                  value={query}
-                  onChange={(value) => setQuery(value ?? '')}
-                  placeholder={t('searchPlaceholder')}
-                  className="w-full"
-                  prefixComponent={<Search aria-hidden className="size-5" />}
-                  suffixComponent={
-                    query ? (
-                      <IconButton
-                        size="md"
-                        variant="text"
-                        aria-label={t('clearSearch')}
-                        icon={<X aria-hidden className="size-4" />}
-                        onClick={() => setQuery('')}
-                      />
-                    ) : undefined
-                  }
-                  size="md"
-                />
-              </div>
-              <div className="tablet-landscape:flex-row tablet-landscape:items-center tablet-landscape:justify-between mt-4 flex min-w-0 flex-col gap-4">
-                <div className="min-w-0 overflow-x-auto pb-1">
-                  <SegmentedSwitcher
-                    value={filter}
-                    onValueChange={setFilter}
-                    aria-label={t('filterLabel')}
-                    size="md"
-                    options={[
-                      { value: 'all', label: t('filters.all') },
-                      {
-                        value: 'sociograms',
-                        label: t('filters.sociograms'),
-                        icon: Waypoints,
-                      },
-                      {
-                        value: 'rosters',
-                        label: t('filters.rosters'),
-                        icon: UsersRound,
-                      },
-                      {
-                        value: 'dyadCensus',
-                        label: t('filters.dyadCensus'),
-                        icon: Rows3,
-                      },
-                    ]}
-                  />
-                </div>
-                <div className="shrink-0">
-                  <UnconnectedField
-                    name="protocol-sort"
-                    label={t('sortLabel')}
-                    labelHidden
-                    component={SelectField}
-                    value={sort}
-                    onChange={(value) => setSort(parseSortId(value))}
-                    options={sortIds.map((id) => ({
-                      value: id,
-                      label: t(`sortOptions.${id}`),
-                    }))}
-                    size="md"
-                    className="w-full sm:w-56"
-                  />
-                </div>
-              </div>
-            </Surface>
-
-            <div className="mt-6">{collectionElements}</div>
-          </>
+          <Container
+            maxWidth="full"
+            className="tablet-landscape:mb-32! mt-6! mb-20!"
+          >
+            {collectionElements}
+          </Container>
         )}
       </Collection>
     </section>
