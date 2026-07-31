@@ -499,8 +499,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
       let otherVarId = '';
       let nameVarId = '';
       return {
-        id: 'other-bin-empty-submit-rejected',
-        covers: ['other-dialog-submit-empty-rejected-when-rule-less'],
+        id: 'other-bin-empty-submit-accepted',
+        covers: ['other-dialog-submit-empty-accepted-when-rule-less'],
         seedNetwork: true,
         build: () => {
           const synth = new SyntheticInterview();
@@ -518,9 +518,9 @@ export const categoricalBinScenarios: InterfaceScenarios = {
             ],
           });
           // No `component` and no `validation` block: this is the state
-          // Architect's "Create New Variable" dialog produces by default.
-          // The special writer must still be locally required without needing
-          // a component because it renders its own Field/InputField.
+          // Architect's "Create New Variable" dialog produces by default (and
+          // the state of the sample protocol's `group_other` variable). The
+          // dialog must remain optional and must not require a component.
           const otherReason = personType.addVariable({
             name: 'otherReason',
             type: 'text',
@@ -558,32 +558,26 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           const dialog = page.getByRole('dialog');
           await expect(dialog.getByText('Please specify:')).toBeVisible();
 
-          // Submit with nothing typed: the writer-local required rule rejects
-          // it even though the codebook variable carries no validation block.
+          // Submit with nothing typed: accepted because the codebook variable
+          // has no required rule.
           await page.getByTestId('dialog-submit').click();
-          await expect(dialog).toBeVisible();
-          await expect(
-            page.getByTestId(`${otherVarId}-field-error`),
-          ).toBeVisible();
+          await expect(dialog).not.toBeVisible();
 
           const state = await protocol.getNetworkState(interview.interviewId);
           const alice = state!.nodes.find(
             (n) => n[entityAttributesProperty][nameVarId] === 'Alice',
           )!;
-          expect(alice[entityAttributesProperty][categoryVarId]).toEqual([]);
           expect(
-            alice[entityAttributesProperty][otherVarId] ?? null,
+            alice[entityAttributesProperty][categoryVarId] ?? null,
           ).toBeNull();
-          await dialog.getByRole('button', { name: 'Cancel' }).click();
-          await expect(dialog).not.toBeVisible();
-
-          expect(await stage.categoricalBin.getNodeCountInBin('Other')).toBe(0);
+          expect(alice[entityAttributesProperty][otherVarId]).toBe('');
+          expect(await stage.categoricalBin.getNodeCountInBin('Other')).toBe(1);
           await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '1 unplaced',
+            '0 unplaced',
           );
           await expect(
             stage.categoricalBin.getNodeInDrawer('Alice'),
-          ).toBeVisible();
+          ).toHaveCount(0);
         },
       };
     })(),

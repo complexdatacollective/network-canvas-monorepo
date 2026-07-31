@@ -40,6 +40,7 @@ describe('focusFirstError', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
     document.body.replaceChildren();
   });
@@ -79,5 +80,28 @@ describe('focusFirstError', () => {
 
     expect(focusSpy).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(otherInput);
+  });
+
+  it('does not rely on the global document when the fallback fires', () => {
+    const { input } = setup();
+
+    focusFirstError(errors);
+    vi.stubGlobal('document', undefined);
+
+    expect(() => vi.advanceTimersByTime(800)).not.toThrow();
+
+    vi.unstubAllGlobals();
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('does not focus a field that detaches before the fallback fires', () => {
+    const { input } = setup();
+    const focusSpy = vi.spyOn(input, 'focus');
+
+    focusFirstError(errors);
+    input.remove();
+    vi.advanceTimersByTime(800);
+
+    expect(focusSpy).not.toHaveBeenCalled();
   });
 });

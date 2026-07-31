@@ -410,7 +410,7 @@ const migrationV7toV8 = createMigration({
 - Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the variable's type (e.g. \`minValue\` on a text variable, or \`requiredAcceptsNull\` anywhere). A removed \`minValue\`/\`minLength\`/\`minSelected\` still marks the variable required, preserving the old implied-required behaviour. Layout variables take no validation at all; theirs is removed.
 - A variable's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout variables, which have no control, have it removed.
 - Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean variable's option entry that is not a labelled true/false choice is removed; if no entries remain the variable falls back to the standard Yes/No choices.
-- The CategoricalBin "other" input and the NameGenerator quick-add field now honour the referenced variable's configured validation while remaining locally required, so shared codebook validation is left unchanged.
+- The CategoricalBin "other" input and the NameGenerator quick-add field now honour the referenced variable's configured validation. Both previously required a response locally, so migration adds \`required: true\` to every variable they reference while preserving its other validation rules.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -553,6 +553,54 @@ const migrationV7toV8 = createMigration({
             }
           }
           return variables;
+        },
+      },
+      {
+        // CategoricalBin's "other" dialog and NameGenerator quick-add both
+        // required a response locally in v7. Their v8 writers now honour the
+        // referenced variable's codebook validation, so carry that effective
+        // requiredness into the variable itself. This intentionally overrides
+        // an explicit legacy `required: false`: the writer never honoured it.
+        // Run before validation-contradiction repair so the normal v8 policy
+        // can resolve any newly explicit required/max-zero conflict.
+        paths: [''],
+        fn: <V>(document: V) => {
+          const typedDocument = asRecord(document);
+          if (!typedDocument || !Array.isArray(typedDocument.stages)) {
+            return document;
+          }
+
+          const markRequired = (subject: unknown, variableId: unknown) => {
+            const variable = codebookVariable(
+              typedDocument.codebook,
+              subject,
+              variableId,
+            );
+            if (!variable || variable.type !== 'text') return;
+            const validation = asRecord(variable.validation);
+            if (validation) {
+              validation.required = true;
+            } else {
+              variable.validation = { required: true };
+            }
+          };
+
+          for (const rawStage of typedDocument.stages) {
+            const stage = asRecord(rawStage);
+            if (!stage) continue;
+            if (
+              stage.type === 'CategoricalBin' &&
+              Array.isArray(stage.prompts)
+            ) {
+              for (const rawPrompt of stage.prompts) {
+                markRequired(stage.subject, asRecord(rawPrompt)?.otherVariable);
+              }
+            } else if (stage.type === 'NameGeneratorQuickAdd') {
+              markRequired(stage.subject, stage.quickAdd);
+            }
+          }
+
+          return document;
         },
       },
       {

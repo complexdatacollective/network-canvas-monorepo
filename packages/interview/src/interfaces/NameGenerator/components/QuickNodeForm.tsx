@@ -126,7 +126,6 @@ const QuickNodeForm = ({
             onShowInput={onShowForm ?? undefined}
             successfulSubmissionCount={successfulSubmissionCount}
             {...validationProps}
-            required
             validationContext={validationContext}
           />
         </Form>

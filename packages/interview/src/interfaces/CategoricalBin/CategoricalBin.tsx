@@ -183,22 +183,24 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
     const bin = bins[binIndex]!;
-    const previousIndex = lastBinIndexRef.current.get(nodeId);
-    if (previousIndex === undefined) {
-      track('node_binned', {
-        node_id: nodeId,
-        node_type: node.type,
-        bin_index: binIndex,
-      });
-    } else if (previousIndex !== binIndex) {
-      track('node_rebinned', {
-        node_id: nodeId,
-        node_type: node.type,
-        from_bin_index: previousIndex,
-        to_bin_index: binIndex,
-      });
-    }
-    lastBinIndexRef.current.set(nodeId, binIndex);
+    const recordCommittedDrop = () => {
+      const previousIndex = lastBinIndexRef.current.get(nodeId);
+      if (previousIndex === undefined) {
+        track('node_binned', {
+          node_id: nodeId,
+          node_type: node.type,
+          bin_index: binIndex,
+        });
+      } else if (previousIndex !== binIndex) {
+        track('node_rebinned', {
+          node_id: nodeId,
+          node_type: node.type,
+          from_bin_index: previousIndex,
+          to_bin_index: binIndex,
+        });
+      }
+      lastBinIndexRef.current.set(nodeId, binIndex);
+    };
 
     // If the node is being dropped into the 'other' bin, show a dialog to
     // specify the value for the other variable. The schema's prompt union
@@ -209,7 +211,8 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       // Derive the other variable's validation props directly from its
       // codebook definition — the other-input renders its own Field/component
       // and only ever needs `.validation`, so this skips component
-      // resolution entirely (see selectValidationMetadataForVariable).
+      // resolution entirely (see selectValidationMetadataForVariable). A
+      // variable with no validation rules renders a genuinely optional field.
       const otherValidationMetadata = selectValidationMetadataForVariable(
         stageVariables,
         otherVariable,
@@ -264,7 +267,6 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               component={InputField}
               name={otherVariable}
               {...otherValidationProps}
-              required
               validationContext={validationContext}
               autoFocus
             />
@@ -273,9 +275,9 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         intent: 'default',
       });
 
-      if (!result) return;
+      if (!result) return false;
 
-      await dispatch(
+      const updateResult = await dispatch(
         updateNode({
           nodeId,
           newAttributeData: {
@@ -283,19 +285,22 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
             [otherVariable]:
               typeof result[otherVariable] === 'string'
                 ? result[otherVariable]
-                : null,
+                : '',
           },
           currentStep,
         }),
       );
 
-      return;
+      if (!updateNode.fulfilled.match(updateResult)) return false;
+
+      recordCommittedDrop();
+      return true;
     }
     // Only the 'other' bin (handled above) has a null value; a regular bin
     // always carries a concrete option value.
-    if (bin.value === null) return;
+    if (bin.value === null) return false;
 
-    await dispatch(
+    const updateResult = await dispatch(
       updateNode({
         nodeId,
         newAttributeData: {
@@ -309,6 +314,11 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         currentStep,
       }),
     );
+
+    if (!updateNode.fulfilled.match(updateResult)) return false;
+
+    recordCommittedDrop();
+    return true;
   };
 
   return (
