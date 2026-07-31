@@ -1,3 +1,5 @@
+import { isEqual } from 'es-toolkit/compat';
+
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolSourceRef } from '~/templates';
 
@@ -70,12 +72,35 @@ export const putStoredProtocol = async ({
 };
 
 export const markStoredProtocolValidated = async (
-  id: string,
+  expected: StoredProtocolRow,
 ): Promise<void> => {
-  const updated = await assetDb.protocols.update(id, { validated: true });
-  if (updated === 0) {
-    throw new Error(`Protocol ${id} disappeared during validation.`);
-  }
+  // Validation happens outside this transaction because it may be
+  // asynchronous. The short read/write transaction binds the provenance mark
+  // to the exact revision that passed validation and prevents another tab from
+  // replacing the body between the comparison and update.
+  await assetDb.transaction('rw', assetDb.protocols, async () => {
+    const current = await assetDb.protocols.get(expected.id);
+    if (!current) {
+      throw new Error(`Protocol ${expected.id} disappeared during validation.`);
+    }
+
+    if (
+      current.updatedAt !== expected.updatedAt ||
+      current.schemaVersion !== expected.schemaVersion ||
+      !isEqual(current.protocol, expected.protocol)
+    ) {
+      throw new Error(
+        `Protocol ${expected.id} changed while it was being validated. Try opening it again.`,
+      );
+    }
+
+    const updated = await assetDb.protocols.update(expected.id, {
+      validated: true,
+    });
+    if (updated === 0) {
+      throw new Error(`Protocol ${expected.id} disappeared during validation.`);
+    }
+  });
 };
 
 export const deleteStoredProtocol = async (id: string): Promise<void> => {

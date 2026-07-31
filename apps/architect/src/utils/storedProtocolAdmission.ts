@@ -31,6 +31,6 @@ export const admitStoredProtocol = async (
     return { success: false, error: result.error };
   }
 
-  await (dependencies.markValidated ?? markStoredProtocolValidated)(row.id);
+  await (dependencies.markValidated ?? markStoredProtocolValidated)(row);
   return { success: true };
 };

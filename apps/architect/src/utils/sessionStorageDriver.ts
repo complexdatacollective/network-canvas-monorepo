@@ -22,6 +22,24 @@ const getSessionStorage = (): globalThis.Storage | null => {
   }
 };
 
+const REMEMBERED_APP_SESSION_KEY = '@@remember-app';
+
+// A failed startup rehydration may leave malformed or stale remembered state
+// behind. Remove it directly because redux-remember installs its persistence
+// subscription only after rehydration, so an immediate Redux reset is not
+// guaranteed to overwrite the stored payload.
+export const clearRememberedAppSession = (): void => {
+  const storage = getSessionStorage();
+  if (!storage) return;
+
+  try {
+    storage.removeItem(REMEMBERED_APP_SESSION_KEY);
+  } catch {
+    // Inaccessible session storage is already non-persistent. The in-memory
+    // Redux state is reset separately by startup recovery.
+  }
+};
+
 export const createSessionStorageDriver = (): Driver => {
   const memory = new Map<string, string>();
   let useMemory = false;

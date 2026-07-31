@@ -10,7 +10,7 @@ import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 
 import { AppErrorBoundary } from './components/Errors';
 import AppView from './components/ViewManager/views/App';
-import { restoreActiveProtocolFromLibrary } from './ducks/restoreActiveProtocol';
+import { restoreActiveProtocolAfterStoreRehydration } from './ducks/restoreActiveProtocol';
 import { store, storeRehydrated } from './ducks/store';
 import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
@@ -25,7 +25,6 @@ import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
-import { reportError } from './utils/reportError';
 
 // Capture the PWA install prompt before React mounts — the event fires early and
 // is one-shot.
@@ -61,14 +60,7 @@ async function startApp(): Promise<void> {
   // redux-remember restores only the active library id. Load its canonical
   // protocol body from IndexedDB before mounting any direct /protocol route.
   const rehydrationResult = await storeRehydrated;
-  if (rehydrationResult === 'rehydrated') {
-    await restoreActiveProtocolFromLibrary(store);
-  } else if (rehydrationResult === 'timed-out') {
-    reportError(
-      new Error('Session state restoration timed out; using a fresh session.'),
-      { operation: 'session-state-rehydration' },
-    );
-  }
+  await restoreActiveProtocolAfterStoreRehydration(store, rehydrationResult);
 
   // Protocols live in IndexedDB even in a browser tab, so request the durability
   // upgrade there as well as in installed sessions. Do not request at startup:

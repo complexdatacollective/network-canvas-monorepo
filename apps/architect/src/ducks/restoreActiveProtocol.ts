@@ -1,6 +1,7 @@
 import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { getStoredProtocol as readStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
+import { clearRememberedAppSession } from '~/utils/sessionStorageDriver';
 import { reportStartupProtocolValidationFailure } from '~/utils/startupProtocolFailureQueue';
 import { admitStoredProtocol as admitCanonicalProtocol } from '~/utils/storedProtocolAdmission';
 
@@ -15,6 +16,7 @@ import {
   setStorageUnavailable,
 } from './modules/app';
 import type { AppDispatch, RootState } from './store';
+import type { StoreRehydrationResult } from './storeRehydration';
 
 type RestoreStore = {
   dispatch: AppDispatch;
@@ -27,6 +29,7 @@ type RestoreDependencies = {
   onError?: (error: unknown) => void;
   onInvalid?: (message: string) => void;
   admitStoredProtocol?: typeof admitCanonicalProtocol;
+  clearRememberedSession?: () => void;
 };
 
 export type RestoreActiveProtocolResult =
@@ -124,4 +127,36 @@ export const restoreActiveProtocolFromLibrary = async (
   disarmInMemoryUnloadGuard();
   store.dispatch(setActiveProtocol(row.protocol));
   return 'restored';
+};
+
+// Settle startup before React mounts. A failed or timed-out session restore
+// cannot safely retain a protocol URL because there is no canonical protocol
+// body to back the editor on that route.
+export const restoreActiveProtocolAfterStoreRehydration = async (
+  store: RestoreStore,
+  rehydrationResult: StoreRehydrationResult,
+  dependencies: RestoreDependencies = {},
+): Promise<
+  RestoreActiveProtocolResult | Exclude<StoreRehydrationResult, 'rehydrated'>
+> => {
+  if (rehydrationResult === 'rehydrated') {
+    return await restoreActiveProtocolFromLibrary(store, dependencies);
+  }
+
+  (dependencies.clearRememberedSession ?? clearRememberedAppSession)();
+  clearRestoredSession(store);
+  (dependencies.replaceProtocolRoute ?? replaceProtocolRoute)();
+
+  if (rehydrationResult === 'timed-out') {
+    const error = new Error(
+      'Session state restoration timed out; using a fresh session.',
+    );
+    if (dependencies.onError) {
+      dependencies.onError(error);
+    } else {
+      reportError(error, { operation: 'session-state-rehydration' });
+    }
+  }
+
+  return rehydrationResult;
 };

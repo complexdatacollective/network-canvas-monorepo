@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createSessionStorageDriver } from '../sessionStorageDriver';
+import {
+  clearRememberedAppSession,
+  createSessionStorageDriver,
+} from '../sessionStorageDriver';
 
 afterEach(() => {
   window.sessionStorage.clear();
@@ -22,6 +25,17 @@ describe('sessionStorageDriver', () => {
   it('returns null for a missing key', () => {
     const driver = createSessionStorageDriver();
     expect(driver.getItem('missing')).toBeNull();
+  });
+
+  it('clears the remembered app session after startup recovery', () => {
+    window.sessionStorage.setItem(
+      '@@remember-app',
+      '{"activeProtocolId":"stale"}',
+    );
+
+    clearRememberedAppSession();
+
+    expect(window.sessionStorage.getItem('@@remember-app')).toBeNull();
   });
 
   it('falls back to an in-memory store when sessionStorage.setItem throws', () => {

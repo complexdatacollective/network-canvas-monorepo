@@ -48,7 +48,7 @@ describe('admitStoredProtocol', () => {
       admitStoredProtocol(makeRow(), { validate, markValidated }),
     ).resolves.toEqual({ success: true });
     expect(validate).toHaveBeenCalledWith(protocol);
-    expect(markValidated).toHaveBeenCalledWith('p1');
+    expect(markValidated).toHaveBeenCalledWith(makeRow());
   });
 
   it('rejects an invalid legacy row without marking it', async () => {

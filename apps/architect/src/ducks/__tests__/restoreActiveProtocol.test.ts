@@ -11,7 +11,10 @@ import app, {
   setActiveProtocolId,
   setStorageUnavailable,
 } from '../modules/app';
-import { restoreActiveProtocolFromLibrary } from '../restoreActiveProtocol';
+import {
+  restoreActiveProtocolAfterStoreRehydration,
+  restoreActiveProtocolFromLibrary,
+} from '../restoreActiveProtocol';
 
 const makeProtocol = (name: string): CurrentProtocol => ({
   name,
@@ -175,5 +178,55 @@ describe('restoreActiveProtocolFromLibrary', () => {
     expect(store.getState().activeProtocol.present).toBeNull();
     expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
     expect(onInvalid).toHaveBeenCalledWith(error.message);
+  });
+});
+
+describe('restoreActiveProtocolAfterStoreRehydration', () => {
+  it.each(['failed', 'timed-out'] as const)(
+    'clears the session and blocks protocol routes when rehydration is %s',
+    async (rehydrationResult) => {
+      const store = makeStore();
+      store.dispatch(setActiveProtocolId('stale'));
+      store.dispatch(setActiveProtocol(makeProtocol('Stale session body')));
+      const replaceProtocolRoute = vi.fn();
+      const clearRememberedSession = vi.fn();
+      const onError = vi.fn();
+
+      await restoreActiveProtocolAfterStoreRehydration(
+        store,
+        rehydrationResult,
+        { replaceProtocolRoute, clearRememberedSession, onError },
+      );
+
+      expect(getActiveProtocolId(store.getState())).toBeNull();
+      expect(store.getState().activeProtocol.present).toBeNull();
+      expect(store.getState().activeProtocol.past).toEqual([]);
+      expect(store.getState().activeProtocol.future).toEqual([]);
+      expect(clearRememberedSession).toHaveBeenCalledTimes(1);
+      expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
+      expect(onError).toHaveBeenCalledTimes(
+        rehydrationResult === 'timed-out' ? 1 : 0,
+      );
+    },
+  );
+
+  it('restores the canonical row after successful rehydration', async () => {
+    const store = makeStore();
+    const canonical = makeProtocol('Canonical');
+    store.dispatch(setActiveProtocolId('p1'));
+    const getStoredProtocol = vi.fn().mockResolvedValue({
+      id: 'p1',
+      protocol: canonical,
+      validated: true,
+    });
+    const replaceProtocolRoute = vi.fn();
+
+    await restoreActiveProtocolAfterStoreRehydration(store, 'rehydrated', {
+      getStoredProtocol,
+      replaceProtocolRoute,
+    });
+
+    expect(store.getState().activeProtocol.present).toEqual(canonical);
+    expect(replaceProtocolRoute).not.toHaveBeenCalled();
   });
 });
