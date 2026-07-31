@@ -4418,6 +4418,12 @@ describe('Migration V7 to V8', () => {
       expect(typeof migrationV7toV8.notes).toBe('string');
       if (migrationV7toV8.notes) {
         expect(migrationV7toV8.notes.length).toBeGreaterThan(0);
+        expect(migrationV7toV8.notes).toContain(
+          'The CategoricalBin response is optional unless the codebook variable requires it',
+        );
+        expect(migrationV7toV8.notes).toContain(
+          'NameGenerator quick-add remains locally required',
+        );
       }
     });
   });
