@@ -65,8 +65,7 @@ const Options = compose(connect(mapStateToProps, mapDispatchToProps))(({
       </Paragraph>
       <Paragraph>
         Each value can also be styled to indicate that it is negative. When
-        enabled, this will make the option red when selected, and use a cross
-        icon rather than a tick.
+        enabled, this will make the option red when selected.
       </Paragraph>
       <div className="grid grid-cols-1 gap-5">
         <div className="bg-surface-3 text-surface-3-contrast rounded p-7 [&_h3]:mt-0">

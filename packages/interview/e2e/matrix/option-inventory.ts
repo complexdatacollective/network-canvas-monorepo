@@ -192,7 +192,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'egoVariable.name-fallback-label', // dead: prompt is required, fallback unreachable
     'RadioGroup-auto-columns->6-options',
     'Boolean-custom-options',
-    'Boolean-options[].negative', // dead: Boolean.tsx never reads it
+    'Boolean-options[].negative',
     'validation.required',
     'validation.requiredAcceptsNull', // dead: declared, consumed nowhere
     'validation.minLength/maxLength',

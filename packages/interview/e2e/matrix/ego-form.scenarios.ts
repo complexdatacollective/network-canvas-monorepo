@@ -470,10 +470,6 @@ export const egoFormScenarios: InterfaceScenarios = {
           prompt: 'How many siblings do you have?',
         });
 
-        // Boolean with custom labels. `negative` is accepted by the schema
-        // (booleanOptionsSchema) but never read by Boolean.tsx (BooleanOption
-        // is `{ label, value }`), so it renders identically — documented, not
-        // separately asserted.
         const booleanVar = synth.addEgoVariable({
           type: 'boolean',
           component: 'Boolean',
@@ -512,6 +508,8 @@ export const egoFormScenarios: InterfaceScenarios = {
         const nope = page.getByRole('radio', { name: 'Nope' });
         await expect(sure).toHaveAttribute('data-value', 'true');
         await expect(nope).toHaveAttribute('data-value', 'false');
+        await expect(nope).toHaveAttribute('data-negative', 'true');
+        await expect(sure).not.toHaveAttribute('data-negative', 'true');
         await nope.click();
 
         await interview.next();
