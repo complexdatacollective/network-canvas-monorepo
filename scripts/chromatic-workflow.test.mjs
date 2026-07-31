@@ -134,6 +134,24 @@ test('unaffected release projects call Chromatic skip from one setup job', () =>
   }
 });
 
+test('affected release projects pass runtime options through pnpm', () => {
+  for (const [jobName, packageName] of [
+    ['fresco-ui', '@codaco/fresco-ui'],
+    ['interview', '@codaco/interview'],
+    ['interviewer', '@codaco/interviewer'],
+  ]) {
+    const body = job(jobName);
+    assert.ok(body, `${jobName} job exists`);
+    assert.match(
+      body,
+      new RegExp(
+        `pnpm --filter ${packageName.replace('/', '\\/')} chromatic \\\\\\n\\s+--skip-update-check --no-interactive \\\\\\n\\s+--log-file="\\$RUNNER_TEMP/chromatic-${jobName}\\.log"`,
+      ),
+    );
+    assert.doesNotMatch(body, /pnpm --filter [^\n]+ chromatic -- \\/);
+  }
+});
+
 test('Chromatic waits for rendering but leaves visual acceptance to UI Tests', () => {
   for (const [project, manifest] of Object.entries(packages)) {
     const script = manifest.scripts.chromatic;
