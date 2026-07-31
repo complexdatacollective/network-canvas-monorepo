@@ -423,6 +423,14 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         expect(metadata).toHaveLength(6);
         expect(metadata.filter(([p]) => p === 0)).toHaveLength(3);
         expect(metadata.filter(([p]) => p === 1)).toHaveLength(3);
+
+        // The final answer auto-advances after 350ms. Waiting for the intended
+        // terminal state keeps the pixel capture from racing that transition
+        // and naming either screen as the stage-0 final image.
+        await expect(
+          page.getByRole('heading', { name: 'Finish Interview' }),
+        ).toBeVisible();
+        await expect(page).toHaveURL(/step=1/);
       },
     },
 
