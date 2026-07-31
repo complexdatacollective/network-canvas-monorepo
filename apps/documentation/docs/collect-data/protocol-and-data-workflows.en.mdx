@@ -5,7 +5,7 @@ wip: false
 toc: true
 ---
 
-<SummaryCard duration="30 minutes">
+<SummaryCard duration="15 minutes">
 <SummarySection>
 
 This tutorial describes a protocol and data workflow for using Network Canvas tools.
@@ -25,17 +25,21 @@ To follow along, you should:
 
 ## Introduction
 
-This guide walks you through the possible workflows for conducting research using the Network Canvas tools: how your protocol gets onto each interview device, and how your collected data comes back to you.
+This guide walks you through three possible workflows for conducting research using the Network Canvas tools: how your protocol gets onto each interview device, and how your collected data comes back to you.
 
-- **[The Interviewer workflow](#the-interviewer-workflow)** — conduct interviewer-guided sessions in [Interviewer](/en/collect-data/interviewer), which runs in a web browser with nothing to install. Protocols are imported and data is exported from within the app itself.
-- **[The web-based workflow](#web-based-workflow-architect--fresco)** — author protocols in [Architect](/en/design-protocols/getting-started), upload them to a [Fresco](/en/collect-data/fresco/about) dashboard, and let participants complete interviews in their browser, with all data stored centrally and exported from the dashboard.
-- **[The Interviewer Classic workflows](#interviewer-classic-workflows)** — for studies running **Interviewer Classic**, the downloadable desktop and tablet app. These involve copying the protocol file to each device and collecting a separate export from each, either through a cloud file sharing service or using a USB flash drive.
+- **[The Interviewer workflow](#the-interviewer-workflow)** — conduct in-person interviewer-guided sessions in [Interviewer](/en/collect-data/interviewer), which runs locally in a researcher's web browser with nothing needed to install. Protocols are imported and data is exported from within the app itself.
+- **[The Fresco workflow](#the-fresco-workflow)** — author protocols in [Architect](/en/design-protocols/getting-started), upload them to a [Fresco](/en/collect-data/fresco/about) dashboard, and let participants complete interviews remotely in their browser, with all data stored centrally and exported from the dashboard.
+- **[The Interviewer Classic workflows](#the-interviewer-classic-workflow)** — for studies running **Interviewer Classic**, the downloadable desktop and tablet app. These involve copying the protocol file to each device and collecting a separate export from each, either through a cloud file sharing service or using a USB flash drive.
+
+Each workflow starts with a protocol you have already designed: use [Architect](/en/design-protocols/getting-started) for Interviewer and Fresco, and [Architect Classic](/en/design-protocols/choosing-architect) for Interviewer Classic, which runs schema 7 protocols only.
+
+With Interviewer and Interviewer Classic, you move files on and off each interview device yourself. [Interviewer Online and Offline Workflows](/en/collect-data/interviewer-online-and-offline-workflows) shows how, with or without an internet connection.
 
 ## The Interviewer workflow
 
 [Interviewer](/en/collect-data/interviewer) runs in your web browser, or can be installed to a device you control as a Progressive Web App. It keeps everything it stores — protocols, interviews, and settings — on the device, with no server component, so the whole protocol and data cycle happens inside the app:
 
-1. **Import your protocol** from a `.netcanvas` file on the device, or directly from a URL. Protocols are validated on import, and protocols built against an older schema are migrated to schema 8 automatically.
+1. **Import your protocol** from a `.netcanvas` file on the device. Protocols are validated on import, and protocols built against an older schema are migrated to schema 8 automatically.
 2. **Conduct your interviews.** Sessions are guided by an interviewer and stored on the device — encrypted at rest when you set an app lock — and can be resumed later if interrupted.
 3. **Export your data** from within the app by selecting sessions in the **Data** view. Interviewer packages them into a single `.zip` archive of CSV and/or GraphML files, using the formats and options you configure once in **Settings → Data export**.
 
@@ -47,7 +51,7 @@ You can rehearse this whole cycle before collecting real data: Interviewer can g
 
 </TipBox>
 
-## Web-based workflow (Architect + Fresco)
+## The Fresco workflow
 
 If you want to conduct interviews remotely in a web browser without installing software on each device, you can use the web-based tooling: author your protocol in [Architect](/en/design-protocols/getting-started) and run your study using [Fresco](/en/collect-data/fresco/about).
 
@@ -55,13 +59,9 @@ This workflow removes per-device logistics entirely. There is no protocol to imp
 
 <TipBox>
 
-The web-based workflow requires a deployed Fresco instance. Fresco is self-hosted, so you (or your institution's IT department) will need to deploy it before you can run a study. See the [deployment guide](/en/collect-data/fresco/guide) to get started, or explore the [sandbox](/en/collect-data/fresco/sandbox) to try Fresco without deploying it yourself.
+The Fresco workflow requires a deployed Fresco instance. Fresco is self-hosted, so you (or your institution's IT department) will need to deploy it before you can run a study. See the [deployment guide](/en/collect-data/fresco/guide) to get started, or explore the [sandbox](/en/collect-data/fresco/sandbox) to try Fresco without deploying it yourself.
 
 </TipBox>
-
-### Authoring the protocol
-
-Design your protocol in [Architect](/en/design-protocols/getting-started). There is nothing to install — it runs entirely in your web browser — and it exports a standard `.netcanvas` protocol file (schema 8).
 
 ### Deploying the protocol to Fresco
 
@@ -88,7 +88,7 @@ Interview data is stored centrally in Fresco's database (PostgreSQL), so there i
 3. Confirm the file types and export options you wish to use (the same CSV and GraphML options described in the [Data Export guide](/en/analyze-data/data-export)).
 4. Click **Start export process**.
 
-Because data is collected and exported centrally, the per-device transfer logistics described in the [Interviewer Classic workflows](#interviewer-classic-workflows) below do not apply. For full details on exporting and monitoring your study, see the [Using Fresco guide](/en/collect-data/fresco/using-fresco#exporting-data).
+Because data is collected and exported centrally, the per-device transfer logistics described in [Interviewer Online and Offline Workflows](/en/collect-data/interviewer-online-and-offline-workflows) do not apply. For full details on exporting and monitoring your study, see the [Using Fresco guide](/en/collect-data/fresco/using-fresco#exporting-data).
 
 #### Pulling data programmatically with the Fresco API
 
@@ -98,107 +98,26 @@ The API is off by default; you enable it and create an access token from **Setti
 
 <TipBox>
 
-Fresco has some [known limitations](/en/collect-data/fresco/about#known-limitations) compared with Interviewer. Review these before choosing the web-based workflow, especially if you intend to compare data collected with Fresco against data collected with Interviewer.
+Fresco has some [known limitations](/en/collect-data/fresco/about#known-limitations) compared with Interviewer. Review these before choosing the Fresco workflow, especially if you intend to compare data collected with Fresco against data collected with Interviewer.
 
 </TipBox>
 
-## Interviewer Classic workflows
+## The Interviewer Classic workflow
 
-If your study runs **[Interviewer Classic](/en/collect-data/interviewer/installing-interviewer)**, the downloadable desktop and tablet app, your workflow involves copying the protocol file to each interview device and collecting a separate data export from each. The two workflows below cover the scenarios with and without network connectivity, using tablets or laptop/desktop devices:
+If your study runs **[Interviewer Classic](/en/collect-data/interviewer/installing-interviewer)** — the downloadable desktop and tablet app — the shape of the workflow matches the Interviewer workflow above: the protocol is imported on each device, interviews are stored on that device, and each device produces its own export.
 
-- **[Classic online workflow](#classic-online-workflow)** — deploy protocols and export data via a cloud file sharing service.
-- **[Classic offline workflow](#classic-offline-workflow)** — deploy protocols and export data via a USB flash drive or other external storage.
+1. **Install Interviewer Classic** on every interview device, and [configure the devices](/en/collect-data/interviewer/configuring-devices) before data collection begins.
+2. **Import your protocol** on each device from a `.netcanvas` file. Interviewer Classic runs schema 7 protocols and works fully offline.
+3. **Conduct your interviews**, guided by an interviewer.
+4. **Export your data** from the **Manage or Export Sessions** card on the start screen, choosing your file types and export options each time, and save the resulting `.zip` to a location you control.
 
-### Classic online workflow
-
-If you have access to a network connection with internet access, use the following workflow to deploy protocols and export data.
-
-<ImageFullWidth src="/assets/img/offline-data/online.png" alt="Online workflow diagram"></ImageFullWidth>
-
-The two most convenient ways to deploy protocols are to use a **cloud file sharing service** or a **web hosting service**. These options allow you to share your protocol file with others either by providing them with a link to the file or by importing it via the cloud file service's app on your device.
-
-#### Using a cloud file sharing service to deploy protocols
-
-The preferred method for deploying protocols is to use a cloud file sharing service. It has the significant advantage of providing a single location for the protocol file that can be updated as needed and which can be accessed by multiple people at the same time.
-
-1. Place your `.netcanvas` file on a cloud storage service (e.g., Box, DropBox, Google Drive). You can generally accomplish this by dragging and dropping the file into a dedicated folder on the computer you are using to author the protocol. Alternatively, many providers allow you to upload files via a web interface.
-2. (Optionally) Generate a shareable link for the protocol file in the cloud service. The precise mechanism by which this is accomplished varies by provider. You can then use this link to import the protocol file on your devices running Interviewer Classic (see "Utilizing URL import to deploy protocols", below).
-3. Alternatively, install the cloud service's app on your device and use it to import the `.netcanvas` file into Interviewer Classic using the **Import from File** button on the start screen. Typically, you accomplish this by browsing to a special location in the file browser that corresponds to the cloud storage provider (e.g., "Dropbox" or "Google Drive"). If your provider is not visible in the file browser, try to copy the protocol file to the storage of your device from within the provider's app.
-
-#### Utilizing URL import to deploy protocols
-
-A second option for protocol import that can work well for cases where the protocol is not likely to change frequently, or where you want to document the setup process in writing, is to use the URL import feature of Interviewer Classic. This allows you to import a protocol file directly from a web link (URL).
-
-1. Use a web hosting service that provides file hosting capabilities to host the protocol's `.netcanvas` file (e.g., GitHub Pages, SharePoint, and so on).
-2. Once you have a hosting service, upload your `.netcanvas` file.
-3. Once the file is uploaded, determine the URL for accessing the `.netcanvas` file. The URL will typically follow the format: `https://<your website>.com/path/to/file.netcanvas`.
-4. Ensure that the URL is publicly accessible by opening it in a web browser.
-5. Once the file is hosted and the URL is accessible, you can share the web link with others. They can then use the link to access and import the protocol file into Interviewer Classic using the **Import from URL** button on the start screen.
-
-#### Data export via cloud file sharing
-
-As with the protocol deployment flow described above, we recommend using a cloud file sharing service to export data. This allows you to consolidate interview data by directly uploading your data to your cloud provider.
-
-1. Create a dedicated folder on your cloud storage service to store the Interviewer Classic data. Choose a location that is easily accessible and organized. If you are operating within a large team, consider creating individual folders for each person conducting interviews, and consider setting permissions to "write only" (or similar) so that interviewers can only add files to their own folder.
-2. Install the cloud service's app on your interview device and ensure that you are logged in to the app and have access to the folder you created in step 1.
-3. Once you have conducted some interviews, navigate to the **Manage or Export Sessions** card on the Interviewer Classic start screen and select the files you wish to export. You will be prompted to choose a location to save the export.
-   - If you are using a tablet device, you will be prompted to choose an app to handle the export. Choose the cloud service's app. The app will then open and you will be prompted to choose a location to save the export.
-   - If you are using a PC or Mac, you will be prompted to choose a location on the device's filesystem to save the export. Navigate to the cloud service's folder that you created in step 1.
-
-#### Alternatives
-
-It is possible to transmit the zip files created by Interviewer Classic through many other mechanisms than those described above. However, these are generally not recommended as a primary workflow as they can be more insecure and error-prone than using a cloud file sharing service, and may not be compatible with the Institutional Review Board (IRB) requirements of your research.
-
-However, if you are comfortable with the potential risks, it should be possible to use the same approach as above to "share" your exported data to a number of apps and services, including via email, Slack, SharePoint, and so on.
-
-### Classic offline workflow
-
-If you are working in a scenario where you do not have access to an internet connection, you can use the following workflow to deploy protocols and export data.
-
-<TipBox>
-
-The offline workflow assumes every interface in your protocol works offline. Some schema-8 interfaces in **Interviewer** — notably [Geospatial](/en/design-protocols/interface-documentation/geospatial), which loads maps over the internet — require a connection _during the interview_, so a protocol that uses them cannot be run fully offline. Schema-7 protocols in **Interviewer Classic** are unaffected.
-
-</TipBox>
-
-<ImageFullWidth src="/assets/img/offline-data/offline.png" alt="Offline workflow diagram"></ImageFullWidth>
-
-#### Protocol deployment via USB
-
-In an offline setting, the only option for deploying protocols is to use a USB flash drive or other external storage device to transfer the protocol file physically from your computer to the device running Interviewer Classic.
-
-1. Determine the path to your protocol file (where it is saved on your computer). It typically follows the format: `C:\Folder\Subfolder\file.netcanvas` for Windows or `/Users/Username/Folder/Subfolder/file.netcanvas` for Mac.
-2. Open the file browser on your computer and navigate to the location of the protocol file.
-3. Insert your USB flash drive or other external storage device into your computer.
-4. Copy the protocol file to the external storage device.
-5. Eject the external storage device from your computer.
-6. Insert the external storage device into the device running Interviewer Classic.
-7. Open Interviewer Classic and navigate to the 'Import from File' button on the start screen.
-8. Navigate to the external storage device's folder, and select the protocol file.
-
-<TipBox>
-
-Refer to the documentation from your operating system or device manufacturer
-(or simply test ahead of time) to ensure that the storage device you are using
-to transfer the protocol file can be read by the device running Interviewer
-Classic _and_ the device running Architect Classic.
-
-</TipBox>
-
-#### Data export via USB
-
-As above, the only option for exporting data in an offline setting is to use a USB flash drive or other external storage device to transfer the data files from the device running Interviewer Classic to a computer.
-
-1. Create a dedicated folder on your external storage device to store the Interviewer Classic data. Choose a location that is easily accessible and organized. If you are operating within a large team, consider creating individual folders for each person conducting interviews.
-2. Once you have conducted your interviews, navigate to the 'Manage or Export Sessions' card on the start screen of Interviewer Classic and select the files you wish to export. You will be prompted to choose a location to save the export.
-   - If you are using a PC or Mac, you will be prompted to choose a location on the device's filesystem to save the export. Navigate to the external storage device's folder that you created in step 1.
-   - If you are using a tablet device, you will be prompted to choose an app to handle the export. The export functionality on tablet devices works using the "share" feature built into both Android and iOS. This means that options for saving exported data are determined by which apps you have installed on your device. You therefore need to install a third-party file management app such as "[CX File Explorer](https://play.google.com/store/apps/details?id=com.cxinventor.file.explorer)". Once installed, choose the file manager app from the share menu. The app will then open and you will be prompted to choose a location to save the export. Navigate to the external storage device's folder that you created in step 1.
+[Interviewer Online and Offline Workflows](/en/collect-data/interviewer-online-and-offline-workflows) covers steps 2 and 4 in detail, for connected devices (via a cloud file sharing service) and for devices with no internet connection (via external storage).
 
 ## Data Organization and Backup Best Practices
 
 Regardless of which workflow you choose, it is important to consider how you will organize and back up your data. The following are some best practices to consider:
 
-1. Within the local or cloud folder, create subfolders to categorize and organize your Network Canvas data based on project, date, or any other relevant criteria.
+1. Within the folder where your exports are collected — local, cloud, or external storage — create subfolders to categorize and organize your Network Canvas data based on project, date, or any other relevant criteria.
 2. Regularly back up the data by copying or syncing the local folder to an external storage device or a different cloud storage service. Putting the data on the cloud provider is not a backup, as it is still only in one location.
 3. Consider implementing a version control system or maintaining backups at different time intervals to ensure data integrity and minimize the risk of data loss.
 4. Use the access control features of your cloud storage service to ensure that only authorized individuals have access to the data, and that they only have the level of access required to perform their role.
