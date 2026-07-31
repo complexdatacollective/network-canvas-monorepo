@@ -4419,10 +4419,10 @@ describe('Migration V7 to V8', () => {
       if (migrationV7toV8.notes) {
         expect(migrationV7toV8.notes.length).toBeGreaterThan(0);
         expect(migrationV7toV8.notes).toContain(
-          'The CategoricalBin response is optional unless the codebook variable requires it',
+          'migration adds `required: true` to every variable they reference',
         );
         expect(migrationV7toV8.notes).toContain(
-          'NameGenerator quick-add remains locally required',
+          'while preserving its other validation rules',
         );
       }
     });
@@ -5744,7 +5744,46 @@ describe('Migration V7 to V8', () => {
       stages,
     });
 
-    it('does not make variables shared with ordinary forms globally required', () => {
+    const specialWriterStages = [
+      {
+        id: 's1',
+        type: 'CategoricalBin',
+        label: 'Bin',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          {
+            id: 'p1',
+            text: 'T',
+            variable: 'category',
+            otherVariable: 'other',
+            otherVariablePrompt: 'W',
+            otherOptionLabel: 'O',
+          },
+        ],
+      },
+      {
+        id: 's2',
+        type: 'NameGeneratorQuickAdd',
+        label: 'QA',
+        subject: { entity: 'node', type: 'person' },
+        quickAdd: 'quick',
+        prompts: [{ id: 'p2', text: 'T' }],
+      },
+      {
+        id: 's3',
+        type: 'AlterForm',
+        label: 'Form',
+        subject: { entity: 'node', type: 'person' },
+        form: {
+          fields: [
+            { variable: 'other', prompt: 'Other' },
+            { variable: 'quick', prompt: 'Quick' },
+          ],
+        },
+      },
+    ];
+
+    it('marks both special-writer variables required while preserving their other validation', () => {
       const migrated = migrate(
         protocolWith(
           {
@@ -5767,57 +5806,44 @@ describe('Migration V7 to V8', () => {
               validation: { required: false, maxLength: 12 },
             },
           },
-          [
-            {
-              id: 's1',
-              type: 'CategoricalBin',
-              label: 'Bin',
-              subject: { entity: 'node', type: 'person' },
-              prompts: [
-                {
-                  id: 'p1',
-                  text: 'T',
-                  variable: 'category',
-                  otherVariable: 'other',
-                  otherVariablePrompt: 'W',
-                  otherOptionLabel: 'O',
-                },
-              ],
-            },
-            {
-              id: 's2',
-              type: 'NameGeneratorQuickAdd',
-              label: 'QA',
-              subject: { entity: 'node', type: 'person' },
-              quickAdd: 'quick',
-              prompts: [{ id: 'p2', text: 'T' }],
-            },
-            {
-              id: 's3',
-              type: 'AlterForm',
-              label: 'Form',
-              subject: { entity: 'node', type: 'person' },
-              form: {
-                fields: [
-                  { variable: 'other', prompt: 'Other' },
-                  { variable: 'quick', prompt: 'Quick' },
-                ],
-              },
-            },
-          ],
+          specialWriterStages,
         ),
       );
       const variables = migrated.codebook.node.person.variables;
       expect(variables.other).toEqual({
         name: 'other',
         type: 'text',
-        validation: { maxLength: 10 },
+        validation: { maxLength: 10, required: true },
       });
       expect(variables.quick).toEqual({
         name: 'quick',
         type: 'text',
-        validation: { required: false, maxLength: 12 },
+        validation: { required: true, maxLength: 12 },
       });
+    });
+
+    it('creates required validation when a special-writer variable had none', () => {
+      const migrated = migrate(
+        protocolWith(
+          {
+            category: {
+              name: 'category',
+              type: 'categorical',
+              options: [
+                { label: 'One', value: 1 },
+                { label: 'Two', value: 2 },
+              ],
+            },
+            other: { name: 'other', type: 'text' },
+            quick: { name: 'quick', type: 'text' },
+          },
+          specialWriterStages,
+        ),
+      );
+
+      const variables = migrated.codebook.node.person.variables;
+      expect(variables.other).toHaveProperty('validation.required', true);
+      expect(variables.quick).toHaveProperty('validation.required', true);
     });
   });
 
