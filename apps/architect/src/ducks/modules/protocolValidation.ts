@@ -62,4 +62,6 @@ const protocolValidationSlice = createSlice({
   },
 });
 
+export const clearValidation = protocolValidationSlice.actions.clearValidation;
+
 export default protocolValidationSlice.reducer;

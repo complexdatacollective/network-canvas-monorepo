@@ -526,7 +526,8 @@ export const openLibraryProtocol = createAppAsyncThunk(
     }
 
     // This protocol is loaded from durable storage, so any earlier in-memory
-    // unload warning no longer applies.
+    // unload warning/storage failure no longer applies.
+    dispatch(setStorageUnavailable(false));
     disarmInMemoryUnloadGuard();
     dispatch(setActiveProtocolId(id));
     dispatch(setActiveProtocol(row.protocol));

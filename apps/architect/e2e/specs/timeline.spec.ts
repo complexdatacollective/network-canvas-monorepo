@@ -194,8 +194,8 @@ test('blocks deleting a FamilyPedigree stage referenced by NarrativePedigree', a
 
   // Dialog shown AND deletion did not proceed. The guard returns before any
   // deleteStage dispatch, so no store change happens; acknowledging then
-  // waiting past the 600ms autosave debounce lets any (regression) erroneous
-  // delete's write land in IndexedDB before we assert it did NOT — closing
+  // waiting lets any (regression) erroneous accepted delete reach IndexedDB
+  // before we assert it did NOT — closing
   // the "dialog shown but deletion silently proceeds anyway" gap.
   await guardDialog.getByRole('button', { name: 'OK' }).click();
   await architectPage.waitForTimeout(1000);

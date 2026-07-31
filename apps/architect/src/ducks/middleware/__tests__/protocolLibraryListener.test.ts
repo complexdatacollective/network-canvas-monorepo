@@ -1,5 +1,5 @@
-import { combineReducers, configureStore } from '@reduxjs/toolkit';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { configureStore } from '@reduxjs/toolkit';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
@@ -11,9 +11,6 @@ vi.mock('~/utils/protocolLibrary', () => ({
   putStoredProtocol: (...args: unknown[]) => putStoredProtocol(...args),
 }));
 
-// The autosave flush runs its existence-check + put inside an assetDb
-// transaction scoped to `protocols` and `assets`; Dexie needs a real IndexedDB,
-// so stub the transaction to just invoke its callback (the trailing arg).
 vi.mock('~/utils/assetDB', () => ({
   assetDb: {
     protocols: {},
@@ -23,156 +20,79 @@ vi.mock('~/utils/assetDB', () => ({
   },
 }));
 
-import { REMEMBER_REHYDRATED } from 'redux-remember';
-
-import {
-  deserializeActiveProtocol,
-  serializeActiveProtocol,
-} from '../../activeProtocolPersistence';
-import activeProtocol, {
-  setActiveProtocol,
-  updateProtocolDescription,
-} from '../../modules/activeProtocol';
-import app, {
-  getActiveProtocolId,
-  setActiveProtocolId,
-  setProtocolOpenElsewhere,
-} from '../../modules/app';
+import { rootReducer } from '../../modules/root';
+import { protocolCommitAccepted } from '../../protocolCommit';
 import { protocolLibraryListenerMiddleware } from '../protocolLibraryListener';
-import createTimeline from '../timeline';
 
 const makeProtocol = (name: string): CurrentProtocol =>
   ({
     name,
     schemaVersion: 8,
     stages: [],
-    codebook: { node: {}, edge: {}, ego: {} },
-    assetManifest: {},
+    codebook: {},
   }) as CurrentProtocol;
 
-const reducer = combineReducers({
-  app,
-  activeProtocol: createTimeline(activeProtocol, {
-    exclude: () => false,
-  }),
-});
-
-type TestState = ReturnType<typeof reducer>;
-
-const makeStore = (preloadedState?: Partial<TestState>) =>
+const makeStore = () =>
   configureStore({
-    reducer,
-    preloadedState,
+    reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }).prepend(
         protocolLibraryListenerMiddleware.middleware,
       ),
   });
 
-describe('protocolLibraryListener — autosave guard', () => {
+const flushEffects = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+describe('protocolLibraryListener', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     getStoredProtocol.mockReset().mockResolvedValue({ id: 'p1' });
     putStoredProtocol.mockReset().mockResolvedValue(undefined);
   });
 
-  afterEach(() => {
-    vi.runOnlyPendingTimers();
-    vi.useRealTimers();
-  });
-
-  it('autosaves an edit when the tab is the sole editor', async () => {
+  it('writes an accepted commit immediately without a debounce timer', async () => {
     const store = makeStore();
-    store.dispatch(setActiveProtocolId('p1'));
-    store.dispatch(setActiveProtocol(makeProtocol('Study')));
-
-    store.dispatch(updateProtocolDescription({ description: 'edited' }));
-    await vi.advanceTimersByTimeAsync(700);
-
-    expect(putStoredProtocol).toHaveBeenCalledTimes(1);
-  });
-
-  it('does NOT autosave when the protocol is open in another tab', async () => {
-    const store = makeStore();
-    store.dispatch(setActiveProtocolId('p1'));
-    store.dispatch(setActiveProtocol(makeProtocol('Study')));
-    store.dispatch(setProtocolOpenElsewhere(true));
+    const protocol = makeProtocol('Study');
 
     store.dispatch(
-      updateProtocolDescription({ description: 'edited in duplicate tab' }),
+      protocolCommitAccepted({
+        id: 'p1',
+        protocol,
+        persistenceAllowed: true,
+      }),
     );
-    await vi.advanceTimersByTimeAsync(700);
+    await flushEffects();
+
+    expect(putStoredProtocol).toHaveBeenCalledWith({
+      id: 'p1',
+      protocol,
+      name: 'Study',
+      description: undefined,
+    });
+  });
+
+  it('never observes arbitrary protocol mutation actions', async () => {
+    const store = makeStore();
+
+    store.dispatch({
+      type: 'activeProtocol/updateProtocolDescription',
+      payload: { description: 'unvalidated' },
+    });
+    await flushEffects();
 
     expect(putStoredProtocol).not.toHaveBeenCalled();
   });
-});
 
-// Regression for #772: redux-remember persists `app` (activeProtocolId) and
-// `activeProtocol` (present) non-atomically, so a reload can rehydrate a NEW id
-// paired with the PREVIOUS protocol's present. Without the reconcile, autosave
-// flushes the old content into the new library row.
-describe('protocolLibraryListener — rehydrate reconcile', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    getStoredProtocol.mockReset().mockResolvedValue({ id: 'new-id' });
-    putStoredProtocol.mockReset().mockResolvedValue(undefined);
-  });
+  it('skips persistence when admission captured a read-only or unavailable session', async () => {
+    const store = makeStore();
 
-  afterEach(() => {
-    vi.runOnlyPendingTimers();
-    vi.useRealTimers();
-  });
-
-  // Build the rehydrated `activeProtocol` slice exactly as store.ts would: the
-  // persisted present is stamped with its owning id, then rebuilt into an
-  // empty-history timeline on reload.
-  const rehydratedSlice = (present: CurrentProtocol, stampedId: string) =>
-    deserializeActiveProtocol(
-      serializeActiveProtocol(
-        { past: [], present, timeline: [], future: [], futureTimeline: [] },
-        stampedId,
-      ),
+    store.dispatch(
+      protocolCommitAccepted({
+        id: 'p1',
+        protocol: makeProtocol('Study'),
+        persistenceAllowed: false,
+      }),
     );
-
-  it('discards a rehydrated present whose stamped id does not match app.activeProtocolId', async () => {
-    // app was persisted with the NEW id; activeProtocol still carried the OLD
-    // protocol's present stamped with the OLD id.
-    const store = makeStore({
-      app: { activeProtocolId: 'new-id' },
-      activeProtocol: rehydratedSlice(makeProtocol('Old Study'), 'old-id'),
-    });
-
-    store.dispatch({ type: REMEMBER_REHYDRATED });
-
-    expect(store.getState().activeProtocol.present).toBeNull();
-    expect(getActiveProtocolId(store.getState())).toBeNull();
-
-    // A later edit must not flush the discarded present into the new row.
-    store.dispatch(updateProtocolDescription({ description: 'edited' }));
-    await vi.advanceTimersByTimeAsync(700);
-    expect(putStoredProtocol).not.toHaveBeenCalled();
-  });
-
-  it('keeps a rehydrated present whose stamped id matches app.activeProtocolId', () => {
-    const store = makeStore({
-      app: { activeProtocolId: 'p1' },
-      activeProtocol: rehydratedSlice(makeProtocol('Study'), 'p1'),
-    });
-
-    store.dispatch({ type: REMEMBER_REHYDRATED });
-
-    expect(store.getState().activeProtocol.present).not.toBeNull();
-    expect(getActiveProtocolId(store.getState())).toBe('p1');
-  });
-
-  it('does not autosave on the rehydrate action itself', async () => {
-    const store = makeStore({
-      app: { activeProtocolId: 'p1' },
-      activeProtocol: rehydratedSlice(makeProtocol('Study'), 'p1'),
-    });
-
-    store.dispatch({ type: REMEMBER_REHYDRATED });
-    await vi.advanceTimersByTimeAsync(700);
+    await flushEffects();
 
     expect(putStoredProtocol).not.toHaveBeenCalled();
   });

@@ -22,8 +22,8 @@ const SOURCE_STAGE_ID = 'family-pedigree-1';
 // already has ONE stage (the FamilyPedigree prerequisite) before this spec's
 // own `editor.save()` adds a second — so `readStageJson(page, 0)` (Task 3's
 // helper) can't be used unmodified: index 0 is truthy from the moment the
-// protocol is seeded, long before the new stage's debounced autosave write
-// actually lands, so polling on "is index 0 truthy" resolves immediately
+// protocol is seeded, long before the new stage's accepted commit actually
+// lands, so polling on "is index 0 truthy" resolves immediately
 // against the STALE pre-save row instead of waiting for the real one (caught
 // live: the assertion below failed with the seeded FamilyPedigree stage's
 // `type`, not a timeout). Polling until a stage with the expected `type`

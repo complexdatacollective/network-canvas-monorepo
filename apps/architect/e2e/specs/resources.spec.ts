@@ -113,8 +113,8 @@ test('refuses to delete a resource that is used by a stage', async ({
 
   // Dialog shown AND deletion did not proceed. The guard returns before any
   // `deleteAsset` dispatch, so no store change happens; acknowledging then
-  // waiting past the 600ms autosave debounce (protocolLibraryListener.ts)
-  // lets any (regression) erroneous delete's write land in IndexedDB before
+  // waiting lets any (regression) erroneous accepted delete reach IndexedDB
+  // before
   // asserting it did NOT — closing the "dialog shown but deletion silently
   // proceeds anyway" gap, mirroring timeline.spec.ts's stage-delete guard
   // test.

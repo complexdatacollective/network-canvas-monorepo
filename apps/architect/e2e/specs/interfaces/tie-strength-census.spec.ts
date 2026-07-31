@@ -22,9 +22,8 @@ import { StageEditor } from '../../pageobjects/stage-editor.js';
 // the `createEdge` redux-form field. That value later flows into
 // `createVariableAsync`/`updateVariableAsync` as an edge-type key, where it
 // gets string-coerced to the literal `"[object Promise]"` and written into
-// `codebook.edge` — corrupting the protocol (fails the record-key regex,
-// `/^[a-zA-Z0-9._:-]+$/`, and pops the "Misconfigured Protocol" recovery
-// dialog with no clean way back). This reproduced deterministically every
+// `codebook.edge` — producing an invalid commit (it fails the record-key regex,
+// `/^[a-zA-Z0-9._:-]+$/`) and triggering forced recovery. This reproduced every
 // time (not a timing flake — a Promise is always synchronously truthy, so
 // the corrupted value gets committed on every "Create" click), and traces
 // back to the original architect-classic port (`git log -p --follow`), not
@@ -32,19 +31,11 @@ import { StageEditor } from '../../pageobjects/stage-editor.js';
 //
 // A live "pre-create the edge type through a working flow, then select it"
 // workaround (creating it via the standalone Codebook page's correctly-
-// awaited `EntityTypeDialog`, e.g.) was tried first, but that ALSO doesn't
-// survive to the TieStrengthCensus stage: `seed.ts`'s `page.addInitScript`
-// re-runs on *every* subsequent navigation (Playwright re-executes it before
-// each new document load, not just the first), re-stamping
-// `sessionStorage`'s `@@remember-*` keys back to the ORIGINAL seeded
-// snapshot — so any live edit made through a page reached via a hard
-// `page.goto` (both the Codebook page and `editor.createNew`'s own
-// navigation) is silently discarded the next time either of those fires.
-// That's a property of this test harness's seeding contract, not an app bug.
-// The edge type is seeded directly into the protocol's `codebook` below
-// instead — a legitimate starting state (an author's protocol can easily
+// awaited `EntityTypeDialog`, e.g.) is unnecessary coverage for this
+// interface. The edge type is seeded directly into the protocol's `codebook`
+// below instead — a legitimate starting state (an author's protocol can easily
 // already have an edge type defined before adding a TieStrengthCensus
-// stage) that sidesteps both issues at once: the census interface's own
+// stage) that sidesteps the issue: the census interface's own
 // `createEdge` select only ever needs to SELECT that already-existing option
 // (`selectOption`), never its own broken "_create" inline path.
 function protocolWithCloseEdgeType(): CurrentProtocol {

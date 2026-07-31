@@ -1,11 +1,11 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-// Regression for #803: the autosave flush GCs orphaned asset blobs via
+// Regression for #803: an accepted commit GCs orphaned asset blobs via
 // putStoredProtocol -> deleteOrphanedAssets, which operates on the `assets`
-// table. The flush transaction must therefore include `assets` in its scope;
+// table. The write transaction must therefore include `assets` in its scope;
 // if it doesn't, Dexie throws NotFoundError, which the best-effort GC swallows,
 // leaving the orphan blob undeleted (an IndexedDB storage leak).
 //
@@ -128,11 +128,9 @@ vi.mock('~/utils/inMemoryAssetStore', () => ({
   putMemoryAsset: vi.fn(),
 }));
 
-import activeProtocol, {
-  setActiveProtocol,
-  updateProtocolDescription,
-} from '../../modules/activeProtocol';
-import app, { setActiveProtocolId } from '../../modules/app';
+import activeProtocol from '../../modules/activeProtocol';
+import app from '../../modules/app';
+import { protocolCommitAccepted } from '../../protocolCommit';
 import { protocolLibraryListenerMiddleware } from '../protocolLibraryListener';
 import createTimeline from '../timeline';
 
@@ -164,9 +162,8 @@ const makeProtocol = (manifestKeys: string[]): CurrentProtocol =>
     ),
   }) as unknown as CurrentProtocol;
 
-describe('protocolLibraryListener — orphan asset GC on autosave (#803)', () => {
+describe('protocolLibraryListener — orphan asset GC on commit (#803)', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     db.assetRows.clear();
     db.protocolRows.clear();
 
@@ -194,21 +191,17 @@ describe('protocolLibraryListener — orphan asset GC on autosave (#803)', () =>
     });
   });
 
-  afterEach(() => {
-    vi.runOnlyPendingTimers();
-    vi.useRealTimers();
-  });
-
-  it('deletes the orphaned blob when an autosave commits a manifest that dropped it', async () => {
+  it('deletes the orphaned blob when an accepted manifest commit drops it', async () => {
     // Active protocol references only a1 now; a2 was deleted from the manifest.
     const store = makeStore();
-    store.dispatch(setActiveProtocolId('p1'));
-    store.dispatch(setActiveProtocol(makeProtocol(['a1'])));
-
-    store.dispatch(updateProtocolDescription({ description: 'edited' }));
-    await vi.advanceTimersByTimeAsync(700);
-    // Let the write-lock promise chain settle.
-    await vi.runOnlyPendingTimersAsync();
+    store.dispatch(
+      protocolCommitAccepted({
+        id: 'p1',
+        protocol: makeProtocol(['a1']),
+        persistenceAllowed: true,
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // The orphaned blob a2 must have been GC'd inside the flush transaction.
     expect(db.assetRows.has('p1::a2')).toBe(false);

@@ -44,25 +44,8 @@ describe('sessionStorageDriver', () => {
     expect(driver.getItem('key')).toBe('value');
   });
 
-  it('invokes onStorageError when a setItem write fails and falls back to memory', () => {
-    const onStorageError = vi.fn();
-    const driver = createSessionStorageDriver(onStorageError);
-
-    const error = new DOMException('quota', 'QuotaExceededError');
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw error;
-    });
-
-    driver.setItem('key', 'value');
-
-    expect(onStorageError).toHaveBeenCalledTimes(1);
-    expect(onStorageError).toHaveBeenCalledWith(error);
-  });
-
-  it('invokes onStorageError at most once even across repeated failing writes', () => {
-    const onStorageError = vi.fn();
-    const driver = createSessionStorageDriver(onStorageError);
-
+  it('keeps canonical persistence concerns separate from session fallback', () => {
+    const driver = createSessionStorageDriver();
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('quota', 'QuotaExceededError');
     });
@@ -70,7 +53,7 @@ describe('sessionStorageDriver', () => {
     driver.setItem('key', 'value');
     driver.setItem('key', 'value2');
 
-    expect(onStorageError).toHaveBeenCalledTimes(1);
+    expect(driver.getItem('key')).toBe('value2');
   });
 
   it('keeps two driver instances independent (models two tabs)', () => {

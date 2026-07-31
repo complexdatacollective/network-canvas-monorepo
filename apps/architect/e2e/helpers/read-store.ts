@@ -12,9 +12,9 @@ type Row = { protocol: CurrentProtocol };
 const DB_NAME = 'ArchitectProtocolDB';
 
 // The IDB read is `unknown`; narrow it with a real runtime guard (mirroring
-// `isRecord` in `apps/architect/src/ducks/activeProtocolPersistence.ts`) rather
-// than asserting, so a malformed/absent row resolves to null instead of a
-// mis-typed object every downstream assertion would then trust.
+// Narrow the IndexedDB value at runtime rather than asserting, so a
+// malformed/absent row resolves to null instead of a mis-typed object every
+// downstream assertion would then trust.
 const isRow = (value: unknown): value is Row =>
   typeof value === 'object' && value !== null && 'protocol' in value;
 
@@ -78,12 +78,9 @@ async function readActiveRow(page: Page): Promise<Row | null> {
   return isRow(row) ? row : null;
 }
 
-// A single read after editing top-level protocol data (name, description,
-// asset manifest) can land inside the 600ms autosave debounce and return the
-// pre-edit row — the same stale-read window `readStageJson`'s `until` guards
-// against for stages. Callers asserting a field they just changed pass
-// `until`, a predicate on the protocol the poll also waits on; a bare call
-// still polls for the row itself to exist.
+// A read after editing top-level protocol data can land while validation or
+// the accepted IndexedDB write is still in progress. Callers asserting a field
+// they just changed pass `until`, a predicate the poll also waits on.
 export async function readProtocolJson(
   page: Page,
   until?: (protocol: CurrentProtocol) => boolean,
@@ -100,17 +97,16 @@ export async function readProtocolJson(
     )
     .toBe('ready');
   if (!protocol) {
-    throw new Error('no autosaved protocol row in ArchitectProtocolDB');
+    throw new Error('no canonical protocol row in ArchitectProtocolDB');
   }
   return protocol;
 }
 
 type Stage = CurrentProtocol['stages'][number];
 
-// Poll past the 600ms autosave debounce (protocolLibraryListener.ts) until
-// the stage at `index` exists in the durable row. Existence alone is only a
-// meaningful wait for create-from-scratch specs (the seeded row has no stage
-// at `index` until the autosave lands); when editing a stage that ALREADY
+// Poll until the accepted stage commit reaches the durable row. Existence alone
+// is only a meaningful wait for create-from-scratch specs (the seeded row has
+// no stage at `index` until the commit lands); when editing a stage that ALREADY
 // exists in the seeded protocol, existence passes immediately and can return
 // the pre-autosave JSON — those callers must pass `until`, a predicate on the
 // stage (e.g. checking the field they just changed) that the poll also waits
@@ -133,7 +129,7 @@ export async function readStageJson(
     )
     .toBe('ready');
   if (!stage) {
-    throw new Error(`stage at index ${index} not found after autosave poll`);
+    throw new Error(`stage at index ${index} not found after commit poll`);
   }
   return stage;
 }
