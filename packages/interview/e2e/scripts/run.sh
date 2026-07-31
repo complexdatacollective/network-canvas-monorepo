@@ -15,24 +15,19 @@
 #   pnpm test:e2e:headed
 #
 # A named Docker volume backs /workspace/node_modules so `pnpm install
-# --frozen-lockfile` inside the container doesn't overwrite the host's
-# arm64 binaries (oxide, sharp, swc, etc.). The volume persists between
-# runs so subsequent installs are no-ops; wipe with:
-#   docker volume rm interview-e2e-node-modules
+# --frozen-lockfile` inside the container doesn't overwrite the host's native
+# binaries (oxide, sharp, swc, etc.). Every volume is architecture-suffixed so
+# an Apple Silicon run never reuses binaries installed by an amd64 container.
 #
 # A second named volume backs Turbo's local cache (.turbo/cache) so the
 # `turbo build` of unchanged workspace deps restores instead of rebuilding.
-# This matters on hosts where the checkout is cleaned between runs (the
-# self-hosted CI runner) or the repo dir is fresh; Turbo's cache is
-# content-addressed, so persisting it across branches/commits is safe. Wipe
-# with:
-#   docker volume rm interview-e2e-turbo-cache
+# This matters whenever the repository directory is fresh. Turbo's cache is
+# content-addressed, so persisting it across branches/commits is safe.
 #
 # A third volume backs .pnpm-store: pnpm picks the project dir for its store
 # when the configured global store is on a different filesystem, which
 # otherwise dumps gigabytes of root-owned content-addressed store files into
-# the bind-mounted workspace on every install (observed breaking the next
-# `git clean` on the self-hosted runner). The volume keeps the store out of
+# the bind-mounted workspace on every install. The volume keeps the store out of
 # the checkout AND on the same filesystem as the node_modules volume, so
 # pnpm can hardlink instead of copying.
 #
@@ -62,10 +57,8 @@ if [ -z "$PW_VERSION" ]; then
 fi
 IMAGE="mcr.microsoft.com/playwright:v${PW_VERSION}-noble"
 
-if ! docker info >/dev/null 2>&1; then
-  echo "Error: Docker is not running." >&2
-  exit 1
-fi
+source "$MONOREPO_ROOT/scripts/playwright-docker-platform.sh"
+detect_playwright_docker_platform
 
 # Forwarded args are spliced into the container's `sh -c` string, so each one
 # must be shell-quoted or characters like the `|` in `-g "A|B"` are re-parsed
@@ -77,24 +70,21 @@ for arg in "$@"; do
 done
 
 # The container carries a fixed name so it can be found and removed after the
-# fact: cancelling a CI job kills the `docker run` client but NOT the
-# container, which otherwise keeps writing root-owned artifacts into the
-# bind-mounted workspace for the rest of the suite (observed 2026-07-17
-# breaking every subsequent checkout on the persistent self-hosted runner).
-# CI removes strays by this name before checkout and after the test step; the
-# pre-remove here keeps local reruns idempotent. `--init` gives the container
+# fact after an interrupted local run. The pre-remove keeps reruns idempotent.
+# `--init` gives the container
 # a signal-forwarding PID 1, so a proxied SIGTERM from a graceful cancel
 # tears the whole container down instead of being swallowed by `sh`.
 CONTAINER_NAME="interview-e2e-run"
 docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
 
 docker run --rm --init --name "$CONTAINER_NAME" \
+  --platform "$PLAYWRIGHT_DOCKER_PLATFORM" \
   -e CI=true \
   -e PW_WORKERS \
   -v "$(pwd)":/workspace \
-  -v interview-e2e-node-modules:/workspace/node_modules \
-  -v interview-e2e-turbo-cache:/workspace/.turbo/cache \
-  -v interview-e2e-pnpm-store:/workspace/.pnpm-store \
+  -v "interview-e2e-node-modules-${PLAYWRIGHT_DOCKER_VOLUME_ARCH}":/workspace/node_modules \
+  -v "interview-e2e-turbo-cache-${PLAYWRIGHT_DOCKER_VOLUME_ARCH}":/workspace/.turbo/cache \
+  -v "interview-e2e-pnpm-store-${PLAYWRIGHT_DOCKER_VOLUME_ARCH}":/workspace/.pnpm-store \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \

@@ -42,9 +42,16 @@ export function createCaptureInterview(
   opts: { enabled: boolean },
 ): CaptureInterviewFn {
   let stylesInjected = false;
+  const isBaselineArch = process.arch === 'arm64';
 
   return async (name: string, options: CaptureInterviewOptions = {}) => {
     if (!opts.enabled) return;
+    if (!isBaselineArch) {
+      console.warn(
+        `[visual] skipping pixel comparison for "${name}" — baselines are ARM64-truth and this run is ${process.arch}`,
+      );
+      return;
+    }
     if (!stylesInjected) {
       await page.addStyleTag({ content: VISUAL_STYLES });
       stylesInjected = true;

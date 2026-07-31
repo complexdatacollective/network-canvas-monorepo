@@ -19,10 +19,8 @@ if [ -z "$PW_VERSION" ]; then
 fi
 IMAGE="mcr.microsoft.com/playwright:v${PW_VERSION}-noble"
 
-if ! docker info >/dev/null 2>&1; then
-  echo "Error: Docker is not running." >&2
-  exit 1
-fi
+source "$MONOREPO_ROOT/scripts/playwright-docker-platform.sh"
+detect_playwright_docker_platform
 
 # VITE_DISABLE_ANALYTICS=true skips client.ts's posthog.init entirely.
 # Without it, PostHog's client attempts a `<script src="…surveys.js">` load
@@ -34,12 +32,13 @@ fi
 # Reuse the app's build-time analytics gate so the build under test never
 # initializes PostHog at all.
 docker run --rm \
+  --platform "$PLAYWRIGHT_DOCKER_PLATFORM" \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \
   -v "$(pwd)":/workspace \
-  -v interviewer-e2e-node-modules:/workspace/node_modules \
-  -v interviewer-e2e-turbo-cache:/workspace/.turbo/cache \
-  -v interviewer-e2e-pnpm-store:/workspace/.pnpm-store \
+  -v "interviewer-e2e-node-modules-${PLAYWRIGHT_DOCKER_VOLUME_ARCH}":/workspace/node_modules \
+  -v "interviewer-e2e-turbo-cache-${PLAYWRIGHT_DOCKER_VOLUME_ARCH}":/workspace/.turbo/cache \
+  -v "interviewer-e2e-pnpm-store-${PLAYWRIGHT_DOCKER_VOLUME_ARCH}":/workspace/.pnpm-store \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \

@@ -6,6 +6,13 @@ const workflow = readFileSync(
   new URL('../.github/workflows/ci-and-release.yml', import.meta.url),
   'utf8',
 );
+const snapshotWorkflow = readFileSync(
+  new URL(
+    '../.github/workflows/regenerate-e2e-visual-snapshots.yml',
+    import.meta.url,
+  ),
+  'utf8',
+);
 
 const topLevelConcurrency = workflow.match(
   /^concurrency:\n(?<config>[\s\S]*?)\n\njobs:/m,
@@ -46,8 +53,6 @@ test('each release E2E suite gates on its own policy flag', () => {
     ['interview-e2e', 'interview'],
     ['interviewer-e2e', 'interviewer'],
     ['architect-e2e', 'architect'],
-    ['pick-e2e-runner', 'interview'],
-    ['e2e-queue-watchdog', 'interview'],
   ]) {
     const body = job(jobName);
     assert.ok(body, `${jobName} job exists`);
@@ -57,6 +62,26 @@ test('each release E2E suite gates on its own policy flag', () => {
       `${jobName} is gated on the ${flag} suite flag`,
     );
   }
+});
+
+test('pixel comparison and generation use native GitHub-hosted ARM64', () => {
+  for (const jobName of ['interview-e2e', 'interviewer-e2e', 'architect-e2e']) {
+    const body = job(jobName);
+    assert.ok(body, `${jobName} job exists`);
+    assert.match(body, /runs-on: ubuntu-24\.04-arm/);
+  }
+  assert.match(snapshotWorkflow, /runs-on: ubuntu-24\.04-arm/);
+});
+
+test('release E2E has no self-hosted runner-selection machinery', () => {
+  assert.equal(job('pick-e2e-runner'), undefined);
+  assert.equal(job('e2e-queue-watchdog'), undefined);
+  assert.doesNotMatch(workflow, /E2E_RUNNER_STATUS_TOKEN|self-hosted/);
+
+  const interview = job('interview-e2e');
+  assert.ok(interview, 'interview-e2e job exists');
+  assert.match(interview, /needs: e2e-policy/);
+  assert.match(interview, /PW_WORKERS: 4/);
 });
 
 test('the quality gate verifies each required E2E suite individually', () => {

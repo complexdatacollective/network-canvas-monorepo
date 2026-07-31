@@ -26,9 +26,16 @@ export const APP_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 // against the committed Docker-generated baselines.
 export function makeCapture(page: Page): CaptureFn {
   const isCI = !!process.env.CI;
+  const isBaselineArch = process.arch === 'arm64';
 
   return async (name, options = {}) => {
     if (!isCI) return;
+    if (!isBaselineArch) {
+      console.warn(
+        `[visual] skipping pixel comparison for "${name}" — baselines are ARM64-truth and this run is ${process.arch}`,
+      );
+      return;
+    }
     // Re-inject on every capture, not just once per page instance: a
     // page.reload()/second goto() drops the injected <style>, which would
     // silently un-hide blobs/focus-rings for a later capture() in the same test.

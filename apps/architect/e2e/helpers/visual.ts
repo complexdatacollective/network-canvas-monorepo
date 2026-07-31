@@ -24,17 +24,16 @@ export type CaptureFn = (
 // against the committed Docker-generated baselines.
 export function makeCapture(page: Page): CaptureFn {
   const isCI = !!process.env.CI;
-  // Baselines are amd64-truth (see e2e/scripts/run.sh): the Playwright
-  // image's amd64 and arm64 builds have subtly different glyph advance
-  // widths, which moves text wrap points in the print documents, so an
-  // arm64 container can neither compare against nor regenerate them.
-  const isBaselineArch = process.arch === 'x64';
+  // Baselines are ARM64-truth (see e2e/scripts/run.sh). The Playwright image's
+  // amd64 and arm64 builds have subtly different glyph advance widths, so only
+  // a native arm64 container may compare against or regenerate them.
+  const isBaselineArch = process.arch === 'arm64';
 
   return async (name, options = {}) => {
     if (!isCI) return;
     if (!isBaselineArch) {
       console.warn(
-        `[visual] skipping pixel comparison for "${name}" — baselines are amd64-truth and this run is ${process.arch}`,
+        `[visual] skipping pixel comparison for "${name}" — baselines are ARM64-truth and this run is ${process.arch}`,
       );
       return;
     }

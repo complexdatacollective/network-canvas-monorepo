@@ -278,11 +278,13 @@ bootstrap because `sessionStorage` is per-tab.
 (`mcr.microsoft.com/playwright:v<version>-noble`), where `<version>` is the exact
 `@playwright/test` version the lockfile resolves to — `scripts/run.sh` derives the
 tag so the container's browser binaries always match the JS runner.
-This is non-negotiable for snapshot tests: the same browser version against
-the same fonts at the same DPI, regardless of whether you're on macOS arm64,
-Linux x86, or a CI runner. The wrapper script (`scripts/run.sh`) mounts the
-monorepo into the container and reuses a named Docker volume for
-`node_modules` so subsequent runs don't reinstall.
+Pixel baselines are canonical on Linux ARM64. CI uses the native
+`ubuntu-24.04-arm` runner, and Apple Silicon Docker uses the Playwright image's
+native `linux/arm64` variant. The wrapper script (`scripts/run.sh`) mounts the
+monorepo into the container and reuses architecture-suffixed Docker volumes for
+`node_modules`, the pnpm store, and Turbo cache so native binaries can never
+cross architectures. Non-ARM64 runs keep functional coverage but skip pixel
+comparison and baseline writes.
 
 `pnpm test:e2e:headed` skips Docker and runs Playwright against your local
 browsers — useful for stepping through a test, but **do not regenerate

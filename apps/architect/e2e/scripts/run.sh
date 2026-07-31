@@ -24,10 +24,8 @@ if [ -z "$PW_VERSION" ]; then
 fi
 IMAGE="mcr.microsoft.com/playwright:v${PW_VERSION}-noble"
 
-if ! docker info >/dev/null 2>&1; then
-  echo "Error: Docker is not running." >&2
-  exit 1
-fi
+source "$MONOREPO_ROOT/scripts/playwright-docker-platform.sh"
+detect_playwright_docker_platform
 
 # VITE_DISABLE_ANALYTICS=true skips analytics.ts's posthog.init entirely.
 # Without it, PostHog's client attempts a `<script src="…surveys.js">` load
@@ -39,26 +37,10 @@ fi
 # Reuse the app's build-time analytics gate (already used by vitest and the
 # Netlify PR-preview build — see vite.config.ts / netlify.toml) so the
 # build under test never initializes PostHog at all.
-# Visual baselines are amd64-truth: glyph advance widths differ subtly
-# between the image's amd64 and arm64 builds, which moves text wrap points in
-# the print documents — an arm64-generated baseline is a whole line-height off
-# by the bottom of the page. Baseline-writing runs are therefore pinned to
-# linux/amd64 (a no-op on CI and other amd64 hosts; on Apple Silicon it needs
-# Docker's Rosetta mode — under plain QEMU Chromium's GPU process crashes and
-# the run fails loudly; if that happens, adopt the `actual` image from the CI
-# run's playwright-report-architect artifact instead). Normal runs stay on the
-# native platform — fast everywhere — and the pixel comparison itself is
-# arch-gated in e2e/helpers/visual.ts, so an arm64 run never compares against
-# (or writes) amd64 baselines. Each platform gets its own node_modules volume
-# so native binaries never mix.
-PLATFORM_FLAG=""
-VOLUME="architect-e2e-node-modules"
-TURBO_VOLUME="architect-e2e-turbo-cache"
-if [[ " $* " == *"--update-snapshots"* ]]; then
-  PLATFORM_FLAG="--platform linux/amd64"
-  VOLUME="architect-e2e-node-modules-amd64"
-  TURBO_VOLUME="architect-e2e-turbo-cache-amd64"
-fi
+# Pixel baselines are ARM64 truth. Native arm64 runs compare and may update
+# them; the capture helper skips pixel work on other architectures. Keep all
+# dependency and cache volumes architecture-specific so an Apple Silicon run
+# cannot reuse amd64 native binaries.
 # Forwarded args are spliced into the container's `sh -c` string, so each one
 # must be shell-quoted or characters like the `|` in `--grep "A|B"` are
 # re-parsed as shell syntax inside the container (mirrors the interview
@@ -68,15 +50,14 @@ for arg in "$@"; do
   FORWARDED_ARGS="${FORWARDED_ARGS} $(printf '%q' "$arg")"
 done
 
-# shellcheck disable=SC2086 # PLATFORM_FLAG intentionally word-splits
 docker run --rm \
-  ${PLATFORM_FLAG} \
+  --platform "$PLAYWRIGHT_DOCKER_PLATFORM" \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \
   -v "$(pwd)":/workspace \
-  -v "${VOLUME}":/workspace/node_modules \
-  -v "${TURBO_VOLUME}":/workspace/.turbo/cache \
-  -v architect-e2e-pnpm-store:/workspace/.pnpm-store \
+  -v "architect-e2e-node-modules-${PLAYWRIGHT_DOCKER_VOLUME_ARCH}":/workspace/node_modules \
+  -v "architect-e2e-turbo-cache-${PLAYWRIGHT_DOCKER_VOLUME_ARCH}":/workspace/.turbo/cache \
+  -v "architect-e2e-pnpm-store-${PLAYWRIGHT_DOCKER_VOLUME_ARCH}":/workspace/.pnpm-store \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \

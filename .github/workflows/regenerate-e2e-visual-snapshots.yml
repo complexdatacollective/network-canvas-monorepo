@@ -23,7 +23,8 @@ permissions:
 
 jobs:
   regenerate:
-    runs-on: ubuntu-latest
+    # This runner is the source of truth for every committed pixel baseline.
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
