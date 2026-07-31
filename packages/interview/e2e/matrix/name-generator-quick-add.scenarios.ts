@@ -42,7 +42,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           stage.addPrompt({ text: 'Who do you know?' });
           return synth;
         },
-        run: async ({ page, stage, protocol, interview }) => {
+        run: async ({ stage, protocol, interview }) => {
           await stage.quickAdd.addNode('Alice');
           await stage.quickAdd.addNode('Bob');
 
@@ -61,29 +61,10 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
             expect(node.promptIDs).toHaveLength(1);
           }
 
-          // Quick Add remains locally required even when its codebook variable
-          // carries no validation block.
-          const toggle = page.getByTestId('quick-add-toggle');
-          const input = page.getByTestId('quick-add-input');
-          if ((await toggle.getAttribute('aria-pressed')) !== 'true') {
-            await toggle.click();
-          }
-          await input.fill('');
-          await input.press('Enter');
-          await expect(
-            page.getByText(/you must answer this question/i),
-          ).toBeVisible();
-
-          const afterEmpty = await protocol.getNetworkState(
-            interview.interviewId,
-          );
-          expect(afterEmpty?.nodes).toHaveLength(2);
-
-          // A valid value still creates the third node. Reusing the previous
-          // fallback label keeps the scenario's final accessibility state
-          // stable while proving the stored attribute is no longer empty.
-          await input.fill('Person');
-          await input.press('Enter');
+          // A valid value creates the third node. Keeping this representative
+          // visual scenario's final state stable avoids unrelated baseline
+          // churn; optional empty submission is covered separately below.
+          await stage.quickAdd.addNode('Person');
           await expect(stage.getNode('Alice')).toBeVisible();
           await expect(stage.getNode('Bob')).toBeVisible();
           await expect(stage.getNode('Person')).toBeVisible();
@@ -97,6 +78,54 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           );
           expect(thirdNode).toBeDefined();
           expect(thirdNode?.promptIDs).toHaveLength(1);
+        },
+      };
+    })(),
+
+    ((): ScenarioDefinition => {
+      let nameVarId = '';
+      return {
+        id: 'quick-add-optional-empty-value',
+        covers: [],
+        build: () => {
+          const synth = new SyntheticInterview();
+          const person = synth.addNodeType({ name: 'Person' });
+          const nameVar = person.addVariable({
+            type: 'text',
+            name: 'fullName',
+          });
+          nameVarId = nameVar.id;
+          const stage = synth.addStage('NameGeneratorQuickAdd', {
+            label: 'Add contacts',
+            subject: { entity: 'node', type: person.id },
+            quickAdd: nameVar.id,
+          });
+          stage.addPrompt({ text: 'Who do you know?' });
+          return synth;
+        },
+        run: async ({ page, protocol, interview }) => {
+          const toggle = page.getByTestId('quick-add-toggle');
+          const input = page.getByTestId('quick-add-input');
+          await toggle.click();
+          await input.fill('');
+          await input.press('Enter');
+
+          await expect
+            .poll(async () => {
+              const network = await protocol.getNetworkState(
+                interview.interviewId,
+              );
+              return network?.nodes.length ?? 0;
+            })
+            .toBe(1);
+
+          const network = await protocol.getNetworkState(interview.interviewId);
+          expect(network?.nodes[0]?.[entityAttributesProperty][nameVarId]).toBe(
+            '',
+          );
+          await expect(
+            page.getByText(/you must answer this question/i),
+          ).toHaveCount(0);
         },
       };
     })(),

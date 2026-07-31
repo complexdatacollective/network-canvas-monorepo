@@ -180,7 +180,7 @@ const openField = async () => {
 };
 
 describe('QuickNodeForm honours codebook validation', () => {
-  it('keeps the special writer required while honoring the other codebook rules', async () => {
+  it('honours optional requiredness alongside the other codebook rules', async () => {
     const addNode = vi.fn(async () => {});
     renderQuickNodeForm({
       validation: { required: false, maxLength: 10 },
@@ -196,15 +196,15 @@ describe('QuickNodeForm honours codebook validation', () => {
     await waitFor(() => expect(input).not.toBeDisabled());
     expect(addNode).not.toHaveBeenCalled();
 
-    // Empty (violates required): also rejected.
+    // Empty is accepted because the codebook explicitly makes it optional.
     await userEvent.clear(input);
     fireEvent.submit(input.closest('form')!);
 
-    await waitFor(() => expect(input).not.toBeDisabled());
-    expect(addNode).not.toHaveBeenCalled();
+    await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
+    expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: '' });
   });
 
-  it('requires an entry when the codebook has no validation rules', async () => {
+  it('accepts an empty entry when the codebook has no validation rules', async () => {
     const addNode = vi.fn(async () => {});
     renderQuickNodeForm({ validation: undefined, addNode });
 
@@ -212,14 +212,8 @@ describe('QuickNodeForm honours codebook validation', () => {
 
     fireEvent.submit(input.closest('form')!);
 
-    await waitFor(() => expect(input).not.toBeDisabled());
-    expect(addNode).not.toHaveBeenCalled();
-
-    await userEvent.type(input, 'Alice');
-    fireEvent.submit(input.closest('form')!);
-
     await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
-    expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: 'Alice' });
+    expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: '' });
   });
 
   it('clears a successful value when adding the node updates the live validation context before submission finishes', async () => {
