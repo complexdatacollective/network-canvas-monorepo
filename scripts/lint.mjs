@@ -35,6 +35,13 @@ const OXFMT_EXTENSIONS = new Set([
   '.yml',
 ]);
 
+const OXFMT_CONFIG_NAMES = new Set([
+  '.oxfmtrc.json',
+  '.oxfmtrc.jsonc',
+  'oxfmt.config.mts',
+  'oxfmt.config.ts',
+]);
+
 const FULL_RUN_FILES = new Set([
   '.editorconfig',
   '.gitignore',
@@ -55,7 +62,7 @@ export function requiresFullLint(path) {
     FULL_RUN_FILES.has(path) ||
     name === '.editorconfig' ||
     name === '.oxlintrc.json' ||
-    name === '.oxfmtrc.json' ||
+    OXFMT_CONFIG_NAMES.has(name) ||
     name === 'package.json' ||
     /^tsconfig(?:\.[^.]+)?\.json$/.test(name) ||
     path.startsWith('.github/actions/turbo-ci-setup/') ||
@@ -132,7 +139,9 @@ function run(command, args) {
 export async function runLint(plan) {
   const jobs = [];
   if (plan.full || plan.oxlintFiles.length > 0) {
-    const paths = plan.full ? [] : ['--', ...plan.oxlintFiles];
+    const paths = plan.full
+      ? []
+      : ['--no-error-on-unmatched-pattern', '--', ...plan.oxlintFiles];
     jobs.push(['oxlint', run('pnpm', ['exec', 'oxlint', ...paths])]);
   }
   if (plan.full || plan.oxfmtFiles.length > 0) {

@@ -18,6 +18,10 @@ test('configuration and dependency inputs force a full lint', () => {
   for (const path of [
     '.oxlintrc.json',
     'apps/architect/.oxlintrc.json',
+    'apps/architect/.oxfmtrc.json',
+    'apps/architect/.oxfmtrc.jsonc',
+    'apps/interviewer/oxfmt.config.ts',
+    'packages/interview/oxfmt.config.mts',
     'apps/interviewer/tsconfig.app.json',
     'packages/interview/package.json',
     'pnpm-lock.yaml',
@@ -132,6 +136,17 @@ test('changed-file formatting tolerates an explicit set ignored by Oxfmt', async
     reason: '',
     oxlintFiles: [],
     oxfmtFiles: ['apps/architect-classic/public/dev-app-update.yml'],
+  });
+
+  assert.equal(status, 0);
+});
+
+test('changed-file linting tolerates an explicit set ignored by Oxlint', async () => {
+  const status = await runLint({
+    full: false,
+    reason: '',
+    oxlintFiles: ['packages/interface-images/src/generated/manifest.ts'],
+    oxfmtFiles: [],
   });
 
   assert.equal(status, 0);
