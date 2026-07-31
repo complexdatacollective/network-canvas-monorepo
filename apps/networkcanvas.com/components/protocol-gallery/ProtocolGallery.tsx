@@ -47,6 +47,30 @@ const sortConfig: Record<
 const sortIds: SortId[] = ['newest', 'oldest', 'titleAsc', 'titleDesc'];
 const galleryFuseOptions = { threshold: 0.15 } as const;
 const galleryFilterKeys = ['searchText'];
+const filterPillClasses: Record<
+  FilterId,
+  { selected: string; unselected: string }
+> = {
+  all: {
+    selected: 'bg-primary text-primary-contrast font-bold hover:bg-primary/90',
+    unselected:
+      'bg-surface text-text/70 font-medium hover:bg-primary/10 hover:text-primary',
+  },
+  sociograms: {
+    selected:
+      'bg-sea-serpent text-charcoal font-bold hover:bg-sea-serpent-dark',
+    unselected:
+      'bg-sea-serpent/20 text-text font-medium hover:bg-sea-serpent/30',
+  },
+  rosters: {
+    selected: 'bg-mustard text-charcoal font-bold hover:bg-mustard-dark',
+    unselected: 'bg-mustard/20 text-text font-medium hover:bg-mustard/30',
+  },
+  dyadCensus: {
+    selected: 'bg-neon-coral text-white font-bold hover:bg-neon-coral-dark',
+    unselected: 'bg-neon-coral/20 text-text font-medium hover:bg-neon-coral/30',
+  },
+};
 
 function galleryProtocolKey(protocol: GalleryProtocol): string {
   return protocol.slug;
@@ -98,24 +122,24 @@ function GalleryProtocolCard({
             className="absolute inset-0 size-full"
           />
         }
-        className="elevation-low h-full min-h-[32rem]"
+        className="elevation-low flex h-full min-h-[32rem]"
       >
-        <div className="relative z-10 flex size-full flex-col gap-[max(10px,2.5cqi)] p-[6cqi]">
+        <div className="relative z-10 flex min-h-[32rem] w-full flex-1 flex-col gap-[max(10px,2.5cqi)] p-[6cqi]">
           <div className="flex flex-wrap gap-2">
             {protocol.usesSociograms ? (
-              <Badge variant="outline">{t('filters.sociograms')}</Badge>
+              <Badge color="sea-serpent">{t('filters.sociograms')}</Badge>
             ) : null}
             {protocol.usesRosters ? (
-              <Badge variant="outline">{t('filters.rosters')}</Badge>
+              <Badge color="mustard">{t('filters.rosters')}</Badge>
             ) : null}
             {protocol.usesDyadCensus ? (
-              <Badge variant="outline">{t('filters.dyadCensus')}</Badge>
+              <Badge color="neon-coral">{t('filters.dyadCensus')}</Badge>
             ) : null}
           </div>
           <Heading
             level="h3"
             margin="none"
-            className="flex-1 content-center text-[max(18px,5cqi)] leading-[1.05] font-black wrap-break-word hyphens-auto"
+            className="text-[max(18px,5cqi)] leading-[1.05] font-black wrap-break-word hyphens-auto"
           >
             {protocol.title}
           </Heading>
@@ -125,8 +149,8 @@ function GalleryProtocolCard({
           >
             {protocol.description}
           </Paragraph>
-          <span className="text-primary flex items-center gap-2 text-[max(13px,3.25cqi)] font-bold">
-            {t('viewProtocol')}
+          <span className="text-primary mt-auto flex items-center gap-2 pt-[max(16px,4cqi)] text-[max(13px,3.25cqi)] font-bold">
+            {t('viewDetails')}
             <ArrowUpRight
               aria-hidden
               className="size-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5 motion-reduce:transform-none"
@@ -333,15 +357,15 @@ export function ProtocolGallery({
                         key={option.value}
                         as="button"
                         size="lg"
-                        variant={isSelected ? 'filled' : 'outline'}
+                        variant="ghost"
                         aria-pressed={isSelected}
                         icon={option.icon}
                         onClick={() => setFilter(option.value)}
-                        className={
+                        className={`focusable transition-colors ${
                           isSelected
-                            ? 'focusable bg-primary text-primary-contrast border-primary hover:bg-primary/90'
-                            : 'focusable bg-surface text-text/70 hover:bg-primary/10 hover:text-primary'
-                        }
+                            ? filterPillClasses[option.value].selected
+                            : filterPillClasses[option.value].unselected
+                        }`}
                       >
                         {option.label}
                       </Pill>

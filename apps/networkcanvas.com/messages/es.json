@@ -190,7 +190,7 @@
       "emptyHeading": "No se encontraron protocolos",
       "emptyDescription": "Pruebe a cambiar la búsqueda o el filtro.",
       "openProtocol": "Explorar {title}",
-      "viewProtocol": "Ver protocolo",
+      "viewDetails": "Ver detalles",
       "fieldLabel": "Campo",
       "populationLabel": "Población",
       "methodLabel": "Método",

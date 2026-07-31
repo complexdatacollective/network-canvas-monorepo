@@ -190,7 +190,7 @@
       "emptyHeading": "No protocols found",
       "emptyDescription": "Try changing your search or filter.",
       "openProtocol": "Explore {title}",
-      "viewProtocol": "View protocol",
+      "viewDetails": "View details",
       "fieldLabel": "Field",
       "populationLabel": "Population",
       "methodLabel": "Method",
