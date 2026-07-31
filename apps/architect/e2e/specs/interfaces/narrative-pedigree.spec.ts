@@ -52,7 +52,7 @@ async function readNarrativePedigreeStage(
     )
     .toBe('ready');
   if (!stage) {
-    throw new Error('NarrativePedigree stage not found after autosave poll');
+    throw new Error('NarrativePedigree stage not found after commit poll');
   }
   return stage;
 }
@@ -61,15 +61,11 @@ async function readNarrativePedigreeStage(
 // already present in the live redux store (`getStageList(state).filter(...
 // type === 'FamilyPedigree')`), and its `diseases[].variable` picker
 // (DiseaseFields.tsx) only offers boolean variables belonging to that source
-// stage's `nodeConfig.type` — both read from the SEEDED protocol's `stages`/
-// `codebook`, not anything this spec authors live. `seed.ts`'s
-// `page.addInitScript` re-stamps the seeded sessionStorage snapshot on every
-// navigation (documented in tie-strength-census.spec.ts), so a source stage
-// authored live via a first `editor.createNew('FamilyPedigree')` /
-// `editor.save()` round trip would NOT survive the subsequent
-// `editor.createNew('NarrativePedigree')` navigation — it has to be seeded
-// directly, mirroring `protocolWithCloseEdgeType` in tie-strength-census.spec.ts.
-// The codebook/stage shape below is a hand-typed twin of
+// stage's `nodeConfig.type` — both read from the protocol's existing `stages`/
+// `codebook`, not anything authored inside this stage editor. Seed the
+// prerequisite directly so this spec isolates NarrativePedigree instead of
+// coupling it to a separate FamilyPedigree authoring flow. The codebook/stage
+// shape below is a hand-typed twin of
 // `packages/protocols/e2e/all-interfaces/protocol.json`'s validated
 // `family-pedigree-1` stage and its referenced `person`/`family_edge` codebook
 // entries (confirmed against that fixture, which Task 7's fixture-validation

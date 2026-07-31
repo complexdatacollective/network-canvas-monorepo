@@ -67,6 +67,7 @@ describe('protocolLibraryListener', () => {
       protocol,
       name: 'Study',
       description: undefined,
+      retainedAssetIds: new Set(),
     });
   });
 

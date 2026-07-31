@@ -1,11 +1,14 @@
 import { configureStore } from '@reduxjs/toolkit';
 import {
+  MigrateError,
   REMEMBER_REHYDRATED,
+  RehydrateError,
   rememberEnhancer,
   rememberReducer,
 } from 'redux-remember';
 
 import { setActiveProtocolScope } from '~/utils/activeProtocolScope';
+import { reportError } from '~/utils/reportError';
 import { createSessionStorageDriver } from '~/utils/sessionStorageDriver';
 
 import { analyticsListenerMiddleware } from './middleware/analyticsListener';
@@ -17,6 +20,7 @@ import { stageEditorDraftListenerMiddleware } from './middleware/stageEditorDraf
 import { getActiveProtocolId } from './modules/app';
 import type { RootState } from './modules/root';
 import { rootReducer } from './modules/root';
+import { createStoreRehydrationGate } from './storeRehydration';
 
 // sessionStorage remembers only which library row this tab had open. Protocol
 // content and its canonical validity live exclusively in IndexedDB; the undo
@@ -26,21 +30,35 @@ const rememberDriver = createSessionStorageDriver();
 const serialize = (data: unknown): string => JSON.stringify(data);
 const unserialize = (data: string): unknown => JSON.parse(data);
 
-let resolveStoreRehydrated: (() => void) | null = null;
-export const storeRehydrated = new Promise<void>((resolve) => {
-  resolveStoreRehydrated = resolve;
-});
+const rehydrationGate = createStoreRehydrationGate();
+export const storeRehydrated = rehydrationGate.promise;
 
 const rememberedReducer = rememberReducer(rootReducer);
 const reducer: typeof rootReducer = (state, action) => {
+  // If session restoration stalls, startup continues with the initial state.
+  // Ignore a late payload so it cannot install an active id after the matching
+  // canonical IndexedDB restore opportunity has passed.
+  if (
+    action.type === REMEMBER_REHYDRATED &&
+    rehydrationGate.getResult() === 'timed-out'
+  ) {
+    return rootReducer(state, action);
+  }
+
   const nextState = rememberedReducer(state, action);
   if (action.type === REMEMBER_REHYDRATED) {
     // Promise continuations run after this dispatch completes, so startup sees
     // the fully rehydrated activeProtocolId before reading IndexedDB.
-    resolveStoreRehydrated?.();
-    resolveStoreRehydrated = null;
+    rehydrationGate.settle('rehydrated');
   }
   return nextState;
+};
+
+const handleRememberError = (error: unknown): void => {
+  reportError(error, { operation: 'session-state-persistence' });
+  if (error instanceof RehydrateError || error instanceof MigrateError) {
+    rehydrationGate.settle('failed');
+  }
 };
 
 const store = configureStore({
@@ -65,6 +83,7 @@ const store = configureStore({
       rememberEnhancer(rememberDriver, rememberedKeys, {
         serialize,
         unserialize,
+        errorHandler: handleRememberError,
       }) as unknown as ReturnType<typeof getDefaultEnhancers>[0],
     ),
 });

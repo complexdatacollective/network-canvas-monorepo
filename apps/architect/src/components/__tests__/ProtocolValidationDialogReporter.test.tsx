@@ -84,6 +84,18 @@ describe('ProtocolValidationDialogReporter', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it('makes overflowing validation details keyboard reachable', async () => {
+    renderReporter();
+    const dialog = await openRecoveryDialog();
+    const errors = within(dialog).getByRole('region', {
+      name: 'Protocol validation errors',
+    });
+
+    expect(errors).toHaveAttribute('tabindex', '0');
+    errors.focus();
+    expect(errors).toHaveFocus();
+  });
+
   it('runs only the selected recovery action', async () => {
     renderReporter();
     let dialog = await openRecoveryDialog();

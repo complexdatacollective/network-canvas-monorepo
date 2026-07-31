@@ -90,6 +90,8 @@ const ProtocolValidationDialogReporter = () => {
     >
       <Paragraph>The protocol contains validation errors:</Paragraph>
       <pre
+        tabIndex={0}
+        role="region"
         aria-label="Protocol validation errors"
         className="bg-surface-1 max-h-64 overflow-auto rounded-sm p-4 text-sm whitespace-pre-wrap"
       >

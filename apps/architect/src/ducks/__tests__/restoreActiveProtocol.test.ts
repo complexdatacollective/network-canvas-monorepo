@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import createTimeline from '../middleware/timeline';
-import activeProtocol from '../modules/activeProtocol';
+import activeProtocol, { setActiveProtocol } from '../modules/activeProtocol';
 import app, {
   getActiveProtocolId,
   getStorageUnavailable,
@@ -13,13 +13,12 @@ import app, {
 } from '../modules/app';
 import { restoreActiveProtocolFromLibrary } from '../restoreActiveProtocol';
 
-const makeProtocol = (name: string): CurrentProtocol =>
-  ({
-    name,
-    schemaVersion: 8,
-    stages: [],
-    codebook: {},
-  }) as CurrentProtocol;
+const makeProtocol = (name: string): CurrentProtocol => ({
+  name,
+  schemaVersion: 8,
+  stages: [],
+  codebook: {},
+});
 
 const reducer = combineReducers({
   app,
@@ -45,6 +44,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
     getStoredProtocol.mockResolvedValue({
       id: 'p1',
       protocol: canonical,
+      validated: true,
     });
 
     const result = await restoreActiveProtocolFromLibrary(store, {
@@ -90,11 +90,45 @@ describe('restoreActiveProtocolFromLibrary', () => {
       replaceProtocolRoute,
     });
     store.dispatch(setActiveProtocolId('p2'));
-    resolveRead?.({ id: 'p1', protocol: makeProtocol('Stale') });
+    resolveRead?.({
+      id: 'p1',
+      protocol: makeProtocol('Stale'),
+      validated: true,
+    });
 
     expect(await restoring).toBe('stale');
     expect(store.getState().activeProtocol.present).toBeNull();
     expect(getActiveProtocolId(store.getState())).toBe('p2');
+  });
+
+  it('does not clear a newer session when a stale IndexedDB read rejects', async () => {
+    const store = makeStore();
+    const newerProtocol = makeProtocol('Newer');
+    store.dispatch(setActiveProtocolId('p1'));
+    let rejectRead: ((reason?: unknown) => void) | undefined;
+    getStoredProtocol.mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectRead = reject;
+        }),
+    );
+    const onError = vi.fn();
+
+    const restoring = restoreActiveProtocolFromLibrary(store, {
+      getStoredProtocol,
+      replaceProtocolRoute,
+      onError,
+    });
+    store.dispatch(setActiveProtocolId('p2'));
+    store.dispatch(setActiveProtocol(newerProtocol));
+    rejectRead?.(new Error('stale IndexedDB failure'));
+
+    expect(await restoring).toBe('stale');
+    expect(getActiveProtocolId(store.getState())).toBe('p2');
+    expect(store.getState().activeProtocol.present).toEqual(newerProtocol);
+    expect(getStorageUnavailable(store.getState())).toBe(false);
+    expect(replaceProtocolRoute).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
   });
 
   it('settles safely and blocks the editor when IndexedDB rejects', async () => {
@@ -111,5 +145,35 @@ describe('restoreActiveProtocolFromLibrary', () => {
     expect(getActiveProtocolId(store.getState())).toBeNull();
     expect(store.getState().activeProtocol.present).toBeNull();
     expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
+  });
+
+  it('hard-blocks an invalid unproven legacy row before opening the editor', async () => {
+    const store = makeStore();
+    store.dispatch(setActiveProtocolId('legacy'));
+    const legacy = makeProtocol('Legacy invalid');
+    getStoredProtocol.mockResolvedValue({ id: 'legacy', protocol: legacy });
+    const error = new Error('Legacy protocol is invalid');
+    const admitStoredProtocol = vi.fn().mockResolvedValue({
+      success: false,
+      error,
+    });
+    const onInvalid = vi.fn();
+
+    const result = await restoreActiveProtocolFromLibrary(store, {
+      getStoredProtocol,
+      admitStoredProtocol,
+      replaceProtocolRoute,
+      onInvalid,
+    });
+
+    expect(result).toBe('invalid');
+    expect(admitStoredProtocol).toHaveBeenCalledWith({
+      id: 'legacy',
+      protocol: legacy,
+    });
+    expect(getActiveProtocolId(store.getState())).toBeNull();
+    expect(store.getState().activeProtocol.present).toBeNull();
+    expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
+    expect(onInvalid).toHaveBeenCalledWith(error.message);
   });
 });

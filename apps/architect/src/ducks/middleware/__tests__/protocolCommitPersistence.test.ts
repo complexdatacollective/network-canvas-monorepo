@@ -46,10 +46,12 @@ import app, {
   setActiveProtocolId,
   setProtocolOpenElsewhere,
 } from '../../modules/app';
+import { actionCreators as stageActions } from '../../modules/protocol/stages';
 import protocolValidation from '../../modules/protocolValidation';
+import type { AppDispatch } from '../../store';
 import { protocolLibraryListenerMiddleware } from '../protocolLibraryListener';
 import { protocolValidationListenerMiddleware } from '../protocolValidationListener';
-import createTimeline from '../timeline';
+import createTimeline, { timelineActions } from '../timeline';
 
 const makeProtocol = (description?: string): CurrentProtocol =>
   ({
@@ -66,6 +68,7 @@ const reducer = combineReducers({
   activeProtocol: createTimeline(activeProtocol, {
     exclude: (action) =>
       action.type === 'activeProtocol/updateLastModified' ||
+      /\/(pending|fulfilled|rejected)$/.test(action.type) ||
       !/^(activeProtocol|stages|codebook|assetManifest)\//.test(action.type),
   }),
   protocolValidation,
@@ -132,7 +135,7 @@ describe('validated protocol commit persistence', () => {
     store.dispatch(
       updateProtocolDescription({ description: 'invalid committed value' }),
     );
-    await new Promise((resolve) => setTimeout(resolve, 625));
+    await waitForEffects();
 
     expect(validateProtocol).toHaveBeenCalledTimes(1);
     expect(putStoredProtocol).not.toHaveBeenCalled();
@@ -165,7 +168,7 @@ describe('validated protocol commit persistence', () => {
     store.dispatch(
       updateProtocolDescription({ description: 'unvalidated committed value' }),
     );
-    await new Promise((resolve) => setTimeout(resolve, 625));
+    await waitForEffects();
 
     expect(validateProtocol).toHaveBeenCalledTimes(1);
     expect(putStoredProtocol).not.toHaveBeenCalled();
@@ -261,6 +264,73 @@ describe('validated protocol commit persistence', () => {
     expect(validateProtocol.mock.calls[1]?.[0]).toMatchObject({
       description: 'second',
     });
+  });
+
+  it('validates and persists an Anonymisation deletion as one atomic commit', async () => {
+    const store = makeStore();
+    const protocol = makeProtocol();
+    protocol.stages = [
+      {
+        id: 'anon',
+        type: 'Anonymisation',
+        label: 'Anonymisation',
+        explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+      },
+    ];
+    protocol.codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            first: { name: 'first', type: 'text', encrypted: true },
+            second: { name: 'second', type: 'text', encrypted: true },
+          },
+        },
+      },
+      edge: {},
+      ego: {},
+    };
+    validateProtocol.mockImplementation(async (candidate: CurrentProtocol) => ({
+      success: true,
+      data: candidate,
+    }));
+    store.dispatch(setActiveProtocolId('p1'));
+    store.dispatch(setActiveProtocol(protocol));
+    validateProtocol.mockClear();
+    putStoredProtocol.mockClear();
+
+    await (store.dispatch as unknown as AppDispatch)(
+      stageActions.deleteStage('anon'),
+    );
+    await waitForEffects();
+
+    expect(validateProtocol).toHaveBeenCalledTimes(1);
+    expect(putStoredProtocol).toHaveBeenCalledTimes(1);
+    const persisted = putStoredProtocol.mock.calls[0]?.[0]
+      ?.protocol as CurrentProtocol;
+    expect(persisted.stages).toEqual([]);
+    expect(
+      persisted.codebook.node?.person?.variables?.first,
+    ).not.toHaveProperty('encrypted');
+    expect(
+      persisted.codebook.node?.person?.variables?.second,
+    ).not.toHaveProperty('encrypted');
+    expect(store.getState().activeProtocol.timeline).toHaveLength(2);
+
+    store.dispatch(timelineActions.undo());
+    expect(store.getState().activeProtocol.present?.stages).toEqual(
+      protocol.stages,
+    );
+    expect(
+      store.getState().activeProtocol.present?.codebook.node?.person?.variables
+        ?.first,
+    ).toHaveProperty('encrypted', true);
+    expect(
+      store.getState().activeProtocol.present?.codebook.node?.person?.variables
+        ?.second,
+    ).toHaveProperty('encrypted', true);
   });
 
   it('return-to-start clears the invalid buffer and active library id', async () => {

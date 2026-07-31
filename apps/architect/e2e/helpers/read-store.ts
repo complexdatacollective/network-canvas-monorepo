@@ -55,7 +55,7 @@ async function readActiveRow(page: Page): Promise<Row | null> {
     });
     db.close();
     // getAll() returns rows ordered by primary key (id), not recency, so sort
-    // by the stored `updatedAt` (written on every autosave flush) and take the
+    // by the stored `updatedAt` (written on every accepted commit) and take the
     // newest — the genuinely most-recently-updated row. Narrow each element at
     // runtime (Array.isArray gives `any[]`) instead of trusting `any` access.
     if (Array.isArray(result)) {
@@ -108,7 +108,7 @@ type Stage = CurrentProtocol['stages'][number];
 // is only a meaningful wait for create-from-scratch specs (the seeded row has
 // no stage at `index` until the commit lands); when editing a stage that ALREADY
 // exists in the seeded protocol, existence passes immediately and can return
-// the pre-autosave JSON — those callers must pass `until`, a predicate on the
+// the pre-commit JSON — those callers must pass `until`, a predicate on the
 // stage (e.g. checking the field they just changed) that the poll also waits
 // on.
 export async function readStageJson(

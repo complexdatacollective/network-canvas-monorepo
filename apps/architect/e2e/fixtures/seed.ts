@@ -97,6 +97,7 @@ export async function seedProtocol(
           description: proto.description,
           sourceRef: { kind: 'e2e', id: 'e2e-fixture' },
           schemaVersion: proto.schemaVersion,
+          validated: true,
           createdAt: now,
           updatedAt: now,
         });
@@ -128,20 +129,9 @@ export async function seedProtocol(
   //    legacy body key explicitly so a stale test context cannot mask a
   //    regression by rehydrating protocol content from sessionStorage.
   await page.evaluate((storageId) => {
-    let app: Record<string, unknown> = {};
-    try {
-      const parsed: unknown = JSON.parse(
-        sessionStorage.getItem('@@remember-app') ?? '{}',
-      );
-      if (typeof parsed === 'object' && parsed !== null) {
-        app = parsed as Record<string, unknown>;
-      }
-    } catch {
-      // Replace malformed fixture state below.
-    }
     sessionStorage.setItem(
       '@@remember-app',
-      JSON.stringify({ ...app, activeProtocolId: storageId }),
+      JSON.stringify({ activeProtocolId: storageId }),
     );
     sessionStorage.removeItem('@@remember-activeProtocol');
   }, id);

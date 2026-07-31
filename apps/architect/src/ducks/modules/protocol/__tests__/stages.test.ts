@@ -400,25 +400,31 @@ describe('protocol.stages', () => {
 
         await store.dispatch(actionCreators.deleteStage('anon'));
 
-        // The real codebook updateVariable action is dispatched (not the dead
-        // legacy PROTOCOL/UPDATE_VARIABLE type).
-        const updateVariableAction = dispatched.find(
-          (a) => a.type === 'codebook/updateVariable',
+        const deleteStageAction = dispatched.find(
+          (a) => a.type === 'stages/deleteStage',
         );
-        expect(updateVariableAction).toBeDefined();
+        expect(deleteStageAction).toBeDefined();
         expect(
           dispatched.some((a) => a.type === 'PROTOCOL/UPDATE_VARIABLE'),
         ).toBe(false);
+        expect(
+          dispatched.filter(
+            (a) =>
+              a.type === 'stages/deleteStage' ||
+              a.type === 'codebook/updateVariable',
+          ),
+        ).toHaveLength(1);
 
-        const payload = updateVariableAction?.payload as
+        const payload = deleteStageAction?.payload as
           | {
-              configuration: Record<string, unknown>;
-              replaceProperties: readonly string[];
+              stageId: string;
+              clearEncryptedVariables: boolean;
             }
           | undefined;
-        expect(payload?.replaceProperties).toEqual(['encrypted']);
-        expect(payload?.configuration).not.toHaveProperty('id');
-        expect(payload?.configuration).not.toHaveProperty('encrypted');
+        expect(payload).toEqual({
+          stageId: 'anon',
+          clearEncryptedVariables: true,
+        });
 
         expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
           true,

@@ -10,6 +10,8 @@ const setImportInProgress = vi.fn();
 const setExportInProgress = vi.fn();
 const validateProtocol = vi.fn();
 const putStoredProtocol = vi.fn();
+const getStoredProtocol = vi.fn();
+const markStoredProtocolValidated = vi.fn();
 const saveProtocolAssets = vi.fn();
 const deleteStoredProtocol = vi.fn();
 const reportError = vi.fn((error: unknown) => ({
@@ -36,8 +38,10 @@ vi.mock('@codaco/protocol-validation', async (importOriginal) => {
 
 vi.mock('~/utils/protocolLibrary', () => ({
   putStoredProtocol: (...args: unknown[]) => putStoredProtocol(...args),
+  markStoredProtocolValidated: (...args: unknown[]) =>
+    markStoredProtocolValidated(...args),
   deleteStoredProtocol: (...args: unknown[]) => deleteStoredProtocol(...args),
-  getStoredProtocol: vi.fn(),
+  getStoredProtocol: (...args: unknown[]) => getStoredProtocol(...args),
 }));
 
 vi.mock('~/utils/assetUtils', () => ({
@@ -70,7 +74,8 @@ vi.mock('../../app', () => ({
 }));
 
 // Imported after mocks so the thunks pick up the mocked collaborators.
-const { openBundledTemplate } = await import('../userActions');
+const { openBundledTemplate, openLibraryProtocol } =
+  await import('../userActions');
 
 const dispatch = vi.fn((action: unknown) => {
   // `instantiateProtocol` dispatches plain action objects; the thunks under
@@ -81,8 +86,11 @@ const dispatch = vi.fn((action: unknown) => {
   return action;
 });
 
-const runThunk = (thunk: ReturnType<typeof openBundledTemplate>) =>
-  thunk(dispatch, () => ({}) as never, undefined);
+const runThunk = (
+  thunk:
+    | ReturnType<typeof openBundledTemplate>
+    | ReturnType<typeof openLibraryProtocol>,
+) => thunk(dispatch, () => ({}) as never, undefined);
 
 const makeProtocol = (): CurrentProtocol =>
   ({
@@ -99,6 +107,8 @@ describe('userActions', () => {
     setImportInProgress.mockReset();
     validateProtocol.mockReset();
     putStoredProtocol.mockReset().mockResolvedValue(undefined);
+    getStoredProtocol.mockReset();
+    markStoredProtocolValidated.mockReset().mockResolvedValue(undefined);
     saveProtocolAssets.mockReset().mockResolvedValue(undefined);
     deleteStoredProtocol.mockReset().mockResolvedValue(undefined);
     dispatch.mockClear();
@@ -136,6 +146,25 @@ describe('userActions', () => {
   });
 
   describe('critical-operation guard on bundled-template open (#813)', () => {
+    it('validates the final protocol after applying its requested name', async () => {
+      const protocol = makeProtocol();
+      validateProtocol.mockImplementation(
+        async (candidate: CurrentProtocol) => ({
+          success: true,
+          data: candidate,
+        }),
+      );
+
+      await runThunk(
+        openBundledTemplate({ protocol, name: 'Renamed Template' }),
+      );
+
+      expect(validateProtocol).toHaveBeenCalledWith({
+        ...protocol,
+        name: 'Renamed Template',
+      });
+    });
+
     it('guards the whole open in setImportInProgress(true)/finally(false)', async () => {
       validateProtocol.mockResolvedValue({
         success: true,
@@ -166,6 +195,52 @@ describe('userActions', () => {
 
       expect(setImportInProgress).toHaveBeenCalledWith(true);
       expect(setImportInProgress).toHaveBeenLastCalledWith(false);
+    });
+  });
+
+  describe('stored protocol admission', () => {
+    it('opens a provenance-marked row without repeat validation', async () => {
+      const protocol = makeProtocol();
+      getStoredProtocol.mockResolvedValue({
+        id: 'p1',
+        name: protocol.name,
+        schemaVersion: protocol.schemaVersion,
+        protocol,
+        validated: true,
+        createdAt: 0,
+        updatedAt: 0,
+      });
+
+      const result = await runThunk(openLibraryProtocol('p1'));
+
+      expect(result.payload).toEqual({ status: 'opened' });
+      expect(validateProtocol).not.toHaveBeenCalled();
+      expect(markStoredProtocolValidated).not.toHaveBeenCalled();
+    });
+
+    it('hard-blocks an invalid unproven row', async () => {
+      const protocol = makeProtocol();
+      getStoredProtocol.mockResolvedValue({
+        id: 'legacy',
+        name: protocol.name,
+        schemaVersion: protocol.schemaVersion,
+        protocol,
+        createdAt: 0,
+        updatedAt: 0,
+      });
+      const error = new ProtocolValidationError([
+        { code: 'custom', path: [], message: 'Legacy row is invalid' },
+      ]);
+      validateProtocol.mockResolvedValue({ success: false, error });
+
+      const result = await runThunk(openLibraryProtocol('legacy'));
+
+      expect(result.payload).toEqual({
+        status: 'validation-error',
+        message: error.message,
+      });
+      expect(markStoredProtocolValidated).not.toHaveBeenCalled();
+      expect(dispatch).not.toHaveBeenCalledWith({ type: 'setActiveProtocol' });
     });
   });
 });

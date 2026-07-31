@@ -3,6 +3,7 @@ import path from 'node:path';
 import { expect, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
+import { Toolbar } from '../pageobjects/toolbar.js';
 
 // Use the same responsive SVG that readers can download from the documentation
 // article. This proves the Architect dropzone accepts `.svg` as an image
@@ -192,4 +193,29 @@ test('deletes an unused resource and removes it from the asset manifest', async 
       ),
     )
     .toBe(false);
+
+  // The deletion remains one undoable protocol commit. Its Blob must survive
+  // canonical persistence so Undo restores both the manifest entry and a
+  // working preview, not a dangling resource reference.
+  await new Toolbar(architectPage).undo();
+  await expect
+    .poll(async () =>
+      assetManifestOf(await readProtocolJson(architectPage)).some(
+        (asset) => asset.name === TEST_IMAGE_NAME,
+      ),
+    )
+    .toBe(true);
+  const restoredPreview = architectPage.getByRole('img', {
+    name: TEST_IMAGE_NAME,
+  });
+  await expect(restoredPreview).toBeVisible();
+  await expect
+    .poll(() =>
+      restoredPreview.evaluate((image) =>
+        image instanceof HTMLImageElement && image.naturalWidth > 0
+          ? 'loaded'
+          : 'pending',
+      ),
+    )
+    .toBe('loaded');
 });

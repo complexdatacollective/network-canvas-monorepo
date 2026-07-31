@@ -8,6 +8,7 @@ import { reportAutosaveFailure } from '~/utils/autosaveFailureQueue';
 import { beginProtocolCommit } from '~/utils/criticalOperation';
 import { getStoredProtocol, putStoredProtocol } from '~/utils/protocolLibrary';
 
+import { getActiveProtocolId } from '../modules/app';
 import type { RootState } from '../modules/root';
 import { protocolCommitAccepted } from '../protocolCommit';
 import type { AppDispatch } from '../store';
@@ -27,8 +28,24 @@ let autosaveErrorNotified = false;
 // newer one for the same row.
 const writeLocks = new Map<string, Promise<void>>();
 
+const getUndoableAssetIds = (
+  state: RootState,
+  protocolId: string,
+): Set<string> => {
+  if (getActiveProtocolId(state) !== protocolId) return new Set();
+
+  const timeline = state.activeProtocol;
+  const snapshots = [...timeline.past, timeline.present, ...timeline.future];
+  return new Set(
+    snapshots.flatMap((protocol) =>
+      protocol?.assetManifest ? Object.keys(protocol.assetManifest) : [],
+    ),
+  );
+};
+
 const persistAcceptedCommit = (
   snapshot: ReturnType<typeof protocolCommitAccepted>['payload'],
+  getState: () => RootState,
 ): void => {
   const finishCriticalOperation = beginProtocolCommit();
   const previous = writeLocks.get(snapshot.id) ?? Promise.resolve();
@@ -52,6 +69,9 @@ const persistAcceptedCommit = (
             protocol: snapshot.protocol,
             name: snapshot.protocol.name,
             description: snapshot.protocol.description,
+            // A removed manifest entry remains reachable through Undo/Redo.
+            // Keep its blob until no timeline snapshot can restore it.
+            retainedAssetIds: getUndoableAssetIds(getState(), snapshot.id),
           });
         },
       );
@@ -79,8 +99,8 @@ const persistAcceptedCommit = (
 // cannot reach IndexedDB.
 startAppListening({
   actionCreator: protocolCommitAccepted,
-  effect: (action) => {
+  effect: (action, listenerApi) => {
     if (!action.payload.persistenceAllowed) return;
-    persistAcceptedCommit(action.payload);
+    persistAcceptedCommit(action.payload, listenerApi.getState);
   },
 });

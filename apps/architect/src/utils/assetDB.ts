@@ -12,6 +12,10 @@ export type StoredProtocolRow = {
   description?: string;
   schemaVersion: number;
   protocol: CurrentProtocol;
+  // Present only after this exact canonical body has passed validation. Rows
+  // written by older Architect versions are intentionally unmarked and receive
+  // a one-time admission check before opening.
+  validated?: true;
   sourceRef?: ProtocolSourceRef;
   createdAt: number;
   updatedAt: number;
