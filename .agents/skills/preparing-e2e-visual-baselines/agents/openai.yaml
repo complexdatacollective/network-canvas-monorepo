@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Prepare E2E Visual Baselines'
+  short_description: 'Update only affected visual baselines before PRs'
+  default_prompt: 'Use $preparing-e2e-visual-baselines to assess my changes and update only the affected E2E PNG baselines.'

@@ -12,12 +12,16 @@ lane handles it instead. The base `8.0.0` is fixed (change it with a manual
 the release notes, it does not move the base while in beta.
 
 1. **Author a changeset.** Run `pnpm changeset` and select
-   `@codaco/architect` (see the `creating-a-changeset` skill). Select no other
-   product or library in that file—CI (`pnpm check:changesets`) rejects it.
-2. **The "Release Architect" PR.** On every push to `main`, the Architect entry
-   in the `product-release-pr` matrix increments `-beta.N`, updates
-   `CHANGELOG.md`, deletes the consumed Architect changesets, and opens or updates
-   its release PR. The PR is withdrawn when no Architect changesets are pending.
+   `@codaco/architect` (see the `creating-a-changeset` skill). The same changeset
+   may also name `@codaco/interviewer`, because the current apps share one
+   release lane. Select no library, Documentation, or Website package in that
+   file—CI (`pnpm check:changesets`) rejects cross-lane changesets.
+2. **The "Release apps" PR.** On every push to `main`, the combined app release
+   entry increments `-beta.N` for each app with pending changesets, updates its
+   `CHANGELOG.md`, deletes the consumed app changesets, and opens or updates
+   `changeset-release/apps`. If only Architect has pending changes, Interviewer
+   remains untouched. The PR is withdrawn when neither app has pending
+   changesets.
 3. **Merge to release.** Merging the PR bumps `package.json` on `main`; the
    `apps-release-detect` job sees the change and `apps-release-architect` builds,
    deploys to Netlify **production** (site secret `NETLIFY_SITE_ID_ARCHITECT`), and creates
@@ -26,7 +30,8 @@ the release notes, it does not move the base while in beta.
 
 Netlify's Git integration builds pull-request previews and reports their URLs
 directly on the PR. Production is no longer deployed on every push to `main`—it
-is deployed only when the Release Architect PR merges.
+is deployed only when the Release apps PR containing an Architect version bump
+merges.
 
 ## Developer site
 

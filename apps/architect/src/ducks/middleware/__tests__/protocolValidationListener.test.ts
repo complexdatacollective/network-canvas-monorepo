@@ -113,8 +113,8 @@ describe('protocolValidationListener', () => {
   });
 
   // #776: a valid newer edit that lands during an invalid edit's validation
-  // must NOT be reverted, and its later success must dismiss the stale dialog.
-  it('does not revert a valid newer edit and dismisses the stale dialog (#776)', async () => {
+  // must NOT be reverted or interrupted by recovery for the stale commit.
+  it('does not interrupt or revert a valid newer edit (#776)', async () => {
     // Establish a known-valid baseline (L0), then an invalid edit (L1), then a
     // valid newer edit (L2) landing during L1's validation.
     validateProtocol
@@ -141,11 +141,10 @@ describe('protocolValidationListener', () => {
     // All three validations ran; L2 (valid) is the latest.
     expect(validateProtocol).toHaveBeenCalledTimes(3);
 
-    // The stale invalid-protocol dialog must have been dismissed by L2's
-    // success, so the middleware emits a close for the open dialog.
+    // L1 is no longer current when its result arrives, so recovery is never
+    // shown for it. L2 validates as the complete current protocol.
     const dialogEvents = takeProtocolValidationDialogEvents();
-    expect(dialogEvents.map((event) => event.type)).toEqual(['open', 'close']);
-    expect(dialogEvents[1]?.id).toBe(dialogEvents[0]?.id);
+    expect(dialogEvents).toEqual([]);
 
     // The valid newer edit L2 must still be the timeline head (not reverted).
     const { timeline } = store.getState().activeProtocol;
@@ -186,7 +185,7 @@ describe('protocolValidationListener', () => {
 
     // Confirm the revert: it must jump back to the last valid locus (L0), not
     // no-op because the current locus (L2) differs from the first failure (L1).
-    openEvents[0]?.onConfirm();
+    openEvents[0]?.onRevert();
 
     const after = store.getState().activeProtocol.timeline;
     expect(after[after.length - 1]?.id).toBe('L0');

@@ -31,10 +31,10 @@ intended baseline changes. Keep generation separate from normal verification.
 ## Respond to a release E2E failure
 
 The complete Architect, Interview, and Interviewer E2E suites run in CI only for
-the generated library branch `changeset-release/main`, the independent product
-branches `changeset-release/architect`, `changeset-release/interviewer`,
-`changeset-release/documentation`, and `changeset-release/website`, and merge
-groups whose package or product versions trigger a release. The required
+the generated library branch `changeset-release/main`, the combined app branch
+`changeset-release/apps`, the independent
+`changeset-release/documentation` and `changeset-release/website` branches, and
+merge groups whose package or product versions trigger a release. The required
 `quality` check conditionally waits for all three E2E results in those cases.
 Ordinary PRs skip E2E and never inherit an older E2E result.
 

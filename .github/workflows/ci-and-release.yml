@@ -11,6 +11,26 @@ on:
         description: 'Force package-scoped conditional checks to run regardless of change detection.'
         type: boolean
         default: false
+      interview_e2e_benchmark:
+        description: 'Run only Interview E2E for controlled runner, worker, or shard measurements.'
+        type: boolean
+        default: false
+      interview_e2e_runner:
+        description: 'Runner class for an Interview E2E benchmark. Normal CI uses automatic routing.'
+        type: choice
+        default: auto
+        options:
+          - auto
+          - github-hosted
+          - self-hosted
+      interview_e2e_workers:
+        description: 'Playwright workers for an Interview E2E benchmark; 0 uses the runner default.'
+        type: number
+        default: 0
+      interview_e2e_shard:
+        description: 'Optional Playwright shard for a benchmark, such as 1/2.'
+        type: string
+        default: ''
       release_app:
         description: 'Force a legacy desktop app release (Architect/Interviewer) at the version currently in package.json, regardless of version-bump detection.'
         type: choice
@@ -35,7 +55,9 @@ permissions:
 # is silently lost. See .github/scripts/detect-app-release.sh for the self-healing
 # safety net if a release run is dropped anyway.
 concurrency:
-  group: ci-${{ github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
+  # Benchmark dispatches get an independent group so hosted shards can run in
+  # parallel. Normal runs retain per-ref supersession semantics.
+  group: ci-${{ (github.event_name == 'workflow_dispatch' && inputs.interview_e2e_benchmark == true && github.run_id) || github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
   # Cancel every superseded PR run, including generated release PRs. Only the
   # current head's required `quality` aggregate matters, and its replacement run
   # will report that check. A release-branch dispatch also targets a concrete
@@ -50,7 +72,11 @@ jobs:
   # Skipped on push: its only consumers (docs-preview-checks, the quality
   # aggregate, carry-forward-statuses) never run on push-to-main.
   detect:
-    if: github.event_name != 'merge_group' && github.event_name != 'push'
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
     outputs:
       docs: ${{ steps.flags.outputs.docs }}
@@ -163,7 +189,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
-          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
+          # Combined app-lane suite selection and cross-branch equivalence both
+          # compare commits, so every non-push policy run needs full history.
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
@@ -174,18 +202,27 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           HEAD_REF: ${{ github.head_ref }}
           REF_NAME: ${{ github.ref_name }}
-          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           # On PRs, HEAD_SHA is the branch tip the equivalence reuse diffs
           # against prior validated runs; on merge groups it stays the
           # group's head for release detection. HEAD_REPO guards reuse off
           # for fork PRs.
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BENCHMARK_INTERVIEW_E2E: ${{ github.event_name == 'workflow_dispatch' && inputs.interview_e2e_benchmark == true }}
           # Read-only, feeds both the PR-time and merge-queue equivalence
           # lookups.
           GH_TOKEN: ${{ github.token }}
         run: |
           policy=$(node scripts/release-e2e-policy.mjs)
+          if [[ "$BENCHMARK_INTERVIEW_E2E" == "true" ]]; then
+            policy=$(jq \
+              '.interview = true
+              | .interviewer = false
+              | .architect = false
+              | .releaseRef = ""
+              | .snapshotBranch = ""' <<< "$policy")
+          fi
           echo "release E2E policy: $policy"
           {
             echo "interview=$(jq -r '.interview' <<< "$policy")"
@@ -195,12 +232,12 @@ jobs:
             echo "snapshot_branch=$(jq -r '.snapshotBranch' <<< "$policy")"
           } >> "$GITHUB_OUTPUT"
 
-  # Route the @codaco/interview e2e suite — the longest of the three — to the
-  # self-hosted runner when it is online, falling back to GitHub-hosted when it
-  # isn't. Only that one suite: the runner has a single job slot, so sending
-  # all three would serialize them; interviewer-e2e and architect-e2e stay on
-  # GitHub-hosted and run in parallel. `runs-on` has no native fallback, so
-  # interview-e2e consumes this job's output via fromJSON().
+  # Route the longest E2E suite. The single-slot private runner is reserved for
+  # the library release lane, where Interview runs alongside hosted Architect
+  # and Interviewer suites. The combined app lane stays hosted, preventing a
+  # burst of generated release PRs from serialising behind one private slot.
+  # The availability check requires online AND idle; `runs-on` has no native
+  # fallback after a job has been queued.
   #
   # Listing self-hosted runners needs `administration:read`, which GITHUB_TOKEN
   # cannot hold, so the check uses the E2E_RUNNER_STATUS_TOKEN secret (a
@@ -215,31 +252,62 @@ jobs:
     outputs:
       runs_on: ${{ steps.pick.outputs.runs_on }}
       pw_workers: ${{ steps.pick.outputs.pw_workers }}
+      runner_class: ${{ steps.pick.outputs.runner_class }}
     steps:
       - id: pick
         env:
           GH_TOKEN: ${{ secrets.E2E_RUNNER_STATUS_TOKEN }}
+          RELEASE_REF: ${{ needs.e2e-policy.outputs.release_ref }}
+          RUNNER_OVERRIDE: ${{ github.event_name == 'workflow_dispatch' && inputs.interview_e2e_benchmark == true && inputs.interview_e2e_runner || 'auto' }}
+          WORKER_OVERRIDE: ${{ github.event_name == 'workflow_dispatch' && inputs.interview_e2e_benchmark == true && inputs.interview_e2e_workers || 0 }}
         run: |
-          # Defaults: GitHub-hosted, and the 4-worker sweet spot measured for
-          # its 4-core machines (see interview-e2e's PW_WORKERS note).
           runs_on='"ubuntu-latest"'
           pw_workers=4
-          if [ -n "$GH_TOKEN" ]; then
-            online=$(curl -sf --max-time 30 \
+          runner_class=github-hosted
+
+          # Normal automatic routing gives only the library lane access to the
+          # private runner. A benchmark may explicitly select either class.
+          private_eligible=false
+          if [[ "$RUNNER_OVERRIDE" == "self-hosted" ]]; then
+            private_eligible=true
+          elif [[ "$RUNNER_OVERRIDE" == "auto" && "$RELEASE_REF" == "changeset-release/main" ]]; then
+            private_eligible=true
+          fi
+
+          if [[ "$RUNNER_OVERRIDE" == "self-hosted" && -z "$GH_TOKEN" ]]; then
+            echo "::error::The self-hosted benchmark requires E2E_RUNNER_STATUS_TOKEN"
+            exit 1
+          fi
+
+          if [[ "$private_eligible" == "true" && -n "$GH_TOKEN" ]]; then
+            idle=$(curl -sf --max-time 30 \
               -H "Authorization: Bearer $GH_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners?per_page=100" \
-              | jq '[.runners[] | select(.status == "online" and ([.labels[].name] | index("e2e")))] | length' \
+              | jq '[.runners[] | select(
+                  .status == "online"
+                  and .busy == false
+                  and ([.labels[].name] | index("e2e"))
+                )] | length' \
               || echo 0)
-            if [ "${online:-0}" -gt 0 ]; then
+            if [[ "${idle:-0}" -gt 0 ]]; then
               runs_on='["self-hosted", "e2e"]'
               pw_workers=6
+              runner_class=self-hosted
+            elif [[ "$RUNNER_OVERRIDE" == "self-hosted" ]]; then
+              echo "::error::The forced self-hosted benchmark runner is not online and idle"
+              exit 1
             fi
           fi
-          echo "picked runs-on: $runs_on (PW_WORKERS=$pw_workers)"
+
+          if [[ "$WORKER_OVERRIDE" =~ ^[1-9][0-9]*$ ]]; then
+            pw_workers=$WORKER_OVERRIDE
+          fi
+          echo "picked runs-on: $runs_on (class=$runner_class, PW_WORKERS=$pw_workers)"
           {
             echo "runs_on=$runs_on"
             echo "pw_workers=$pw_workers"
+            echo "runner_class=$runner_class"
           } >> "$GITHUB_OUTPUT"
 
   # pick-e2e-runner snapshots availability once, but interview-e2e is scheduled
@@ -327,16 +395,14 @@ jobs:
   # cache entries and every run after a merge would re-run everything that
   # merge changed.
   #
-  # `quality` used to be a single job running everything serially; it is now a
-  # fan-out of independent sub-jobs behind the `quality` aggregator below, so
-  # they run in parallel runners instead of one after another. Sub-jobs
-  # deliberately do NOT `needs: detect` so they still run under `merge_group`
-  # (where `detect` is skipped). `build`/`typecheck`/`test`/`lint` are now
-  # independent: workspace packages are consumed as raw `src` (exports point at
-  # source), so typecheck/test/lint resolve dependency types directly and need
-  # neither the `build` job nor any restored `.d.ts`. Because they no longer
-  # build, this seed job runs `build` explicitly so the release and app-deploy
-  # jobs still find a warm `build` cache on main.
+  # `quality` is an aggregate over three independent runners: lint, tests, and
+  # a support runner that amortises setup across knip, changesets, script tests,
+  # package builds, and typechecking. These jobs deliberately do NOT
+  # `needs: detect` so they still run under `merge_group` (where `detect` is
+  # skipped). Workspace packages are consumed as raw `src` (exports point at
+  # source), so typecheck/test/lint resolve dependency types directly and do
+  # not need built `.d.ts`. This seed job still runs `build` explicitly so the
+  # release and app-deploy jobs find a warm `build` cache on main.
   seed-turbo-cache:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Cache warming only — the merge queue already validated this identical
@@ -363,71 +429,95 @@ jobs:
       - run: pnpm exec turbo run build test typecheck
 
   lint:
-    if: github.event_name != 'push'
+    if: >-
+      github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
+          # Pull requests lint only changed files against their synthetic
+          # merge commit's base parent. Merge groups still run the full check.
+          fetch-depth: 0
       - uses: ./.github/actions/turbo-ci-setup
       # oxlint-tsgolint's type-aware rules resolve workspace types directly from
       # each package's `src` (exports point at source), so no built `.d.ts` is
       # needed and the job runs without a prior package build.
-      - run: pnpm exec turbo run //#lint
+      - name: Lint and check formatting
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            pnpm lint:changed HEAD^1
+          else
+            pnpm exec turbo run //#lint
+          fi
 
-  knip:
-    if: github.event_name != 'push'
+  # These checks are individually short and cache-heavy. Keeping them on one
+  # runner avoids five duplicate checkout/install/cache-server sequences while
+  # lint and test remain independent jobs on the critical path.
+  quality-support:
+    if: >-
+      github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
-      - run: pnpm exec turbo run //#knip
-
-  check-changesets:
-    if: github.event_name != 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/turbo-ci-setup
-      - run: pnpm check:changesets
-
-  test-scripts:
-    if: github.event_name != 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/turbo-ci-setup
-      - run: pnpm test:scripts
-
-  build:
-    if: github.event_name != 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/turbo-ci-setup
-      - name: Build shared packages (apps build in their own deploy/release jobs)
+      - name: Check unused files, exports, and dependencies
+        id: knip
+        continue-on-error: true
+        run: pnpm exec turbo run //#knip
+      - name: Check changeset release-lane isolation
+        id: changesets
+        continue-on-error: true
+        run: pnpm check:changesets
+      - name: Test repository scripts
+        id: scripts
+        continue-on-error: true
+        run: pnpm test:scripts
+      - name: Build shared packages
+        id: build
+        continue-on-error: true
         run: pnpm exec turbo run build --filter='./packages/*'
-
-  typecheck:
-    if: github.event_name != 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/turbo-ci-setup
-      - run: pnpm exec turbo run typecheck
+      - name: Typecheck workspaces
+        id: typecheck
+        continue-on-error: true
+        run: pnpm exec turbo run typecheck
+      - name: Verify support checks passed
+        if: always()
+        env:
+          KNIP_OUTCOME: ${{ steps.knip.outcome }}
+          CHANGESETS_OUTCOME: ${{ steps.changesets.outcome }}
+          SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
+        run: |
+          failed=false
+          for result in \
+            "knip=$KNIP_OUTCOME" \
+            "changesets=$CHANGESETS_OUTCOME" \
+            "scripts=$SCRIPTS_OUTCOME" \
+            "build=$BUILD_OUTCOME" \
+            "typecheck=$TYPECHECK_OUTCOME"; do
+            echo "$result"
+            if [[ "${result#*=}" != "success" ]]; then
+              failed=true
+            fi
+          done
+          if [[ "$failed" == "true" ]]; then
+            echo "::error::One or more quality support checks failed"
+            exit 1
+          fi
 
   test:
-    if: github.event_name != 'push'
+    if: >-
+      github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -487,18 +577,18 @@ jobs:
   quality:
     needs:
       - lint
-      - knip
-      - check-changesets
-      - test-scripts
-      - build
-      - typecheck
+      - quality-support
       - test
       - detect
       - e2e-policy
       - interview-e2e
       - interviewer-e2e
       - architect-e2e
-    if: ${{ !cancelled() && github.event_name != 'push' }}
+    if: >-
+      ${{ !cancelled()
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true) }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify all quality checks passed
@@ -510,11 +600,7 @@ jobs:
           E2E_INTERVIEWER_REQUIRED: ${{ needs.e2e-policy.outputs.interviewer }}
           E2E_ARCHITECT_REQUIRED: ${{ needs.e2e-policy.outputs.architect }}
           LINT_RESULT: ${{ needs.lint.result }}
-          KNIP_RESULT: ${{ needs.knip.result }}
-          CHANGESETS_RESULT: ${{ needs.check-changesets.result }}
-          SCRIPTS_RESULT: ${{ needs.test-scripts.result }}
-          BUILD_RESULT: ${{ needs.build.result }}
-          TYPECHECK_RESULT: ${{ needs.typecheck.result }}
+          SUPPORT_RESULT: ${{ needs.quality-support.result }}
           TEST_RESULT: ${{ needs.test.result }}
           INTERVIEW_E2E_RESULT: ${{ needs.interview-e2e.result }}
           INTERVIEWER_E2E_RESULT: ${{ needs.interviewer-e2e.result }}
@@ -534,11 +620,7 @@ jobs:
 
           verify_successes "quality gate" \
             "$LINT_RESULT" \
-            "$KNIP_RESULT" \
-            "$CHANGESETS_RESULT" \
-            "$SCRIPTS_RESULT" \
-            "$BUILD_RESULT" \
-            "$TYPECHECK_RESULT" \
+            "$SUPPORT_RESULT" \
             "$TEST_RESULT"
 
           if [[ "$EVENT_NAME" != "merge_group" && "$DETECT_RESULT" != "success" ]]; then
@@ -691,6 +773,9 @@ jobs:
       # spot for the single-job (no shard matrix) run on GitHub's 4-core
       # runners; the self-hosted runner (12 cores) gets 6.
       PW_WORKERS: ${{ needs.pick-e2e-runner.outputs.pw_workers }}
+      E2E_RUNNER_CLASS: ${{ needs.pick-e2e-runner.outputs.runner_class }}
+      E2E_SHARD: ${{ github.event_name == 'workflow_dispatch' && inputs.interview_e2e_benchmark == true && inputs.interview_e2e_shard || '' }}
+      E2E_BENCHMARK: ${{ github.event_name == 'workflow_dispatch' && inputs.interview_e2e_benchmark == true }}
     outputs:
       slug: ${{ steps.meta.outputs.slug }}
       snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
@@ -736,8 +821,71 @@ jobs:
           SLUG=$(printf '%s' "$SLUG" | tr -c '[:alnum:]-_.' '-')
           SLUG=${SLUG:-unknown}
           printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
+      - name: Record benchmark runner hardware
+        if: env.E2E_BENCHMARK == 'true'
+        run: |
+          lscpu
+          free -h
+          docker info --format '{{json .DriverStatus}}'
       - name: Run E2E tests
-        run: ./packages/interview/e2e/scripts/run.sh
+        run: |
+          args=()
+          if [[ -n "$E2E_SHARD" ]]; then
+            if [[ ! "$E2E_SHARD" =~ ^[1-9][0-9]*/[1-9][0-9]*$ ]]; then
+              echo "::error::Invalid Playwright shard '$E2E_SHARD' (expected N/M)"
+              exit 1
+            fi
+            args+=("--shard=$E2E_SHARD")
+          fi
+
+          if [[ "$E2E_BENCHMARK" != "true" ]]; then
+            ./packages/interview/e2e/scripts/run.sh "${args[@]}"
+            exit
+          fi
+
+          telemetry="$RUNNER_TEMP/interview-e2e-telemetry.tsv"
+          printf 'timestamp\tload\tmemory_available_kb\tdocker_stats\n' > "$telemetry"
+          ./packages/interview/e2e/scripts/run.sh "${args[@]}" &
+          test_pid=$!
+          stop_test() {
+            kill "$test_pid" 2>/dev/null || true
+            docker rm -f interview-e2e-run 2>/dev/null || true
+          }
+          trap stop_test INT TERM
+          while kill -0 "$test_pid" 2>/dev/null; do
+            timestamp=$(date --iso-8601=seconds)
+            load=$(cut -d ' ' -f 1-3 /proc/loadavg)
+            memory=$(awk '/MemAvailable:/ { print $2 }' /proc/meminfo)
+            stats=$(docker stats interview-e2e-run --no-stream \
+              --format '{{json .}}' 2>/dev/null || true)
+            printf '%s\t%s\t%s\t%s\n' \
+              "$timestamp" "$load" "$memory" "$stats" >> "$telemetry"
+            sleep 5
+          done
+          set +e
+          wait "$test_pid"
+          status=$?
+          set -e
+          trap - INT TERM
+          exit "$status"
+      - name: Record E2E execution configuration
+        if: always()
+        run: |
+          {
+            echo "### Interview E2E execution"
+            echo
+            echo "- Runner: $E2E_RUNNER_CLASS"
+            echo "- Playwright workers: $PW_WORKERS"
+            echo "- Shard: ${E2E_SHARD:-none}"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload benchmark telemetry
+        if: always() && env.E2E_BENCHMARK == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: interview-e2e-telemetry
+          path: ${{ runner.temp }}/interview-e2e-telemetry.tsv
+          if-no-files-found: error
+          retention-days: 7
       - name: Stop the e2e container
         # Cancellation kills the `docker run` client but not the container;
         # left alive it keeps writing root-owned files into the persistent
@@ -931,7 +1079,11 @@ jobs:
   # an unrelated push (see carry-forward-statuses).
   interview-e2e-report:
     needs: interview-e2e
-    if: ${{ !cancelled() && needs.interview-e2e.result != 'skipped' }}
+    if: >-
+      ${{ !cancelled()
+      && needs.interview-e2e.result != 'skipped'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true) }}
     continue-on-error: true
     runs-on: ubuntu-latest
     permissions:
@@ -1061,11 +1213,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
-  # Maintains one gated release PR per product (siblings of the library "Version
-  # Packages" PR). On every push to main each matrix entry re-runs the version
-  # step on its own fresh branch and opens, updates, or closes only that product's
-  # PR. Product changesets are ignored by the library release, so they persist in
-  # .changeset/ until the matching matrix entry consumes them.
+  # Maintains one generated PR per gated release lane (siblings of the library
+  # "Version Packages" PR). Architect and Interviewer share one app lane so a
+  # main push produces at most one current-app release gate and one set of E2E
+  # suites. Documentation and Website remain independently releasable.
   product-release-pr:
     name: Release PR (${{ matrix.product }})
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -1073,18 +1224,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - product: Architect
-            slug: architect
-            package: '@codaco/architect'
+          - product: Architect and Interviewer
+            slug: apps
+            package_args: "--package '@codaco/architect' --package '@codaco/interviewer'"
           - product: Documentation
             slug: documentation
-            package: '@codaco/documentation'
-          - product: Interviewer
-            slug: interviewer
-            package: '@codaco/interviewer'
+            package_args: "--package '@codaco/documentation'"
           - product: Website
             slug: website
-            package: 'networkcanvas.com'
+            package_args: "--package 'networkcanvas.com'"
     runs-on: ubuntu-latest
     concurrency:
       group: product-release-pr-${{ matrix.slug }}
@@ -1106,11 +1254,8 @@ jobs:
       - name: Guard against mixed changesets
         run: pnpm check:changesets
       - name: Compute ${{ matrix.product }} version bump
-        env:
-          PACKAGE: ${{ matrix.package }}
         run: >-
-          node scripts/version-beta-apps.mjs
-          --package "$PACKAGE"
+          node scripts/version-beta-apps.mjs ${{ matrix.package_args }}
           --out "${RUNNER_TEMP}/product-release-body.md"
       - name: Open/update the ${{ matrix.product }} release PR
         id: product_pr
@@ -1125,6 +1270,24 @@ jobs:
           title: 'Release ${{ matrix.product }}'
           commit-message: 'chore(release): version ${{ matrix.slug }}'
           body-path: ${{ runner.temp }}/product-release-body.md
+      - name: Retire superseded separate app release PRs
+        if: matrix.slug == 'apps'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+          COMBINED_PR: ${{ steps.product_pr.outputs.pull-request-url }}
+        run: |
+          for branch in changeset-release/architect changeset-release/interviewer; do
+            gh pr list \
+              --state open \
+              --head "$branch" \
+              --json number \
+              --jq '.[].number' |
+              while read -r number; do
+                [[ -z "$number" ]] && continue
+                gh pr close "$number" --delete-branch \
+                  --comment "Superseded by the combined Architect and Interviewer release lane${COMBINED_PR:+: $COMBINED_PR}."
+              done
+          done
 
   # On a push to main that changes a gated product version (i.e. one product's
   # release PR just merged), detect which product moved. Idempotency is a local
@@ -1445,10 +1608,13 @@ jobs:
   # version is always the current apps/<app>/package.json version.
   legacy-release-detect:
     # Only ever runs on main — a manual workflow_dispatch from a feature branch
-    # must not mirror/publish branch-only code to the external app repos.
+    # must not mirror/publish branch-only code to the external app repos. An E2E
+    # benchmark dispatch is measurement-only and must not enter any release lane.
     if: >-
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      github.ref == 'refs/heads/main'
+      && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:

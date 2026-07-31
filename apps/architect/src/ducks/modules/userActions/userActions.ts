@@ -42,6 +42,7 @@ import {
 } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 import { isStorageUnavailableError } from '~/utils/storageErrors';
+import { admitStoredProtocol } from '~/utils/storedProtocolAdmission';
 
 import { clearActiveProtocol, setActiveProtocol } from '../activeProtocol';
 import {
@@ -171,8 +172,8 @@ const instantiateProtocol = async (
   }
 
   // The protocol persisted successfully, so clear any earlier storage-unavailable
-  // flag (it is persisted to localStorage) to re-enable autosave for this and
-  // subsequent opens, and drop the in-memory unload warning.
+  // flag (it is persisted to localStorage) to re-enable canonical persistence
+  // for this and subsequent opens, and drop the in-memory unload warning.
   dispatch(setStorageUnavailable(false));
   disarmInMemoryUnloadGuard();
   dispatch(setActiveProtocolId(protocolId));
@@ -449,7 +450,8 @@ export const openBundledTemplate = createAppAsyncThunk(
     // assets were never written). Mirrors openLocalNetcanvas.
     setImportInProgress(true);
     try {
-      const validationResult = await validateProtocol(protocol);
+      const finalProtocol = name ? { ...protocol, name } : protocol;
+      const validationResult = await validateProtocol(finalProtocol);
 
       if (!validationResult.success) {
         trackImportValidationFailure('bundled', validationResult.error);
@@ -460,7 +462,7 @@ export const openBundledTemplate = createAppAsyncThunk(
       const finalName = name ?? protocol.name;
       await instantiateProtocol(
         {
-          protocol: name ? { ...protocol, name } : protocol,
+          protocol: finalProtocol,
           assets,
           name: finalName,
           description: protocol.description,
@@ -525,8 +527,28 @@ export const openLibraryProtocol = createAppAsyncThunk(
       };
     }
 
+    try {
+      const admission = await admitStoredProtocol(row);
+      if (!admission.success) {
+        return {
+          status: 'validation-error',
+          message: ensureError(admission.error).message,
+        };
+      }
+    } catch (error: unknown) {
+      const normalized = reportError(error, {
+        operation: 'stored-protocol-admission',
+      });
+      return {
+        status: 'error',
+        title: 'Protocol Open Error',
+        message: normalized.message,
+      };
+    }
+
     // This protocol is loaded from durable storage, so any earlier in-memory
-    // unload warning no longer applies.
+    // unload warning/storage failure no longer applies.
+    dispatch(setStorageUnavailable(false));
     disarmInMemoryUnloadGuard();
     dispatch(setActiveProtocolId(id));
     dispatch(setActiveProtocol(row.protocol));

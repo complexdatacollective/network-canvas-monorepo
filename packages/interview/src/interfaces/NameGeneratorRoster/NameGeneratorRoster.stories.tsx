@@ -5,7 +5,7 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
-import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
+import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 const ROSTER_SIZES = [50, 100, 1000, 5000, 50000] as const;
 type RosterSize = (typeof ROSTER_SIZES)[number];

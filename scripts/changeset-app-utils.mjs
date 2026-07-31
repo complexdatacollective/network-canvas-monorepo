@@ -23,6 +23,26 @@ export const STABLE_GATED_PRODUCT_PACKAGES = [
   'networkcanvas.com',
 ];
 
+// Generated release PRs are maintained per lane. Architect and Interviewer
+// deliberately share one gate so one release branch can version whichever app
+// has pending changes (or both) and validate the shared interview runtime once.
+export const GATED_PRODUCT_RELEASE_LANES = {
+  apps: ['@codaco/architect', '@codaco/interviewer'],
+  documentation: ['@codaco/documentation'],
+  website: ['networkcanvas.com'],
+};
+
+export function releaseLaneForProduct(
+  product,
+  lanes = GATED_PRODUCT_RELEASE_LANES,
+) {
+  return (
+    Object.entries(lanes).find(([, products]) =>
+      products.includes(product),
+    )?.[0] ?? null
+  );
+}
+
 export function parseChangeset(contents) {
   const m = contents.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!m) return { releases: [], summary: contents.trim() };
@@ -65,12 +85,25 @@ export function isMixedChangeset(cs, productPackages = GATED_PRODUCT_PACKAGES) {
   return productReleases.length > 0 && libReleases.length > 0;
 }
 
-export function isMultiProductChangeset(
+export function isMultiProductLaneChangeset(
   cs,
   productPackages = GATED_PRODUCT_PACKAGES,
+  lanes = GATED_PRODUCT_RELEASE_LANES,
 ) {
   const { productReleases } = classifyChangeset(cs, productPackages);
-  return new Set(productReleases.map((release) => release.name)).size > 1;
+  const releaseLanes = productReleases.map((release) =>
+    releaseLaneForProduct(release.name, lanes),
+  );
+  // A gated product missing from the lane map is a configuration error. Treat
+  // it as its own lane so a changeset cannot silently couple it to another
+  // product.
+  return (
+    new Set(
+      releaseLanes.map(
+        (lane, index) => lane ?? `unconfigured:${productReleases[index].name}`,
+      ),
+    ).size > 1
+  );
 }
 
 const BETA_RE = /^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/;

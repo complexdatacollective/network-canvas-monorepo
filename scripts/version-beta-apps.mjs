@@ -10,10 +10,12 @@ import { pathToFileURL } from 'node:url';
 import {
   GATED_PRODUCT_DIRS,
   GATED_PRODUCT_PACKAGES,
+  GATED_PRODUCT_RELEASE_LANES,
   STABLE_GATED_PRODUCT_PACKAGES,
   nextBetaVersion,
   nextStableVersion,
   readChangesets,
+  releaseLaneForProduct,
   renderChangelogSection,
 } from './changeset-app-utils.mjs';
 
@@ -22,7 +24,7 @@ export function planProductReleases(
   productPackages = GATED_PRODUCT_PACKAGES,
 ) {
   const changesets = readChangesets(join(cwd, '.changeset'));
-  const consumed = new Set();
+  const selectedProducts = new Set(productPackages);
   const plans = [];
   for (const pkg of productPackages) {
     const entries = [];
@@ -30,7 +32,6 @@ export function planProductReleases(
       const rel = cs.releases.find((r) => r.name === pkg);
       if (!rel) continue;
       entries.push({ type: rel.type, summary: cs.summary });
-      consumed.add(cs.id);
     }
     if (entries.length === 0) continue;
     const dir = GATED_PRODUCT_DIRS[pkg];
@@ -47,7 +48,18 @@ export function planProductReleases(
       entries,
     });
   }
-  return { plans, consumed: [...consumed] };
+  // Consume a changeset only when this invocation owns every gated product it
+  // names. This protects a shared Architect+Interviewer changeset from being
+  // deleted by an incorrectly scoped single-product invocation.
+  const consumed = changesets
+    .filter((cs) => {
+      return (
+        cs.releases.length > 0 &&
+        cs.releases.every((release) => selectedProducts.has(release.name))
+      );
+    })
+    .map((cs) => cs.id);
+  return { plans, consumed };
 }
 
 export function applyProductReleases(cwd, plans, consumed) {
@@ -78,13 +90,14 @@ export function applyProductReleases(cwd, plans, consumed) {
 
 export function renderPrBody(plans) {
   if (plans.length === 0) return 'No product changes pending.\n';
-  if (plans.length !== 1) {
-    throw new Error('Each release PR must contain exactly one gated product.');
+  const lanes = new Set(plans.map((plan) => releaseLaneForProduct(plan.pkg)));
+  if (lanes.size !== 1 || lanes.has(null)) {
+    throw new Error('Each release PR must contain exactly one product lane.');
   }
-  const [plan] = plans;
+  const products = plans.map((plan) => `\`${plan.pkg}\``);
   const lines = [
-    `Merging this PR releases \`${plan.pkg}\` to Netlify **production**.`,
-    ...(STABLE_GATED_PRODUCT_PACKAGES.includes(plan.pkg)
+    `Merging this PR releases ${products.join(' and ')} to Netlify **production**.`,
+    ...(plans.every((plan) => STABLE_GATED_PRODUCT_PACKAGES.includes(plan.pkg))
       ? []
       : ['It also creates a GitHub prerelease.']),
     '',
@@ -100,6 +113,29 @@ export function renderPrBody(plans) {
     lines.push(`### ${p.pkg}@${p.to}`, '', section, '');
   }
   return `${lines.join('\n').trimEnd()}\n`;
+}
+
+export function validateTargetPackages(targetPackages) {
+  const unique = [...new Set(targetPackages)];
+  if (
+    unique.length !== targetPackages.length ||
+    unique.some((pkg) => !GATED_PRODUCT_PACKAGES.includes(pkg))
+  ) {
+    return null;
+  }
+  const laneNames = new Set(
+    unique.map((pkg) => releaseLaneForProduct(pkg)).filter(Boolean),
+  );
+  if (laneNames.size !== 1) return null;
+  const [laneName] = laneNames;
+  const expected = GATED_PRODUCT_RELEASE_LANES[laneName];
+  if (
+    unique.length !== expected.length ||
+    expected.some((pkg) => !unique.includes(pkg))
+  ) {
+    return null;
+  }
+  return unique;
 }
 
 // The generated files are committed by the create-pull-request bot, which never
@@ -126,12 +162,18 @@ function formatGeneratedFiles(cwd, plans) {
 
 function main() {
   const cwd = process.cwd();
-  const packageIdx = process.argv.indexOf('--package');
-  const targetPackage =
-    packageIdx !== -1 ? process.argv[packageIdx + 1] : undefined;
-  if (!targetPackage || !GATED_PRODUCT_PACKAGES.includes(targetPackage)) {
+  const targetPackages = process.argv.flatMap((arg, index, args) =>
+    arg === '--package' && args[index + 1] ? [args[index + 1]] : [],
+  );
+  const selectedPackages = validateTargetPackages(targetPackages);
+  if (!selectedPackages) {
     console.error(
-      `--package must be one of: ${GATED_PRODUCT_PACKAGES.map((pkg) => `"${pkg}"`).join(', ')}`,
+      '--package must select one complete release lane: ' +
+        Object.values(GATED_PRODUCT_RELEASE_LANES)
+          .map((packages) =>
+            packages.map((pkg) => `--package "${pkg}"`).join(' '),
+          )
+          .join(' OR '),
     );
     process.exit(1);
   }
@@ -141,14 +183,14 @@ function main() {
     process.exit(1);
   }
   const outPath = outIdx !== -1 ? process.argv[outIdx + 1] : null;
-  const { plans, consumed } = planProductReleases(cwd, [targetPackage]);
+  const { plans, consumed } = planProductReleases(cwd, selectedPackages);
   applyProductReleases(cwd, plans, consumed);
   formatGeneratedFiles(cwd, plans);
   const body = renderPrBody(plans);
   if (outPath) writeFileSync(outPath, body);
   process.stdout.write(body);
   console.error(
-    `[version-beta-apps] planned ${targetPackage}: ${plans.length} release; consumed ${consumed.length} changeset(s).`,
+    `[version-beta-apps] planned ${selectedPackages.join(', ')}: ${plans.length} release(s); consumed ${consumed.length} changeset(s).`,
   );
 }
 

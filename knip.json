@@ -1,6 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignoreExportsUsedInFile": { "type": true },
+  // Claude skill entries are symlinks to the canonical .agents files. Ignore
+  // the mirrored tree so Knip does not analyse every script twice.
+  "ignore": [".claude/skills/**"],
   // The legacy app-build workflow (.github/workflows/legacy-app-build.yml)
   // invokes the electron-builder binary, which is a devDependency of the
   // legacy architect app rather than the root, so knip sees it as unlisted.

@@ -4,6 +4,7 @@ import { expect, userEvent, within } from 'storybook/test';
 
 import preview from '../../../.storybook/preview';
 import Node, { type NodeColorSequence } from '../../Node';
+import { withDndStoreProvider } from '../../storybook-support/withDndStoreProvider';
 import Heading from '../../typography/Heading';
 import Paragraph from '../../typography/Paragraph';
 import { cx } from '../../utils/cva';
@@ -523,6 +524,7 @@ function DragDropStoryRender(args: DragDropStoryArgs) {
 const meta = preview.meta({
   title: 'Systems/Collection',
   tags: ['autodocs'],
+  decorators: [withDndStoreProvider],
   parameters: {
     layout: 'fullscreen',
     docs: {

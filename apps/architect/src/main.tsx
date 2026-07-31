@@ -10,7 +10,8 @@ import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 
 import { AppErrorBoundary } from './components/Errors';
 import AppView from './components/ViewManager/views/App';
-import { store } from './ducks/store';
+import { restoreActiveProtocolAfterStoreRehydration } from './ducks/restoreActiveProtocol';
+import { store, storeRehydrated } from './ducks/store';
 import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
 import { isCriticalOperationInProgress } from './utils/criticalOperation';
@@ -55,6 +56,11 @@ async function startApp(): Promise<void> {
   ) {
     return;
   }
+
+  // redux-remember restores only the active library id. Load its canonical
+  // protocol body from IndexedDB before mounting any direct /protocol route.
+  const rehydrationResult = await storeRehydrated;
+  await restoreActiveProtocolAfterStoreRehydration(store, rehydrationResult);
 
   // Protocols live in IndexedDB even in a browser tab, so request the durability
   // upgrade there as well as in installed sessions. Do not request at startup:

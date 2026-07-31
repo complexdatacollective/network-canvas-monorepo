@@ -13,7 +13,7 @@ import {
   type ResolvedAsset,
   Shell,
   type StepChangeHandler,
-} from '../src';
+} from '..';
 
 // SyntheticInterview emits assets as plain objects whose `url` field
 // (set by stories via `addAsset({ url: '/storybook/roster-100.json' })`)

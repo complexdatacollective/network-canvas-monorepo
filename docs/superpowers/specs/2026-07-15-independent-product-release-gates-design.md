@@ -1,7 +1,14 @@
 # Independent product release gates
 
 **Date:** 2026-07-15
-**Status:** Implemented by this change
+**Status:** Partially superseded on 2026-07-31
+
+> Architect and Interviewer were recombined into one
+> `changeset-release/apps` gate to eliminate duplicate shared-runtime E2E work.
+> Documentation, Website, libraries, and post-merge per-product deployments
+> remain independent. This document records the earlier topology; see
+> `2026-07-31-combined-app-release-lane-ci-efficiency-design.md` for the current
+> design.
 
 ## Goal
 

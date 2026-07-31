@@ -6,7 +6,7 @@ import SuperJSON from 'superjson';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
 
-import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
+import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import {
   clickDialogSubmit,
   clickMenuItem,

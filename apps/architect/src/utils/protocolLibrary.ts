@@ -1,3 +1,5 @@
+import { isEqual } from 'es-toolkit/compat';
+
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolSourceRef } from '~/templates';
 
@@ -24,6 +26,7 @@ type UpsertProtocolInput = {
   name: string;
   description?: string;
   sourceRef?: ProtocolSourceRef;
+  retainedAssetIds?: Iterable<string>;
 };
 
 export const putStoredProtocol = async ({
@@ -32,6 +35,7 @@ export const putStoredProtocol = async ({
   name,
   description,
   sourceRef,
+  retainedAssetIds = [],
 }: UpsertProtocolInput): Promise<void> => {
   const now = Date.now();
   const existing = await assetDb.protocols.get(id);
@@ -41,25 +45,62 @@ export const putStoredProtocol = async ({
     name,
     description,
     sourceRef: sourceRef ?? existing?.sourceRef,
+    validated: true,
     schemaVersion: protocol.schemaVersion,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   });
 
-  // GC blobs left behind by committed manifest deletes. Manifest deletes are
-  // undoable, so the blob is only reclaimed once the delete reaches a durable
-  // save. Best-effort: a GC failure must not fail the save itself.
+  // GC blobs left behind by committed manifest deletes. Callers can retain
+  // blobs still reachable through Undo/Redo history; they are reclaimed by a
+  // later commit after that history disappears. Best-effort: a GC failure must
+  // not fail the save itself.
   //
   // A nullish manifest is not an authoritative empty keep-set — treating it as
   // one would orphan (and delete) every stored asset for the protocol, so skip
   // the GC entirely until a real manifest is present.
   if (protocol.assetManifest) {
     try {
-      await deleteOrphanedAssets(id, Object.keys(protocol.assetManifest));
+      await deleteOrphanedAssets(id, [
+        ...Object.keys(protocol.assetManifest),
+        ...retainedAssetIds,
+      ]);
     } catch (error) {
       console.error('Failed to remove orphaned assets during save', error);
     }
   }
+};
+
+export const markStoredProtocolValidated = async (
+  expected: StoredProtocolRow,
+): Promise<void> => {
+  // Validation happens outside this transaction because it may be
+  // asynchronous. The short read/write transaction binds the provenance mark
+  // to the exact revision that passed validation and prevents another tab from
+  // replacing the body between the comparison and update.
+  await assetDb.transaction('rw', assetDb.protocols, async () => {
+    const current = await assetDb.protocols.get(expected.id);
+    if (!current) {
+      throw new Error(`Protocol ${expected.id} disappeared during validation.`);
+    }
+
+    if (
+      current.updatedAt !== expected.updatedAt ||
+      current.schemaVersion !== expected.schemaVersion ||
+      !isEqual(current.protocol, expected.protocol)
+    ) {
+      throw new Error(
+        `Protocol ${expected.id} changed while it was being validated. Try opening it again.`,
+      );
+    }
+
+    const updated = await assetDb.protocols.update(expected.id, {
+      validated: true,
+    });
+    if (updated === 0) {
+      throw new Error(`Protocol ${expected.id} disappeared during validation.`);
+    }
+  });
 };
 
 export const deleteStoredProtocol = async (id: string): Promise<void> => {

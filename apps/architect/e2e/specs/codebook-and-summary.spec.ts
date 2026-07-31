@@ -8,7 +8,7 @@ import { Toolbar } from '../pageobjects/toolbar.js';
 // protocol has no lastModified — both would differ on every run (and can
 // even change line wrapping, shifting the whole page). Pin the page clock
 // so the visual baselines are deterministic. setFixedTime only fakes Date;
-// timers keep running, so the autosave debounce is unaffected.
+// asynchronous validation and persistence continue normally.
 const FIXED_CLOCK = new Date('2026-01-01T12:00:00Z');
 
 test(

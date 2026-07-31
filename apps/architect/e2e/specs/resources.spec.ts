@@ -3,6 +3,7 @@ import path from 'node:path';
 import { expect, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
+import { Toolbar } from '../pageobjects/toolbar.js';
 
 // Use the same responsive SVG that readers can download from the documentation
 // article. This proves the Architect dropzone accepts `.svg` as an image
@@ -113,8 +114,8 @@ test('refuses to delete a resource that is used by a stage', async ({
 
   // Dialog shown AND deletion did not proceed. The guard returns before any
   // `deleteAsset` dispatch, so no store change happens; acknowledging then
-  // waiting past the 600ms autosave debounce (protocolLibraryListener.ts)
-  // lets any (regression) erroneous delete's write land in IndexedDB before
+  // waiting lets any (regression) erroneous accepted delete reach IndexedDB
+  // before
   // asserting it did NOT — closing the "dialog shown but deletion silently
   // proceeds anyway" gap, mirroring timeline.spec.ts's stage-delete guard
   // test.
@@ -192,4 +193,29 @@ test('deletes an unused resource and removes it from the asset manifest', async 
       ),
     )
     .toBe(false);
+
+  // The deletion remains one undoable protocol commit. Its Blob must survive
+  // canonical persistence so Undo restores both the manifest entry and a
+  // working preview, not a dangling resource reference.
+  await new Toolbar(architectPage).undo();
+  await expect
+    .poll(async () =>
+      assetManifestOf(await readProtocolJson(architectPage)).some(
+        (asset) => asset.name === TEST_IMAGE_NAME,
+      ),
+    )
+    .toBe(true);
+  const restoredPreview = architectPage.getByRole('img', {
+    name: TEST_IMAGE_NAME,
+  });
+  await expect(restoredPreview).toBeVisible();
+  await expect
+    .poll(() =>
+      restoredPreview.evaluate((image) =>
+        image instanceof HTMLImageElement && image.naturalWidth > 0
+          ? 'loaded'
+          : 'pending',
+      ),
+    )
+    .toBe('loaded');
 });

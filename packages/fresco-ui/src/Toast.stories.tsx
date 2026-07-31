@@ -3,12 +3,14 @@ import { useEffect, useRef } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
 
 import { Button } from './Button';
+import { withToastProvider } from './storybook-support/withToastProvider';
 import { type ToastVariant, useToast } from './Toast';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
 const meta = {
   title: 'Components/Toast',
+  decorators: [withToastProvider],
   parameters: {
     layout: 'fullscreen',
   },
