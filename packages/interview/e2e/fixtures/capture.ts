@@ -33,6 +33,25 @@ const VISUAL_STYLES = `
   }
 `;
 
+/* Motion layout projection can settle at slightly different fractional
+   transforms under parallel load. These elements are positioned by their
+   normal grid/flex/absolute layout at rest, so remove only their transient
+   capture-time transforms. This stylesheet is installed for the screenshot
+   frame only and removed before scenario interactions continue. */
+const CAPTURE_SETTLE_STYLES = `
+  [data-testid="collapsible-prompts"],
+  [data-stagger-item],
+  *:has(> [data-stagger-item]),
+  .catbin-item {
+    transform: none !important;
+  }
+  [data-stagger-item],
+  *:has(> [data-stagger-item]),
+  .catbin-item {
+    opacity: 1 !important;
+  }
+`;
+
 /**
  * Shared pixel-capture pipeline used by both the legacy interview-test
  * fixture and the matrix fixture. Captures are CI-only (`enabled`).
@@ -109,9 +128,24 @@ export function createCaptureInterview(
           offenders.join(' | '),
         );
       });
-    await expect.soft(page).toHaveScreenshot(`${name}.png`, {
-      fullPage: options.fullPage ?? false,
-      mask: options.mask,
+    const settleStyles = await page.addStyleTag({
+      content: CAPTURE_SETTLE_STYLES,
     });
+    try {
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      );
+      await expect.soft(page).toHaveScreenshot(`${name}.png`, {
+        fullPage: options.fullPage ?? false,
+        mask: options.mask,
+      });
+    } finally {
+      await settleStyles.evaluate((style) =>
+        style.parentNode?.removeChild(style),
+      );
+    }
   };
 }

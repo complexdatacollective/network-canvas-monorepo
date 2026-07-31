@@ -423,6 +423,15 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         expect(metadata).toHaveLength(6);
         expect(metadata.filter(([p]) => p === 0)).toHaveLength(3);
         expect(metadata.filter(([p]) => p === 1)).toHaveLength(3);
+
+        // The final answer auto-advances after a real 350 ms timer. Without
+        // awaiting that transition, the visual runner can name the capture
+        // from step 0 and then screenshot either the completed dyad or the
+        // FinishSession stage depending on scheduler load.
+        await expect(page).toHaveURL(/step=1/);
+        await expect(
+          page.getByRole('heading', { name: 'Finish Interview' }),
+        ).toBeVisible();
       },
     },
 

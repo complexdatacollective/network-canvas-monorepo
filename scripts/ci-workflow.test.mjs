@@ -92,6 +92,10 @@ test('pixel comparison and generation use native GitHub-hosted ARM64', () => {
   );
   assert.match(snapshotWorkflow, /\.\/scripts\/run-e2e-native\.sh/);
   assert.doesNotMatch(snapshotWorkflow, /e2e\/scripts\/run\.sh|docker/i);
+  assert.match(
+    snapshotWorkflow,
+    /Regenerate Interview visual snapshots[\s\S]{0,500}PW_WORKERS: 1/,
+  );
   assert.equal(
     snapshotWorkflow.match(/--update-snapshots=all/g)?.length,
     3,

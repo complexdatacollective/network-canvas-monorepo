@@ -58,6 +58,7 @@ const CollapsablePrompts = (props: {
       noContainer
       spacing="sm"
       shadow="sm"
+      data-testid="collapsible-prompts"
       variants={{
         initial: {
           scale: 0.4,

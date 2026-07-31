@@ -61,6 +61,11 @@ IMAGE="mcr.microsoft.com/playwright:v${PW_VERSION}-noble"
 source "$MONOREPO_ROOT/scripts/playwright-docker-platform.sh"
 detect_playwright_docker_platform
 
+# Snapshot generation favours byte-for-byte reproducibility over throughput.
+# Callers may still override this for diagnostics, but the supported local
+# baseline path is serial just like the hosted regeneration workflow.
+PW_WORKERS="${PW_WORKERS:-1}"
+
 # Forwarded args are spliced into the container's `sh -c` string, so each one
 # must be shell-quoted or characters like the `|` in `-g "A|B"` are re-parsed
 # as shell syntax inside the container (a pipe to a nonexistent command, which

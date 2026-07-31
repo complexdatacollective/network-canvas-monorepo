@@ -179,5 +179,6 @@ The manual workflow installs and runs Playwright directly on
 on Apple Silicon they select the image's native `linux/arm64` variant and
 architecture-specific dependency/cache volumes. Runs outside Linux ARM64 skip
 pixel comparison and baseline writes. Interview generates only its three visual
-projects; it does not run the functional/ARIA matrix projects. Interviewer
-selects only the tagged visual capture cases.
+projects and defaults to one Playwright worker for byte-deterministic baselines;
+it does not run the functional/ARIA matrix projects. Interviewer selects only
+the tagged visual capture cases.

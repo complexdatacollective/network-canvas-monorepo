@@ -4,6 +4,10 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const runner = new URL('./run-e2e-native.sh', import.meta.url).pathname;
+const interviewDockerRunner = readFileSync(
+  new URL('../packages/interview/e2e/scripts/run.sh', import.meta.url),
+  'utf8',
+);
 
 test('requires a supported E2E suite', () => {
   const missing = spawnSync('bash', [runner], { encoding: 'utf8' });
@@ -48,4 +52,8 @@ test('only local snapshot regeneration invokes the Docker wrappers', () => {
       /--update-snapshots=all/,
     );
   }
+});
+
+test('local Interview baseline generation defaults to one worker', () => {
+  assert.match(interviewDockerRunner, /PW_WORKERS="\$\{PW_WORKERS:-1\}"/);
 });
