@@ -122,9 +122,29 @@ export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
 }
 
 const CONCLUSIVE = new Set(['success', 'failure', 'timed_out']);
-// One bounded page of the branch's runs. A verdict older than this is stale
+// One bounded page per generated branch. A verdict older than this is stale
 // enough that re-running is the right call anyway (fail closed past the cap).
 const MAX_RUNS_SCANNED = 50;
+
+function compareRunsNewestFirst(a, b) {
+  const timeDelta =
+    Date.parse(b.created_at ?? '') - Date.parse(a.created_at ?? '');
+  if (Number.isFinite(timeDelta) && timeDelta !== 0) return timeDelta;
+  return Number(b.id ?? 0) - Number(a.id ?? 0);
+}
+
+function completedAt(job) {
+  const timestamp = Date.parse(job.completed_at ?? '');
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function compareVerdictsNewestFirst(a, b) {
+  const timeDelta = completedAt(b.job) - completedAt(a.job);
+  if (timeDelta !== 0) return timeDelta;
+  const jobDelta = Number(b.job.id ?? 0) - Number(a.job.id ?? 0);
+  if (jobDelta !== 0) return jobDelta;
+  return Number(b.run.id ?? 0) - Number(a.run.id ?? 0);
+}
 
 function ensureCommit(sha, cwd) {
   if (tryGit(['rev-parse', '--verify', `${sha}^{commit}`], cwd)) return true;
@@ -134,12 +154,17 @@ function ensureCommit(sha, cwd) {
 }
 
 // Equivalence reuse: suite S may be skipped at head H when the newest
-// conclusive native pull_request run of S on this generated release branch
-// succeeded at commit X and diff(X→H) touches only paths that provably
-// cannot affect S (see diffIrrelevantToSuite). Every failure mode — missing
-// input, API error, unfetchable commit, conclusive failure, fork run —
-// leaves the suite required (fail closed). Visual baselines are committed
-// in-tree inside the subject packages, so the diff covers them too.
+// equivalent conclusive native pull_request verdict across generated release
+// branches is a success. Each branch contributes only its newest conclusive
+// verdict (a same-branch failure is never walked past); verdicts whose X→H
+// diff can affect S do not describe H and are excluded. The remaining
+// equivalent verdicts are ordered globally, so a newer equivalent failure on
+// another release branch cannot be hidden by an older green.
+//
+// Every failure mode — missing input, API error, unfetchable current head,
+// missing subject package, fork run, truncated jobs page — leaves the suite
+// required (fail closed). Visual baselines are committed in-tree inside the
+// subject packages, so the diff covers them too.
 export async function equivalentValidatedSuites({
   cwd,
   repository,
@@ -151,6 +176,7 @@ export async function equivalentValidatedSuites({
 }) {
   const validated = suites();
   if (!repository || !token || !branch || !headSha) return validated;
+  if (!(branch in SUITES_BY_RELEASE_REF)) return validated;
   const required = SUITE_KEYS.filter((key) => requiredSuites[key]);
   if (required.length === 0) return validated;
   if (!ensureCommit(headSha, cwd)) return validated;
@@ -162,22 +188,27 @@ export async function equivalentValidatedSuites({
     },
   };
   try {
-    const runsResponse = await fetcher(
-      `https://api.github.com/repos/${repository}/actions/workflows/ci-and-release.yml/runs?event=pull_request&branch=${encodeURIComponent(branch)}&per_page=${MAX_RUNS_SCANNED}`,
-      apiOptions,
-    );
-    if (!runsResponse.ok) return validated;
-    const { workflow_runs: runs = [] } = await runsResponse.json();
-
-    // Same-repo runs only: a fork branch may share the generated branch's
-    // name, but its runs must never vouch for ours. Sort defensively even
-    // though the API returns newest-first.
-    const trustedRuns = runs
-      .filter((run) => run.head_repository?.full_name === repository)
-      .toSorted(
-        (a, b) =>
-          Date.parse(b.created_at ?? '') - Date.parse(a.created_at ?? ''),
+    const candidateBranches = Object.entries(SUITES_BY_RELEASE_REF)
+      .filter(([, laneSuites]) => required.some((key) => laneSuites[key]))
+      .map(([releaseBranch]) => releaseBranch);
+    const trustedRunsByBranch = new Map();
+    for (const releaseBranch of candidateBranches) {
+      const runsResponse = await fetcher(
+        `https://api.github.com/repos/${repository}/actions/workflows/ci-and-release.yml/runs?event=pull_request&branch=${encodeURIComponent(releaseBranch)}&per_page=${MAX_RUNS_SCANNED}`,
+        apiOptions,
       );
+      if (!runsResponse.ok) return validated;
+      const { workflow_runs: runs = [] } = await runsResponse.json();
+      // Same-repo runs only: a fork branch may share the generated branch's
+      // name, but its runs must never vouch for ours. Sort defensively even
+      // though the API returns newest-first.
+      trustedRunsByBranch.set(
+        releaseBranch,
+        runs
+          .filter((run) => run.head_repository?.full_name === repository)
+          .toSorted(compareRunsNewestFirst),
+      );
+    }
 
     const jobsByRun = new Map();
     const jobsFor = async (run) => {
@@ -207,36 +238,78 @@ export async function equivalentValidatedSuites({
       // relevance judgment about it can be trusted — fail closed rather than
       // reason about a closure that's missing its own root.
       if (!packages.has(E2E_SUITE_SUBJECTS[key])) continue;
-      // The newest conclusive verdict is authoritative: a failure is never
-      // walked past to an older green.
-      let candidate = null;
-      for (const run of trustedRuns) {
-        const jobs = await jobsFor(run);
-        if (jobs === null) break;
-        const job = jobs.find((j) => j.name === E2E_JOB_NAMES[key]);
-        if (!job || !CONCLUSIVE.has(job.conclusion)) continue;
-        if (job.conclusion === 'success') candidate = run;
-        break;
-      }
-      if (!candidate?.head_sha) continue;
-      if (!ensureCommit(candidate.head_sha, cwd)) continue;
-      // --no-renames: with rename detection on, git lists only a renamed
-      // file's destination path. A relevant file moved to an inert path
-      // (e.g. out of a package directory) would then vanish from the diff
-      // entirely instead of surfacing its source path as changed.
-      const diff = tryGit(
-        ['diff', '--no-renames', '--name-only', candidate.head_sha, headSha],
-        cwd,
-      );
-      if (diff === null) continue;
-      const changedPaths = diff.split('\n').filter(Boolean);
       const relevanceDirs = relevanceDirsForSubject(
         E2E_SUITE_SUBJECTS[key],
         packages,
       );
-      if (diffIrrelevantToSuite(changedPaths, relevanceDirs, packages)) {
-        validated[key] = true;
+      const branchVerdicts = [];
+      let jobsListingDoubt = false;
+      for (const [releaseBranch, trustedRuns] of trustedRunsByBranch) {
+        if (!SUITES_BY_RELEASE_REF[releaseBranch][key]) continue;
+        // A rerun retains its workflow's original created_at, so inspect every
+        // bounded candidate and rank conclusive suite jobs by completed_at.
+        // The most recently completed verdict on each branch is authoritative:
+        // a later rerun failure is never hidden by a newer-created green.
+        const conclusiveVerdicts = [];
+        for (const run of trustedRuns) {
+          const jobs = await jobsFor(run);
+          if (jobs === null) {
+            jobsListingDoubt = true;
+            break;
+          }
+          const job = jobs.find(
+            (candidate) => candidate.name === E2E_JOB_NAMES[key],
+          );
+          if (!job || !CONCLUSIVE.has(job.conclusion)) continue;
+          if (completedAt(job) === null) {
+            jobsListingDoubt = true;
+            break;
+          }
+          conclusiveVerdicts.push({ job, releaseBranch, run });
+        }
+        if (jobsListingDoubt) break;
+        const newestVerdict = conclusiveVerdicts.toSorted(
+          compareVerdictsNewestFirst,
+        )[0];
+        if (newestVerdict) branchVerdicts.push(newestVerdict);
       }
+      if (jobsListingDoubt) continue;
+
+      const equivalentVerdicts = [];
+      let candidateDoubt = false;
+      for (const verdict of branchVerdicts) {
+        if (!verdict.run.head_sha || !ensureCommit(verdict.run.head_sha, cwd)) {
+          candidateDoubt = true;
+          break;
+        }
+        // --no-renames: with rename detection on, git lists only a renamed
+        // file's destination path. A relevant file moved to an inert path
+        // (e.g. out of a package directory) would then vanish from the diff
+        // entirely instead of surfacing its source path as changed.
+        const diff = tryGit(
+          [
+            'diff',
+            '--no-renames',
+            '--name-only',
+            verdict.run.head_sha,
+            headSha,
+          ],
+          cwd,
+        );
+        if (diff === null) {
+          candidateDoubt = true;
+          break;
+        }
+        const changedPaths = diff.split('\n').filter(Boolean);
+        if (diffIrrelevantToSuite(changedPaths, relevanceDirs, packages)) {
+          equivalentVerdicts.push(verdict);
+        }
+      }
+      if (candidateDoubt) continue;
+      const newestEquivalent = equivalentVerdicts.toSorted(
+        compareVerdictsNewestFirst,
+      )[0];
+      validated[key] = newestEquivalent?.job.conclusion === 'success';
     }
   } catch {
     return suites();
@@ -248,52 +321,60 @@ function suites(...keys) {
   return Object.fromEntries(SUITE_KEYS.map((key) => [key, keys.includes(key)]));
 }
 
-// Which suites gate each release lane. Architect and Interviewer both bundle
-// the @codaco/interview runtime, so their lanes keep interview-e2e; the
-// library lane publishes packages consumed by every app and keeps all three;
-// Documentation and Website ship none of the suite subjects and need no E2E.
-// Hand-maintained for a simple CI hot path — release-e2e-policy.test.mjs
-// derives the expected mapping from the real package.json dependency graph
-// and fails when this table drifts.
+export const APP_RELEASE_REF = 'changeset-release/apps';
+
+// Maximum suite set for each release lane. The combined app lane is narrowed
+// below from the app version manifests that actually differ from main:
+// Architect -> architect+interview, Interviewer -> interviewer+interview, both
+// -> all three. Workflow dispatches and any detection doubt retain this
+// fail-closed maximum. The library lane publishes packages consumed by every
+// app and always keeps all three; Documentation and Website ship none of the
+// suite subjects and need no E2E.
 export const SUITES_BY_RELEASE_REF = {
-  'changeset-release/architect': suites('architect', 'interview'),
+  [APP_RELEASE_REF]: suites('interview', 'interviewer', 'architect'),
   'changeset-release/documentation': suites(),
-  'changeset-release/interviewer': suites('interviewer', 'interview'),
   'changeset-release/main': suites('interview', 'interviewer', 'architect'),
   'changeset-release/website': suites(),
 };
 
-// Manifests whose version field moving in a merge group means that group is
-// about to trigger the mapped lane's release when it lands on main.
-const MANIFEST_LANES = [
+// Manifests whose version field moving means the resulting main push will ship
+// the mapped product. Keeping suites on the manifest (rather than only on the
+// combined lane) preserves app-specific E2E selection.
+const VERSIONED_MANIFEST_SUITE_RULES = [
   {
+    pathspec: 'packages/*/package.json',
     pattern: /^packages\/[^/]+\/package\.json$/,
-    ref: 'changeset-release/main',
+    suites: suites('interview', 'interviewer', 'architect'),
   },
   {
+    pathspec: 'apps/architect/package.json',
     pattern: /^apps\/architect\/package\.json$/,
-    ref: 'changeset-release/architect',
+    suites: suites('architect', 'interview'),
   },
   {
+    pathspec: 'apps/interviewer/package.json',
     pattern: /^apps\/interviewer\/package\.json$/,
-    ref: 'changeset-release/interviewer',
+    suites: suites('interviewer', 'interview'),
   },
   {
+    pathspec: 'apps/documentation/package.json',
     pattern: /^apps\/documentation\/package\.json$/,
-    ref: 'changeset-release/documentation',
+    suites: suites(),
   },
   {
+    pathspec: 'apps/networkcanvas.com/package.json',
     pattern: /^apps\/networkcanvas\.com\/package\.json$/,
-    ref: 'changeset-release/website',
+    suites: suites(),
   },
 ];
 
-const VERSIONED_MANIFESTS = [
-  'packages/*/package.json',
+const ALL_VERSIONED_MANIFESTS = VERSIONED_MANIFEST_SUITE_RULES.map(
+  ({ pathspec }) => pathspec,
+);
+
+const APP_VERSIONED_MANIFESTS = [
   'apps/architect/package.json',
   'apps/interviewer/package.json',
-  'apps/documentation/package.json',
-  'apps/networkcanvas.com/package.json',
 ];
 
 export function releaseRefForEvent({ eventName, headRef, refName }) {
@@ -333,19 +414,14 @@ function readVersionAt(revision, manifest, cwd) {
   }
 }
 
-// Union of the suites required by every versioned manifest whose version
-// field changes between the merge group's base and head — i.e. by every
-// release the group will trigger when it lands.
-export function mergeGroupRequiredSuites(baseSha, headSha, cwd) {
+function versionChangeRequiredSuites(baseSha, headSha, cwd, manifests) {
   if (!baseSha || !headSha) {
-    throw new Error(
-      'merge_group release detection requires base and head SHAs',
-    );
+    throw new Error('release E2E detection requires base and head SHAs');
   }
 
   const changedManifests = execFileSync(
     'git',
-    ['diff', '--name-only', baseSha, headSha, '--', ...VERSIONED_MANIFESTS],
+    ['diff', '--name-only', baseSha, headSha, '--', ...manifests],
     { cwd, encoding: 'utf8' },
   )
     .split('\n')
@@ -353,37 +429,76 @@ export function mergeGroupRequiredSuites(baseSha, headSha, cwd) {
 
   const required = suites();
   for (const manifest of changedManifests) {
-    if (
-      readVersionAt(baseSha, manifest, cwd) ===
-      readVersionAt(headSha, manifest, cwd)
-    ) {
-      continue;
+    const baseVersion = readVersionAt(baseSha, manifest, cwd);
+    const headVersion = readVersionAt(headSha, manifest, cwd);
+    if (baseVersion === null || headVersion === null) {
+      throw new Error(`Unable to read release version from ${manifest}`);
     }
-    const lane = MANIFEST_LANES.find(({ pattern }) => pattern.test(manifest));
-    if (!lane) continue;
+    if (baseVersion === headVersion) continue;
+    const rule = VERSIONED_MANIFEST_SUITE_RULES.find(({ pattern }) =>
+      pattern.test(manifest),
+    );
+    if (!rule) throw new Error(`No release E2E rule for ${manifest}`);
     for (const key of SUITE_KEYS) {
-      required[key] ||= SUITES_BY_RELEASE_REF[lane.ref][key];
+      required[key] ||= rule.suites[key];
     }
   }
   return required;
 }
 
+// Combined app PRs only run the suites for app versions actually bumped.
+export function appReleaseRequiredSuites(baseSha, headSha, cwd) {
+  return versionChangeRequiredSuites(
+    baseSha,
+    headSha,
+    cwd,
+    APP_VERSIONED_MANIFESTS,
+  );
+}
+
+// Union of suites required by every version manifest moving in a merge group.
+export function mergeGroupRequiredSuites(baseSha, headSha, cwd) {
+  return versionChangeRequiredSuites(
+    baseSha,
+    headSha,
+    cwd,
+    ALL_VERSIONED_MANIFESTS,
+  );
+}
+
 export function releaseE2EPolicy(
   { eventName, headRef = '', refName = '', baseSha = '', headSha = '' },
   mergeGroupDetector = mergeGroupRequiredSuites,
+  appReleaseDetector = appReleaseRequiredSuites,
 ) {
   const releaseRef = releaseRefForEvent({ eventName, headRef, refName });
   if (releaseRef) {
+    let required = SUITES_BY_RELEASE_REF[releaseRef];
+    if (eventName === 'pull_request' && releaseRef === APP_RELEASE_REF) {
+      try {
+        required = appReleaseDetector(baseSha, headSha, process.cwd());
+      } catch {
+        // Missing history, a malformed manifest, or any git doubt must run the
+        // lane's full suite set rather than silently under-test the release.
+        required = SUITES_BY_RELEASE_REF[releaseRef];
+      }
+    }
     return {
-      ...SUITES_BY_RELEASE_REF[releaseRef],
+      ...required,
       releaseRef,
       snapshotBranch: 'e2e-snapshots/main',
     };
   }
 
   if (eventName === 'merge_group') {
+    let required;
+    try {
+      required = mergeGroupDetector(baseSha, headSha, process.cwd());
+    } catch {
+      required = suites('interview', 'interviewer', 'architect');
+    }
     return {
-      ...mergeGroupDetector(baseSha, headSha),
+      ...required,
       releaseRef: '',
       snapshotBranch: '',
     };
@@ -445,7 +560,7 @@ async function main() {
         if (policy[key] && validated[key]) {
           policy[key] = false;
           console.error(
-            `${E2E_JOB_NAMES[key]}: skipping — an earlier successful run on ${reuse.branch} validated this suite and nothing relevant to it has changed since.`,
+            `${E2E_JOB_NAMES[key]}: skipping — the newest equivalent verdict across generated release branches is successful and nothing relevant to this suite has changed since.`,
           );
         }
       }

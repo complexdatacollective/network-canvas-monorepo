@@ -34,7 +34,7 @@ export type CaptureParameters = {
 };
 
 /**
- * Render wrapper for screenshot-capture stories: a full-viewport Shell with
+ * Render wrapper for screenshot capture stories: a full-viewport Shell with
  * the navigation rail hidden, landed directly on `currentStep`.
  *
  * `showNavigation` keeps the navigation mounted for stories whose capture

@@ -6,6 +6,7 @@ import Button from '../Button';
 import UnconnectedField from '../form/Field/UnconnectedField';
 import InputField from '../form/fields/InputField';
 import RadioGroupField from '../form/fields/RadioGroup';
+import { withDialogProvider } from '../storybook-support/withDialogProvider';
 import Paragraph from '../typography/Paragraph';
 import useDialog from './useDialog';
 import { useWizard } from './useWizard';
@@ -91,6 +92,7 @@ type WizardStoryArgs = {
 const meta: Meta = {
   title: 'Systems/Dialogs/Wizard',
   tags: ['autodocs'],
+  decorators: [withDialogProvider],
   parameters: {
     layout: 'fullscreen',
   },

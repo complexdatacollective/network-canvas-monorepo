@@ -2,11 +2,13 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import Definition from './Definition';
+import { withTooltipProvider } from './storybook-support/withTooltipProvider';
 import Paragraph from './typography/Paragraph';
 
 const meta = {
   title: 'Components/Definition',
   component: Definition,
+  decorators: [withTooltipProvider],
   parameters: {
     layout: 'centered',
     docs: {

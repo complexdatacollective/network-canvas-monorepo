@@ -4,7 +4,7 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
-import StoryInterviewShell from '../../.storybook/StoryInterviewShell';
+import StoryInterviewShell from '../storybook-support/StoryInterviewShell';
 
 // Middle (non-Information) stages the demo cycles through as the stage count
 // grows. Each is a real interface type with a generated preview image.

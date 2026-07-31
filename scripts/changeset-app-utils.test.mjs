@@ -7,11 +7,12 @@ import { test } from 'node:test';
 import {
   classifyChangeset,
   isMixedChangeset,
-  isMultiProductChangeset,
+  isMultiProductLaneChangeset,
   nextBetaVersion,
   nextStableVersion,
   parseChangeset,
   readChangesets,
+  releaseLaneForProduct,
   renderChangelogSection,
 } from './changeset-app-utils.mjs';
 
@@ -82,15 +83,29 @@ test('isMixedChangeset: true only when an app and a library share one changeset'
   assert.equal(isMixedChangeset(twoApps), false); // both ignored → not "mixed"
 });
 
-test('isMultiProductChangeset: true only when gated products share one changeset', () => {
+test('releaseLaneForProduct groups Architect and Interviewer', () => {
+  assert.equal(releaseLaneForProduct('@codaco/architect'), 'apps');
+  assert.equal(releaseLaneForProduct('@codaco/interviewer'), 'apps');
+  assert.equal(releaseLaneForProduct('@codaco/documentation'), 'documentation');
+  assert.equal(releaseLaneForProduct('@codaco/interview'), null);
+});
+
+test('isMultiProductLaneChangeset allows products in one release lane', () => {
   const app = { releases: [{ name: '@codaco/architect', type: 'minor' }] };
   const lib = { releases: [{ name: '@codaco/interview', type: 'minor' }] };
-  const twoApps = {
+  const currentApps = {
+    releases: [
+      { name: '@codaco/architect', type: 'minor' },
+      { name: '@codaco/interviewer', type: 'patch' },
+    ],
+  };
+  const twoLanes = {
     releases: [...app.releases, { name: 'networkcanvas.com', type: 'patch' }],
   };
-  assert.equal(isMultiProductChangeset(app), false);
-  assert.equal(isMultiProductChangeset(lib), false);
-  assert.equal(isMultiProductChangeset(twoApps), true);
+  assert.equal(isMultiProductLaneChangeset(app), false);
+  assert.equal(isMultiProductLaneChangeset(lib), false);
+  assert.equal(isMultiProductLaneChangeset(currentApps), false);
+  assert.equal(isMultiProductLaneChangeset(twoLanes), true);
 });
 
 test('nextBetaVersion increments only the beta counter', () => {

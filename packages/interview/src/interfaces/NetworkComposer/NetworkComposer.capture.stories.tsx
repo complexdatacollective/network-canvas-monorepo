@@ -4,7 +4,7 @@ import { SyntheticInterview } from '@codaco/protocol-utilities';
 
 import CaptureStory, {
   type CaptureParameters,
-} from '../../../.storybook/CaptureStory';
+} from '../../storybook-support/CaptureStory';
 
 /**
  * Screenshot-capture story for the NetworkComposer interface. Consumed by the

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import CaptureStory, {
   type CaptureParameters,
-} from '../../../.storybook/CaptureStory';
+} from '../../storybook-support/CaptureStory';
 import {
   buildScenarioInterview,
   type StoryArgs,

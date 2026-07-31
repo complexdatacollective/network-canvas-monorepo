@@ -13,6 +13,8 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  APP_RELEASE_REF,
+  appReleaseRequiredSuites,
   collectWorkspacePackages,
   diffIrrelevantToSuite,
   equivalentValidatedSuites,
@@ -72,7 +74,8 @@ test('recognises only the generated release PR refs', () => {
   }
   for (const headRef of [
     'changeset-release/not-a-release',
-    'changeset-release/apps',
+    'changeset-release/architect',
+    'changeset-release/interviewer',
     'feature/add-changeset',
   ]) {
     assert.equal(
@@ -122,23 +125,27 @@ test('release lane suites match the workspace dependency graph', () => {
   };
 
   const productLanes = {
-    'changeset-release/architect': '@codaco/architect',
-    'changeset-release/documentation': '@codaco/documentation',
-    'changeset-release/interviewer': '@codaco/interviewer',
-    'changeset-release/website': 'networkcanvas.com',
+    [APP_RELEASE_REF]: ['@codaco/architect', '@codaco/interviewer'],
+    'changeset-release/documentation': ['@codaco/documentation'],
+    'changeset-release/website': ['networkcanvas.com'],
   };
-  for (const [releaseRef, product] of Object.entries(productLanes)) {
-    assert.ok(
-      dependenciesByName.has(product),
-      `workspace package ${product} exists`,
-    );
-    const shipped = transitiveDependencies(product);
+  for (const [releaseRef, products] of Object.entries(productLanes)) {
+    for (const product of products) {
+      assert.ok(
+        dependenciesByName.has(product),
+        `workspace package ${product} exists`,
+      );
+    }
     for (const key of SUITE_KEYS) {
       const subject = E2E_SUITE_SUBJECTS[key];
+      const shipped = products.some(
+        (product) =>
+          subject === product || transitiveDependencies(product).has(subject),
+      );
       assert.equal(
         SUITES_BY_RELEASE_REF[releaseRef][key],
-        subject === product || shipped.has(subject),
-        `${releaseRef} requires the ${key} suite exactly when ${subject} ships in ${product}`,
+        shipped,
+        `${releaseRef} requires the ${key} suite exactly when ${subject} ships in its products`,
       );
     }
   }
@@ -181,9 +188,8 @@ test('interview relevance closure covers peer-declared and asset-only workspace 
 test('all release policies share the central snapshot PR target', () => {
   for (const [eventName, releaseRef] of [
     ['pull_request', 'changeset-release/main'],
-    ['workflow_dispatch', 'changeset-release/architect'],
+    ['workflow_dispatch', APP_RELEASE_REF],
     ['workflow_dispatch', 'changeset-release/documentation'],
-    ['workflow_dispatch', 'changeset-release/interviewer'],
     ['workflow_dispatch', 'changeset-release/website'],
   ]) {
     assert.deepEqual(
@@ -214,6 +220,112 @@ test('merge groups require the suites the detector reports', () => {
     ),
     { ...detected, releaseRef: '', snapshotBranch: '' },
   );
+  assert.deepEqual(
+    releaseE2EPolicy(
+      { eventName: 'merge_group', baseSha: 'base', headSha: 'head' },
+      () => {
+        throw new Error('unreadable merge history');
+      },
+    ),
+    {
+      interview: true,
+      interviewer: true,
+      architect: true,
+      releaseRef: '',
+      snapshotBranch: '',
+    },
+  );
+});
+
+test('combined app lane requires only suites for app versions that move', () => {
+  const cwd = initRepo();
+  commitManifest(
+    cwd,
+    'apps/interviewer/package.json',
+    '{"name":"@codaco/interviewer","version":"1.0.0"}\n',
+    'add interviewer',
+  );
+  const baseSha = commitManifest(
+    cwd,
+    'apps/architect/package.json',
+    '{"name":"@codaco/architect","version":"1.0.0"}\n',
+    'add architect',
+  );
+  const architectBump = commitManifest(
+    cwd,
+    'apps/architect/package.json',
+    '{"name":"@codaco/architect","version":"1.0.1"}\n',
+    'release architect',
+  );
+  assert.deepEqual(appReleaseRequiredSuites(baseSha, architectBump, cwd), {
+    interview: true,
+    interviewer: false,
+    architect: true,
+  });
+
+  const bothBumped = commitManifest(
+    cwd,
+    'apps/interviewer/package.json',
+    '{"name":"@codaco/interviewer","version":"1.0.1"}\n',
+    'release interviewer too',
+  );
+  assert.deepEqual(appReleaseRequiredSuites(baseSha, bothBumped, cwd), {
+    interview: true,
+    interviewer: true,
+    architect: true,
+  });
+
+  const manifestOnly = commitManifest(
+    cwd,
+    'apps/interviewer/package.json',
+    '{"name":"@codaco/interviewer","version":"1.0.1","scripts":{}}\n',
+    'manifest metadata',
+  );
+  assert.deepEqual(appReleaseRequiredSuites(bothBumped, manifestOnly, cwd), {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  });
+});
+
+test('combined app PR policy uses version-derived suites and fails closed on doubt', () => {
+  const scoped = releaseE2EPolicy(
+    {
+      eventName: 'pull_request',
+      headRef: APP_RELEASE_REF,
+      baseSha: 'base',
+      headSha: 'head',
+    },
+    mergeGroupRequiredSuites,
+    () => ({ interview: true, interviewer: true, architect: false }),
+  );
+  assert.deepEqual(scoped, {
+    interview: true,
+    interviewer: true,
+    architect: false,
+    releaseRef: APP_RELEASE_REF,
+    snapshotBranch: 'e2e-snapshots/main',
+  });
+
+  const failClosed = releaseE2EPolicy(
+    {
+      eventName: 'pull_request',
+      headRef: APP_RELEASE_REF,
+      baseSha: '',
+      headSha: 'head',
+    },
+    mergeGroupRequiredSuites,
+    () => {
+      throw new Error('missing base');
+    },
+  );
+  assert.deepEqual(failClosed, {
+    interview: true,
+    interviewer: true,
+    architect: true,
+    releaseRef: APP_RELEASE_REF,
+    snapshotBranch: 'e2e-snapshots/main',
+  });
 });
 
 test('merge-group version bumps require only the affected lanes', () => {
@@ -223,6 +335,12 @@ test('merge-group version bumps require only the affected lanes', () => {
     'apps/networkcanvas.com/package.json',
     '{"name":"networkcanvas.com","version":"0.1.1"}\n',
     'add website',
+  );
+  commitManifest(
+    cwd,
+    'packages/protocol-validation/package.json',
+    '{"name":"@codaco/protocol-validation","version":"9.9.8"}\n',
+    'add library',
   );
   const baseSha = commitManifest(
     cwd,
@@ -338,7 +456,7 @@ function initMergeQueueRepo({ advanceMainWith = '' } = {}) {
   return { cwd, branchTip };
 }
 
-function architectLaneQueueCall(cwd, fetcher) {
+function appLaneQueueCall(cwd, fetcher) {
   const branch = releaseBranchForMergeQueue(cwd);
   return equivalentValidatedSuites({
     cwd,
@@ -351,7 +469,7 @@ function architectLaneQueueCall(cwd, fetcher) {
   });
 }
 
-const ARCHITECT_LANE_SUCCESS_JOBS = [
+const APP_LANE_ARCHITECT_SUCCESS_JOBS = [
   { name: 'architect-e2e', conclusion: 'success' },
   { name: 'interview-e2e', conclusion: 'success' },
   { name: 'quality', conclusion: 'success' },
@@ -360,30 +478,20 @@ const ARCHITECT_LANE_SUCCESS_JOBS = [
 test('merge queue identifies the release lane from the merge second parent', () => {
   const { cwd, branchTip } = initMergeQueueRepo();
   assert.equal(releaseBranchForMergeQueue(cwd), '');
-  git(
-    cwd,
-    'update-ref',
-    'refs/remotes/origin/changeset-release/architect',
-    branchTip,
-  );
-  assert.equal(releaseBranchForMergeQueue(cwd), 'changeset-release/architect');
+  git(cwd, 'update-ref', `refs/remotes/origin/${APP_RELEASE_REF}`, branchTip);
+  assert.equal(releaseBranchForMergeQueue(cwd), APP_RELEASE_REF);
 });
 
 test('merge-queue reuse skips suites validated at the branch tip', async () => {
   const { cwd, branchTip } = initMergeQueueRepo();
-  git(
-    cwd,
-    'update-ref',
-    'refs/remotes/origin/changeset-release/architect',
-    branchTip,
-  );
+  git(cwd, 'update-ref', `refs/remotes/origin/${APP_RELEASE_REF}`, branchTip);
   // The merge added nothing beyond the branch: empty diff, trivial case.
   assert.deepEqual(
-    await architectLaneQueueCall(
+    await appLaneQueueCall(
       cwd,
       fakeActionsApi({
         runs: [fakeRun(1, branchTip)],
-        jobsByRun: { 1: ARCHITECT_LANE_SUCCESS_JOBS },
+        jobsByRun: { 1: APP_LANE_ARCHITECT_SUCCESS_JOBS },
       }),
     ),
     { interview: true, interviewer: false, architect: true },
@@ -400,15 +508,15 @@ test('merge-queue reuse classifies batched main movement by relevance', async ()
   git(
     relevant.cwd,
     'update-ref',
-    'refs/remotes/origin/changeset-release/architect',
+    `refs/remotes/origin/${APP_RELEASE_REF}`,
     relevant.branchTip,
   );
   assert.deepEqual(
-    await architectLaneQueueCall(
+    await appLaneQueueCall(
       relevant.cwd,
       fakeActionsApi({
         runs: [fakeRun(1, relevant.branchTip)],
-        jobsByRun: { 1: ARCHITECT_LANE_SUCCESS_JOBS },
+        jobsByRun: { 1: APP_LANE_ARCHITECT_SUCCESS_JOBS },
       }),
     ),
     { interview: true, interviewer: false, architect: false },
@@ -421,15 +529,15 @@ test('merge-queue reuse classifies batched main movement by relevance', async ()
   git(
     inert.cwd,
     'update-ref',
-    'refs/remotes/origin/changeset-release/architect',
+    `refs/remotes/origin/${APP_RELEASE_REF}`,
     inert.branchTip,
   );
   assert.deepEqual(
-    await architectLaneQueueCall(
+    await appLaneQueueCall(
       inert.cwd,
       fakeActionsApi({
         runs: [fakeRun(1, inert.branchTip)],
-        jobsByRun: { 1: ARCHITECT_LANE_SUCCESS_JOBS },
+        jobsByRun: { 1: APP_LANE_ARCHITECT_SUCCESS_JOBS },
       }),
     ),
     { interview: true, interviewer: false, architect: true },
@@ -581,6 +689,7 @@ test('diff classification is fail-closed', () => {
 // single-page response, so existing callers are unaffected.
 function fakeActionsApi({
   runs,
+  runsByBranch,
   jobsByRun,
   totalCountByRun = {},
   failRuns = false,
@@ -591,11 +700,24 @@ function fakeActionsApi({
       if (failRuns) return { ok: false };
       assert.match(url, /[?&]event=pull_request(?:&|$)/);
       assert.match(url, /[?&]branch=changeset-release%2F/);
-      return { ok: true, json: async () => ({ workflow_runs: runs }) };
+      const branch = new URL(url).searchParams.get('branch');
+      return {
+        ok: true,
+        json: async () => ({
+          workflow_runs: runsByBranch?.[branch] ?? runs ?? [],
+        }),
+      };
     }
     if (failJobs) return { ok: false };
     const runId = url.match(/\/fake-jobs\/(\d+)\?/)?.[1];
-    const jobs = jobsByRun[runId] ?? [];
+    const jobs = (jobsByRun[runId] ?? []).map((job) =>
+      Object.hasOwn(job, 'completed_at')
+        ? job
+        : {
+            ...job,
+            completed_at: `2026-07-${String(runId).padStart(2, '0')}T01:00:00Z`,
+          },
+    );
     return {
       ok: true,
       json: async () => ({
@@ -658,7 +780,7 @@ function interviewerLaneCall(cwd, headSha, fetcher) {
     cwd,
     repository: 'example/repo',
     token: 'token',
-    branch: 'changeset-release/interviewer',
+    branch: APP_RELEASE_REF,
     headSha,
     requiredSuites: INTERVIEWER_LANE,
     fetcher,
@@ -699,6 +821,178 @@ test('equivalence reuse skips suites when the delta cannot affect them', async (
 
   // Byte-identical head (re-run at the validated SHA) is the trivial case.
   assert.deepEqual(await interviewerLaneCall(cwd, validatedSha, fetcher), {
+    interview: true,
+    interviewer: true,
+    architect: false,
+  });
+});
+
+test('equivalence reuse accepts a matching success from another release lane', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'app release refresh',
+  );
+
+  assert.deepEqual(
+    await interviewerLaneCall(
+      cwd,
+      headSha,
+      fakeActionsApi({
+        runsByBranch: {
+          [APP_RELEASE_REF]: [],
+          'changeset-release/main': [fakeRun(1, validatedSha)],
+        },
+        jobsByRun: { 1: INTERVIEWER_LANE_SUCCESS_JOBS },
+      }),
+    ),
+    { interview: true, interviewer: true, architect: false },
+  );
+});
+
+test('the newest equivalent verdict across release lanes is authoritative', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'app release refresh',
+  );
+
+  const validated = await interviewerLaneCall(
+    cwd,
+    headSha,
+    fakeActionsApi({
+      runsByBranch: {
+        [APP_RELEASE_REF]: [fakeRun(2, headSha)],
+        'changeset-release/main': [fakeRun(1, validatedSha)],
+      },
+      jobsByRun: {
+        2: [
+          { name: 'interview-e2e', conclusion: 'failure' },
+          { name: 'interviewer-e2e', conclusion: 'failure' },
+        ],
+        1: INTERVIEWER_LANE_SUCCESS_JOBS,
+      },
+    }),
+  );
+  assert.deepEqual(validated, {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  });
+});
+
+test('cross-branch rerun verdicts are ordered by job completion time', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'app release refresh',
+  );
+
+  const validated = await interviewerLaneCall(
+    cwd,
+    headSha,
+    fakeActionsApi({
+      runsByBranch: {
+        [APP_RELEASE_REF]: [fakeRun(2, headSha, '2026-07-02T00:00:00Z')],
+        'changeset-release/main': [
+          fakeRun(1, validatedSha, '2026-07-01T00:00:00Z'),
+        ],
+      },
+      jobsByRun: {
+        2: [
+          {
+            name: 'interview-e2e',
+            conclusion: 'success',
+            completed_at: '2026-07-03T00:00:00Z',
+          },
+          {
+            name: 'interviewer-e2e',
+            conclusion: 'success',
+            completed_at: '2026-07-03T00:00:00Z',
+          },
+        ],
+        1: [
+          {
+            name: 'interview-e2e',
+            conclusion: 'failure',
+            completed_at: '2026-07-04T00:00:00Z',
+          },
+          {
+            name: 'interviewer-e2e',
+            conclusion: 'failure',
+            completed_at: '2026-07-04T00:00:00Z',
+          },
+        ],
+      },
+    }),
+  );
+
+  assert.deepEqual(validated, {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  });
+});
+
+test('equivalence reuse fails closed without a job completion time', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const fetcher = fakeActionsApi({
+    runs: [fakeRun(1, validatedSha)],
+    jobsByRun: {
+      1: INTERVIEWER_LANE_SUCCESS_JOBS.map((job) => ({
+        ...job,
+        completed_at: null,
+      })),
+    },
+  });
+
+  assert.deepEqual(await interviewerLaneCall(cwd, validatedSha, fetcher), {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  });
+});
+
+test('a non-equivalent failure on another lane does not poison a matching success', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const failedSha = commitManifest(
+    cwd,
+    'packages/interview/src/failed-version.ts',
+    'export {};\n',
+    'different interview implementation',
+  );
+  git(cwd, 'checkout', '-q', validatedSha);
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'app release refresh',
+  );
+
+  const validated = await interviewerLaneCall(
+    cwd,
+    headSha,
+    fakeActionsApi({
+      runsByBranch: {
+        [APP_RELEASE_REF]: [fakeRun(2, failedSha)],
+        'changeset-release/main': [fakeRun(1, validatedSha)],
+      },
+      jobsByRun: {
+        2: [
+          { name: 'interview-e2e', conclusion: 'failure' },
+          { name: 'interviewer-e2e', conclusion: 'failure' },
+        ],
+        1: INTERVIEWER_LANE_SUCCESS_JOBS,
+      },
+    }),
+  );
+  assert.deepEqual(validated, {
     interview: true,
     interviewer: true,
     architect: false,
@@ -998,7 +1292,7 @@ test('equivalence reuse rejects a suite whose subject package is missing from th
       cwd,
       repository: 'example/repo',
       token: 'token',
-      branch: 'changeset-release/interviewer',
+      branch: APP_RELEASE_REF,
       headSha,
       requiredSuites: {
         interview: true,

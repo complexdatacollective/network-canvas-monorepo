@@ -7,6 +7,7 @@ import { useArgs } from 'storybook/preview-api';
 
 import { Button, IconButton, MotionButton } from '../../../Button';
 import Dialog from '../../../dialogs/Dialog';
+import { withDialogProvider } from '../../../storybook-support/withDialogProvider';
 import { cx } from '../../../utils/cva';
 import Field from '../../Field/Field';
 import { FormWithoutProvider } from '../../Form';
@@ -231,6 +232,7 @@ immediately upon creation.
     emptyStateMessage: 'No items added yet. Click "Add Item" to get started.',
   },
   decorators: [
+    withDialogProvider,
     (Story) => (
       <div className="w-lg">
         <Story />

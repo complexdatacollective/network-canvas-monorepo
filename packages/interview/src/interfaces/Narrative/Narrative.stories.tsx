@@ -5,7 +5,7 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
-import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
+import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 function createNarrativeInterview(seed: number) {
   const si = new SyntheticInterview(seed);
