@@ -1,4 +1,5 @@
 ---
+'@codaco/fresco-ui': patch
 '@codaco/interview': minor
 '@codaco/protocol-validation': patch
 ---
@@ -12,3 +13,6 @@ bypassing uniqueness validation against the first node.
 The Categorical Bin dialog registers its response under the referenced
 codebook variable ID, so a sibling variable literally named `otherVariable`
 cannot be mistaken for the live response by cross-variable validation.
+
+Deferred invalid-field focus now remains safe when its form unmounts before
+smooth scrolling finishes.
