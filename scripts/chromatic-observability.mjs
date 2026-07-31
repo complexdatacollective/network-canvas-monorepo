@@ -162,8 +162,25 @@ function main() {
     usageError('GITHUB_STEP_SUMMARY is not set');
   }
 
-  const log = readFileSync(logPath, 'utf8');
-  const result = parseChromaticLog(log, { mode });
+  let result;
+  try {
+    const log = readFileSync(logPath, 'utf8');
+    result = parseChromaticLog(log, { mode });
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+
+    result = {
+      state: 'diagnostics-unavailable',
+      snapshotsCaptured: null,
+      snapshotsInherited: null,
+      buildScope: 'unavailable',
+      bailoutReason: null,
+    };
+    process.stdout.write(
+      `::warning title=Chromatic diagnostics unavailable::${project} did not create its optional diagnostic log; the Chromatic step remains authoritative.\n`,
+    );
+  }
+
   appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
     formatChromaticSummary(project, mode, result),

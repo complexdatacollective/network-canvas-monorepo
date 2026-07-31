@@ -137,21 +137,42 @@ test('CLI appends a summary and succeeds when optional metrics are unavailable',
   }
 });
 
-test('CLI fails for invalid invocation and unreadable log files', () => {
+test('CLI fails for invalid invocation', () => {
   const invocation = spawnSync(process.execPath, [scriptPath], {
     encoding: 'utf8',
   });
   assert.notEqual(invocation.status, 0);
   assert.match(invocation.stderr, /Usage:/);
+});
 
-  const missingFile = spawnSync(
-    process.execPath,
-    [scriptPath, 'Interview', '/does/not/exist.log', 'affected'],
-    {
-      encoding: 'utf8',
-      env: { ...process.env, GITHUB_STEP_SUMMARY: '/tmp/summary.md' },
-    },
-  );
-  assert.notEqual(missingFile.status, 0);
-  assert.match(missingFile.stderr, /ENOENT/);
+test('CLI warns without failing when the optional log file is absent', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'chromatic-observability-'));
+  const summaryPath = join(directory, 'summary.md');
+  writeFileSync(summaryPath, '# Existing summary\n');
+
+  try {
+    const missingFile = spawnSync(
+      process.execPath,
+      [scriptPath, 'Interview', join(directory, 'missing.log'), 'affected'],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, GITHUB_STEP_SUMMARY: summaryPath },
+      },
+    );
+    assert.equal(missingFile.status, 0);
+    assert.match(
+      missingFile.stdout,
+      /::warning title=Chromatic diagnostics unavailable::/,
+    );
+
+    const summary = readFileSync(summaryPath, 'utf8');
+    assert.match(summary, /^# Existing summary/m);
+    assert.match(
+      summary,
+      /\| Interview \| affected \| diagnostics-unavailable \|/,
+    );
+    assert.match(summary, /unavailable/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
