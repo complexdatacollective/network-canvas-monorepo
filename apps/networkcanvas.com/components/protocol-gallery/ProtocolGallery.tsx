@@ -42,7 +42,7 @@ const sortConfig: Record<
   titleDesc: { property: 'title', direction: 'desc', type: 'string' },
 };
 const sortIds: SortId[] = ['newest', 'oldest', 'titleAsc', 'titleDesc'];
-const galleryFuseOptions = { threshold: 0.15 } as const;
+const galleryFuseOptions = { threshold: 0.15, includeScore: false } as const;
 const galleryFilterKeys = ['searchText'];
 
 function galleryProtocolKey(protocol: GalleryProtocol): string {
