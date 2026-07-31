@@ -1,5 +1,67 @@
 # @codaco/architect
 
+## 8.0.0-beta.12
+
+### Minor Changes
+
+- Improve variable pills with clearer static and editable states, full-name details, and a focused variable rename workflow.
+
+### Patch Changes
+
+- Polish stage editing and preview workflows across Architect. Variable, subject,
+  color, and shape pickers now share consistent field styling; variable pills
+  offer a clearer accessible rename interaction; quick-add and categorical-bin
+  variables expose their validation rules; and newly created quick-add variables
+  are required by default. The stage editor now avoids false unsaved-state and
+  preview-settings transitions, while preview-only notices and the obsolete
+  relationship question in the Life Transitions template have been removed.
+- Fix being able to save an option that has no label or no value. Confirming an
+  option you had not filled in used to collapse it into the list with nothing to
+  show it was incomplete, leaving a protocol that failed validation later. The
+  option's editor now stays open and marks whichever field is still missing, and
+  an options list containing an incomplete option says so.
+- Fix the Input Control picker vanishing after you choose an input control for a
+  newly created variable, which left the field impossible to complete.
+- Previewing a protocol whose validation rules cannot all be satisfied now
+  explains why. The preview lists each clash — naming the entity type and the
+  variables involved, and describing the conflict — so you can go back, correct
+  the rules, and preview again. Previously this showed the same generic
+  "couldn't build the preview" screen as any other failure, with a "Try again"
+  button that could only fail in exactly the same way.
+
+  A preview that fails to rebuild also clears what was on screen, so an earlier
+  successful preview is never left showing as though it were the protocol you
+  just changed. Each attempt reports only its own reason for failing: a list of
+  rule clashes from an earlier attempt is never left up next to a failure that
+  had nothing to do with those rules, and a slow protocol that arrives after the
+  preview has given up waiting now reports what actually happened to it — the
+  rule clashes to correct, or the preview itself — instead of continuing to
+  blame the connection to Architect.
+
+- Fix a link that spans bold, italic, and plain text being saved as several
+  separate links. Adding one link across mixed formatting used to write out one
+  link per run of formatting, so a single citation became three links to the same
+  place — three things to hover, three underlines, and three links announced by a
+  screen reader. Such a link is now saved as one link, and the affected references
+  in the Life Transitions template have been repaired.
+- Prevent invalid protocol edits from being saved, and require authors to revert or return to the start screen before continuing.
+- The variable validation editor now prevents contradictory rules at authoring
+  time: contradictory drafts cannot be saved and explain why, reference pickers
+  only offer targets that keep the rules satisfiable, the whole field dialog is
+  checked on save (e.g. deleting an option out from under `minSelected`), and a
+  hint appears when `unique` is applied to a variable with only a few possible
+  values. Codebook edits are also checked against the current shared form and
+  every NetworkComposer stage-effective control overlay, and integer validation
+  bounds reject fractional values directly in the editor. Network Composer group
+  variables are kept separate from validated form fields, including in the Life
+  Transitions template.
+
+  Relative date anchors in years 0001 through 0099 now remain selectable and
+  valid in the editor, matching the protocol schema and interview runtime.
+
+- Keep the confirm and cancel buttons reachable when renaming a variable with a long name.
+- Variable pickers no longer offer variables that would end up written both with and without validation: form-field pickers exclude variables already written by a bin, sociogram highlight, census, or other direct writer, and those stages' pickers exclude form-collected variables (the current selection always stays available). Saving a stage that would create such a pairing is refused with an explanation of why, including conflicts between a Name Generator's still-unsaved form fields and prompt assignments. Protocols that already contain one show a warning on the protocol timeline listing each affected variable and the stages involved, with a badge on the Stages tab — nothing blocks opening, editing, or exporting. Newly created "other" and quick-add variables default to required.
+
 ## 8.0.0-beta.11
 
 ### Patch Changes
