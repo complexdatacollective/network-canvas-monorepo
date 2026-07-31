@@ -127,6 +127,7 @@ function buildCodebook(
   // otherVariable is the realistic (not synthetic-only) case the regression
   // test below exercises.
   omitOtherComponent = false,
+  omitOtherVariable = false,
 ): Codebook {
   return {
     node: {
@@ -147,12 +148,16 @@ function buildCodebook(
             // OTHER_BIN_INDEX below.
             options: [{ label: 'Family', value: 1 }],
           },
-          [OTHER_VARIABLE]: {
-            name: 'Other reason',
-            type: 'text',
-            ...(omitOtherComponent ? {} : { component: 'Text' }),
-            ...(otherValidation ? { validation: otherValidation } : {}),
-          },
+          ...(omitOtherVariable
+            ? {}
+            : {
+                [OTHER_VARIABLE]: {
+                  name: 'Other reason',
+                  type: 'text' as const,
+                  ...(omitOtherComponent ? {} : { component: 'Text' as const }),
+                  ...(otherValidation ? { validation: otherValidation } : {}),
+                },
+              }),
           [NOTE_VARIABLE]: {
             name: 'Existing note',
             type: 'text',
@@ -213,6 +218,7 @@ function buildSession(): SessionState {
 function buildProtocol(
   otherValidation?: Validation,
   omitOtherComponent = false,
+  omitOtherVariable = false,
 ): ProtocolPayload {
   return {
     id: 'protocol',
@@ -221,7 +227,11 @@ function buildProtocol(
     assets: [],
     name: 'Test protocol',
     schemaVersion: 8,
-    codebook: buildCodebook(otherValidation, omitOtherComponent),
+    codebook: buildCodebook(
+      otherValidation,
+      omitOtherComponent,
+      omitOtherVariable,
+    ),
     stages: [buildStage()],
   };
 }
@@ -241,12 +251,17 @@ function CaptureDndStore({
 function renderCategoricalBin(
   otherValidation?: Validation,
   omitOtherComponent = false,
+  omitOtherVariable = false,
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
       session: buildSession(),
-      protocol: buildProtocol(otherValidation, omitOtherComponent),
+      protocol: buildProtocol(
+        otherValidation,
+        omitOtherComponent,
+        omitOtherVariable,
+      ),
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
@@ -285,12 +300,11 @@ function renderCategoricalBin(
 /** Simulate dropping `node` onto the "other" bin by driving the dnd store
  * directly (mirrors the pattern used by NodeDrawer's tests), since a real
  * pointer-driven drag gesture is not reliable in jsdom. */
-async function dropNodeIntoOtherBin(getDndStore: () => StoreApi<DndStore>) {
-  const dropTargetId = getCatBinDropTargetId(
-    STAGE_ID,
-    PROMPT_ID,
-    OTHER_BIN_INDEX,
-  );
+async function dropNodeIntoBin(
+  getDndStore: () => StoreApi<DndStore>,
+  binIndex: number,
+) {
+  const dropTargetId = getCatBinDropTargetId(STAGE_ID, PROMPT_ID, binIndex);
 
   act(() => {
     getDndStore().getState().startDrag(
@@ -314,6 +328,10 @@ async function dropNodeIntoOtherBin(getDndStore: () => StoreApi<DndStore>) {
     getDndStore().getState().setActiveDropTarget(dropTargetId);
     getDndStore().getState().endDrag();
   });
+}
+
+async function dropNodeIntoOtherBin(getDndStore: () => StoreApi<DndStore>) {
+  await dropNodeIntoBin(getDndStore, OTHER_BIN_INDEX);
 }
 
 function getOtherAttribute(
@@ -408,6 +426,48 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Category Other, 0 items' }),
+    ).toBeInTheDocument();
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(track).not.toHaveBeenCalled();
+  });
+
+  it('does not commit an Other drop when the node update is rejected', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined, false, true);
+
+    await dropNodeIntoOtherBin(getDndStore);
+    await screen.findByRole('textbox');
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitForDialogToClose();
+
+    expect(getOtherAttribute(store)).toBeUndefined();
+    expect(
+      screen.getByRole('button', { name: RESERVED_NOTE_VALUE }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Category Other, 0 items' }),
+    ).toBeInTheDocument();
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(track).not.toHaveBeenCalled();
+  });
+
+  it('does not commit a regular-bin drop when the node update is rejected', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined, false, true);
+
+    await dropNodeIntoBin(getDndStore, 0);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: RESERVED_NOTE_VALUE }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      store.getState().session.network?.nodes[0]?.[entityAttributesProperty][
+        CATEGORY_VARIABLE
+      ],
+    ).toBeUndefined();
+    expect(
+      screen.getByRole('button', { name: 'Category Family, 0 items' }),
     ).toBeInTheDocument();
     expect(celebrate).not.toHaveBeenCalled();
     expect(track).not.toHaveBeenCalled();

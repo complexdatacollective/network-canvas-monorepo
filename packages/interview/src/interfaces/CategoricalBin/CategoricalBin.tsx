@@ -277,7 +277,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 
       if (!result) return false;
 
-      await dispatch(
+      const updateResult = await dispatch(
         updateNode({
           nodeId,
           newAttributeData: {
@@ -291,6 +291,8 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         }),
       );
 
+      if (!updateNode.fulfilled.match(updateResult)) return false;
+
       recordCommittedDrop();
       return true;
     }
@@ -298,7 +300,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     // always carries a concrete option value.
     if (bin.value === null) return false;
 
-    await dispatch(
+    const updateResult = await dispatch(
       updateNode({
         nodeId,
         newAttributeData: {
@@ -312,6 +314,8 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         currentStep,
       }),
     );
+
+    if (!updateNode.fulfilled.match(updateResult)) return false;
 
     recordCommittedDrop();
     return true;
