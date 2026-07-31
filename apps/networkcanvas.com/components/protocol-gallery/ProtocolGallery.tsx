@@ -27,6 +27,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { ProtocolPattern } from '~/components/protocol-gallery/ProtocolPattern';
 import { Container } from '~/components/ui/Container';
+import { cn } from '~/lib/cn';
 import { Link } from '~/lib/i18n/navigation';
 import type { GalleryProtocol } from '~/lib/protocolGallery';
 
@@ -104,13 +105,19 @@ function GalleryProtocolCard({
       data-featured={protocol.featured || undefined}
       href={`/protocol-gallery/${protocol.slug}`}
       aria-label={t('openProtocol', { title: protocol.title })}
-      className="focusable group block size-full rounded transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 motion-reduce:transform-none"
+      className={cn(
+        'focusable group block size-full rounded transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 motion-reduce:transform-none',
+        protocol.featured &&
+          // Resolved from the shared Tailwind package imported by globals.css.
+          // oxlint-disable-next-line tailwindcss/no-unknown-classes
+          'variable-pill-effect-border p-1',
+      )}
     >
       <DeckProtocolCard
         background={
           <ProtocolPattern
             name={protocol.title}
-            className="absolute inset-0 size-full"
+            className="absolute inset-0 size-full opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[selected]:opacity-100 motion-reduce:transition-none"
           />
         }
         className="elevation-low flex size-full min-h-[32rem]"
@@ -193,32 +200,17 @@ export function ProtocolGallery({
   }, [filteredProtocols, query]);
 
   return (
-    <section aria-labelledby="protocol-gallery-heading">
+    <section aria-label={t('heading')}>
       <Container className="mt-0! mb-0!">
-        <div className="tablet-landscape:flex-row tablet-landscape:items-end tablet-landscape:justify-between flex flex-col gap-6">
-          <div className="max-w-2xl">
-            <Heading
-              id="protocol-gallery-heading"
-              level="h2"
-              margin="none"
-              className="text-4xl"
-            >
-              {t('heading')}
-            </Heading>
-            <Paragraph margin="none" className="text-text/70 mt-4 text-lg">
-              {t('introduction')}
-            </Paragraph>
-          </div>
-          <p aria-live="polite" className="sr-only">
-            {t('results', { count: resultCount })}
-          </p>
-        </div>
+        <p aria-live="polite" className="sr-only">
+          {t('results', { count: resultCount })}
+        </p>
 
         <Surface
           noContainer
           spacing="sm"
           shadow="xs"
-          className="bg-surface/85 mt-10 backdrop-blur-md"
+          className="bg-surface/85 backdrop-blur-md"
         >
           <div className="min-w-0">
             <UnconnectedField
