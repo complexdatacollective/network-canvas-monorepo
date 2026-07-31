@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import usePrevious from '@codaco/fresco-ui/hooks/usePrevious';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -33,6 +34,7 @@ const CollapsablePrompts = (props: {
 }) => {
   const { dragConstraints, children, className, collapsible = true } = props;
   const { prompt } = usePrompts();
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const [collapsed, setCollapsed] = useState(false);
   const contentId = useId();
 
@@ -52,13 +54,13 @@ const CollapsablePrompts = (props: {
         'bg-surface/80 absolute top-4 right-4 z-10 flex w-fit max-w-sm cursor-move flex-col items-center overflow-hidden border-b-2 shadow-2xl backdrop-blur-md',
         className,
       )}
-      layout
+      layout={!shouldSkipAnimations}
       drag
       dragConstraints={dragConstraints}
       noContainer
       spacing="sm"
       shadow="sm"
-      data-testid="collapsible-prompts"
+      initial={shouldSkipAnimations ? false : undefined}
       variants={{
         initial: {
           scale: 0.4,

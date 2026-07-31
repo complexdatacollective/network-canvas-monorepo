@@ -1,4 +1,5 @@
 import { useDragSource } from '@codaco/fresco-ui/dnd/dnd';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -18,6 +19,7 @@ export default function DrawerNode({
   itemType = 'UNPOSITIONED_NODE',
   onLayoutAnimationComplete,
 }: DrawerNodeProps) {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const nodeId = node[entityPrimaryKeyProperty];
   const rawName = node[entityAttributesProperty].name;
   const name = typeof rawName === 'string' ? rawName : 'Node';
@@ -30,7 +32,7 @@ export default function DrawerNode({
 
   return (
     <ConnectedMotionNode
-      layout
+      layout={!shouldSkipAnimations}
       onLayoutAnimationComplete={onLayoutAnimationComplete}
       nodeId={nodeId}
       type={node.type}

@@ -33,25 +33,6 @@ const VISUAL_STYLES = `
   }
 `;
 
-/* Motion layout projection can settle at slightly different fractional
-   transforms under parallel load. These elements are positioned by their
-   normal grid/flex/absolute layout at rest, so remove only their transient
-   capture-time transforms. This stylesheet is installed for the screenshot
-   frame only and removed before scenario interactions continue. */
-const CAPTURE_SETTLE_STYLES = `
-  [data-testid="collapsible-prompts"],
-  [data-stagger-item],
-  *:has(> [data-stagger-item]),
-  .catbin-item {
-    transform: none !important;
-  }
-  [data-stagger-item],
-  *:has(> [data-stagger-item]),
-  .catbin-item {
-    opacity: 1 !important;
-  }
-`;
-
 /**
  * Shared pixel-capture pipeline used by both the legacy interview-test
  * fixture and the matrix fixture. Captures are CI-only (`enabled`).
@@ -76,76 +57,24 @@ export function createCaptureInterview(
       await page.addStyleTag({ content: VISUAL_STYLES });
       stylesInjected = true;
     }
-    // Wait out motion entrance choreography. Elements animating in sit
-    // at their framer `initial` state (inline opacity 0) until the
-    // animation scheduler's first frame applies — under load that can
-    // lag mount by hundreds of ms. toHaveScreenshot cannot see this:
-    // two identical pre-entrance frames count as "stable", which is
-    // exactly how CategoricalBin stages captured without their bin
-    // circles on firefox.
-    //
-    // Resolves on the first evaluation when nothing is pending, so the
-    // settled-state cost is one round-trip per capture. Only elements
-    // covering a significant area count as pending: small overlays
-    // (the node bin, action-button badges) and zero-height collapsed
-    // containers (the node drawer body) are transparent AT REST by
-    // design, and treating them as pending would make every capture on
-    // their stage pay the full timeout. The timeout log below surfaces
-    // anything that still stalls the wait.
-    const MIN_PENDING_AREA = 24_000;
-    await page
-      .waitForFunction(
-        (minArea) =>
-          !Array.from(
-            document.querySelectorAll<HTMLElement>('main [style*="opacity"]'),
-          ).some((el) => {
-            if (el.style.opacity !== '0') return false;
-            const rect = el.getBoundingClientRect();
-            return rect.width * rect.height >= minArea;
-          }),
-        MIN_PENDING_AREA,
-        { timeout: 3000 },
-      )
-      .catch(async () => {
-        const offenders = await page.evaluate(
-          (minArea) =>
-            Array.from(
-              document.querySelectorAll<HTMLElement>('main [style*="opacity"]'),
-            )
-              .filter((el) => {
-                if (el.style.opacity !== '0') return false;
-                const rect = el.getBoundingClientRect();
-                return rect.width * rect.height >= minArea;
-              })
-              .map(
-                (el) =>
-                  `${el.tagName}.${(el.getAttribute('class') ?? '').slice(0, 60)} testid=${el.getAttribute('data-testid')}`,
-              ),
-          MIN_PENDING_AREA,
-        );
-        console.log(
-          '[capture] entrance-settle wait timed out on:',
-          offenders.join(' | '),
-        );
-      });
-    const settleStyles = await page.addStyleTag({
-      content: CAPTURE_SETTLE_STYLES,
+    const animationSettings = await page.evaluate(() => ({
+      reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)')
+        .matches,
+      baseUiDisabled: Boolean(
+        (
+          globalThis as typeof globalThis & {
+            BASE_UI_ANIMATIONS_DISABLED?: boolean;
+          }
+        ).BASE_UI_ANIMATIONS_DISABLED,
+      ),
+    }));
+    expect(animationSettings).toEqual({
+      reducedMotion: true,
+      baseUiDisabled: true,
     });
-    try {
-      await page.evaluate(
-        () =>
-          new Promise<void>((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-          ),
-      );
-      await expect.soft(page).toHaveScreenshot(`${name}.png`, {
-        fullPage: options.fullPage ?? false,
-        mask: options.mask,
-      });
-    } finally {
-      await settleStyles.evaluate((style) =>
-        style.parentNode?.removeChild(style),
-      );
-    }
+    await expect.soft(page).toHaveScreenshot(`${name}.png`, {
+      fullPage: options.fullPage ?? false,
+      mask: options.mask,
+    });
   };
 }

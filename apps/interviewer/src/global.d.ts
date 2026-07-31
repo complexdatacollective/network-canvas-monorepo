@@ -6,6 +6,12 @@ import type { NcNetwork } from '@codaco/shared-consts';
 declare module '*.css';
 
 declare global {
+  var BASE_UI_ANIMATIONS_DISABLED: boolean | undefined;
+
+  interface ImportMetaEnv {
+    readonly VITE_DISABLE_ANIMATIONS?: string;
+  }
+
   // Injected at build time by `vite.renderer.config.ts` (read from
   // apps/interviewer/package.json `version`). Renderer-only.
   const __APP_VERSION__: string;

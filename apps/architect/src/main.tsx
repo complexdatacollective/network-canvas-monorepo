@@ -1,6 +1,7 @@
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
 import './analytics';
+import { MotionConfig } from 'motion/react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 
@@ -24,6 +25,12 @@ import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
+
+const disableAnimations = import.meta.env.VITE_DISABLE_ANIMATIONS === 'true';
+
+if (disableAnimations) {
+  globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
+}
 
 // Capture the PWA install prompt before React mounts — the event fires early and
 // is one-shot.
@@ -76,20 +83,25 @@ async function startApp(): Promise<void> {
   }
 
   createRoot(root).render(
-    <AppErrorBoundary>
-      <Provider store={store}>
-        {/* PortalContainerProvider outermost so fresco-ui overlays portal into
-          its viewport layer; the `root` (isolation: isolate) wrapper keeps the
-          app's own stacking contexts from competing with that layer. */}
-        <PortalContainerProvider>
-          <DialogProvider>
-            <div className="root h-full">
-              <AppView />
-            </div>
-          </DialogProvider>
-        </PortalContainerProvider>
-      </Provider>
-    </AppErrorBoundary>,
+    <MotionConfig
+      reducedMotion={disableAnimations ? 'always' : 'user'}
+      skipAnimations={disableAnimations}
+    >
+      <AppErrorBoundary>
+        <Provider store={store}>
+          {/* PortalContainerProvider outermost so fresco-ui overlays portal into
+            its viewport layer; the `root` (isolation: isolate) wrapper keeps the
+            app's own stacking contexts from competing with that layer. */}
+          <PortalContainerProvider>
+            <DialogProvider>
+              <div className="root h-full">
+                <AppView />
+              </div>
+            </DialogProvider>
+          </PortalContainerProvider>
+        </Provider>
+      </AppErrorBoundary>
+    </MotionConfig>,
   );
 
   // Matches the boot loader's opacity transition in index.html (400ms), plus a

@@ -41,53 +41,20 @@ export function makeCapture(page: Page): CaptureFn {
     // page.reload()/second goto() drops the injected <style>, which would
     // silently un-hide blobs/focus-rings for a later capture() in the same test.
     await page.addStyleTag({ content: VISUAL_STYLES });
-    // Wait for motion to reach REST before sampling. Two problems otherwise:
-    // (1) entrance fades sit at their opacity:0 initial variant until a
-    // useEffect commits, so toHaveScreenshot can stabilise on two identical
-    // PRE-entrance frames; (2) the protocol deck is a spring-physics fan whose
-    // cards drift for several frames after mount and, mid-transient, land at
-    // frame-timing-dependent sub-pixel positions. A spring's EQUILIBRIUM is
-    // deterministic, so we poll element geometry (rounded to whole px) until it
-    // stops changing across consecutive animation frames — that is rest.
-    // reducedMotion/animations:'disabled' do NOT stop these JS-rAF springs.
-    await page.evaluate(async () => {
-      const raf = () =>
-        new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-      // Sample from #root (the app mount) — the interviewer app has NO <main>
-      // landmark (only the embedded interview engine does), so a 'main *'
-      // selector would match nothing on plain routes like /data and let the
-      // loop exit in one frame without waiting for e.g. DataView's spring-
-      // physics table entrance. Base UI dialogs portal OUTSIDE #root, so keep
-      // the explicit [role="dialog"] clause. Cap generously (#root spans the
-      // whole app) so a deep, still-animating element isn't sampled off the end.
-      const sample = () =>
-        Array.from(document.querySelectorAll('#root *, [role="dialog"] *'))
-          .slice(0, 1500)
-          .map((el) => {
-            const r = el.getBoundingClientRect();
-            return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
-          })
-          .join('|');
-      // Wait until geometry is identical (whole-pixel) across several
-      // CONSECUTIVE frames — that is spring rest. Requiring more than one
-      // stable pair guards against a janky/dropped frame under CPU load
-      // briefly matching mid-animation. Cap at ~150 frames (~2.5s) so a
-      // perpetually-moving element can't hang the capture; toHaveScreenshot's
-      // own frame-matching guards the fallback.
-      const REQUIRED_STABLE = 4;
-      let prev = '';
-      let stable = 0;
-      for (let i = 0; i < 150; i++) {
-        await raf();
-        const cur = sample();
-        if (cur === prev) {
-          stable += 1;
-          if (stable >= REQUIRED_STABLE) return;
-        } else {
-          stable = 0;
-        }
-        prev = cur;
-      }
+    const animationSettings = await page.evaluate(() => ({
+      reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)')
+        .matches,
+      baseUiDisabled: Boolean(
+        (
+          globalThis as typeof globalThis & {
+            BASE_UI_ANIMATIONS_DISABLED?: boolean;
+          }
+        ).BASE_UI_ANIMATIONS_DISABLED,
+      ),
+    }));
+    expect(animationSettings).toEqual({
+      reducedMotion: true,
+      baseUiDisabled: true,
     });
     // Hide toasts for the screenshot only. Transient toasts (e.g. the "Protocol
     // imported" toast still entering/exiting when a post-import capture fires)

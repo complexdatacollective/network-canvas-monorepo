@@ -1,9 +1,10 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import type { LucideIcon } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import { type ReactElement, type ReactNode, useId } from 'react';
 
+import { useShouldSkipAnimations } from '../hooks/useSafeAnimate';
 import { cva, cx } from '../utils/cva';
 
 export type SegmentedOption<T extends string> = {
@@ -87,7 +88,7 @@ export default function SegmentedSwitcher<T extends string>({
   className,
 }: SegmentedSwitcherProps<T>) {
   const layoutId = useId();
-  const reduced = useReducedMotion();
+  const shouldSkipAnimations = useShouldSkipAnimations();
 
   return (
     // A plain track rather than a `Surface`: Surface always paints an opaque
@@ -134,11 +135,11 @@ export default function SegmentedSwitcher<T extends string>({
             >
               {active ? (
                 <motion.span
-                  layoutId={layoutId}
+                  layoutId={shouldSkipAnimations ? undefined : layoutId}
                   aria-hidden
                   className="bg-primary absolute inset-0 rounded-full"
                   transition={
-                    reduced
+                    shouldSkipAnimations
                       ? { duration: 0 }
                       : { type: 'spring', stiffness: 380, damping: 32 }
                   }

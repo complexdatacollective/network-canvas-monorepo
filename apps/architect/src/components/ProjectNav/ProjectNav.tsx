@@ -10,6 +10,7 @@ import { motion } from 'motion/react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
 
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import {
   getHasUnusedAssets,
   getHasUnusedVariables,
@@ -35,6 +36,7 @@ const TABS: Tab[] = [
 ];
 
 const ProjectNav = () => {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const [location] = useLocation();
   const protocolName = useSelector(getProtocolName);
   const hasUnusedAssets = useSelector(getHasUnusedAssets);
@@ -72,7 +74,9 @@ const ProjectNav = () => {
       >
         {isActive && (
           <motion.span
-            layoutId="project-nav-active-outline"
+            layoutId={
+              shouldSkipAnimations ? undefined : 'project-nav-active-outline'
+            }
             aria-hidden
             className="absolute -inset-x-4 -inset-y-2 rounded-full ring-2 ring-current/30"
             transition={{ type: 'spring', stiffness: 500, damping: 40 }}

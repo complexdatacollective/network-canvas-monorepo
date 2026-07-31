@@ -14,6 +14,7 @@ import { Link } from 'wouter';
 
 import { Pattern } from '@codaco/art';
 import { buttonVariants, IconButton } from '@codaco/fresco-ui/Button';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
@@ -36,11 +37,13 @@ function Pill({
   icon: ReactNode;
   intent?: 'default' | 'error' | 'success' | 'warning';
 }) {
+  const shouldSkipAnimations = useShouldSkipAnimations();
+
   return (
     // layout="position": the pill glides (on the shared region clock) when
     // the delete control entering/leaving changes its position in the row.
     <motion.div
-      layout="position"
+      layout={shouldSkipAnimations ? false : 'position'}
       transition={REGION_TRANSITION}
       className={cx(
         'font-monospace flex items-center gap-2 rounded-full border px-[2cqi] py-[0.75cqi] text-[max(12px,2.5cqi)] uppercase',
@@ -385,6 +388,7 @@ const PRESENCE_EXIT = { opacity: 0 };
 const REGION_TRANSITION = { duration: 0.3, ease: 'easeOut' } as const;
 
 export function DeckCard(props: DeckCardProps) {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const {
     protocol,
     isActive = false,
@@ -456,7 +460,7 @@ export function DeckCard(props: DeckCardProps) {
   return (
     <LayoutGroup id={id}>
       <motion.div
-        layout
+        layout={!shouldSkipAnimations}
         aria-label={`${protocol.name ?? 'Protocol'}${isActive ? ' (active)' : ''}`}
         aria-busy={loading || undefined}
         onKeyDown={onCardKeyDown}
@@ -501,7 +505,7 @@ export function DeckCard(props: DeckCardProps) {
               {!hideControls && (
                 <motion.div
                   key="controls"
-                  layout="position"
+                  layout={shouldSkipAnimations ? false : 'position'}
                   initial={PRESENCE_INITIAL}
                   animate={PRESENCE_ENTER}
                   exit={PRESENCE_EXIT}
@@ -582,7 +586,7 @@ export function DeckCard(props: DeckCardProps) {
                         }),
                   }}
                   margin="none"
-                  layout="position"
+                  layout={shouldSkipAnimations ? false : 'position'}
                   transition={REGION_TRANSITION}
                 >
                   {withUnderscoreBreaks(protocol.name)}
@@ -618,7 +622,7 @@ export function DeckCard(props: DeckCardProps) {
                 // keeps the glide without the distortion.
                 <motion.div
                   key="description"
-                  layout="position"
+                  layout={shouldSkipAnimations ? false : 'position'}
                   data-deck-row={
                     protocol.description ? 'description' : undefined
                   }
@@ -660,7 +664,7 @@ export function DeckCard(props: DeckCardProps) {
                 // ABOVE it.
                 <motion.div
                   key="metadata"
-                  layout="position"
+                  layout={shouldSkipAnimations ? false : 'position'}
                   data-testid="deck-card-metadata"
                   initial={PRESENCE_INITIAL}
                   animate={PRESENCE_ENTER}
@@ -713,7 +717,7 @@ export function DeckCard(props: DeckCardProps) {
               {isActive && footer != null && (
                 <motion.hr
                   key="break"
-                  layout="position"
+                  layout={shouldSkipAnimations ? false : 'position'}
                   initial={PRESENCE_INITIAL}
                   animate={PRESENCE_ENTER}
                   exit={PRESENCE_EXIT}
@@ -724,7 +728,7 @@ export function DeckCard(props: DeckCardProps) {
               {isActive && footer != null && (
                 <motion.div
                   key={footerKey}
-                  layout="position"
+                  layout={shouldSkipAnimations ? false : 'position'}
                   data-deck-row="footer"
                   initial={PRESENCE_INITIAL}
                   animate={{

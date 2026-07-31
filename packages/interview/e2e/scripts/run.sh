@@ -61,10 +61,10 @@ IMAGE="mcr.microsoft.com/playwright:v${PW_VERSION}-noble"
 source "$MONOREPO_ROOT/scripts/playwright-docker-platform.sh"
 detect_playwright_docker_platform
 
-# Snapshot generation favours byte-for-byte reproducibility over throughput.
-# Callers may still override this for diagnostics, but the supported local
-# baseline path is serial just like the hosted regeneration workflow.
-PW_WORKERS="${PW_WORKERS:-1}"
+# Match the native CI lane. The E2E host disables Motion and components omit
+# layout projection under reduced motion, so four workers improve throughput
+# without introducing animation-frame-dependent baselines.
+PW_WORKERS="${PW_WORKERS:-4}"
 
 # Forwarded args are spliced into the container's `sh -c` string, so each one
 # must be shell-quoted or characters like the `|` in `-g "A|B"` are re-parsed

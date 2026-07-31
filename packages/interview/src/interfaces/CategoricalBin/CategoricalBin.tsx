@@ -6,6 +6,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import UINode from '@codaco/fresco-ui/Node';
 import type { Stage } from '@codaco/protocol-validation';
 import {
@@ -101,6 +102,7 @@ const getNodeLabel = (
 };
 
 const CategoricalBin = (_props: CategoricalBinStageProps) => {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const [expandedBinIndex, setExpandedBinIndex] = useState<number | null>(null);
   const track = useTrack();
   const previousExpandedRef = useRef<number | null>(null);
@@ -319,13 +321,13 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       <Prompts />
       <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
         <div className="catbin-outer min-h-0 w-full flex-1">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={!shouldSkipAnimations}>
             <motion.div
               key={id}
               className="catbin-circles size-full"
               data-expanded={hasExpanded || undefined}
               variants={binsContainerVariants}
-              initial="initial"
+              initial={shouldSkipAnimations ? false : 'initial'}
               animate="animate"
               exit="exit"
             >

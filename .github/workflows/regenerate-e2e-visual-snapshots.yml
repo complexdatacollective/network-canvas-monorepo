@@ -59,10 +59,10 @@ jobs:
       - name: Regenerate Interview visual snapshots
         if: inputs.suite == 'interview'
         env:
-          # Baseline generation is deliberately serial. Parallel rendering can
-          # leave Motion projection transforms at different subpixel endpoints,
-          # producing byte-different PNGs despite equivalent pixels.
-          PW_WORKERS: 1
+          # Match the ordinary Interview comparison lane. Reduced/disabled
+          # motion structurally omits layout projection, so baseline generation
+          # is deterministic without serialising the browser workload.
+          PW_WORKERS: 4
         run: >-
           ./scripts/run-e2e-native.sh interview
           --project=chromium-visual

@@ -14,6 +14,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
@@ -27,6 +28,7 @@ const transition: Transition = {
 };
 
 export default function PassphrasePrompter() {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const { setPassphrase, showPassphrasePrompter, passphraseInvalid } =
     usePassphrase();
   const [showPassphraseOverlay, setShowPassphraseOverlay] = useState(false);
@@ -71,9 +73,11 @@ export default function PassphrasePrompter() {
                 render={
                   <motion.button
                     key="lock"
-                    layout
+                    layout={!shouldSkipAnimations}
                     className="bg-platinum group flex size-[calc(4.8*var(--theme-root-size))] cursor-pointer items-center justify-center rounded-full"
-                    initial={{ scale: 0, opacity: 0 }}
+                    initial={
+                      shouldSkipAnimations ? false : { scale: 0, opacity: 0 }
+                    }
                     animate={{
                       scale: 1,
                       opacity: 1,

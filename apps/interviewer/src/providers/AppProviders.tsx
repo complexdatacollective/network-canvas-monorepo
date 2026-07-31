@@ -13,9 +13,18 @@ import { AuthProvider } from '~/lib/auth/AuthContext';
 import { StepUpAuthProvider } from '~/lib/auth/StepUpAuthProvider';
 import { OnlineStatusProvider } from '~/lib/net/OnlineStatusProvider';
 
+const disableAnimations = import.meta.env.VITE_DISABLE_ANIMATIONS === 'true';
+
+if (disableAnimations) {
+  globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
+}
+
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig
+      reducedMotion={disableAnimations ? 'always' : 'user'}
+      skipAnimations={disableAnimations}
+    >
       <DirectionProvider direction="ltr">
         <Toast.Provider limit={7}>
           <TooltipProvider>

@@ -10,7 +10,6 @@ import {
   motion,
   useDragControls,
   useMotionValue,
-  useReducedMotion,
 } from 'motion/react';
 import * as React from 'react';
 
@@ -22,6 +21,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '../DropdownMenu';
+import { useShouldSkipAnimations } from '../hooks/useSafeAnimate';
 import { MotionSurface } from '../layout/Surface';
 import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
@@ -497,7 +497,7 @@ function SegmentMotion({
       };
   return (
     <motion.div
-      layout
+      layout={!reduce}
       className="flex items-center justify-center"
       initial={variants?.initial}
       animate={variants?.animate}
@@ -660,7 +660,7 @@ export function SegmentedToolbar({
   dragHandleLabel = 'Move toolbar',
   className,
 }: SegmentedToolbarProps) {
-  const reduce = useReducedMotion() ?? false;
+  const reduce = useShouldSkipAnimations();
   const dragControls = useDragControls();
   const [announcement, setAnnouncement] = React.useState('');
 
@@ -732,7 +732,7 @@ export function SegmentedToolbar({
           shadow="none"
           spacing="none"
           noContainer
-          layout
+          layout={!reduce}
           className={cx(rootLayoutVariants({ orientation }), className)}
         >
           {innerToolbar}
@@ -750,7 +750,7 @@ export function SegmentedToolbar({
         shadow="none"
         spacing="none"
         noContainer
-        layout
+        layout={!reduce}
         drag
         dragListener={false}
         dragControls={dragControls}

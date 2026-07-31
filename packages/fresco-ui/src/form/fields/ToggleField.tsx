@@ -3,6 +3,7 @@
 import { Switch } from '@base-ui/react/switch';
 import { motion } from 'motion/react';
 
+import { useShouldSkipAnimations } from '../../hooks/useSafeAnimate';
 import {
   controlVariants,
   smallSizeVariants,
@@ -111,6 +112,7 @@ type ToggleFieldProps = CreateFormFieldProps<
 >;
 
 export default function ToggleField(props: ToggleFieldProps) {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const {
     id,
     name,
@@ -178,7 +180,7 @@ export default function ToggleField(props: ToggleFieldProps) {
         render={
           <motion.span
             className={toggleThumbVariants({ state })}
-            layout
+            layout={!shouldSkipAnimations}
             layoutDependency={value}
             transition={{
               type: 'spring',

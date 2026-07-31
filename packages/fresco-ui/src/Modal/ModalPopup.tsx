@@ -9,7 +9,10 @@ import {
 } from 'motion/react';
 import { type ComponentProps, useEffect, useId } from 'react';
 
-import { useSafeAnimate } from '../hooks/useSafeAnimate';
+import {
+  useSafeAnimate,
+  useShouldSkipAnimations,
+} from '../hooks/useSafeAnimate';
 
 /**
  * Makes the opacity property required in TargetAndTransition.
@@ -69,7 +72,10 @@ export default function ModalPopup({
   style,
   ...props
 }: ModalPopupProps) {
-  const hasLayoutId = 'layoutId' in props && props.layoutId !== undefined;
+  const shouldSkipAnimations = useShouldSkipAnimations();
+  const providedLayoutId = 'layoutId' in props ? props.layoutId : undefined;
+  const layoutId = shouldSkipAnimations ? undefined : providedLayoutId;
+  const hasLayoutId = layoutId !== undefined;
   const hasCustomAnimation =
     'initial' in props || 'animate' in props || 'exit' in props;
   const usesDeclarativeAnimation = hasLayoutId || hasCustomAnimation;
@@ -139,6 +145,7 @@ export default function ModalPopup({
           ref={scope}
           className={className}
           {...props}
+          layoutId={layoutId}
           {...animation}
           style={style}
         />

@@ -132,9 +132,10 @@ Playwright run.
 
 The update command selects only the `chromium-visual`, `firefox-visual`, and
 `webkit-visual` projects. It does not run the matrix projects or update their
-ARIA snapshots. Baseline generation defaults to one worker so repeated hosted
-and local captures are byte-for-byte reproducible; ordinary comparison runs
-remain parallel.
+ARIA snapshots. Baseline generation uses the same four-worker setting as
+ordinary CI. The E2E host forces reduced/disabled motion, and components omit
+Motion layout projection in that mode so captures do not depend on animation
+frame timing.
 
 ### Regenerating committed PNGs in CI
 
@@ -239,9 +240,8 @@ Keys handled by the cross-cutting suite are recorded in
 `{matrix, visual}`, all fully parallel. To keep the browser matrix affordable,
 the `firefox-matrix` / `webkit-matrix` projects run only the `@smoke` subset (one
 scenario per interface) while `chromium-matrix` runs the full matrix. Worker
-count is `PW_WORKERS ?? '50%'`. Ordinary CI comparison pins
-`PW_WORKERS=4`; hosted and local baseline regeneration pin one worker because
-parallel Motion rendering can produce subpixel-different PNGs.
+count is `PW_WORKERS ?? '50%'`. Ordinary CI comparison and hosted/local
+baseline regeneration pin `PW_WORKERS=4`.
 
 ### Sharding escape hatch (dormant)
 
@@ -290,9 +290,8 @@ Playwright image's native `linux/arm64` variant. The wrapper script
 (`scripts/run.sh`) mounts the monorepo into the container and reuses
 architecture-suffixed Docker volumes for `node_modules`, the pnpm store, and
 Turbo cache so native binaries can never cross architectures. Interview
-baseline generation defaults to one Playwright worker for deterministic PNGs.
-Runs outside Linux ARM64 keep functional coverage but skip pixel comparison
-and baseline writes.
+baseline generation uses four Playwright workers. Runs outside Linux ARM64 keep
+functional coverage but skip pixel comparison and baseline writes.
 
 `pnpm test:e2e:headed` skips Docker and runs Playwright against your local
 browsers — useful for stepping through a test, but **do not regenerate

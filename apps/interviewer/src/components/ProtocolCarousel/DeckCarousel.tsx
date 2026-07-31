@@ -20,6 +20,8 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from 'react';
 
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
+
 import { CARD_RADIUS_PX } from './cardStyles';
 import {
   DECK_PERSPECTIVE_PX,
@@ -114,6 +116,7 @@ export function DeckCarousel({
   cardHeight,
   ref,
 }: DeckCarouselProps) {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const position = useMotionValue(activeIndex);
   const settleAnimation = useRef<ReturnType<typeof animate> | null>(null);
   // The index the deck is travelling toward; null while a drag is live.
@@ -128,13 +131,17 @@ export function DeckCarousel({
     (target: number, velocity = 0) => {
       settleTarget.current = target;
       settleAnimation.current?.stop();
+      if (shouldSkipAnimations) {
+        position.jump(target);
+        return;
+      }
       settleAnimation.current = animate(position, target, {
         type: 'spring',
         ...DECK_SPRING,
         velocity,
       });
     },
-    [position],
+    [position, shouldSkipAnimations],
   );
 
   useImperativeHandle(
@@ -244,6 +251,7 @@ export function DeckCarousel({
             disabled={disabled}
             isolateActiveSlide={isolateActiveSlide}
             onSelect={onActiveIndexChange}
+            shouldSkipAnimations={shouldSkipAnimations}
           />
         ))}
       </AnimatePresence>
@@ -261,6 +269,7 @@ type DeckSlideProps = {
   disabled: boolean;
   isolateActiveSlide: boolean;
   onSelect: (index: number) => void;
+  shouldSkipAnimations: boolean;
 };
 
 function DeckSlide({
@@ -273,6 +282,7 @@ function DeckSlide({
   disabled,
   isolateActiveSlide,
   onSelect,
+  shouldSkipAnimations,
 }: DeckSlideProps) {
   const isPresent = useIsPresent();
 
@@ -280,8 +290,12 @@ function DeckSlide({
   // animates in lockstep with the deck position spring (same config).
   const slotIndex = useSpring(index, DECK_SPRING);
   useEffect(() => {
+    if (shouldSkipAnimations) {
+      slotIndex.jump(index);
+      return;
+    }
     slotIndex.set(index);
-  }, [index, slotIndex]);
+  }, [index, shouldSkipAnimations, slotIndex]);
 
   const x = useTransform(
     () => slidePose(slotIndex.get() - position.get(), cardWidth, cardHeight).x,
@@ -359,7 +373,7 @@ function DeckSlide({
       } ${isolateActiveSlide && isActive ? 'pointer-events-auto' : ''}`}
     >
       <motion.div
-        initial={SLIDE_ENTER}
+        initial={shouldSkipAnimations ? false : SLIDE_ENTER}
         animate={SLIDE_REST}
         exit={SLIDE_EXIT}
         transition={SLIDE_ENTER_SPRING}

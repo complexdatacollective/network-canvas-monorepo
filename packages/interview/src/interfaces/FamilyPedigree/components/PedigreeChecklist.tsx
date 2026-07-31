@@ -19,6 +19,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -54,6 +55,7 @@ export default function PedigreeChecklist({
   variableConfig: VariableConfig;
   boundaries: Boundaries;
 }) {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const nodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const edges = useFamilyPedigreeStore((s) => s.network.edges);
   const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
@@ -393,13 +395,13 @@ export default function PedigreeChecklist({
           key="pedigree-checklist"
           data-testid="pedigree-checklist"
           className="bg-surface/80 absolute bottom-4 left-4 z-20 w-80 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
-          layout
+          layout={!shouldSkipAnimations}
           drag
           dragConstraints={dragConstraints}
           noContainer
           spacing="sm"
           shadow="sm"
-          initial={{ scale: 0.4, opacity: 0 }}
+          initial={shouldSkipAnimations ? false : { scale: 0.4, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0, opacity: 0 }}
           transition={{ type: 'spring', duration: 0.5 }}
@@ -423,7 +425,7 @@ export default function PedigreeChecklist({
                     data-testid={`pedigree-checklist-item-${item.id}`}
                     data-required={item.required}
                     data-done={item.done}
-                    layout
+                    layout={!shouldSkipAnimations}
                     transition={{
                       layout: {
                         type: 'spring',
@@ -470,7 +472,7 @@ export default function PedigreeChecklist({
             </LayoutGroup>
           </motion.div>
           <motion.div
-            layout
+            layout={!shouldSkipAnimations}
             className="mt-4 flex flex-col justify-between gap-2"
           >
             {allDone && (

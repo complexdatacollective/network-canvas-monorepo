@@ -32,6 +32,7 @@ export CI=true
 case "$SUITE" in
   architect)
     export VITE_DISABLE_ANALYTICS=true
+    export VITE_DISABLE_ANIMATIONS=true
     pnpm turbo run build --filter=@codaco/architect
     pnpm --filter @codaco/architect exec playwright test \
       --config=e2e/playwright.config.ts "$@"
@@ -45,6 +46,7 @@ case "$SUITE" in
     ;;
   interviewer)
     export VITE_DISABLE_ANALYTICS=true
+    export VITE_DISABLE_ANIMATIONS=true
     pnpm turbo run build --filter=@codaco/interviewer
     pnpm --filter @codaco/interviewer exec playwright test \
       --config=e2e/playwright.config.ts "$@"

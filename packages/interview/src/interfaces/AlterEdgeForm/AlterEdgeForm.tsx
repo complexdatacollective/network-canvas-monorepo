@@ -4,6 +4,7 @@ import { find } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   type EntityAttributesProperty,
@@ -60,6 +61,7 @@ function EdgeHeader({ item }: { item: NcEdge }) {
 type Mode = 'intro' | 'form';
 
 const AlterEdgeForm = (props: StageProps<'AlterEdgeForm'>) => {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const { stage } = props;
   const items = useStageSelector(getNetworkEdgesForType);
   const dispatch = useAppDispatch();
@@ -112,7 +114,7 @@ const AlterEdgeForm = (props: StageProps<'AlterEdgeForm'>) => {
         <motion.div
           key="intro"
           className="interface"
-          initial={{ opacity: 0 }}
+          initial={shouldSkipAnimations ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
@@ -128,13 +130,15 @@ const AlterEdgeForm = (props: StageProps<'AlterEdgeForm'>) => {
         <motion.div
           key="form"
           className="flex w-full flex-auto flex-col overflow-hidden"
-          initial={{ opacity: 0 }}
+          initial={shouldSkipAnimations ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           onAnimationComplete={() => setIsFormReady(true)}
           data-stage-section="form"
-          data-stage-ready={isFormReady ? 'true' : undefined}
+          data-stage-ready={
+            shouldSkipAnimations || isFormReady ? 'true' : undefined
+          }
         >
           <SlidesForm
             updateItem={handleUpdateItem}

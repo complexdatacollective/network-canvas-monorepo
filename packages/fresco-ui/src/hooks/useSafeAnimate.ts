@@ -4,11 +4,29 @@ import {
   type AnimationScope,
   MotionConfigContext,
   useAnimate,
-  useReducedMotionConfig,
+  useReducedMotion,
 } from 'motion/react';
 import { useContext, useMemo } from 'react';
 
 type AnimateFn<T extends Element> = ReturnType<typeof useAnimate<T>>[1];
+
+/**
+ * Returns true when Motion should not create animations.
+ *
+ * Motion's reduced-motion handling makes layout projection instant, but still
+ * creates a transient projection transform before clearing it on a later
+ * frame. Components that opt into layout projection should use this hook to
+ * omit `layout`/`layoutId` entirely when motion is reduced or skipped.
+ */
+export function useShouldSkipAnimations(): boolean {
+  const { reducedMotion, skipAnimations } = useContext(MotionConfigContext);
+  const userPrefersReducedMotion = useReducedMotion();
+  const shouldReduceMotion =
+    reducedMotion === 'always' ||
+    (reducedMotion !== 'never' && userPrefersReducedMotion);
+
+  return !!skipAnimations || !!shouldReduceMotion;
+}
 
 /**
  * Drop-in replacement for Motion's `useAnimate` that respects
@@ -24,10 +42,7 @@ type AnimateFn<T extends Element> = ReturnType<typeof useAnimate<T>>[1];
  */
 export function useSafeAnimate<T extends Element = HTMLDivElement>() {
   const [scope, animate] = useAnimate<T>();
-  const { skipAnimations } = useContext(MotionConfigContext);
-  const shouldReduceMotion = useReducedMotionConfig();
-
-  const shouldSkip = !!skipAnimations || !!shouldReduceMotion;
+  const shouldSkip = useShouldSkipAnimations();
 
   const safeAnimate = useMemo(() => {
     if (!shouldSkip) return animate;

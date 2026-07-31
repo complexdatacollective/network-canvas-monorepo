@@ -10,7 +10,10 @@ import type {
   ItemProps,
 } from '@codaco/fresco-ui/collection/types';
 import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
-import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
+import {
+  useSafeAnimate,
+  useShouldSkipAnimations,
+} from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   entityAttributesProperty,
@@ -71,6 +74,7 @@ const NodeList = memo(
     ...collectionProps
   }: NodeListProps) => {
     const layout = useMemo(() => new InlineGridLayout<NcNode>({ gap: 4 }), []);
+    const shouldSkipAnimations = useShouldSkipAnimations();
     // Safe animate so the exit fade skips (instant swap) under reduced
     // motion / MotionConfig skipAnimations; the scope doubles as the
     // container ref for querying stagger items.
@@ -218,6 +222,7 @@ const NodeList = memo(
     );
 
     const [animationComplete, setAnimationComplete] = useState(false);
+    const canRenderCollection = shouldSkipAnimations || animationComplete;
 
     return (
       <motion.div
@@ -227,11 +232,12 @@ const NodeList = memo(
           animate: { opacity: 1 },
           exit: { opacity: 0 },
         }}
+        initial={shouldSkipAnimations ? false : undefined}
         onAnimationComplete={() => setAnimationComplete(true)}
         className="size-full grow"
         data-testid={testId}
       >
-        {animationComplete && (
+        {canRenderCollection && (
           <Collection
             {...collectionProps}
             key={displayAnimationKey}

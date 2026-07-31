@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useState } from 'react';
 
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import {
   type EntityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -25,6 +26,7 @@ import SlidesForm from '../SlidesForm/SlidesForm';
 type Mode = 'intro' | 'form';
 
 const AlterForm = (props: StageProps<'AlterForm'>) => {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const { stage } = props;
   const items = useStageSelector(getNetworkNodesForType);
   const dispatch = useAppDispatch();
@@ -100,7 +102,7 @@ const AlterForm = (props: StageProps<'AlterForm'>) => {
         <motion.div
           key="intro"
           className="interface"
-          initial={{ opacity: 0 }}
+          initial={shouldSkipAnimations ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
@@ -116,13 +118,15 @@ const AlterForm = (props: StageProps<'AlterForm'>) => {
         <motion.div
           key="form"
           className="flex w-full flex-auto flex-col overflow-hidden"
-          initial={{ opacity: 0 }}
+          initial={shouldSkipAnimations ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           onAnimationComplete={() => setIsFormReady(true)}
           data-stage-section="form"
-          data-stage-ready={isFormReady ? 'true' : undefined}
+          data-stage-ready={
+            shouldSkipAnimations || isFormReady ? 'true' : undefined
+          }
         >
           <SlidesForm
             updateItem={handleUpdateItem}

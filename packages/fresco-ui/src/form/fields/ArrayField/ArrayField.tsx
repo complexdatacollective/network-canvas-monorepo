@@ -22,6 +22,7 @@ import {
 import { IconButton, MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '../../../dnd/useAccessibilityAnnouncements';
+import { useShouldSkipAnimations } from '../../../hooks/useSafeAnimate';
 import Surface from '../../../layout/Surface';
 import {
   controlVariants,
@@ -315,6 +316,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   ref: Ref<HTMLLIElement>,
 ) {
   const dragControls = useDragControls();
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const resolvedItemClasses =
     typeof itemClasses === 'function'
       ? itemClasses(item, isBeingEdited)
@@ -354,8 +356,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       onDragEnd={onDragEndItem}
       className={cx(itemVariants(), resolvedItemClasses)}
       custom={hasMounted}
-      layout
-      layoutId={item._internalId}
+      layout={shouldSkipAnimations ? undefined : true}
+      layoutId={shouldSkipAnimations ? undefined : item._internalId}
       variants={getItemAnimationProps}
       initial="initial"
       animate="animate"
@@ -410,6 +412,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
   readOnly,
   ...ariaProps
 }: ArrayFieldProps<T>) {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   // Props for getInputState - combines disabled/readOnly with aria props
   const inputStateProps = { disabled, readOnly, ...ariaProps };
 
@@ -655,18 +658,18 @@ export default function ArrayField<T extends Record<string, unknown>>({
           })}
           style={{ borderRadius: 28 }}
           role="list"
-          layout
+          layout={!shouldSkipAnimations}
           {...safeAriaProps}
         >
           <AnimatePresence mode="popLayout">
             {renderableItems.length === 0 && (
               <motion.li
-                layout
+                layout={!shouldSkipAnimations}
                 key="no-items"
                 className="m-10 text-sm text-current/70"
                 custom={hasMountedRef.current}
                 variants={getItemAnimationProps}
-                initial="initial"
+                initial={shouldSkipAnimations ? false : 'initial'}
                 animate="animate"
                 exit="exit"
               >
@@ -717,7 +720,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
         </Reorder.Group>
         {!isAtCapacity && (
           <MotionButton
-            layout
+            layout={!shouldSkipAnimations}
             key="add-button"
             color="primary"
             onClick={() => {

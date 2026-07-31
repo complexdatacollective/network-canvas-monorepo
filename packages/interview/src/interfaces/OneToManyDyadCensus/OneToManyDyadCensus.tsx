@@ -2,6 +2,7 @@ import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import type { SortRule } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
@@ -26,6 +27,7 @@ import type { StageProps } from '../../types';
 type OneToManyDyadCensusProps = StageProps<'OneToManyDyadCensus'>;
 
 function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const {
     stage: {
       behaviours: { removeAfterConsideration },
@@ -105,7 +107,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
     if (direction === 'forwards') {
       if (currentStep + 1 <= numberOfSteps) {
         setCurrentStep((prev) => prev + 1);
-        setIsTransitioning(true);
+        setIsTransitioning(!shouldSkipAnimations);
         return false;
       }
 
@@ -116,7 +118,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
     if (direction === 'backwards') {
       if (currentStep > 0) {
         setCurrentStep((prev) => prev - 1);
-        setIsTransitioning(true);
+        setIsTransitioning(!shouldSkipAnimations);
         return false;
       }
 
@@ -135,8 +137,8 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
       crossingDirection.current === 'backwards' ? lastFocalIndexRef.current : 0,
     );
     crossingDirection.current = 'forwards';
-    setIsTransitioning(true);
-  }, [promptIndex]);
+    setIsTransitioning(!shouldSkipAnimations);
+  }, [promptIndex, shouldSkipAnimations]);
 
   // Fallback: restore overflow after animation duration in case
   // onLayoutAnimationComplete doesn't fire (e.g. no layout change).
@@ -186,11 +188,13 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
           size="sm"
           selected={selected}
           onClick={handleNodeClick(source, node)}
-          layoutId={node[entityPrimaryKeyProperty]}
+          layoutId={
+            shouldSkipAnimations ? undefined : node[entityPrimaryKeyProperty]
+          }
         />
       );
     },
-    [edges, source, createEdge, handleNodeClick],
+    [edges, source, createEdge, handleNodeClick, shouldSkipAnimations],
   );
 
   return (
@@ -203,7 +207,11 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
             type={source.type}
             size="md"
             className="z-10"
-            layoutId={source[entityPrimaryKeyProperty]}
+            layoutId={
+              shouldSkipAnimations
+                ? undefined
+                : source[entityPrimaryKeyProperty]
+            }
             key={source[entityPrimaryKeyProperty]}
             onLayoutAnimationComplete={() => setIsTransitioning(false)}
           />

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
 import usePrevious from '@codaco/fresco-ui/hooks/usePrevious';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -46,6 +47,7 @@ export default function NodeDrawer({
   floating = false,
   dropTarget,
 }: NodeDrawerProps) {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const [internalExpanded, setInternalExpanded] = useState(nodes.length > 0);
   const isExpanded = expanded ?? internalExpanded;
   const setIsExpanded = onExpandedChange ?? setInternalExpanded;
@@ -83,7 +85,7 @@ export default function NodeDrawer({
   const prevNodeCountRef = usePrevious(nodes.length);
 
   if (nodes.length !== prevNodeCountRef) {
-    if (nodes.length > 0 && !isLayoutAnimating) {
+    if (!shouldSkipAnimations && nodes.length > 0 && !isLayoutAnimating) {
       setIsLayoutAnimating(true);
     }
   }
@@ -108,7 +110,7 @@ export default function NodeDrawer({
   return (
     <LayoutGroup>
       <motion.div
-        layout
+        layout={!shouldSkipAnimations}
         {...(dropTarget ? dropProps : {})}
         data-zone-id={isExpandedEffective ? dropZoneId : undefined}
         initial={{ y: '100%' }}
@@ -121,9 +123,12 @@ export default function NodeDrawer({
         )}
       >
         {/* Toggle button */}
-        <motion.div layout="position" className="flex justify-center">
+        <motion.div
+          layout={shouldSkipAnimations ? false : 'position'}
+          className="flex justify-center"
+        >
           <motion.button
-            layout="position"
+            layout={shouldSkipAnimations ? false : 'position'}
             type="button"
             onClick={() => {
               if (!isToggleDisabled) setIsExpanded(!isExpanded);
@@ -155,7 +160,7 @@ export default function NodeDrawer({
         </motion.div>
 
         <motion.div
-          layout
+          layout={!shouldSkipAnimations}
           initial={{ height: 0, opacity: 0 }}
           animate={
             isExpandedEffective

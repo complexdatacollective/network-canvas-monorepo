@@ -8,6 +8,23 @@ const interviewDockerRunner = readFileSync(
   new URL('../packages/interview/e2e/scripts/run.sh', import.meta.url),
   'utf8',
 );
+const architectDockerRunner = readFileSync(
+  new URL('../apps/architect/e2e/scripts/run.sh', import.meta.url),
+  'utf8',
+);
+const interviewerDockerRunner = readFileSync(
+  new URL('../apps/interviewer/e2e/scripts/run.sh', import.meta.url),
+  'utf8',
+);
+const architectManifest = JSON.parse(
+  readFileSync(new URL('../apps/architect/package.json', import.meta.url)),
+);
+const interviewerManifest = JSON.parse(
+  readFileSync(new URL('../apps/interviewer/package.json', import.meta.url)),
+);
+const turboConfig = JSON.parse(
+  readFileSync(new URL('../turbo.json', import.meta.url)),
+);
 
 test('requires a supported E2E suite', () => {
   const missing = spawnSync('bash', [runner], { encoding: 'utf8' });
@@ -54,6 +71,39 @@ test('only local snapshot regeneration invokes the Docker wrappers', () => {
   }
 });
 
-test('local Interview baseline generation defaults to one worker', () => {
-  assert.match(interviewDockerRunner, /PW_WORKERS="\$\{PW_WORKERS:-1\}"/);
+test('local Interview baseline generation uses the four-worker CI setting', () => {
+  assert.match(interviewDockerRunner, /PW_WORKERS="\$\{PW_WORKERS:-4\}"/);
+});
+
+test('app E2E builds explicitly disable animations', () => {
+  for (const dockerRunner of [architectDockerRunner, interviewerDockerRunner]) {
+    assert.match(dockerRunner, /-e VITE_DISABLE_ANIMATIONS=true/);
+  }
+
+  for (const manifest of [architectManifest, interviewerManifest]) {
+    assert.match(manifest.scripts['test:e2e'], /VITE_DISABLE_ANIMATIONS=true/);
+    assert.match(
+      manifest.scripts['test:e2e:headed'],
+      /VITE_DISABLE_ANIMATIONS=true/,
+    );
+  }
+
+  assert.equal(
+    (
+      readFileSync(runner, 'utf8').match(
+        /export VITE_DISABLE_ANIMATIONS=true/g,
+      ) ?? []
+    ).length,
+    2,
+  );
+
+  for (const taskName of [
+    '@codaco/architect#build',
+    '@codaco/interviewer#build',
+  ]) {
+    assert.ok(
+      turboConfig.tasks[taskName].env.includes('VITE_DISABLE_ANIMATIONS'),
+      `${taskName} hashes the animation flag`,
+    );
+  }
 });

@@ -6,6 +6,7 @@ import type {
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { useStageSelector } from '../../../hooks/useStageSelector';
@@ -48,6 +49,7 @@ const QuickNodeForm = ({
   onShowForm,
   addNode,
 }: QuickNodeFormProps) => {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const [successfulSubmissionCount, setSuccessfulSubmissionCount] = useState(0);
 
@@ -113,9 +115,9 @@ const QuickNodeForm = ({
       <motion.div
         className="absolute right-12 bottom-4 z-20"
         variants={containerVariants}
-        initial="initial"
+        initial={shouldSkipAnimations ? false : 'initial'}
         animate="animate"
-        layout
+        layout={!shouldSkipAnimations}
         data-testid="quick-add-form"
       >
         <Form onSubmit={handleSubmit}>

@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useRef } from 'react';
 
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -86,6 +87,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
     prompt: { id: promptId },
   } = usePrompts<CategoricalBinPrompts>();
   const stageId = useStageSelector(getCurrentStageId);
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const binRef = useRef<HTMLDivElement>(null);
   const celebrate = useCelebrate(binRef, {
     particleSize: 'large',
@@ -143,14 +145,14 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
     return (
       <motion.div
         ref={binRef}
-        layout
-        layoutId={layoutId}
+        layout={!shouldSkipAnimations}
+        layoutId={shouldSkipAnimations ? undefined : layoutId}
         className={panelClasses}
         style={{ ...colorStyle, borderRadius: 16 }}
         onClick={(e) => e.stopPropagation()}
         transition={springTransition}
         variants={binItemVariants}
-        initial="initial"
+        initial={shouldSkipAnimations ? false : 'initial'}
         animate="animate"
       >
         <button
@@ -200,8 +202,8 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
       ref={mergedRef}
       role="button"
       tabIndex={0}
-      layout
-      layoutId={layoutId}
+      layout={!shouldSkipAnimations}
+      layoutId={shouldSkipAnimations ? undefined : layoutId}
       {...dropPropsRest}
       className={circleClasses}
       data-flow-index={flowOrdinal}
@@ -217,6 +219,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
       aria-label={`Category ${label}, ${nodes.length} items`}
       transition={springTransition}
       variants={binItemVariants}
+      initial={shouldSkipAnimations ? false : undefined}
     >
       <Heading level="h4">
         <RenderMarkdown>{label}</RenderMarkdown>

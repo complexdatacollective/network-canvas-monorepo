@@ -35,6 +35,7 @@ docker run --rm \
   --platform "$PLAYWRIGHT_DOCKER_PLATFORM" \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \
+  -e VITE_DISABLE_ANIMATIONS=true \
   -v "$(pwd)":/workspace \
   -v "interviewer-e2e-node-modules-${PLAYWRIGHT_DOCKER_VOLUME_ARCH}":/workspace/node_modules \
   -v "interviewer-e2e-turbo-cache-${PLAYWRIGHT_DOCKER_VOLUME_ARCH}":/workspace/.turbo/cache \

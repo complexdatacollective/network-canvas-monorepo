@@ -6,6 +6,7 @@ import { useLocation } from 'wouter';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -67,6 +68,7 @@ const Timeline = () => {
   const pointerStart = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
   const shouldReduceMotion = useReducedMotion();
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const isFirstMount = useRunOnce('timeline-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
 
@@ -232,7 +234,11 @@ const Timeline = () => {
                 tabIndex={0}
                 key={stage.id}
                 value={stage}
-                layoutId={`timeline-stage-${stage.id}`}
+                layoutId={
+                  shouldSkipAnimations
+                    ? undefined
+                    : `timeline-stage-${stage.id}`
+                }
                 className={itemClasses}
                 variants={timelineStageVariants}
                 onPointerDown={(e) => {

@@ -1,6 +1,7 @@
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import { memo } from 'react';
 
+import { useShouldSkipAnimations } from '../../hooks/useSafeAnimate';
 import { useStaggerAnimation } from '../hooks/useStaggerAnimation';
 import type { Layout } from '../layout/Layout';
 import type { Collection, CollectionProps, ItemRenderer } from '../types';
@@ -32,16 +33,19 @@ function StaticRendererComponent<T>({
   collection,
   renderItem,
   dragAndDropHooks,
-  animate: shouldAnimate,
+  animate,
   animationKey,
   collectionId,
   layoutGroupId,
 }: StaticRendererProps<T>) {
+  const shouldSkipAnimations = useShouldSkipAnimations();
+  const shouldAnimate = !!animate && !shouldSkipAnimations;
+
   // Get CSS styles from layout (flexbox for list, CSS grid for grid)
   const containerStyle = layout.getContainerStyles();
 
   const scope = useStaggerAnimation(
-    shouldAnimate ?? false,
+    shouldAnimate,
     collection.size,
     animationKey,
   );

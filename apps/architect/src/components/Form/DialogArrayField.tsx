@@ -14,6 +14,7 @@ import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import type { RootState } from '~/ducks/modules/root';
 
 import Layout from '../EditorLayout';
@@ -164,6 +165,7 @@ const DialogEditor = ({
   onBeforeSave,
   requestedEditFormName,
 }: DialogEditorProps) => {
+  const shouldSkipAnimations = useShouldSkipAnimations();
   const selectedItem = useSelector((state: RootState) => {
     if (isNewItem || !fieldName || !itemSelector) return null;
     return itemSelector(state, { form, editField: fieldName });
@@ -231,7 +233,11 @@ const DialogEditor = ({
       open={!!item}
       closeDialog={handleCancel}
       dismissible={!isBusy}
-      layoutId={!isNewItem && item ? item._internalId : undefined}
+      layoutId={
+        !shouldSkipAnimations && !isNewItem && item
+          ? item._internalId
+          : undefined
+      }
       style={{ borderRadius: 'var(--radius)' }}
       title={isNewItem ? addTitle : editorTitle}
       size="editor"
