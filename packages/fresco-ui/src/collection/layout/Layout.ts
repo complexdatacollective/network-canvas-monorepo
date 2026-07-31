@@ -52,7 +52,7 @@ export abstract class Layout<T = unknown> {
    */
   abstract getRows(): RowInfo[];
 
-  getItemStyles(): React.CSSProperties {
+  getItemStyles(_key?: Key): React.CSSProperties {
     return {};
   }
 

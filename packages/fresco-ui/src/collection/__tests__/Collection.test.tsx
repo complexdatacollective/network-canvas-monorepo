@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useMemo, useState } from 'react';
+import { type CSSProperties, useMemo, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Collection } from '../components/Collection';
@@ -20,6 +20,12 @@ const testItems: Item[] = [
   { id: '4', name: 'Date' },
   { id: '5', name: 'Elderberry' },
 ];
+
+class KeyedItemGridLayout extends GridLayout<Item> {
+  override getItemStyles(key?: Key): CSSProperties {
+    return key === '2' ? { gridColumn: 'span 2 / span 2' } : {};
+  }
+}
 
 // Wrapper component for controlled selection
 function ControlledCollection({
@@ -86,6 +92,29 @@ describe('Collection', () => {
       expect(screen.getByText('Cherry')).toBeDefined();
       expect(screen.getByText('Date')).toBeDefined();
       expect(screen.getByText('Elderberry')).toBeDefined();
+    });
+
+    it('applies layout styles for each item key', () => {
+      render(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new KeyedItemGridLayout({ minItemWidth: 200 })}
+          animate={false}
+          renderItem={(item, itemProps) => (
+            <div {...itemProps} data-testid={`styled-item-${item.id}`}>
+              {item.name}
+            </div>
+          )}
+        >
+          {(collectionElements) => collectionElements}
+        </Collection>,
+      );
+
+      const layoutItem =
+        screen.getByTestId('styled-item-2').parentElement?.parentElement;
+      expect(layoutItem).toHaveStyle({ gridColumn: 'span 2 / span 2' });
     });
 
     it('preserves native link semantics when requested', () => {

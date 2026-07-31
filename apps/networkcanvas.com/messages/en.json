@@ -168,6 +168,7 @@
       "searchPlaceholder": "Search protocols",
       "clearSearch": "Clear search",
       "results": "{count, plural, =1 {# protocol} other {# protocols}}",
+      "featured": "Featured protocol",
       "filterLabel": "Filter protocols",
       "filters": {
         "all": "All",

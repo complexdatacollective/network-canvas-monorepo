@@ -2,7 +2,6 @@
 
 import {
   ArrowUpRight,
-  LayoutGrid,
   Rows3,
   Search,
   UsersRound,
@@ -11,14 +10,13 @@ import {
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
-import { useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { GridLayout } from '@codaco/fresco-ui/collection/layout/GridLayout';
-import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
-import type { ItemProps } from '@codaco/fresco-ui/collection/types';
+import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
@@ -33,7 +31,6 @@ import type { GalleryProtocol } from '~/lib/protocolGallery';
 
 type FilterId = 'all' | 'sociograms' | 'rosters' | 'dyadCensus';
 type SortId = 'newest' | 'oldest' | 'titleAsc' | 'titleDesc';
-type ViewId = 'cards' | 'table';
 
 const sortConfig: Record<
   SortId,
@@ -75,6 +72,14 @@ function matchesFilter(protocol: GalleryProtocol, filter: FilterId): boolean {
   return true;
 }
 
+class ProtocolGalleryGridLayout extends GridLayout<GalleryProtocol> {
+  override getItemStyles(key?: Key): CSSProperties {
+    if (key === undefined || this.getColumnCount() < 2) return {};
+    const protocol = this.items.get(key)?.value;
+    return protocol?.featured ? { gridColumn: 'span 2 / span 2' } : {};
+  }
+}
+
 function GalleryProtocolCard({
   protocol,
   itemProps,
@@ -87,6 +92,7 @@ function GalleryProtocolCard({
   return (
     <Link
       {...itemProps}
+      data-featured={protocol.featured || undefined}
       href={`/protocol-gallery/${protocol.slug}`}
       aria-label={t('openProtocol', { title: protocol.title })}
       className="focusable group block h-full rounded transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 motion-reduce:transform-none"
@@ -102,6 +108,9 @@ function GalleryProtocolCard({
       >
         <div className="relative z-10 flex min-h-[32rem] w-full flex-1 flex-col gap-[max(10px,2.5cqi)] p-[6cqi]">
           <div className="flex flex-wrap gap-2">
+            {protocol.featured ? (
+              <Badge color="purple-pizazz">{t('featured')}</Badge>
+            ) : null}
             {protocol.usesSociograms ? (
               <Badge color="sea-serpent">{t('filters.sociograms')}</Badge>
             ) : null}
@@ -115,13 +124,21 @@ function GalleryProtocolCard({
           <Heading
             level="h3"
             margin="none"
-            className="text-[max(18px,5cqi)] leading-[1.05] font-black wrap-break-word hyphens-auto"
+            className={
+              protocol.featured
+                ? 'max-w-4xl text-[max(24px,3.5cqi)] leading-[1.05] font-black wrap-break-word hyphens-auto'
+                : 'text-[max(18px,5cqi)] leading-[1.05] font-black wrap-break-word hyphens-auto'
+            }
           >
             {protocol.title}
           </Heading>
           <Paragraph
             margin="none"
-            className="text-sm leading-relaxed text-current/80"
+            className={
+              protocol.featured
+                ? 'max-w-3xl text-base leading-relaxed text-current/80'
+                : 'text-sm leading-relaxed text-current/80'
+            }
           >
             {protocol.description}
           </Paragraph>
@@ -138,56 +155,6 @@ function GalleryProtocolCard({
   );
 }
 
-function ProtocolRow({
-  protocol,
-  itemProps,
-}: {
-  protocol: GalleryProtocol;
-  itemProps: ItemProps;
-}) {
-  const t = useTranslations('ProtocolGallery.collection');
-
-  return (
-    <Link
-      {...itemProps}
-      href={`/protocol-gallery/${protocol.slug}`}
-      aria-label={t('openProtocol', { title: protocol.title })}
-      className="focusable elevation-low group bg-surface/80 tablet-landscape:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.15fr)_auto] grid gap-4 rounded p-5 backdrop-blur-sm transition-transform hover:translate-x-1 focus-visible:translate-x-1 motion-reduce:transform-none"
-    >
-      <div className="min-w-0">
-        <span className="font-heading block text-lg font-black text-balance wrap-break-word">
-          {protocol.title}
-        </span>
-        <span className="text-text/60 mt-1 block text-sm">
-          {protocol.authors}
-        </span>
-      </div>
-      <div>
-        <span className="font-heading text-text/55 tablet-landscape:hidden block text-xs font-bold uppercase">
-          {t('fieldLabel')}
-        </span>
-        <span className="text-sm">{protocol.fields}</span>
-      </div>
-      <div>
-        <span className="font-heading text-text/55 tablet-landscape:hidden block text-xs font-bold uppercase">
-          {t('populationLabel')}
-        </span>
-        <span className="text-sm">{protocol.population}</span>
-      </div>
-      <div>
-        <span className="font-heading text-text/55 tablet-landscape:hidden block text-xs font-bold uppercase">
-          {t('methodLabel')}
-        </span>
-        <span className="text-sm">{protocol.edgeGeneration}</span>
-      </div>
-      <ArrowUpRight
-        aria-hidden
-        className="text-primary tablet-landscape:self-center size-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5 motion-reduce:transform-none"
-      />
-    </Link>
-  );
-}
-
 export function ProtocolGallery({
   protocols,
 }: {
@@ -196,7 +163,6 @@ export function ProtocolGallery({
   const t = useTranslations('ProtocolGallery.collection');
   const [filter, setFilter] = useState<FilterId>('all');
   const [sort, setSort] = useState<SortId>('newest');
-  const [view, setView] = useState<ViewId>('cards');
   const [query, setQuery] = useState('');
   const [resultCount, setResultCount] = useState(protocols.length);
   const prefersReducedMotion = useReducedMotion();
@@ -206,11 +172,8 @@ export function ProtocolGallery({
     [filter, protocols],
   );
   const layout = useMemo(
-    () =>
-      view === 'cards'
-        ? new GridLayout<GalleryProtocol>({ minItemWidth: 310, gap: 6 })
-        : new ListLayout<GalleryProtocol>({ gap: 3 }),
-    [view],
+    () => new ProtocolGalleryGridLayout({ minItemWidth: 310, gap: 6 }),
+    [],
   );
   const activeSort = sortConfig[sort];
 
@@ -259,7 +222,7 @@ export function ProtocolGallery({
         sortDirection={activeSort.direction}
         sortType={activeSort.type}
         animate={prefersReducedMotion !== true}
-        animationKey={`${filter}-${sort}-${view}-${query}`}
+        animationKey={`${filter}-${sort}-${query}`}
         emptyState={
           <div className="bg-surface/75 mx-auto max-w-lg rounded p-10 backdrop-blur-sm">
             <Heading level="h3" margin="none" className="text-2xl">
@@ -270,13 +233,9 @@ export function ProtocolGallery({
             </Paragraph>
           </div>
         }
-        renderItem={(protocol, itemProps) =>
-          view === 'cards' ? (
-            <GalleryProtocolCard protocol={protocol} itemProps={itemProps} />
-          ) : (
-            <ProtocolRow protocol={protocol} itemProps={itemProps} />
-          )
-        }
+        renderItem={(protocol, itemProps) => (
+          <GalleryProtocolCard protocol={protocol} itemProps={itemProps} />
+        )}
       >
         {(collectionElements) => (
           <>
@@ -301,7 +260,7 @@ export function ProtocolGallery({
                   suffixComponent={
                     query ? (
                       <IconButton
-                        size="sm"
+                        size="md"
                         variant="text"
                         aria-label={t('clearSearch')}
                         icon={<X aria-hidden className="size-4" />}
@@ -309,16 +268,16 @@ export function ProtocolGallery({
                       />
                     ) : undefined
                   }
-                  size="lg"
+                  size="md"
                 />
               </div>
-              <div className="desktop:flex-row desktop:items-center desktop:justify-between mt-5 flex min-w-0 flex-col gap-4">
+              <div className="tablet-landscape:flex-row tablet-landscape:items-center tablet-landscape:justify-between mt-4 flex min-w-0 flex-col gap-4">
                 <div className="min-w-0 overflow-x-auto pb-1">
                   <SegmentedSwitcher
                     value={filter}
                     onValueChange={setFilter}
                     aria-label={t('filterLabel')}
-                    size="lg"
+                    size="md"
                     options={[
                       { value: 'all', label: t('filters.all') },
                       {
@@ -339,7 +298,7 @@ export function ProtocolGallery({
                     ]}
                   />
                 </div>
-                <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="shrink-0">
                   <UnconnectedField
                     name="protocol-sort"
                     label={t('sortLabel')}
@@ -351,43 +310,12 @@ export function ProtocolGallery({
                       value: id,
                       label: t(`sortOptions.${id}`),
                     }))}
-                    size="lg"
+                    size="md"
                     className="w-full sm:w-56"
-                  />
-                  <SegmentedSwitcher
-                    value={view}
-                    onValueChange={setView}
-                    aria-label={t('viewLabel')}
-                    size="lg"
-                    options={[
-                      {
-                        value: 'cards',
-                        label: t('views.cards'),
-                        icon: LayoutGrid,
-                      },
-                      {
-                        value: 'table',
-                        label: t('views.table'),
-                        icon: Rows3,
-                      },
-                    ]}
                   />
                 </div>
               </div>
             </Surface>
-
-            {view === 'table' ? (
-              <div
-                aria-hidden
-                className="font-heading text-text/55 tablet-landscape:grid mt-6 hidden grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.15fr)_auto] gap-4 px-5 text-xs font-bold tracking-wide uppercase"
-              >
-                <span>{t('tableHeaders.study')}</span>
-                <span>{t('tableHeaders.field')}</span>
-                <span>{t('tableHeaders.population')}</span>
-                <span>{t('tableHeaders.methods')}</span>
-                <span className="size-5" />
-              </div>
-            ) : null}
 
             <div className="mt-6">{collectionElements}</div>
           </>

@@ -60,6 +60,10 @@ export class GridLayout<T = unknown> extends Layout<T> {
     };
   }
 
+  protected getColumnCount(): number {
+    return this.currentColumnCount;
+  }
+
   getMeasurementInfo(containerWidth?: number): MeasurementInfo {
     // Compute constrainedWidth from containerWidth if provided, avoiding the need
     // for update() to have been called first. This prevents a race condition where

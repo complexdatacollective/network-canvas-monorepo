@@ -168,6 +168,7 @@
       "searchPlaceholder": "Buscar protocolos",
       "clearSearch": "Borrar búsqueda",
       "results": "{count, plural, =1 {# protocolo} other {# protocolos}}",
+      "featured": "Protocolo destacado",
       "filterLabel": "Filtrar protocolos",
       "filters": {
         "all": "Todos",
