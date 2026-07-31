@@ -43,5 +43,9 @@ test('only local snapshot regeneration invokes the Docker wrappers', () => {
       manifest.scripts['test:e2e:update-snapshots'],
       /e2e\/scripts\/run\.sh/,
     );
+    assert.match(
+      manifest.scripts['test:e2e:update-snapshots'],
+      /--update-snapshots=all/,
+    );
   }
 });

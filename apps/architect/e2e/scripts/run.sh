@@ -5,7 +5,7 @@
 # baseline. The image tag is derived from pnpm-lock.yaml so it stays in
 # lock-step with the @playwright/test / playwright catalog pins.
 #
-#   ./e2e/scripts/run.sh --grep @visual --update-snapshots # regenerate PNG baselines
+#   ./e2e/scripts/run.sh --grep @visual --update-snapshots=all # regenerate PNG baselines
 #   ./e2e/scripts/run.sh specs/foo.spec.ts --update-snapshots
 #     # scoped regen — extra args pass through to playwright verbatim. Put
 #     # spec paths BEFORE --update-snapshots: playwright's -u takes an

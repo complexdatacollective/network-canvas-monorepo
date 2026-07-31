@@ -54,7 +54,7 @@ jobs:
         run: >-
           ./scripts/run-e2e-native.sh architect
           --grep @visual
-          --update-snapshots
+          --update-snapshots=all
 
       - name: Regenerate Interview visual snapshots
         if: inputs.suite == 'interview'
@@ -65,14 +65,14 @@ jobs:
           --project=chromium-visual
           --project=firefox-visual
           --project=webkit-visual
-          --update-snapshots
+          --update-snapshots=all
 
       - name: Regenerate Interviewer visual snapshots
         if: inputs.suite == 'interviewer'
         run: >-
           ./scripts/run-e2e-native.sh interviewer
           --grep @visual
-          --update-snapshots
+          --update-snapshots=all
 
       - name: Stage canonical snapshot paths
         env:

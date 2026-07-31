@@ -92,6 +92,11 @@ test('pixel comparison and generation use native GitHub-hosted ARM64', () => {
   );
   assert.match(snapshotWorkflow, /\.\/scripts\/run-e2e-native\.sh/);
   assert.doesNotMatch(snapshotWorkflow, /e2e\/scripts\/run\.sh|docker/i);
+  assert.equal(
+    snapshotWorkflow.match(/--update-snapshots=all/g)?.length,
+    3,
+    'every focused regeneration rewrites every selected PNG',
+  );
   assert.match(
     snapshotWorkflow,
     /if: inputs\.suite == 'interviewer'[\s\S]{0,180}browsers: chromium\n/,
