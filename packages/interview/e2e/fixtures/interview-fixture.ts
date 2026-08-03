@@ -123,8 +123,6 @@ export class InterviewFixture {
   async captureFinal(mask?: Locator[]): Promise<void> {
     const step = this.getCurrentStep();
     if (step) {
-      await this.waitForMotionCommit();
-
       const hasScrollableContent = await this.page.evaluate(() => {
         const modified = new Map<HTMLElement, string>();
         const scrollers = Array.from(

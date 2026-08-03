@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
 
@@ -54,6 +55,7 @@ export default function DyadCensus(props: DyadCensusProps) {
   const { moveForward } = getNavigationHelpers();
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
+  const shouldSkipAnimations = useShouldSkipAnimations();
 
   const baseId = useId();
   const pairLabelId = `${baseId}-pair`;
@@ -196,19 +198,23 @@ export default function DyadCensus(props: DyadCensusProps) {
   moveForwardRef.current = moveForward;
 
   useEffect(() => {
-    if (!isTouched) return;
+    if (!isTouched || !isAnswered) return;
 
-    if (!isChanged) {
+    const advance = () => {
+      setIsTouched(false);
+      setIsChanged(false);
       moveForwardRef.current();
+    };
+
+    if (!isChanged || shouldSkipAnimations) {
+      advance();
       return;
     }
 
-    const timer = setTimeout(() => {
-      moveForwardRef.current();
-    }, 350);
+    const timer = setTimeout(advance, 350);
 
     return () => clearTimeout(timer);
-  }, [isTouched, isChanged]);
+  }, [isTouched, isChanged, isAnswered, shouldSkipAnimations]);
 
   // Edge state management
   const setEdge = (value: boolean | undefined) => {

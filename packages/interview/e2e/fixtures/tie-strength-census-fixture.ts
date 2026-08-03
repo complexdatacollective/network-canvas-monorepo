@@ -4,9 +4,9 @@ import { expect, type Locator, type Page } from '@playwright/test';
  * Fixture for TieStrengthCensus stages.
  *
  * Iterates every unique unordered pair of subject-type nodes, once per prompt,
- * offering an ordinal "tie strength" choice plus a decline option. Auto-advances
- * 350ms after a changed answer, immediately after an unchanged one
- * (TieStrengthCensus.tsx:277-294).
+ * offering an ordinal "tie strength" choice plus a decline option. Changed
+ * answers retain a 350ms selection animation in normal sessions and advance
+ * immediately when motion is disabled.
  *
  * Scenarios instantiate this directly (the shared StageFixture only carries a
  * placeholder), so the class is self-contained around a Page.
@@ -69,12 +69,9 @@ export class TieStrengthCensusFixture {
   }
 
   /**
-   * Settle-wait for the auto-advance to land on a different pair. Auto-advance
-   * runs on the REAL 350ms setTimeout (TieStrengthCensus.tsx:277-294), and
-   * Pair's enter/exit spring animations also run on the real clock — faking
-   * timers via page.clock would freeze those animations mid-transition instead
-   * of completing them, so we poll for the observable effect (the pair
-   * changing) on the real clock rather than fast-forwarding a fake one.
+   * Wait for the auto-advance to land on a different pair. Production sessions
+   * retain the selection delay, while the E2E host disables motion and advances
+   * immediately. Polling the observable pair change covers both modes.
    */
   async waitForPairChange(previousLabels: [string, string]): Promise<void> {
     await expect
