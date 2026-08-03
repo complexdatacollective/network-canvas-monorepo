@@ -286,22 +286,25 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   moveForwardRef.current = moveForward;
 
   useEffect(() => {
-    if (!isTouched || hasEdge === null) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
-    const advance = () => {
-      setIsTouched(false);
-      setIsChanged(false);
-      moveForwardRef.current();
-    };
+    if (isTouched && hasEdge !== null) {
+      const advance = () => {
+        setIsTouched(false);
+        setIsChanged(false);
+        moveForwardRef.current();
+      };
 
-    if (!isChanged || shouldSkipAnimations) {
-      advance();
-      return;
+      if (!isChanged || shouldSkipAnimations) {
+        advance();
+      } else {
+        timer = setTimeout(advance, 350);
+      }
     }
 
-    const timer = setTimeout(advance, 350);
-
-    return () => clearTimeout(timer);
+    return () => {
+      if (timer !== undefined) clearTimeout(timer);
+    };
   }, [isTouched, isChanged, hasEdge, shouldSkipAnimations]);
 
   // Handle option selection
