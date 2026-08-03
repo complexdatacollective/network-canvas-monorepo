@@ -106,21 +106,22 @@ pnpm --filter "./packages/*" build
 pnpm --filter "./apps/*" dev
 ```
 
-To run the two public sites together, give each app the other app's local
-origin and use separate ports:
+Run the two public sites together with one command:
 
 ```bash
-NEXT_PUBLIC_NETWORK_CANVAS_URL=http://localhost:3001 \
-  pnpm --filter @codaco/documentation dev --port 3000
-
-NEXT_PUBLIC_DOCUMENTATION_URL=http://localhost:3000 \
-  pnpm --filter networkcanvas.com dev --port 3001
+pnpm dev:sites
 ```
 
-The same variables may be set in each app's `.env.local`. Netlify deploy
-previews derive the matching peer preview from `REVIEW_ID` when no explicit
-override is configured; normal production builds fall back to the canonical
-`.com` origins.
+Documentation runs at `http://localhost:3000` and networkcanvas.com at
+`http://localhost:3001`. Each app automatically loads the other origin from
+its committed `.env.development` file. To use different origins, override
+`NEXT_PUBLIC_NETWORK_CANVAS_URL` in
+`apps/documentation/.env.development.local` and
+`NEXT_PUBLIC_DOCUMENTATION_URL` in
+`apps/networkcanvas.com/.env.development.local`; these local files are ignored
+by Git. Netlify deploy previews derive the matching peer preview from
+`REVIEW_ID`, while normal production builds fall back to the canonical `.com`
+origins.
 
 ### Architect Template Editor Mode
 

@@ -4,6 +4,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo watch dev",
+    "dev:sites": "turbo watch dev --filter=@codaco/documentation --filter=networkcanvas.com",
     "test": "turbo run test",
     "test:watch": "turbo watch test:watch",
     "test:scripts": "node --test scripts/*.test.mjs",
