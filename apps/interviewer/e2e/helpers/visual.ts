@@ -105,12 +105,13 @@ export function makeCapture(page: Page): CaptureFn {
   };
 }
 
-// Settings → About's app version varies between generated release branches;
-// the storage estimate (the "Storage usage" progress bar and its "X of Y (Z%)"
-// desc text) and per-device installation id vary by environment/browser
-// profile. Mask those values so one canonical baseline works for every release
-// gate while the row labels and layout remain asserted. The settings spec
-// verifies the version value semantically before capture.
+// Settings → About's storage estimate (the "Storage usage" progress bar and
+// its "X of Y (Z%)" desc text) and per-device installation id vary by
+// environment/browser profile. Mask those values so one canonical baseline
+// works for every release gate while the row labels and layout remain asserted.
+// The settings spec verifies the app version semantically, then hides its text
+// while preserving its layout before capture; masking the text itself would
+// make the mask width depend on the release version.
 export function settingsAboutMasks(page: Page): Locator[] {
   const storageHeading = page.getByRole('heading', {
     level: 4,
@@ -123,10 +124,6 @@ export function settingsAboutMasks(page: Page): Locator[] {
     exact: true,
   });
   return [
-    // Match the text-bearing span itself. Walking up from the heading to the
-    // control column can select a responsive layout container whose painted
-    // area includes unrelated settings content.
-    page.getByText(APP_VERSION_PATTERN, { exact: true }),
     page.getByRole('progressbar', { name: 'Storage usage' }),
     // SettingsRow renders the desc text as the heading's next sibling, inside
     // their shared title/desc column.
