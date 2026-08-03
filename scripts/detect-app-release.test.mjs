@@ -159,3 +159,14 @@ test('does not deploy an unchanged stable website version', () => {
   });
   assert.equal(out.released, 'false');
 });
+
+test('does not deploy a changed prerelease from the stable website lane', () => {
+  const out = detect({
+    previousVersion: '0.1.1',
+    version: '0.1.2-beta.1',
+    pkgName: 'networkcanvas.com',
+    pkgJson: 'apps/networkcanvas.com/package.json',
+    releaseChannel: 'stable',
+  });
+  assert.equal(out.released, 'false');
+});

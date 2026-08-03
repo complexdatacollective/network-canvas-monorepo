@@ -41,7 +41,7 @@ if [[ "$release_channel" == 'stable-tagged' ]] && [[ "$current" =~ $stable_re ]]
     released=true
     reason="stable version $current has no release tag yet"
   fi
-elif [[ "$release_channel" == 'stable' ]]; then
+elif [[ "$release_channel" == 'stable' ]] && [[ "$current" =~ $stable_re ]]; then
   previous=$(git show "HEAD^:$PKG_JSON" 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version" || true)
   if git rev-parse -q --verify "refs/tags/$PKG_NAME@$current" >/dev/null; then
     reason="tag $PKG_NAME@$current already exists"
@@ -51,7 +51,7 @@ elif [[ "$release_channel" == 'stable' ]]; then
   else
     reason="stable version unchanged from previous main commit"
   fi
-elif [[ "$release_channel" != 'stable-tagged' ]]; then
+elif [[ "$release_channel" != 'stable-tagged' ]] && [[ "$release_channel" != 'stable' ]]; then
   echo "Unsupported RELEASE_CHANNEL: $release_channel" >&2
   exit 1
 fi
