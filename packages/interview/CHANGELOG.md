@@ -1,5 +1,11 @@
 # @codaco/interview
 
+## 7.0.2
+
+### Patch Changes
+
+- fde9bb4: Make animation-aware components consistently respect disabled and reduced motion, and advance Dyad Census and Tie Strength Census immediately after committed answers when motion is disabled.
+
 ## 7.0.1
 
 ### Patch Changes

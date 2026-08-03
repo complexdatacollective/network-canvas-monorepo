@@ -1,5 +1,14 @@
 # @codaco/architect
 
+## 8.0.0
+
+### Patch Changes
+
+- cd88c3e: Architect 8 and Interviewer 8 are now stable releases. Future app versions follow standard semantic versioning and deploy to production when the Version Packages release PR is merged.
+- Updated dependencies [fde9bb4]
+  - @codaco/fresco-ui@5.0.2
+  - @codaco/interview@7.0.2
+
 ## 8.0.0-beta.13
 
 ### Patch Changes
@@ -337,6 +346,7 @@
 ### Minor Changes
 
 - 273bcbe: Add optional showTransit and allowSearch configuration options to geospatial interface mapOptions:
+
   - showTransit: When enabled, Fresco displays transit layers on the map
   - allowSearch: When enabled, participants can search the map for locations
 
