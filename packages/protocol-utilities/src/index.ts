@@ -11,4 +11,7 @@ export { generateNetwork } from './generateNetwork';
 export { todayYmd } from './generateNetwork/constraints/dateWindow';
 export type { ConstraintConflict } from './generateNetwork/constraints/error';
 export { SyntheticDataConstraintError } from './generateNetwork/constraints/error';
-export { SyntheticInterview } from './SyntheticInterview';
+export {
+  DEFAULT_SYNTHETIC_SEED,
+  SyntheticInterview,
+} from './SyntheticInterview';

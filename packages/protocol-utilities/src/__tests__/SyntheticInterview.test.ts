@@ -8,10 +8,25 @@ import {
 } from '@codaco/shared-consts';
 
 import { SyntheticDataConstraintError } from '../generateNetwork/constraints/error';
-import { SyntheticInterview } from '../SyntheticInterview';
+import {
+  DEFAULT_SYNTHETIC_SEED,
+  SyntheticInterview,
+} from '../SyntheticInterview';
 
 describe('SyntheticInterview', () => {
   describe('determinism', () => {
+    it('uses the shared synthetic seed by default', () => {
+      const implicit = new SyntheticInterview();
+      const explicit = new SyntheticInterview(DEFAULT_SYNTHETIC_SEED);
+
+      implicit.addStage('Sociogram', { initialNodes: { count: 5 } });
+      explicit.addStage('Sociogram', { initialNodes: { count: 5 } });
+
+      expect(implicit.getInterviewPayload()).toEqual(
+        explicit.getInterviewPayload(),
+      );
+    });
+
     it('produces identical protocol output for the same seed', () => {
       const a = new SyntheticInterview(42);
       const b = new SyntheticInterview(42);

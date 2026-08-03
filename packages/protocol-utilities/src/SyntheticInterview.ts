@@ -297,6 +297,9 @@ const SUBJECTLESS_STAGES = new Set<StageType>([
 // Stage types where the subject is an edge, not a node
 const EDGE_SUBJECT_STAGES = new Set<StageType>(['AlterEdgeForm']);
 
+/** Shared default for deterministic synthetic interview fixtures. */
+export const DEFAULT_SYNTHETIC_SEED = 42;
+
 export class SyntheticInterview {
   private seed: number;
   private idCounter = 0;
@@ -313,7 +316,7 @@ export class SyntheticInterview {
   private ordinalPromptCounter = 0;
   private experiments: { encryptedVariables?: boolean } | null = null;
 
-  constructor(seed = 42) {
+  constructor(seed = DEFAULT_SYNTHETIC_SEED) {
     this.seed = seed;
     this.valueGen = new ValueGenerator(seed);
   }
