@@ -44,7 +44,6 @@ jobs:
           script: |
             const releaseRef = process.env.RELEASE_REF;
             const releaseRefs = new Set([
-              'changeset-release/apps',
               'changeset-release/documentation',
               'changeset-release/main',
               'changeset-release/website',

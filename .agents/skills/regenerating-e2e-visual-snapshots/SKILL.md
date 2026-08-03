@@ -31,16 +31,15 @@ intended baseline changes. Keep generation separate from normal verification.
 ## Respond to a release E2E failure
 
 The complete Architect, Interview, and Interviewer E2E suites run in CI only for
-the generated library branch `changeset-release/main`, the combined app branch
-`changeset-release/apps`, the independent
-`changeset-release/documentation` and `changeset-release/website` branches, and
-merge groups whose package or product versions trigger a release. The required
-`quality` check conditionally waits for all three E2E results in those cases.
-Ordinary PRs skip E2E and never inherit an older E2E result.
+the normal Changesets branch `changeset-release/main` and merge groups whose
+library, Architect, or Interviewer versions trigger a release. The independent
+`changeset-release/documentation` and `changeset-release/website` branches ship
+none of the E2E subjects. The required `quality` check conditionally waits for
+the selected E2E results. Ordinary PRs skip E2E and never inherit an older E2E
+result.
 
-The release automation explicitly dispatches CI after creating or updating a
-generated release branch, so a normal release PR does not need a manual E2E
-trigger.
+Generated release branches use a dedicated token so their native pull-request
+CI runs without a manual E2E trigger.
 
 When an E2E suite reports a visual-snapshot failure on a generated release PR,
 CI invokes this workflow for that suite's focused capture cases. If generation

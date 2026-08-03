@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Version step for one gated product release lane. It increments an Architect or
-// Interviewer beta version, or bumps a website with normal semver, writes a
-// CHANGELOG section, deletes consumed changesets, and emits a PR-body summary.
+// Version step for one separately gated product release lane. It bumps a site
+// with normal semver, writes a CHANGELOG section, deletes consumed changesets,
+// and emits a PR-body summary. Private Architect and Interviewer releases use
+// the normal Changesets CLI instead of this helper.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,8 +12,6 @@ import {
   GATED_PRODUCT_DIRS,
   GATED_PRODUCT_PACKAGES,
   GATED_PRODUCT_RELEASE_LANES,
-  STABLE_GATED_PRODUCT_PACKAGES,
-  nextBetaVersion,
   nextStableVersion,
   readChangesets,
   releaseLaneForProduct,
@@ -42,9 +41,7 @@ export function planProductReleases(
       pkg,
       dir,
       from: current,
-      to: STABLE_GATED_PRODUCT_PACKAGES.includes(pkg)
-        ? nextStableVersion(current, entries)
-        : nextBetaVersion(current),
+      to: nextStableVersion(current, entries),
       entries,
     });
   }
@@ -97,9 +94,6 @@ export function renderPrBody(plans) {
   const products = plans.map((plan) => `\`${plan.pkg}\``);
   const lines = [
     `Merging this PR releases ${products.join(' and ')} to Netlify **production**.`,
-    ...(plans.every((plan) => STABLE_GATED_PRODUCT_PACKAGES.includes(plan.pkg))
-      ? []
-      : ['It also creates a GitHub prerelease.']),
     '',
     '| Product | From | To |',
     '| --- | --- | --- |',
@@ -190,7 +184,7 @@ function main() {
   if (outPath) writeFileSync(outPath, body);
   process.stdout.write(body);
   console.error(
-    `[version-beta-apps] planned ${selectedPackages.join(', ')}: ${plans.length} release(s); consumed ${consumed.length} changeset(s).`,
+    `[version-gated-products] planned ${selectedPackages.join(', ')}: ${plans.length} release(s); consumed ${consumed.length} changeset(s).`,
   );
 }
 

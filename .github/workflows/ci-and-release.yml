@@ -245,9 +245,8 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   # Route the longest E2E suite. The single-slot private runner is reserved for
-  # the library release lane, where Interview runs alongside hosted Architect
-  # and Interviewer suites. The combined app lane stays hosted, preventing a
-  # burst of generated release PRs from serialising behind one private slot.
+  # the normal Changesets release lane, where Interview runs alongside hosted
+  # Architect and Interviewer suites.
   # The availability check requires online AND idle; `runs-on` has no native
   # fallback after a job has been queued.
   #
@@ -277,8 +276,9 @@ jobs:
           pw_workers=4
           runner_class=github-hosted
 
-          # Normal automatic routing gives only the library lane access to the
-          # private runner. A benchmark may explicitly select either class.
+          # Normal automatic routing gives only the normal Changesets lane
+          # access to the private runner. A benchmark may explicitly select
+          # either class.
           private_eligible=false
           if [[ "$RUNNER_OVERRIDE" == "self-hosted" ]]; then
             private_eligible=true
@@ -1289,11 +1289,11 @@ jobs:
         # `src` and every referenced file exists — guarding the swap before the
         # changesets/action publish below.
         run: node scripts/verify-publish-exports.mjs
-      - name: Hide gated-product changesets from the library release
-        # Product changesets persist until their release PR consumes them, but
-        # changesets/action counts them as pending: it would push an empty
-        # Version Packages branch (PR creation 422s) and never reach its
-        # publish path. Working-tree-only deletion; see the script header.
+      - name: Hide separately gated product changesets from the normal release
+        # Documentation and Website changesets persist until their own release
+        # PR consumes them. Architect and Interviewer intentionally remain for
+        # the normal Changesets CLI to version alongside library packages.
+        # Working-tree-only deletion; see the script header.
         run: node scripts/prune-ignored-changesets.mjs
       - id: changesets
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
@@ -1308,10 +1308,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
-  # Maintains one generated PR per gated release lane (siblings of the library
-  # "Version Packages" PR). Architect and Interviewer share one app lane so a
-  # main push produces at most one current-app release gate and one set of E2E
-  # suites. Documentation and Website remain independently releasable.
+  # Maintains generated PRs for the products that remain outside the normal
+  # "Version Packages" PR. Architect and Interviewer now use that standard
+  # Changesets lane; Documentation and Website remain independently releasable.
   product-release-pr:
     name: Release PR (${{ matrix.product }})
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -1319,9 +1318,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - product: Architect and Interviewer
-            slug: apps
-            package_args: "--package '@codaco/architect' --package '@codaco/interviewer'"
           - product: Documentation
             slug: documentation
             package_args: "--package '@codaco/documentation'"
@@ -1350,7 +1346,7 @@ jobs:
         run: pnpm check:changesets
       - name: Compute ${{ matrix.product }} version bump
         run: >-
-          node scripts/version-beta-apps.mjs ${{ matrix.package_args }}
+          node scripts/version-gated-products.mjs ${{ matrix.package_args }}
           --out "${RUNNER_TEMP}/product-release-body.md"
       - name: Open/update the ${{ matrix.product }} release PR
         id: product_pr
@@ -1365,28 +1361,9 @@ jobs:
           title: 'Release ${{ matrix.product }}'
           commit-message: 'chore(release): version ${{ matrix.slug }}'
           body-path: ${{ runner.temp }}/product-release-body.md
-      - name: Retire superseded separate app release PRs
-        if: matrix.slug == 'apps'
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
-          COMBINED_PR: ${{ steps.product_pr.outputs.pull-request-url }}
-        run: |
-          for branch in changeset-release/architect changeset-release/interviewer; do
-            gh pr list \
-              --state open \
-              --head "$branch" \
-              --json number \
-              --jq '.[].number' |
-              while read -r number; do
-                [[ -z "$number" ]] && continue
-                gh pr close "$number" --delete-branch \
-                  --comment "Superseded by the combined Architect and Interviewer release lane${COMBINED_PR:+: $COMBINED_PR}."
-              done
-          done
-
-  # On a push to main that changes a gated product version (i.e. one product's
-  # release PR just merged), detect which product moved. Idempotency is a local
-  # git-tag check (no external repo).
+  # On a push to main that changes a released product version (i.e. a release PR
+  # just merged), detect which product moved. Idempotency is a local git-tag
+  # check (no external repo).
   apps-release-detect:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -1413,6 +1390,7 @@ jobs:
         env:
           PKG_JSON: apps/architect/package.json
           PKG_NAME: '@codaco/architect'
+          RELEASE_CHANNEL: stable-tagged
         run: bash .github/scripts/detect-app-release.sh
       - id: documentation
         env:
@@ -1424,6 +1402,7 @@ jobs:
         env:
           PKG_JSON: apps/interviewer/package.json
           PKG_NAME: '@codaco/interviewer'
+          RELEASE_CHANNEL: stable-tagged
         run: bash .github/scripts/detect-app-release.sh
       - id: website
         env:
@@ -1504,8 +1483,8 @@ jobs:
           tag_name: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
           name: Architect ${{ needs.apps-release-detect.outputs.architect_version }}
           body_path: ${{ runner.temp }}/architect-notes.md
-          prerelease: true
-          make_latest: 'false'
+          prerelease: false
+          make_latest: 'true'
 
   # Build, deploy to Netlify production, and cut a GitHub release for interviewer
   # when its version changed. Separate job (see apps-release-architect) so a
@@ -1574,8 +1553,8 @@ jobs:
           tag_name: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
           name: Interviewer ${{ needs.apps-release-detect.outputs.interviewer_version }}
           body_path: ${{ runner.temp }}/interviewer-notes.md
-          prerelease: true
-          make_latest: 'false'
+          prerelease: false
+          make_latest: 'true'
 
   # Documentation follows the same generated-release-PR gate as the PWA apps,
   # but uses normal semver and produces only a Netlify deployment + git tag.

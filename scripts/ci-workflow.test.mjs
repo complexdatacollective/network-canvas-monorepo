@@ -115,7 +115,7 @@ test('each release E2E suite gates on its own policy flag', () => {
   }
 });
 
-test('automatic private E2E routing is idle-aware and library-lane only', () => {
+test('automatic private E2E routing is idle-aware and normal-release-lane only', () => {
   const picker = job('pick-e2e-runner');
   assert.ok(picker, 'pick-e2e-runner job exists');
   assert.match(picker, /\.busy == false/);
@@ -333,26 +333,48 @@ test('generated release PRs use the dedicated PAT and rely on native PR CI', () 
   assert.doesNotMatch(productReleaseJob, /actions: write/);
 });
 
-test('Architect and Interviewer share one generated app release lane', () => {
+test('Architect and Interviewer use the normal Changesets release lane', () => {
+  const releaseJob = job('release');
   const productReleaseJob = job('product-release-pr');
+  assert.ok(releaseJob, 'release job exists');
   assert.ok(productReleaseJob, 'product release PR job exists');
-  assert.match(productReleaseJob, /slug: apps/);
-  assert.match(
-    productReleaseJob,
-    /--package '@codaco\/architect' --package '@codaco\/interviewer'/,
-  );
+  assert.match(releaseJob, /uses: changesets\/action@/);
+  assert.doesNotMatch(productReleaseJob, /slug: apps/);
+  assert.doesNotMatch(productReleaseJob, /@codaco\/architect/);
+  assert.doesNotMatch(productReleaseJob, /@codaco\/interviewer/);
   assert.match(
     productReleaseJob,
     /branch: changeset-release\/\$\{\{ matrix\.slug \}\}/,
   );
-  assert.match(productReleaseJob, /Retire superseded separate app release PRs/);
-  assert.doesNotMatch(productReleaseJob, /slug: architect/);
-  assert.doesNotMatch(productReleaseJob, /slug: interviewer/);
+});
+
+test('stable app versions deploy to their Netlify production sites', () => {
+  const detectJob = job('apps-release-detect');
+  assert.ok(detectJob, 'apps release detector exists');
+  for (const app of ['architect', 'interviewer']) {
+    assert.match(
+      detectJob,
+      new RegExp(
+        `PKG_JSON: apps/${app}/package\\.json[\\s\\S]*?RELEASE_CHANNEL: stable-tagged`,
+      ),
+    );
+
+    const releaseJob = job(`apps-release-${app}`);
+    assert.ok(releaseJob, `${app} production release job exists`);
+    assert.match(
+      releaseJob,
+      new RegExp(
+        `netlify-cli@22 deploy --no-build --prod[\\s\\S]*?--site="\\$\\{\\{ secrets\\.NETLIFY_SITE_ID_${app.toUpperCase()} \\}\\}"`,
+      ),
+    );
+    assert.match(releaseJob, /prerelease: false/);
+    assert.match(releaseJob, /make_latest: 'true'/);
+  }
 });
 
 test('snapshot update workflow accepts only current release branches', () => {
-  assert.match(snapshotWorkflow, /'changeset-release\/apps'/);
   assert.match(snapshotWorkflow, /'changeset-release\/main'/);
+  assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/apps'/);
   assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/architect'/);
   assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/interviewer'/);
 });

@@ -134,22 +134,20 @@ pnpm version-packages
 pnpm publish-packages
 ```
 
-#### Changeset lanes: libraries vs gated products
+#### Changeset lanes: normal vs separately gated products
 
-- **Publishable library packages** under `packages/*` release to npm via
-  `changesets/action` (the "Version Packages" PR). Private packages stay in the
-  same dependency graph but are not published.
-- **Gated products** release through three lanes. Architect and Interviewer
-  share `changeset-release/apps`; each app with a pending changeset increments
-  its own `-beta.N`, deploys independently, and creates its own GitHub release
-  when the combined PR merges. Documentation and networkcanvas.com keep
-  independent stable-semver release PRs and Git tags.
-- **One release lane per changeset.** Never put a gated product and a library,
-  or products from different gated lanes, in the same changeset.
-  `pnpm check:changesets` rejects both. Architect and Interviewer may share one
-  changeset because they share the apps lane.
+- **The normal Changesets lane** contains publishable libraries under
+  `packages/*` plus the private Architect and Interviewer apps. All use normal
+  semver and are versioned by `changesets/action` in the **Version Packages** PR
+  (`changeset-release/main`). Libraries publish to npm; changed apps deploy to
+  Netlify production and receive a GitHub release after that PR merges.
+- **Separately gated products** are Documentation and networkcanvas.com. They
+  keep independent stable-semver release PRs, production deploys, and Git tags.
+- **One release lane per changeset.** A normal-lane changeset may combine
+  libraries, Architect, and Interviewer. Never mix Documentation or Website
+  with the normal lane or with each other; `pnpm check:changesets` rejects it.
 - See the `creating-a-changeset` skill and
-  `docs/superpowers/specs/2026-07-03-pwa-app-beta-releases-design.md`.
+  `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
 
 ## Architecture Overview
 
@@ -330,10 +328,9 @@ stories.
 CI runs the Architect, Interview, and Interviewer E2E suites only for
 generated release branches (`changeset-release/*`) and merge groups whose
 package or product version changes will trigger a release — and only the
-suites whose subjects ship in that release lane: the library lane
-(`changeset-release/main`) runs all three; the combined apps lane
-(`changeset-release/apps`) runs the changed app's suite plus Interview, or all
-three when both apps change; the Documentation and Website lanes run none. The
+suites whose subjects ship in that release lane: the normal Changesets lane
+(`changeset-release/main`) runs all three because it versions libraries,
+Architect, and Interviewer; the Documentation and Website lanes run none. The
 mapping lives in
 `scripts/release-e2e-policy.mjs`, and its test derives the expected lanes from
 the real package.json dependency graph so the table cannot silently drift.

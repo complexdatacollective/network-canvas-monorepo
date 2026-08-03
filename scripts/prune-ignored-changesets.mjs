@@ -2,13 +2,12 @@
 // The library release (changesets/action) picks between its two paths by
 // whether any changeset files exist: some pending -> push a Version Packages
 // branch and open a PR; none pending -> publish unpublished packages to npm.
-// Gated-product changesets deliberately persist in .changeset/ until their
-// product release PR consumes them, but `changeset version` never touches
-// them (their packages are in the config `ignore` list) — so when only
-// product changesets are pending, the action pushes a branch identical to
-// main (PR creation then fails with "No commits between...") and the publish
-// path never runs, silently skipping npm publishes after a Version Packages
-// merge.
+// Separately gated product changesets deliberately persist in .changeset/
+// until their product release PR consumes them, but `changeset version` never
+// touches them (their packages are in the config `ignore` list) — so when only
+// those changesets are pending, the action pushes a branch identical to main
+// (PR creation then fails with "No commits between...") and the publish path
+// never runs, silently skipping npm publishes after a Version Packages merge.
 //
 // Deleting ignored-lane changesets from the working tree before the action
 // reads state scopes its decision to the library lane. Nothing is committed:
