@@ -40,7 +40,10 @@ describe('BooleanField negative options', () => {
     );
 
     const negativeOption = screen.getByRole('radio', { name: 'No' });
+    const negativeIndicator = negativeOption.querySelector('svg');
     expect(negativeOption.className).not.toContain('border-destructive');
+    expect(negativeIndicator).toHaveClass('text-primary');
+    expect(negativeIndicator).not.toHaveClass('text-destructive');
 
     rerender(
       <BooleanField
@@ -54,12 +57,15 @@ describe('BooleanField negative options', () => {
     expect(screen.getByRole('radio', { name: 'No' }).className).toContain(
       'border-destructive',
     );
+    expect(negativeIndicator).toHaveClass('text-destructive');
+    expect(negativeIndicator).not.toHaveClass('text-primary');
     expect(screen.getByRole('radio', { name: 'Yes' }).className).not.toContain(
       'border-destructive',
     );
   });
 
   it('reports the option value unchanged when a negative option is chosen', async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <BooleanField
@@ -70,7 +76,7 @@ describe('BooleanField negative options', () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole('radio', { name: 'No' }));
+    await user.click(screen.getByRole('radio', { name: 'No' }));
 
     expect(onChange).toHaveBeenCalledWith(false);
   });

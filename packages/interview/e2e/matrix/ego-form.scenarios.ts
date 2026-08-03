@@ -509,7 +509,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         await expect(sure).toHaveAttribute('data-value', 'true');
         await expect(nope).toHaveAttribute('data-value', 'false');
         await expect(nope).toHaveAttribute('data-negative', 'true');
-        await expect(sure).not.toHaveAttribute('data-negative', 'true');
+        await expect(sure).not.toHaveAttribute('data-negative');
         await nope.click();
 
         await interview.next();

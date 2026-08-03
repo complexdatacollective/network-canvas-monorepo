@@ -123,7 +123,7 @@ function BooleanIndicator({
         fill="currentColor"
         className={cx(
           'size-full overflow-hidden rounded-full p-[0.1em]',
-          negative ? 'text-destructive' : 'text-primary',
+          negative && isSelected ? 'text-destructive' : 'text-primary',
         )}
       >
         <motion.circle
