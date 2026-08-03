@@ -49,6 +49,54 @@ test('detect never runs on push-to-main (its consumers are PR/dispatch only)', (
   assert.match(detectJob, /inputs\.interview_e2e_benchmark == true/);
 });
 
+test('both public sites crawl their matching Netlify deploy previews', () => {
+  const detectJob = job('detect');
+  assert.ok(detectJob, 'detect job exists');
+  assert.match(detectJob, /docs: \$\{\{ steps\.flags\.outputs\.docs \}\}/);
+  assert.match(
+    detectJob,
+    /website: \$\{\{ steps\.flags\.outputs\.website \}\}/,
+  );
+  assert.match(
+    detectJob,
+    /if \[\[ "\$docs" == "true" \|\| "\$website" == "true" \]\]; then\n\s+docs=true\n\s+website=true/,
+    'a change to either public site triggers both preview crawls',
+  );
+
+  for (const [jobName, flag, siteName, startPath] of [
+    ['docs-preview-checks', 'docs', 'documentation-dev', 'DOCS_URL'],
+    [
+      'website-preview-checks',
+      'website',
+      'networkcanvasdotdev',
+      'WEBSITE_URL/en-US/',
+    ],
+  ]) {
+    const previewJob = job(jobName);
+    assert.ok(previewJob, `${jobName} exists`);
+    assert.match(
+      previewJob,
+      new RegExp(`needs\\.detect\\.outputs\\.${flag} == 'true'`),
+    );
+    assert.match(previewJob, new RegExp(`const siteName = '${siteName}'`));
+    assert.match(
+      previewJob,
+      new RegExp(
+        `deploy-preview-\\$\\{context\\.issue\\.number\\}--\\$\\{siteName\\}\\.netlify\\.app`,
+      ),
+    );
+    assert.match(previewJob, /@jthrilly\/dead-link-checker@\^1\.1\.0/);
+    assert.match(previewJob, new RegExp(`"\\$${startPath}"`));
+  }
+
+  const carryForward = job('carry-forward-statuses');
+  assert.ok(carryForward, 'carry-forward-statuses job exists');
+  assert.match(carryForward, /- docs-preview-checks/);
+  assert.match(carryForward, /- website-preview-checks/);
+  assert.match(carryForward, /FLAG_DOCS: \["docs-preview-checks"\]/);
+  assert.match(carryForward, /FLAG_WEBSITE: \["website-preview-checks"\]/);
+});
+
 test('each release E2E suite gates on its own policy flag', () => {
   for (const [jobName, flag] of [
     ['interview-e2e', 'interview'],
@@ -114,6 +162,53 @@ test('manual Interview E2E benchmarks cannot enter the legacy release lane', () 
       /needs\.legacy-release-detect\.outputs\.(?:architect|interviewer)_released == 'true'/,
     );
   }
+});
+
+test('published Classic releases advance latest and rebuild the website', () => {
+  for (const [jobName, repository] of [
+    ['interviewer-release-publish', 'interviewer'],
+    ['architect-release-publish', 'architect'],
+  ]) {
+    const publishJob = job(jobName);
+    assert.ok(publishJob, `${jobName} exists`);
+    assert.match(
+      publishJob,
+      new RegExp(`repository: complexdatacollective/${repository}`),
+    );
+    assert.match(publishJob, /draft: false[\s\S]*?make_latest: 'true'/);
+  }
+
+  const websiteRelease = job('apps-release-website');
+  assert.ok(websiteRelease, 'apps-release-website exists');
+  assert.match(
+    websiteRelease,
+    /group: apps-release-networkcanvas\.com-production/,
+  );
+
+  const websiteRefresh = job('refresh-website-after-classic-release');
+  assert.ok(websiteRefresh, 'Classic website refresh job exists');
+  assert.match(websiteRefresh, /- apps-release-website/);
+  assert.match(websiteRefresh, /- interviewer-release-publish/);
+  assert.match(websiteRefresh, /- architect-release-publish/);
+  assert.match(websiteRefresh, /always\(\)/);
+  assert.match(
+    websiteRefresh,
+    /needs\.interviewer-release-publish\.result == 'success'/,
+  );
+  assert.match(
+    websiteRefresh,
+    /needs\.architect-release-publish\.result == 'success'/,
+  );
+  assert.match(
+    websiteRefresh,
+    /group: apps-release-networkcanvas\.com-production/,
+  );
+  assert.match(websiteRefresh, /TURBO_FORCE: 'true'/);
+  assert.match(websiteRefresh, /ref: main/);
+  assert.match(
+    websiteRefresh,
+    /netlify-cli@26 deploy --build --prod[\s\S]*?--filter=networkcanvas\.com/,
+  );
 });
 
 test('pull requests lint only changed files while merge groups lint fully', () => {

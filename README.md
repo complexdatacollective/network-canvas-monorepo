@@ -106,6 +106,23 @@ pnpm --filter "./packages/*" build
 pnpm --filter "./apps/*" dev
 ```
 
+Run the two public sites together with one command:
+
+```bash
+pnpm dev:sites
+```
+
+Documentation runs at `http://localhost:3000` and networkcanvas.com at
+`http://localhost:3001`. Each app automatically loads the other origin from
+its committed `.env.development` file. To use different origins, override
+`NEXT_PUBLIC_NETWORK_CANVAS_URL` in
+`apps/documentation/.env.development.local` and
+`NEXT_PUBLIC_DOCUMENTATION_URL` in
+`apps/networkcanvas.com/.env.development.local`; these local files are ignored
+by Git. Netlify deploy previews derive the matching peer preview from
+`REVIEW_ID`, while normal production builds fall back to the canonical `.com`
+origins.
+
 ### Architect Template Editor Mode
 
 Architect includes a development-only template editor mode for maintainers of

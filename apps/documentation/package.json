@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm writeSidebarJson && pnpm copyProtocolDownloads && pnpm generateProtocols && pnpm next dev",
+    "dev": "pnpm writeSidebarJson && pnpm copyProtocolDownloads && pnpm generateProtocols && pnpm next dev --port 3000",
     "build": "pnpm next build",
     "postbuild": "pnpm next-sitemap",
     "prebuild": "pnpm writeSidebarJson && pnpm copyProtocolDownloads && pnpm generateProtocols",

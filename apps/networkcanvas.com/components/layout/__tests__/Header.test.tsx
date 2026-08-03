@@ -26,7 +26,21 @@ vi.mock('~/lib/i18n/navigation', () => ({
 }));
 
 describe('localized layout navigation', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllEnvs();
+  });
+
+  it('points documentation links at the configured deployment', () => {
+    vi.stubEnv('NEXT_PUBLIC_DOCUMENTATION_URL', 'http://localhost:3000');
+    renderWithIntl(<Header />);
+
+    for (const link of screen.getAllByRole('link', {
+      name: 'Documentation',
+    })) {
+      expect(link).toHaveAttribute('href', 'http://localhost:3000/');
+    }
+  });
 
   it('renders Spanish navigation and menu controls', () => {
     renderWithIntl(<Header activeItemId="getStarted" />, 'es');

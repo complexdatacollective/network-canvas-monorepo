@@ -49,6 +49,14 @@ vi.mock('@codaco/art', () => ({
   PageBackground: () => <div data-testid="page-background" />,
 }));
 
+vi.mock('~/lib/classicReleases', async () => {
+  const { classicApps } = await import('~/test/classicApps');
+
+  return {
+    getLatestClassicApps: vi.fn(async () => classicApps),
+  };
+});
+
 vi.mock('~/components/ui/Reveal', () => ({
   Reveal: ({
     children,
@@ -79,10 +87,16 @@ vi.mock('~/components/ui/Reveal', () => ({
   ),
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe('localized Get Started page', () => {
   it('renders Spanish research stages and preserves the approved card layout', async () => {
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValue(new Error('Network access is unavailable in tests.'));
     const page = await GetStartedPage({
       params: Promise.resolve({ locale: 'es' }),
     });
@@ -139,6 +153,7 @@ describe('localized Get Started page', () => {
       document.querySelectorAll('[data-testid="page-background"]'),
     ).toHaveLength(1);
     expect(document.querySelectorAll('.relative.z-10')).toHaveLength(0);
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
   it('generates Spanish metadata and language alternates', async () => {

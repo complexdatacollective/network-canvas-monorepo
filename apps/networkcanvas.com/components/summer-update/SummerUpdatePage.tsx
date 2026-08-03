@@ -22,6 +22,7 @@ import { Footer } from '~/components/layout/Footer';
 import { Reveal } from '~/components/ui/Reveal';
 import { cn } from '~/lib/cn';
 import { Link } from '~/lib/i18n/navigation';
+import { documentationUrl } from '~/lib/siteUrls';
 
 import { ActionButton } from './ActionButton';
 import { BenefitCard } from './BenefitCard';
@@ -352,7 +353,9 @@ export function SummerUpdatePage() {
                   </ActionButton>
                   <ActionButton
                     compact
-                    href="https://documentation.networkcanvas.com/en/design-protocols/getting-started"
+                    href={documentationUrl(
+                      '/en/design-protocols/getting-started',
+                    )}
                     secondary
                   >
                     {t('common.documentation')}
@@ -440,7 +443,9 @@ export function SummerUpdatePage() {
                   </ActionButton>
                   <ActionButton
                     compact
-                    href="https://documentation.networkcanvas.com/en/collect-data/interviewer/using-interviewer"
+                    href={documentationUrl(
+                      '/en/collect-data/interviewer/using-interviewer',
+                    )}
                     secondary
                   >
                     {t('common.documentation')}
@@ -496,13 +501,15 @@ export function SummerUpdatePage() {
                 <div className="mt-8 flex flex-wrap gap-4">
                   <ActionButton
                     compact
-                    href="https://documentation.networkcanvas.com/en/collect-data/fresco/guide"
+                    href={documentationUrl('/en/collect-data/fresco/guide')}
                   >
                     {t('apps.fresco.deploymentGuide')}
                   </ActionButton>
                   <ActionButton
                     compact
-                    href="https://documentation.networkcanvas.com/en/collect-data/fresco/using-fresco"
+                    href={documentationUrl(
+                      '/en/collect-data/fresco/using-fresco',
+                    )}
                     secondary
                   >
                     {t('common.documentation')}
@@ -1021,7 +1028,7 @@ export function SummerUpdatePage() {
                     <Paragraph>
                       {t('resources.documentation.description')}
                     </Paragraph>
-                    <NativeLink href="https://documentation.networkcanvas.com/en">
+                    <NativeLink href={documentationUrl('/en')}>
                       {t('resources.documentation.link')}{' '}
                       <ExternalLink
                         aria-hidden
@@ -1045,7 +1052,7 @@ export function SummerUpdatePage() {
                       {t('resources.website.heading')}
                     </Heading>
                     <Paragraph>{t('resources.website.description')}</Paragraph>
-                    <NativeLink href="https://networkcanvas.com/">
+                    <NativeLink render={<Link href="/" />}>
                       {t('resources.website.link')}{' '}
                       <ExternalLink
                         aria-hidden

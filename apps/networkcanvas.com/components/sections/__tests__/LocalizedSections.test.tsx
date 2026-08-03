@@ -114,7 +114,7 @@ describe('localized home sections', () => {
       within(card).getByRole('link', { name: 'Flexibilidad ontológica' }),
     ).toHaveAttribute(
       'href',
-      'https://documentation.networkcanvas.com/en/desktop/project-information/project-overview#ontological-flexibility',
+      'https://documentation.networkcanvas.com/en/get-started/project-information/project-overview#ontological-flexibility',
     );
     expect(card.querySelector('img')).toHaveAttribute(
       'src',

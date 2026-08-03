@@ -14,6 +14,12 @@ const isProduction =
   process.env.CONTEXT === 'production' ||
   process.env.NODE_ENV === 'production';
 
+const networkCanvasUrl =
+  process.env.NEXT_PUBLIC_NETWORK_CANVAS_URL ||
+  (process.env.CONTEXT === 'deploy-preview' && process.env.REVIEW_ID
+    ? `https://deploy-preview-${process.env.REVIEW_ID}--networkcanvasdotdev.netlify.app`
+    : undefined);
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   ...(process.env.NODE_ENV === 'development'
@@ -43,6 +49,9 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_IS_PRODUCTION: String(isProduction),
+    ...(networkCanvasUrl
+      ? { NEXT_PUBLIC_NETWORK_CANVAS_URL: networkCanvasUrl }
+      : {}),
   },
   typedRoutes: true,
   /** We already do linting and typechecking as separate tasks in CI */
