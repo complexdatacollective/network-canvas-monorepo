@@ -21,6 +21,7 @@ import { getInputState } from '../utils/getInputState';
 type BooleanOption = {
   label: string;
   value: boolean;
+  negative?: boolean;
 };
 
 const optionCardVariants = compose(
@@ -45,8 +46,17 @@ const optionCardVariants = compose(
         readOnly: 'pointer-events-none cursor-default',
         invalid: 'border-destructive',
       },
+      negative: {
+        true: '',
+        false: '',
+      },
     },
     compoundVariants: [
+      {
+        selected: true,
+        negative: true,
+        className: 'border-destructive',
+      },
       {
         selected: true,
         state: 'invalid',
@@ -61,6 +71,7 @@ const optionCardVariants = compose(
     defaultVariants: {
       selected: false,
       state: 'normal',
+      negative: false,
     },
   }),
 );
@@ -98,9 +109,11 @@ type BooleanFieldProps = CreateFormFieldProps<
 function BooleanIndicator({
   isSelected,
   state,
+  negative,
 }: {
   isSelected: boolean;
   state?: 'normal' | 'disabled' | 'readOnly' | 'invalid';
+  negative?: boolean;
 }) {
   return (
     <span aria-hidden className={booleanIndicatorVariants({ state })}>
@@ -108,7 +121,10 @@ function BooleanIndicator({
         aria-hidden="true"
         viewBox="0 0 24 24"
         fill="currentColor"
-        className="text-primary size-full overflow-hidden rounded-full p-[0.1em]"
+        className={cx(
+          'size-full overflow-hidden rounded-full p-[0.1em]',
+          negative && isSelected ? 'text-destructive' : 'text-primary',
+        )}
       >
         <motion.circle
           cx="12"
@@ -228,12 +244,14 @@ export default function BooleanField(props: BooleanFieldProps) {
               role="radio"
               aria-checked={isSelected}
               data-value={String(option.value)}
+              data-negative={option.negative ? 'true' : undefined}
               tabIndex={
                 isSelected || (value === undefined && index === 0) ? 0 : -1
               }
               className={optionCardVariants({
                 selected: isSelected,
                 state: optionState,
+                negative: option.negative ?? false,
                 size: 'md',
               })}
               onClick={() => {
@@ -246,7 +264,11 @@ export default function BooleanField(props: BooleanFieldProps) {
               whileTap={disabled || readOnly ? undefined : { scale: 0.98 }}
               transition={selectionSpring}
             >
-              <BooleanIndicator isSelected={isSelected} state={optionState} />
+              <BooleanIndicator
+                isSelected={isSelected}
+                state={optionState}
+                negative={option.negative}
+              />
               <span
                 className={headingVariants({ level: 'label', margin: 'none' })}
               >

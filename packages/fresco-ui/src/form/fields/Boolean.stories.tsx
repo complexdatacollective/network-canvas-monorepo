@@ -15,7 +15,7 @@ const meta: Meta<StoryArgs> = {
     docs: {
       description: {
         component:
-          'A radiogroup of option cards for a boolean value. Options sit side by side and wrap to a stack only when their container is too narrow for them — sizing is intrinsic, so the field also works inside fit-content parents. Use the container width control to watch the layout respond, and edit the options to see how label length affects when wrapping happens.',
+          'A radiogroup of option cards for a boolean value. Options sit side by side and wrap to a stack only when their container is too narrow for them — sizing is intrinsic, so the field also works inside fit-content parents. Use the container width control to watch the layout respond, and edit the options to see how label length affects when wrapping happens.\n\nAn option may be marked `negative` to style it as a negative response: once selected, its border and indicator take the destructive colour instead of the primary one. Unselected negative options look like any other option. The emphasis is presentational only — the option label carries the meaning, so nothing extra is announced to assistive technology.',
       },
     },
   },
@@ -31,9 +31,13 @@ const meta: Meta<StoryArgs> = {
     },
     'options': {
       control: 'object',
-      description: 'Label and value for each choice',
+      description:
+        'Label and value for each choice. Set `negative` to style a choice as a negative response when selected.',
       table: {
-        type: { summary: 'Array<{ label: string; value: boolean }>' },
+        type: {
+          summary:
+            'Array<{ label: string; value: boolean; negative?: boolean }>',
+        },
         defaultValue: {
           summary:
             '[{ label: "Yes", value: true }, { label: "No", value: false }]',
@@ -105,26 +109,71 @@ const meta: Meta<StoryArgs> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const renderField = (args: StoryArgs) => {
+  const { containerWidth, ...fieldArgs } = args;
+  const [value, setValue] = useState<boolean | undefined>(args.value);
+
+  useEffect(() => {
+    setValue(args.value);
+  }, [args.value]);
+
+  return (
+    <div style={{ width: containerWidth, maxWidth: '100%' }}>
+      <BooleanField
+        {...fieldArgs}
+        value={value}
+        onChange={(newValue) => {
+          setValue(newValue);
+          args.onChange?.(newValue);
+        }}
+      />
+    </div>
+  );
+};
+
 export const Default: Story = {
-  render: (args) => {
-    const { containerWidth, ...fieldArgs } = args;
-    const [value, setValue] = useState<boolean | undefined>(args.value);
+  render: renderField,
+};
 
-    useEffect(() => {
-      setValue(args.value);
-    }, [args.value]);
-
-    return (
-      <div style={{ width: containerWidth, maxWidth: '100%' }}>
-        <BooleanField
-          {...fieldArgs}
-          value={value}
-          onChange={(newValue) => {
-            setValue(newValue);
-            args.onChange?.(newValue);
-          }}
-        />
-      </div>
-    );
+export const NegativeOption: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The "No" option is marked `negative`. Select it to see the destructive border and indicator; select "Yes" to confirm the negative option returns to the neutral unselected treatment.',
+      },
+    },
   },
+  args: {
+    value: false,
+    options: [
+      { label: 'Yes', value: true },
+      { label: 'No', value: false, negative: true },
+    ],
+  },
+  render: renderField,
+};
+
+export const NegativeOptionWithLongLabels: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A negative option with a label long enough to wrap, in a narrow container — the indicator stays aligned to the first line and does not shrink.',
+      },
+    },
+  },
+  args: {
+    containerWidth: 260,
+    value: false,
+    options: [
+      { label: 'Yes, I am happy to take part in this study', value: true },
+      {
+        label: 'No, I would rather not take part in this study',
+        value: false,
+        negative: true,
+      },
+    ],
+  },
+  render: renderField,
 };
