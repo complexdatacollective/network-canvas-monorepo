@@ -88,6 +88,7 @@ function shouldBypass(pathname: string) {
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/api/') ||
     pathname.startsWith('/.netlify/') ||
+    pathname === CLASSIC_DOWNLOAD_PATH_PREFIX ||
     pathname.startsWith(`${CLASSIC_DOWNLOAD_PATH_PREFIX}/`) ||
     /\.[^/]+$/.test(pathname)
   );
