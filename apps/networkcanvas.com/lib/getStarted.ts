@@ -100,7 +100,7 @@ function getReleaseAssetPath(
     );
   }
 
-  getClassicDownloadAssetUrl(definition, release.assets);
+  void getClassicDownloadAssetUrl(definition, release.assets);
 
   return getClassicDownloadPath(app, platform, release.version);
 }
