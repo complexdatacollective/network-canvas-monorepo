@@ -15,10 +15,10 @@ const scriptPath = fileURLToPath(
   new URL('./chromatic-observability.mjs', import.meta.url),
 );
 
-test('parses the Chromatic 17 TurboSnap count wording', () => {
+test('parses the Chromatic 18 TurboSnap count wording', () => {
   const result = parseChromaticLog(`
     ✔ TurboSnap enabled
-    Capturing 12 snapshots and skipping 517 snapshots.
+    Capturing 12 snapshots, copying 517 TurboSnaps.
   `);
 
   assert.deepEqual(result, {
@@ -30,14 +30,36 @@ test('parses the Chromatic 17 TurboSnap count wording', () => {
   });
 });
 
-test('parses completed interactive and singular snapshot count wording', () => {
+test('parses completed Chromatic 18 singular snapshot count wording', () => {
   const result = parseChromaticLog(`
     ✔ TurboSnap enabled
-    Captured 1 snapshot and skipped 1 snapshot.
+    Captured 1 snapshot, copied 1 TurboSnap.
   `);
 
   assert.equal(result.snapshotsCaptured, 1);
   assert.equal(result.snapshotsInherited, 1);
+  assert.equal(result.buildScope, 'partial');
+});
+
+test('retains compatibility with Chromatic 17 snapshot count wording', () => {
+  const result = parseChromaticLog(`
+    ✔ TurboSnap enabled
+    Captured 12 snapshots and skipped 517 snapshots.
+  `);
+
+  assert.equal(result.snapshotsCaptured, 12);
+  assert.equal(result.snapshotsInherited, 517);
+  assert.equal(result.buildScope, 'partial');
+});
+
+test('parses Chromatic 18 TurboSnap bypass counts', () => {
+  const result = parseChromaticLog(`
+    ✔ TurboSnap enabled
+    Bypassed 529 snapshots because no frontend files were changed.
+  `);
+
+  assert.equal(result.snapshotsCaptured, 0);
+  assert.equal(result.snapshotsInherited, 529);
   assert.equal(result.buildScope, 'partial');
 });
 
