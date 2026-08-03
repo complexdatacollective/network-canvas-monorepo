@@ -34,6 +34,7 @@ describe('Classic download routing', () => {
           'Accept': 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
         },
+        signal: expect.any(AbortSignal),
       },
     );
   });
@@ -55,6 +56,23 @@ describe('Classic download routing', () => {
     );
   });
 
+  it('falls back to the release page when the GitHub request times out', async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockRejectedValue(new DOMException('Timed out', 'TimeoutError'));
+
+    await expect(
+      getClassicDownloadDestination(
+        new Request(
+          'https://networkcanvas.com/downloads/classic/architect/6.6.0/windows',
+        ),
+        fetcher,
+      ),
+    ).resolves.toBe(
+      'https://github.com/complexdatacollective/Architect/releases/tag/v6.6.0',
+    );
+  });
+
   it('rejects unknown download routes without querying GitHub', async () => {
     const fetcher = vi.fn<typeof fetch>();
     const request = new Request(
@@ -64,9 +82,10 @@ describe('Classic download routing', () => {
     await expect(
       getClassicDownloadDestination(request, fetcher),
     ).resolves.toBeUndefined();
+    expect(fetcher).not.toHaveBeenCalled();
+
     const response = await classicDownload(request);
 
     expect(response.status).toBe(404);
-    expect(fetcher).not.toHaveBeenCalled();
   });
 });
