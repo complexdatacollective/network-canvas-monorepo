@@ -1,7 +1,12 @@
 # Release E2E equivalence reuse
 
 **Date:** 2026-07-17
-**Status:** Implemented; extended across release branches on 2026-07-31
+**Status:** Partially superseded on 2026-08-03
+
+> Architect and Interviewer now share the normal `changeset-release/main` lane
+> with libraries, so cross-branch reuse between a separate apps lane and the
+> library lane is no longer needed. See
+> `2026-08-03-stable-app-release-design.md` for the current topology.
 
 ## Problem
 

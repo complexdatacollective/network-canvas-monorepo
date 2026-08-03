@@ -321,17 +321,10 @@ function suites(...keys) {
   return Object.fromEntries(SUITE_KEYS.map((key) => [key, keys.includes(key)]));
 }
 
-export const APP_RELEASE_REF = 'changeset-release/apps';
-
-// Maximum suite set for each release lane. The combined app lane is narrowed
-// below from the app version manifests that actually differ from main:
-// Architect -> architect+interview, Interviewer -> interviewer+interview, both
-// -> all three. Workflow dispatches and any detection doubt retain this
-// fail-closed maximum. The library lane publishes packages consumed by every
-// app and always keeps all three; Documentation and Website ship none of the
-// suite subjects and need no E2E.
+// Maximum suite set for each release lane. The normal Changesets lane versions
+// libraries, Architect, and Interviewer, so it always keeps all three suites.
+// Documentation and Website ship none of the suite subjects and need no E2E.
 export const SUITES_BY_RELEASE_REF = {
-  [APP_RELEASE_REF]: suites('interview', 'interviewer', 'architect'),
   'changeset-release/documentation': suites(),
   'changeset-release/main': suites('interview', 'interviewer', 'architect'),
   'changeset-release/website': suites(),
@@ -371,11 +364,6 @@ const VERSIONED_MANIFEST_SUITE_RULES = [
 const ALL_VERSIONED_MANIFESTS = VERSIONED_MANIFEST_SUITE_RULES.map(
   ({ pathspec }) => pathspec,
 );
-
-const APP_VERSIONED_MANIFESTS = [
-  'apps/architect/package.json',
-  'apps/interviewer/package.json',
-];
 
 export function releaseRefForEvent({ eventName, headRef, refName }) {
   const candidate =
@@ -446,16 +434,6 @@ function versionChangeRequiredSuites(baseSha, headSha, cwd, manifests) {
   return required;
 }
 
-// Combined app PRs only run the suites for app versions actually bumped.
-export function appReleaseRequiredSuites(baseSha, headSha, cwd) {
-  return versionChangeRequiredSuites(
-    baseSha,
-    headSha,
-    cwd,
-    APP_VERSIONED_MANIFESTS,
-  );
-}
-
 // Union of suites required by every version manifest moving in a merge group.
 export function mergeGroupRequiredSuites(baseSha, headSha, cwd) {
   return versionChangeRequiredSuites(
@@ -469,22 +447,11 @@ export function mergeGroupRequiredSuites(baseSha, headSha, cwd) {
 export function releaseE2EPolicy(
   { eventName, headRef = '', refName = '', baseSha = '', headSha = '' },
   mergeGroupDetector = mergeGroupRequiredSuites,
-  appReleaseDetector = appReleaseRequiredSuites,
 ) {
   const releaseRef = releaseRefForEvent({ eventName, headRef, refName });
   if (releaseRef) {
-    let required = SUITES_BY_RELEASE_REF[releaseRef];
-    if (eventName === 'pull_request' && releaseRef === APP_RELEASE_REF) {
-      try {
-        required = appReleaseDetector(baseSha, headSha, process.cwd());
-      } catch {
-        // Missing history, a malformed manifest, or any git doubt must run the
-        // lane's full suite set rather than silently under-test the release.
-        required = SUITES_BY_RELEASE_REF[releaseRef];
-      }
-    }
     return {
-      ...required,
+      ...SUITES_BY_RELEASE_REF[releaseRef],
       releaseRef,
       snapshotBranch: 'e2e-snapshots/main',
     };

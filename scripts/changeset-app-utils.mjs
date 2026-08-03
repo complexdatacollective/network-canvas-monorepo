@@ -5,29 +5,19 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const GATED_PRODUCT_PACKAGES = [
-  '@codaco/architect',
   '@codaco/documentation',
-  '@codaco/interviewer',
   'networkcanvas.com',
 ];
 
 export const GATED_PRODUCT_DIRS = {
-  '@codaco/architect': 'apps/architect',
   '@codaco/documentation': 'apps/documentation',
-  '@codaco/interviewer': 'apps/interviewer',
   'networkcanvas.com': 'apps/networkcanvas.com',
 };
 
-export const STABLE_GATED_PRODUCT_PACKAGES = [
-  '@codaco/documentation',
-  'networkcanvas.com',
-];
-
-// Generated release PRs are maintained per lane. Architect and Interviewer
-// deliberately share one gate so one release branch can version whichever app
-// has pending changes (or both) and validate the shared interview runtime once.
+// Documentation and Website keep separately generated release PRs because they
+// deploy independently from the normal Changesets lane. Architect and
+// Interviewer are private packages in that normal lane alongside libraries.
 export const GATED_PRODUCT_RELEASE_LANES = {
-  apps: ['@codaco/architect', '@codaco/interviewer'],
   documentation: ['@codaco/documentation'],
   website: ['networkcanvas.com'],
 };
@@ -72,17 +62,17 @@ export function classifyChangeset(
 ) {
   const products = new Set(productPackages);
   return {
-    productReleases: cs.releases.filter((r) => products.has(r.name)),
-    libReleases: cs.releases.filter((r) => !products.has(r.name)),
+    gatedProductReleases: cs.releases.filter((r) => products.has(r.name)),
+    normalReleases: cs.releases.filter((r) => !products.has(r.name)),
   };
 }
 
 export function isMixedChangeset(cs, productPackages = GATED_PRODUCT_PACKAGES) {
-  const { productReleases, libReleases } = classifyChangeset(
+  const { gatedProductReleases, normalReleases } = classifyChangeset(
     cs,
     productPackages,
   );
-  return productReleases.length > 0 && libReleases.length > 0;
+  return gatedProductReleases.length > 0 && normalReleases.length > 0;
 }
 
 export function isMultiProductLaneChangeset(
@@ -90,8 +80,8 @@ export function isMultiProductLaneChangeset(
   productPackages = GATED_PRODUCT_PACKAGES,
   lanes = GATED_PRODUCT_RELEASE_LANES,
 ) {
-  const { productReleases } = classifyChangeset(cs, productPackages);
-  const releaseLanes = productReleases.map((release) =>
+  const { gatedProductReleases } = classifyChangeset(cs, productPackages);
+  const releaseLanes = gatedProductReleases.map((release) =>
     releaseLaneForProduct(release.name, lanes),
   );
   // A gated product missing from the lane map is a configuration error. Treat
@@ -100,24 +90,11 @@ export function isMultiProductLaneChangeset(
   return (
     new Set(
       releaseLanes.map(
-        (lane, index) => lane ?? `unconfigured:${productReleases[index].name}`,
+        (lane, index) =>
+          lane ?? `unconfigured:${gatedProductReleases[index].name}`,
       ),
     ).size > 1
   );
-}
-
-const BETA_RE = /^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/;
-
-export function nextBetaVersion(current) {
-  const m = BETA_RE.exec(current);
-  if (!m) {
-    throw new Error(
-      `Version "${current}" is not on a -beta.N line (expected e.g. 8.0.0-beta.0). ` +
-        'Set the base version manually in the app package.json before releasing.',
-    );
-  }
-  const [, major, minor, patch, beta] = m;
-  return `${major}.${minor}.${patch}-beta.${Number(beta) + 1}`;
 }
 
 export function nextStableVersion(current, entries) {
