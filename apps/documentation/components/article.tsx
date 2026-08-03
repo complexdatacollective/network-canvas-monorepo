@@ -50,8 +50,7 @@ export default function Article({
               <>
                 <ChevronRight
                   aria-hidden
-                  strokeWidth={4}
-                  className="size-4 shrink-0 -translate-y-px"
+                  className="size-4 shrink-0 -translate-y-px stroke-4"
                 />
                 <span>{subsection}</span>
               </>
