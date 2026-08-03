@@ -203,6 +203,8 @@ test('published Classic releases advance latest and rebuild the website', () => 
     websiteRefresh,
     /group: apps-release-networkcanvas\.com-production/,
   );
+  assert.match(websiteRefresh, /TURBO_FORCE: 'true'/);
+  assert.match(websiteRefresh, /ref: main/);
   assert.match(
     websiteRefresh,
     /netlify-cli@26 deploy --build --prod[\s\S]*?--filter=networkcanvas\.com/,

@@ -2012,9 +2012,15 @@ jobs:
       cancel-in-progress: false
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      # Classic release metadata is an external build input, so it cannot be
+      # represented in Turbo's source hash. Always execute the static build.
+      TURBO_FORCE: 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          # A Classic build can take much longer than a later website release.
+          # Build the current production source instead of this run's older SHA.
+          ref: main
           persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - name: Rebuild networkcanvas.com with the latest Classic releases
