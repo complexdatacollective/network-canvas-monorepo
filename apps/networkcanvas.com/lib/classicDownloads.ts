@@ -93,7 +93,7 @@ export function getClassicDownloadAssetUrl(
 
   if (matchingAssets.length !== 1) {
     throw new Error(
-      `Expected one ${definition.description}; found ${matchingAssets.length}.`,
+      `Expected one ${definition.description} asset for Classic ${definition.app} (${definition.platform}); found ${matchingAssets.length}.`,
     );
   }
 
