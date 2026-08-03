@@ -1,3 +1,10 @@
+import {
+  getClassicDownloadAssetUrl,
+  getClassicDownloadDefinition,
+  getClassicDownloadPath,
+  type ClassicDownloadApp,
+  type ClassicDownloadPlatform,
+} from '~/lib/classicDownloads';
 import { documentationUrl } from '~/lib/siteUrls';
 
 export type Workflow = 'design' | 'collect';
@@ -81,20 +88,19 @@ export type ClassicRelease = {
   }[];
 };
 
-function getReleaseAssetUrl(
+function getReleaseAssetPath(
   release: ClassicRelease,
-  description: string,
-  matches: (name: string) => boolean,
+  app: ClassicDownloadApp,
+  platform: ClassicDownloadPlatform,
 ) {
-  const matchingAssets = release.assets.filter(({ name }) => matches(name));
-
-  if (matchingAssets.length !== 1) {
-    throw new Error(
-      `Expected one ${description} asset for Classic ${release.version}; found ${matchingAssets.length}.`,
-    );
+  const definition = getClassicDownloadDefinition(app, platform);
+  if (!definition) {
+    throw new Error(`Missing Classic download definition for ${app}.`);
   }
 
-  return matchingAssets[0]!.browserDownloadUrl;
+  getClassicDownloadAssetUrl(definition, release.assets);
+
+  return getClassicDownloadPath(app, platform, release.version);
 }
 
 export const GET_STARTED_PATH = '/get-started';
@@ -199,29 +205,17 @@ export function createClassicApps({
         {
           id: 'apple-silicon',
           labelKey: 'platforms.appleSilicon',
-          href: getReleaseAssetUrl(
-            architect,
-            'Architect Apple Silicon DMG',
-            (name) => name.endsWith('-mac-arm64.dmg'),
-          ),
+          href: getReleaseAssetPath(architect, 'architect', 'apple-silicon'),
         },
         {
           id: 'apple-intel',
           labelKey: 'platforms.appleIntel',
-          href: getReleaseAssetUrl(
-            architect,
-            'Architect Apple Intel DMG',
-            (name) => name.endsWith('-mac-x64.dmg'),
-          ),
+          href: getReleaseAssetPath(architect, 'architect', 'apple-intel'),
         },
         {
           id: 'windows',
           labelKey: 'platforms.windows',
-          href: getReleaseAssetUrl(
-            architect,
-            'Architect Windows installer',
-            (name) => name.endsWith('-win-x64.exe'),
-          ),
+          href: getReleaseAssetPath(architect, 'architect', 'windows'),
         },
         {
           id: 'linux',
@@ -246,29 +240,21 @@ export function createClassicApps({
         {
           id: 'apple-silicon',
           labelKey: 'platforms.appleSilicon',
-          href: getReleaseAssetUrl(
+          href: getReleaseAssetPath(
             interviewer,
-            'Interviewer Apple Silicon DMG',
-            (name) => name.endsWith('-arm64.dmg'),
+            'interviewer',
+            'apple-silicon',
           ),
         },
         {
           id: 'apple-intel',
           labelKey: 'platforms.appleIntel',
-          href: getReleaseAssetUrl(
-            interviewer,
-            'Interviewer Apple Intel DMG',
-            (name) => name.endsWith('.dmg') && !name.endsWith('-arm64.dmg'),
-          ),
+          href: getReleaseAssetPath(interviewer, 'interviewer', 'apple-intel'),
         },
         {
           id: 'windows',
           labelKey: 'platforms.windows',
-          href: getReleaseAssetUrl(
-            interviewer,
-            'Interviewer Windows installer',
-            (name) => name.endsWith('.exe'),
-          ),
+          href: getReleaseAssetPath(interviewer, 'interviewer', 'windows'),
         },
         {
           id: 'linux',
