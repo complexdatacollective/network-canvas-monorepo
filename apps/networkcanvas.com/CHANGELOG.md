@@ -1,5 +1,11 @@
 # networkcanvas.com
 
+## 0.2.1
+
+### Patch Changes
+
+- Explain the original Classic apps and link to their downloads from the Summer 2026 update.
+
 ## 0.2.0
 
 ### Minor Changes
