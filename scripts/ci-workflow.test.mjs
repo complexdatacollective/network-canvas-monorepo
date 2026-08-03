@@ -164,7 +164,7 @@ test('manual Interview E2E benchmarks cannot enter the legacy release lane', () 
   }
 });
 
-test('published Classic releases advance their latest release pointers', () => {
+test('published Classic releases advance latest and rebuild the website', () => {
   for (const [jobName, repository] of [
     ['interviewer-release-publish', 'interviewer'],
     ['architect-release-publish', 'architect'],
@@ -177,6 +177,36 @@ test('published Classic releases advance their latest release pointers', () => {
     );
     assert.match(publishJob, /draft: false[\s\S]*?make_latest: 'true'/);
   }
+
+  const websiteRelease = job('apps-release-website');
+  assert.ok(websiteRelease, 'apps-release-website exists');
+  assert.match(
+    websiteRelease,
+    /group: apps-release-networkcanvas\.com-production/,
+  );
+
+  const websiteRefresh = job('refresh-website-after-classic-release');
+  assert.ok(websiteRefresh, 'Classic website refresh job exists');
+  assert.match(websiteRefresh, /- apps-release-website/);
+  assert.match(websiteRefresh, /- interviewer-release-publish/);
+  assert.match(websiteRefresh, /- architect-release-publish/);
+  assert.match(websiteRefresh, /always\(\)/);
+  assert.match(
+    websiteRefresh,
+    /needs\.interviewer-release-publish\.result == 'success'/,
+  );
+  assert.match(
+    websiteRefresh,
+    /needs\.architect-release-publish\.result == 'success'/,
+  );
+  assert.match(
+    websiteRefresh,
+    /group: apps-release-networkcanvas\.com-production/,
+  );
+  assert.match(
+    websiteRefresh,
+    /netlify-cli@26 deploy --build --prod[\s\S]*?--filter=networkcanvas\.com/,
+  );
 });
 
 test('pull requests lint only changed files while merge groups lint fully', () => {

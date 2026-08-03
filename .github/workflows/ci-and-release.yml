@@ -1646,7 +1646,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
-      group: apps-release-networkcanvas.com@${{ needs.apps-release-detect.outputs.website_version }}
+      # Every production deployment targets the same Netlify site, including
+      # metadata refreshes after Classic releases. Keep them serialized.
+      group: apps-release-networkcanvas.com-production
       cancel-in-progress: false
     permissions:
       contents: write
@@ -1988,6 +1990,39 @@ jobs:
           # The website resolves Classic installers from this repository's
           # releases/latest endpoint during its static build.
           make_latest: 'true'
+
+  # Classic download metadata is embedded into networkcanvas.com's static HTML
+  # at build time. Rebuild the production site after either external release is
+  # published so releases/latest is reflected without waiting for an unrelated
+  # website version bump. If a website release is part of the same main push,
+  # wait for it first and make this refresh the final production deployment.
+  refresh-website-after-classic-release:
+    needs:
+      - apps-release-website
+      - interviewer-release-publish
+      - architect-release-publish
+    if: >-
+      always()
+      && (needs.interviewer-release-publish.result == 'success'
+      || needs.architect-release-publish.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: apps-release-networkcanvas.com-production
+      cancel-in-progress: false
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Rebuild networkcanvas.com with the latest Classic releases
+        run: |
+          json=$(npx --yes netlify-cli@26 deploy --build --prod \
+                   --filter=networkcanvas.com \
+                   --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
+          echo "$json" | jq .
 
   # Carry forward prior statuses for conditional jobs that the current
   # push didn't touch. Push-to-push detection (see detect job)
