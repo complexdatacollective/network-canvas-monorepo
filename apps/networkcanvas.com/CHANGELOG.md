@@ -1,5 +1,11 @@
 # networkcanvas.com
 
+## 0.2.2
+
+### Patch Changes
+
+- Make documentation links follow the active local or deploy-preview documentation site, automate paired local site development, repair outdated documentation and publication links, and derive Classic downloads from the latest GitHub releases.
+
 ## 0.2.1
 
 ### Patch Changes
