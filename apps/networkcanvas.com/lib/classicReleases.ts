@@ -27,7 +27,6 @@ async function getLatestRelease(
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
       },
-      next: { revalidate: 3600 },
     },
   );
 
@@ -49,6 +48,10 @@ async function getLatestRelease(
   };
 }
 
+/**
+ * Resolve installer URLs while Next statically generates the Get Started page.
+ * Failures intentionally propagate so a build cannot ship stale or partial links.
+ */
 export async function getLatestClassicApps(
   fetcher: typeof fetch = fetch,
 ): Promise<readonly ClassicApp[]> {

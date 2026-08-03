@@ -55,12 +55,22 @@ describe('latest Classic releases', () => {
     expect(fetcher).toHaveBeenNthCalledWith(
       1,
       'https://api.github.com/repos/complexdatacollective/Architect/releases/latest',
-      expect.objectContaining({ next: { revalidate: 3600 } }),
+      {
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      },
     );
     expect(fetcher).toHaveBeenNthCalledWith(
       2,
       'https://api.github.com/repos/complexdatacollective/Interviewer/releases/latest',
-      expect.objectContaining({ next: { revalidate: 3600 } }),
+      {
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      },
     );
     expect(apps.map(({ version }) => version)).toEqual(['7.0.0', '8.0.0']);
     expect(apps[0]?.platforms.map(({ href }) => href)).toEqual([
@@ -76,5 +86,16 @@ describe('latest Classic releases', () => {
       'https://github.com/complexdatacollective/Interviewer/releases/latest',
       'https://play.google.com/store/apps/details?id=org.codaco.NetworkCanvasInterviewer6',
     ]);
+  });
+
+  it('fails when a build-time release lookup is unavailable', async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockResolvedValueOnce(releaseResponse('v8.0.0', []));
+
+    await expect(getLatestClassicApps(fetcher)).rejects.toThrow(
+      'Could not load the latest Architect Classic release from GitHub (429).',
+    );
   });
 });
