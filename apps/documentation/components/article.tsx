@@ -48,7 +48,11 @@ export default function Article({
             <span>{sectionLabel}</span>
             {subsection && (
               <>
-                <ChevronRight aria-hidden className="size-4 shrink-0" />
+                <ChevronRight
+                  aria-hidden
+                  strokeWidth={4}
+                  className="size-4 shrink-0 -translate-y-px"
+                />
                 <span>{subsection}</span>
               </>
             )}
