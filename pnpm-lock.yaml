@@ -124,8 +124,8 @@ catalogs:
       specifier: ^4.1.10
       version: 4.1.10
     chromatic:
-      specifier: ^17.3.0
-      version: 17.3.0
+      specifier: ^18.1.0
+      version: 18.1.0
     csvtojson:
       specifier: ^2.0.14
       version: 2.0.14
@@ -1018,7 +1018,7 @@ importers:
         version: 4.1.10(playwright@1.62.0)(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.23.0)(yaml@2.9.0))(vitest@4.1.10)
       chromatic:
         specifier: 'catalog:'
-        version: 17.3.0
+        version: 18.1.0
       fake-indexeddb:
         specifier: ^6.2.5
         version: 6.2.5
@@ -1657,7 +1657,7 @@ importers:
         version: 4.1.10(playwright@1.62.0)(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.0)(jiti@2.7.0)(sass@1.100.0)(terser@5.48.0)(tsx@4.23.0)(yaml@2.9.0))(vitest@4.1.10)
       chromatic:
         specifier: 'catalog:'
-        version: 17.3.0
+        version: 18.1.0
       jsdom:
         specifier: 'catalog:'
         version: 30.0.0(@noble/hashes@2.2.0)
@@ -1890,7 +1890,7 @@ importers:
         version: 5.6.2
       chromatic:
         specifier: 'catalog:'
-        version: 17.3.0
+        version: 18.1.0
       jsdom:
         specifier: 'catalog:'
         version: 30.0.0(@noble/hashes@2.2.0)
@@ -8176,8 +8176,8 @@ packages:
       '@chromatic-com/vitest':
         optional: true
 
-  chromatic@17.3.0:
-    resolution: {integrity: sha512-x6fjCx72uvc37RyqHxa8I8LqaYhiwzvGg0KyOR1Pwgx+KQ9w1SA7e1rg4oBhGW14gcpcyptLVnVaGxX8wSkaxA==}
+  chromatic@18.1.0:
+    resolution: {integrity: sha512-I9av8lUc5CQRlYzwKpmOG9cwYvZ4AFmTvtHeNrzOMC1353F9xYw45CHpSNIsNKuOiqqmzci9esXQd5akl0fi6w==}
     engines: {node: '>=22.0.0'}
     hasBin: true
     peerDependencies:
@@ -20445,7 +20445,7 @@ snapshots:
     dependencies:
       semver: 7.8.5
 
-  chromatic@17.3.0:
+  chromatic@18.1.0:
     dependencies:
       semver: 7.8.5
 
