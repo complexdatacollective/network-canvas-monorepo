@@ -122,4 +122,34 @@ describe('latest Classic releases', () => {
       'Could not load the latest Architect Classic release (GitHub returned 429.) Falling back to v6.6.0.',
     );
   });
+
+  it('falls back when latest metadata omits an expected installer', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(releaseResponse('v7.0.0', []))
+      .mockResolvedValueOnce(
+        releaseResponse('v8.0.0', [
+          {
+            name: 'Network.Canvas.Interviewer-8.0.0-arm64.dmg',
+            browser_download_url: 'https://example.com/interviewer-arm.dmg',
+          },
+          {
+            name: 'Network.Canvas.Interviewer-8.0.0.dmg',
+            browser_download_url: 'https://example.com/interviewer-intel.dmg',
+          },
+          {
+            name: 'Network.Canvas.Interviewer.Setup.8.0.0.exe',
+            browser_download_url: 'https://example.com/interviewer.exe',
+          },
+        ]),
+      );
+
+    const apps = await getLatestClassicApps(fetcher);
+
+    expect(apps.map(({ version }) => version)).toEqual(['6.6.0', '6.6.0']);
+    expect(warning).toHaveBeenCalledWith(
+      'Could not derive Classic downloads from the latest release metadata (Expected one Architect Apple Silicon DMG asset for Classic 7.0.0; found 0.) Falling back to the last-known releases.',
+    );
+  });
 });

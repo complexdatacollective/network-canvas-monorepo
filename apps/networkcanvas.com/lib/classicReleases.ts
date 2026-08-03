@@ -98,5 +98,18 @@ export async function getLatestClassicApps(
     getLatestRelease('Interviewer', fetcher),
   ]);
 
-  return createClassicApps({ architect, interviewer });
+  try {
+    return createClassicApps({ architect, interviewer });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+
+    console.warn(
+      `Could not derive Classic downloads from the latest release metadata (${reason}) Falling back to the last-known releases.`,
+    );
+
+    return createClassicApps({
+      architect: fallbackClassicReleases.Architect,
+      interviewer: fallbackClassicReleases.Interviewer,
+    });
+  }
 }
