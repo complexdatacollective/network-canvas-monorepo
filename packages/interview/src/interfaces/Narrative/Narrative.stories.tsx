@@ -5,16 +5,11 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
-import applyStableNodeNames from '../../storybook-support/applyStableNodeNames';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
-
-const nameVariableByInterview = new WeakMap<SyntheticInterview, string>();
 
 function createNarrativeInterview(seed: number) {
   const si = new SyntheticInterview(seed);
   const nt = si.addNodeType({ name: 'Person' });
-  const nameVariable = nt.addVariable({ type: 'text', name: 'name' });
-  nameVariableByInterview.set(si, nameVariable.id);
   const layoutVar1 = nt.addVariable({
     type: 'layout',
     name: 'Narrative Layout 1',
@@ -56,24 +51,12 @@ function createNarrativeInterview(seed: number) {
   };
 }
 
-function stabilizeNarrativeNames(interview: SyntheticInterview) {
-  const nameVariableId = nameVariableByInterview.get(interview);
-  if (!nameVariableId) {
-    throw new Error('Narrative story is missing its name variable');
-  }
-
-  return applyStableNodeNames(interview, nameVariableId);
-}
-
 function NarrativeStoryWrapper({
   buildFn,
 }: {
   buildFn: () => SyntheticInterview;
 }) {
-  const interview = useMemo(
-    () => stabilizeNarrativeNames(buildFn()),
-    [buildFn],
-  );
+  const interview = useMemo(() => buildFn(), [buildFn]);
   const rawPayload = useMemo(
     () =>
       SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
@@ -186,9 +169,7 @@ function ConfigurableNarrative(props: NarrativeArgs) {
   const rawPayload = useMemo(
     () =>
       SuperJSON.stringify(
-        stabilizeNarrativeNames(buildFromArgs(props)).getInterviewPayload({
-          currentStep: 1,
-        }),
+        buildFromArgs(props).getInterviewPayload({ currentStep: 1 }),
       ),
     // Rebuild only when an arg actually changes, not on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps

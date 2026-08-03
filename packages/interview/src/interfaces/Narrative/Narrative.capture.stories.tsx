@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
-import applyStableNodeNames from '../../storybook-support/applyStableNodeNames';
 import CaptureStory, {
   type CaptureParameters,
 } from '../../storybook-support/CaptureStory';
@@ -15,7 +14,6 @@ import CaptureStory, {
 const build = () => {
   const si = new SyntheticInterview(1);
   const nt = si.addNodeType({ name: 'Person' });
-  const nameVariable = nt.addVariable({ type: 'text', name: 'name' });
   const layoutVar = nt.addVariable({
     type: 'layout',
     name: 'Narrative Layout',
@@ -70,7 +68,7 @@ const build = () => {
     friendshipEt.id,
   );
   si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
-  return applyStableNodeNames(si, nameVariable.id);
+  return si;
 };
 
 const meta: Meta = {

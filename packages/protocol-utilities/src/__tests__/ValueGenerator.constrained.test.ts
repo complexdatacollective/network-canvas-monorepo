@@ -296,6 +296,32 @@ describe('generateConstrained', () => {
     );
   });
 
+  it('does not let general random draws perturb preferred realistic names', () => {
+    const seed = 17;
+    const control = new ValueGenerator(seed);
+    const subject = new ValueGenerator(seed);
+    const nameVariable = make({
+      id: 'name',
+      name: 'name',
+      type: 'text',
+      validation: { unique: true },
+    });
+
+    subject.randomInt(0, 1_000_000);
+
+    expect(
+      subject.generateConstrained(nameVariable, 0, {
+        distinctSeq: 0,
+        preferRealisticName: true,
+      }),
+    ).toBe(
+      control.generateConstrained(nameVariable, 0, {
+        distinctSeq: 0,
+        preferRealisticName: true,
+      }),
+    );
+  });
+
   it('produces distinct text for distinct sequence numbers within the budget', () => {
     const gen = new ValueGenerator(1);
     const variable = make({
