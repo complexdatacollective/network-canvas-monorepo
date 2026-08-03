@@ -106,6 +106,22 @@ pnpm --filter "./packages/*" build
 pnpm --filter "./apps/*" dev
 ```
 
+To run the two public sites together, give each app the other app's local
+origin and use separate ports:
+
+```bash
+NEXT_PUBLIC_NETWORK_CANVAS_URL=http://localhost:3001 \
+  pnpm --filter @codaco/documentation dev --port 3000
+
+NEXT_PUBLIC_DOCUMENTATION_URL=http://localhost:3000 \
+  pnpm --filter networkcanvas.com dev --port 3001
+```
+
+The same variables may be set in each app's `.env.local`. Netlify deploy
+previews derive the matching peer preview from `REVIEW_ID` when no explicit
+override is configured; normal production builds fall back to the canonical
+`.com` origins.
+
 ### Architect Template Editor Mode
 
 Architect includes a development-only template editor mode for maintainers of

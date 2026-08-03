@@ -13,6 +13,12 @@ To run the app locally:
 1. Set up the required environment variables in the `.env` file (refer to the template in `.env.example`).
 2. Run `pnpm run build` to generate the static sidebar JSON and Algolia search index.
 
+Set `NEXT_PUBLIC_NETWORK_CANVAS_URL` to the website's origin when developing
+both public sites locally (for example, `http://localhost:3001`). When it is
+unset, links use `https://networkcanvas.com`. Netlify deploy previews derive
+the matching website preview automatically; a configured value takes
+precedence.
+
 ## Features
 
 ### 1. Product Coverage

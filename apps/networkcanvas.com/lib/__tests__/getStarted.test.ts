@@ -15,12 +15,12 @@ describe('get started content', () => {
     ]);
   });
 
-  it('defines both Classic apps at version 6.6.0', () => {
+  it('defines both Classic apps at the latest public version', () => {
     expect(classicApps.map(({ id }) => id)).toEqual([
       'architect-classic',
       'interviewer-classic',
     ]);
-    expect(classicApps.every(({ version }) => version === '6.6.0')).toBe(true);
+    expect(classicApps.every(({ version }) => version === '6.5.4')).toBe(true);
   });
 
   it('provides every supported platform for each Classic app', () => {

@@ -7,6 +7,12 @@ import { defaultSiteLocale } from '@codaco/shared-consts';
 
 const withNextIntl = createNextIntl('./lib/i18n/request.ts');
 
+const documentationUrl =
+  process.env.NEXT_PUBLIC_DOCUMENTATION_URL ||
+  (process.env.CONTEXT === 'deploy-preview' && process.env.REVIEW_ID
+    ? `https://deploy-preview-${process.env.REVIEW_ID}--documentation-dev.netlify.app`
+    : undefined);
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   ...(process.env.NODE_ENV === 'development'
@@ -22,6 +28,11 @@ const nextConfig: NextConfig = {
             destination: `/${defaultSiteLocale}/`,
             permanent: false,
           },
+          {
+            source: '/get-started',
+            destination: `/${defaultSiteLocale}/get-started/`,
+            permanent: false,
+          },
         ],
       }
     : {}),
@@ -34,6 +45,9 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  env: documentationUrl
+    ? { NEXT_PUBLIC_DOCUMENTATION_URL: documentationUrl }
+    : {},
 };
 
 export default withNextIntl(nextConfig);

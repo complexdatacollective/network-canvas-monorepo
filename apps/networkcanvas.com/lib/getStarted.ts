@@ -1,3 +1,5 @@
+import { documentationUrl } from '~/lib/siteUrls';
+
 export type Workflow = 'design' | 'collect';
 export type WebAppId = 'architect' | 'interviewer' | 'fresco';
 export type ClassicAppId = 'architect-classic' | 'interviewer-classic';
@@ -7,6 +9,8 @@ export type PlatformId =
   | 'windows'
   | 'linux'
   | 'android';
+
+const classicVersion = '6.5.4' as const;
 
 type AppAction = {
   labelKey:
@@ -63,7 +67,7 @@ type ClassicApp = {
   workflow: Workflow;
   name: string;
   bestFor: readonly BestForKey[];
-  version: '6.6.0';
+  version: typeof classicVersion;
   platforms: readonly PlatformLink[];
   treatment: 'classic';
 };
@@ -74,26 +78,21 @@ export const webDestinations = {
   architect: 'https://architect.networkcanvas.com/',
   interviewer: 'https://interviewer.networkcanvas.com/',
   frescoSandbox: 'https://fresco-sandbox.networkcanvas.com/',
-  frescoSandboxGuide:
-    'https://documentation.networkcanvas.com/en/collect-data/fresco/sandbox',
-  frescoDeployment:
-    'https://documentation.networkcanvas.com/en/collect-data/fresco/guide',
+  frescoSandboxGuide: documentationUrl('/en/collect-data/fresco/sandbox'),
+  frescoDeployment: documentationUrl('/en/collect-data/fresco/guide'),
 } as const;
 
 export const documentationDestinations = {
-  schemaVersions:
-    'https://documentation.networkcanvas.com/en/get-started/advanced-topics/protocol-schema-information',
+  schemaVersions: documentationUrl(
+    '/en/get-started/protocol-schema-information',
+  ),
 } as const;
 
 const classicDestinations = {
-  architectRelease:
-    'https://github.com/complexdatacollective/architect/releases/tag/v6.6.0',
-  interviewerRelease:
-    'https://github.com/complexdatacollective/interviewer/releases/tag/v6.6.0',
-  architectDownload:
-    'https://github.com/complexdatacollective/architect/releases/download/v6.6.0',
-  interviewerDownload:
-    'https://github.com/complexdatacollective/interviewer/releases/download/v6.6.0',
+  architectRelease: `https://github.com/complexdatacollective/architect/releases/tag/v${classicVersion}`,
+  interviewerRelease: `https://github.com/complexdatacollective/interviewer/releases/tag/v${classicVersion}`,
+  architectDownload: `https://github.com/complexdatacollective/architect/releases/download/v${classicVersion}`,
+  interviewerDownload: `https://github.com/complexdatacollective/interviewer/releases/download/v${classicVersion}`,
 } as const;
 
 export const webApps = [
@@ -170,22 +169,22 @@ export const classicApps = [
       'apps.architectClassic.bestFor.classicCompatibility',
       'apps.architectClassic.bestFor.editWithoutMigration',
     ],
-    version: '6.6.0',
+    version: classicVersion,
     platforms: [
       {
         id: 'apple-silicon',
         labelKey: 'platforms.appleSilicon',
-        href: `${classicDestinations.architectDownload}/Network%20Canvas%20Architect-6.6.0-mac-arm64.dmg`,
+        href: `${classicDestinations.architectDownload}/Network.Canvas.Architect-${classicVersion}.dmg`,
       },
       {
         id: 'apple-intel',
         labelKey: 'platforms.appleIntel',
-        href: `${classicDestinations.architectDownload}/Network%20Canvas%20Architect-6.6.0-mac-x64.dmg`,
+        href: `${classicDestinations.architectDownload}/Network.Canvas.Architect-${classicVersion}.dmg`,
       },
       {
         id: 'windows',
         labelKey: 'platforms.windows',
-        href: `${classicDestinations.architectDownload}/Network%20Canvas%20Architect-6.6.0-win-x64.exe`,
+        href: `${classicDestinations.architectDownload}/Network.Canvas.Architect.Setup.${classicVersion}.exe`,
       },
       {
         id: 'linux',
@@ -205,22 +204,22 @@ export const classicApps = [
       'apps.interviewerClassic.bestFor.desktopTablet',
       'apps.interviewerClassic.bestFor.offlineCollection',
     ],
-    version: '6.6.0',
+    version: classicVersion,
     platforms: [
       {
         id: 'apple-silicon',
         labelKey: 'platforms.appleSilicon',
-        href: `${classicDestinations.interviewerDownload}/Network%20Canvas%20Interviewer-6.6.0-arm64.dmg`,
+        href: `${classicDestinations.interviewerDownload}/Network.Canvas.Interviewer-${classicVersion}.dmg`,
       },
       {
         id: 'apple-intel',
         labelKey: 'platforms.appleIntel',
-        href: `${classicDestinations.interviewerDownload}/Network%20Canvas%20Interviewer-6.6.0.dmg`,
+        href: `${classicDestinations.interviewerDownload}/Network.Canvas.Interviewer-${classicVersion}.dmg`,
       },
       {
         id: 'windows',
         labelKey: 'platforms.windows',
-        href: `${classicDestinations.interviewerDownload}/Network%20Canvas%20Interviewer%20Setup%206.6.0.exe`,
+        href: `${classicDestinations.interviewerDownload}/Network.Canvas.Interviewer.Setup.${classicVersion}.exe`,
       },
       {
         id: 'linux',

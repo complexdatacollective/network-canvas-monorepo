@@ -8,6 +8,8 @@
     "NEXT_PUBLIC_ALGOLIA_API_KEY",
     "NEXT_PUBLIC_MENDABLE_ANON_KEY",
     "NEXT_PUBLIC_GA_ID",
+    "NEXT_PUBLIC_DOCUMENTATION_URL",
+    "NEXT_PUBLIC_NETWORK_CANVAS_URL",
     "VITE_FRESCO_PREVIEW_URL",
     "VITE_FRESCO_PREVIEW_API_TOKEN",
     "VITE_DISABLE_ANALYTICS"
@@ -60,7 +62,11 @@
         "NEXT_PUBLIC_ALGOLIA_INDEX_NAME",
         "NEXT_PUBLIC_ALGOLIA_API_KEY",
         "NEXT_PUBLIC_MENDABLE_ANON_KEY",
-        "NEXT_PUBLIC_GA_ID"
+        "NEXT_PUBLIC_GA_ID",
+        "NEXT_PUBLIC_NETWORK_CANVAS_URL",
+        "CONTEXT",
+        "REVIEW_ID",
+        "SITE_URL"
       ],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
@@ -139,7 +145,12 @@
         "tsconfig*.json",
         "package.json"
       ],
-      "env": ["NODE_ENV"],
+      "env": [
+        "NODE_ENV",
+        "NEXT_PUBLIC_DOCUMENTATION_URL",
+        "CONTEXT",
+        "REVIEW_ID"
+      ],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
     "networkcanvas.com#typecheck": {

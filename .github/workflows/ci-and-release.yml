@@ -69,7 +69,7 @@ concurrency:
     || github.ref_name == 'e2e-snapshots/main')) }}
 
 jobs:
-  # Skipped on push: its only consumers (docs-preview-checks, the quality
+  # Skipped on push: its only consumers (site preview checks, the quality
   # aggregate, carry-forward-statuses) never run on push-to-main.
   detect:
     if: >-
@@ -80,6 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       docs: ${{ steps.flags.outputs.docs }}
+      website: ${{ steps.flags.outputs.website }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -169,6 +170,8 @@ jobs:
           }
           docs=$(flag @codaco/documentation)
           echo "docs=$docs" >> "$GITHUB_OUTPUT"
+          website=$(flag networkcanvas.com)
+          echo "website=$website" >> "$GITHUB_OUTPUT"
 
   # Decides per suite whether release E2E must run for this ref: each release
   # lane requires only the suites whose subject package ships in its deploy,
@@ -752,6 +755,89 @@ jobs:
         env:
           DEPLOYMENT_URL: ${{ steps.netlify-preview.outputs.url }}
         run: pnpm run test-redirects
+
+  website-preview-checks:
+    needs: detect
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      needs.detect.outputs.website == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      statuses: read
+    steps:
+      - id: netlify-preview
+        name: Wait for Netlify website preview
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const siteName = 'networkcanvasdotdev';
+            const statusContext = `netlify/${siteName}/deploy-preview`;
+            const headSha = context.payload.pull_request.head.sha;
+            const expectedHost = `deploy-preview-${context.issue.number}--${siteName}.netlify.app`;
+            const deadline = Date.now() + 15 * 60 * 1000;
+
+            while (Date.now() < deadline) {
+              const statuses = await github.paginate(
+                github.rest.repos.listCommitStatusesForRef,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: headSha,
+                  per_page: 100,
+                },
+              );
+              const status = statuses.find(({ context }) => context === statusContext);
+
+              if (status?.state === 'success') {
+                let previewUrl;
+                try {
+                  previewUrl = new URL(status.target_url);
+                } catch {
+                  core.setFailed(`${statusContext} did not provide a valid preview URL`);
+                  return;
+                }
+
+                if (previewUrl.protocol !== 'https:' || previewUrl.hostname !== expectedHost) {
+                  core.setFailed(
+                    `${statusContext} pointed to unexpected URL ${previewUrl.toString()}`,
+                  );
+                  return;
+                }
+
+                core.setOutput('url', previewUrl.origin);
+                return;
+              }
+
+              if (status && ['error', 'failure'].includes(status.state)) {
+                core.setFailed(`${statusContext} concluded ${status.state}`);
+                return;
+              }
+
+              await new Promise((resolve) => setTimeout(resolve, 15_000));
+            }
+
+            core.setFailed(`Timed out waiting for ${statusContext}`);
+      - name: Confirm Netlify preview is reachable
+        env:
+          WEBSITE_URL: ${{ steps.netlify-preview.outputs.url }}
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -fsSL --max-time 10 -o /dev/null "$WEBSITE_URL/en-US/"; then
+              echo "deploy is reachable; proceeding"
+              exit 0
+            fi
+            echo "attempt $i: not yet, sleeping 5s"
+            sleep 5
+          done
+          echo "::error::Netlify website preview is not reachable at $WEBSITE_URL"
+          exit 1
+      - name: Dead-link check
+        env:
+          WEBSITE_URL: ${{ steps.netlify-preview.outputs.url }}
+        run: npx --yes @jthrilly/dead-link-checker@^1.1.0 "$WEBSITE_URL/en-US/" -v --yes
 
   interview-e2e:
     # Runs when the release policy requires the interview suite (the lane
@@ -1918,6 +2004,7 @@ jobs:
     needs:
       - detect
       - docs-preview-checks
+      - website-preview-checks
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
@@ -1935,12 +2022,14 @@ jobs:
           # report verdict onto an unrelated push would wrongly gate it — let
           # its natural skip stand instead.
           FLAG_DOCS: ${{ needs.detect.outputs.docs }}
+          FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         with:
           script: |
             const flagToJobs = {
               FLAG_DOCS: ["docs-preview-checks"],
+              FLAG_WEBSITE: ["website-preview-checks"],
             };
 
             // Only consider jobs the current run didn't execute (flag false).

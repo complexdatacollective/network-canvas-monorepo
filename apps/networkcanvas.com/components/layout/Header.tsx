@@ -8,12 +8,17 @@ import type { SiteNavigationLinkRenderProps } from '@codaco/fresco-ui/navigation
 import ThemeSwitcher from '~/components/layout/ThemeSwitcher';
 import { isLocale } from '~/lib/i18n/locales';
 import { Link } from '~/lib/i18n/navigation';
+import { resolveWebsiteNavigationUrl } from '~/lib/siteUrls';
 
 function renderNavigationLink({
   children,
   ...props
 }: SiteNavigationLinkRenderProps) {
-  return <Link {...props}>{children}</Link>;
+  return (
+    <Link {...props} href={resolveWebsiteNavigationUrl(props.href)}>
+      {children}
+    </Link>
+  );
 }
 
 export function Header({

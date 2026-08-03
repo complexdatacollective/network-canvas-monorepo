@@ -1,8 +1,10 @@
 import { useTranslations } from 'next-intl';
 
+import { documentationUrl } from '~/lib/siteUrls';
+
 import type { AccentColor } from './summerUpdateColors';
 
-const documentationRoot = 'https://documentation.networkcanvas.com/en';
+const documentationRoot = documentationUrl('/en');
 
 export type FeatureGroup =
   | 'interfaces'
@@ -178,14 +180,14 @@ const compatibilityDefinitions = [
   {
     id: 'interviewerClassic',
     app: 'Interviewer Classic',
-    version: '6.6.0',
+    version: '6.5.4',
     schema7: 'native',
     schema8: 'unsupported',
   },
   {
     id: 'architectClassic',
     app: 'Architect Classic',
-    version: '6.6.0',
+    version: '6.5.4',
     schema7: 'native',
     schema8: 'unsupported',
   },

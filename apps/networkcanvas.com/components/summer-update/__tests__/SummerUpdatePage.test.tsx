@@ -498,7 +498,7 @@ describe('SummerUpdatePage', () => {
     expect(downloadLink).not.toHaveAttribute('tabindex', '-1');
     expect(
       screen.getByText(
-        (_, element) => element?.textContent === 'Architect Classic\u00a06.6.0',
+        (_, element) => element?.textContent === 'Architect Classic\u00a06.5.4',
       ),
     ).toBeInTheDocument();
   });
@@ -532,7 +532,7 @@ describe('SummerUpdatePage', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Explore the new website' }),
-    ).toHaveAttribute('href', 'https://networkcanvas.com/');
+    ).toHaveAttribute('href', '/');
     expect(
       screen.getByRole('link', { name: 'Explore the documentation' }),
     ).toHaveAttribute('href', 'https://documentation.networkcanvas.com/en');

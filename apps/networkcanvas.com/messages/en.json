@@ -319,7 +319,7 @@
           "templates": "Includes <strong>protocol templates</strong>, designed to help you get started quickly and avoid common mistakes"
         },
         "open": "Open Architect",
-        "classicNote": "<architectClassic>Architect Classic</architectClassic> remains available for researchers who need to keep using older versions of Interviewer (e.g. 6.6.0). It is in maintenance mode — bug fixes only — and continues to produce Schema 7 protocols."
+        "classicNote": "<architectClassic>Architect Classic</architectClassic> remains available for researchers who need to keep using older versions of Interviewer (e.g. 6.5.4). It is in maintenance mode — bug fixes only — and continues to produce Schema 7 protocols."
       },
       "interviewer": {
         "label": "Face-to-face interviews",
@@ -581,7 +581,7 @@
         },
         "architectClassic": {
           "platform": "Desktop",
-          "note": "<architectClassic>Architect Classic</architectClassic> continues to produce Schema 7 protocols, in maintenance mode. Use it only if you need to keep running older versions of Interviewer (e.g. 6.6.0)."
+          "note": "<architectClassic>Architect Classic</architectClassic> continues to produce Schema 7 protocols, in maintenance mode. Use it only if you need to keep running older versions of Interviewer (e.g. 6.5.4)."
         },
         "frescoClassic": {
           "platform": "Browser",

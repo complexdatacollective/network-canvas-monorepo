@@ -49,6 +49,49 @@ test('detect never runs on push-to-main (its consumers are PR/dispatch only)', (
   assert.match(detectJob, /inputs\.interview_e2e_benchmark == true/);
 });
 
+test('both public sites crawl their matching Netlify deploy previews', () => {
+  const detectJob = job('detect');
+  assert.ok(detectJob, 'detect job exists');
+  assert.match(detectJob, /docs: \$\{\{ steps\.flags\.outputs\.docs \}\}/);
+  assert.match(
+    detectJob,
+    /website: \$\{\{ steps\.flags\.outputs\.website \}\}/,
+  );
+
+  for (const [jobName, flag, siteName, startPath] of [
+    ['docs-preview-checks', 'docs', 'documentation-dev', 'DOCS_URL'],
+    [
+      'website-preview-checks',
+      'website',
+      'networkcanvasdotdev',
+      'WEBSITE_URL/en-US/',
+    ],
+  ]) {
+    const previewJob = job(jobName);
+    assert.ok(previewJob, `${jobName} exists`);
+    assert.match(
+      previewJob,
+      new RegExp(`needs\\.detect\\.outputs\\.${flag} == 'true'`),
+    );
+    assert.match(previewJob, new RegExp(`const siteName = '${siteName}'`));
+    assert.match(
+      previewJob,
+      new RegExp(
+        `deploy-preview-\\$\\{context\\.issue\\.number\\}--\\$\\{siteName\\}\\.netlify\\.app`,
+      ),
+    );
+    assert.match(previewJob, /@jthrilly\/dead-link-checker@\^1\.1\.0/);
+    assert.match(previewJob, new RegExp(`"\\$${startPath}"`));
+  }
+
+  const carryForward = job('carry-forward-statuses');
+  assert.ok(carryForward, 'carry-forward-statuses job exists');
+  assert.match(carryForward, /- docs-preview-checks/);
+  assert.match(carryForward, /- website-preview-checks/);
+  assert.match(carryForward, /FLAG_DOCS: \["docs-preview-checks"\]/);
+  assert.match(carryForward, /FLAG_WEBSITE: \["website-preview-checks"\]/);
+});
+
 test('each release E2E suite gates on its own policy flag', () => {
   for (const [jobName, flag] of [
     ['interview-e2e', 'interview'],
