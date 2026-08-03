@@ -1,5 +1,11 @@
 # networkcanvas.com
 
+## 0.2.3
+
+### Patch Changes
+
+- Keep Architect Classic and Interviewer Classic installer links working when GitHub release assets change.
+
 ## 0.2.2
 
 ### Patch Changes
