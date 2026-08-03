@@ -1,5 +1,11 @@
 # @codaco/interviewer
 
+## 8.0.0-beta.12
+
+### Patch Changes
+
+- Boolean questions now show an option in red once it is selected, where the protocol marks that option as a negative response.
+
 ## 8.0.0-beta.11
 
 ### Patch Changes
