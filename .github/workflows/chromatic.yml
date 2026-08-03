@@ -3,7 +3,11 @@ name: Chromatic
 on:
   push:
     branches:
+      - main
       - 'changeset-release/**'
+  # Merge groups publish zero-snapshot statuses at the commit that later lands
+  # on main. The subsequent main push must replace that skipped target with a
+  # real build for every project so future PR changesets have snapshots to use.
   # Once the three `UI Tests: ...` contexts are required on main, every PR and
   # merge-group SHA must receive them. Normal trusted PRs and merge groups use
   # Chromatic's zero-snapshot `--skip` path below; release PRs receive the same
@@ -35,10 +39,10 @@ permissions:
   contents: read
 
 concurrency:
-  # Keep release uploads separate from status-only PR runs so the PR event
-  # caused by a generated-branch push cannot cancel its real capture. Within an
-  # event class, only the newest run for a ref can publish statuses.
-  group: chromatic-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.event.merge_group.head_ref || github.event.workflow_run.pull_requests[0].number || github.ref_name || github.run_id }}
+  # Main needs one completed target build for every merge commit, so give each
+  # push its own group. Other event classes keep only the newest run for a ref;
+  # release uploads remain isolated from status-only PR runs.
+  group: chromatic-${{ github.event_name }}-${{ (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.sha) || github.event.pull_request.head.ref || github.event.merge_group.head_ref || github.event.workflow_run.pull_requests[0].number || github.ref_name || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -156,7 +160,8 @@ jobs:
   detect:
     if: >-
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-      && github.actor != 'dependabot[bot]'
+      && (github.ref_name == github.event.repository.default_branch
+      || github.actor != 'dependabot[bot]')
     runs-on: ubuntu-latest
     outputs:
       fresco_ui: ${{ steps.affected.outputs.fresco_ui }}
@@ -212,11 +217,24 @@ jobs:
           fi
 
           head_sha=$(git rev-parse HEAD)
-          selection=$(node scripts/chromatic-affected.mjs \
-            --base "$BEFORE_SHA" \
-            --head "$head_sha" \
-            --main "origin/$DEFAULT_BRANCH" \
-            --release-ref "$GITHUB_REF_NAME")
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_NAME" == "$DEFAULT_BRANCH" ]]; then
+            selection=$(jq -cn '{
+              fresco_ui: true,
+              interview: true,
+              interviewer: true,
+              reasons: {
+                fresco_ui: ["default branch needs a complete target build"],
+                interview: ["default branch needs a complete target build"],
+                interviewer: ["default branch needs a complete target build"]
+              }
+            }')
+          else
+            selection=$(node scripts/chromatic-affected.mjs \
+              --base "$BEFORE_SHA" \
+              --head "$head_sha" \
+              --main "origin/$DEFAULT_BRANCH" \
+              --release-ref "$GITHUB_REF_NAME")
+          fi
 
           fresco_ui=$(jq -r '.fresco_ui' <<< "$selection")
           interview=$(jq -r '.interview' <<< "$selection")
@@ -247,6 +265,8 @@ jobs:
     needs: detect
     if: >-
       needs.detect.result == 'success'
+      && !(github.event_name == 'push'
+      && github.ref_name == github.event.repository.default_branch)
       && (needs.detect.outputs.fresco_ui != 'true'
       || needs.detect.outputs.interview != 'true'
       || needs.detect.outputs.interviewer != 'true')
@@ -322,7 +342,10 @@ jobs:
   fresco-ui:
     name: Fresco UI
     needs: detect
-    if: needs.detect.outputs.fresco_ui == 'true'
+    if: >-
+      (github.event_name == 'push'
+      && github.ref_name == github.event.repository.default_branch)
+      || needs.detect.outputs.fresco_ui == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -361,7 +384,10 @@ jobs:
   interview:
     name: Interview
     needs: detect
-    if: needs.detect.outputs.interview == 'true'
+    if: >-
+      (github.event_name == 'push'
+      && github.ref_name == github.event.repository.default_branch)
+      || needs.detect.outputs.interview == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -400,7 +426,10 @@ jobs:
   interviewer:
     name: Interviewer
     needs: detect
-    if: needs.detect.outputs.interviewer == 'true'
+    if: >-
+      (github.event_name == 'push'
+      && github.ref_name == github.event.repository.default_branch)
+      || needs.detect.outputs.interviewer == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
