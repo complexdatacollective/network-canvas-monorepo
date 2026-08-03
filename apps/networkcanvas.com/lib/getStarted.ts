@@ -100,7 +100,11 @@ function getReleaseAssetPath(
     );
   }
 
-  void getClassicDownloadAssetUrl(definition, release.assets);
+  try {
+    void getClassicDownloadAssetUrl(definition, release.assets);
+  } catch {
+    // Ignore: the /downloads/classic edge resolver will fall back to the release page.
+  }
 
   return getClassicDownloadPath(app, platform, release.version);
 }
