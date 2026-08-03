@@ -1,5 +1,11 @@
 # @codaco/interview
 
+## 7.0.1
+
+### Patch Changes
+
+- 8effa31: `BooleanField` now honours the `negative` flag on a boolean option. Selecting an option marked negative styles its border and indicator in the destructive colour instead of the primary one; unselected options are unchanged. Previously the flag was accepted by the protocol schema and written by Architect, but ignored at render time.
+
 ## 7.0.0
 
 ### Minor Changes
