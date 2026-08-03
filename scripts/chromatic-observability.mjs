@@ -24,6 +24,7 @@ function cleanLog(log) {
 }
 
 function parseCount(value) {
+  if (typeof value !== 'string') return null;
   const count = Number(value.replaceAll(',', ''));
   return Number.isSafeInteger(count) ? count : null;
 }

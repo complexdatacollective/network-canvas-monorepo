@@ -63,6 +63,17 @@ test('parses Chromatic 18 TurboSnap bypass counts', () => {
   assert.equal(result.buildScope, 'partial');
 });
 
+test('ignores incomplete snapshot count lines without throwing', () => {
+  const result = parseChromaticLog(`
+    ✔ TurboSnap enabled
+    Captured 12 snapshots.
+  `);
+
+  assert.equal(result.snapshotsCaptured, null);
+  assert.equal(result.snapshotsInherited, null);
+  assert.equal(result.buildScope, 'partial');
+});
+
 test('reports a full-build file-change reason and quota state from audited output', () => {
   const result = parseChromaticLog(`
     2026-07-30T16:39:12.3340238Z ⚠ TurboSnap disabled due to file change
