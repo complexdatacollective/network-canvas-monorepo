@@ -119,5 +119,5 @@ export default async function classicDownload(request: Request) {
 }
 
 export const config: Config = {
-  path: '/downloads/classic/*',
+  path: `${CLASSIC_DOWNLOAD_PATH_PREFIX}/*`,
 };
