@@ -4,11 +4,24 @@ import {
   type AnimationScope,
   MotionConfigContext,
   useAnimate,
-  useReducedMotionConfig,
+  useReducedMotion,
 } from 'motion/react';
 import { useContext, useMemo } from 'react';
 
 type AnimateFn<T extends Element> = ReturnType<typeof useAnimate<T>>[1];
+
+/**
+ * Returns true when Motion has been configured not to create animations.
+ */
+export function useShouldSkipAnimations(): boolean {
+  const { reducedMotion, skipAnimations } = useContext(MotionConfigContext);
+  const userPrefersReducedMotion = useReducedMotion();
+  const shouldReduceMotion =
+    reducedMotion === 'always' ||
+    (reducedMotion !== 'never' && userPrefersReducedMotion);
+
+  return !!skipAnimations || !!shouldReduceMotion;
+}
 
 /**
  * Drop-in replacement for Motion's `useAnimate` that respects
@@ -24,10 +37,7 @@ type AnimateFn<T extends Element> = ReturnType<typeof useAnimate<T>>[1];
  */
 export function useSafeAnimate<T extends Element = HTMLDivElement>() {
   const [scope, animate] = useAnimate<T>();
-  const { skipAnimations } = useContext(MotionConfigContext);
-  const shouldReduceMotion = useReducedMotionConfig();
-
-  const shouldSkip = !!skipAnimations || !!shouldReduceMotion;
+  const shouldSkip = useShouldSkipAnimations();
 
   const safeAnimate = useMemo(() => {
     if (!shouldSkip) return animate;

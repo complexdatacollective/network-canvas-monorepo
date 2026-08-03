@@ -10,10 +10,11 @@ import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
  * Fixture for DyadCensus stages.
  *
  * DyadCensus iterates through all unordered pairs of subject-type nodes with a
- * binary Yes/No BooleanField, one pair per screen, auto-advancing 350ms after a
- * *changed* answer (DyadCensus.tsx:193-206). Per-prompt answers are NOT
- * reflected in the shared network graph alone — read them from Redux via
- * `getStageMetadata(step)`.
+ * binary Yes/No BooleanField, one pair per screen, auto-advancing after each
+ * answer. Changed answers retain a 350ms selection animation in normal
+ * sessions and advance immediately when motion is disabled. Per-prompt answers
+ * are NOT reflected in the shared network graph alone — read them from Redux
+ * via `getStageMetadata(step)`.
  *
  * Instantiate directly in a scenario: `new DyadCensusFixture(page)`.
  */
@@ -76,12 +77,9 @@ export class DyadCensusFixture {
   }
 
   /**
-   * Settle-wait for the auto-advance to land on a different pair. Auto-advance
-   * runs on the REAL 350ms setTimeout (DyadCensus.tsx:201-206), and motion's
-   * enter/exit spring animations also run on the real clock — faking timers via
-   * page.clock would freeze those animations mid-transition instead of
-   * completing them, so we poll for the observable effect (the pair changing) on
-   * the real clock rather than fast-forwarding a fake one.
+   * Wait for the auto-advance to land on a different pair. Production sessions
+   * retain the selection delay, while the E2E host disables motion and advances
+   * immediately. Polling the observable pair change covers both modes.
    */
   async waitForPairChange(previousLabels: [string, string]): Promise<void> {
     await expect
