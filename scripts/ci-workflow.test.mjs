@@ -57,6 +57,11 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
     detectJob,
     /website: \$\{\{ steps\.flags\.outputs\.website \}\}/,
   );
+  assert.match(
+    detectJob,
+    /if \[\[ "\$docs" == "true" \|\| "\$website" == "true" \]\]; then\n\s+docs=true\n\s+website=true/,
+    'a change to either public site triggers both preview crawls',
+  );
 
   for (const [jobName, flag, siteName, startPath] of [
     ['docs-preview-checks', 'docs', 'documentation-dev', 'DOCS_URL'],

@@ -169,8 +169,17 @@ jobs:
             fi
           }
           docs=$(flag @codaco/documentation)
-          echo "docs=$docs" >> "$GITHUB_OUTPUT"
           website=$(flag networkcanvas.com)
+
+          # Either public site can contain inbound links to routes owned by the
+          # other. Crawl both paired previews whenever either site changes so a
+          # removed route cannot escape the link check on the unchanged peer.
+          if [[ "$docs" == "true" || "$website" == "true" ]]; then
+            docs=true
+            website=true
+          fi
+
+          echo "docs=$docs" >> "$GITHUB_OUTPUT"
           echo "website=$website" >> "$GITHUB_OUTPUT"
 
   # Decides per suite whether release E2E must run for this ref: each release
