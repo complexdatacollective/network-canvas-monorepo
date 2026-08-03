@@ -95,7 +95,9 @@ function getReleaseAssetPath(
 ) {
   const definition = getClassicDownloadDefinition(app, platform);
   if (!definition) {
-    throw new Error(`Missing Classic download definition for ${app}.`);
+    throw new Error(
+      `Missing Classic download definition for ${app} (${platform}).`,
+    );
   }
 
   getClassicDownloadAssetUrl(definition, release.assets);
