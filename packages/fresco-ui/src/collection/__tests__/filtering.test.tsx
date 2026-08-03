@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Collection } from '../components/Collection';
@@ -54,6 +54,7 @@ function FilterableCollection({
   onFilterResultsChange,
   filterQuery,
   defaultFilterQuery,
+  filterExecution,
 }: {
   items?: Item[];
   filterKeys?: string[];
@@ -61,6 +62,7 @@ function FilterableCollection({
   onFilterResultsChange?: (keys: Set<Key>, count: number) => void;
   filterQuery?: string;
   defaultFilterQuery?: string;
+  filterExecution?: 'worker' | 'sync';
 }) {
   const layout = useMemo(() => new ListLayout<Item>({ gap: 8 }), []);
 
@@ -72,6 +74,7 @@ function FilterableCollection({
       layout={layout}
       aria-label="Filterable collection"
       filterKeys={filterKeys}
+      filterExecution={filterExecution}
       filterQuery={filterQuery}
       defaultFilterQuery={defaultFilterQuery}
       onFilterChange={onFilterChange}
@@ -338,6 +341,120 @@ describe('Collection Filtering', () => {
       await user.click(screen.getByText('Update Query'));
 
       expect(screen.getByPlaceholderText('Search...')).toHaveValue('updated');
+    });
+  });
+
+  describe('synchronous execution', () => {
+    it('filters without creating a worker', async () => {
+      render(
+        <FilterableCollection filterExecution="sync" filterQuery="Carrot" />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('item-3')).toBeInTheDocument();
+        expect(screen.queryByTestId('item-1')).not.toBeInTheDocument();
+      });
+      expect(mockSearch).not.toHaveBeenCalled();
+    });
+
+    it('restores every item when a controlled query is cleared', async () => {
+      function ControlledWrapper() {
+        const [query, setQuery] = useState('Carrot');
+        const [, setRenderCount] = useState(0);
+        useEffect(() => {
+          if (query === '') setRenderCount((count) => count + 1);
+        }, [query]);
+        return (
+          <>
+            <button type="button" onClick={() => setQuery('')}>
+              Clear controlled query
+            </button>
+            <FilterableCollection filterExecution="sync" filterQuery={query} />
+          </>
+        );
+      }
+
+      const user = userEvent.setup();
+      render(<ControlledWrapper />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('item-3')).toBeInTheDocument();
+        expect(screen.queryByTestId('item-1')).not.toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Clear controlled query'));
+
+      await waitFor(() => {
+        expect(screen.getAllByTestId(/^item-/)).toHaveLength(testItems.length);
+      });
+    });
+
+    it('re-runs a controlled query when the item set changes', async () => {
+      function ControlledItemsWrapper() {
+        const [items, setItems] = useState(testItems.slice(0, 1));
+        return (
+          <>
+            <button type="button" onClick={() => setItems(testItems)}>
+              Show every category
+            </button>
+            <FilterableCollection
+              items={items}
+              filterExecution="sync"
+              filterQuery="Fruit"
+            />
+          </>
+        );
+      }
+
+      const user = userEvent.setup();
+      render(<ControlledItemsWrapper />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('item-1')).toBeInTheDocument();
+        expect(screen.queryByTestId('item-2')).not.toBeInTheDocument();
+      });
+
+      await user.click(
+        screen.getByRole('button', { name: 'Show every category' }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('item-2')).toBeInTheDocument();
+        expect(screen.getByTestId('item-4')).toBeInTheDocument();
+        expect(screen.queryByTestId('item-3')).not.toBeInTheDocument();
+      });
+    });
+
+    it('preserves numeric item keys', async () => {
+      const numericItems = [
+        { id: 1, name: 'Apple' },
+        { id: 2, name: 'Banana' },
+      ];
+
+      render(
+        <Collection
+          items={numericItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={new ListLayout<(typeof numericItems)[number]>({ gap: 2 })}
+          filterExecution="sync"
+          filterQuery="Banana"
+          filterKeys={['name']}
+          filterDebounceMs={0}
+          renderItem={(item, itemProps) => (
+            <div {...itemProps} data-testid={`numeric-item-${item.id}`}>
+              {item.name}
+            </div>
+          )}
+        >
+          {(CollectionElements) => CollectionElements}
+        </Collection>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('numeric-item-2')).toBeInTheDocument();
+        expect(screen.queryByTestId('numeric-item-1')).not.toBeInTheDocument();
+      });
     });
   });
 });

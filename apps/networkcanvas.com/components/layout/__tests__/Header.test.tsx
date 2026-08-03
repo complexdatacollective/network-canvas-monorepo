@@ -40,7 +40,7 @@ describe('localized layout navigation', () => {
     );
     expect(
       screen.getByRole('link', { name: 'Galería de protocolos' }),
-    ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/');
+    ).toHaveAttribute('href', '/protocol-gallery');
     expect(
       screen.getByRole('button', { name: 'Software' }),
     ).toBeInTheDocument();

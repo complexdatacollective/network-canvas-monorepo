@@ -46,9 +46,6 @@ function StaticRendererComponent<T>({
     animationKey,
   );
 
-  // Get layout item styles (e.g., fixed width for InlineGridLayout)
-  const layoutItemStyle = layout.getItemStyles();
-
   const effectiveLayoutGroupId =
     layoutGroupId === undefined ? collectionId : (layoutGroupId ?? undefined);
 
@@ -61,7 +58,7 @@ function StaticRendererComponent<T>({
     return (
       <div ref={scope} style={containerStyle}>
         {Array.from(collection).map((node) => (
-          <div key={node.key} style={layoutItemStyle}>
+          <div key={node.key} style={layout.getItemStyles(node.key)}>
             <div data-stagger-item data-stagger-key={animationKey}>
               <CollectionItem
                 node={node}
@@ -87,7 +84,7 @@ function StaticRendererComponent<T>({
               initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.6, opacity: 0 }}
-              style={layoutItemStyle}
+              style={layout.getItemStyles(node.key)}
             >
               <div data-stagger-item data-stagger-key={animationKey}>
                 <CollectionItem

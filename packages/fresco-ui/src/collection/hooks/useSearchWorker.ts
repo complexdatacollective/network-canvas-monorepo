@@ -3,7 +3,6 @@
 import { type Remote, releaseProxy, wrap } from 'comlink';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import SearchWorker from '../filtering/search.worker.ts?worker&inline';
 import type {
   FilterProperty,
   FuseOptions,
@@ -16,16 +15,17 @@ import type { Key, KeyExtractor } from '../types';
  */
 type SearchEngine = {
   init: (
-    items: (Record<string, unknown> & { _key: string })[],
+    items: (Record<string, unknown> & { _key: Key })[],
     keys: string[],
     options?: FuseOptions,
   ) => void;
   search: (query: string, minQueryLength?: number) => WorkerSearchResult;
-  updateItems: (items: (Record<string, unknown> & { _key: string })[]) => void;
+  updateItems: (items: (Record<string, unknown> & { _key: Key })[]) => void;
   isReady: () => boolean;
 };
 
 type UseSearchWorkerOptions<T> = {
+  enabled?: boolean;
   items: T[];
   keyExtractor: KeyExtractor<T>;
   filterKeys: FilterProperty[];
@@ -54,6 +54,7 @@ type UseSearchWorkerReturn = {
  * @returns Object with search function and status flags
  */
 export function useSearchWorker<T extends Record<string, unknown>>({
+  enabled = true,
   items,
   keyExtractor,
   filterKeys,
@@ -79,8 +80,15 @@ export function useSearchWorker<T extends Record<string, unknown>>({
   // Initialize worker
   useEffect(() => {
     isUnmountedRef.current = false;
+    if (!enabled) {
+      setIsReady(false);
+      return;
+    }
 
-    const worker = new SearchWorker();
+    const worker = new Worker(
+      new URL('../filtering/search.worker.ts', import.meta.url),
+      { type: 'module' },
+    );
 
     workerRef.current = worker;
     apiRef.current = wrap<SearchEngine>(worker);
@@ -96,10 +104,11 @@ export function useSearchWorker<T extends Record<string, unknown>>({
       apiRef.current = null;
       setIsReady(false);
     };
-  }, []);
+  }, [enabled]);
 
   // Initialize/update index when items change
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
 
     const initIndex = async () => {
@@ -117,7 +126,7 @@ export function useSearchWorker<T extends Record<string, unknown>>({
         // Serialize items for worker (add _key for tracking)
         const serializedItems = items.map((item) => ({
           ...item,
-          _key: String(keyExtractor(item)),
+          _key: keyExtractor(item),
         }));
 
         await apiRef.current.init(
@@ -142,7 +151,7 @@ export function useSearchWorker<T extends Record<string, unknown>>({
     return () => {
       cancelled = true;
     };
-  }, [items, keyExtractor]);
+  }, [enabled, items, keyExtractor]);
 
   // Search function
   const search = useCallback(async (query: string, minQueryLength = 1) => {

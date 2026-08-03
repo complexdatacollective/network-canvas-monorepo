@@ -207,7 +207,6 @@ function VirtualizedRendererComponent<T>({
 
   // Get layout styles for row items
   const containerStyle = layout.getContainerStyles();
-  const itemStyle = layout.getItemStyles();
 
   const rowStyle = {
     position: 'absolute' as const,
@@ -264,7 +263,11 @@ function VirtualizedRendererComponent<T>({
                 if (!node) return null;
 
                 return (
-                  <div key={key} ref={getItemRef(key)} style={itemStyle}>
+                  <div
+                    key={key}
+                    ref={getItemRef(key)}
+                    style={layout.getItemStyles(key)}
+                  >
                     <div data-stagger-item data-stagger-key={animationKey}>
                       <CollectionItem
                         node={node}

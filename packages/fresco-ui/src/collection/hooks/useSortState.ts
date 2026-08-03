@@ -116,6 +116,7 @@ export function useSortState(props: SortProps = {}): SortManager {
         sortType: controlledSortType ?? 'string',
         sortRules: controlledSortRules ?? rules,
       });
+      store.resortItems();
     }
   }, [
     storeApi,
