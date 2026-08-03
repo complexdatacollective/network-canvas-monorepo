@@ -361,9 +361,14 @@ jobs:
       - name: Run Chromatic
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_FRESCO_UI }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
+          chromatic_args=(--skip-update-check --no-interactive)
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_NAME" == "$DEFAULT_BRANCH" ]]; then
+            chromatic_args+=(--force-rebuild)
+          fi
           pnpm --filter @codaco/fresco-ui chromatic \
-            --skip-update-check --no-interactive \
+            "${chromatic_args[@]}" \
             --log-file="$RUNNER_TEMP/chromatic-fresco-ui.log"
       - name: Summarize Chromatic build
         if: always()
@@ -403,9 +408,14 @@ jobs:
       - name: Run Chromatic
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEW }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
+          chromatic_args=(--skip-update-check --no-interactive)
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_NAME" == "$DEFAULT_BRANCH" ]]; then
+            chromatic_args+=(--force-rebuild)
+          fi
           pnpm --filter @codaco/interview chromatic \
-            --skip-update-check --no-interactive \
+            "${chromatic_args[@]}" \
             --log-file="$RUNNER_TEMP/chromatic-interview.log"
       - name: Summarize Chromatic build
         if: always()
@@ -445,9 +455,14 @@ jobs:
       - name: Run Chromatic
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEWER }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
+          chromatic_args=(--skip-update-check --no-interactive)
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_NAME" == "$DEFAULT_BRANCH" ]]; then
+            chromatic_args+=(--force-rebuild)
+          fi
           pnpm --filter @codaco/interviewer chromatic \
-            --skip-update-check --no-interactive \
+            "${chromatic_args[@]}" \
             --log-file="$RUNNER_TEMP/chromatic-interviewer.log"
       - name: Summarize Chromatic build
         if: always()

@@ -143,6 +143,14 @@ test('default-branch pushes replace merge-queue skip builds with real builds', (
       /\(github\.event_name == 'push'\n\s+&& github\.ref_name == github\.event\.repository\.default_branch\)/,
     );
     assert.match(body, /Build Storybook/);
+    assert.match(
+      body,
+      /DEFAULT_BRANCH: \$\{\{ github\.event\.repository\.default_branch \}\}/,
+    );
+    assert.match(
+      body,
+      /if \[\[ "\$GITHUB_EVENT_NAME" == "push" && "\$GITHUB_REF_NAME" == "\$DEFAULT_BRANCH" \]\]; then\n\s+chromatic_args\+=\(--force-rebuild\)/,
+    );
     assert.doesNotMatch(body, /--skip /);
   }
 });
@@ -184,7 +192,7 @@ test('affected release projects pass runtime options through pnpm', () => {
     assert.match(
       body,
       new RegExp(
-        `pnpm --filter ${packageName.replace('/', '\\/')} chromatic \\\\\\n\\s+--skip-update-check --no-interactive \\\\\\n\\s+--log-file="\\$RUNNER_TEMP/chromatic-${jobName}\\.log"`,
+        `pnpm --filter ${packageName.replace('/', '\\/')} chromatic \\\\\\n\\s+"\\$\\{chromatic_args\\[@\\]\\}" \\\\\\n\\s+--log-file="\\$RUNNER_TEMP/chromatic-${jobName}\\.log"`,
       ),
     );
     assert.doesNotMatch(body, /pnpm --filter [^\n]+ chromatic -- \\/);
