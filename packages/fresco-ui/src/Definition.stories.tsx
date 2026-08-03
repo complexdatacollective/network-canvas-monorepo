@@ -93,7 +93,8 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const term = canvas.getByText('personal network');
-    await userEvent.hover(term);
+    term.focus();
+    await expect(term).toHaveFocus();
     await waitFor(() => expect(term).toHaveAttribute('data-popup-open'));
     await expect(term).toHaveAccessibleDescription(
       'The people an individual knows and the relationships among them.',
