@@ -25,15 +25,15 @@ describe('get started content', () => {
     expect(classicApps.every(({ version }) => version === '6.6.0')).toBe(true);
 
     expect(classicApps[0]?.platforms.map(({ href }) => href)).toEqual([
-      expect.stringContaining('Network.Canvas.Architect-6.6.0-mac-arm64.dmg'),
-      expect.stringContaining('Network.Canvas.Architect-6.6.0-mac-x64.dmg'),
-      expect.stringContaining('Network.Canvas.Architect-6.6.0-win-x64.exe'),
+      '/downloads/classic/architect/6.6.0/apple-silicon',
+      '/downloads/classic/architect/6.6.0/apple-intel',
+      '/downloads/classic/architect/6.6.0/windows',
       'https://github.com/complexdatacollective/Architect/releases/latest',
     ]);
     expect(classicApps[1]?.platforms.map(({ href }) => href)).toEqual([
-      expect.stringContaining('Network.Canvas.Interviewer-6.6.0-arm64.dmg'),
-      expect.stringContaining('Network.Canvas.Interviewer-6.6.0.dmg'),
-      expect.stringContaining('Network.Canvas.Interviewer.Setup.6.6.0.exe'),
+      '/downloads/classic/interviewer/6.6.0/apple-silicon',
+      '/downloads/classic/interviewer/6.6.0/apple-intel',
+      '/downloads/classic/interviewer/6.6.0/windows',
       'https://github.com/complexdatacollective/Interviewer/releases/latest',
       'https://play.google.com/store/apps/details?id=org.codaco.NetworkCanvasInterviewer6',
     ]);

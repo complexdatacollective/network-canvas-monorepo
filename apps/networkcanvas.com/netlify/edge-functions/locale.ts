@@ -8,6 +8,7 @@ import {
   type SiteLocale,
 } from '@codaco/shared-consts';
 
+import { CLASSIC_DOWNLOAD_PATH_PREFIX } from '../../lib/classicDownloads.ts';
 import { localeCookie } from '../../lib/i18n/locales.ts';
 
 type RequestedLocale = {
@@ -87,6 +88,8 @@ function shouldBypass(pathname: string) {
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/api/') ||
     pathname.startsWith('/.netlify/') ||
+    pathname === CLASSIC_DOWNLOAD_PATH_PREFIX ||
+    pathname.startsWith(`${CLASSIC_DOWNLOAD_PATH_PREFIX}/`) ||
     /\.[^/]+$/.test(pathname)
   );
 }

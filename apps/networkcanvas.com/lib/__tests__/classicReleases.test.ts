@@ -74,15 +74,15 @@ describe('latest Classic releases', () => {
     );
     expect(apps.map(({ version }) => version)).toEqual(['7.0.0', '8.0.0']);
     expect(apps[0]?.platforms.map(({ href }) => href)).toEqual([
-      'https://example.com/architect-arm.dmg',
-      'https://example.com/architect-intel.dmg',
-      'https://example.com/architect.exe',
+      '/downloads/classic/architect/7.0.0/apple-silicon',
+      '/downloads/classic/architect/7.0.0/apple-intel',
+      '/downloads/classic/architect/7.0.0/windows',
       'https://github.com/complexdatacollective/Architect/releases/latest',
     ]);
     expect(apps[1]?.platforms.map(({ href }) => href)).toEqual([
-      'https://example.com/interviewer-arm.dmg',
-      'https://example.com/interviewer-intel.dmg',
-      'https://example.com/interviewer.exe',
+      '/downloads/classic/interviewer/8.0.0/apple-silicon',
+      '/downloads/classic/interviewer/8.0.0/apple-intel',
+      '/downloads/classic/interviewer/8.0.0/windows',
       'https://github.com/complexdatacollective/Interviewer/releases/latest',
       'https://play.google.com/store/apps/details?id=org.codaco.NetworkCanvasInterviewer6',
     ]);
