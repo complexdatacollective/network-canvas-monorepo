@@ -16,12 +16,11 @@ import { SchemaVersionTooltip } from '~/components/get-started/SchemaVersionTool
 import { ButtonLink } from '~/components/ui/ButtonLink';
 import { cn } from '~/lib/cn';
 import {
-  type classicApps,
+  type AppRecord,
+  type ClassicApp,
   type PlatformId,
-  type webApps,
+  type WebApp,
 } from '~/lib/getStarted';
-
-type AppRecord = (typeof webApps)[number] | (typeof classicApps)[number];
 
 const treatmentClasses = {
   featured: 'bg-cyber-grape text-white elevation-high',
@@ -37,7 +36,7 @@ const platformIcons = {
   'android': Smartphone,
 } satisfies Record<PlatformId, LucideIcon>;
 
-function AppActions({ app }: { app: (typeof webApps)[number] }) {
+function AppActions({ app }: { app: WebApp }) {
   const t = useTranslations('GetStarted');
 
   return (
@@ -61,7 +60,7 @@ function AppActions({ app }: { app: (typeof webApps)[number] }) {
   );
 }
 
-function PlatformActions({ app }: { app: (typeof classicApps)[number] }) {
+function PlatformActions({ app }: { app: ClassicApp }) {
   const t = useTranslations('GetStarted');
 
   return (

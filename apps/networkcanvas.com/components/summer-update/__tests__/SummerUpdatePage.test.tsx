@@ -498,7 +498,7 @@ describe('SummerUpdatePage', () => {
     expect(downloadLink).not.toHaveAttribute('tabindex', '-1');
     expect(
       screen.getByText(
-        (_, element) => element?.textContent === 'Architect Classic\u00a06.5.4',
+        (_, element) => element?.textContent === 'Architect Classic\u00a06.6.0',
       ),
     ).toBeInTheDocument();
   });

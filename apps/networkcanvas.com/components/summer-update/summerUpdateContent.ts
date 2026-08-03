@@ -180,14 +180,14 @@ const compatibilityDefinitions = [
   {
     id: 'interviewerClassic',
     app: 'Interviewer Classic',
-    version: '6.5.4',
+    version: '6.6.0',
     schema7: 'native',
     schema8: 'unsupported',
   },
   {
     id: 'architectClassic',
     app: 'Architect Classic',
-    version: '6.5.4',
+    version: '6.6.0',
     schema7: 'native',
     schema8: 'unsupported',
   },

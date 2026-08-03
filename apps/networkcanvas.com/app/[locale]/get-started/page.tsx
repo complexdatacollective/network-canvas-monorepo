@@ -7,21 +7,13 @@ import { GetStartedIntro } from '~/components/get-started/GetStartedIntro';
 import { WorkflowPath } from '~/components/get-started/WorkflowPath';
 import { Footer } from '~/components/layout/Footer';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
-import { classicApps, webApps } from '~/lib/getStarted';
+import { getLatestClassicApps } from '~/lib/classicReleases';
+import { webApps } from '~/lib/getStarted';
 import { routing } from '~/lib/i18n/routing';
 
 type GetStartedPageProps = {
   params: Promise<{ locale: string }>;
 };
-
-const designApps = [
-  ...webApps.filter((app) => app.workflow === 'design'),
-  ...classicApps.filter((app) => app.workflow === 'design'),
-];
-const collectApps = [
-  ...webApps.filter((app) => app.workflow === 'collect'),
-  ...classicApps.filter((app) => app.workflow === 'collect'),
-];
 
 export async function generateMetadata({
   params,
@@ -46,10 +38,22 @@ export async function generateMetadata({
 }
 
 export default async function GetStartedPage({ params }: GetStartedPageProps) {
-  const { locale } = await params;
+  const [{ locale }, classicApps] = await Promise.all([
+    params,
+    getLatestClassicApps(),
+  ]);
   if (!hasLocale(routing.locales, locale)) notFound();
 
   setRequestLocale(locale);
+
+  const designApps = [
+    ...webApps.filter((app) => app.workflow === 'design'),
+    ...classicApps.filter((app) => app.workflow === 'design'),
+  ];
+  const collectApps = [
+    ...webApps.filter((app) => app.workflow === 'collect'),
+    ...classicApps.filter((app) => app.workflow === 'collect'),
+  ];
 
   return (
     <main className="relative isolate">

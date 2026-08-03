@@ -10,8 +10,6 @@ export type PlatformId =
   | 'linux'
   | 'android';
 
-const classicVersion = '6.5.4' as const;
-
 type AppAction = {
   labelKey:
     | 'apps.architect.actions.open'
@@ -40,7 +38,7 @@ type BestForKey =
   | 'apps.interviewerClassic.bestFor.desktopTablet'
   | 'apps.interviewerClassic.bestFor.offlineCollection';
 
-type WebApp = {
+export type WebApp = {
   id: WebAppId;
   messageKey: 'architect' | 'interviewer' | 'fresco';
   workflow: Workflow;
@@ -61,16 +59,43 @@ type PlatformLink = {
   href: string;
 };
 
-type ClassicApp = {
+export type ClassicApp = {
   id: ClassicAppId;
   messageKey: 'architectClassic' | 'interviewerClassic';
   workflow: Workflow;
   name: string;
   bestFor: readonly BestForKey[];
-  version: typeof classicVersion;
+  version: string;
   platforms: readonly PlatformLink[];
   treatment: 'classic';
 };
+
+export type AppRecord = WebApp | ClassicApp;
+
+export type ClassicRelease = {
+  version: string;
+  latestUrl: string;
+  assets: readonly {
+    name: string;
+    browserDownloadUrl: string;
+  }[];
+};
+
+function getReleaseAssetUrl(
+  release: ClassicRelease,
+  description: string,
+  matches: (name: string) => boolean,
+) {
+  const matchingAssets = release.assets.filter(({ name }) => matches(name));
+
+  if (matchingAssets.length !== 1) {
+    throw new Error(
+      `Expected one ${description} asset for Classic ${release.version}; found ${matchingAssets.length}.`,
+    );
+  }
+
+  return matchingAssets[0]!.browserDownloadUrl;
+}
 
 export const GET_STARTED_PATH = '/get-started';
 
@@ -86,13 +111,6 @@ export const documentationDestinations = {
   schemaVersions: documentationUrl(
     '/en/get-started/protocol-schema-information',
   ),
-} as const;
-
-const classicDestinations = {
-  architectRelease: `https://github.com/complexdatacollective/architect/releases/tag/v${classicVersion}`,
-  interviewerRelease: `https://github.com/complexdatacollective/interviewer/releases/tag/v${classicVersion}`,
-  architectDownload: `https://github.com/complexdatacollective/architect/releases/download/v${classicVersion}`,
-  interviewerDownload: `https://github.com/complexdatacollective/interviewer/releases/download/v${classicVersion}`,
 } as const;
 
 export const webApps = [
@@ -159,79 +177,111 @@ export const webApps = [
   },
 ] satisfies readonly WebApp[];
 
-export const classicApps = [
-  {
-    id: 'architect-classic',
-    messageKey: 'architectClassic',
-    workflow: 'design',
-    name: 'Architect Classic',
-    bestFor: [
-      'apps.architectClassic.bestFor.classicCompatibility',
-      'apps.architectClassic.bestFor.editWithoutMigration',
-    ],
-    version: classicVersion,
-    platforms: [
-      {
-        id: 'apple-silicon',
-        labelKey: 'platforms.appleSilicon',
-        href: `${classicDestinations.architectDownload}/Network.Canvas.Architect-${classicVersion}.dmg`,
-      },
-      {
-        id: 'apple-intel',
-        labelKey: 'platforms.appleIntel',
-        href: `${classicDestinations.architectDownload}/Network.Canvas.Architect-${classicVersion}.dmg`,
-      },
-      {
-        id: 'windows',
-        labelKey: 'platforms.windows',
-        href: `${classicDestinations.architectDownload}/Network.Canvas.Architect.Setup.${classicVersion}.exe`,
-      },
-      {
-        id: 'linux',
-        labelKey: 'platforms.linux',
-        href: classicDestinations.architectRelease,
-      },
-    ],
-    treatment: 'classic',
-  },
-  {
-    id: 'interviewer-classic',
-    messageKey: 'interviewerClassic',
-    workflow: 'collect',
-    name: 'Interviewer Classic',
-    bestFor: [
-      'apps.interviewerClassic.bestFor.schema7Study',
-      'apps.interviewerClassic.bestFor.desktopTablet',
-      'apps.interviewerClassic.bestFor.offlineCollection',
-    ],
-    version: classicVersion,
-    platforms: [
-      {
-        id: 'apple-silicon',
-        labelKey: 'platforms.appleSilicon',
-        href: `${classicDestinations.interviewerDownload}/Network.Canvas.Interviewer-${classicVersion}.dmg`,
-      },
-      {
-        id: 'apple-intel',
-        labelKey: 'platforms.appleIntel',
-        href: `${classicDestinations.interviewerDownload}/Network.Canvas.Interviewer-${classicVersion}.dmg`,
-      },
-      {
-        id: 'windows',
-        labelKey: 'platforms.windows',
-        href: `${classicDestinations.interviewerDownload}/Network.Canvas.Interviewer.Setup.${classicVersion}.exe`,
-      },
-      {
-        id: 'linux',
-        labelKey: 'platforms.linux',
-        href: classicDestinations.interviewerRelease,
-      },
-      {
-        id: 'android',
-        labelKey: 'platforms.android',
-        href: 'https://play.google.com/store/apps/details?id=org.codaco.NetworkCanvasInterviewer6',
-      },
-    ],
-    treatment: 'classic',
-  },
-] satisfies readonly ClassicApp[];
+export function createClassicApps({
+  architect,
+  interviewer,
+}: {
+  architect: ClassicRelease;
+  interviewer: ClassicRelease;
+}): readonly ClassicApp[] {
+  return [
+    {
+      id: 'architect-classic',
+      messageKey: 'architectClassic',
+      workflow: 'design',
+      name: 'Architect Classic',
+      bestFor: [
+        'apps.architectClassic.bestFor.classicCompatibility',
+        'apps.architectClassic.bestFor.editWithoutMigration',
+      ],
+      version: architect.version,
+      platforms: [
+        {
+          id: 'apple-silicon',
+          labelKey: 'platforms.appleSilicon',
+          href: getReleaseAssetUrl(
+            architect,
+            'Architect Apple Silicon DMG',
+            (name) => name.endsWith('-mac-arm64.dmg'),
+          ),
+        },
+        {
+          id: 'apple-intel',
+          labelKey: 'platforms.appleIntel',
+          href: getReleaseAssetUrl(
+            architect,
+            'Architect Apple Intel DMG',
+            (name) => name.endsWith('-mac-x64.dmg'),
+          ),
+        },
+        {
+          id: 'windows',
+          labelKey: 'platforms.windows',
+          href: getReleaseAssetUrl(
+            architect,
+            'Architect Windows installer',
+            (name) => name.endsWith('-win-x64.exe'),
+          ),
+        },
+        {
+          id: 'linux',
+          labelKey: 'platforms.linux',
+          href: architect.latestUrl,
+        },
+      ],
+      treatment: 'classic',
+    },
+    {
+      id: 'interviewer-classic',
+      messageKey: 'interviewerClassic',
+      workflow: 'collect',
+      name: 'Interviewer Classic',
+      bestFor: [
+        'apps.interviewerClassic.bestFor.schema7Study',
+        'apps.interviewerClassic.bestFor.desktopTablet',
+        'apps.interviewerClassic.bestFor.offlineCollection',
+      ],
+      version: interviewer.version,
+      platforms: [
+        {
+          id: 'apple-silicon',
+          labelKey: 'platforms.appleSilicon',
+          href: getReleaseAssetUrl(
+            interviewer,
+            'Interviewer Apple Silicon DMG',
+            (name) => name.endsWith('-arm64.dmg'),
+          ),
+        },
+        {
+          id: 'apple-intel',
+          labelKey: 'platforms.appleIntel',
+          href: getReleaseAssetUrl(
+            interviewer,
+            'Interviewer Apple Intel DMG',
+            (name) => name.endsWith('.dmg') && !name.endsWith('-arm64.dmg'),
+          ),
+        },
+        {
+          id: 'windows',
+          labelKey: 'platforms.windows',
+          href: getReleaseAssetUrl(
+            interviewer,
+            'Interviewer Windows installer',
+            (name) => name.endsWith('.exe'),
+          ),
+        },
+        {
+          id: 'linux',
+          labelKey: 'platforms.linux',
+          href: interviewer.latestUrl,
+        },
+        {
+          id: 'android',
+          labelKey: 'platforms.android',
+          href: 'https://play.google.com/store/apps/details?id=org.codaco.NetworkCanvasInterviewer6',
+        },
+      ],
+      treatment: 'classic',
+    },
+  ];
+}

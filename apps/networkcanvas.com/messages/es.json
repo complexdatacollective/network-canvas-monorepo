@@ -319,7 +319,7 @@
           "templates": "Incluye <strong>plantillas de protocolos</strong> diseñadas para ayudarle a comenzar rápidamente y evitar errores habituales"
         },
         "open": "Abrir Architect",
-        "classicNote": "<architectClassic>Architect Classic</architectClassic> sigue disponible para quienes necesiten continuar usando versiones anteriores de Interviewer (por ejemplo, la 6.5.4). Está en modo de mantenimiento —solo recibe correcciones de errores— y continúa generando protocolos del esquema 7."
+        "classicNote": "<architectClassic>Architect Classic</architectClassic> sigue disponible para quienes necesiten continuar usando versiones anteriores de Interviewer (por ejemplo, la 6.6.0). Está en modo de mantenimiento —solo recibe correcciones de errores— y continúa generando protocolos del esquema 7."
       },
       "interviewer": {
         "label": "Entrevistas presenciales",
@@ -581,7 +581,7 @@
         },
         "architectClassic": {
           "platform": "Computadora",
-          "note": "<architectClassic>Architect Classic</architectClassic> sigue generando protocolos del esquema 7 y está en modo de mantenimiento. Utilícelo solo si necesita seguir ejecutando versiones anteriores de Interviewer (por ejemplo, la 6.5.4)."
+          "note": "<architectClassic>Architect Classic</architectClassic> sigue generando protocolos del esquema 7 y está en modo de mantenimiento. Utilícelo solo si necesita seguir ejecutando versiones anteriores de Interviewer (por ejemplo, la 6.6.0)."
         },
         "frescoClassic": {
           "platform": "Navegador",
