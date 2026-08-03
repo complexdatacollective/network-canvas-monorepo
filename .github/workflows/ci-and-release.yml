@@ -1909,7 +1909,9 @@ jobs:
           files: artifacts/*
           fail_on_unmatched_files: true
           draft: false
-          make_latest: 'false'
+          # The website resolves Classic installers from this repository's
+          # releases/latest endpoint during its static build.
+          make_latest: 'true'
 
   # Mirror Architect source into complexdatacollective/architect master and create
   # a DRAFT release. Builds the Interviewer preview bundle first so it can be
@@ -1983,7 +1985,9 @@ jobs:
           files: artifacts/*
           fail_on_unmatched_files: true
           draft: false
-          make_latest: 'false'
+          # The website resolves Classic installers from this repository's
+          # releases/latest endpoint during its static build.
+          make_latest: 'true'
 
   # Carry forward prior statuses for conditional jobs that the current
   # push didn't touch. Push-to-push detection (see detect job)

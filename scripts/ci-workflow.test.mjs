@@ -164,6 +164,21 @@ test('manual Interview E2E benchmarks cannot enter the legacy release lane', () 
   }
 });
 
+test('published Classic releases advance their latest release pointers', () => {
+  for (const [jobName, repository] of [
+    ['interviewer-release-publish', 'interviewer'],
+    ['architect-release-publish', 'architect'],
+  ]) {
+    const publishJob = job(jobName);
+    assert.ok(publishJob, `${jobName} exists`);
+    assert.match(
+      publishJob,
+      new RegExp(`repository: complexdatacollective/${repository}`),
+    );
+    assert.match(publishJob, /draft: false[\s\S]*?make_latest: 'true'/);
+  }
+});
+
 test('pull requests lint only changed files while merge groups lint fully', () => {
   const lint = job('lint');
   assert.ok(lint, 'lint job exists');
