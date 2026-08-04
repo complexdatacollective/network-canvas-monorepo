@@ -159,7 +159,12 @@ function Interview({
                   <motion.div
                     key={displayedStep}
                     data-stage-step={displayedStep}
-                    className="flex min-h-0 min-w-0 flex-1"
+                    // pt insets the stage below the device's top safe area
+                    // (status bar/notch) so stage content never slides under
+                    // it in an installed PWA; env() is 0 everywhere else. The
+                    // navigation owns its own inset (via navigationClassnames)
+                    // so its background can still meet the screen edge.
+                    className="flex min-h-0 min-w-0 flex-1 pt-[env(safe-area-inset-top)]"
                     initial="initial"
                     animate="animate"
                     exit="exit"

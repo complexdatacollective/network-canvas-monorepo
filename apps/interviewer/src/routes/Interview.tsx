@@ -36,16 +36,16 @@ import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 
-// Inset the interview navigation past the device safe areas so, on an installed
-// PWA, its buttons stay clear of the status bar / iPadOS window controls / home
-// indicator while the rail's background still meets the screen edges. `calc`
+// Inset the vertical navigation rail past the top device safe area so, on an
+// installed PWA, its buttons stay clear of the status bar / iPadOS window
+// controls while the rail's background still meets the screen edge. `calc`
 // keeps the navigation surface's own py-3 (0.75rem); env() insets are 0 off a
-// safe-area device, so browser/desktop are unchanged. The vertical rail meets
-// the top and bottom edges; the horizontal bar only meets the bottom.
+// safe-area device, so browser/desktop are unchanged. The bottom inset is
+// deliberately not added (in either orientation): the home indicator floating
+// over the navigation's base padding reads better than the enlarged bottom
+// band the extra inset produced (#1186).
 const NAVIGATION_SAFE_AREA_CLASSNAMES = {
-  vertical:
-    'pt-[calc(0.75rem_+_env(safe-area-inset-top))] pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]',
-  horizontal: 'pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]',
+  vertical: 'pt-[calc(0.75rem_+_env(safe-area-inset-top))]',
 } as const;
 
 type LoadState =
