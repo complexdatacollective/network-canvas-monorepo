@@ -216,8 +216,8 @@ describe('worstCaseEntityCounts', () => {
       config,
     );
     // C(10, 2) = 45, for the form's variable and for one no form fills alike.
-    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(45);
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(45);
+    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(780);
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(780);
   });
 
   it('keeps pedigree edges apart from a pairing that ran before them', () => {
@@ -298,7 +298,7 @@ describe('worstCaseEntityCounts', () => {
       inverted,
     );
     expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(20);
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(19);
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(80);
   });
 
   it('bounds an edge type by the pair count over its node type', () => {
@@ -1770,7 +1770,7 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
     // count would not make this protocol generate — it would only move the
     // refusal to the draw, where the form runs out of booleans partway through
     // and the message says nothing about how many edges there were.
-    expect(generate).toThrow(/up to 9 edges of this type can be generated/);
+    expect(generate).toThrow(/up to 160 edges of this type can be generated/);
   });
 
   it('generates when the form on that edge type fills a different variable', () => {
@@ -1826,7 +1826,7 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
           filteredAlterEdgeForm('verified', 'verified'),
         ],
       }),
-    ).toThrow(/up to 9 edges of this type can be generated/);
+    ).toThrow(/up to 160 edges of this type can be generated/);
   });
 
   it('still refuses when the form fills a variable held equal to the unique one', () => {
@@ -1861,7 +1861,7 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
         codebook: heldEqual,
         stages: [familyPedigree(), alterEdgeForm('mirror')],
       }),
-    ).toThrow(/up to 9 edges of this type can be generated/);
+    ).toThrow(/up to 160 edges of this type can be generated/);
   });
 
   it('still refuses when another stage creates edges of the same type', () => {
@@ -2066,7 +2066,7 @@ describe('generateNetwork with a pedigree built after its edge form', () => {
       });
 
     expect(generate).toThrow(SyntheticDataConstraintError);
-    expect(generate).toThrow(/up to 9 edges of this type can be generated/);
+    expect(generate).toThrow(/up to 160 edges of this type can be generated/);
   });
 });
 
@@ -2381,37 +2381,38 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
       },
     }) as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
 
+  // A pedigree now writes all four variables its `edgeConfig` names, including
+  // the two gamete-side ones the old generator deliberately left undefined, so
+  // each is counted. An edge variable the config does not name is still
+  // unwritten and still counts nothing.
   it('counts its edges for the variables it writes and not for the rest', () => {
     const counts = worstCaseEntityCounts([configuredPedigree], config);
-    expect(edgeCountFor(counts.edge, 'kin', ['relationshipType'])).toBe(9);
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(9);
-    expect(edgeCountFor(counts.edge, 'kin', ['carrier'])).toBe(0);
-    expect(edgeCountFor(counts.edge, 'kin', ['gamete'])).toBe(0);
+    expect(edgeCountFor(counts.edge, 'kin', ['relationshipType'])).toBe(160);
+    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(160);
+    expect(edgeCountFor(counts.edge, 'kin', ['carrier'])).toBe(160);
+    expect(edgeCountFor(counts.edge, 'kin', ['gamete'])).toBe(160);
+    expect(edgeCountFor(counts.edge, 'kin', ['unnamedByTheConfig'])).toBe(0);
   });
 
-  it('generates, rather than refusing, for a unique variable it leaves unwritten', () => {
-    // Nine edges and two boolean values. Counting the whole config as a naming
-    // site refused this for needing nine distinct ones — and the gamete-side
-    // variables really are unwritten, so the refusal was over a value nothing
-    // in the run ever spends.
-    const { network } = generateNetwork({
-      seed: 1,
-      codebook: uniqueBooleanOn('carrier'),
-      stages: [configuredPedigree],
-    });
+  it('refuses for a unique gamete-side variable, which it now writes', () => {
+    // This used to generate: the gamete-side variables were left undefined, so
+    // a `unique` boolean on one was never spent. The generator now records who
+    // carried each pregnancy, so the variable really is written onto every
+    // edge and two boolean values cannot cover them.
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 1,
+        codebook: uniqueBooleanOn('carrier'),
+        stages: [configuredPedigree],
+      });
 
-    expect(network.edges.length).toBeGreaterThan(2);
-    expect(
-      network.edges.every(
-        (edge) => edge[entityAttributesProperty].carrier === undefined,
-      ),
-    ).toBe(true);
+    expect(generate).toThrow(SyntheticDataConstraintError);
   });
 
   it('refuses for a unique variable it writes onto every edge itself', () => {
-    // The other half of the same carve-out: the pedigree really does put its
-    // active flag on all nine edges, so a `unique` boolean there has nine
-    // holders and two values, and no seed can satisfy it.
+    // The pedigree puts its active flag on every edge it builds, so a `unique`
+    // boolean there has far more holders than the two values it offers, and no
+    // seed can satisfy it.
     const generate = (): unknown =>
       generateNetwork({
         seed: 1,
@@ -2420,7 +2421,7 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
       });
 
     expect(generate).toThrow(SyntheticDataConstraintError);
-    expect(generate).toThrow(/up to 9 edges of this type can be generated/);
+    expect(generate).toThrow(/up to 160 edges of this type can be generated/);
   });
 
   it('refuses a unique relationship type it writes on every edge', () => {
@@ -2481,7 +2482,7 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
       });
 
     expect(generate).toThrow(SyntheticDataConstraintError);
-    expect(generate).toThrow(/up to 9 edges of this type can be generated/);
+    expect(generate).toThrow(/up to 160 edges of this type can be generated/);
   });
 
   /**

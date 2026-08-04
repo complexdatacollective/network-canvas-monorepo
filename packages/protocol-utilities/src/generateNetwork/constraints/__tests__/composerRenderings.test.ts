@@ -571,7 +571,9 @@ describe('NetworkComposer field renderings', () => {
       codebook: codebookWith({
         booleanOptions: [{ label: 'Yes', value: true }],
       }),
-      stages: [composerStage({})],
+      // The composer has to collect `flag` for it to be drawn at all: a stage
+      // now fills what it declares rather than every variable of the type.
+      stages: [composerStage({ nodeFields: [{ variable: 'flag' }] })],
       seed: 7,
       config: { today: TODAY },
     });
@@ -608,7 +610,7 @@ describe('NetworkComposer field renderings', () => {
           booleanOptions: [{ label: 'Yes', value: true }],
           booleanValidation: { unique: true },
         }),
-        stages: [composerStage({})],
+        stages: [composerStage({ nodeFields: [{ variable: 'flag' }] })],
         seed: 7,
         config: { today: TODAY },
       });

@@ -60,7 +60,9 @@ describe('kinship skeleton', () => {
     for (let seed = 1; seed <= 200; seed++) {
       const pedigree = build(seed);
       for (const [childId, links] of pedigree.parents) {
-        const roles = links.map((link) => link.gameteRole).sort();
+        const roles = links
+          .map((link) => link.gameteRole)
+          .toSorted((a, b) => String(a).localeCompare(String(b)));
         expect(roles, `seed ${seed}, ${childId}`).toEqual(['egg', 'sperm']);
       }
     }

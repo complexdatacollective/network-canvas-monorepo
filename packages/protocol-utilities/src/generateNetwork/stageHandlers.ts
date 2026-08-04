@@ -1,14 +1,10 @@
 import { v4 as uuid } from 'uuid';
 
-import {
-  type Stage,
-  VARIABLE_REFERENCE_VALIDATIONS,
-} from '@codaco/protocol-validation';
+import type { Stage } from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  type NcEdge,
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
@@ -20,13 +16,15 @@ import {
   scopeKey,
   uniqueSlotMembers,
 } from './constraints/generateEntityAttributes';
-import type { EntityConstraints } from './constraints/types';
 import { valueKey } from './constraints/uniqueRegistry';
 import type { GenerationContext, NetworkDraft, StageOfType } from './context';
 import { createEdgesForPairs } from './edges';
 import { getStageFilteredEdges, getStageFilteredNodes } from './filtering';
 import { createNodesForStage, type RosterDraw } from './nodes';
-import { generatePedigree, type PedigreeNomination } from './pedigree/generatePedigree';
+import {
+  generatePedigree,
+  type PedigreeNomination,
+} from './pedigree/generatePedigree';
 import type { InheritancePattern } from './pedigree/inheritance';
 import { getSubjectType } from './subject';
 
@@ -539,49 +537,6 @@ export function handleAlterEdgeForm(
       ),
     );
   }
-}
-
-/**
- * Whether any rule of `entity` resolves against `variableId` — the variable
- * declaring a rule that names another, or another naming it as their target.
- *
- * A value fixed for a variable nothing resolves against changes no other
- * variable's, so this is what separates a pin the rest of the entity has to be
- * generated around from one that can simply be written on afterwards. Read from
- * the schema's own list of rules whose value is a variable id, so a rule added
- * there is accounted for here without this being updated.
- */
-function ruleResolvesAgainst(
-  entity: EntityConstraints,
-  variableId: string,
-): boolean {
-  for (const [id, { constraints }] of entity) {
-    for (const rule of VARIABLE_REFERENCE_VALIDATIONS) {
-      const target = constraints[rule];
-      if (target === undefined) continue;
-      if (id === variableId || target === variableId) return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Whether `variableId`'s value is one the `unique` registry issues — its own
- * rule declaring it, or a rule holding it equal to a variable that does.
- *
- * Asked of the slots themselves rather than of the variable's own `unique`, so
- * the judgement is the one {@link claimFixedValues} goes on to act against.
- */
-function isUniqueSlotVariable(
-  entity: EntityConstraints,
-  variableId: string,
-): boolean {
-  for (const memberIds of uniqueSlotMembers(entity).values()) {
-    if (memberIds.includes(variableId)) return true;
-  }
-
-  return false;
 }
 
 /** Holds one written value back from every `unique` slot that would issue it. */

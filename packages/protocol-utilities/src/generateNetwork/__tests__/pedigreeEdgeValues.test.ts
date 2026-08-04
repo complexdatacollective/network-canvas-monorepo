@@ -19,9 +19,6 @@ type Codebook = GenerateParams['codebook'];
 
 const SEEDS = 50;
 
-/** Two nodes, so a pedigree builds exactly one edge. */
-const ONE_EDGE_PEDIGREE = { familyPedigreeNodeCount: { min: 2, max: 2 } };
-
 const EDGE_CONFIG = {
   type: 'kin',
   relationshipTypeVariable: 'relationshipType',
@@ -86,31 +83,6 @@ function pedigree(edgeConfig: Record<string, string>): Stage {
     edgeConfig,
   } as unknown as Stage;
 }
-
-function nameGenerator(nodes: number): Stage {
-  return {
-    id: 'stage-ng',
-    type: 'NameGenerator',
-    label: 'People',
-    subject: { entity: 'node', type: 'person' },
-    prompts: [{ id: 'p1', text: 'Name people' }],
-    behaviours: { minNodes: nodes, maxNodes: nodes },
-  } as unknown as Stage;
-}
-
-/** Pairs `person` nodes only, so it never reaches a pedigree's own people. */
-const personCensus = {
-  id: 'stage-census',
-  type: 'DyadCensus',
-  label: 'Ties',
-  subject: { entity: 'node', type: 'person' },
-  prompts: [{ id: 'p1', text: 'Do they know each other?', createEdge: 'kin' }],
-} as unknown as Stage;
-
-const CERTAIN_EDGES = {
-  ...ONE_EDGE_PEDIGREE,
-  censusEdgeProbability: { min: 1, max: 1 },
-};
 
 function kinEdges(edges: NcEdge[]): Record<string, VariableValue>[] {
   return edges
