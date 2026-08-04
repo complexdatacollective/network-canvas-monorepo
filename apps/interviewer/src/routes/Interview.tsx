@@ -95,16 +95,27 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // an idle-lock/unlock cycle — which unmounts and remounts this route —
   // restores it. A UI preference, not participant data, so it stays outside
   // the encrypted store; sessionStorage scopes it to the tab and clears when
-  // the tab closes.
+  // the tab closes. Persistence is best-effort: storage access can throw
+  // under strict privacy policies (cf. InstallBanner's guard), in which case
+  // the Shell's in-memory selection still works — it just won't survive a
+  // remount.
   const textScaleStorageKey = `interview-text-scale:${sessionId}`;
   const initialTextScale = useMemo(() => {
-    const stored = sessionStorage.getItem(textScaleStorageKey);
-    const parsed = stored === null ? Number.NaN : Number(stored);
-    return Number.isFinite(parsed) ? parsed : undefined;
+    try {
+      const stored = sessionStorage.getItem(textScaleStorageKey);
+      const parsed = stored === null ? Number.NaN : Number(stored);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
   }, [textScaleStorageKey]);
   const handleTextScaleChange = useCallback(
     (scale: number) => {
-      sessionStorage.setItem(textScaleStorageKey, String(scale));
+      try {
+        sessionStorage.setItem(textScaleStorageKey, String(scale));
+      } catch {
+        // Best-effort persistence only.
+      }
     },
     [textScaleStorageKey],
   );
