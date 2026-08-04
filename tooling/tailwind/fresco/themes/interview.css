@@ -20,6 +20,52 @@
   }
 }
 
+/*
+ * Text-entry font-size floor.
+ *
+ * iOS Safari auto-zooms the page when a focused editable element's computed
+ * font-size is below 16px — a literal CSS-px threshold, hence the literal
+ * `16px` arm (not `1rem`, which a user's browser text setting could shrink
+ * back under the threshold). The interview Shell's viewport ramp takes
+ * `--theme-root-size` below 1rem at phone widths, which would put default
+ * (`md`, text-base) inputs at ~14.4px and trigger that zoom for participants
+ * in browser hosts such as Fresco.
+ *
+ * The `1em` arm preserves intended sizing: fresco-ui text-entry controls
+ * carry their size class on a wrapper and the control itself inherits
+ * (see InputField's `[font-size:inherit]`), so `1em` resolves to the
+ * variant's size — anything already at 16px or larger is untouched, and the
+ * floor also composes with the participant text-size multiplier.
+ *
+ * Deliberately OUTSIDE @layer: this must out-cascade utility classes on the
+ * control element itself (e.g. that same `[font-size:inherit]`), and
+ * unlayered author CSS wins over every @layer without `!important`.
+ *
+ * Scope note: only text-entry elements — the zoom heuristic doesn't apply to
+ * click-only controls (checkbox/radio/range/buttons), and flooring those
+ * would inflate em-derived details for no benefit.
+ */
+[data-theme-interview]
+  :is(
+    input:not(
+      [type='checkbox'],
+      [type='radio'],
+      [type='range'],
+      [type='file'],
+      [type='color'],
+      [type='button'],
+      [type='submit'],
+      [type='reset'],
+      [type='image'],
+      [type='hidden']
+    ),
+    textarea,
+    select,
+    [contenteditable]:not([contenteditable='false'])
+  ) {
+  font-size: max(16px, 1em);
+}
+
 @layer theme {
   [data-theme-interview] {
     --heading-font: 'Nunito Variable', sans-serif;
