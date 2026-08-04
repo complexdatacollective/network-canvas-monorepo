@@ -169,6 +169,7 @@ export function generateNetwork(
     resolvedConfig,
     externalData,
     respectSkipLogicAndFiltering,
+    resolvedFamilyPedigree,
   );
   if (conflicts.length > 0) {
     throw new SyntheticDataConstraintError(conflicts);

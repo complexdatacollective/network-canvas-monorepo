@@ -13,6 +13,7 @@ import {
 
 import type { GenerationConfig } from '../config';
 import type { StageOfType } from '../context';
+import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/types';
 import {
   getNodeCountBounds,
   type NodeCreationStage,
@@ -565,19 +566,72 @@ export function nodeCountFor(
  * and an under-count lets a `unique` variable pass feasibility and then run out
  * of values partway through the run.
  */
-export function pedigreeNodeCeiling(config: GenerationConfig): number {
+type PedigreeCeilingContext = {
+  options: ResolvedFamilyPedigreeGenerationOptions;
+  stage: StageOfType<'FamilyPedigree'>;
+  stages: readonly Stage[];
+};
+
+function requiredPedigreeNodeFloor({
+  options,
+  stage,
+  stages,
+}: PedigreeCeilingContext): number {
+  const scenarioFloor = (() => {
+    switch (options.scenario) {
+      case 'none':
+        return 7;
+      case 'donorConception':
+      case 'surrogacy':
+        return 8;
+      case 'adoption':
+        return 9;
+      case 'population': {
+        const { adoption, donorConception, surrogacy } =
+          options.population.scenarios;
+        return Math.max(
+          7,
+          adoption > 0 ? 9 : 0,
+          donorConception > 0 ? 8 : 0,
+          surrogacy > 0 ? 8 : 0,
+        );
+      }
+    }
+  })();
+  const requiresMaleSibling =
+    options.diseaseMode === 'visualization' &&
+    options.population.femaleAtBirthProbability > 0 &&
+    stages.some(
+      (candidate) =>
+        candidate.type === 'NarrativePedigree' &&
+        candidate.sourceStageId === stage.id &&
+        candidate.diseases.some(
+          (disease) => disease.inheritancePattern === 'xLinkedRecessive',
+        ),
+    );
+
+  return scenarioFloor + (requiresMaleSibling ? 1 : 0);
+}
+
+export function pedigreeNodeCeiling(
+  config: GenerationConfig,
+  context?: PedigreeCeilingContext,
+): number {
   const { min, max } = config.familyPedigreeNodeCount;
-  // Ten covers the seven-person core plus the largest forced combination: two
-  // adoptive parents and the extra brother needed to display an X-linked
-  // recessive lineage when ego is female. Every other branch observes the
-  // configured cap; a required children-contributors branch is omitted unless
-  // the complete branch fits.
-  return Math.max(max, min, 10);
+  // Without resolved options retain the conservative all-scenarios bound used
+  // by direct callers. Generation supplies the context, allowing forced modes
+  // to use their actual required floor rather than rejecting value spaces for
+  // people that scenario can never create.
+  const requiredFloor = context ? requiredPedigreeNodeFloor(context) : 10;
+  return Math.max(max, min, requiredFloor);
 }
 
 /** Conservative upper bound for parentage, partner, and scenario edges. */
-export function pedigreeEdgeCeiling(config: GenerationConfig): number {
-  const nodes = pedigreeNodeCeiling(config);
+export function pedigreeEdgeCeiling(
+  config: GenerationConfig,
+  context?: PedigreeCeilingContext,
+): number {
+  const nodes = pedigreeNodeCeiling(config, context);
   return Math.min((nodes * (nodes - 1)) / 2, nodes * 3);
 }
 
@@ -782,6 +836,7 @@ export function worstCaseEntityCounts(
   config: GenerationConfig,
   externalData?: Record<string, NcNode[]>,
   nodeConstraints?: NodeConstraintsFor,
+  familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
 ): WorstCaseCounts {
   const base = new Map<string, number>();
   const pedigree = new Map<string, PedigreeEdges[]>();
@@ -962,7 +1017,13 @@ export function worstCaseEntityCounts(
       const nodeType = stage.nodeConfig?.type;
       if (nodeType === undefined) continue;
 
-      tallyFor(node, nodeType).fabricated += pedigreeNodeCeiling(config);
+      const pedigreeContext = familyPedigree
+        ? { options: familyPedigree, stage, stages }
+        : undefined;
+      tallyFor(node, nodeType).fabricated += pedigreeNodeCeiling(
+        config,
+        pedigreeContext,
+      );
 
       const edgeType = stage.edgeConfig?.type;
       // Tallied apart from the rest because these edges start holding only what
@@ -973,7 +1034,7 @@ export function worstCaseEntityCounts(
         ownNodeEdges.push({
           edgeType,
           nodeType,
-          count: pedigreeEdgeCeiling(config),
+          count: pedigreeEdgeCeiling(config, pedigreeContext),
           stageIndex,
           born: 'partial',
         });

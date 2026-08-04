@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type Stage,
+  type StructuralCodebook,
+} from '@codaco/protocol-validation';
 import {
   BIOLOGICAL_SEX_OPTIONS,
   entityAttributesProperty,
@@ -270,6 +274,172 @@ describe('FamilyPedigree materialization', () => {
         .map((node) => node[entityPrimaryKeyProperty])
         .toSorted(),
     );
+  });
+
+  it('includes eligible edges from earlier stages in committed membership', () => {
+    const earlierStage = {
+      id: 'earlier-family-members',
+      type: 'NameGenerator',
+      label: 'Earlier family members',
+      subject: { entity: 'node', type: 'family-member' },
+      prompts: [{ id: 'people', text: 'Name people' }],
+      behaviours: { minNodes: 2, maxNodes: 2 },
+    } as unknown as Stage;
+    const earlierEdges = {
+      id: 'earlier-family-links',
+      type: 'Sociogram',
+      label: 'Earlier family links',
+      subject: { entity: 'node', type: 'family-member' },
+      prompts: [
+        {
+          id: 'links',
+          text: 'Connect them',
+          edges: { create: 'family-edge' },
+        },
+      ],
+    } as unknown as Stage;
+    const { network, stageMetadata } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [earlierStage, earlierEdges, familyStage, narrativeStage],
+      config: { sociogramEdgeProbability: { min: 1, max: 1 } },
+    });
+    const earlierNodeIds = new Set(
+      network.nodes
+        .filter((node) => node.stageId === earlierStage.id)
+        .map((node) => node[entityPrimaryKeyProperty]),
+    );
+    const inheritedEdgeIds = network.edges
+      .filter(
+        (edge) => earlierNodeIds.has(edge.from) && earlierNodeIds.has(edge.to),
+      )
+      .map((edge) => edge[entityPrimaryKeyProperty]);
+    const metadata = stageMetadata?.[2] as
+      | { edges?: { id: string }[] }
+      | undefined;
+    const metadataEdgeIds = metadata?.edges?.map(({ id }) => id) ?? [];
+
+    expect(inheritedEdgeIds).toHaveLength(1);
+    expect(metadataEdgeIds).toEqual(expect.arrayContaining(inheritedEdgeIds));
+  });
+
+  it('normalizes inherited ego and disease flags through their constraint component', () => {
+    const constrainedCodebook = structuredClone(codebook);
+    const variables = constrainedCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.egoMirror = {
+      name: 'Ego mirror',
+      type: 'boolean',
+      validation: { sameAs: asEntityAttributeReference('isEgo') },
+    };
+    const earlierStage = {
+      id: 'earlier-family-member',
+      type: 'NameGenerator',
+      label: 'Earlier family member',
+      subject: { entity: 'node', type: 'family-member' },
+      prompts: [
+        {
+          id: 'person',
+          text: 'Name a person',
+          additionalAttributes: [
+            { variable: 'isEgo', value: true },
+            { variable: 'egoMirror', value: true },
+            { variable: 'condition', value: true },
+            { variable: 'generationMarker', value: 2 },
+          ],
+        },
+      ],
+      behaviours: { minNodes: 1, maxNodes: 1 },
+    } as unknown as Stage;
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: constrainedCodebook,
+      stages: [earlierStage, familyStage, narrativeStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
+    });
+    const inherited = network.nodes.find(
+      (node) => node.stageId === earlierStage.id,
+    );
+
+    expect(inherited?.[entityAttributesProperty]).toEqual(
+      expect.objectContaining({
+        isEgo: false,
+        egoMirror: false,
+        condition: false,
+        generationMarker: 2,
+      }),
+    );
+  });
+
+  it('reuses an earlier pedigree ego without changing its identity', () => {
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+    } as unknown as Stage;
+    const { network, stageMetadata } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [familyStage, laterFamilyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
+    });
+    const firstMetadata = stageMetadata?.[0] as
+      | { nodes?: { id: string; isEgo: boolean }[] }
+      | undefined;
+    const laterMetadata = stageMetadata?.[1] as
+      | { nodes?: { id: string; isEgo: boolean }[] }
+      | undefined;
+    const firstEgo = firstMetadata?.nodes?.find(({ isEgo }) => isEgo);
+    const laterEgos = laterMetadata?.nodes?.filter(({ isEgo }) => isEgo) ?? [];
+
+    if (!firstEgo) throw new Error('missing first pedigree ego');
+    expect(laterEgos).toEqual([{ id: firstEgo.id, label: 'You', isEgo: true }]);
+    expect(
+      network.nodes.filter(
+        (node) => node[entityAttributesProperty].isEgo === true,
+      ),
+    ).toHaveLength(1);
+    expect(
+      network.nodes.find(
+        (node) => node[entityPrimaryKeyProperty] === firstEgo.id,
+      )?.[entityAttributesProperty].isEgo,
+    ).toBe(true);
+  });
+
+  it('uses the attainable forced-scenario ceiling during feasibility', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 7 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
+      validation: { unique: true },
+    };
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages: [familyStage, narrativeStage],
+      familyPedigree: { scenario: 'none', maxNodes: 7 },
+    });
+    const values = network.nodes.map(
+      (node) => node[entityAttributesProperty].generationMarker,
+    );
+
+    expect(values).toHaveLength(7);
+    expect(new Set(values).size).toBe(7);
   });
 
   it.each([

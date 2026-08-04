@@ -10,9 +10,14 @@ import {
 } from '@codaco/shared-consts';
 
 import { ValueGenerator } from '../../ValueGenerator';
-import { claimFixedValues, generateAttributesForEntity } from '../attributes';
+import {
+  claimFixedValues,
+  generateAttributesForEntity,
+  replaceFixedValues,
+} from '../attributes';
 import { SyntheticDataConstraintError } from '../constraints/error';
 import type { EntityScopeRef } from '../constraints/generateEntityAttributes';
+import { COMPARISON_RULES, type EntityConstraints } from '../constraints/types';
 import type { GenerationContext, NetworkDraft, StageOfType } from '../context';
 import { ruleBrokenByFixedValues } from '../nodes';
 import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
@@ -123,6 +128,47 @@ function edgeAttributes(
   return attributes;
 }
 
+const REFERENCE_RULES = [
+  'sameAs',
+  'differentFrom',
+  ...COMPARISON_RULES,
+] as const;
+
+/** Variables in the same cross-variable constraint component as a fixed flag. */
+function constraintConnectedVariables(
+  constraints: EntityConstraints,
+  fixedIds: Iterable<string>,
+): Set<string> {
+  const connected = new Set(fixedIds);
+  const neighbours = new Map<string, Set<string>>();
+
+  for (const [id, variable] of constraints) {
+    for (const rule of REFERENCE_RULES) {
+      const target = variable.constraints[rule];
+      if (target === undefined || !constraints.has(target)) continue;
+      const from = neighbours.get(id) ?? new Set<string>();
+      const to = neighbours.get(target) ?? new Set<string>();
+      from.add(target);
+      to.add(id);
+      neighbours.set(id, from);
+      neighbours.set(target, to);
+    }
+  }
+
+  const pending = [...connected];
+  while (pending.length > 0) {
+    const id = pending.pop();
+    if (id === undefined) break;
+    for (const neighbour of neighbours.get(id) ?? []) {
+      if (connected.has(neighbour)) continue;
+      connected.add(neighbour);
+      pending.push(neighbour);
+    }
+  }
+
+  return connected;
+}
+
 export function materializeFamilyPedigree(
   ctx: GenerationContext,
   draft: NetworkDraft,
@@ -164,16 +210,44 @@ export function materializeFamilyPedigree(
   const preexistingFamilyNodes = draft.nodes.filter(
     (node) => node.type === nodeType,
   );
-  if (nodeConfig.egoVariable && preexistingFamilyNodes.length > 0) {
-    const inheritedEgoValue = { [nodeConfig.egoVariable]: false };
-    assertFixedValuesAccepted(familyCtx, nodeScope, inheritedEgoValue);
-    for (const node of preexistingFamilyNodes) {
-      Object.assign(node[entityAttributesProperty], inheritedEgoValue);
-    }
-  }
+  const earlierPedigreeStageIds = new Set(
+    stages
+      .slice(0, stageIndex)
+      .filter(
+        (candidate) =>
+          candidate.type === 'FamilyPedigree' &&
+          candidate.nodeConfig?.type === nodeType &&
+          candidate.nodeConfig?.egoVariable === nodeConfig.egoVariable,
+      )
+      .map((candidate) => candidate.id),
+  );
+  // A later pedigree over the same type represents the same focal person. Reuse
+  // the earlier pedigree's ego rather than clearing its identity and creating a
+  // second ego that the earlier stage's committed membership cannot see.
+  const egoVariable = nodeConfig.egoVariable;
+  const inheritedEgo = egoVariable
+    ? preexistingFamilyNodes.find(
+        (node) =>
+          node.stageId !== undefined &&
+          earlierPedigreeStageIds.has(node.stageId) &&
+          node[entityAttributesProperty][egoVariable] === true,
+      )
+    : undefined;
+  const planEgo = plan.people.find((person) => person.key === plan.egoKey);
+  const pedigreeVariables = new Set([
+    nodeConfig.egoVariable,
+    nodeConfig.relationshipVariable,
+    nodeConfig.biologicalSexVariable,
+    ...diseases.map((disease) => disease.variable),
+  ]);
   const familyNodes: NcNode[] = [];
 
   for (const [index, person] of plan.people.entries()) {
+    if (person.key === plan.egoKey && inheritedEgo !== undefined) {
+      nodeIds.set(person.key, inheritedEgo[entityPrimaryKeyProperty]);
+      continue;
+    }
+
     const fixed: Record<string, VariableValue> = {};
     if (nodeConfig.egoVariable) {
       fixed[nodeConfig.egoVariable] = person.key === plan.egoKey;
@@ -195,12 +269,6 @@ export function materializeFamilyPedigree(
     // The interface owns these semantic variables. Leave a value absent when
     // FamilyPedigree itself cannot derive one instead of filling it with an
     // unrelated generic draw (for example, relationship-to-ego on ego).
-    const pedigreeVariables = new Set([
-      nodeConfig.egoVariable,
-      nodeConfig.relationshipVariable,
-      nodeConfig.biologicalSexVariable,
-      ...diseases.map((disease) => disease.variable),
-    ]);
     const only = new Set(
       [...nodeVariables.keys()].filter(
         (variableId) => !pedigreeVariables.has(variableId),
@@ -232,11 +300,64 @@ export function materializeFamilyPedigree(
   }
   draft.nodes.push(...familyNodes);
 
+  // The live interface keeps earlier same-typed nodes in the pedigree. Apply
+  // this stage's ego/disease ownership through the same constraint-aware draw
+  // used for generated people, regenerating only variables connected to those
+  // fixed semantics and preserving every unrelated earlier-stage attribute.
+  for (const [index, node] of preexistingFamilyNodes.entries()) {
+    const fixed: Record<string, VariableValue> = {};
+    const isInheritedEgo = node === inheritedEgo;
+    if (nodeConfig.egoVariable) {
+      fixed[nodeConfig.egoVariable] = isInheritedEgo;
+    }
+    for (const disease of diseases) {
+      fixed[disease.variable] =
+        isInheritedEgo && planEgo !== undefined
+          ? planEgo.affectedVariables.has(disease.variable)
+          : false;
+    }
+    if (Object.keys(fixed).length === 0) continue;
+
+    assertFixedValuesAccepted(familyCtx, nodeScope, fixed);
+    const connected = constraintConnectedVariables(
+      nodeVariables,
+      Object.keys(fixed),
+    );
+    for (const id of Object.keys(fixed)) connected.delete(id);
+
+    const previous = { ...node[entityAttributesProperty] };
+    const regenerated = generateAttributesForEntity(
+      familyCtx,
+      nodeScope,
+      plan.people.length + index,
+      {
+        existing: { ...previous, ...fixed },
+        only: connected,
+        preferRealisticNameVariables: nodeConfig.nodeLabelVariable
+          ? new Set([nodeConfig.nodeLabelVariable])
+          : undefined,
+      },
+    );
+    replaceFixedValues(familyCtx, nodeScope, previous, fixed);
+    Object.assign(node[entityAttributesProperty], regenerated, fixed);
+  }
+
   if (!edgeType) {
     draft.stageMetadata[stageIndex] = { isNetworkCommitted: true };
     return;
   }
   const edgeScope: EntityScopeRef = { entity: 'edge', type: edgeType };
+  const memberNodeIds = new Set(
+    [...preexistingFamilyNodes, ...familyNodes].map(
+      (node) => node[entityPrimaryKeyProperty],
+    ),
+  );
+  const preexistingFamilyEdges = draft.edges.filter(
+    (edge) =>
+      edge.type === edgeType &&
+      memberNodeIds.has(edge.from) &&
+      memberNodeIds.has(edge.to),
+  );
   const familyEdges: NcEdge[] = [];
   for (const relationship of plan.relationships) {
     const from = nodeIds.get(relationship.from);
@@ -283,12 +404,14 @@ export function materializeFamilyPedigree(
       };
     },
   );
-  const metadataEdges = familyEdges.map((edge) => ({
-    id: edge[entityPrimaryKeyProperty],
-    from: edge.from,
-    to: edge.to,
-    attributes: edge[entityAttributesProperty],
-  }));
+  const metadataEdges = [...preexistingFamilyEdges, ...familyEdges].map(
+    (edge) => ({
+      id: edge[entityPrimaryKeyProperty],
+      from: edge.from,
+      to: edge.to,
+      attributes: edge[entityAttributesProperty],
+    }),
+  );
 
   draft.stageMetadata[stageIndex] = {
     isNetworkCommitted: true,

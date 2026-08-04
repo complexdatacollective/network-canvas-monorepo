@@ -15,7 +15,10 @@ import {
 
 import type { ResolvedGenerationConfig } from '../config';
 import { isContentStage } from '../contentStages';
-import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from '../familyPedigree/types';
+import {
+  PEDIGREE_RELATIONSHIP_TO_EGO_VALUES,
+  type ResolvedFamilyPedigreeGenerationOptions,
+} from '../familyPedigree/types';
 import {
   collectPromptFixedAssignments,
   countPromptFixedValues,
@@ -296,6 +299,7 @@ function countPedigreeFixedValues(
   stages: Stage[],
   config: ResolvedGenerationConfig,
   respectSkipLogicAndFiltering: boolean,
+  familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
 ): {
   node: Map<string, PromptFixedValues>;
   edge: Map<string, PromptFixedValues>;
@@ -309,7 +313,10 @@ function countPedigreeFixedValues(
 
   for (const [stageIndex, stage] of stages.entries()) {
     if (stage.type !== 'FamilyPedigree') continue;
-    const ceiling = pedigreeNodeCeiling(config);
+    const pedigreeContext = familyPedigree
+      ? { options: familyPedigree, stage, stages }
+      : undefined;
+    const ceiling = pedigreeNodeCeiling(config, pedigreeContext);
 
     const nodeType = stage.nodeConfig?.type;
     const egoVariable = stage.nodeConfig?.egoVariable;
@@ -367,7 +374,7 @@ function countPedigreeFixedValues(
 
     const edgeType = stage.edgeConfig?.type;
     if (edgeType === undefined) continue;
-    const edges = pedigreeEdgeCeiling(config);
+    const edges = pedigreeEdgeCeiling(config, pedigreeContext);
     const redrawnAt = regenerated.get(edgeType);
     recordPinned(
       edge,
@@ -1395,6 +1402,7 @@ export function analyseFeasibility(
   config: ResolvedGenerationConfig,
   externalData?: Record<string, NcNode[]>,
   respectSkipLogicAndFiltering = false,
+  familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
 ): ConstraintConflict[] {
   const binOnly = collectBinOnlyVariables(stages);
   // The map the draw judges a roster row against, so a row this pass counts is
@@ -1422,12 +1430,14 @@ export function analyseFeasibility(
     config,
     externalData,
     nodeConstraints,
+    familyPedigree,
   );
   const promptFixed = countPromptFixedValues(stages, config, externalData);
   const pedigreeFixed = countPedigreeFixedValues(
     stages,
     config,
     respectSkipLogicAndFiltering,
+    familyPedigree,
   );
   const rosterCarried = countRosterCarriedValues(
     stages,

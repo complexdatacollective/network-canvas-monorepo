@@ -234,3 +234,32 @@ export function claimFixedValues(
     }
   }
 }
+
+/**
+ * Replaces fixed values on an entity that already contributed to the unique
+ * registry. Unlike {@link claimFixedValues}, this releases the affected slot's
+ * previous value before claiming the replacement, so normalising an inherited
+ * entity does not leave a value it no longer holds unavailable to later draws.
+ */
+export function replaceFixedValues(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  previous: Record<string, VariableValue>,
+  fixed: Record<string, VariableValue>,
+): void {
+  const registry = scopeKey(ref);
+
+  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
+    if (!memberIds.some((id) => id in fixed)) continue;
+
+    for (const id of memberIds) {
+      const value = previous[id];
+      if (value !== undefined)
+        ctx.uniqueRegistry.release(registry, slot, value);
+    }
+    for (const id of memberIds) {
+      const value = fixed[id];
+      if (value !== undefined) ctx.uniqueRegistry.claim(registry, slot, value);
+    }
+  }
+}
