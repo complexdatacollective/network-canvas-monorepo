@@ -2,23 +2,31 @@ import {
   type ComponentProps,
   type ComponentType,
   type ReactNode,
-  useEffect,
-  useState,
+  useSyncExternalStore,
 } from 'react';
 
+// The snapshot never changes within an environment, so there is nothing to
+// subscribe to.
+const emptySubscribe = () => () => {};
+
 /**
- * SSR-safe wrapper. The wrapped tree is mounted only after hydration —
- * useful for components that depend on browser-only APIs (`document`, `window`,
- * Web Workers, layout measurement, etc.).
+ * SSR-safe wrapper. The wrapped tree renders `null` on the server and during
+ * the hydration pass, but is present from the very first commit in a
+ * client-only render.
  *
- * Implementation note: we use a mount-detection pattern (useEffect + useState)
- * rather than Next's `dynamic({ ssr: false })` so the package works in any
- * React environment, not just Next.js.
+ * Implementation note: `useSyncExternalStore` with divergent client/server
+ * snapshots is the canonical hydration-safe environment check. The previous
+ * useEffect mount-gate blanked the first client frame on *every* mount —
+ * a table cell remounting a wrapped component (e.g. TimeAgo) visibly
+ * collapsed to zero width and re-expanded a frame later.
  */
 const NoSSRWrapper = ({ children }: { children: ReactNode }) => {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  return mounted ? children : null;
+  const hydrated = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
+  return hydrated ? children : null;
 };
 
 export const withNoSSRWrapper = <P extends object>(
