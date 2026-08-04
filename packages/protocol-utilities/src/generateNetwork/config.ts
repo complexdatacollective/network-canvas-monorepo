@@ -34,7 +34,11 @@ export type GenerationConfig = {
   censusEdgeProbability: Range;
   /** Per-pair edge probability for NetworkComposer edge types. */
   networkComposerEdgeProbability: Range;
-  /** Node-count range for a FamilyPedigree stage. */
+  /**
+   * Legacy display budget for a FamilyPedigree stage. The family-specific
+   * generator uses the larger endpoint as its optional-branch cap; topology is
+   * sampled from its population profile rather than uniformly from this range.
+   */
   familyPedigreeNodeCount: Range;
   /**
    * Fraction of an in-progress stage's subject nodes left unplaced (always at
@@ -66,7 +70,7 @@ const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> = {
   sociogramLayoutRange: { min: 0.1, max: 0.9 },
   censusEdgeProbability: { min: 0.4, max: 0.6 },
   networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
-  familyPedigreeNodeCount: { min: 4, max: 10 },
+  familyPedigreeNodeCount: { min: 7, max: 32 },
   inProgressClearRatio: 0.5,
 };
 

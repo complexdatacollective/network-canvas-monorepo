@@ -552,7 +552,9 @@ describe('generateNetwork', () => {
 
       const { stageMetadata } = generateNetwork({ codebook, stages, seed: 42 });
 
-      expect(stageMetadata).toEqual({ 0: { isNetworkCommitted: true } });
+      expect(stageMetadata?.[0]).toEqual(
+        expect.objectContaining({ isNetworkCommitted: true }),
+      );
       expect(StageMetadataSchema.safeParse(stageMetadata).success).toBe(true);
     });
 
@@ -634,7 +636,9 @@ describe('generateNetwork', () => {
 
       const result = StageMetadataSchema.safeParse(stageMetadata);
       expect(result.success).toBe(true);
-      expect(stageMetadata?.[2]).toEqual({ isNetworkCommitted: true });
+      expect(stageMetadata?.[2]).toEqual(
+        expect.objectContaining({ isNetworkCommitted: true }),
+      );
     });
   });
 
@@ -1487,15 +1491,15 @@ describe('generateNetwork', () => {
       expect(currentStep).toBe(0);
     });
 
-    it('familyPedigreeNodeCount with a fixed range produces exactly that many nodes', () => {
+    it('the family-specific node budget caps optional branches', () => {
       const { network } = generateNetwork({
         codebook: makeCodebook(),
         stages: [makeFamilyPedigreeStage()],
         seed: 42,
-        config: { familyPedigreeNodeCount: { min: 6, max: 6 } },
+        familyPedigree: { scenario: 'none', maxNodes: 7 },
       });
 
-      expect(network.nodes).toHaveLength(6);
+      expect(network.nodes).toHaveLength(7);
     });
   });
 });

@@ -28,6 +28,11 @@ import type {
   GenerationContext,
   NetworkDraft,
 } from './generateNetwork/context';
+import { materializeFamilyPedigree } from './generateNetwork/familyPedigree/materializeFamilyPedigree';
+import { resolveFamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/referencePopulation';
+import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigree/reservations';
+import { familyPedigreeSeed } from './generateNetwork/familyPedigree/seed';
+import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types';
 import { buildCurrentNetwork } from './generateNetwork/filtering';
 import { markStageInProgress } from './generateNetwork/inProgress';
 import {
@@ -41,14 +46,12 @@ import {
   handleCategoricalBin,
   handleDyadCensus,
   handleEgoForm,
-  handleFamilyPedigree,
   handleGeospatial,
   handleNameGenerators,
   handleNetworkComposer,
   handleOrdinalBin,
   handleSociogram,
   handleTieStrengthCensus,
-  reserveFamilyPedigreeFixedValues,
 } from './generateNetwork/stageHandlers';
 import { ValueGenerator } from './ValueGenerator';
 
@@ -85,6 +88,8 @@ export type GenerateNetworkParams = {
   inProgressStageIndex?: number;
   /** Overrides for generation tuning constants. See {@link GenerationConfig}. */
   config?: Partial<GenerationConfig>;
+  /** Family-specific demographic, scenario, and disease-generation settings. */
+  familyPedigree?: FamilyPedigreeGenerationOptions;
 };
 
 export type GenerateNetworkResult = {
@@ -106,9 +111,24 @@ export function generateNetwork(
     respectSkipLogicAndFiltering = false,
     inProgressStageIndex,
     config,
+    familyPedigree,
   } = params;
 
-  const resolvedConfig = resolveGenerationConfig(config);
+  const baseConfig = resolveGenerationConfig(config);
+  const resolvedFamilyPedigree = resolveFamilyPedigreeGenerationOptions(
+    familyPedigree,
+    Math.max(
+      baseConfig.familyPedigreeNodeCount.min,
+      baseConfig.familyPedigreeNodeCount.max,
+    ),
+  );
+  const resolvedConfig = {
+    ...baseConfig,
+    familyPedigreeNodeCount: {
+      min: 7,
+      max: resolvedFamilyPedigree.maxNodes,
+    },
+  };
 
   const feasibilityStages = reachableStagesForFeasibility(
     codebook,
@@ -154,10 +174,8 @@ export function generateNetwork(
     throw new SyntheticDataConstraintError(conflicts);
   }
 
-  const valueGen = new ValueGenerator(
-    seed ?? Math.floor(Math.random() * 100000),
-    resolvedConfig.today,
-  );
+  const runSeed = seed ?? Math.floor(Math.random() * 100000);
+  const valueGen = new ValueGenerator(runSeed, resolvedConfig.today);
 
   // Read once and applied to both the node and the edge codebook: the same
   // variable ids that feasibility declined to analyse must also be drawn
@@ -308,7 +326,15 @@ export function generateNetwork(
           handleAlterEdgeForm(ctx, draft, stage);
           break;
         case 'FamilyPedigree':
-          handleFamilyPedigree(ctx, draft, stage, i);
+          materializeFamilyPedigree(
+            ctx,
+            draft,
+            stage,
+            i,
+            stages,
+            familyPedigreeSeed(runSeed, stage.id),
+            resolvedFamilyPedigree,
+          );
           break;
         case 'Geospatial':
           handleGeospatial(ctx, draft, stage);

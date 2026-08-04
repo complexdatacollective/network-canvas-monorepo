@@ -3503,13 +3503,7 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
     expect(failures).toEqual([]);
   });
 
-  it('draws a pedigree no rule reads the flag of exactly as it always did', () => {
-    // Settling the flag before the draw takes the variable out of the draw,
-    // which moves every random number after it. A pedigree nothing resolves the
-    // flag against gains nothing from that and must keep the values it had, so
-    // it is still drawn whole and the flag written on afterwards. Held against
-    // the same protocol naming no ego variable at all — the run that never pins
-    // anything — where only the flag itself may differ.
+  it('keeps later ordinary-stage data stable when the pedigree pins an ego flag', () => {
     const codebook = pedigreeCodebook({
       isEgo: { name: 'Is ego', type: 'boolean' },
       age: {
@@ -3534,17 +3528,18 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
       behaviours: { minNodes: 3, maxNodes: 3 },
     } as unknown as Stage;
 
-    const withoutFlag = (attrs: Record<string, unknown>) => {
-      const { isEgo: _isEgo, ...rest } = attrs;
-      return rest;
-    };
-
     for (let seed = 1; seed <= 25; seed++) {
       const pinned = pedigreeNodes(seed, codebook, [pedigreeStage, laterStage]);
+      const unpinnedNodes = pedigreeNodes(seed, codebook, [
+        unpinned,
+        laterStage,
+      ]);
 
-      expect(attributesOf(pinned).map(withoutFlag)).toEqual(
-        attributesOf(pedigreeNodes(seed, codebook, [unpinned, laterStage])).map(
-          withoutFlag,
+      expect(
+        attributesOf(pinned.filter((node) => node.stageId === laterStage.id)),
+      ).toEqual(
+        attributesOf(
+          unpinnedNodes.filter((node) => node.stageId === laterStage.id),
         ),
       );
 

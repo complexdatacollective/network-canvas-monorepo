@@ -65,6 +65,7 @@ export function generateAttributesForEntity(
   options?: {
     existing?: Record<string, VariableValue>;
     only?: Set<string>;
+    preferRealisticNameVariables?: ReadonlySet<string>;
   },
 ): Record<string, VariableValue> {
   return generateEntityAttributes(

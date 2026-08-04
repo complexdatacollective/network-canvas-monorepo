@@ -337,9 +337,14 @@ describe('PreviewHost', () => {
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       payload: InterviewPayload;
     };
-    expect(call.payload.session.stageMetadata).toEqual({
-      '0': { isNetworkCommitted: true },
-    });
+    const metadata = call.payload.session.stageMetadata?.['0'] as
+      | { isNetworkCommitted?: boolean; nodes?: unknown[]; edges?: unknown[] }
+      | undefined;
+    expect(metadata).toEqual(
+      expect.objectContaining({ isNetworkCommitted: true }),
+    );
+    expect(metadata?.nodes?.length).toBeGreaterThanOrEqual(7);
+    expect(metadata?.edges?.length).toBeGreaterThan(0);
   });
 
   it('shows an error fallback when payload processing throws', async () => {

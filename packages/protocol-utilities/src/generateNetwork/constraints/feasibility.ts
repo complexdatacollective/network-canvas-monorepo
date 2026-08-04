@@ -7,10 +7,15 @@ import {
   type ValidationContradiction,
   type Variables,
 } from '@codaco/protocol-validation';
-import type { NcNode, VariableValue } from '@codaco/shared-consts';
+import {
+  BIOLOGICAL_SEX_VALUES,
+  type NcNode,
+  type VariableValue,
+} from '@codaco/shared-consts';
 
 import type { ResolvedGenerationConfig } from '../config';
 import { isContentStage } from '../contentStages';
+import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from '../familyPedigree/types';
 import {
   collectPromptFixedAssignments,
   countPromptFixedValues,
@@ -26,8 +31,9 @@ import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
 import {
   edgeCountFor,
   nodeCountFor,
-  pedigreeEdgeValues,
+  pedigreeEdgeCeiling,
   pedigreeNodeCeiling,
+  pedigreePossibleEdgeValues,
   unwrittenEdgeVariables,
   worstCaseEntityCounts,
 } from './entityCounts';
@@ -193,7 +199,7 @@ function recordPinned(
  * counted, whether or not its stage would write them — because over-counting
  * holders only ever refuses more. Here the fail-safe runs the other way: a
  * naming site read as an overwriter DROPS a pin, and dropping one wrongly lets
- * a pedigree emit `n - 1` identical values for a `unique` variable. So this
+ * a pedigree emit repeated fixed values for a `unique` variable. So this
  * asks only after handlers proven to redraw, and a new one taught to would
  * leave a refusal standing until it is listed — the same direction every other
  * unrecognised shape is read in.
@@ -265,13 +271,11 @@ function regeneratedEdgeAttributes(
  * On its nodes: the interface marks exactly one node of a pedigree as ego and
  * every other node it builds as not-ego, whatever the flag's declared type, so
  * a stage of `n` nodes pins `true` once and `false` `n - 1` times. On its
- * edges: `pedigreeEdgeValues` is written onto every edge the stage builds, and
- * it builds one per node after the first. All written rather than drawn:
- * `handleFamilyPedigree` assigns them after generating the rest of the entity,
- * so no seed spreads a value over more holders or fewer. Counted at the
- * configured ceiling, for the same reason the rest of feasibility counts worst
- * cases, and summed across stages because a `unique` value is claimed once for
- * the whole run.
+ * edges: the relationship, activity, carrier, and gamete semantics are fixed
+ * by the semantic plan rather than drawn from the codebook. Their possible
+ * values are counted at the conservative edge ceiling, for the same reason the
+ * rest of feasibility counts worst cases, and summed across stages because a
+ * `unique` value is claimed once for the whole run.
  *
  * A pedigree writes without consulting the registry, so every pin is stamped
  * where its stage runs — the tally's `stampedAt`, which is what a roster row
@@ -309,22 +313,67 @@ function countPedigreeFixedValues(
 
     const nodeType = stage.nodeConfig?.type;
     const egoVariable = stage.nodeConfig?.egoVariable;
-    if (nodeType !== undefined && egoVariable !== undefined) {
-      recordPinned(node, nodeType, stageIndex, [
-        [egoVariable, true, Math.min(ceiling, 1)],
-        [egoVariable, false, Math.max(ceiling - 1, 0)],
-      ]);
+    if (nodeType !== undefined) {
+      const fixed: [string, VariableValue, number][] = [];
+      if (egoVariable !== undefined) {
+        fixed.push(
+          [egoVariable, true, Math.min(ceiling, 1)],
+          [egoVariable, false, Math.max(ceiling - 1, 0)],
+        );
+      }
+      const relationshipVariable = stage.nodeConfig?.relationshipVariable;
+      if (relationshipVariable !== undefined) {
+        fixed.push(
+          ...PEDIGREE_RELATIONSHIP_TO_EGO_VALUES.map(
+            (value): [string, VariableValue, number] => [
+              relationshipVariable,
+              value,
+              ceiling,
+            ],
+          ),
+        );
+      }
+      const biologicalSexVariable = stage.nodeConfig?.biologicalSexVariable;
+      if (biologicalSexVariable !== undefined) {
+        fixed.push(
+          ...BIOLOGICAL_SEX_VALUES.map(
+            (value): [string, VariableValue, number] => [
+              biologicalSexVariable,
+              [value],
+              ceiling,
+            ],
+          ),
+        );
+      }
+      const diseaseVariables = new Set(
+        (stage.nominationPrompts ?? []).map((prompt) => prompt.variable),
+      );
+      for (const candidate of stages) {
+        if (
+          candidate.type !== 'NarrativePedigree' ||
+          candidate.sourceStageId !== stage.id
+        ) {
+          continue;
+        }
+        for (const disease of candidate.diseases) {
+          diseaseVariables.add(disease.variable);
+        }
+      }
+      for (const variable of diseaseVariables) {
+        fixed.push([variable, true, ceiling], [variable, false, ceiling]);
+      }
+      recordPinned(node, nodeType, stageIndex, fixed);
     }
 
     const edgeType = stage.edgeConfig?.type;
     if (edgeType === undefined) continue;
-    const edges = Math.max(ceiling - 1, 0);
+    const edges = pedigreeEdgeCeiling(config);
     const redrawnAt = regenerated.get(edgeType);
     recordPinned(
       edge,
       edgeType,
       stageIndex,
-      Object.entries(pedigreeEdgeValues(stage.edgeConfig))
+      pedigreePossibleEdgeValues(stage.edgeConfig)
         .filter(
           ([variableId]) => (redrawnAt?.get(variableId) ?? -1) <= stageIndex,
         )
