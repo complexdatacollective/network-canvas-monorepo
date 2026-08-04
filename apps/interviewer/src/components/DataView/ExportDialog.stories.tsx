@@ -203,9 +203,16 @@ export const ErrorState: Story = {
     flow: {
       phase: 'error',
       message: 'Export produced no file',
+      detail:
+        'Error: Export produced no file\n    at handleExport (useSessionMutations.ts:129:15)',
     },
   },
   play: async ({ args }) => {
+    // The support flow: copyable error details alongside the Close action.
+    await expect(
+      await screen.findByTestId('export-copy-error'),
+    ).toBeInTheDocument();
+
     const close = await screen.findByTestId('export-dismiss');
     await userEvent.click(close);
     await expect(args.onDismiss).toHaveBeenCalledOnce();

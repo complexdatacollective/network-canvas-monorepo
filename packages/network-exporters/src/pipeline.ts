@@ -86,8 +86,10 @@ export const exportPipeline = (
           current: written,
           total,
         });
-        // Periodic macrotask boundary so browser hosts can paint progress.
-        if (written % 25 === 0) yield* Effect.sleep(0);
+        // Periodic macrotask boundary so browser hosts can paint progress
+        // and keep indicator animations smooth between blocks of CRC/copy
+        // work.
+        if (written % 10 === 0) yield* Effect.sleep(0);
       }
 
       return yield* output

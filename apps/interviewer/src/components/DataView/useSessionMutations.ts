@@ -43,7 +43,13 @@ export type ExportFlow =
       exportCSV: boolean;
       failedCount: number;
     }
-  | { phase: 'error'; message: string };
+  | {
+      phase: 'error';
+      message: string;
+      // Stack trace (or stringified cause) for the dialog's copyable
+      // error-details support flow.
+      detail: string;
+    };
 
 // Owns the bulk actions on the current selection — export (with optional
 // step-up auth) and delete (with confirmation) — plus their in-flight flags.
@@ -189,6 +195,10 @@ export function useSessionMutations({
       setExportFlow({
         phase: 'error',
         message: cause instanceof Error ? cause.message : String(cause),
+        detail:
+          cause instanceof Error
+            ? (cause.stack ?? cause.message)
+            : String(cause),
       });
     } finally {
       exportInFlightRef.current = false;

@@ -125,7 +125,7 @@ export const generateOutputFilesEffect = (
               // CPU work on the one JS thread, so without it browser hosts
               // never paint the progress they are being sent.
               Effect.tap((current) =>
-                current % 25 === 0 ? Effect.sleep(0) : Effect.void,
+                current % 10 === 0 ? Effect.sleep(0) : Effect.void,
               ),
             ),
           ),

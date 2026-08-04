@@ -381,10 +381,14 @@ describe('useSessionMutations — export flow lifecycle', () => {
       await result.current.handleExport();
     });
 
-    expect(result.current.exportFlow).toEqual({
+    expect(result.current.exportFlow).toMatchObject({
       phase: 'error',
       message: 'zip failed',
     });
+    // The copyable support detail carries the stack, not just the message.
+    const flow = result.current.exportFlow;
+    if (flow.phase !== 'error') throw new Error('expected error phase');
+    expect(flow.detail).toContain('zip failed');
     expect(captureException).toHaveBeenCalledOnce();
     expect(toastAdd).not.toHaveBeenCalled();
   });

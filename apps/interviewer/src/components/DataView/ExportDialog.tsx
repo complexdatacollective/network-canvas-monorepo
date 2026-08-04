@@ -1,12 +1,15 @@
-import { Download, FileArchive, Save, Share2 } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useRef } from 'react';
+import { Check, Copy, Download, FileArchive, Save, Share2 } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { ExternalLink } from '~/components/ExternalLink';
+import { APP_VERSION } from '~/lib/appVersion';
 import { saveAction, type SaveAction } from '~/lib/files/download';
 
 import type { ExportFlow } from './useSessionMutations';
@@ -33,6 +36,59 @@ const READY_ACTION_ICONS: Record<SaveAction, typeof Download> = {
   'share': Share2,
   'download': Download,
 };
+
+// Mirrors ProtocolValidationDetailsDialog's copy footer: a live status line
+// pinned left, then Copy-with-feedback and the primary Close.
+function ExportErrorFooter({
+  copyText,
+  onClose,
+}: {
+  copyText: string;
+  onClose: () => void;
+}) {
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>(
+    'idle',
+  );
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(copyText);
+      setCopyStatus('copied');
+    } catch {
+      setCopyStatus('failed');
+    }
+  };
+
+  return (
+    <>
+      <Paragraph
+        aria-live="polite"
+        className="phone-landscape:mr-auto min-h-lh text-sm"
+        emphasis={copyStatus === 'failed' ? 'default' : 'muted'}
+        margin="none"
+      >
+        {copyStatus === 'copied' ? 'Error details copied to clipboard.' : null}
+        {copyStatus === 'failed' ? 'Error details could not be copied.' : null}
+      </Paragraph>
+      <Button
+        icon={
+          copyStatus === 'copied' ? (
+            <Check aria-hidden="true" />
+          ) : (
+            <Copy aria-hidden="true" />
+          )
+        }
+        onClick={copyToClipboard}
+        data-testid="export-copy-error"
+      >
+        {copyStatus === 'copied' ? 'Copied' : 'Copy details'}
+      </Button>
+      <Button color="primary" onClick={onClose} data-testid="export-dismiss">
+        Close
+      </Button>
+    </>
+  );
+}
 
 // The modal export flow: build progress → a primary action whose click is the
 // fresh user gesture saveBlob needs (Web Share cannot be called from the
@@ -132,10 +188,26 @@ export function ExportDialog({
     accent = 'destructive';
     dismissible = true;
     announcement = 'Export failed';
-    footer = (
-      <Button onClick={onDismiss} data-testid="export-dismiss">
-        Close
-      </Button>
+    const copyText = [
+      'Interviewer export failed.',
+      `App version: ${APP_VERSION}`,
+      '',
+      flow.detail,
+    ].join('\n');
+    footer = <ExportErrorFooter copyText={copyText} onClose={onDismiss} />;
+    children = (
+      <Paragraph margin="none" className="mt-2">
+        Your interview data is unchanged and stored on this device. If this
+        keeps happening, post the copied error details on the{' '}
+        <ExternalLink href="https://community.networkcanvas.com">
+          community forum
+        </ExternalLink>
+        , or email{' '}
+        <ExternalLink href="mailto:info@networkcanvas.com">
+          info@networkcanvas.com
+        </ExternalLink>{' '}
+        with this information.
+      </Paragraph>
     );
   } else {
     const saving = flow.phase === 'saving';
@@ -169,7 +241,7 @@ export function ExportDialog({
     );
     children = (
       <>
-        <div className="bg-surface-1 text-surface-1-contrast publish-colors flex items-center gap-4 rounded-lg p-4">
+        <Surface spacing="xs" className="mt-4 flex items-center gap-4">
           <FileArchive className="text-success size-8 shrink-0" aria-hidden />
           <div className="min-w-0">
             <Paragraph margin="none" className="font-semibold break-all">
@@ -181,7 +253,7 @@ export function ExportDialog({
                 : `Contains ${flow.sessionIds.length} interviews.`}
             </Paragraph>
           </div>
-        </div>
+        </Surface>
         {flow.failedCount > 0 && (
           <Alert variant="warning" className="mt-4">
             {flow.failedCount === 1
