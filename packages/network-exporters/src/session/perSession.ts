@@ -9,8 +9,14 @@ export const perSession =
     getId: (s: S) => string,
   ) =>
   (sessions: S[]): Effect.Effect<readonly [SessionProcessingError[], A[]]> =>
-    Effect.partition(sessions, (s) =>
+    Effect.partition(sessions, (s, index) =>
       fn(s).pipe(
+        // Periodic macrotask boundary: each pass is synchronous CPU work, and
+        // without it browser hosts can neither paint nor dispatch a Cancel
+        // click until the whole formatting stage completes.
+        Effect.tap(() =>
+          (index + 1) % 10 === 0 ? Effect.sleep(0) : Effect.void,
+        ),
         Effect.mapError(
           (cause) =>
             new SessionProcessingError({ cause, stage, sessionId: getId(s) }),
