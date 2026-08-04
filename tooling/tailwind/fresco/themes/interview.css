@@ -224,17 +224,31 @@
    * The min-width arm keeps landscape tablets (≥1024px wide) on the plateau
    * even when a software keyboard collapses the reported viewport height
    * mid-interview.
+   *
+   * Both declarations multiply by --interview-text-scale — the participant's
+   * text-size preference, set by the Shell (default 1) — so one factor scales
+   * type, spacing, and touch targets coherently. --theme-vw scales the fluid
+   * middle terms of the --text-* tokens by the same factor (see theme.css),
+   * so every step of the type scale changes by exactly the chosen percentage,
+   * including sizes resolving in a clamp's viewport-fluid zone.
    */
   .shell-type-ramp {
-    --theme-root-size: clamp(0.9rem, 0.75rem + 0.3125vw, 1.25rem);
+    --theme-vw: calc(var(--interview-text-scale, 1) * 1vw);
+    --theme-root-size: calc(
+      var(--interview-text-scale, 1) *
+        clamp(0.9rem, 0.75rem + 0.3125vw, 1.25rem)
+    );
   }
 
   @media (min-height: 480px), (min-width: 1024px) {
     .shell-type-ramp {
-      --theme-root-size: clamp(
-        0.9rem,
-        max(min(0.7333rem + 0.5556vw, 1rem), 0.75rem + 0.3125vw),
-        1.25rem
+      --theme-root-size: calc(
+        var(--interview-text-scale, 1) *
+          clamp(
+            0.9rem,
+            max(min(0.7333rem + 0.5556vw, 1rem), 0.75rem + 0.3125vw),
+            1.25rem
+          )
       );
     }
   }

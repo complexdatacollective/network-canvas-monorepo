@@ -181,13 +181,24 @@ export const HorizontalStageNavigation: Story = {
   },
 };
 
+const openSettingsMenu = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+
+  const settingsButton = await canvas.findByRole('button', {
+    name: /settings/i,
+  });
+  await userEvent.click(settingsButton);
+
+  return canvas.findByRole('menu');
+};
+
 const exitAndAssertConfirmation = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
 
-  const exitButton = await canvas.findByRole('button', {
-    name: /exit interview/i,
-  });
-  await userEvent.click(exitButton);
+  const menu = await openSettingsMenu(canvasElement);
+  await userEvent.click(
+    within(menu).getByRole('menuitem', { name: /exit interview/i }),
+  );
 
   const dialog = await canvas.findByRole('dialog', {
     name: /exit this interview/i,
@@ -262,7 +273,10 @@ export const ReviewMode: Story = {
       await canvas.findByRole('button', { name: /next step/i }),
     ).toBeDisabled();
 
-    await userEvent.click(canvas.getByRole('button', { name: /exit review/i }));
+    const menu = await openSettingsMenu(canvasElement);
+    await userEvent.click(
+      within(menu).getByRole('menuitem', { name: /exit review/i }),
+    );
 
     const dialog = await canvas.findByRole('dialog', {
       name: /exit this review/i,
@@ -272,5 +286,87 @@ export const ReviewMode: Story = {
       scoped.getByText(/changes made during this review will not be saved/i),
     ).toBeInTheDocument();
     await userEvent.click(scoped.getByRole('button', { name: /cancel/i }));
+  },
+};
+
+export const TextSize: Story = {
+  name: 'Text size (settings menu)',
+  render: ({ stageCount }) => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getRawPayload(stageCount)}
+        navigationOrientation="vertical"
+        allowUserScaling
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const menu = await openSettingsMenu(canvasElement);
+    const group = within(menu).getByRole('group', { name: /text size/i });
+
+    const options = within(group).getAllByRole('menuitemradio');
+    await expect(options).toHaveLength(5);
+    await expect(
+      within(group).getByRole('menuitemradio', { name: '100%' }),
+    ).toHaveAttribute('aria-checked', 'true');
+
+    // Selecting a size keeps the menu open (live preview) and rescales the
+    // whole interview via the Shell's --interview-text-scale multiplier.
+    await userEvent.click(
+      within(group).getByRole('menuitemradio', { name: '120%' }),
+    );
+
+    const main = canvasElement.querySelector('main[data-theme-interview]');
+    await expect(main).not.toBeNull();
+    await waitFor(() =>
+      expect(
+        getComputedStyle(main as Element)
+          .getPropertyValue('--interview-text-scale')
+          .trim(),
+      ).toBe('1.2'),
+    );
+    await expect(
+      within(group).getByRole('menuitemradio', { name: '120%' }),
+    ).toHaveAttribute('aria-checked', 'true');
+
+    // Escape dismisses the menu and returns focus to the trigger.
+    await userEvent.keyboard('{Escape}');
+    const canvas = within(canvasElement);
+    await waitFor(() =>
+      expect(canvas.queryByRole('menu')).not.toBeInTheDocument(),
+    );
+    const settingsButton = canvas.getByRole('button', { name: /settings/i });
+    await waitFor(() => expect(settingsButton).toHaveFocus());
+
+    // Reopen so the visual snapshot captures the control with the enlarged
+    // scale applied and 120% checked.
+    await openSettingsMenu(canvasElement);
+  },
+};
+
+export const SettingsMenuScalingOnly: Story = {
+  name: 'Text size without exit handler',
+  render: ({ stageCount }) => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getRawPayload(stageCount)}
+        navigationOrientation="vertical"
+        allowUserScaling
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const menu = await openSettingsMenu(canvasElement);
+
+    // Without an exit handler the menu holds only the text-size control.
+    await expect(
+      within(menu).queryByRole('menuitem', { name: /exit/i }),
+    ).not.toBeInTheDocument();
+    await expect(
+      within(menu).getByRole('group', { name: /text size/i }),
+    ).toBeInTheDocument();
   },
 };
