@@ -283,6 +283,25 @@ From live testing on desktop Chrome and PR #1191 review:
   implemented by `makeZipOutput` and invoked via `Effect.onInterrupt`
   (`@codaco/network-exporters` patch).
 
+## Worker offload (2026-08-04, follow-up)
+
+The generation and ZIP stages move into a dedicated Web Worker
+(`src/lib/export/exportWorker.ts`), keeping the dialog's progress UI smooth
+during large exports:
+
+- The fetch/decrypt stage stays on the main thread — the vault DEK never
+  crosses the worker boundary; `runExport` resolves the decrypted
+  `InterviewExportInput[]` + protocol map and posts them (structured clone)
+  to the worker, which runs the pipeline via data-backed repository layers
+  (`exportPipelineRunner.ts`, shared with the main-thread fallback).
+- Progress events stream back as messages; cancellation is
+  `worker.terminate()`, which frees the pipeline and everything it buffered
+  in one step (no in-band abort protocol).
+- Environments without `Worker` (jsdom/unit tests), or where construction
+  fails, run the identical pipeline on the main thread.
+- The worker chunk is precached (offline export) and asserted critical in
+  `scripts/assert-pwa-build.mjs`.
+
 ## Shipping
 
 Single PR. App-lane changeset, `minor`, researcher-facing notes ("Exporting

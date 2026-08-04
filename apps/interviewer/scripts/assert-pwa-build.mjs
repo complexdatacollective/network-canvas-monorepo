@@ -60,7 +60,9 @@ const critical = jsAssets.filter(
   (f) =>
     f.startsWith('interview-engine') ||
     f.startsWith('main') ||
-    f.startsWith('index'),
+    f.startsWith('index') ||
+    // The export Web Worker chunk: offline data export depends on it.
+    f.startsWith('exportWorker'),
 );
 if (critical.length === 0) {
   fail('no critical chunks (interview-engine / entry) found');
