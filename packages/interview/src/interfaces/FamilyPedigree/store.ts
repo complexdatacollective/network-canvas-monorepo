@@ -15,6 +15,7 @@ import type {
 import {
   addEdge as addEdgeToNetwork,
   addNode as addNodeToNetwork,
+  deleteEdge,
   deleteNode,
   updateStageMetadata,
 } from '../../store/modules/session';
@@ -500,7 +501,14 @@ export const createFamilyPedigreeStore = (
         },
 
         resetNetwork: () => {
-          const { storeToReduxIdMap } = get();
+          const { storeToReduxIdMap, storeToReduxEdgeIdMap } = get();
+
+          // Edges between two seeded nodes do not disappear through a created
+          // node's cascading deletion, so remove every edge this finalize
+          // committed explicitly before clearing its id map.
+          for (const reduxId of storeToReduxEdgeIdMap.values()) {
+            dispatch?.(deleteEdge(reduxId));
+          }
 
           for (const reduxId of storeToReduxIdMap.values()) {
             dispatch?.(deleteNode(reduxId));

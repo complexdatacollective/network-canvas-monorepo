@@ -739,4 +739,61 @@ describe('finalizeNetwork', () => {
     expect(committedEdges).toHaveLength(1);
     expect(committedEdges[0]?.from).toBe(preexistingId);
   });
+
+  it('removes committed edges between seeded nodes when resetting', async () => {
+    const seededNodes: NcNode[] = [
+      {
+        [entityPrimaryKeyProperty]: 'seeded-ego',
+        type: testConfig.nodeType,
+        [entityAttributesProperty]: {
+          [testConfig.egoVariable]: true,
+          [testConfig.nodeLabelVariable]: 'Existing Ego',
+        },
+      },
+      {
+        [entityPrimaryKeyProperty]: 'seeded-parent',
+        type: testConfig.nodeType,
+        [entityAttributesProperty]: {
+          [testConfig.egoVariable]: false,
+          [testConfig.nodeLabelVariable]: 'Existing Parent',
+        },
+      },
+    ];
+    const { reduxStore, dispatch } = createReduxStore(seededNodes);
+    const initialNodes = new Map(
+      seededNodes.map((node) => [node[entityPrimaryKeyProperty], node]),
+    );
+    const seededIds = new Set(initialNodes.keys());
+    const store = createFamilyPedigreeStore(
+      initialNodes,
+      new Map(),
+      new Map(
+        seededNodes.map((node) => [
+          node[entityPrimaryKeyProperty],
+          { readOnly: true },
+        ]),
+      ),
+      testConfig,
+      dispatch,
+      0,
+      seededIds,
+      new Set(),
+    );
+
+    store.getState().addEdge({
+      from: 'seeded-parent',
+      to: 'seeded-ego',
+      attributes: {
+        [testConfig.relationshipTypeVariable]: ['biological'],
+        [testConfig.isActiveVariable]: true,
+      },
+    });
+    await store.getState().finalizeNetwork();
+    expect(reduxStore.getState().session.network.edges).toHaveLength(1);
+
+    store.getState().resetNetwork();
+
+    expect(reduxStore.getState().session.network.nodes).toHaveLength(2);
+    expect(reduxStore.getState().session.network.edges).toHaveLength(0);
+  });
 });

@@ -1763,6 +1763,55 @@ describe('the ego flag a pedigree stage pins', () => {
     expect(conflicts[0]?.reason).toMatch(/false on up to 9 nodes/);
   });
 
+  it('counts fixed values for every externally introduced contributor branch', () => {
+    const shared = {
+      nodeConfig: { type: 'person', egoVariable: 'isEgo' },
+      edgeConfig: {
+        type: 'kin',
+        relationshipTypeVariable: 'relationshipType',
+      },
+    };
+    const first = {
+      ...pedigree('first-pedigree'),
+      ...shared,
+      boundaries: { requireChildrenContributors: 'off' },
+    } as unknown as Stage;
+    const pairing = {
+      id: 'pair-relatives',
+      type: 'Sociogram',
+      label: 'Pair relatives',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'pair-prompt',
+          text: 'Connect relatives',
+          edges: { create: 'kin' },
+        },
+      ],
+    } as unknown as Stage;
+    const second = {
+      ...pedigree('second-pedigree'),
+      ...shared,
+      boundaries: { requireChildrenContributors: 'required' },
+    } as unknown as Stage;
+
+    const conflicts = analyseFeasibility(
+      codebookWith({
+        isEgo: {
+          name: 'Is ego',
+          type: 'number',
+          validation: { unique: true, minValue: 0, maxValue: 1000 },
+        },
+      }),
+      [first, pairing, second],
+      compactConfig,
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['unique', 'egoVariable']);
+    expect(conflicts[0]?.reason).toMatch(/false on up to 98 nodes/);
+  });
+
   it('accepts an ego flag no rule holds unique', () => {
     const codebook = codebookWith({
       isEgo: { name: 'Is ego', type: 'boolean' },

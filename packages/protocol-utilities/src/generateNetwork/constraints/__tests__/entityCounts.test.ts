@@ -18,6 +18,7 @@ import { resolveGenerationConfig } from '../../config';
 import { buildEntityConstraints } from '../buildConstraints';
 import {
   edgeCountFor,
+  inheritedContributorAncestryCeiling,
   nodeCountFor,
   pedigreeEdgeCeiling,
   pedigreeNodeCeiling,
@@ -185,6 +186,53 @@ describe('worstCaseEntityCounts', () => {
     );
     expect(edgeCountFor(counts.edge, 'kin', ['relationshipType'])).toBe(
       pedigreeEdgeCeiling(config) * 2 + 9,
+    );
+  });
+
+  it('bounds every contributor branch introduced by an intervening pairing stage', () => {
+    const shared = {
+      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
+      edgeConfig: {
+        type: 'kin',
+        relationshipTypeVariable: 'relationshipType',
+      },
+    };
+    const first = familyPedigree({
+      ...shared,
+      id: 'first-pedigree',
+      boundaries: { requireChildrenContributors: 'off' },
+    });
+    const pairing = {
+      id: 'pair-relatives',
+      type: 'Sociogram',
+      label: 'Pair relatives',
+      subject: { entity: 'node', type: 'relative' },
+      prompts: [
+        {
+          id: 'pair-prompt',
+          text: 'Connect relatives',
+          edges: { create: 'kin' },
+        },
+      ],
+    } as unknown as Stage;
+    const second = familyPedigree({
+      ...shared,
+      id: 'second-pedigree',
+      boundaries: { requireChildrenContributors: 'required' },
+    });
+    const stages = [first, pairing, second];
+    const inheritedPopulation = pedigreeNodeCeiling(config);
+
+    expect(
+      inheritedContributorAncestryCeiling(2, stages, inheritedPopulation),
+    ).toEqual({
+      nodes: inheritedPopulation * 8,
+      edges: inheritedPopulation * 12,
+    });
+
+    const counts = worstCaseEntityCounts(stages, config);
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
+      inheritedPopulation * 10 - 1,
     );
   });
 

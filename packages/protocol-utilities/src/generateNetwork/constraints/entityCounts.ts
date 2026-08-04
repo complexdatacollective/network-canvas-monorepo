@@ -27,6 +27,8 @@ import { valueKey } from './uniqueRegistry';
 type WorstCaseCounts = {
   node: NodeCounts;
   edge: EdgeCounts;
+  /** Node population standing immediately before each stage runs. */
+  nodeBeforeStage: Map<number, Map<string, number>>;
 };
 
 /** One FamilyPedigree stage's edges, and where in the run it builds them. */
@@ -574,6 +576,8 @@ type PedigreeCeilingContext = {
 
 const CONTRIBUTOR_ANCESTRY_NODE_CEILING = 6;
 const CONTRIBUTOR_ANCESTRY_EDGE_CEILING = 9;
+const EXTERNAL_CONTRIBUTOR_NODE_MULTIPLIER = 8;
+const EXTERNAL_CONTRIBUTOR_EDGE_MULTIPLIER = 12;
 
 function compatibleContributorPedigree(
   first: StageOfType<'FamilyPedigree'>,
@@ -592,10 +596,67 @@ function compatibleContributorPedigree(
   );
 }
 
+function pairsPedigreePopulation(
+  stage: Stage,
+  nodeType: string,
+  edgeType: string,
+): boolean {
+  if (isPairEdgeStage(stage)) {
+    return (
+      getSubjectType(stage.subject, 'node') === nodeType &&
+      stage.prompts.some((prompt) => prompt.createEdge === edgeType)
+    );
+  }
+  return (
+    stage.type === 'Sociogram' &&
+    getSubjectType(stage.subject, 'node') === nodeType &&
+    stage.prompts.some((prompt) => prompt.edges?.create === edgeType)
+  );
+}
+
+function canReshapeContributorGraph(
+  candidate: Stage,
+  pedigree: StageOfType<'FamilyPedigree'>,
+): boolean {
+  const nodeType = pedigree.nodeConfig?.type;
+  const edgeType = pedigree.edgeConfig?.type;
+  const relationshipVariable = pedigree.edgeConfig?.relationshipTypeVariable;
+  if (nodeType === undefined || edgeType === undefined) return false;
+
+  if (pairsPedigreePopulation(candidate, nodeType, edgeType)) return true;
+
+  if (
+    candidate.type === 'NetworkComposer' &&
+    getSubjectType(candidate.subject, 'node') === nodeType &&
+    candidate.edges?.some((edge) => edge.subject?.type === edgeType) === true
+  ) {
+    return true;
+  }
+
+  if (
+    candidate.type === 'AlterEdgeForm' &&
+    relationshipVariable !== undefined &&
+    getSubjectType(candidate.subject, 'edge') === edgeType &&
+    candidate.form?.fields.some(
+      (field) => field.variable === relationshipVariable,
+    )
+  ) {
+    return true;
+  }
+
+  return (
+    candidate.type === 'FamilyPedigree' &&
+    candidate.nodeConfig?.type === nodeType &&
+    candidate.edgeConfig?.type === edgeType &&
+    !compatibleContributorPedigree(candidate, pedigree)
+  );
+}
+
 /** Maximum ancestry a required boundary may add above inherited co-parents. */
 export function inheritedContributorAncestryCeiling(
   stageIndex: number,
   stages: readonly Stage[],
+  preexistingNodeCeiling = 0,
 ): { nodes: number; edges: number } {
   const stage = stages[stageIndex];
   if (
@@ -606,7 +667,10 @@ export function inheritedContributorAncestryCeiling(
   }
 
   let incompleteContributorBranches = 0;
-  for (const candidate of stages.slice(0, stageIndex)) {
+  let completedContributorIndex = -1;
+  for (const [candidateIndex, candidate] of stages
+    .slice(0, stageIndex)
+    .entries()) {
     if (
       candidate.type !== 'FamilyPedigree' ||
       !compatibleContributorPedigree(candidate, stage)
@@ -616,10 +680,37 @@ export function inheritedContributorAncestryCeiling(
     if (candidate.boundaries?.requireChildrenContributors === 'required') {
       // This stage completed every older inherited branch and its own new one.
       incompleteContributorBranches = 0;
+      completedContributorIndex = candidateIndex;
     } else {
       // Each generated pedigree can introduce at most one co-parent branch.
       incompleteContributorBranches += 1;
     }
+  }
+
+  const hasExternalContributorEdges =
+    preexistingNodeCeiling > 0 &&
+    stages
+      .slice(completedContributorIndex + 1, stageIndex)
+      .some((candidate) => canReshapeContributorGraph(candidate, stage));
+
+  if (hasExternalContributorEdges) {
+    // Other graph-writing stages can connect the inherited ego to any existing
+    // same-typed person, rewrite family edges as genetic relationships, and
+    // give every resulting co-parent existing genetic parents of their own.
+    // The materializer deduplicates each ancestry target, so at most 8N nodes
+    // and 12N edges complete all targets for N existing people. Keep the
+    // ordinary one-branch-per-pedigree bound when no such stage intervenes; it
+    // is much tighter for the common repeated-pedigree case.
+    return {
+      nodes: Math.max(
+        incompleteContributorBranches * CONTRIBUTOR_ANCESTRY_NODE_CEILING,
+        preexistingNodeCeiling * EXTERNAL_CONTRIBUTOR_NODE_MULTIPLIER,
+      ),
+      edges: Math.max(
+        incompleteContributorBranches * CONTRIBUTOR_ANCESTRY_EDGE_CEILING,
+        preexistingNodeCeiling * EXTERNAL_CONTRIBUTOR_EDGE_MULTIPLIER,
+      ),
+    };
   }
 
   return {
@@ -899,6 +990,7 @@ export function worstCaseEntityCounts(
   const base = new Map<string, number>();
   const pedigree = new Map<string, PedigreeEdges[]>();
   const node: NodeCounts = new Map();
+  const nodeBeforeStage = new Map<number, Map<string, number>>();
   const pedigreeEgoVariables = new Map<string, Set<string>>();
 
   // `completionCheckFor` resolves a whole type's generation order and solves
@@ -973,6 +1065,12 @@ export function worstCaseEntityCounts(
 
   for (let stageIndex = 0; stageIndex < stages.length; stageIndex++) {
     const stage = stages[stageIndex]!;
+    nodeBeforeStage.set(
+      stageIndex,
+      new Map(
+        [...node.entries()].map(([type, tally]) => [type, nodeTotal(tally)]),
+      ),
+    );
 
     // One pass, in stage order, because a pair set is bounded by the population
     // standing when its stage runs rather than by the one the protocol ends
@@ -1084,11 +1182,13 @@ export function worstCaseEntityCounts(
       const reusesEgo =
         egoVariable !== undefined &&
         knownEgoVariables?.has(egoVariable) === true;
+      const tally = tallyFor(node, nodeType);
       const inheritedContributorCeiling = inheritedContributorAncestryCeiling(
         stageIndex,
         stages,
+        nodeTotal(tally),
       );
-      tallyFor(node, nodeType).fabricated +=
+      tally.fabricated +=
         Math.max(
           pedigreeNodeCeiling(config, pedigreeContext) - (reusesEgo ? 1 : 0),
           0,
@@ -1162,5 +1262,9 @@ export function worstCaseEntityCounts(
     pedigree.set(edgeType, forType);
   }
 
-  return { node, edge: { base, pedigree, named: namedEdgeAttributes(stages) } };
+  return {
+    node,
+    edge: { base, pedigree, named: namedEdgeAttributes(stages) },
+    nodeBeforeStage,
+  };
 }

@@ -300,6 +300,7 @@ function countPedigreeFixedValues(
   stages: Stage[],
   config: ResolvedGenerationConfig,
   respectSkipLogicAndFiltering: boolean,
+  nodeBeforeStage: ReadonlyMap<number, ReadonlyMap<string, number>>,
   familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
 ): {
   node: Map<string, PromptFixedValues>;
@@ -317,11 +318,18 @@ function countPedigreeFixedValues(
     const pedigreeContext = familyPedigree
       ? { options: familyPedigree, stage, stages }
       : undefined;
+    const nodeType = stage.nodeConfig?.type;
+    const inheritedContributorCeiling = inheritedContributorAncestryCeiling(
+      stageIndex,
+      stages,
+      nodeType === undefined
+        ? 0
+        : (nodeBeforeStage.get(stageIndex)?.get(nodeType) ?? 0),
+    );
     const ceiling =
       pedigreeNodeCeiling(config, pedigreeContext) +
-      inheritedContributorAncestryCeiling(stageIndex, stages).nodes;
+      inheritedContributorCeiling.nodes;
 
-    const nodeType = stage.nodeConfig?.type;
     const egoVariable = stage.nodeConfig?.egoVariable;
     if (nodeType !== undefined) {
       const fixed: [string, VariableValue, number][] = [];
@@ -379,7 +387,7 @@ function countPedigreeFixedValues(
     if (edgeType === undefined) continue;
     const edges =
       pedigreeEdgeCeiling(config, pedigreeContext) +
-      inheritedContributorAncestryCeiling(stageIndex, stages).edges;
+      inheritedContributorCeiling.edges;
     const redrawnAt = regenerated.get(edgeType);
     recordPinned(
       edge,
@@ -1442,6 +1450,7 @@ export function analyseFeasibility(
     stages,
     config,
     respectSkipLogicAndFiltering,
+    counts.nodeBeforeStage,
     familyPedigree,
   );
   const rosterCarried = countRosterCarriedValues(

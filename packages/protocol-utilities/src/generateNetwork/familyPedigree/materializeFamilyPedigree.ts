@@ -341,12 +341,16 @@ function inheritedContributorAncestry(
     nodeId?: string;
     role: 'egg' | 'sperm';
   };
+  const ensuredParents = new Map<string, ParentRef[]>();
   const ensureParents = (
     targetKey: string,
     targetId: string | undefined,
     prefix: string,
     parentGeneration: number,
   ): ParentRef[] => {
+    const alreadyEnsured = ensuredParents.get(targetKey);
+    if (alreadyEnsured !== undefined) return alreadyEnsured;
+
     const existingEdges =
       targetId === undefined
         ? []
@@ -371,6 +375,7 @@ function inheritedContributorAncestry(
     if (firstParent !== undefined && secondParent !== undefined) {
       addPartner(firstParent.key, secondParent.key);
     }
+    ensuredParents.set(targetKey, parents);
     return parents;
   };
 
