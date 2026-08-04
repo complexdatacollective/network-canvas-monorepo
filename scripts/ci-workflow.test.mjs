@@ -97,6 +97,29 @@ test('both public sites crawl their matching Netlify deploy previews', () => {
   assert.match(carryForward, /FLAG_WEBSITE: \["website-preview-checks"\]/);
 });
 
+test('website dead-link crawl waits for the documentation preview it links to', () => {
+  // The website preview rewrites docs links to the documentation deploy
+  // preview (apps/networkcanvas.com/next.config.ts), so the crawl must not
+  // start until that preview is live too.
+  const previewJob = job('website-preview-checks');
+  assert.ok(previewJob, 'website-preview-checks job exists');
+  assert.match(
+    previewJob,
+    /- id: docs-preview\n\s+name: Wait for Netlify documentation preview\n\s+if: needs\.detect\.outputs\.docs == 'true'/,
+    'the documentation deploy-preview wait exists and is gated on the docs flag',
+  );
+  assert.match(previewJob, /const siteName = 'documentation-dev'/);
+  assert.match(previewJob, /Confirm documentation preview is reachable/);
+
+  const docsWaitIndex = previewJob.indexOf('- id: docs-preview');
+  const crawlIndex = previewJob.indexOf('Dead-link check');
+  assert.ok(crawlIndex !== -1, 'website dead-link check exists');
+  assert.ok(
+    docsWaitIndex < crawlIndex,
+    'the documentation wait runs before the dead-link crawl',
+  );
+});
+
 test('each release E2E suite gates on its own policy flag', () => {
   for (const [jobName, flag] of [
     ['interview-e2e', 'interview'],

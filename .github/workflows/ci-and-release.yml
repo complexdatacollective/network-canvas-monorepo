@@ -772,7 +772,9 @@ jobs:
       github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.detect.outputs.website == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Budgets two sequential 15-minute Netlify status polls (website, then
+    # documentation) plus the reachability probes and the crawl itself.
+    timeout-minutes: 40
     permissions:
       contents: read
       statuses: read
@@ -842,6 +844,80 @@ jobs:
             sleep 5
           done
           echo "::error::Netlify website preview is not reachable at $WEBSITE_URL"
+          exit 1
+      # In a deploy-preview context the website rewrites its documentation
+      # links to this PR's documentation preview
+      # (apps/networkcanvas.com/next.config.ts, documentationUrl). The two
+      # Netlify builds race, so wait for the documentation preview before
+      # crawling — otherwise every docs link 404s whenever the website
+      # preview deploys first.
+      - id: docs-preview
+        name: Wait for Netlify documentation preview
+        if: needs.detect.outputs.docs == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const siteName = 'documentation-dev';
+            const statusContext = `netlify/${siteName}/deploy-preview`;
+            const headSha = context.payload.pull_request.head.sha;
+            const expectedHost = `deploy-preview-${context.issue.number}--${siteName}.netlify.app`;
+            const deadline = Date.now() + 15 * 60 * 1000;
+
+            while (Date.now() < deadline) {
+              const statuses = await github.paginate(
+                github.rest.repos.listCommitStatusesForRef,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: headSha,
+                  per_page: 100,
+                },
+              );
+              const status = statuses.find(({ context }) => context === statusContext);
+
+              if (status?.state === 'success') {
+                let previewUrl;
+                try {
+                  previewUrl = new URL(status.target_url);
+                } catch {
+                  core.setFailed(`${statusContext} did not provide a valid preview URL`);
+                  return;
+                }
+
+                if (previewUrl.protocol !== 'https:' || previewUrl.hostname !== expectedHost) {
+                  core.setFailed(
+                    `${statusContext} pointed to unexpected URL ${previewUrl.toString()}`,
+                  );
+                  return;
+                }
+
+                core.setOutput('url', previewUrl.origin);
+                return;
+              }
+
+              if (status && ['error', 'failure'].includes(status.state)) {
+                core.setFailed(`${statusContext} concluded ${status.state}`);
+                return;
+              }
+
+              await new Promise((resolve) => setTimeout(resolve, 15_000));
+            }
+
+            core.setFailed(`Timed out waiting for ${statusContext}`);
+      - name: Confirm documentation preview is reachable
+        if: needs.detect.outputs.docs == 'true'
+        env:
+          DOCS_URL: ${{ steps.docs-preview.outputs.url }}
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -fsSL --max-time 10 -o /dev/null "$DOCS_URL/en"; then
+              echo "deploy is reachable; proceeding"
+              exit 0
+            fi
+            echo "attempt $i: not yet, sleeping 5s"
+            sleep 5
+          done
+          echo "::error::Netlify documentation preview is not reachable at $DOCS_URL"
           exit 1
       - name: Dead-link check
         env:
