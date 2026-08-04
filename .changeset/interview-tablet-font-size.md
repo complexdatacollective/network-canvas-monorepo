@@ -3,6 +3,7 @@
 "@codaco/interviewer": patch
 "@codaco/architect": patch
 "@codaco/tailwind-config": patch
+"@codaco/fresco-ui": patch
 ---
 
 Restore the full-size interview type scale on tablets.
@@ -23,4 +24,7 @@ The interview theme also gains a 16px font-size floor for text-entry elements
 `max(16px, 1em)` so explicitly larger sizes pass through. iOS Safari zooms the
 page when a focused editable element renders below 16px; with the phone-width
 type scale this made every form field a zoom trigger in browser hosts. Editable
-text in the interview now never renders below 16px at any viewport size.
+text in the interview now never renders below 16px at any viewport size. To
+support this, `SegmentedCodeField` now carries its text-size class on the
+segment group wrapper (segment inputs inherit), so the floor preserves its
+`lg`/`xl` sizes; computed sizes are unchanged.
