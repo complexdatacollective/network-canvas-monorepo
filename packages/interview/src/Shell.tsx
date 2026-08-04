@@ -24,7 +24,7 @@ import { AnalyticsProvider } from './analytics/AnalyticsProvider';
 import { NULL_TRACKER, type Tracker } from './analytics/tracker';
 import { useStageNavigationAnalytics } from './analytics/useStageNavigationAnalytics';
 import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndicator';
-import Navigation from './components/Navigation';
+import Navigation, { TEXT_SCALE_OPTIONS } from './components/Navigation';
 import StageErrorBoundary from './components/StageErrorBoundary';
 import { CurrentStepProvider } from './contexts/CurrentStepContext';
 import { StageMetadataProvider } from './contexts/StageMetadataContext';
@@ -75,6 +75,18 @@ type NavigationClassnames = {
   [Orientation in NavigationOrientation]?: string;
 };
 
+/**
+ * Snap an arbitrary multiplier to the nearest selectable option so a
+ * host-restored value always matches a menu radio item (and stray values
+ * can't push the scale outside the supported range).
+ */
+function snapTextScale(scale: number | undefined): number {
+  if (scale === undefined || !Number.isFinite(scale)) return 1;
+  return TEXT_SCALE_OPTIONS.reduce((closest, option) =>
+    Math.abs(option - scale) < Math.abs(closest - scale) ? option : closest,
+  );
+}
+
 function Interview({
   onExit,
   hideNavigation = false,
@@ -82,6 +94,8 @@ function Interview({
   navigationClassnames,
   allowStageNavigation,
   allowUserScaling,
+  initialTextScale,
+  onTextScaleChange,
   initialStageOverrideIndex,
   reviewMode,
 }: {
@@ -91,6 +105,8 @@ function Interview({
   navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
   allowUserScaling?: boolean;
+  initialTextScale?: number;
+  onTextScaleChange?: (scale: number) => void;
   initialStageOverrideIndex?: number;
   reviewMode?: boolean;
 }) {
@@ -136,9 +152,19 @@ function Interview({
   const isHorizontalNav = navigationOrientation === 'horizontal';
 
   // Participant-chosen multiplier applied on top of the viewport ramp below.
-  // Session-scoped by design: it resets with the Shell, and hosts opt in via
-  // `allowUserScaling`.
-  const [textScale, setTextScale] = useState(1);
+  // Owned here so it survives stage navigation; hosts opt in via
+  // `allowUserScaling` and may persist it across remounts (e.g. the
+  // Interviewer's lock screen) with `initialTextScale`/`onTextScaleChange`.
+  const [textScale, setTextScale] = useState(() =>
+    snapTextScale(initialTextScale),
+  );
+  const handleTextScaleChange = useCallback(
+    (scale: number) => {
+      setTextScale(scale);
+      onTextScaleChange?.(scale);
+    },
+    [onTextScaleChange],
+  );
   const textScaleStyle: CSSProperties & { '--interview-text-scale': number } = {
     '--interview-text-scale': textScale,
   };
@@ -231,7 +257,7 @@ function Interview({
               reviewMode={reviewMode}
               allowUserScaling={allowUserScaling}
               textScale={textScale}
-              onTextScaleChange={setTextScale}
+              onTextScaleChange={handleTextScaleChange}
             />
           )}
           {/*
@@ -306,6 +332,18 @@ type ShellProps = {
    */
   allowUserScaling?: boolean;
   /**
+   * Starting value for the participant text-size multiplier (snapped to the
+   * nearest selectable option). Pair with `onTextScaleChange` to persist the
+   * choice across Shell remounts — e.g. the Interviewer restores it after its
+   * lock screen unmounts and remounts the interview.
+   */
+  initialTextScale?: number;
+  /**
+   * Called with the new multiplier whenever the participant changes the text
+   * size.
+   */
+  onTextScaleChange?: (scale: number) => void;
+  /**
    * Allow this unavailable stage to render on the initial visit only. The
    * override is cleared as soon as stage navigation occurs. Architect preview
    * uses this to show the stage being edited without removing its skip logic.
@@ -332,6 +370,8 @@ const Shell = ({
   navigationClassnames,
   allowStageNavigation,
   allowUserScaling,
+  initialTextScale,
+  onTextScaleChange,
   initialStageOverrideIndex,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
@@ -449,6 +489,8 @@ const Shell = ({
                 (currentStep === undefined || onStepChange !== undefined)
               }
               allowUserScaling={allowUserScaling}
+              initialTextScale={initialTextScale}
+              onTextScaleChange={onTextScaleChange}
               initialStageOverrideIndex={reviewEntry.initialStageOverrideIndex}
               reviewMode={reviewMode}
             />

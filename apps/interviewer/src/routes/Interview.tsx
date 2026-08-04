@@ -91,6 +91,24 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     [exitToHome, navigate],
   );
 
+  // Participant text-size choice, persisted per session in sessionStorage so
+  // an idle-lock/unlock cycle — which unmounts and remounts this route —
+  // restores it. A UI preference, not participant data, so it stays outside
+  // the encrypted store; sessionStorage scopes it to the tab and clears when
+  // the tab closes.
+  const textScaleStorageKey = `interview-text-scale:${sessionId}`;
+  const initialTextScale = useMemo(() => {
+    const stored = sessionStorage.getItem(textScaleStorageKey);
+    const parsed = stored === null ? Number.NaN : Number(stored);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, [textScaleStorageKey]);
+  const handleTextScaleChange = useCallback(
+    (scale: number) => {
+      sessionStorage.setItem(textScaleStorageKey, String(scale));
+    },
+    [textScaleStorageKey],
+  );
+
   // Gated exit shared by the Shell exit button and the completion screen.
   const handleExit = useCallback(async () => {
     const settings = await getSettings();
@@ -324,6 +342,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
         allowUserScaling
+        initialTextScale={initialTextScale}
+        onTextScaleChange={handleTextScaleChange}
         navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
       />
     </div>

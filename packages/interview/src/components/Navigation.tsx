@@ -132,9 +132,10 @@ const progressContainerVariants = cva({
  * default; the bounds mirror classic Interviewer's Interface Scale setting.
  * Presented as a radio group (rather than incremental +/- buttons) so each
  * size is one tap away and the controls don't move under the pointer as the
- * open menu itself rescales with the selection.
+ * open menu itself rescales with the selection. The Shell snaps a host's
+ * `initialTextScale` to this list so the checked radio always matches.
  */
-const TEXT_SCALE_OPTIONS = [0.9, 1, 1.1, 1.2, 1.3];
+export const TEXT_SCALE_OPTIONS = [0.9, 1, 1.1, 1.2, 1.3];
 
 type NavigationProps = {
   moveBackward: () => void;
@@ -185,9 +186,13 @@ const Navigation = ({
 
   const stageNavigationEnabled = !!allowStageNavigation && !!goToStage;
 
+  // The text-size control needs both the opt-in flag and a change handler —
+  // one without the other would render a dead control.
+  const userScalingEnabled = !!allowUserScaling && !!onTextScaleChange;
+
   // The settings menu hosts the exit action and the text-size control; with
   // neither available there is nothing to show, so the trigger is omitted.
-  const showSettingsMenu = !!onExit || !!allowUserScaling;
+  const showSettingsMenu = !!onExit || userScalingEnabled;
 
   const { confirm } = useDialog();
   const portalContainer = usePortalContainer();
@@ -293,7 +298,7 @@ const Navigation = ({
                 side={orientation === 'vertical' ? 'right' : 'top'}
                 align="start"
               >
-                {allowUserScaling && (
+                {userScalingEnabled && (
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>Text size</DropdownMenuLabel>
                     <DropdownMenuRadioGroup
@@ -312,7 +317,7 @@ const Navigation = ({
                     </DropdownMenuRadioGroup>
                   </DropdownMenuGroup>
                 )}
-                {allowUserScaling && onExit && <DropdownMenuSeparator />}
+                {userScalingEnabled && onExit && <DropdownMenuSeparator />}
                 {onExit && (
                   <DropdownMenuItem
                     icon={<LogOut />}

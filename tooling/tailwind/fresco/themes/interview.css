@@ -227,9 +227,13 @@
    *
    * Both declarations multiply by --interview-text-scale — the participant's
    * text-size preference, set by the Shell (default 1) — so one factor scales
-   * type, spacing, and touch targets coherently.
+   * type, spacing, and touch targets coherently. --theme-vw scales the fluid
+   * middle terms of the --text-* tokens by the same factor (see theme.css),
+   * so every step of the type scale changes by exactly the chosen percentage,
+   * including sizes resolving in a clamp's viewport-fluid zone.
    */
   .shell-type-ramp {
+    --theme-vw: calc(var(--interview-text-scale, 1) * 1vw);
     --theme-root-size: calc(
       var(--interview-text-scale, 1) *
         clamp(0.9rem, 0.75rem + 0.3125vw, 1.25rem)
