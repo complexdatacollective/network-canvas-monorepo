@@ -105,12 +105,21 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
     const passThrough = new ZipPassThrough(name);
     zip.add(passThrough);
     try {
+      let chunkCount = 0;
       for await (const chunk of data) {
         // Interrupting the pipeline cannot cancel this already-running
         // promise, so the producer observes the abort itself: throwing here
         // also closes `data`'s source iterator via its return() hook.
         if (aborted) throw aborted;
         passThrough.push(chunk);
+        chunkCount += 1;
+        // Periodic macrotask boundary: a single large entry can stream
+        // entirely through immediately-resolved promises, which would block
+        // event dispatch (the Cancel click that sets `aborted`, paints) for
+        // the whole file.
+        if (chunkCount % 25 === 0) {
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        }
       }
       passThrough.push(new Uint8Array(0), true);
     } catch (cause) {
