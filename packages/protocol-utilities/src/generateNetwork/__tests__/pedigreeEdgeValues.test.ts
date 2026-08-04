@@ -253,6 +253,16 @@ describe('FamilyPedigree materialization', () => {
     const metadataNodeIds = metadata?.nodes?.map(({ id }) => id) ?? [];
 
     expect(earlierNodeIds).toHaveLength(2);
+    expect(
+      network.nodes
+        .filter((node) => node.stageId === earlierStage.id)
+        .every((node) => node[entityAttributesProperty].isEgo === false),
+    ).toBe(true);
+    expect(
+      network.nodes.filter(
+        (node) => node[entityAttributesProperty].isEgo === true,
+      ),
+    ).toHaveLength(1);
     expect(metadataNodeIds).toEqual(expect.arrayContaining(earlierNodeIds));
     expect(metadataNodeIds.toSorted()).toEqual(
       network.nodes

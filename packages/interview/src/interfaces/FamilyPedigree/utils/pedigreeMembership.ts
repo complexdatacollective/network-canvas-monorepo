@@ -1,5 +1,6 @@
 import {
   isFamilyPedigreeStageMetadata,
+  type NcEdge,
   type StageMetadata,
 } from '@codaco/shared-consts';
 
@@ -10,7 +11,7 @@ import {
  * this membership is the authoritative record of who was placed on the pedigree.
  *
  * Returns `null` when the metadata has no committed node list — a not-yet-built
- * pedigree, or a synthetic/seeded network. Callers treat `null` as "membership
+ * pedigree or a legacy seeded fixture. Callers treat `null` as "membership
  * unknown" and fall back to showing every node of the pedigree's type.
  */
 export function pedigreeMemberIds(
@@ -22,4 +23,35 @@ export function pedigreeMemberIds(
   const { nodes } = metadata;
   if (!nodes) return null;
   return new Set(nodes.map((node) => node.id));
+}
+
+/** The edges committed by the pedigree, with the same unknown fallback. */
+export function pedigreeMemberEdgeIds(
+  metadata: StageMetadata[string] | undefined,
+): Set<string> | null {
+  if (!isFamilyPedigreeStageMetadata(metadata)) return null;
+  const { edges } = metadata;
+  if (!edges) return null;
+  return new Set(edges.map((edge) => edge.id));
+}
+
+/**
+ * Restrict the shared network to edges wholly owned by a committed pedigree.
+ * Endpoint filtering rejects dangling or foreign relationships even when old
+ * metadata has no edge list; a committed edge list additionally excludes later
+ * stages that connect two people who already belong to the pedigree.
+ */
+export function edgesWithinPedigreeMembership(
+  edges: readonly NcEdge[],
+  edgeType: string,
+  nodeIds: ReadonlySet<string>,
+  edgeIds: ReadonlySet<string> | null,
+): NcEdge[] {
+  return edges.filter(
+    (edge) =>
+      edge.type === edgeType &&
+      nodeIds.has(edge.from) &&
+      nodeIds.has(edge.to) &&
+      (edgeIds === null || edgeIds.has(edge._uid)),
+  );
 }

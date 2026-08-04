@@ -164,6 +164,13 @@ export function materializeFamilyPedigree(
   const preexistingFamilyNodes = draft.nodes.filter(
     (node) => node.type === nodeType,
   );
+  if (nodeConfig.egoVariable && preexistingFamilyNodes.length > 0) {
+    const inheritedEgoValue = { [nodeConfig.egoVariable]: false };
+    assertFixedValuesAccepted(familyCtx, nodeScope, inheritedEgoValue);
+    for (const node of preexistingFamilyNodes) {
+      Object.assign(node[entityAttributesProperty], inheritedEgoValue);
+    }
+  }
   const familyNodes: NcNode[] = [];
 
   for (const [index, person] of plan.people.entries()) {
