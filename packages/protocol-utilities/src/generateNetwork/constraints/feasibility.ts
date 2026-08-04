@@ -1374,6 +1374,7 @@ export function analyseFeasibility(
     config,
     externalData,
     nodeConstraints,
+    (type) => codebook.node?.[type]?.variables,
   );
   const promptFixed = countPromptFixedValues(stages, config, externalData);
   const pedigreeFixed = countPedigreeFixedValues(

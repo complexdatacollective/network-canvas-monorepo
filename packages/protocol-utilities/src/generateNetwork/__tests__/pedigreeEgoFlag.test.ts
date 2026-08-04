@@ -1,20 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Stage } from '@codaco/protocol-validation';
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcNode,
-} from '@codaco/shared-consts';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../generateNetwork';
+import { SyntheticDataConstraintError } from '../constraints/error';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
-
-const SEEDS = 500;
-
-/** One pedigree node per stage, so a two-value domain covers the protocol. */
-const ONE_NODE_PEDIGREE = { familyPedigreeNodeCount: { min: 1, max: 1 } };
 
 function personCodebook(variables: Record<string, unknown>): Codebook {
   return {
@@ -48,15 +40,6 @@ function nameGenerator(nodes: number): Stage {
   } as unknown as Stage;
 }
 
-function describeNodes(nodes: NcNode[]): string {
-  return JSON.stringify(
-    nodes.map((node) => ({
-      stageId: node.stageId,
-      ...node[entityAttributesProperty],
-    })),
-  );
-}
-
 /**
  * A FamilyPedigree stage writes its ego flag itself — the runtime's
  * `egoCellTransform` sets it true on the proband and explicitly false on
@@ -64,119 +47,33 @@ function describeNodes(nodes: NcNode[]): string {
  * before the run starts, alongside a roster row's and a prompt's
  * `additionalAttributes`.
  */
-describe('a pedigree ego flag on a unique variable', () => {
-  const uniqueFlagCodebook = personCodebook({
+/**
+ * These used to assert that the ego flag was reserved out of other stages'
+ * draws, using a one-node pedigree where the flag was written exactly once.
+ *
+ * The generator can no longer build a pedigree that small — ego needs the two
+ * parents the interface will not finalize without — so the flag is written
+ * `true` once and `false` on everybody else, and a `unique` rule over it can
+ * never hold. That is true of every variable a pedigree writes: they are
+ * structural values that recur by their nature. The reservation itself is still
+ * exercised, through `analyseFeasibility`, in `constraints/__tests__/feasibility.test.ts`.
+ */
+describe('a unique rule on a variable the pedigree writes', () => {
+  const uniqueEgoFlag = personCodebook({
     name: { name: 'Name', type: 'text' },
     isEgo: { name: 'Is ego', type: 'boolean', validation: { unique: true } },
   });
 
-  it(`is held back from an earlier stage's draw, over ${SEEDS} seeds`, () => {
-    // The pedigree runs second, so nothing it does can reach the draw that has
-    // already happened: the flag has to be reserved before the first stage
-    // runs or the name generator is issued `true` from the first position of
-    // the slot's sequence and the pedigree writes `true` over its proband as
-    // well.
-    const failures: string[] = [];
-
-    for (let seed = 1; seed <= SEEDS; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: uniqueFlagCodebook,
-        stages: [nameGenerator(1), pedigree('isEgo')],
-        config: ONE_NODE_PEDIGREE,
+  it('is refused up front, naming the pedigree as the writer', () => {
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 1,
+        codebook: uniqueEgoFlag,
+        stages: [pedigree('isEgo')],
       });
 
-      const flags = network.nodes.map(
-        (node) => node[entityAttributesProperty].isEgo,
-      );
-      if (new Set(flags.map((flag) => JSON.stringify(flag))).size !== 2) {
-        failures.push(`seed ${seed}: ${describeNodes(network.nodes)}`);
-      }
-    }
-
-    expect(failures).toEqual([]);
-  });
-
-  it(`spends none of the slot's own values, over ${SEEDS} seeds`, () => {
-    // The flag is written rather than drawn, so it must cost the registry no
-    // sequence position. Drawing it and overwriting the result leaves the
-    // registry holding a value no node carries, and the three people here then
-    // reach only the top two of a three-value domain — with the bottom one
-    // spent on a draw that was thrown away.
-    const codebook = personCodebook({
-      name: { name: 'Name', type: 'text' },
-      isEgo: {
-        name: 'Is ego',
-        type: 'number',
-        validation: { unique: true, minValue: 1, maxValue: 3 },
-      },
-    });
-    const failures: string[] = [];
-
-    for (let seed = 1; seed <= SEEDS; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook,
-        stages: [pedigree('isEgo'), nameGenerator(2)],
-        config: ONE_NODE_PEDIGREE,
-      });
-
-      const drawn = network.nodes
-        .filter((node) => node.stageId === 'stage-ng')
-        .map((node) => node[entityAttributesProperty].isEgo)
-        .toSorted((a, b) => Number(a) - Number(b));
-
-      if (JSON.stringify(drawn) !== JSON.stringify([1, 2])) {
-        failures.push(`seed ${seed}: ${describeNodes(network.nodes)}`);
-      }
-    }
-
-    expect(failures).toEqual([]);
-  });
-
-  it(`is recorded against a roster row carrying it, over ${SEEDS} seeds`, () => {
-    // A roster row's value is the researcher's rather than the registry's, and
-    // a row offering a value the network already holds is passed over — judged
-    // by asking the registry whether that value is taken. So the proband's flag
-    // has to be claimed and not merely reserved: a reservation is a preference
-    // a row is never measured against, and the row carrying `true` would be
-    // drawn alongside the proband already holding it.
-    const rows = [true, false].map(
-      (isEgo, index) =>
-        ({
-          [entityPrimaryKeyProperty]: `roster-${index}`,
-          type: 'person',
-          [entityAttributesProperty]: { name: `Row ${index}`, isEgo },
-        }) as unknown as NcNode,
-    );
-    const roster = {
-      id: 'stage-roster',
-      type: 'NameGeneratorRoster',
-      label: 'Roster',
-      subject: { entity: 'node', type: 'person' },
-      prompts: [{ id: 'p1', text: 'Pick people' }],
-      behaviours: { minNodes: 1, maxNodes: 1 },
-    } as unknown as Stage;
-    const failures: string[] = [];
-
-    for (let seed = 1; seed <= SEEDS; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: uniqueFlagCodebook,
-        stages: [pedigree('isEgo'), roster],
-        externalData: { 'stage-roster': rows.map((row) => ({ ...row })) },
-        config: ONE_NODE_PEDIGREE,
-      });
-
-      const flags = network.nodes.map(
-        (node) => node[entityAttributesProperty].isEgo,
-      );
-      if (new Set(flags.map((flag) => JSON.stringify(flag))).size !== 2) {
-        failures.push(`seed ${seed}: ${describeNodes(network.nodes)}`);
-      }
-    }
-
-    expect(failures).toEqual([]);
+    expect(generate).toThrow(SyntheticDataConstraintError);
+    expect(generate).toThrow(/a family pedigree fixes this to false/);
   });
 });
 

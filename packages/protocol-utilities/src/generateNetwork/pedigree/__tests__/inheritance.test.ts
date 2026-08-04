@@ -5,6 +5,7 @@ import {
   type Rng,
   SHOWCASE_DEMOGRAPHY,
 } from '../demography.ts';
+import { generatePedigree } from '../generatePedigree.ts';
 import { computeAffected } from '../inheritance.ts';
 import { type AbstractPedigree, buildKinshipSkeleton } from '../kinship.ts';
 import { applyParentageVariants } from '../variants.ts';
@@ -22,6 +23,24 @@ function makeRng(seed: number): Rng {
     randomFloat: (min, max) => min + next() * (max - min),
     randomInt: (min, max) => min + Math.floor(next() * (max - min + 1)),
   };
+}
+
+/** A full showcase pedigree, including the coverage the mode guarantees. */
+function generateShowcase(seed: number) {
+  let counter = 0;
+  return generatePedigree({
+    rng: makeRng(seed),
+    mode: 'showcase',
+    config: {
+      nodeType: 'person',
+      edgeType: 'family',
+      relationshipTypeVariable: 'relationshipType',
+      gameteRoleVariable: 'gameteRole',
+    },
+    nextId: () => `id-${(counter += 1)}`,
+    nextName: () => `Person ${counter}`,
+    stageId: 'fp',
+  });
 }
 
 function build(seed: number, showcase = false): AbstractPedigree {
@@ -115,16 +134,49 @@ describe('parentage variants', () => {
     }
   });
 
-  it('exercises every arrangement across a run of showcase pedigrees', () => {
-    const seen = new Set<string>();
-    for (let seed = 1; seed <= 200; seed++) {
-      for (const links of build(seed, true).parents.values()) {
+  // `showcase` is the mode a preview or an interface test uses, and its whole
+  // purpose is that one pedigree exercises the paths population rates almost
+  // never reach. Raising the probabilities does not deliver that on its own —
+  // an ordinary seed can still come out entirely biological — so what sampling
+  // misses is injected.
+  //
+  // The guarantee is bounded by the family: each arrangement needs a child of
+  // its own, and no completeness boundary may reach that child, so a pedigree
+  // with one spare child can show one arrangement and no more.
+  it('exercises every arrangement the pedigree has room for', () => {
+    let sawAll = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const { structure } = generateShowcase(seed);
+
+      const ancestors = new Set<string>();
+      const walkUp = (id: string): void => {
+        for (const link of structure.parents.get(id) ?? []) {
+          if (ancestors.has(link.parent)) continue;
+          ancestors.add(link.parent);
+          walkUp(link.parent);
+        }
+      };
+      walkUp(structure.egoId);
+      const spareChildren = [...structure.parents.keys()].filter(
+        (id) => id !== structure.egoId && !ancestors.has(id),
+      ).length;
+
+      const seen = new Set<string>();
+      for (const links of structure.parents.values()) {
         for (const link of links) seen.add(link.relationshipType);
       }
+      const rare = ['adoptive', 'donor', 'surrogate'].filter((type) =>
+        seen.has(type),
+      );
+
+      expect(rare.length, `seed ${seed}`).toBeGreaterThanOrEqual(
+        Math.min(3, spareChildren),
+      );
+      if (rare.length === 3) sawAll += 1;
     }
-    expect([...seen].toSorted()).toEqual(
-      expect.arrayContaining(['adoptive', 'biological', 'donor', 'surrogate']),
-    );
+
+    // And most families do have the room.
+    expect(sawAll).toBeGreaterThan(60);
   });
 });
 

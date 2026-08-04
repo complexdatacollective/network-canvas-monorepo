@@ -84,10 +84,17 @@ function seedFounders(
   pattern: InheritancePattern,
   genotypes: Map<string, Genotype>,
 ): void {
-  const founders = pedigree.people.filter(
-    (person) => person.isFounder && person.generation <= -2,
+  // The earliest generation that actually has founders, rather than a fixed
+  // depth. Where no grandparent branch was recorded, ego's parents are the
+  // founders — insisting on generation -2 would leave the whole pedigree
+  // unseeded and every Mendelian nomination false.
+  const allFounders = pedigree.people.filter((person) => person.isFounder);
+  if (allFounders.length === 0) return;
+
+  const earliest = Math.min(...allFounders.map((person) => person.generation));
+  const founders = allFounders.filter(
+    (person) => person.generation === earliest,
   );
-  if (founders.length === 0) return;
 
   const females = founders.filter((person) => person.sex === 'female');
   const males = founders.filter((person) => person.sex === 'male');

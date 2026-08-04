@@ -250,9 +250,12 @@ export function renderPedigree(
       if (config.gameteRoleVariable && link.gameteRole) {
         attributes[config.gameteRoleVariable] = [link.gameteRole];
       }
-      if (config.isGestationalCarrierVariable) {
-        attributes[config.isGestationalCarrierVariable] =
-          link.isGestationalCarrier === true;
+      // Only where the parent actually carried. `buildChildParentage` and
+      // `egoCellTransform` add the attribute in that case alone, and a filter
+      // or an export can tell an absent value from an explicit `false`, so
+      // writing `false` everywhere would produce edges the interface cannot.
+      if (config.isGestationalCarrierVariable && link.isGestationalCarrier) {
+        attributes[config.isGestationalCarrierVariable] = true;
       }
       // Runtime-faithful: every parent-child edge the interview commits carries
       // `isActive: true`. The flag only ever distinguishes current from past on

@@ -54,11 +54,13 @@ describe('kinship skeleton', () => {
     for (let seed = 1; seed <= 200; seed++) {
       const pedigree = build(seed);
       // A person either has no parents recorded — which makes them a founder,
-      // and is normal wherever an ascent stops — or has a full pair.
+      // and is normal wherever an ascent stops — or has at least a pair. Three
+      // is legitimate: a donated gamete adds a contributor alongside whoever
+      // carried the pregnancy.
       for (const person of pedigree.people) {
         const links = pedigree.parents.get(person.id) ?? [];
         expect(
-          links.length === 0 || links.length === 2,
+          links.length === 0 || links.length >= 2,
           `seed ${seed}, ${person.id}`,
         ).toBe(true);
         expect(person.isFounder, `seed ${seed}, ${person.id}`).toBe(
@@ -71,15 +73,25 @@ describe('kinship skeleton', () => {
   it('gives ego two parents on every seed — the interface will not finalize otherwise', () => {
     for (let seed = 1; seed <= 200; seed++) {
       const pedigree = build(seed);
-      expect(pedigree.parents.get(pedigree.egoId) ?? []).toHaveLength(2);
+      expect(
+        (pedigree.parents.get(pedigree.egoId) ?? []).length,
+      ).toBeGreaterThanOrEqual(2);
     }
   });
 
-  it('assigns exactly one egg and one sperm contributor per child', () => {
+  // Every child with genetic parentage, that is. An adopted person has none,
+  // which is the whole point of recording the adoption.
+  it('assigns exactly one egg and one sperm contributor per conceived child', () => {
     for (let seed = 1; seed <= 200; seed++) {
       const pedigree = build(seed);
       for (const [childId, links] of pedigree.parents) {
-        const roles = links
+        const genetic = links.filter(
+          (link) =>
+            link.relationshipType === 'biological' ||
+            link.relationshipType === 'donor',
+        );
+        if (genetic.length === 0) continue;
+        const roles = genetic
           .map((link) => link.gameteRole)
           .toSorted((a, b) => String(a).localeCompare(String(b)));
         expect(roles, `seed ${seed}, ${childId}`).toEqual(['egg', 'sperm']);

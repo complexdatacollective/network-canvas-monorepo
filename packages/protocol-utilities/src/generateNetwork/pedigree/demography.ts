@@ -132,11 +132,17 @@ export const DEFAULT_DEMOGRAPHY: PedigreeDemography = {
 };
 
 /**
- * Rates raised so a single pedigree exercises every arrangement the interface
+ * Rates raised so a single pedigree exercises the arrangements the interface
  * supports. At true population rates a 25-person pedigree contains a donor or
  * surrogacy arrangement under 5% of the time, so a faithfully-calibrated
  * generator would almost never reach that code — which is exactly the code most
- * likely to be wrong. See `PedigreeMode`.
+ * likely to be wrong.
+ *
+ * Raised rates alone do not deliver it: an ordinary seed can still come out
+ * entirely biological, so `generatePedigree` injects whatever the draw missed.
+ * The result is bounded by the family — each arrangement needs a child of its
+ * own that no completeness boundary reaches — so a small pedigree shows fewer.
+ * See `PedigreeMode`.
  */
 export const SHOWCASE_DEMOGRAPHY: PedigreeDemography = {
   ...DEFAULT_DEMOGRAPHY,

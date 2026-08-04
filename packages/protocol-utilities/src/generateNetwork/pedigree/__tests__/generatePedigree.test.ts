@@ -8,6 +8,7 @@ import {
 
 import type { Rng } from '../demography.ts';
 import { generatePedigree } from '../generatePedigree.ts';
+import { pedigreeStructuralFloor } from '../kinship.ts';
 import type { PedigreeVariableConfig } from '../render.ts';
 
 function makeRng(seed: number): Rng {
@@ -262,6 +263,33 @@ describe('generatePedigree', () => {
       if (anyParentWithoutParents) shallow += 1;
     }
     expect(shallow).toBeGreaterThan(0);
+  });
+
+  // Feasibility budgets exactly this many people, so the finished structure has
+  // to stay inside it — including after the variant pass, which appends donors
+  // and gestational carriers. Exceeding it would let a `unique` variable pass
+  // analysis and then run out mid-generation.
+  it('never exceeds the size cap it was given', () => {
+    // Caps at or above the structural floor, which is the range feasibility
+    // budgets. Below it the structure wins — see `PEDIGREE_STRUCTURAL_FLOOR`.
+    for (const maxPeople of [pedigreeStructuralFloor(undefined), 60]) {
+      for (let seed = 1; seed <= 150; seed++) {
+        let counter = 0;
+        const result = generatePedigree({
+          rng: makeRng(seed),
+          mode: 'showcase',
+          config: CONFIG,
+          maxPeople,
+          nextId: () => `id-${(counter += 1)}`,
+          nextName: () => `Person ${counter}`,
+          stageId: 'family-pedigree',
+        });
+        expect(
+          result.nodes.length,
+          `cap ${maxPeople}, seed ${seed}`,
+        ).toBeLessThanOrEqual(maxPeople);
+      }
+    }
   });
 
   it('is deterministic for a given seed', () => {

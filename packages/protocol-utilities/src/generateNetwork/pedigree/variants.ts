@@ -232,3 +232,75 @@ export function applyParentageVariants(
   flagOrdinaryCarriers(pedigree);
   return pedigree;
 }
+
+/**
+ * Forces any arrangement a run of `showcase` did not happen to sample.
+ *
+ * `showcase` exists so a single previewed pedigree exercises the paths that
+ * population rates almost never reach. Raising the probabilities alone does not
+ * deliver that — an ordinary seed can still come out with nothing but
+ * biological parentage — so the promise is kept explicitly.
+ *
+ * Applied only to children no completeness boundary reaches, like every other
+ * variant.
+ */
+export function ensureShowcaseCoverage(
+  rng: Rng,
+  demography: PedigreeDemography,
+  pedigree: AbstractPedigree,
+  protect: ReadonlySet<string>,
+): Set<string> {
+  const context: VariantContext = {
+    rng,
+    demography,
+    pedigree,
+    counter: { value: 1000 },
+  };
+
+  const present = new Set<string>();
+  for (const links of pedigree.parents.values()) {
+    for (const link of links) present.add(link.relationshipType);
+  }
+
+  // Prefer a child whose parentage is still plain — replacing one arrangement
+  // with another would leave the first missing again — but fall back to any
+  // eligible child rather than skip the guarantee entirely.
+  const candidates = variableChildren(pedigree, protect);
+  const plain = candidates.filter((child) =>
+    (pedigree.parents.get(child.id) ?? []).every(
+      (link) => link.relationshipType === 'biological',
+    ),
+  );
+  const eligible = [...plain, ...candidates.filter((c) => !plain.includes(c))];
+
+  let next = 0;
+  const takeChild = (): AbstractPerson | undefined => eligible[next++];
+
+  // A pedigree with no eligible child — every one of them reached by a
+  // boundary, or none born at all — simply cannot show these, and forcing one
+  // onto a protected person would break the boundary it was built to satisfy.
+  // Returned so the size trim can protect them. Trimming away the very
+  // arrangement this just injected would silently break the guarantee.
+  const touched = new Set<string>();
+
+  const forceOnto = (
+    missing: string,
+    apply: (context: VariantContext, child: AbstractPerson) => void,
+  ): void => {
+    if (present.has(missing)) return;
+    const child = takeChild();
+    if (!child) return;
+    apply(context, child);
+    touched.add(child.id);
+    for (const link of pedigree.parents.get(child.id) ?? []) {
+      touched.add(link.parent);
+    }
+  };
+
+  forceOnto('adoptive', applyAdoption);
+  forceOnto('donor', applyDonorEgg);
+  forceOnto('surrogate', applySurrogacy);
+
+  flagOrdinaryCarriers(pedigree);
+  return touched;
+}

@@ -1733,31 +1733,42 @@ describe('the ego flag a pedigree stage pins', () => {
     });
   }
 
+  /**
+   * The conflict a pedigree's own pins raise, told apart from the ordinary
+   * count check. Both fire together now: the smallest pedigree the generator
+   * builds is four people, so a two-value flag trips the count check as well as
+   * repeating a pin.
+   */
+  const pinConflict = (conflicts: ReturnType<typeof analyseFeasibility>) =>
+    conflicts.find((conflict) => conflict.rules.includes('egoVariable'));
+
   const uniqueFlag = codebookWith({
     isEgo: { name: 'Is ego', type: 'boolean', validation: { unique: true } },
   });
 
   it('reports two stages that each pin true on one unique flag', () => {
-    // Both stages mark their own proband, and one-node pedigrees put nothing
-    // else on the variable — so the count check passes and two nodes still end
-    // up holding `true`.
+    // Both stages mark their own proband, so two nodes hold `true`. The
+    // smallest pedigree the generator builds is ego plus the two parents the
+    // interface requires, so `false` repeats across the rest and is reported in
+    // the same breath.
     const conflicts = analyseFeasibility(
       uniqueFlag,
       [pedigree('fp-a'), pedigree('fp-b')],
-      sizedConfig(1),
+      sizedConfig(4),
     );
 
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.rules).toEqual(['unique', 'egoVariable']);
-    expect(conflicts[0]?.variableNames).toEqual(['Is ego']);
-    expect(conflicts[0]?.reason).toBe(
-      'a family pedigree fixes this to true on up to 2 nodes, but unique allows one node to hold a value',
+    const pin = pinConflict(conflicts);
+    expect(pin?.rules).toEqual(['unique', 'egoVariable']);
+    expect(pin?.variableNames).toEqual(['Is ego']);
+    expect(pin?.reason).toBe(
+      'a family pedigree fixes this to true on up to 2 nodes and to false on up to 6 nodes, but unique allows one node to hold a value',
     );
   });
 
-  it('reports the false one stage of three nodes writes twice', () => {
-    // A domain wide enough to pass the count check: nine values for three
-    // nodes. The pedigree writes `[true, false, false]` all the same.
+  it('reports the false a pedigree writes on everyone but the proband', () => {
+    // A domain wide enough to pass the count check: nine values. The pedigree
+    // marks one proband and writes `false` on everybody else, so the flag
+    // repeats however wide the domain is.
     const conflicts = analyseFeasibility(
       codebookWith({
         isEgo: {
@@ -1767,21 +1778,27 @@ describe('the ego flag a pedigree stage pins', () => {
         },
       }),
       [pedigree()],
-      sizedConfig(3),
+      sizedConfig(4),
     );
 
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.reason).toBe(
-      'a family pedigree fixes this to false on up to 2 nodes, but unique allows one node to hold a value',
+    expect(pinConflict(conflicts)).toBeDefined();
+    expect(pinConflict(conflicts)?.reason).toBe(
+      'a family pedigree fixes this to false on up to 3 nodes, but unique allows one node to hold a value',
     );
   });
 
-  it('accepts a two-node pedigree, whose two pins differ', () => {
-    // One `true` and one `false` spend one value each, which is what unique
-    // allows. This is the shape `reserveFamilyPedigreeFixedValues` settles.
-    expect(
-      analyseFeasibility(uniqueFlag, [pedigree()], sizedConfig(2)),
-    ).toEqual([]);
+  it('refuses a unique ego flag, which no pedigree can now satisfy', () => {
+    // This used to pass with a two-node pedigree: one `true` and one `false`
+    // spend one value each, which is what unique allows. The generator can no
+    // longer build a pedigree that small — ego needs the two parents the
+    // interface will not finalize without — so `false` always repeats.
+    const conflicts = analyseFeasibility(
+      uniqueFlag,
+      [pedigree()],
+      sizedConfig(4),
+    );
+
+    expect(pinConflict(conflicts)?.variableNames).toEqual(['Is ego']);
   });
 
   it('accepts an ego flag no rule holds unique', () => {
@@ -1800,7 +1817,7 @@ describe('the ego flag a pedigree stage pins', () => {
       nodeConfig: { type: 'person' },
     } as unknown as Stage;
 
-    expect(analyseFeasibility(uniqueFlag, [stage], sizedConfig(2))).toEqual([]);
+    expect(analyseFeasibility(uniqueFlag, [stage], sizedConfig(4))).toEqual([]);
   });
 
   it('names the protocol when a prompt and a pedigree pin the same value', () => {
@@ -1822,17 +1839,17 @@ describe('the ego flag a pedigree stage pins', () => {
     const conflicts = analyseFeasibility(
       uniqueFlag,
       [fixingGenerator, pedigree()],
-      sizedConfig(1),
+      sizedConfig(4),
     );
 
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.rules.toSorted()).toEqual([
+    expect(pinConflict(conflicts)).toBeDefined();
+    expect(pinConflict(conflicts)?.rules.toSorted()).toEqual([
       'additionalAttributes',
       'egoVariable',
       'unique',
     ]);
-    expect(conflicts[0]?.reason).toBe(
-      'the protocol fixes this to true on up to 2 nodes, but unique allows one node to hold a value',
+    expect(pinConflict(conflicts)?.reason).toBe(
+      'the protocol fixes this to true on up to 2 nodes and to false on up to 3 nodes, but unique allows one node to hold a value',
     );
   });
 
@@ -1847,11 +1864,13 @@ describe('the ego flag a pedigree stage pins', () => {
         },
       }),
       [pedigree('fp-a'), pedigree('fp-b')],
-      sizedConfig(1),
+      sizedConfig(4),
     );
 
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.variableNames.toSorted()).toEqual(['Is ego', 'Token']);
+    expect(pinConflict(conflicts)?.variableNames.toSorted()).toEqual([
+      'Is ego',
+      'Token',
+    ]);
   });
 
   it('reports a roster row carrying the flag a later pedigree pins', () => {
@@ -1880,24 +1899,31 @@ describe('the ego flag a pedigree stage pins', () => {
     const conflicts = analyseFeasibility(
       uniqueFlag,
       [roster, pedigree()],
-      sizedConfig(1),
+      sizedConfig(4),
       rows,
     );
 
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.rules).toEqual(['unique', 'egoVariable']);
-    expect(conflicts[0]?.reason).toBe(
-      'a family pedigree and a roster row fix this to true on up to 2 nodes, but unique allows one node to hold a value',
+    expect(pinConflict(conflicts)?.rules).toEqual(['unique', 'egoVariable']);
+    expect(pinConflict(conflicts)?.reason).toBe(
+      'a family pedigree and a roster row fix this to true on up to 2 nodes and to false on up to 3 nodes, but unique allows one node to hold a value',
     );
 
+    // The other order no longer implicates the row: the pedigree claims the
+    // value first and the row is passed over, so the reason names the pedigree
+    // alone. A pin conflict is still raised either way, because the pedigree by
+    // itself writes `false` on everybody but the proband.
     expect(
-      analyseFeasibility(
-        uniqueFlag,
-        [pedigree(), roster],
-        sizedConfig(1),
-        rows,
-      ),
-    ).toEqual([]);
+      pinConflict(
+        analyseFeasibility(
+          uniqueFlag,
+          [pedigree(), roster],
+          sizedConfig(4),
+          rows,
+        ),
+      )?.reason,
+    ).toBe(
+      'a family pedigree fixes this to false on up to 3 nodes, but unique allows one node to hold a value',
+    );
   });
 });
 

@@ -35,7 +35,7 @@ export type GenerationConfig = {
    * half because a highlight prompt names a subset — "who supports you" —
    * rather than splitting the network evenly.
    */
-  sociogramHighlightProbability: number;
+  sociogramHighlightProbability?: number;
   /**
    * Which pedigree parameter set to sample from. `showcase` guarantees the
    * unusual arrangements — adoption, donated gametes, a gestational carrier —
@@ -44,7 +44,7 @@ export type GenerationConfig = {
    * faithfully-calibrated default would leave that code untested.
    * `populationRates` is the right choice for a corpus somebody will count.
    */
-  pedigreeMode: 'showcase' | 'populationRates';
+  pedigreeMode?: 'showcase' | 'populationRates';
   /** Per-pair edge probability for DyadCensus and TieStrengthCensus prompts. */
   censusEdgeProbability: Range;
   /** Per-pair edge probability for NetworkComposer edge types. */
@@ -71,9 +71,19 @@ export type GenerationConfig = {
  * reproducible: reading the clock per draw made a fixed seed stop reproducing
  * across UTC midnight.
  */
-export type ResolvedGenerationConfig = GenerationConfig & { today: string };
+export type ResolvedGenerationConfig = GenerationConfig & {
+  today: string;
+  // Optional on the public type so adding one is not a breaking change for a
+  // consumer annotating a complete config; always present once resolved.
+  sociogramHighlightProbability: number;
+  pedigreeMode: 'showcase' | 'populationRates';
+};
 
-const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> = {
+const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> &
+  Pick<
+    ResolvedGenerationConfig,
+    'sociogramHighlightProbability' | 'pedigreeMode'
+  > = {
   rosterDrawRatio: 0.7,
   nodeCount: { min: 1, max: 8 },
   dropOutFactor: 0.15,

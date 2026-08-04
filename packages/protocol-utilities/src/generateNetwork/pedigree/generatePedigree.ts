@@ -22,13 +22,14 @@ import {
   type AbstractPedigree,
   buildKinshipSkeleton,
   type PedigreeBoundaries,
+  trimPedigreeTo,
 } from './kinship.ts';
 import {
   type PedigreeRenderResult,
   type PedigreeVariableConfig,
   renderPedigree,
 } from './render.ts';
-import { applyParentageVariants } from './variants.ts';
+import { applyParentageVariants, ensureShowcaseCoverage } from './variants.ts';
 
 export type PedigreeNomination = {
   /** The boolean node variable a nomination prompt writes. */
@@ -120,6 +121,33 @@ export function generatePedigree(
     skeleton,
     boundaryProtected(skeleton, options.boundaries),
   );
+
+  // `showcase` promises every arrangement appears, which sampling alone cannot
+  // deliver; anything the draw missed is injected here.
+  if ((options.mode ?? 'showcase') === 'showcase' && !options.demography) {
+    ensureShowcaseCoverage(
+      rng,
+      demography,
+      structure,
+      boundaryProtected(skeleton, options.boundaries),
+    );
+  }
+
+  // Variants append donors and carriers, so the cap has to be re-checked after
+  // them: feasibility budgets `maxPeople` and a run that exceeded it could
+  // exhaust a `unique` variable the analysis had passed. Trimming rather than
+  // refusing keeps the shape — cousins go first, and nothing a boundary reaches
+  // is eligible.
+  if (options.maxPeople !== undefined) {
+    trimPedigreeTo(
+      structure,
+      options.maxPeople,
+      options.boundaries ?? {
+        requireGrandparents: 'off',
+        requireChildrenContributors: 'off',
+      },
+    );
+  }
 
   // Re-settle the children affirmation after the variant pass. The interface
   // counts only *genetic* children toward `requireChildrenContributors`, and an

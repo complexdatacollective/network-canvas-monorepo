@@ -17,6 +17,7 @@ import {
   type NodeCreationStage,
   ruleBrokenByFixedValues,
 } from '../nodes';
+import { pedigreeStructuralFloor } from '../pedigree/kinship';
 import { getSubjectType } from '../subject';
 import { completionCheckFor } from './generateEntityAttributes';
 import {
@@ -24,6 +25,7 @@ import {
   lastExistingWriterByType,
   nodeVariablesWrittenOnCreation,
   pedigreeNodeVariables,
+  withRuleTiedVariables,
 } from './stageWrites';
 import type { EntityConstraints } from './types';
 import { valueKey } from './uniqueRegistry';
@@ -658,9 +660,17 @@ export function unwrittenNodeVariables(
  */
 const PEDIGREE_EDGES_PER_PERSON = 4;
 
-export function pedigreeNodeCeiling(config: GenerationConfig): number {
+export function pedigreeNodeCeiling(
+  config: GenerationConfig,
+  stage?: StageOfType<'FamilyPedigree'>,
+): number {
   const { min, max } = config.familyPedigreeNodeCount;
-  return Math.max(max, min);
+  // The structural floor is part of the ceiling. A pedigree is trimmed to the
+  // configured cap, but never below the people its own boundaries reach, so a
+  // cap set under that floor yields more nodes than it asked for — and an
+  // under-count here is what lets a `unique` variable pass analysis and then
+  // run out partway through the run.
+  return Math.max(max, min, pedigreeStructuralFloor(stage?.boundaries));
 }
 
 /**
@@ -954,6 +964,12 @@ export function worstCaseEntityCounts(
   config: GenerationConfig,
   externalData?: Record<string, NcNode[]>,
   nodeConstraints?: NodeConstraintsFor,
+  /**
+   * Node variable definitions per type, read for the cross-variable rules a
+   * pedigree's write set closes over. Omitted by callers that do not analyse a
+   * pedigree, which then simply see the declared writes.
+   */
+  nodeVariables?: (type: string) => Record<string, unknown> | undefined,
 ): WorstCaseCounts {
   const base = new Map<string, number>();
   const pedigree = new Map<string, PedigreeEdges[]>();
@@ -1141,16 +1157,17 @@ export function worstCaseEntityCounts(
       if (nodeType === undefined) continue;
 
       tallyFor(node, nodeType).fabricated.push({
-        count: pedigreeNodeCeiling(config),
+        count: pedigreeNodeCeiling(config, stage),
         stageIndex,
-        // A pedigree names four required node variables plus its nomination
-        // prompts. One naming none is out of contract — the schema requires
-        // all four — so it falls back to the whole type like any other stage
-        // that declares no collection surface.
-        writes:
-          pedigreeNodeVariables(stage).size > 0
-            ? pedigreeNodeVariables(stage)
-            : 'all',
+        // Exactly what the stage names, plus anything a cross-variable rule
+        // ties to it — the same closure the handler draws, so the count and the
+        // draw cannot disagree about who writes what. Unlike a name generator,
+        // a pedigree with an empty `nodeConfig` is not ambiguous: it writes
+        // nothing, so there is no whole-type fallback.
+        writes: withRuleTiedVariables(
+          nodeVariables?.(nodeType),
+          pedigreeNodeVariables(stage),
+        ),
       });
 
       const edgeType = stage.edgeConfig?.type;
@@ -1171,7 +1188,7 @@ export function worstCaseEntityCounts(
         ownNodeEdges.push({
           edgeType,
           nodeType,
-          count: pedigreeNodeCeiling(config) * PEDIGREE_EDGES_PER_PERSON,
+          count: pedigreeNodeCeiling(config, stage) * PEDIGREE_EDGES_PER_PERSON,
           stageIndex,
           born: 'partial',
         });

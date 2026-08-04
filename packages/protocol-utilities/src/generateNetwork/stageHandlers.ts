@@ -19,6 +19,7 @@ import {
   scopeKey,
   uniqueSlotMembers,
 } from './constraints/generateEntityAttributes';
+import { withRuleTiedVariables } from './constraints/stageWrites';
 import { valueKey } from './constraints/uniqueRegistry';
 import type { GenerationContext, NetworkDraft, StageOfType } from './context';
 import { createEdgesForPairs } from './edges';
@@ -112,7 +113,16 @@ export function handleSociogram(
     // its writer. Nothing else in a protocol need name it, and node creation no
     // longer fills what the creating stage did not collect, so without this
     // pass a highlight variable would stay unset for the whole run.
-    const highlightVariable = prompt.highlight?.variable;
+    //
+    // Gated exactly as the interface gates it: `Sociogram.tsx` reaches the
+    // highlight branch only as the `else` of edge creation, and only when
+    // `allowHighlighting` is on. Writing it unconditionally would overwrite
+    // values an earlier stage collected and produce a network no interview
+    // could have produced.
+    const highlightVariable =
+      prompt.highlight?.allowHighlighting === true && !createEdge
+        ? prompt.highlight.variable
+        : undefined;
     if (highlightVariable) {
       for (const node of subjectNodes) {
         node[entityAttributesProperty][highlightVariable] =
@@ -732,21 +742,31 @@ export function handleFamilyPedigree(
     stageId: stage.id,
   });
 
-  // The pedigree creates these nodes and renders no form, so it behaves like a
-  // roster: it fills the rest of its node type around the values it settled
-  // itself. That is not the linearity problem — nothing here reaches a node
-  // another stage created — and it is what keeps a rule spanning a pedigree
-  // variable and a drawn one satisfiable. `sameAs`, `differentFrom` and the
-  // comparators all resolve against the fixed values rather than around them.
+  // Only what the stage itself collects: the fields its `nodeConfig.form`
+  // renders. Everything else the pedigree writes — the proband flag, the
+  // kinship term, the sex, the nominations — it settles directly, and a
+  // variable the stage never asks about is left unset like any other stage's.
+  //
+  // Drawing the whole node type here would disagree with `pedigreeNodeVariables`,
+  // which is what feasibility counts, so an unrelated `unique` variable would be
+  // treated as unwritten during analysis and then spent on every pedigree
+  // member during generation.
   const written = new Set(
     generated.nodes.flatMap((node) =>
       Object.keys(node[entityAttributesProperty]),
     ),
   );
+  const collected = new Set<string>([
+    ...written,
+    ...(stage.nodeConfig?.form ?? []).map((field) => field.variable as string),
+  ]);
   const toDraw = new Set(
-    Object.keys(ctx.codebook.node?.[nodeType]?.variables ?? {}).filter(
-      (id) => !written.has(id),
-    ),
+    [
+      ...withRuleTiedVariables(
+        ctx.codebook.node?.[nodeType]?.variables,
+        collected,
+      ),
+    ].filter((id) => !written.has(id)),
   );
 
   if (toDraw.size > 0) {

@@ -185,7 +185,11 @@ export function generateNetwork(
   // always a node, and its edge forms name edge types.
   const ctx: GenerationContext = {
     codebook: renderedCodebook,
-    stages,
+    // The reachable list, not the declared one. A NarrativePedigree that skip
+    // logic proves unreachable must not decide the inheritance pattern the
+    // pedigree generates against — that would produce recessive data for a
+    // dominant view nobody can reach.
+    stages: feasibilityStages,
     valueGen,
     config: resolvedConfig,
     usedRosterUids: new Set<string>(),

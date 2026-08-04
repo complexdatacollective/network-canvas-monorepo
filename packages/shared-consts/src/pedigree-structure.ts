@@ -209,21 +209,33 @@ export function validatePedigreeStructure(
     }
   }
 
-  for (const [childId, count] of eggCount) {
-    if (count > 1) {
-      issues.push({
-        code: 'gamete-count',
-        entityId: childId,
-        message: `A person has ${count} egg contributors`,
-      });
+  // Every child with any genetic parentage needs exactly one of each. Checking
+  // only the children already counted would accept a biological parent edge
+  // carrying no gamete role at all — a count of zero appears in neither map —
+  // which is the invariant this validator exists to hold.
+  const geneticallyParented = new Set<string>();
+  for (const edge of parentageEdges) {
+    const type = relationshipOf(edge.attributes);
+    if (type !== undefined && GENETIC_TYPES.has(type)) {
+      geneticallyParented.add(edge.to);
     }
   }
-  for (const [childId, count] of spermCount) {
-    if (count > 1) {
+
+  for (const childId of geneticallyParented) {
+    const eggs = eggCount.get(childId) ?? 0;
+    const sperm = spermCount.get(childId) ?? 0;
+    if (eggs !== 1) {
       issues.push({
         code: 'gamete-count',
         entityId: childId,
-        message: `A person has ${count} sperm contributors`,
+        message: `A person with genetic parentage has ${eggs} egg contributors, not one`,
+      });
+    }
+    if (sperm !== 1) {
+      issues.push({
+        code: 'gamete-count',
+        entityId: childId,
+        message: `A person with genetic parentage has ${sperm} sperm contributors, not one`,
       });
     }
   }

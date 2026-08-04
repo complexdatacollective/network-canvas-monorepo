@@ -51,6 +51,81 @@ function setOf(values: readonly (string | undefined)[]): Set<string> {
  * gamete contributor follows from the role. They are listed here so the count
  * knows a value is spent on them, not so the generic draw supplies one.
  */
+/**
+ * Rules that hold one variable's value against another's. Writing either member
+ * settles both, so a writer of one is a writer of the whole group.
+ */
+const CROSS_VARIABLE_RULES = [
+  'sameAs',
+  'differentFrom',
+  'lessThanVariable',
+  'greaterThanVariable',
+  'lessThanOrEqualToVariable',
+  'greaterThanOrEqualToVariable',
+] as const;
+
+/**
+ * Just enough of a codebook variable to read its cross-variable rules. Written
+ * structurally rather than importing the discriminated union, so a caller can
+ * pass a codebook's variables straight in.
+ */
+type VariableLike = unknown;
+
+/**
+ * `seeds` plus every variable tied to one of them by a cross-variable rule,
+ * transitively.
+ *
+ * A pedigree settles its structural variables directly rather than drawing
+ * them, so a variable declared `sameAs` the proband flag is decided the moment
+ * the flag is written. Leaving it unset would break its own rule while the
+ * value it is held against is defined. Both the draw and the feasibility count
+ * read this, so they cannot disagree about who writes what.
+ */
+export function withRuleTiedVariables(
+  variables: Record<string, VariableLike> | undefined,
+  seeds: ReadonlySet<string>,
+): Set<string> {
+  const tied = new Set(seeds);
+  if (!variables) return tied;
+
+  const partnersOf = (id: string): string[] => {
+    const definition = variables[id];
+    const validation =
+      typeof definition === 'object' && definition !== null
+        ? ((definition as { validation?: unknown }).validation as
+            | Record<string, unknown>
+            | undefined)
+        : undefined;
+    if (!validation) return [];
+    const names: string[] = [];
+    for (const rule of CROSS_VARIABLE_RULES) {
+      const target = validation[rule];
+      if (typeof target === 'string') names.push(target);
+    }
+    return names;
+  };
+
+  // Both directions: a rule declared on either side ties the pair.
+  const inbound = new Map<string, string[]>();
+  for (const id of Object.keys(variables)) {
+    for (const target of partnersOf(id)) {
+      inbound.set(target, [...(inbound.get(target) ?? []), id]);
+    }
+  }
+
+  const queue = [...seeds];
+  while (queue.length > 0) {
+    const id = queue.pop()!;
+    for (const next of [...partnersOf(id), ...(inbound.get(id) ?? [])]) {
+      if (tied.has(next) || !(next in variables)) continue;
+      tied.add(next);
+      queue.push(next);
+    }
+  }
+
+  return tied;
+}
+
 export function pedigreeNodeVariables(stage: Stage): Set<string> {
   if (stage.type !== 'FamilyPedigree') return new Set();
   return setOf([
