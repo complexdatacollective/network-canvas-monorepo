@@ -173,6 +173,55 @@ describe('runExport via the export worker', () => {
     expect(FakeWorker.instances[0]?.terminated).toBe(true);
   });
 
+  it('an already-aborted signal starts no database reads', async () => {
+    seedDb();
+    vi.stubGlobal('Worker', FakeWorker);
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      runExport({
+        options: exportOptions,
+        sessionIds: ['s1'],
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow('Export was cancelled');
+
+    expect(getSessionsByIds).not.toHaveBeenCalled();
+    expect(getProtocolsByHashes).not.toHaveBeenCalled();
+    expect(FakeWorker.instances).toHaveLength(0);
+  });
+
+  it('aborting during the session read stops before the protocol read', async () => {
+    const controller = new AbortController();
+    // Cancel lands while the session read is in flight.
+    getSessionsByIds.mockImplementation(() => {
+      controller.abort();
+      return Promise.resolve([
+        {
+          id: 's1',
+          caseId: 'case-1',
+          startedAt: 1722772800000,
+          finishedAt: null,
+          network: { nodes: [], edges: [], ego: {} },
+          protocolHash: 'hash-1',
+        },
+      ]);
+    });
+    vi.stubGlobal('Worker', FakeWorker);
+
+    await expect(
+      runExport({
+        options: exportOptions,
+        sessionIds: ['s1'],
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow('Export was cancelled');
+
+    expect(getProtocolsByHashes).not.toHaveBeenCalled();
+    expect(FakeWorker.instances).toHaveLength(0);
+  });
+
   it('runs the pipeline on the main thread when Worker is unavailable', async () => {
     seedDb();
     vi.stubGlobal('Worker', undefined);

@@ -24,13 +24,18 @@ export type ExportInvocation = {
   signal?: AbortSignal;
 };
 
+const CANCELLED_MESSAGE = 'Export was cancelled';
+
 // The fetch (and field-level decryption) stage stays on the main thread: the
 // vault DEK never crosses the worker boundary; only decrypted, cloneable
-// export inputs do.
+// export inputs do. Checks the signal between the two reads so cancelling
+// mid-fetch stops before the protocol lookup/decryption begins.
 async function fetchExportInputs(
   sessionIds: string[],
+  signal?: AbortSignal,
 ): Promise<ExportPipelineData> {
   const records = await getSessionsByIds(sessionIds);
+  if (signal?.aborted) throw new Error(CANCELLED_MESSAGE);
   const sessions: InterviewExportInput[] = records.map((record) => ({
     id: record.id,
     participantIdentifier: record.caseId,
@@ -70,7 +75,7 @@ function runOnWorker({
     // one step — there is no in-band cancellation message.
     const onAbort = () => {
       worker.terminate();
-      reject(new Error('Export was cancelled'));
+      reject(new Error(CANCELLED_MESSAGE));
     };
     signal?.addEventListener('abort', onAbort, { once: true });
     const settle = () => {
@@ -118,8 +123,10 @@ export async function runExport({
   onEvent,
   signal,
 }: ExportInvocation): Promise<ExportRun> {
-  const data = await fetchExportInputs(sessionIds);
-  if (signal?.aborted) throw new Error('Export was cancelled');
+  // An already-cancelled export must not start the database reads at all.
+  if (signal?.aborted) throw new Error(CANCELLED_MESSAGE);
+  const data = await fetchExportInputs(sessionIds, signal);
+  if (signal?.aborted) throw new Error(CANCELLED_MESSAGE);
 
   if (typeof Worker === 'function') {
     let worker: Worker | null = null;
