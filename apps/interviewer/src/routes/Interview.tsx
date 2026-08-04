@@ -323,6 +323,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         finishConfirmationDescription="Finishing ends this interview. A researcher can mark it unfinished later if changes are needed."
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
+        allowUserScaling
         navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
       />
     </div>

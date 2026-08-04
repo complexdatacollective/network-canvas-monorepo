@@ -5,7 +5,14 @@ import { Toast } from '@base-ui/react/toast';
 import type { Store } from '@reduxjs/toolkit';
 import { AnimatePresence, motion } from 'motion/react';
 import type { PostHog } from 'posthog-js';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Provider } from 'react-redux';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -74,6 +81,7 @@ function Interview({
   navigationOrientation: orientationProp,
   navigationClassnames,
   allowStageNavigation,
+  allowUserScaling,
   initialStageOverrideIndex,
   reviewMode,
 }: {
@@ -82,6 +90,7 @@ function Interview({
   navigationOrientation?: NavigationOrientation;
   navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
+  allowUserScaling?: boolean;
   initialStageOverrideIndex?: number;
   reviewMode?: boolean;
 }) {
@@ -126,11 +135,20 @@ function Interview({
     orientationProp ?? (prefersHorizontalNav ? 'horizontal' : 'vertical');
   const isHorizontalNav = navigationOrientation === 'horizontal';
 
+  // Participant-chosen multiplier applied on top of the viewport ramp below.
+  // Session-scoped by design: it resets with the Shell, and hosts opt in via
+  // `allowUserScaling`.
+  const [textScale, setTextScale] = useState(1);
+  const textScaleStyle: CSSProperties & { '--interview-text-scale': number } = {
+    '--interview-text-scale': textScale,
+  };
+
   return (
     <ThemedRegion
       theme="interview"
       render={
         <main
+          style={textScaleStyle}
           className={cx(
             'relative flex size-full flex-1 overflow-hidden',
             // Fluid viewport-width ramp for the --theme-root-size type-scale
@@ -141,8 +159,10 @@ function Interview({
             // md form controls at the 24px WCAG 2.5.8 minimum; ≥1280px resumes
             // the original ramp to a 1.25rem cap at 2560px. Spacing and node
             // sizes ramp with it via interview.css's --spacing-base
-            // redeclaration.
-            '[--theme-root-size:clamp(0.9rem,max(min(0.7333rem+0.5556vw,1rem),0.75rem+0.3125vw),1.25rem)]',
+            // redeclaration. The whole ramp is multiplied by the participant's
+            // text-size preference (see the style prop above), so one factor
+            // scales type, spacing, and touch targets coherently.
+            '[--theme-root-size:calc(var(--interview-text-scale,1)*clamp(0.9rem,max(min(0.7333rem+0.5556vw,1rem),0.75rem+0.3125vw),1.25rem))]',
             isHorizontalNav ? 'flex-col' : 'flex-row-reverse',
           )}
         />
@@ -209,6 +229,9 @@ function Interview({
               backButtonRef={backButtonRef}
               onExit={onExit}
               reviewMode={reviewMode}
+              allowUserScaling={allowUserScaling}
+              textScale={textScale}
+              onTextScaleChange={setTextScale}
             />
           )}
           {/*
@@ -275,6 +298,14 @@ type ShellProps = {
   navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
   /**
+   * Let the participant adjust the interview's text size from a settings menu
+   * in the Navigation. The chosen size multiplies the whole interview scale
+   * (type, spacing, and touch targets together) and lasts for the current
+   * session. When neither this nor `onExit` is set, the Navigation renders no
+   * settings menu.
+   */
+  allowUserScaling?: boolean;
+  /**
    * Allow this unavailable stage to render on the initial visit only. The
    * override is cleared as soon as stage navigation occurs. Architect preview
    * uses this to show the stage being edited without removing its skip logic.
@@ -300,6 +331,7 @@ const Shell = ({
   navigationOrientation,
   navigationClassnames,
   allowStageNavigation,
+  allowUserScaling,
   initialStageOverrideIndex,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
@@ -416,6 +448,7 @@ const Shell = ({
                 allowStageNavigation &&
                 (currentStep === undefined || onStepChange !== undefined)
               }
+              allowUserScaling={allowUserScaling}
               initialStageOverrideIndex={reviewEntry.initialStageOverrideIndex}
               reviewMode={reviewMode}
             />
