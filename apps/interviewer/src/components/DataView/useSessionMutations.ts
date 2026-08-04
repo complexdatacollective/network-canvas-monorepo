@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
+import { stageMessages } from '@codaco/network-exporters/events';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
@@ -12,14 +13,34 @@ import {
   markSessionsExported,
 } from '~/lib/db/api';
 import type { StoredSessionLite } from '~/lib/db/types';
-import {
-  buildExportOptions,
-  type ExportProgress,
-  runExport,
-} from '~/lib/export/exportSessions';
+import { buildExportOptions, runExport } from '~/lib/export/exportSessions';
 import { saveBlob } from '~/lib/files/download';
 
-const noopExportEvent = (_event: ExportProgress) => {};
+// The export flow drives ExportDialog end-to-end. `ready` holds the built
+// archive awaiting a fresh user gesture to save it (Web Share must be invoked
+// within a user activation the long archive build would otherwise have
+// consumed — see the 2026-08-04 export-dialog spec). sessionIds are the
+// sessions whose export generation succeeded; they are marked exportedAt only
+// once the file is saved, never on the in-memory build.
+export type ExportFlow =
+  | { phase: 'idle' }
+  | {
+      phase: 'building';
+      sessionCount: number;
+      stageMessage: string;
+      // null until a progress event with a total arrives (indeterminate).
+      percent: number | null;
+    }
+  | {
+      phase: 'ready' | 'saving';
+      blob: Blob;
+      fileName: string;
+      sessionIds: string[];
+      exportGraphML: boolean;
+      exportCSV: boolean;
+      failedCount: number;
+    }
+  | { phase: 'error'; message: string };
 
 // Owns the bulk actions on the current selection — export (with optional
 // step-up auth) and delete (with confirmation) — plus their in-flight flags.
@@ -40,41 +61,43 @@ export function useSessionMutations({
   const dialog = useDialog();
   const analytics = useAnalytics();
   const { requireFreshUnlock } = useStepUpAuth();
-  const [exporting, setExporting] = useState(false);
+  const [exportFlow, setExportFlow] = useState<ExportFlow>({ phase: 'idle' });
   const [deleting, setDeleting] = useState(false);
   const [markingUnfinishedId, setMarkingUnfinishedId] = useState<string | null>(
     null,
   );
-  // Archive built by handleExport, awaiting a fresh user gesture to save it —
-  // see handleShareReady. sessionIds are the sessions whose export generation
-  // succeeded; they are marked exportedAt only once the file is saved, never
-  // on the in-memory build.
-  const [pendingShare, setPendingShare] = useState<{
-    blob: Blob;
-    fileName: string;
-    sessionIds: string[];
-    exportGraphML: boolean;
-    exportCSV: boolean;
-    failedCount: number;
-  } | null>(null);
+  const abortBuildRef = useRef<AbortController | null>(null);
+
+  // Like shareInFlightRef below: state commits are scheduled, so two Export
+  // clicks in the same frame would both read `idle` — the ref closes that
+  // window until the `building` phase renders and disables the trigger.
+  const exportInFlightRef = useRef(false);
 
   const handleExport = useCallback(async () => {
-    if (selectedCount === 0 || exporting) return;
-    setExporting(true);
+    if (
+      selectedCount === 0 ||
+      exportFlow.phase !== 'idle' ||
+      exportInFlightRef.current
+    ) {
+      return;
+    }
+    exportInFlightRef.current = true;
+    const controller = new AbortController();
     try {
       const ids = await resolveSelectedIds();
-      if (ids.length === 0) {
-        setExporting(false);
-        return;
-      }
+      if (ids.length === 0) return;
       const settings = await getSettings();
       if (settings.requireUnlockOnExport) {
         const stepUp = await requireFreshUnlock();
-        if (!stepUp.ok) {
-          setExporting(false);
-          return;
-        }
+        if (!stepUp.ok) return;
       }
+      abortBuildRef.current = controller;
+      setExportFlow({
+        phase: 'building',
+        sessionCount: ids.length,
+        stageMessage: stageMessages.fetching,
+        percent: null,
+      });
       const options = buildExportOptions({
         exportGraphML: settings.exportGraphML,
         exportCSV: settings.exportCSV,
@@ -85,19 +108,29 @@ export function useSessionMutations({
       const { result, blob, fileName } = await runExport({
         options,
         sessionIds: ids,
-        onEvent: noopExportEvent,
+        signal: controller.signal,
+        onEvent: (event) => {
+          setExportFlow((current) => {
+            if (current.phase !== 'building') return current;
+            if (event.type === 'stage') {
+              return { ...current, stageMessage: event.message };
+            }
+            if (event.total <= 0) return current;
+            return {
+              ...current,
+              percent: Math.round((event.current / event.total) * 100),
+            };
+          });
+        },
       });
+      // Cancellation can race a build that was already resolving; the cancel
+      // wins — never resurface a dialog the user dismissed.
+      if (controller.signal.aborted) return;
       if (!blob || !fileName) {
         throw new Error('Export produced no file');
       }
-      if (result.failedExports.length > 0) {
-        toast.add({
-          title: 'Export completed with errors',
-          description: `${result.failedExports.length} session(s) failed.`,
-          variant: 'destructive',
-        });
-      }
-      setPendingShare({
+      setExportFlow({
+        phase: 'ready',
         blob,
         fileName,
         sessionIds: result.successfulExports.map((s) => s.sessionId),
@@ -105,42 +138,52 @@ export function useSessionMutations({
         exportCSV: settings.exportCSV,
         failedCount: result.failedExports.length,
       });
-      toast.add({
-        title: 'Archive ready',
-        description: 'Tap Save export to share or download the archive.',
-      });
-      clearSelection();
-      await Promise.all([onReload(), reloadData()]);
     } catch (cause) {
+      // A cancelled build already reset the flow; its rejection is not an
+      // error.
+      if (controller.signal.aborted) return;
       analytics.captureException(cause, { feature: 'export' });
-      toast.add({
-        title: 'Export failed',
-        description: cause instanceof Error ? cause.message : String(cause),
-        variant: 'destructive',
+      setExportFlow({
+        phase: 'error',
+        message: cause instanceof Error ? cause.message : String(cause),
       });
     } finally {
-      setExporting(false);
+      exportInFlightRef.current = false;
+      if (abortBuildRef.current === controller) {
+        abortBuildRef.current = null;
+      }
     }
   }, [
     analytics,
-    clearSelection,
-    exporting,
-    onReload,
-    reloadData,
+    exportFlow.phase,
     requireFreshUnlock,
     resolveSelectedIds,
     selectedCount,
-    toast,
   ]);
 
-  // Runs in the "Save export" button's own click — a gesture the long-running
-  // archive build in handleExport would otherwise have consumed — so the
-  // Save-As picker / navigator.share stays gesture-fresh.
+  const handleCancelBuild = useCallback(() => {
+    if (exportFlow.phase !== 'building') return;
+    abortBuildRef.current?.abort();
+    setExportFlow({ phase: 'idle' });
+  }, [exportFlow.phase]);
+
+  // Discards a built-but-unsaved archive (or dismisses the error state).
+  // Nothing is marked exported and the selection is retained, so re-exporting
+  // is one tap.
+  const handleDismissExport = useCallback(() => {
+    if (exportFlow.phase !== 'ready' && exportFlow.phase !== 'error') return;
+    setExportFlow({ phase: 'idle' });
+  }, [exportFlow.phase]);
+
+  // Runs in the export dialog's primary action click — a gesture the
+  // long-running archive build in handleExport would otherwise have consumed —
+  // so the Save-As picker / navigator.share stays gesture-fresh. saveBlob must
+  // be reached with no `await` before it.
   const shareInFlightRef = useRef(false);
   const handleShareReady = useCallback(async () => {
-    // A double-tap on Save export would otherwise start two save flows and
-    // double the export marking + analytics event; guard against re-entry.
-    if (!pendingShare || shareInFlightRef.current) return;
+    // Re-entry is guarded by a ref, not the `saving` phase: state updates are
+    // scheduled, so two clicks in the same frame would both read `ready`.
+    if (exportFlow.phase !== 'ready' || shareInFlightRef.current) return;
     shareInFlightRef.current = true;
     const {
       blob,
@@ -149,16 +192,15 @@ export function useSessionMutations({
       exportGraphML,
       exportCSV,
       failedCount,
-    } = pendingShare;
+    } = exportFlow;
+    setExportFlow({ ...exportFlow, phase: 'saving' });
     try {
       const outcome = await saveBlob(blob, fileName);
       if (!outcome.saved) {
-        // pendingShare is retained so the Save export button stays available
-        // for a retry; sessions are NOT marked exported until a genuine save.
-        toast.add({
-          title: 'Export canceled',
-          description: 'The archive was not saved.',
-        });
+        // The archive is retained and the dialog stays open in the ready
+        // state — that is the retry affordance; sessions are NOT marked
+        // exported until a genuine save.
+        setExportFlow({ ...exportFlow, phase: 'ready' });
         return;
       }
       await markSessionsExported(sessionIds);
@@ -169,10 +211,10 @@ export function useSessionMutations({
         export_graphml: exportGraphML,
         export_csv: exportCSV,
       });
-      setPendingShare(null);
+      setExportFlow({ phase: 'idle' });
+      clearSelection();
       // Refresh so the just-set exportedAt shows in the Export status column
-      // and the status filter/counts; the mark now happens here rather than in
-      // handleExport, so its reload no longer covers it.
+      // and the status filter/counts.
       await Promise.all([onReload(), reloadData()]);
       toast.add({
         title: 'Export complete',
@@ -180,9 +222,10 @@ export function useSessionMutations({
         variant: 'success',
       });
     } catch (cause) {
-      // pendingShare is retained on failure: the built archive is still
-      // valid, so the Save export button stays available for a retry.
+      // The built archive is still valid, so the dialog returns to the ready
+      // state for a retry.
       analytics.captureException(cause, { feature: 'export' });
+      setExportFlow({ ...exportFlow, phase: 'ready' });
       toast.add({
         title: 'Export failed',
         description: cause instanceof Error ? cause.message : String(cause),
@@ -191,7 +234,7 @@ export function useSessionMutations({
     } finally {
       shareInFlightRef.current = false;
     }
-  }, [analytics, onReload, pendingShare, reloadData, toast]);
+  }, [analytics, clearSelection, exportFlow, onReload, reloadData, toast]);
 
   const handleDelete = useCallback(async () => {
     if (selectedCount === 0 || deleting) return;
@@ -279,13 +322,14 @@ export function useSessionMutations({
   );
 
   return {
-    exporting,
+    exportFlow,
     deleting,
     markingUnfinishedId,
     handleExport,
+    handleCancelBuild,
+    handleDismissExport,
     handleDelete,
     handleMarkUnfinished,
     handleShareReady,
-    pendingShare,
   };
 }

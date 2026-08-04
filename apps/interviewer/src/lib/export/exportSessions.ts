@@ -19,8 +19,6 @@ import { ProtocolRepository } from '@codaco/network-exporters/services/ProtocolR
 import { APP_VERSION } from '../appVersion';
 import { getProtocolsByHashes, getSessionsByIds } from '../db/api';
 
-export type ExportProgress = ExportEvent;
-
 const interviewRepoLayer = Layer.succeed(InterviewRepository, {
   getForExport: (ids) =>
     Effect.tryPromise({
@@ -60,7 +58,7 @@ const protocolRepoLayer = Layer.succeed(ProtocolRepository, {
 });
 
 function makeBlobSink() {
-  let result: { blob: Blob; url: string; fileName: string } | null = null;
+  let result: { blob: Blob; fileName: string } | null = null;
   const sink = (iterable: AsyncIterable<Uint8Array>, fileName: string) =>
     Effect.tryPromise({
       try: async (): Promise<OutputResult> => {
@@ -69,9 +67,10 @@ function makeBlobSink() {
           chunks.push(new Uint8Array(chunk));
         }
         const blob = new Blob(chunks, { type: 'application/zip' });
-        const url = URL.createObjectURL(blob);
-        result = { blob, url, fileName };
-        return { key: fileName, url };
+        result = { blob, fileName };
+        // No object URL: nothing consumes one, and an unrevoked URL would pin
+        // the zip-sized blob in memory for the page lifetime.
+        return { key: fileName };
       },
       catch: (cause) => {
         throw cause;
@@ -87,12 +86,14 @@ export type ExportInvocation = {
   options: ExportOptions;
   sessionIds: string[];
   onEvent?: (event: ExportEvent) => void;
+  // Aborting interrupts the Effect pipeline; runExport rejects. Callers that
+  // abort should treat that rejection as a cancellation, not an error.
+  signal?: AbortSignal;
 };
 
 export type ExportRun = {
   result: ExportReturn;
   blob: Blob | null;
-  url: string | null;
   fileName: string | null;
 };
 
@@ -100,6 +101,7 @@ export async function runExport({
   options,
   sessionIds,
   onEvent,
+  signal,
 }: ExportInvocation): Promise<ExportRun> {
   const { sink, getResult } = makeBlobSink();
   const outputLayer = makeZipOutput(sink);
@@ -130,13 +132,13 @@ export async function runExport({
         Layer.mergeAll(interviewRepoLayer, protocolRepoLayer, outputLayer),
       ),
     ),
+    { signal },
   );
 
   const sinkResult = getResult();
   return {
     result,
     blob: sinkResult?.blob ?? null,
-    url: sinkResult?.url ?? null,
     fileName: sinkResult?.fileName ?? null,
   };
 }

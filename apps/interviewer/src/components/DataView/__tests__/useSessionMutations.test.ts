@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -20,6 +20,10 @@ const runExport = vi.fn();
 const saveBlob = vi.fn();
 const openDialog = vi.fn();
 const toastAdd = vi.fn();
+const track = vi.fn();
+const captureException = vi.fn();
+const requireFreshUnlock = vi.fn().mockResolvedValue({ ok: true });
+const clearSelection = vi.fn();
 
 vi.mock('~/lib/db/api', () => ({
   markSessionsExported: (...args: unknown[]) => markSessionsExported(...args),
@@ -46,11 +50,11 @@ vi.mock('@codaco/fresco-ui/Toast', () => ({
 }));
 
 vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
-  useAnalytics: () => ({ track: vi.fn(), captureException: vi.fn() }),
+  useAnalytics: () => ({ track, captureException }),
 }));
 
 vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
-  useStepUpAuth: () => ({ requireFreshUnlock: vi.fn() }),
+  useStepUpAuth: () => ({ requireFreshUnlock }),
 }));
 
 function makeHook() {
@@ -58,14 +62,14 @@ function makeHook() {
     useSessionMutations({
       selectedCount: 1,
       resolveSelectedIds: () => Promise.resolve(['s1']),
-      clearSelection: vi.fn(),
+      clearSelection,
       onReload: () => Promise.resolve(),
       reloadData: () => Promise.resolve(),
     }),
   );
 }
 
-async function buildPendingShare(
+async function buildReadyArchive(
   result: ReturnType<typeof makeHook>['result'],
 ) {
   runExport.mockResolvedValue({
@@ -79,19 +83,41 @@ async function buildPendingShare(
   await act(async () => {
     await result.current.handleExport();
   });
-  expect(result.current.pendingShare).not.toBeNull();
+  expect(result.current.exportFlow.phase).toBe('ready');
 }
 
-describe('useSessionMutations — Save export marks exported from the save outcome alone', () => {
+// A runExport stand-in that emits nothing and settles only via abort, so
+// tests can observe the building state and drive cancellation.
+function hangingRunExport() {
+  let emit: ((event: unknown) => void) | undefined;
+  runExport.mockImplementation(
+    (invocation: {
+      onEvent?: (event: unknown) => void;
+      signal?: AbortSignal;
+    }) => {
+      emit = invocation.onEvent;
+      return new Promise((_, reject) => {
+        invocation.signal?.addEventListener('abort', () =>
+          reject(new Error('interrupted')),
+        );
+      });
+    },
+  );
+  return { emit: (event: unknown) => emit?.(event) };
+}
+
+describe('useSessionMutations — export flow marks exported from the save outcome alone', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it('marks exported when the save succeeds, with no confirmation prompt', async () => {
+  it('marks exported and clears the selection when the save succeeds', async () => {
     saveBlob.mockResolvedValue({ saved: true });
 
     const { result } = makeHook();
-    await buildPendingShare(result);
+    await buildReadyArchive(result);
+    // Selection survives the build: it clears only on a genuine save.
+    expect(clearSelection).not.toHaveBeenCalled();
 
     await act(async () => {
       await result.current.handleShareReady();
@@ -99,40 +125,223 @@ describe('useSessionMutations — Save export marks exported from the save outco
 
     expect(openDialog).not.toHaveBeenCalled();
     expect(markSessionsExported).toHaveBeenCalledWith(['s1']);
-    expect(result.current.pendingShare).toBeNull();
+    expect(clearSelection).toHaveBeenCalledOnce();
+    expect(result.current.exportFlow.phase).toBe('idle');
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Export complete' }),
+    );
   });
 
   it('does NOT mark exported when the save is cancelled, and keeps the archive for a retry', async () => {
     saveBlob.mockResolvedValue({ saved: false });
 
     const { result } = makeHook();
-    await buildPendingShare(result);
+    await buildReadyArchive(result);
 
     await act(async () => {
       await result.current.handleShareReady();
     });
 
-    expect(openDialog).not.toHaveBeenCalled();
     expect(markSessionsExported).not.toHaveBeenCalled();
-    // pendingShare retained so Save export stays available for a retry.
-    expect(result.current.pendingShare).not.toBeNull();
+    expect(clearSelection).not.toHaveBeenCalled();
+    // The dialog staying open in the ready state is the retry affordance —
+    // no toast fires on a cancelled share.
+    expect(toastAdd).not.toHaveBeenCalled();
+    expect(result.current.exportFlow.phase).toBe('ready');
   });
 
   it('does NOT mark exported when the save throws, and keeps the archive for a retry', async () => {
     saveBlob.mockRejectedValue(new Error('QuotaExceededError'));
 
     const { result } = makeHook();
-    await buildPendingShare(result);
+    await buildReadyArchive(result);
 
     await act(async () => {
       await result.current.handleShareReady();
     });
 
     expect(markSessionsExported).not.toHaveBeenCalled();
-    expect(result.current.pendingShare).not.toBeNull();
+    expect(result.current.exportFlow.phase).toBe('ready');
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Export failed' }),
     );
+  });
+
+  it('a double-tap on the save action starts exactly one save', async () => {
+    let resolveSave: ((outcome: { saved: boolean }) => void) | undefined;
+    saveBlob.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+
+    const { result } = makeHook();
+    await buildReadyArchive(result);
+
+    await act(async () => {
+      const first = result.current.handleShareReady();
+      const second = result.current.handleShareReady();
+      resolveSave?.({ saved: true });
+      await Promise.all([first, second]);
+    });
+
+    expect(saveBlob).toHaveBeenCalledTimes(1);
+    expect(markSessionsExported).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useSessionMutations — export flow lifecycle', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('a double-tap on Export starts exactly one build', async () => {
+    runExport.mockResolvedValue({
+      result: {
+        successfulExports: [{ sessionId: 's1' }],
+        failedExports: [],
+      },
+      blob: new Blob(['x']),
+      fileName: 'export.zip',
+    });
+    const { result } = makeHook();
+
+    await act(async () => {
+      await Promise.all([
+        result.current.handleExport(),
+        result.current.handleExport(),
+      ]);
+    });
+
+    expect(runExport).toHaveBeenCalledTimes(1);
+    expect(result.current.exportFlow.phase).toBe('ready');
+  });
+
+  it('dismissing a ready archive discards it without marking, keeping the selection', async () => {
+    const { result } = makeHook();
+    await buildReadyArchive(result);
+
+    act(() => {
+      result.current.handleDismissExport();
+    });
+
+    expect(result.current.exportFlow.phase).toBe('idle');
+    expect(markSessionsExported).not.toHaveBeenCalled();
+    expect(clearSelection).not.toHaveBeenCalled();
+  });
+
+  it('surfaces stage and progress events while building', async () => {
+    const { emit } = hangingRunExport();
+    const { result } = makeHook();
+
+    let exportPromise: Promise<void> | undefined;
+    act(() => {
+      exportPromise = result.current.handleExport();
+    });
+    await waitFor(() =>
+      expect(result.current.exportFlow.phase).toBe('building'),
+    );
+
+    act(() => {
+      emit({
+        type: 'stage',
+        stage: 'generating',
+        message: 'Generating files...',
+      });
+      emit({ type: 'progress', stage: 'generating', current: 3, total: 4 });
+    });
+
+    expect(result.current.exportFlow).toMatchObject({
+      phase: 'building',
+      stageMessage: 'Generating files...',
+      percent: 75,
+    });
+
+    await act(async () => {
+      result.current.handleCancelBuild();
+      await exportPromise;
+    });
+  });
+
+  it('cancelling a build aborts it without an error state or toast', async () => {
+    hangingRunExport();
+    const { result } = makeHook();
+
+    let exportPromise: Promise<void> | undefined;
+    act(() => {
+      exportPromise = result.current.handleExport();
+    });
+    await waitFor(() =>
+      expect(result.current.exportFlow.phase).toBe('building'),
+    );
+
+    await act(async () => {
+      result.current.handleCancelBuild();
+      await exportPromise;
+    });
+
+    expect(result.current.exportFlow.phase).toBe('idle');
+    expect(captureException).not.toHaveBeenCalled();
+    expect(toastAdd).not.toHaveBeenCalled();
+  });
+
+  it('a failed build lands in the error state instead of a toast', async () => {
+    runExport.mockRejectedValue(new Error('zip failed'));
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    expect(result.current.exportFlow).toEqual({
+      phase: 'error',
+      message: 'zip failed',
+    });
+    expect(captureException).toHaveBeenCalledOnce();
+    expect(toastAdd).not.toHaveBeenCalled();
+  });
+
+  it('a refused step-up unlock leaves the flow idle without building', async () => {
+    getSettings.mockResolvedValueOnce({
+      requireUnlockOnExport: true,
+      exportGraphML: true,
+      exportCSV: false,
+      useScreenLayoutCoordinates: false,
+      screenLayoutHeight: 0,
+      screenLayoutWidth: 0,
+    });
+    requireFreshUnlock.mockResolvedValueOnce({ ok: false });
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    expect(result.current.exportFlow.phase).toBe('idle');
+    expect(runExport).not.toHaveBeenCalled();
+  });
+
+  it('partial failures surface on the ready state, not as a toast', async () => {
+    runExport.mockResolvedValue({
+      result: {
+        successfulExports: [{ sessionId: 's1' }],
+        failedExports: [{ sessionId: 's2' }],
+      },
+      blob: new Blob(['x']),
+      fileName: 'export.zip',
+    });
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    expect(result.current.exportFlow).toMatchObject({
+      phase: 'ready',
+      failedCount: 1,
+    });
+    expect(toastAdd).not.toHaveBeenCalled();
   });
 });
 

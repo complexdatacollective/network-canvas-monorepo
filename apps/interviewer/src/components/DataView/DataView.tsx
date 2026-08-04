@@ -9,6 +9,7 @@ import { getInterviewProgress } from '@codaco/interview';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
 import { DataViewToolbar } from './DataViewToolbar';
+import { ExportDialog } from './ExportDialog';
 import { useDataViewColumns } from './useDataViewColumns';
 import { useDataViewUrlState } from './useDataViewUrlState';
 import { useSessionMutations } from './useSessionMutations';
@@ -135,14 +136,15 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   } = useSessionSelection({ filtersKey, pageIds, totalCount, queryParams });
 
   const {
-    exporting,
+    exportFlow,
     deleting,
     markingUnfinishedId,
     handleExport,
+    handleCancelBuild,
+    handleDismissExport,
     handleDelete,
     handleMarkUnfinished,
     handleShareReady,
-    pendingShare,
   } = useSessionMutations({
     selectedCount,
     resolveSelectedIds,
@@ -200,12 +202,17 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
         statusCounts={statusCounts}
         protocolOptions={protocolOptions}
         selectedCount={selectedCount}
-        exporting={exporting}
+        exporting={exportFlow.phase !== 'idle'}
         deleting={deleting}
-        pendingShare={pendingShare !== null}
         onExport={() => void handleExport()}
         onDelete={() => void handleDelete()}
-        onShareReady={() => void handleShareReady()}
+      />
+
+      <ExportDialog
+        flow={exportFlow}
+        onCancelBuild={handleCancelBuild}
+        onSave={() => void handleShareReady()}
+        onDismiss={handleDismissExport}
       />
 
       <AnimatePresence initial={false}>
