@@ -16,6 +16,15 @@ const VIEWPORT_PROPERTIES = [
 // bottom edge on iPad.
 const MIN_KEYBOARD_REDUCTION = 120;
 const SCALE_EPSILON = 0.01;
+// A resting page offset beyond this is a wedged layout viewport, not rounding.
+const DISPLACEMENT_EPSILON = 1;
+// Wait for WebKit's keyboard-close event burst (which finishes within a few
+// frames) before judging whether a text-entry session left residual zoom.
+const RESIDUAL_ZOOM_SETTLE_MS = 250;
+// How long the maximum-scale clamp stays applied. The zoom reset itself is
+// immediate; the clamp must simply outlive a paint so WebKit commits it
+// before pinch-zoom is re-permitted.
+const ZOOM_CLAMP_RELEASE_MS = 250;
 
 function isEditableElement(element: Element | null): boolean {
   return (
@@ -61,7 +70,11 @@ function clearVisualViewportFrame(root: HTMLElement): void {
  *
  * The static 100vh root remains the fallback and the resting installed-PWA
  * size. Browser tabs always follow VisualViewport; an installed PWA opts in
- * only during a focused text-entry session with a material height reduction.
+ * during a focused text-entry session with a material height reduction, and
+ * stays opted in while a closed keyboard leaves the layout viewport displaced
+ * (the iOS standalone restore bug — see displacedAtRest below). Residual
+ * focus auto-zoom that outlives its text-entry session is actively reset via
+ * a momentary maximum-scale clamp (see resetResidualSessionZoom below).
  */
 export function initVisualViewportSizing(): () => void {
   const root = document.getElementById(ROOT_ID);
@@ -72,18 +85,31 @@ export function initVisualViewportSizing(): () => void {
   }
 
   const installed = isRunningInstalled();
+  const viewportMeta = document.querySelector('meta[name="viewport"]');
+  const viewportMetaContent =
+    viewportMeta instanceof HTMLMetaElement ? viewportMeta.content : undefined;
   let textEntrySession = isEditableElement(document.activeElement);
+  // Scale left away from 1 by a text-entry session — iOS's focus auto-zoom —
+  // as opposed to a deliberate pinch, which is never touched.
+  let sessionZoom = false;
   let firstFrame: number | undefined;
   let secondFrame: number | undefined;
+  let residualZoomTimer: number | undefined;
+  let clampReleaseTimer: number | undefined;
 
   const applyViewportFrame = () => {
+    const editableActive = isEditableElement(document.activeElement);
+
     // Resizing the layout in response to pinch zoom causes a reflow feedback
     // loop. Keep the most recent scale-1 frame until zoom returns to 100%.
     if (Math.abs(viewport.scale - 1) > SCALE_EPSILON) {
+      if (editableActive || textEntrySession) {
+        sessionZoom = true;
+      }
       return;
     }
+    sessionZoom = false;
 
-    const editableActive = isEditableElement(document.activeElement);
     if (editableActive) {
       textEntrySession = true;
     }
@@ -94,11 +120,6 @@ export function initVisualViewportSizing(): () => void {
 
     if (!editableActive && !materiallyShrunken) {
       textEntrySession = false;
-    }
-
-    if (installed && !(textEntrySession && materiallyShrunken)) {
-      clearVisualViewportFrame(root);
-      return;
     }
 
     const width = positiveMetric(viewport.width, window.innerWidth);
@@ -118,6 +139,27 @@ export function initVisualViewportSizing(): () => void {
       ),
     );
 
+    // iOS standalone can fail to restore the layout viewport it scrolled and
+    // shrank for the software keyboard: after dismissal the window stays
+    // shorter than the screen with a pinned page offset (scrollTo(0, 0) is
+    // re-clamped, so no page-side action can undo it — only a device rotation
+    // resizes it back). The page then renders shifted under the status bar.
+    // While that resting displacement persists, keep the visual-viewport frame
+    // active so #root aligns with the region WebKit actually shows; the frame
+    // clears itself the moment the viewport truly recovers (top returns to 0).
+    const displacedAtRest =
+      !textEntrySession &&
+      (top >= DISPLACEMENT_EPSILON || left >= DISPLACEMENT_EPSILON);
+
+    if (
+      installed &&
+      !(textEntrySession && materiallyShrunken) &&
+      !displacedAtRest
+    ) {
+      clearVisualViewportFrame(root);
+      return;
+    }
+
     root.style.setProperty('--app-viewport-width', `${String(width)}px`);
     root.style.setProperty('--app-viewport-height', `${String(height)}px`);
     root.style.setProperty('--app-viewport-left', `${String(left)}px`);
@@ -136,6 +178,45 @@ export function initVisualViewportSizing(): () => void {
     }
   };
 
+  // Installed iOS PWAs auto-zoom to a focused control and can fail to zoom
+  // back out on dismissal, stranding the layout viewport scaled, shrunken,
+  // and scroll-pinned under the status bar — with no later event to recover
+  // it, and scrollTo re-clamped by WebKit so no scripted scroll can help.
+  // Once the text-entry session that engaged the zoom has ended, reassert the
+  // authored scale by briefly clamping maximum-scale, then restore the
+  // original meta so pinch zoom stays available. A pinch performed outside a
+  // text-entry session never sets sessionZoom, so deliberate accessibility
+  // zoom is left alone.
+  const resetResidualSessionZoom = () => {
+    residualZoomTimer = undefined;
+    if (!installed || !sessionZoom) {
+      return;
+    }
+    if (isEditableElement(document.activeElement)) {
+      return;
+    }
+    if (Math.abs(viewport.scale - 1) <= SCALE_EPSILON) {
+      sessionZoom = false;
+      return;
+    }
+    if (
+      !(viewportMeta instanceof HTMLMetaElement) ||
+      viewportMetaContent === undefined
+    ) {
+      return;
+    }
+    sessionZoom = false;
+    viewportMeta.content = `${viewportMetaContent}, maximum-scale=1`;
+    window.scrollTo(0, 0);
+    if (clampReleaseTimer !== undefined) {
+      window.clearTimeout(clampReleaseTimer);
+    }
+    clampReleaseTimer = window.setTimeout(() => {
+      clampReleaseTimer = undefined;
+      viewportMeta.content = viewportMetaContent;
+    }, ZOOM_CLAMP_RELEASE_MS);
+  };
+
   const handleViewportChange = () => {
     // Apply immediately, then sample again after two paints. WebKit can emit a
     // viewport event before its keyboard animation has committed final metrics.
@@ -148,6 +229,13 @@ export function initVisualViewportSizing(): () => void {
         applyViewportFrame();
       });
     });
+    if (residualZoomTimer !== undefined) {
+      window.clearTimeout(residualZoomTimer);
+    }
+    residualZoomTimer = window.setTimeout(
+      resetResidualSessionZoom,
+      RESIDUAL_ZOOM_SETTLE_MS,
+    );
   };
 
   handleViewportChange();
@@ -165,6 +253,17 @@ export function initVisualViewportSizing(): () => void {
 
   return () => {
     cancelScheduledFrames();
+    if (residualZoomTimer !== undefined) {
+      window.clearTimeout(residualZoomTimer);
+      residualZoomTimer = undefined;
+    }
+    if (clampReleaseTimer !== undefined) {
+      window.clearTimeout(clampReleaseTimer);
+      clampReleaseTimer = undefined;
+      if (viewportMeta instanceof HTMLMetaElement && viewportMetaContent) {
+        viewportMeta.content = viewportMetaContent;
+      }
+    }
     viewport.removeEventListener('resize', handleViewportChange);
     viewport.removeEventListener('scroll', handleViewportChange);
     viewport.removeEventListener('scrollend', handleViewportChange);
