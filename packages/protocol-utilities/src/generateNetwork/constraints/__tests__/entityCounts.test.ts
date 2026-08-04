@@ -68,7 +68,7 @@ function alterEdgeForm(...variables: string[]): Stage {
   } as unknown as Stage;
 }
 
-function alterForm(nodeType: string, ...variables: string[]): Stage {
+function nodeAlterForm(nodeType: string, ...variables: string[]): Stage {
   return {
     id: 'stage-alter-form',
     type: 'AlterForm',
@@ -189,7 +189,7 @@ describe('worstCaseEntityCounts', () => {
       nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
     };
     const first = familyPedigree({ ...shared, id: 'first-pedigree' });
-    const rewriteEgo = alterForm('relative', 'isEgo');
+    const rewriteEgo = nodeAlterForm('relative', 'isEgo');
     const second = familyPedigree({ ...shared, id: 'second-pedigree' });
     const third = familyPedigree({ ...shared, id: 'third-pedigree' });
 
