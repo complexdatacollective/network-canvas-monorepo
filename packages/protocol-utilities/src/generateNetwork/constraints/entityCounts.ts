@@ -572,6 +572,62 @@ type PedigreeCeilingContext = {
   stages: readonly Stage[];
 };
 
+const CONTRIBUTOR_ANCESTRY_NODE_CEILING = 6;
+const CONTRIBUTOR_ANCESTRY_EDGE_CEILING = 9;
+
+function compatibleContributorPedigree(
+  first: StageOfType<'FamilyPedigree'>,
+  second: StageOfType<'FamilyPedigree'>,
+): boolean {
+  return (
+    first.nodeConfig?.type !== undefined &&
+    first.nodeConfig.type === second.nodeConfig?.type &&
+    first.nodeConfig.egoVariable !== undefined &&
+    first.nodeConfig.egoVariable === second.nodeConfig?.egoVariable &&
+    first.edgeConfig?.type !== undefined &&
+    first.edgeConfig.type === second.edgeConfig?.type &&
+    first.edgeConfig.relationshipTypeVariable !== undefined &&
+    first.edgeConfig.relationshipTypeVariable ===
+      second.edgeConfig?.relationshipTypeVariable
+  );
+}
+
+/** Maximum ancestry a required boundary may add above inherited co-parents. */
+export function inheritedContributorAncestryCeiling(
+  stageIndex: number,
+  stages: readonly Stage[],
+): { nodes: number; edges: number } {
+  const stage = stages[stageIndex];
+  if (
+    stage?.type !== 'FamilyPedigree' ||
+    stage.boundaries?.requireChildrenContributors !== 'required'
+  ) {
+    return { nodes: 0, edges: 0 };
+  }
+
+  let incompleteContributorBranches = 0;
+  for (const candidate of stages.slice(0, stageIndex)) {
+    if (
+      candidate.type !== 'FamilyPedigree' ||
+      !compatibleContributorPedigree(candidate, stage)
+    ) {
+      continue;
+    }
+    if (candidate.boundaries?.requireChildrenContributors === 'required') {
+      // This stage completed every older inherited branch and its own new one.
+      incompleteContributorBranches = 0;
+    } else {
+      // Each generated pedigree can introduce at most one co-parent branch.
+      incompleteContributorBranches += 1;
+    }
+  }
+
+  return {
+    nodes: incompleteContributorBranches * CONTRIBUTOR_ANCESTRY_NODE_CEILING,
+    edges: incompleteContributorBranches * CONTRIBUTOR_ANCESTRY_EDGE_CEILING,
+  };
+}
+
 function requiredPedigreeNodeFloor({
   options,
   stage,
@@ -783,7 +839,8 @@ function createsEdges(probability: { min: number; max: number }): boolean {
  * to decide `unique` feasibility. Every stage's contribution is an upper
  * bound, not its actual random draw: name-generator variants and
  * NetworkComposer use `getNodeCountBounds`'s ceiling, FamilyPedigree uses the
- * configured maximum pedigree size. For edges, DyadCensus, TieStrengthCensus,
+ * configured maximum pedigree size plus any ancestry a later required boundary
+ * must add above inherited co-parents. For edges, DyadCensus, TieStrengthCensus,
  * OneToManyDyadCensus and Sociogram bound an edge type by the pair count over
  * each subject node type any of them pairs it for — a run creates at most one
  * edge of a type per unordered node pair, however many prompts and stages ask
@@ -1027,10 +1084,15 @@ export function worstCaseEntityCounts(
       const reusesEgo =
         egoVariable !== undefined &&
         knownEgoVariables?.has(egoVariable) === true;
-      tallyFor(node, nodeType).fabricated += Math.max(
-        pedigreeNodeCeiling(config, pedigreeContext) - (reusesEgo ? 1 : 0),
-        0,
+      const inheritedContributorCeiling = inheritedContributorAncestryCeiling(
+        stageIndex,
+        stages,
       );
+      tallyFor(node, nodeType).fabricated +=
+        Math.max(
+          pedigreeNodeCeiling(config, pedigreeContext) - (reusesEgo ? 1 : 0),
+          0,
+        ) + inheritedContributorCeiling.nodes;
       if (egoVariable !== undefined) {
         const variables = knownEgoVariables ?? new Set<string>();
         variables.add(egoVariable);
@@ -1046,7 +1108,9 @@ export function worstCaseEntityCounts(
         ownNodeEdges.push({
           edgeType,
           nodeType,
-          count: pedigreeEdgeCeiling(config, pedigreeContext),
+          count:
+            pedigreeEdgeCeiling(config, pedigreeContext) +
+            inheritedContributorCeiling.edges,
           stageIndex,
           born: 'partial',
         });

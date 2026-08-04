@@ -54,10 +54,13 @@ export function edgesWithinPedigreeMembership(
   if (edgeIds === null) return withinEndpoints;
 
   const committed = withinEndpoints.filter((edge) => edgeIds.has(edge._uid));
-  // Pedigrees saved before edge ids were normalized retain Zustand store ids in
-  // metadata while the shared network contains Redux ids. A non-empty list with
-  // no overlap is that legacy shape; endpoint membership is the only stable
-  // ownership record left. Keep an explicitly empty committed list authoritative.
-  if (edgeIds.size > 0 && committed.length === 0) return withinEndpoints;
+  // Pedigrees saved before edge ids were normalized can mix Redux ids from the
+  // seeded network with Zustand ids from relationships added in the interface.
+  // Any missing id therefore makes the whole non-empty list a legacy snapshot;
+  // endpoint membership is the only stable ownership record left. Keep an
+  // explicitly empty committed list authoritative.
+  if (edgeIds.size > 0 && committed.length < edgeIds.size) {
+    return withinEndpoints;
+  }
   return committed;
 }

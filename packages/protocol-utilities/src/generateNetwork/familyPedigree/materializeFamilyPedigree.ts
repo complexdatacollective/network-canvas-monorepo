@@ -25,6 +25,7 @@ import { ruleBrokenByFixedValues } from '../nodes';
 import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
 import type {
   PedigreeDisease,
+  PedigreePerson,
   PedigreeRelationship,
   ResolvedFamilyPedigreeGenerationOptions,
 } from './types';
@@ -178,6 +179,222 @@ function biologicalSexFromValue(
   return BIOLOGICAL_SEX_VALUES.find((candidate) => candidate === value[0]);
 }
 
+function categoricalValue(
+  value: VariableValue | undefined,
+): string | undefined {
+  return Array.isArray(value) && value.length === 1
+    ? String(value[0])
+    : undefined;
+}
+
+type ContributorAncestryTopUp = {
+  people: PedigreePerson[];
+  relationships: PedigreeRelationship[];
+  anchors: Map<string, string>;
+  hasInheritedChildren: boolean;
+};
+
+/**
+ * Complete two generations above co-parents already connected to an inherited
+ * ego's children. A later compatible pedigree includes those earlier children
+ * in its committed graph, so its contributor boundary applies to them too.
+ */
+function inheritedContributorAncestry(
+  draft: NetworkDraft,
+  inheritedEgo: NcNode | undefined,
+  nodeType: string,
+  nodeConfig: Partial<StageOfType<'FamilyPedigree'>['nodeConfig']>,
+  edgeType: string | undefined,
+  edgeConfig: Partial<StageOfType<'FamilyPedigree'>['edgeConfig']>,
+  required: boolean,
+): ContributorAncestryTopUp {
+  const topUp: ContributorAncestryTopUp = {
+    people: [],
+    relationships: [],
+    anchors: new Map(),
+    hasInheritedChildren: false,
+  };
+  const relationshipVariable = edgeConfig.relationshipTypeVariable;
+  if (
+    !required ||
+    inheritedEgo === undefined ||
+    edgeType === undefined ||
+    relationshipVariable === undefined
+  ) {
+    return topUp;
+  }
+
+  const nodesById = new Map(
+    draft.nodes
+      .filter((node) => node.type === nodeType)
+      .map((node) => [node[entityPrimaryKeyProperty], node]),
+  );
+  const relevantEdges = draft.edges.filter(
+    (edge) =>
+      edge.type === edgeType &&
+      nodesById.has(edge.from) &&
+      nodesById.has(edge.to),
+  );
+  const relationshipType = (edge: NcEdge) =>
+    categoricalValue(edge[entityAttributesProperty][relationshipVariable]);
+  const geneticEdges = relevantEdges.filter((edge) => {
+    const type = relationshipType(edge);
+    return type === 'biological' || type === 'donor';
+  });
+  const egoId = inheritedEgo[entityPrimaryKeyProperty];
+  const childIds = new Set(
+    geneticEdges.filter((edge) => edge.from === egoId).map((edge) => edge.to),
+  );
+  topUp.hasInheritedChildren = childIds.size > 0;
+  if (childIds.size === 0) return topUp;
+
+  const coParentIds = new Set(
+    geneticEdges
+      .filter((edge) => childIds.has(edge.to) && edge.from !== egoId)
+      .map((edge) => edge.from)
+      .filter((id) => nodesById.has(id)),
+  );
+  const addedPeople = new Set<string>();
+  const anchorKey = (nodeId: string) => `inherited:${nodeId}`;
+  const anchor = (nodeId: string) => {
+    const key = anchorKey(nodeId);
+    topUp.anchors.set(key, nodeId);
+    return key;
+  };
+  const relationshipKey = (type: string, from: string, to: string) => {
+    const resolvedFrom = topUp.anchors.get(from) ?? from;
+    const resolvedTo = topUp.anchors.get(to) ?? to;
+    const endpoints =
+      type === 'partner'
+        ? [resolvedFrom, resolvedTo].toSorted().join('::')
+        : `${resolvedFrom}->${resolvedTo}`;
+    return `${type}:${endpoints}`;
+  };
+  const relationshipKeys = new Set(
+    relevantEdges.map((edge) =>
+      relationshipKey(relationshipType(edge) ?? 'unknown', edge.from, edge.to),
+    ),
+  );
+  const addPerson = (
+    key: string,
+    generation: number,
+    biologicalSex: BiologicalSex,
+  ) => {
+    if (addedPeople.has(key)) return;
+    addedPeople.add(key);
+    topUp.people.push({
+      key,
+      generation,
+      relationshipToEgo: undefined,
+      biologicalSex,
+      affectedVariables: new Set(),
+    });
+  };
+  const addRelationship = (relationship: PedigreeRelationship) => {
+    const key = relationshipKey(
+      relationship.relationshipType,
+      relationship.from,
+      relationship.to,
+    );
+    if (relationshipKeys.has(key)) return;
+    relationshipKeys.add(key);
+    topUp.relationships.push(relationship);
+  };
+  const addPartner = (first: string, second: string) =>
+    addRelationship({
+      from: first,
+      to: second,
+      relationshipType: 'partner',
+      isActive: true,
+    });
+  const addParentage = (parent: string, child: string, role: 'egg' | 'sperm') =>
+    addRelationship({
+      from: parent,
+      to: child,
+      relationshipType: 'biological',
+      isActive: true,
+      ...(role === 'egg' ? { isGestationalCarrier: true } : {}),
+      gameteRole: role,
+    });
+  const roleForExistingParent = (edge: NcEdge): 'egg' | 'sperm' | undefined => {
+    const configuredRole = edgeConfig.gameteRoleVariable
+      ? categoricalValue(
+          edge[entityAttributesProperty][edgeConfig.gameteRoleVariable],
+        )
+      : undefined;
+    if (configuredRole === 'egg' || configuredRole === 'sperm') {
+      return configuredRole;
+    }
+    const biologicalSexVariable = nodeConfig.biologicalSexVariable;
+    const sex = biologicalSexVariable
+      ? biologicalSexFromValue(
+          nodesById.get(edge.from)?.[entityAttributesProperty][
+            biologicalSexVariable
+          ],
+        )
+      : undefined;
+    return sex === 'female' ? 'egg' : sex === 'male' ? 'sperm' : undefined;
+  };
+
+  type ParentRef = {
+    key: string;
+    nodeId?: string;
+    role: 'egg' | 'sperm';
+  };
+  const ensureParents = (
+    targetKey: string,
+    targetId: string | undefined,
+    prefix: string,
+    parentGeneration: number,
+  ): ParentRef[] => {
+    const existingEdges =
+      targetId === undefined
+        ? []
+        : geneticEdges.filter((edge) => edge.to === targetId);
+    const parents: ParentRef[] = existingEdges.map((edge, index) => ({
+      key: anchor(edge.from),
+      nodeId: edge.from,
+      role: roleForExistingParent(edge) ?? (index === 0 ? 'egg' : 'sperm'),
+    }));
+    const occupiedRoles = new Set(parents.map(({ role }) => role));
+
+    while (parents.length < 2) {
+      const role = !occupiedRoles.has('egg') ? 'egg' : 'sperm';
+      const key = `${prefix}-${role}-parent-${String(parents.length)}`;
+      addPerson(key, parentGeneration, role === 'egg' ? 'female' : 'male');
+      addParentage(key, targetKey, role);
+      parents.push({ key, role });
+      occupiedRoles.add(role);
+    }
+    const firstParent = parents[0];
+    const secondParent = parents[1];
+    if (firstParent !== undefined && secondParent !== undefined) {
+      addPartner(firstParent.key, secondParent.key);
+    }
+    return parents;
+  };
+
+  for (const coParentId of coParentIds) {
+    const coParentKey = anchor(coParentId);
+    const parentRefs = ensureParents(
+      coParentKey,
+      coParentId,
+      `contributor-${coParentId}`,
+      -1,
+    );
+    for (const [index, parent] of parentRefs.entries()) {
+      ensureParents(
+        parent.key,
+        parent.nodeId,
+        `contributor-${coParentId}-parent-${String(index)}`,
+        -2,
+      );
+    }
+  }
+
+  return topUp;
+}
+
 export function materializeFamilyPedigree(
   ctx: GenerationContext,
   draft: NetworkDraft,
@@ -265,8 +482,22 @@ export function materializeFamilyPedigree(
     stage.boundaries?.requireChildrenContributors === 'required',
     inheritedEgoSex,
   );
+  const contributorAncestry = inheritedContributorAncestry(
+    draft,
+    inheritedEgo,
+    nodeType,
+    nodeConfig,
+    edgeType,
+    edgeConfig,
+    stage.boundaries?.requireChildrenContributors === 'required',
+  );
+  const planPeople = [...plan.people, ...contributorAncestry.people];
+  const planRelationships = [
+    ...plan.relationships,
+    ...contributorAncestry.relationships,
+  ];
   const planEgo = plan.people.find((person) => person.key === plan.egoKey);
-  const nodeIds = new Map<string, string>();
+  const nodeIds = new Map(contributorAncestry.anchors);
   const pedigreeVariables = new Set([
     nodeConfig.egoVariable,
     nodeConfig.relationshipVariable,
@@ -275,7 +506,7 @@ export function materializeFamilyPedigree(
   ]);
   const familyNodes: NcNode[] = [];
 
-  for (const [index, person] of plan.people.entries()) {
+  for (const [index, person] of planPeople.entries()) {
     if (person.key === plan.egoKey && inheritedEgo !== undefined) {
       nodeIds.set(person.key, inheritedEgo[entityPrimaryKeyProperty]);
       continue;
@@ -361,7 +592,18 @@ export function materializeFamilyPedigree(
     }
     if (Object.keys(fixed).length === 0) continue;
 
-    assertFixedValuesAccepted(familyCtx, nodeScope, fixed);
+    const preserved = Object.fromEntries(
+      [...protectedVariables]
+        .map((id) => [id, node[entityAttributesProperty][id]] as const)
+        .filter(
+          (entry): entry is readonly [string, VariableValue] =>
+            entry[1] !== undefined,
+        ),
+    );
+    assertFixedValuesAccepted(familyCtx, nodeScope, {
+      ...preserved,
+      ...fixed,
+    });
     const connected = constraintConnectedVariables(
       nodeVariables,
       Object.keys(fixed),
@@ -373,7 +615,7 @@ export function materializeFamilyPedigree(
     const regenerated = generateAttributesForEntity(
       familyCtx,
       nodeScope,
-      plan.people.length + index,
+      planPeople.length + index,
       {
         existing: { ...previous, ...fixed },
         only: connected,
@@ -403,7 +645,7 @@ export function materializeFamilyPedigree(
       memberNodeIds.has(edge.to),
   );
   const familyEdges: NcEdge[] = [];
-  for (const relationship of plan.relationships) {
+  for (const relationship of planRelationships) {
     const from = nodeIds.get(relationship.from);
     const to = nodeIds.get(relationship.to);
     if (!from || !to) {
@@ -461,7 +703,8 @@ export function materializeFamilyPedigree(
     isNetworkCommitted: true,
     nodes: metadataNodes,
     edges: metadataEdges,
-    noChildrenAffirmed: !plan.hasEgoChildren,
+    noChildrenAffirmed:
+      !plan.hasEgoChildren && !contributorAncestry.hasInheritedChildren,
     ...(stage.framing?.mode === 'participantChoice'
       ? { selectedFraming: 'gamete' }
       : {}),

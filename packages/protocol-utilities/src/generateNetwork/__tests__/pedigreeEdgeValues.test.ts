@@ -146,6 +146,16 @@ function relation(edge: NcEdge): string | undefined {
   return Array.isArray(value) ? String(value[0]) : undefined;
 }
 
+function geneticParentIds(networkEdges: NcEdge[], nodeId: string): string[] {
+  return networkEdges
+    .filter(
+      (edge) =>
+        edge.to === nodeId &&
+        (relation(edge) === 'biological' || relation(edge) === 'donor'),
+    )
+    .map((edge) => edge.from);
+}
+
 function withoutUids(nodes: NcNode[], edges: NcEdge[]) {
   const positions = new Map(
     nodes.map((node, index) => [node[entityPrimaryKeyProperty], index]),
@@ -498,6 +508,142 @@ describe('FamilyPedigree materialization', () => {
     );
 
     expect(affectedEarlierMembers).toHaveLength(2);
+  });
+
+  it('rejects a later disease assignment that conflicts with protected earlier semantics', () => {
+    const constrainedCodebook = structuredClone(codebook);
+    const variables = constrainedCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.earlierCondition = {
+      name: 'Earlier condition',
+      type: 'boolean',
+    };
+    variables.laterCondition = {
+      name: 'Later condition',
+      type: 'boolean',
+      validation: {
+        sameAs: asEntityAttributeReference('earlierCondition'),
+      },
+    };
+    const earlierFamily = {
+      ...familyStage,
+      nominationPrompts: [
+        {
+          id: 'earlier-condition',
+          text: 'Who has the earlier condition?',
+          variable: 'earlierCondition',
+        },
+      ],
+    } as unknown as Stage;
+    const earlierNarrative = {
+      ...narrativeStage,
+      sourceStageId: earlierFamily.id,
+      diseases: [
+        {
+          ...narrativeDisease,
+          variable: 'earlierCondition',
+          inheritancePattern: 'autosomalRecessive',
+        },
+      ],
+    } as unknown as Stage;
+    const laterFamily = {
+      ...familyStage,
+      id: 'later-family-stage',
+      nominationPrompts: [
+        {
+          id: 'later-condition',
+          text: 'Who has the later condition?',
+          variable: 'laterCondition',
+        },
+      ],
+    } as unknown as Stage;
+    const laterNarrative = {
+      ...narrativeStage,
+      id: 'later-narrative-stage',
+      sourceStageId: laterFamily.id,
+      diseases: [
+        {
+          ...narrativeDisease,
+          variable: 'laterCondition',
+          inheritancePattern: 'autosomalDominant',
+        },
+      ],
+    } as unknown as Stage;
+
+    expect(() =>
+      generateNetwork({
+        seed: 42,
+        codebook: constrainedCodebook,
+        stages: [earlierFamily, earlierNarrative, laterFamily, laterNarrative],
+        familyPedigree: {
+          scenario: 'none',
+          diseaseMode: 'visualization',
+          maxNodes: 7,
+        },
+      }),
+    ).toThrow(
+      'the FamilyPedigree configuration rejects a value required by its data model',
+    );
+  });
+
+  it('completes ancestry for co-parents inherited by a later required boundary', () => {
+    const laterFamily = {
+      ...familyStage,
+      id: 'later-family-stage',
+      boundaries: {
+        requireGrandparents: 'required',
+        requireChildrenContributors: 'required',
+      },
+    } as unknown as Stage;
+    const population = {
+      ...US_FAMILY_PEDIGREE_POPULATION,
+      completedFamilySize: [{ value: 2, weight: 1 }],
+      childlessPartnerProbability: 0,
+      scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+    };
+    const { network, stageMetadata } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [familyStage, laterFamily],
+      familyPedigree: {
+        population,
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 20,
+      },
+    });
+    const ego = network.nodes.find(
+      (node) => node[entityAttributesProperty].isEgo === true,
+    );
+    if (!ego) throw new Error('missing ego');
+    const egoId = ego[entityPrimaryKeyProperty];
+    const inheritedChildren = network.nodes.filter(
+      (node) =>
+        node.stageId === familyStage.id &&
+        geneticParentIds(
+          network.edges,
+          node[entityPrimaryKeyProperty],
+        ).includes(egoId),
+    );
+
+    expect(inheritedChildren.length).toBeGreaterThan(0);
+    for (const child of inheritedChildren) {
+      const coParents = geneticParentIds(
+        network.edges,
+        child[entityPrimaryKeyProperty],
+      ).filter((id) => id !== egoId);
+      expect(coParents).toHaveLength(1);
+      for (const coParentId of coParents) {
+        const parents = geneticParentIds(network.edges, coParentId);
+        expect(parents).toHaveLength(2);
+        for (const parentId of parents) {
+          expect(geneticParentIds(network.edges, parentId)).toHaveLength(2);
+        }
+      }
+    }
+    expect(stageMetadata?.[1]).toEqual(
+      expect.objectContaining({ noChildrenAffirmed: false }),
+    );
   });
 
   it('normalizes a disease introduced only by a later pedigree', () => {

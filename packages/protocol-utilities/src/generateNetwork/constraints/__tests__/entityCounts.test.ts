@@ -159,6 +159,35 @@ describe('worstCaseEntityCounts', () => {
     );
   });
 
+  it('counts ancestry required for inherited contributor branches', () => {
+    const shared = {
+      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
+      edgeConfig: {
+        type: 'kin',
+        relationshipTypeVariable: 'relationshipType',
+      },
+    };
+    const first = familyPedigree({
+      ...shared,
+      id: 'first-pedigree',
+      boundaries: { requireChildrenContributors: 'off' },
+    });
+    const second = familyPedigree({
+      ...shared,
+      id: 'second-pedigree',
+      boundaries: { requireChildrenContributors: 'required' },
+    });
+
+    const counts = worstCaseEntityCounts([first, second], config);
+
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
+      pedigreeNodeCeiling(config) * 2 - 1 + 6,
+    );
+    expect(edgeCountFor(counts.edge, 'kin', ['relationshipType'])).toBe(
+      pedigreeEdgeCeiling(config) * 2 + 9,
+    );
+  });
+
   it('does not discount pedigrees with different ego variables', () => {
     const first = familyPedigree({
       id: 'first-pedigree',

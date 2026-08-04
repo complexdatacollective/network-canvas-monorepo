@@ -105,6 +105,23 @@ describe('edgesWithinPedigreeMembership', () => {
     ).toEqual([edges[0]]);
   });
 
+  it('uses endpoint membership when legacy and current committed ids are mixed', () => {
+    const edges = [
+      edge('redux-seeded', 'ego', 'mother'),
+      edge('redux-added', 'ego', 'father'),
+      edge('outside', 'ego', 'outsider'),
+    ];
+
+    expect(
+      edgesWithinPedigreeMembership(
+        edges,
+        'family',
+        new Set(['ego', 'mother', 'father']),
+        new Set(['redux-seeded', 'zustand-added']),
+      ),
+    ).toEqual(edges.slice(0, 2));
+  });
+
   it('keeps an explicitly empty committed edge list authoritative', () => {
     const edges = [edge('later-between-members', 'ego', 'mother')];
 

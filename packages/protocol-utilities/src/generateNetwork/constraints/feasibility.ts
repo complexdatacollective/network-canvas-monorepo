@@ -33,6 +33,7 @@ import { buildEntityConstraints } from './buildConstraints';
 import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
 import {
   edgeCountFor,
+  inheritedContributorAncestryCeiling,
   nodeCountFor,
   pedigreeEdgeCeiling,
   pedigreeNodeCeiling,
@@ -316,7 +317,9 @@ function countPedigreeFixedValues(
     const pedigreeContext = familyPedigree
       ? { options: familyPedigree, stage, stages }
       : undefined;
-    const ceiling = pedigreeNodeCeiling(config, pedigreeContext);
+    const ceiling =
+      pedigreeNodeCeiling(config, pedigreeContext) +
+      inheritedContributorAncestryCeiling(stageIndex, stages).nodes;
 
     const nodeType = stage.nodeConfig?.type;
     const egoVariable = stage.nodeConfig?.egoVariable;
@@ -374,7 +377,9 @@ function countPedigreeFixedValues(
 
     const edgeType = stage.edgeConfig?.type;
     if (edgeType === undefined) continue;
-    const edges = pedigreeEdgeCeiling(config, pedigreeContext);
+    const edges =
+      pedigreeEdgeCeiling(config, pedigreeContext) +
+      inheritedContributorAncestryCeiling(stageIndex, stages).edges;
     const redrawnAt = regenerated.get(edgeType);
     recordPinned(
       edge,
