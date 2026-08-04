@@ -3,7 +3,7 @@
  *
  * Layered on top of `themes/default.css`. Activates on any element
  * carrying the `data-theme-interview` attribute. The wrapper sets a
- * base `--theme-root-size` (0.9rem, the shared product base), which the
+ * base `--theme-root-size` (1rem, the shared product base), which the
  * type scale in `theme.css` consumes via calc(N * var(--theme-root-size)).
  * The interview Shell ramps this sentinel with viewport width (see
  * `Shell.tsx` in @codaco/interview); here it is the non-responsive base for
@@ -18,6 +18,52 @@
     --theme-root-size: 1rem;
     font-size: var(--theme-root-size);
   }
+}
+
+/*
+ * Text-entry font-size floor.
+ *
+ * iOS Safari auto-zooms the page when a focused editable element's computed
+ * font-size is below 16px — a literal CSS-px threshold, hence the literal
+ * `16px` arm (not `1rem`, which a user's browser text setting could shrink
+ * back under the threshold). The interview Shell's viewport ramp takes
+ * `--theme-root-size` below 1rem at phone widths, which would put default
+ * (`md`, text-base) inputs at ~14.4px and trigger that zoom for participants
+ * in browser hosts such as Fresco.
+ *
+ * The `1em` arm preserves intended sizing: fresco-ui text-entry controls
+ * carry their size class on a wrapper and the control itself inherits
+ * (see InputField's `[font-size:inherit]`), so `1em` resolves to the
+ * variant's size — anything already at 16px or larger is untouched, and the
+ * floor also composes with the participant text-size multiplier.
+ *
+ * Deliberately OUTSIDE @layer: this must out-cascade utility classes on the
+ * control element itself (e.g. that same `[font-size:inherit]`), and
+ * unlayered author CSS wins over every @layer without `!important`.
+ *
+ * Scope note: only text-entry elements — the zoom heuristic doesn't apply to
+ * click-only controls (checkbox/radio/range/buttons), and flooring those
+ * would inflate em-derived details for no benefit.
+ */
+[data-theme-interview]
+  :is(
+    input:not(
+      [type='checkbox'],
+      [type='radio'],
+      [type='range'],
+      [type='file'],
+      [type='color'],
+      [type='button'],
+      [type='submit'],
+      [type='reset'],
+      [type='image'],
+      [type='hidden']
+    ),
+    textarea,
+    select,
+    [contenteditable]:not([contenteditable='false'])
+  ) {
+  font-size: max(16px, 1em);
 }
 
 @layer theme {
@@ -159,6 +205,54 @@
 }
 
 @layer components {
+  /*
+   * Full-screen interview type-scale ramp, applied by the interview Shell's
+   * <main> (see Shell.tsx in @codaco/interview) so only the Shell subtree
+   * scales — embedded themed regions keep the flat 1rem base above.
+   *
+   * The base declaration is a continuous width ramp (0.9rem floor at phone
+   * widths, ~1rem by 1280px, 1.25rem cap at 2560px). Devices with a viewport
+   * both shorter than 480px and narrower than 1024px — phones in landscape —
+   * stay on it, keeping the deliberately dense phone scale on the most
+   * height-constrained layout.
+   *
+   * Taller-or-wider viewports (tablets in either orientation, laptops,
+   * desktops) get the piecewise curve: the 480–768px segment ramps off the
+   * phone floor early so tablet widths (768–1280px) hold the full 1rem base
+   * — which also keeps md form controls at the 24px WCAG 2.5.8 minimum —
+   * then the original ramp resumes at 1280px, unchanged, to the 1.25rem cap.
+   * The min-width arm keeps landscape tablets (≥1024px wide) on the plateau
+   * even when a software keyboard collapses the reported viewport height
+   * mid-interview.
+   *
+   * Both declarations multiply by --interview-text-scale — the participant's
+   * text-size preference, set by the Shell (default 1) — so one factor scales
+   * type, spacing, and touch targets coherently. --theme-vw scales the fluid
+   * middle terms of the --text-* tokens by the same factor (see theme.css),
+   * so every step of the type scale changes by exactly the chosen percentage,
+   * including sizes resolving in a clamp's viewport-fluid zone.
+   */
+  .shell-type-ramp {
+    --theme-vw: calc(var(--interview-text-scale, 1) * 1vw);
+    --theme-root-size: calc(
+      var(--interview-text-scale, 1) *
+        clamp(0.9rem, 0.75rem + 0.3125vw, 1.25rem)
+    );
+  }
+
+  @media (min-height: 480px), (min-width: 1024px) {
+    .shell-type-ramp {
+      --theme-root-size: calc(
+        var(--interview-text-scale, 1) *
+          clamp(
+            0.9rem,
+            max(min(0.7333rem + 0.5556vw, 1rem), 0.75rem + 0.3125vw),
+            1.25rem
+          )
+      );
+    }
+  }
+
   /* CategoricalBin layout.
      .catbin-circles is the positioning context for the absolute expanded
      panel; .catbin-inflow is the actual grid AND the query container.

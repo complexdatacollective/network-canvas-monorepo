@@ -5,7 +5,14 @@ import { Toast } from '@base-ui/react/toast';
 import type { Store } from '@reduxjs/toolkit';
 import { AnimatePresence, motion } from 'motion/react';
 import type { PostHog } from 'posthog-js';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Provider } from 'react-redux';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -17,7 +24,7 @@ import { AnalyticsProvider } from './analytics/AnalyticsProvider';
 import { NULL_TRACKER, type Tracker } from './analytics/tracker';
 import { useStageNavigationAnalytics } from './analytics/useStageNavigationAnalytics';
 import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndicator';
-import Navigation from './components/Navigation';
+import Navigation, { TEXT_SCALE_OPTIONS } from './components/Navigation';
 import StageErrorBoundary from './components/StageErrorBoundary';
 import { CurrentStepProvider } from './contexts/CurrentStepContext';
 import { StageMetadataProvider } from './contexts/StageMetadataContext';
@@ -68,12 +75,27 @@ type NavigationClassnames = {
   [Orientation in NavigationOrientation]?: string;
 };
 
+/**
+ * Snap an arbitrary multiplier to the nearest selectable option so a
+ * host-restored value always matches a menu radio item (and stray values
+ * can't push the scale outside the supported range).
+ */
+function snapTextScale(scale: number | undefined): number {
+  if (scale === undefined || !Number.isFinite(scale)) return 1;
+  return TEXT_SCALE_OPTIONS.reduce((closest, option) =>
+    Math.abs(option - scale) < Math.abs(closest - scale) ? option : closest,
+  );
+}
+
 function Interview({
   onExit,
   hideNavigation = false,
   navigationOrientation: orientationProp,
   navigationClassnames,
   allowStageNavigation,
+  allowUserScaling,
+  initialTextScale,
+  onTextScaleChange,
   initialStageOverrideIndex,
   reviewMode,
 }: {
@@ -82,6 +104,9 @@ function Interview({
   navigationOrientation?: NavigationOrientation;
   navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
+  allowUserScaling?: boolean;
+  initialTextScale?: number;
+  onTextScaleChange?: (scale: number) => void;
   initialStageOverrideIndex?: number;
   reviewMode?: boolean;
 }) {
@@ -126,21 +151,44 @@ function Interview({
     orientationProp ?? (prefersHorizontalNav ? 'horizontal' : 'vertical');
   const isHorizontalNav = navigationOrientation === 'horizontal';
 
+  // Participant-chosen multiplier applied on top of the viewport ramp below.
+  // Owned here so it survives stage navigation; hosts opt in via
+  // `allowUserScaling` and may persist it across remounts (e.g. the
+  // Interviewer's lock screen) with `initialTextScale`/`onTextScaleChange`.
+  const [textScale, setTextScale] = useState(() =>
+    snapTextScale(initialTextScale),
+  );
+  const handleTextScaleChange = useCallback(
+    (scale: number) => {
+      setTextScale(scale);
+      onTextScaleChange?.(scale);
+    },
+    [onTextScaleChange],
+  );
+  const textScaleStyle: CSSProperties & { '--interview-text-scale': number } = {
+    '--interview-text-scale': textScale,
+  };
+
   return (
     <ThemedRegion
       theme="interview"
       render={
         <main
+          style={textScaleStyle}
           className={cx(
             'relative flex size-full flex-1 overflow-hidden',
-            // Fluid viewport-width ramp for the --theme-root-size type-scale
+            // Fluid viewport ramp for the --theme-root-size type-scale
             // sentinel, scoped to the Shell so only the full-screen interview
-            // scales (not other themed regions). Shares the 0.9rem product base
-            // but climbs early, reaching ~1rem (the interview theme's former
-            // base value) by ~1280px and a 1.25rem cap by ~2560px. Spacing and
+            // scales (not other themed regions). Defined in interview.css:
+            // phones hold a dense 0.9rem-floored curve (including landscape,
+            // via its height/width media condition), tablets hold the full
+            // 1rem base, large displays ramp to a 1.25rem cap. Spacing and
             // node sizes ramp with it via interview.css's --spacing-base
-            // redeclaration.
-            '[--theme-root-size:clamp(0.9rem,0.75rem+0.3125vw,1.25rem)]',
+            // redeclaration. The ramp multiplies by the participant's
+            // text-size preference (--interview-text-scale, set via the style
+            // prop above), so one factor scales type, spacing, and touch
+            // targets coherently.
+            'shell-type-ramp',
             isHorizontalNav ? 'flex-col' : 'flex-row-reverse',
           )}
         />
@@ -212,6 +260,9 @@ function Interview({
               backButtonRef={backButtonRef}
               onExit={onExit}
               reviewMode={reviewMode}
+              allowUserScaling={allowUserScaling}
+              textScale={textScale}
+              onTextScaleChange={handleTextScaleChange}
             />
           )}
           {/*
@@ -278,6 +329,26 @@ type ShellProps = {
   navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
   /**
+   * Let the participant adjust the interview's text size from a settings menu
+   * in the Navigation. The chosen size multiplies the whole interview scale
+   * (type, spacing, and touch targets together) and lasts for the current
+   * session. When neither this nor `onExit` is set, the Navigation renders no
+   * settings menu.
+   */
+  allowUserScaling?: boolean;
+  /**
+   * Starting value for the participant text-size multiplier (snapped to the
+   * nearest selectable option). Pair with `onTextScaleChange` to persist the
+   * choice across Shell remounts — e.g. the Interviewer restores it after its
+   * lock screen unmounts and remounts the interview.
+   */
+  initialTextScale?: number;
+  /**
+   * Called with the new multiplier whenever the participant changes the text
+   * size.
+   */
+  onTextScaleChange?: (scale: number) => void;
+  /**
    * Allow this unavailable stage to render on the initial visit only. The
    * override is cleared as soon as stage navigation occurs. Architect preview
    * uses this to show the stage being edited without removing its skip logic.
@@ -303,6 +374,9 @@ const Shell = ({
   navigationOrientation,
   navigationClassnames,
   allowStageNavigation,
+  allowUserScaling,
+  initialTextScale,
+  onTextScaleChange,
   initialStageOverrideIndex,
 }: ShellProps) => {
   // Anchor onSync in a ref so the store factory receives a stable callback
@@ -419,6 +493,9 @@ const Shell = ({
                 allowStageNavigation &&
                 (currentStep === undefined || onStepChange !== undefined)
               }
+              allowUserScaling={allowUserScaling}
+              initialTextScale={initialTextScale}
+              onTextScaleChange={onTextScaleChange}
               initialStageOverrideIndex={reviewEntry.initialStageOverrideIndex}
               reviewMode={reviewMode}
             />

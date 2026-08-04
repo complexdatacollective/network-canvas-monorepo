@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ChevronUp,
   LogOut,
+  Settings,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
@@ -17,6 +18,17 @@ import {
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@codaco/fresco-ui/DropdownMenu';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
@@ -115,6 +127,16 @@ const progressContainerVariants = cva({
   },
 });
 
+/**
+ * Participant-selectable text-size multipliers. 1 is the Shell's responsive
+ * default; the bounds mirror classic Interviewer's Interface Scale setting.
+ * Presented as a radio group (rather than incremental +/- buttons) so each
+ * size is one tap away and the controls don't move under the pointer as the
+ * open menu itself rescales with the selection. The Shell snaps a host's
+ * `initialTextScale` to this list so the checked radio always matches.
+ */
+export const TEXT_SCALE_OPTIONS = [0.9, 1, 1.1, 1.2, 1.3];
+
 type NavigationProps = {
   moveBackward: () => void;
   moveForward: () => void;
@@ -128,6 +150,9 @@ type NavigationProps = {
   onExit?: () => void;
   reviewMode?: boolean;
   allowStageNavigation?: boolean;
+  allowUserScaling?: boolean;
+  textScale?: number;
+  onTextScaleChange?: (scale: number) => void;
   className?: string;
   goToStage?: (
     targetIndex: number,
@@ -148,6 +173,9 @@ const Navigation = ({
   onExit,
   reviewMode,
   allowStageNavigation,
+  allowUserScaling,
+  textScale = 1,
+  onTextScaleChange,
   className,
   goToStage,
 }: NavigationProps) => {
@@ -157,6 +185,14 @@ const Navigation = ({
   const shouldReduceMotion = useReducedMotion();
 
   const stageNavigationEnabled = !!allowStageNavigation && !!goToStage;
+
+  // The text-size control needs both the opt-in flag and a change handler —
+  // one without the other would render a dead control.
+  const userScalingEnabled = !!allowUserScaling && !!onTextScaleChange;
+
+  // The settings menu hosts the exit action and the text-size control; with
+  // neither available there is nothing to show, so the trigger is omitted.
+  const showSettingsMenu = !!onExit || userScalingEnabled;
 
   const { confirm } = useDialog();
   const portalContainer = usePortalContainer();
@@ -239,17 +275,61 @@ const Navigation = ({
         animate="animate"
         exit="exit"
       >
-        {onExit && (
-          <NavigationButton
-            onClick={() => void handleExit()}
-            icon={<LogOut />}
-            className="[&>.lucide]:h-[1.5em]!"
-            wrapperClassName={
-              orientation === 'horizontal' ? 'order-1' : undefined
-            }
-            aria-label={reviewMode ? 'Exit review' : 'Exit interview'}
-            data-testid="exit-button"
-          />
+        {showSettingsMenu && (
+          <motion.div
+            variants={variants}
+            className={orientation === 'horizontal' ? 'order-1' : undefined}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <IconButton
+                    color="dynamic"
+                    variant="text"
+                    size="xl"
+                    icon={<Settings />}
+                    className="[&>.lucide]:h-[1.5em]!"
+                    aria-label="Settings"
+                    data-testid="settings-button"
+                  />
+                }
+              />
+              <DropdownMenuContent
+                side={orientation === 'vertical' ? 'right' : 'top'}
+                align="start"
+              >
+                {userScalingEnabled && (
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>Text size</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup
+                      value={textScale}
+                      onValueChange={(value) => {
+                        if (typeof value === 'number') {
+                          onTextScaleChange?.(value);
+                        }
+                      }}
+                    >
+                      {TEXT_SCALE_OPTIONS.map((scale) => (
+                        <DropdownMenuRadioItem key={scale} value={scale}>
+                          {`${Math.round(scale * 100)}%`}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuGroup>
+                )}
+                {userScalingEnabled && onExit && <DropdownMenuSeparator />}
+                {onExit && (
+                  <DropdownMenuItem
+                    icon={<LogOut />}
+                    onClick={() => void handleExit()}
+                    data-testid="exit-button"
+                  >
+                    {reviewMode ? 'Exit review' : 'Exit interview'}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </motion.div>
         )}
         <NavigationButton
           wrapperClassName={

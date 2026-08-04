@@ -24,7 +24,7 @@
      * Opt-in fluid ramp for presentation surfaces (the marketing site, the
      * full-screen interview). A surface applies it with
      * `--theme-root-size: var(--theme-root-size-fluid)` so the curve lives in
-     * one place and cannot drift between consumers. Holds 0.9rem up to ~1440px,
+     * one place and cannot drift between consumers. Holds 1rem up to ~1760px,
      * then grows to 1.1rem by ~2080px; rem endpoints keep OS text-zoom working,
      * and because the per-size --text-* caps are root-multiples, lifting root
      * also lifts every heading's ceiling.
