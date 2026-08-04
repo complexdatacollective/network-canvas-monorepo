@@ -5,6 +5,7 @@ import {
   BIOLOGICAL_SEX_VALUES,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  isFamilyPedigreeStageMetadata,
   type BiologicalSex,
   type NcEdge,
   type NcNode,
@@ -216,7 +217,6 @@ function inheritedContributorAncestry(
   };
   const relationshipVariable = edgeConfig.relationshipTypeVariable;
   if (
-    !required ||
     inheritedEgo === undefined ||
     edgeType === undefined ||
     relationshipVariable === undefined
@@ -246,7 +246,7 @@ function inheritedContributorAncestry(
     geneticEdges.filter((edge) => edge.from === egoId).map((edge) => edge.to),
   );
   topUp.hasInheritedChildren = childIds.size > 0;
-  if (childIds.size === 0) return topUp;
+  if (childIds.size === 0 || !required) return topUp;
 
   const coParentIds = new Set(
     geneticEdges
@@ -436,21 +436,27 @@ export function materializeFamilyPedigree(
   );
   const earlierPedigreeStages = stages
     .slice(0, stageIndex)
+    .map((candidate, index) => ({ candidate, index }))
     .filter(
-      (candidate): candidate is StageOfType<'FamilyPedigree'> =>
-        candidate.type === 'FamilyPedigree' &&
-        candidate.nodeConfig?.type === nodeType,
+      (
+        entry,
+      ): entry is {
+        candidate: StageOfType<'FamilyPedigree'>;
+        index: number;
+      } =>
+        entry.candidate.type === 'FamilyPedigree' &&
+        entry.candidate.nodeConfig?.type === nodeType,
     );
   const compatibleEgoPedigreeStageIds = new Set(
     earlierPedigreeStages
       .filter(
-        (candidate) =>
+        ({ candidate }) =>
           candidate.nodeConfig?.egoVariable === nodeConfig.egoVariable,
       )
-      .map((candidate) => candidate.id),
+      .map(({ candidate }) => candidate.id),
   );
   const earlierOwnedVariables = new Map(
-    earlierPedigreeStages.map((candidate) => [
+    earlierPedigreeStages.map(({ candidate }) => [
       candidate.id,
       new Set(
         [
@@ -464,6 +470,20 @@ export function materializeFamilyPedigree(
       ),
     ]),
   );
+  const protectedVariablesByNodeId = new Map<string, Set<string>>();
+  for (const { candidate, index } of earlierPedigreeStages) {
+    const metadata = draft.stageMetadata[index];
+    if (!isFamilyPedigreeStageMetadata(metadata)) continue;
+    const owned = earlierOwnedVariables.get(candidate.id);
+    if (owned === undefined) continue;
+
+    for (const member of metadata.nodes ?? []) {
+      const protectedVariables =
+        protectedVariablesByNodeId.get(member.id) ?? new Set<string>();
+      for (const variable of owned) protectedVariables.add(variable);
+      protectedVariablesByNodeId.set(member.id, protectedVariables);
+    }
+  }
   // A later pedigree over the same type represents the same focal person. Reuse
   // the earlier pedigree's ego rather than clearing its identity and creating a
   // second ego that the earlier stage's committed membership cannot see.
@@ -580,10 +600,14 @@ export function materializeFamilyPedigree(
   // over those nodes. Apply the same constraint-aware draw as generated people
   // while protecting every earlier semantic and unrelated attribute.
   for (const [index, node] of preexistingFamilyNodes.entries()) {
-    const protectedVariables =
-      node.stageId === undefined
-        ? new Set<string>()
-        : (earlierOwnedVariables.get(node.stageId) ?? new Set<string>());
+    const protectedVariables = new Set(
+      protectedVariablesByNodeId.get(node[entityPrimaryKeyProperty]),
+    );
+    if (node.stageId !== undefined) {
+      for (const variable of earlierOwnedVariables.get(node.stageId) ?? []) {
+        protectedVariables.add(variable);
+      }
+    }
 
     const fixed: Record<string, VariableValue> = {};
     if (

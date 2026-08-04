@@ -657,6 +657,7 @@ export function inheritedContributorAncestryCeiling(
   stageIndex: number,
   stages: readonly Stage[],
   preexistingNodeCeiling = 0,
+  options?: ResolvedFamilyPedigreeGenerationOptions,
 ): { nodes: number; edges: number } {
   const stage = stages[stageIndex];
   if (
@@ -685,7 +686,9 @@ export function inheritedContributorAncestryCeiling(
       completedContributorIndex = candidateIndex;
     } else {
       // Each generated pedigree can introduce at most one co-parent branch.
-      incompleteContributorBranches += 1;
+      if (options === undefined || canPlanEgoChildBranch(options)) {
+        incompleteContributorBranches += 1;
+      }
     }
   }
 
@@ -726,11 +729,82 @@ export function inheritedContributorAncestryCeiling(
   };
 }
 
-function requiredPedigreeNodeFloor({
-  options,
+function minimumScenarioNodeFloor(
+  options: ResolvedFamilyPedigreeGenerationOptions,
+): number {
+  switch (options.scenario) {
+    case 'none':
+      return 7;
+    case 'donorConception':
+    case 'surrogacy':
+      return 8;
+    case 'adoption':
+      return 9;
+    case 'population': {
+      const { adoption, donorConception, surrogacy } =
+        options.population.scenarios;
+      const scenarioFloors: number[] = [];
+      let probabilityBefore = 0;
+      for (const [probability, floor] of [
+        [adoption, 9],
+        [donorConception, 8],
+        [surrogacy, 8],
+      ] as const) {
+        const reachableProbability = Number.isNaN(probability)
+          ? 0
+          : Math.max(0, probability);
+        if (probabilityBefore < 1 && reachableProbability > 0) {
+          scenarioFloors.push(floor);
+        }
+        probabilityBefore += reachableProbability;
+      }
+      if (probabilityBefore < 1) scenarioFloors.push(7);
+      return Math.min(...scenarioFloors);
+    }
+  }
+}
+
+/** Whether any resolved plan can fit a partner and at least one ego child. */
+function canPlanEgoChildBranch(
+  options: ResolvedFamilyPedigreeGenerationOptions,
+): boolean {
+  const canSampleChild = options.population.completedFamilySize.some(
+    ({ value, weight }) => weight > 0 && Math.round(value) > 0,
+  );
+  return (
+    canSampleChild && options.maxNodes >= minimumScenarioNodeFloor(options) + 2
+  );
+}
+
+function inheritedEgoSexCanBeIndependent({
   stage,
   stages,
-}: PedigreeCeilingContext): number {
+}: PedigreeCeilingContext): boolean {
+  const nodeType = stage.nodeConfig?.type;
+  const egoVariable = stage.nodeConfig?.egoVariable;
+  const biologicalSexVariable = stage.nodeConfig?.biologicalSexVariable;
+  if (
+    nodeType === undefined ||
+    egoVariable === undefined ||
+    biologicalSexVariable === undefined
+  ) {
+    return false;
+  }
+
+  const stageIndex = stages.indexOf(stage);
+  return stages
+    .slice(0, stageIndex)
+    .some(
+      (candidate) =>
+        candidate.type === 'FamilyPedigree' &&
+        candidate.nodeConfig?.type === nodeType &&
+        candidate.nodeConfig?.egoVariable === egoVariable &&
+        candidate.nodeConfig?.biologicalSexVariable !== biologicalSexVariable,
+    );
+}
+
+function requiredPedigreeNodeFloor(context: PedigreeCeilingContext): number {
+  const { options, stage, stages } = context;
   const scenarioFloor = (() => {
     switch (options.scenario) {
       case 'none':
@@ -754,7 +828,8 @@ function requiredPedigreeNodeFloor({
   })();
   const requiresMaleSibling =
     options.diseaseMode === 'visualization' &&
-    options.population.femaleAtBirthProbability > 0 &&
+    (options.population.femaleAtBirthProbability > 0 ||
+      inheritedEgoSexCanBeIndependent(context)) &&
     stages.some(
       (candidate) =>
         candidate.type === 'NarrativePedigree' &&
@@ -1194,6 +1269,7 @@ export function worstCaseEntityCounts(
         stageIndex,
         stages,
         nodeTotal(tally),
+        familyPedigree,
       );
       tally.fabricated +=
         Math.max(

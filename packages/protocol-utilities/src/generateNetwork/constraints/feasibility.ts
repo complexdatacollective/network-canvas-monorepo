@@ -325,6 +325,7 @@ function countPedigreeFixedValues(
       nodeType === undefined
         ? 0
         : (nodeBeforeStage.get(stageIndex)?.get(nodeType) ?? 0),
+      familyPedigree,
     );
     const ceiling =
       pedigreeNodeCeiling(config, pedigreeContext) +

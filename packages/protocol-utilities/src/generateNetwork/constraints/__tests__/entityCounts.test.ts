@@ -15,6 +15,7 @@ import {
 
 import { generateNetwork } from '../../../generateNetwork';
 import { resolveGenerationConfig } from '../../config';
+import { resolveFamilyPedigreeGenerationOptions } from '../../familyPedigree/referencePopulation';
 import { buildEntityConstraints } from '../buildConstraints';
 import {
   edgeCountFor,
@@ -187,6 +188,113 @@ describe('worstCaseEntityCounts', () => {
     expect(edgeCountFor(counts.edge, 'kin', ['relationshipType'])).toBe(
       pedigreeEdgeCeiling(config) * 2 + 9,
     );
+  });
+
+  it('skips contributor ancestry a tight earlier plan cannot introduce', () => {
+    const tightConfig = resolveGenerationConfig({
+      today: '2026-08-04',
+      familyPedigreeNodeCount: { min: 7, max: 7 },
+    });
+    const options = resolveFamilyPedigreeGenerationOptions(
+      { scenario: 'none', diseaseMode: 'none', maxNodes: 7 },
+      7,
+    );
+    const shared = {
+      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
+      edgeConfig: {
+        type: 'kin',
+        relationshipTypeVariable: 'relationshipType',
+      },
+    };
+    const first = familyPedigree({
+      ...shared,
+      id: 'first-pedigree',
+      boundaries: { requireChildrenContributors: 'off' },
+    });
+    const second = familyPedigree({
+      ...shared,
+      id: 'second-pedigree',
+      boundaries: { requireChildrenContributors: 'required' },
+    });
+    const stages = [first, second];
+
+    expect(inheritedContributorAncestryCeiling(1, stages, 7, options)).toEqual({
+      nodes: 0,
+      edges: 0,
+    });
+    const counts = worstCaseEntityCounts(
+      stages,
+      tightConfig,
+      undefined,
+      undefined,
+      options,
+    );
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(13);
+  });
+
+  it('budgets X-linked siblings when a reused ego gets sex from another variable', () => {
+    const tightConfig = resolveGenerationConfig({
+      today: '2026-08-04',
+      familyPedigreeNodeCount: { min: 7, max: 7 },
+    });
+    const options = resolveFamilyPedigreeGenerationOptions(
+      {
+        population: {
+          id: 'all-male',
+          label: 'All male births',
+          sources: [],
+          completedFamilySize: [{ value: 0, weight: 1 }],
+          femaleAtBirthProbability: 0,
+          childlessPartnerProbability: 0,
+          scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+        },
+        scenario: 'none',
+        diseaseMode: 'visualization',
+        maxNodes: 7,
+      },
+      7,
+    );
+    const first = familyPedigree({
+      id: 'first-pedigree',
+      nodeConfig: {
+        type: 'relative',
+        egoVariable: 'isEgo',
+        biologicalSexVariable: 'firstSex',
+      },
+    });
+    const second = familyPedigree({
+      id: 'second-pedigree',
+      nodeConfig: {
+        type: 'relative',
+        egoVariable: 'isEgo',
+        biologicalSexVariable: 'secondSex',
+      },
+    });
+    const narrative = {
+      id: 'narrative',
+      type: 'NarrativePedigree',
+      label: 'Condition',
+      sourceStageId: second.id,
+      diseases: [
+        {
+          id: 'condition',
+          label: 'Condition',
+          color: '#000000',
+          variable: 'condition',
+          inheritancePattern: 'xLinkedRecessive',
+        },
+      ],
+    } as unknown as Stage;
+    const stages = [first, second, narrative];
+
+    const counts = worstCaseEntityCounts(
+      stages,
+      tightConfig,
+      undefined,
+      undefined,
+      options,
+    );
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(14);
   });
 
   it('bounds every contributor branch introduced by an intervening pairing stage', () => {

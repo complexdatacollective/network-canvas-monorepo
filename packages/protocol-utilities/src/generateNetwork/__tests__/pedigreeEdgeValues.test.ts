@@ -510,6 +510,67 @@ describe('FamilyPedigree materialization', () => {
     expect(affectedEarlierMembers).toHaveLength(2);
   });
 
+  it('protects earlier pedigree semantics on nodes created by another stage', () => {
+    const constrainedCodebook = structuredClone(codebook);
+    const variables = constrainedCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.earlierCondition = {
+      name: 'Earlier condition',
+      type: 'boolean',
+    };
+    variables.laterCondition = {
+      name: 'Later condition',
+      type: 'boolean',
+      validation: {
+        differentFrom: asEntityAttributeReference('earlierCondition'),
+      },
+    };
+    const ordinaryStage = {
+      id: 'ordinary-family-member',
+      type: 'NameGenerator',
+      label: 'Earlier family member',
+      subject: { entity: 'node', type: 'family-member' },
+      prompts: [{ id: 'person', text: 'Name a person' }],
+      behaviours: { minNodes: 1, maxNodes: 1 },
+    } as unknown as Stage;
+    const earlierFamily = {
+      ...familyStage,
+      nominationPrompts: [
+        {
+          id: 'earlier-condition',
+          text: 'Who has the earlier condition?',
+          variable: 'earlierCondition',
+        },
+      ],
+    } as unknown as Stage;
+    const laterFamily = {
+      ...familyStage,
+      id: 'later-family-stage',
+      nominationPrompts: [
+        {
+          id: 'later-condition',
+          text: 'Who has the later condition?',
+          variable: 'laterCondition',
+        },
+      ],
+    } as unknown as Stage;
+
+    expect(() =>
+      generateNetwork({
+        seed: 42,
+        codebook: constrainedCodebook,
+        stages: [ordinaryStage, earlierFamily, laterFamily],
+        familyPedigree: {
+          scenario: 'none',
+          diseaseMode: 'none',
+          maxNodes: 7,
+        },
+      }),
+    ).toThrow(
+      'the FamilyPedigree configuration rejects a value required by its data model',
+    );
+  });
+
   it('preserves earlier disease assignments when the later pedigree uses a different ego variable', () => {
     const distinctEgoCodebook = structuredClone(codebook);
     const variables = distinctEgoCodebook.node?.['family-member']?.variables;
@@ -691,6 +752,99 @@ describe('FamilyPedigree materialization', () => {
     expect(stageMetadata?.[1]).toEqual(
       expect.objectContaining({ noChildrenAffirmed: false }),
     );
+  });
+
+  it('records inherited children when a later boundary does not require ancestry', () => {
+    const earlierFamily = {
+      ...familyStage,
+      nominationPrompts: [],
+    } as unknown as Stage;
+    const laterFamily = {
+      ...familyStage,
+      id: 'later-family-stage',
+      boundaries: {
+        requireGrandparents: 'required',
+        requireChildrenContributors: 'off',
+      },
+    } as unknown as Stage;
+    const laterNarrative = {
+      ...narrativeStage,
+      sourceStageId: laterFamily.id,
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'xLinkedRecessive',
+        },
+      ],
+    } as unknown as Stage;
+    const population = {
+      ...US_FAMILY_PEDIGREE_POPULATION,
+      completedFamilySize: [{ value: 1, weight: 1 }],
+      femaleAtBirthProbability: 1,
+      childlessPartnerProbability: 0,
+      scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+    };
+    const { network, stageMetadata } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [earlierFamily, laterFamily, laterNarrative],
+      familyPedigree: {
+        population,
+        scenario: 'none',
+        diseaseMode: 'visualization',
+        maxNodes: 9,
+      },
+    });
+    const laterChildren = network.nodes.filter(
+      (node) =>
+        node.stageId === laterFamily.id &&
+        node[entityAttributesProperty].relationship === 'Child',
+    );
+
+    expect(laterChildren).toHaveLength(0);
+    expect(stageMetadata?.[1]).toEqual(
+      expect.objectContaining({ noChildrenAffirmed: false }),
+    );
+  });
+
+  it('accepts the exact value space for two tight compatible pedigrees', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 13 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
+      validation: { unique: true },
+    };
+    const laterFamily = {
+      ...familyStage,
+      id: 'later-family-stage',
+      boundaries: {
+        requireGrandparents: 'required',
+        requireChildrenContributors: 'required',
+      },
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages: [familyStage, laterFamily],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
+    });
+    const values = network.nodes.map(
+      (node) => node[entityAttributesProperty].generationMarker,
+    );
+
+    expect(values).toHaveLength(13);
+    expect(new Set(values).size).toBe(13);
   });
 
   it('normalizes a disease introduced only by a later pedigree', () => {
