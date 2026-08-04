@@ -142,6 +142,40 @@ describe('worstCaseEntityCounts', () => {
     );
   });
 
+  it('discounts an ego reused by a later compatible pedigree', () => {
+    const first = familyPedigree({
+      id: 'first-pedigree',
+      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
+    });
+    const second = familyPedigree({
+      id: 'second-pedigree',
+      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
+    });
+
+    const counts = worstCaseEntityCounts([first, second], config);
+
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
+      pedigreeNodeCeiling(config) * 2 - 1,
+    );
+  });
+
+  it('does not discount pedigrees with different ego variables', () => {
+    const first = familyPedigree({
+      id: 'first-pedigree',
+      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
+    });
+    const second = familyPedigree({
+      id: 'second-pedigree',
+      nodeConfig: { type: 'relative', egoVariable: 'isDifferentEgo' },
+    });
+
+    const counts = worstCaseEntityCounts([first, second], config);
+
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
+      pedigreeNodeCeiling(config) * 2,
+    );
+  });
+
   it('leaves pedigree edges uncounted when no stage names an attribute of their type', () => {
     // This partial fixture configures no semantic edge variables, so the
     // materializer leaves every pedigree edge attribute-free.

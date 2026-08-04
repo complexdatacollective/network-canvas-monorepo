@@ -212,16 +212,31 @@ export function materializeFamilyPedigree(
   const preexistingFamilyNodes = draft.nodes.filter(
     (node) => node.type === nodeType,
   );
+  const earlierPedigreeStages = stages
+    .slice(0, stageIndex)
+    .filter(
+      (candidate): candidate is StageOfType<'FamilyPedigree'> =>
+        candidate.type === 'FamilyPedigree' &&
+        candidate.nodeConfig?.type === nodeType &&
+        candidate.nodeConfig?.egoVariable === nodeConfig.egoVariable,
+    );
   const earlierPedigreeStageIds = new Set(
-    stages
-      .slice(0, stageIndex)
-      .filter(
-        (candidate) =>
-          candidate.type === 'FamilyPedigree' &&
-          candidate.nodeConfig?.type === nodeType &&
-          candidate.nodeConfig?.egoVariable === nodeConfig.egoVariable,
-      )
-      .map((candidate) => candidate.id),
+    earlierPedigreeStages.map((candidate) => candidate.id),
+  );
+  const earlierOwnedVariables = new Map(
+    earlierPedigreeStages.map((candidate) => [
+      candidate.id,
+      new Set(
+        [
+          candidate.nodeConfig?.egoVariable,
+          candidate.nodeConfig?.relationshipVariable,
+          candidate.nodeConfig?.biologicalSexVariable,
+          ...diseasesForStage(candidate, diseaseStages).map(
+            (disease) => disease.variable,
+          ),
+        ].filter((variable): variable is string => variable !== undefined),
+      ),
+    ]),
   );
   // A later pedigree over the same type represents the same focal person. Reuse
   // the earlier pedigree's ego rather than clearing its identity and creating a
@@ -250,6 +265,7 @@ export function materializeFamilyPedigree(
     stage.boundaries?.requireChildrenContributors === 'required',
     inheritedEgoSex,
   );
+  const planEgo = plan.people.find((person) => person.key === plan.egoKey);
   const nodeIds = new Map<string, string>();
   const pedigreeVariables = new Set([
     nodeConfig.egoVariable,
@@ -319,21 +335,29 @@ export function materializeFamilyPedigree(
 
   // The live interface keeps earlier same-typed nodes in the pedigree. Nodes
   // owned by an earlier committed pedigree remain authoritative for that
-  // stage's Narrative views, so preserve all their semantic assignments. Apply
-  // this stage's ego/disease ownership only to ordinary inherited nodes, using
-  // the same constraint-aware draw as generated people and preserving every
-  // unrelated earlier-stage attribute.
+  // stage's Narrative views. Preserve only the semantics that earlier stage
+  // actually owned: a disease introduced by this stage must still be normalized
+  // over those nodes. Apply the same constraint-aware draw as generated people
+  // while protecting every earlier semantic and unrelated attribute.
   for (const [index, node] of preexistingFamilyNodes.entries()) {
-    const ownedByEarlierPedigree =
-      node.stageId !== undefined && earlierPedigreeStageIds.has(node.stageId);
-    if (ownedByEarlierPedigree) continue;
+    const protectedVariables =
+      node.stageId === undefined
+        ? new Set<string>()
+        : (earlierOwnedVariables.get(node.stageId) ?? new Set<string>());
 
     const fixed: Record<string, VariableValue> = {};
-    if (nodeConfig.egoVariable) {
+    if (
+      nodeConfig.egoVariable &&
+      !protectedVariables.has(nodeConfig.egoVariable)
+    ) {
       fixed[nodeConfig.egoVariable] = false;
     }
     for (const disease of diseases) {
-      fixed[disease.variable] = false;
+      if (protectedVariables.has(disease.variable)) continue;
+      fixed[disease.variable] =
+        node === inheritedEgo && planEgo !== undefined
+          ? planEgo.affectedVariables.has(disease.variable)
+          : false;
     }
     if (Object.keys(fixed).length === 0) continue;
 
@@ -343,6 +367,7 @@ export function materializeFamilyPedigree(
       Object.keys(fixed),
     );
     for (const id of Object.keys(fixed)) connected.delete(id);
+    for (const id of protectedVariables) connected.delete(id);
 
     const previous = { ...node[entityAttributesProperty] };
     const regenerated = generateAttributesForEntity(

@@ -794,7 +794,8 @@ function createsEdges(probability: { min: number; max: number }): boolean {
  * parent-child edges it actually creates; both are folded into a later pairing
  * of the same node type where one exists, and counted on their own where it
  * does not. Node counts sum across stages producing the same type, since a
- * `unique` constraint spans the whole run.
+ * `unique` constraint spans the whole run, except that compatible pedigrees
+ * after the first reuse its ego and therefore add one fewer node.
  *
  * The stage list is read in the order `generateNetwork` runs it, because every
  * one of these bounds is about what a stage can reach rather than about what
@@ -841,6 +842,7 @@ export function worstCaseEntityCounts(
   const base = new Map<string, number>();
   const pedigree = new Map<string, PedigreeEdges[]>();
   const node: NodeCounts = new Map();
+  const pedigreeEgoVariables = new Map<string, Set<string>>();
 
   // `completionCheckFor` resolves a whole type's generation order and solves
   // its tractable components, so a type's judge is built once rather than once
@@ -1020,10 +1022,20 @@ export function worstCaseEntityCounts(
       const pedigreeContext = familyPedigree
         ? { options: familyPedigree, stage, stages }
         : undefined;
-      tallyFor(node, nodeType).fabricated += pedigreeNodeCeiling(
-        config,
-        pedigreeContext,
+      const egoVariable = stage.nodeConfig?.egoVariable;
+      const knownEgoVariables = pedigreeEgoVariables.get(nodeType);
+      const reusesEgo =
+        egoVariable !== undefined &&
+        knownEgoVariables?.has(egoVariable) === true;
+      tallyFor(node, nodeType).fabricated += Math.max(
+        pedigreeNodeCeiling(config, pedigreeContext) - (reusesEgo ? 1 : 0),
+        0,
       );
+      if (egoVariable !== undefined) {
+        const variables = knownEgoVariables ?? new Set<string>();
+        variables.add(egoVariable);
+        pedigreeEgoVariables.set(nodeType, variables);
+      }
 
       const edgeType = stage.edgeConfig?.type;
       // Tallied apart from the rest because these edges start holding only what

@@ -500,6 +500,81 @@ describe('FamilyPedigree materialization', () => {
     expect(affectedEarlierMembers).toHaveLength(2);
   });
 
+  it('normalizes a disease introduced only by a later pedigree', () => {
+    const laterDiseaseCodebook = structuredClone(codebook);
+    const variables = laterDiseaseCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.laterCondition = { name: 'Later condition', type: 'boolean' };
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+      nominationPrompts: [
+        {
+          id: 'later-condition',
+          text: 'Who has the later condition?',
+          variable: 'laterCondition',
+        },
+      ],
+    } as unknown as Stage;
+
+    for (let seed = 1; seed <= 20; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: laterDiseaseCodebook,
+        stages: [familyStage, laterFamilyStage],
+        familyPedigree: {
+          scenario: 'none',
+          diseaseMode: 'none',
+          maxNodes: 7,
+        },
+      });
+
+      expect(
+        network.nodes.every(
+          (node) => node[entityAttributesProperty].laterCondition === false,
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('accepts a unique value space matching two pedigrees with one reused ego', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 13 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
+      validation: { unique: true },
+    };
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages: [familyStage, laterFamilyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
+    });
+    const values = network.nodes.map(
+      (node) => node[entityAttributesProperty].generationMarker,
+    );
+
+    expect(values).toHaveLength(13);
+    expect(new Set(values).size).toBe(13);
+  });
+
   it('uses the attainable forced-scenario ceiling during feasibility', () => {
     const exactCodebook = structuredClone(codebook);
     const variables = exactCodebook.node?.['family-member']?.variables;
@@ -577,6 +652,47 @@ describe('FamilyPedigree materialization', () => {
           femaleAtBirthProbability: 1,
         },
         scenario: 'none',
+        maxNodes: 7,
+      },
+    });
+
+    expect(network.nodes).toHaveLength(7);
+  });
+
+  it('does not add disease-only relatives when disease planting is disabled', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 7 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
+      validation: { unique: true },
+    };
+    const xLinkedNarrative = {
+      ...narrativeStage,
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'xLinkedRecessive',
+        },
+      ],
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages: [familyStage, xLinkedNarrative],
+      familyPedigree: {
+        population: {
+          ...US_FAMILY_PEDIGREE_POPULATION,
+          femaleAtBirthProbability: 1,
+        },
+        scenario: 'none',
+        diseaseMode: 'none',
         maxNodes: 7,
       },
     });

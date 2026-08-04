@@ -382,7 +382,11 @@ export function generateFamilyPedigreePlan(
   // A female ego cannot display an X-linked recessive transmission with only
   // the seven-person core. Add one affected brother before optional siblings
   // so the scenario remains coherent even at a tight node budget.
-  if (hasPattern(diseases, 'xLinkedRecessive') && egoSex !== 'male') {
+  if (
+    options.diseaseMode === 'visualization' &&
+    hasPattern(diseases, 'xLinkedRecessive') &&
+    egoSex !== 'male'
+  ) {
     const sibling = builder.addPerson(
       `sibling-${String(siblingIndex++)}`,
       0,

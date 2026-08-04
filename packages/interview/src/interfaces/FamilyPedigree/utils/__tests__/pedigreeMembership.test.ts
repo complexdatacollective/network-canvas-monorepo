@@ -88,4 +88,33 @@ describe('edgesWithinPedigreeMembership', () => {
       ),
     ).toEqual([edges[0]]);
   });
+
+  it('uses endpoint membership when legacy committed ids no longer match network ids', () => {
+    const edges = [
+      edge('redux-mother-ego', 'ego', 'mother'),
+      edge('outside', 'ego', 'outsider'),
+    ];
+
+    expect(
+      edgesWithinPedigreeMembership(
+        edges,
+        'family',
+        new Set(['ego', 'mother']),
+        new Set(['zustand-mother-ego']),
+      ),
+    ).toEqual([edges[0]]);
+  });
+
+  it('keeps an explicitly empty committed edge list authoritative', () => {
+    const edges = [edge('later-between-members', 'ego', 'mother')];
+
+    expect(
+      edgesWithinPedigreeMembership(
+        edges,
+        'family',
+        new Set(['ego', 'mother']),
+        new Set(),
+      ),
+    ).toEqual([]);
+  });
 });
