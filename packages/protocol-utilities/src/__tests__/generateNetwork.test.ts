@@ -553,7 +553,10 @@ describe('generateNetwork', () => {
       const { stageMetadata } = generateNetwork({ codebook, stages, seed: 42 });
 
       expect(stageMetadata?.[0]).toEqual(
-        expect.objectContaining({ isNetworkCommitted: true }),
+        expect.objectContaining({
+          isNetworkCommitted: true,
+          edgeIdVersion: 1,
+        }),
       );
       expect(StageMetadataSchema.safeParse(stageMetadata).success).toBe(true);
     });

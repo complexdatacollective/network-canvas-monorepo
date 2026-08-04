@@ -39,7 +39,7 @@ import { dimColor } from '../../FamilyPedigree/pedigree-layout/dimColor';
 import type { VariableConfig } from '../../FamilyPedigree/store';
 import {
   edgesWithinPedigreeMembership,
-  pedigreeMemberEdgeIds,
+  pedigreeEdgeMembership,
   pedigreeMemberIds,
 } from '../../FamilyPedigree/utils/pedigreeMembership';
 import { PedigreeSnapshotDocument } from '../export/PedigreeSnapshotDocument';
@@ -114,7 +114,7 @@ function makeSourceMembershipSelector(sourceStageId: string) {
     const metadata = index < 0 ? undefined : session?.stageMetadata?.[index];
     return {
       nodeIds: pedigreeMemberIds(metadata),
-      edgeIds: pedigreeMemberEdgeIds(metadata),
+      edgeMembership: pedigreeEdgeMembership(metadata),
     };
   });
 }
@@ -179,9 +179,9 @@ export default function NarrativePedigreeView({
       allEdges,
       sourceConfig.config.edgeType,
       new Set(pedigreeNodes.map((node) => node._uid)),
-      sourceMembership.edgeIds,
+      sourceMembership.edgeMembership,
     );
-  }, [allEdges, pedigreeNodes, sourceConfig, sourceMembership.edgeIds]);
+  }, [allEdges, pedigreeNodes, sourceConfig, sourceMembership.edgeMembership]);
 
   const resolveSexFn = useMemo(() => {
     if (!sourceConfig) return () => 'unknown' as const;

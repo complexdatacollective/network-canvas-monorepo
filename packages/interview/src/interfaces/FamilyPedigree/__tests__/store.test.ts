@@ -646,12 +646,14 @@ describe('finalizeNetwork', () => {
         .getState()
         .session.network.edges.map((edge) => edge[entityPrimaryKeyProperty]),
     );
+    const membershipMetadata = reduxStore.getState().session.stageMetadata?.[0];
+    expect(membershipMetadata).toEqual(
+      expect.objectContaining({ edgeIdVersion: 1 }),
+    );
 
     // pedigreeMemberIds is the real consumer (NarrativePedigree + revisit view);
     // it must return the committed Redux ids so membership matches node._uid.
-    const memberIds = pedigreeMemberIds(
-      reduxStore.getState().session.stageMetadata?.[0],
-    );
+    const memberIds = pedigreeMemberIds(membershipMetadata);
     if (memberIds === null) {
       throw new Error('expected committed membership metadata');
     }
@@ -664,9 +666,7 @@ describe('finalizeNetwork', () => {
     expect(memberIds.has(egoStoreId)).toBe(false);
     expect(memberIds.has(parentStoreId)).toBe(false);
 
-    const memberEdgeIds = pedigreeMemberEdgeIds(
-      reduxStore.getState().session.stageMetadata?.[0],
-    );
+    const memberEdgeIds = pedigreeMemberEdgeIds(membershipMetadata);
     if (memberEdgeIds === null) {
       throw new Error('expected committed edge membership metadata');
     }

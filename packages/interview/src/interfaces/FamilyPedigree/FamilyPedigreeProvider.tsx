@@ -30,7 +30,7 @@ import {
 } from './utils/nodeUtils';
 import {
   edgesWithinPedigreeMembership,
-  pedigreeMemberEdgeIds,
+  pedigreeEdgeMembership,
   pedigreeMemberIds,
 } from './utils/pedigreeMembership';
 import { getFramingConfig } from './utils/stageConfig';
@@ -96,7 +96,7 @@ export const FamilyPedigreeProvider = ({
     edges,
     edgeType,
     seededNodeIds,
-    pedigreeMemberEdgeIds(stageMetadata),
+    pedigreeEdgeMembership(stageMetadata),
   );
 
   const initialNodes = new Map<string, NcNode>(

@@ -942,6 +942,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       stageMetadata: {
         0: {
           isNetworkCommitted: true,
+          edgeIdVersion: 1,
           nodes: [
             { id: 'mother', label: 'Mother', isEgo: false },
             { id: 'father', label: 'Father', isEgo: false },

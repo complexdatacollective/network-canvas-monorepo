@@ -668,6 +668,7 @@ export function inheritedContributorAncestryCeiling(
 
   let incompleteContributorBranches = 0;
   let completedContributorIndex = -1;
+  let firstContributorIndex = -1;
   for (const [candidateIndex, candidate] of stages
     .slice(0, stageIndex)
     .entries()) {
@@ -677,6 +678,7 @@ export function inheritedContributorAncestryCeiling(
     ) {
       continue;
     }
+    if (firstContributorIndex < 0) firstContributorIndex = candidateIndex;
     if (candidate.boundaries?.requireChildrenContributors === 'required') {
       // This stage completed every older inherited branch and its own new one.
       incompleteContributorBranches = 0;
@@ -687,10 +689,15 @@ export function inheritedContributorAncestryCeiling(
     }
   }
 
+  const contributorGraphStartIndex = Math.max(
+    completedContributorIndex,
+    firstContributorIndex,
+  );
   const hasExternalContributorEdges =
     preexistingNodeCeiling > 0 &&
+    contributorGraphStartIndex >= 0 &&
     stages
-      .slice(completedContributorIndex + 1, stageIndex)
+      .slice(contributorGraphStartIndex + 1, stageIndex)
       .some((candidate) => canReshapeContributorGraph(candidate, stage));
 
   if (hasExternalContributorEdges) {

@@ -439,11 +439,15 @@ export function materializeFamilyPedigree(
     .filter(
       (candidate): candidate is StageOfType<'FamilyPedigree'> =>
         candidate.type === 'FamilyPedigree' &&
-        candidate.nodeConfig?.type === nodeType &&
-        candidate.nodeConfig?.egoVariable === nodeConfig.egoVariable,
+        candidate.nodeConfig?.type === nodeType,
     );
-  const earlierPedigreeStageIds = new Set(
-    earlierPedigreeStages.map((candidate) => candidate.id),
+  const compatibleEgoPedigreeStageIds = new Set(
+    earlierPedigreeStages
+      .filter(
+        (candidate) =>
+          candidate.nodeConfig?.egoVariable === nodeConfig.egoVariable,
+      )
+      .map((candidate) => candidate.id),
   );
   const earlierOwnedVariables = new Map(
     earlierPedigreeStages.map((candidate) => [
@@ -468,7 +472,7 @@ export function materializeFamilyPedigree(
     ? preexistingFamilyNodes.find(
         (node) =>
           node.stageId !== undefined &&
-          earlierPedigreeStageIds.has(node.stageId) &&
+          compatibleEgoPedigreeStageIds.has(node.stageId) &&
           node[entityAttributesProperty][egoVariable] === true,
       )
     : undefined;
@@ -706,6 +710,7 @@ export function materializeFamilyPedigree(
 
   draft.stageMetadata[stageIndex] = {
     isNetworkCommitted: true,
+    edgeIdVersion: 1,
     nodes: metadataNodes,
     edges: metadataEdges,
     noChildrenAffirmed:

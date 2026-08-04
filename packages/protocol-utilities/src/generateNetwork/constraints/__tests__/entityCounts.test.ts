@@ -236,6 +236,48 @@ describe('worstCaseEntityCounts', () => {
     );
   });
 
+  it('ignores graph writers that run before the first compatible pedigree', () => {
+    const shared = {
+      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
+      edgeConfig: {
+        type: 'kin',
+        relationshipTypeVariable: 'relationshipType',
+      },
+    };
+    const pairing = {
+      id: 'pair-before-pedigree',
+      type: 'Sociogram',
+      label: 'Pair relatives',
+      subject: { entity: 'node', type: 'relative' },
+      prompts: [
+        {
+          id: 'pair-prompt',
+          text: 'Connect relatives',
+          edges: { create: 'kin' },
+        },
+      ],
+    } as unknown as Stage;
+    const first = familyPedigree({
+      ...shared,
+      id: 'first-pedigree',
+      boundaries: { requireChildrenContributors: 'off' },
+    });
+    const second = familyPedigree({
+      ...shared,
+      id: 'second-pedigree',
+      boundaries: { requireChildrenContributors: 'required' },
+    });
+    const inheritedPopulation = pedigreeNodeCeiling(config);
+
+    expect(
+      inheritedContributorAncestryCeiling(
+        2,
+        [pairing, first, second],
+        inheritedPopulation,
+      ),
+    ).toEqual({ nodes: 6, edges: 9 });
+  });
+
   it('does not discount pedigrees with different ego variables', () => {
     const first = familyPedigree({
       id: 'first-pedigree',

@@ -510,6 +510,53 @@ describe('FamilyPedigree materialization', () => {
     expect(affectedEarlierMembers).toHaveLength(2);
   });
 
+  it('preserves earlier disease assignments when the later pedigree uses a different ego variable', () => {
+    const distinctEgoCodebook = structuredClone(codebook);
+    const variables = distinctEgoCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.isLaterEgo = { name: 'Is later ego', type: 'boolean' };
+
+    const recessiveNarrative = {
+      ...narrativeStage,
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'autosomalRecessive',
+        },
+      ],
+    } as unknown as Stage;
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+      nodeConfig: {
+        type: 'family-member',
+        nodeLabelVariable: 'name',
+        egoVariable: 'isLaterEgo',
+        relationshipVariable: 'relationship',
+        biologicalSexVariable: 'biologicalSex',
+      },
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: distinctEgoCodebook,
+      stages: [familyStage, recessiveNarrative, laterFamilyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'visualization',
+        maxNodes: 7,
+      },
+    });
+    const affectedEarlierMembers = network.nodes.filter(
+      (node) =>
+        node.stageId === familyStage.id &&
+        node[entityAttributesProperty].condition === true,
+    );
+
+    expect(affectedEarlierMembers).toHaveLength(2);
+  });
+
   it('rejects a later disease assignment that conflicts with protected earlier semantics', () => {
     const constrainedCodebook = structuredClone(codebook);
     const variables = constrainedCodebook.node?.['family-member']?.variables;

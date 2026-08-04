@@ -384,6 +384,7 @@ export const createFamilyPedigreeStore = (
               currentStep: currentStep ?? 0,
               metadata: {
                 isNetworkCommitted: true,
+                edgeIdVersion: 1,
                 nodes: serializedNodes,
                 edges: serializedEdges,
                 noChildrenAffirmed: get().noChildrenAffirmed,

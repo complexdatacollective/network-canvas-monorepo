@@ -4,6 +4,7 @@ import type { NcEdge } from '@codaco/shared-consts';
 
 import {
   edgesWithinPedigreeMembership,
+  pedigreeEdgeMembership,
   pedigreeMemberEdgeIds,
   pedigreeMemberIds,
 } from '../pedigreeMembership';
@@ -51,6 +52,31 @@ describe('pedigreeMemberEdgeIds', () => {
   });
 });
 
+describe('pedigreeEdgeMembership', () => {
+  it('marks versioned edge ids as shared-network ids', () => {
+    expect(
+      pedigreeEdgeMembership({
+        isNetworkCommitted: true,
+        edgeIdVersion: 1,
+        edges: [
+          { id: 'mother-ego', from: 'mother', to: 'ego', attributes: {} },
+        ],
+      }),
+    ).toEqual({ ids: new Set(['mother-ego']), idFormat: 'network' });
+  });
+
+  it('marks unversioned edge ids as legacy interface-local ids', () => {
+    expect(
+      pedigreeEdgeMembership({
+        isNetworkCommitted: true,
+        edges: [
+          { id: 'mother-ego', from: 'mother', to: 'ego', attributes: {} },
+        ],
+      }),
+    ).toEqual({ ids: new Set(['mother-ego']), idFormat: 'legacy' });
+  });
+});
+
 describe('edgesWithinPedigreeMembership', () => {
   const edge = (id: string, from: string, to: string, type = 'family') =>
     ({ _uid: id, from, to, type, attributes: {} }) as NcEdge;
@@ -68,7 +94,7 @@ describe('edgesWithinPedigreeMembership', () => {
         edges,
         'family',
         new Set(['ego', 'mother']),
-        new Set(['committed']),
+        { ids: new Set(['committed']), idFormat: 'network' },
       ),
     ).toEqual([edges[0]]);
   });
@@ -100,7 +126,10 @@ describe('edgesWithinPedigreeMembership', () => {
         edges,
         'family',
         new Set(['ego', 'mother']),
-        new Set(['zustand-mother-ego']),
+        {
+          ids: new Set(['zustand-mother-ego']),
+          idFormat: 'legacy',
+        },
       ),
     ).toEqual([edges[0]]);
   });
@@ -117,7 +146,10 @@ describe('edgesWithinPedigreeMembership', () => {
         edges,
         'family',
         new Set(['ego', 'mother', 'father']),
-        new Set(['redux-seeded', 'zustand-added']),
+        {
+          ids: new Set(['redux-seeded', 'zustand-added']),
+          idFormat: 'legacy',
+        },
       ),
     ).toEqual(edges.slice(0, 2));
   });
@@ -130,8 +162,27 @@ describe('edgesWithinPedigreeMembership', () => {
         edges,
         'family',
         new Set(['ego', 'mother']),
-        new Set(),
+        { ids: new Set(), idFormat: 'network' },
       ),
     ).toEqual([]);
+  });
+
+  it('does not admit a later edge when a versioned committed edge was deleted', () => {
+    const edges = [
+      edge('still-committed', 'ego', 'mother'),
+      edge('later-between-members', 'ego', 'father'),
+    ];
+
+    expect(
+      edgesWithinPedigreeMembership(
+        edges,
+        'family',
+        new Set(['ego', 'mother', 'father']),
+        {
+          ids: new Set(['still-committed', 'deleted-committed']),
+          idFormat: 'network',
+        },
+      ),
+    ).toEqual([edges[0]]);
   });
 });

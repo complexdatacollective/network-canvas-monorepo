@@ -35,6 +35,27 @@ export function pedigreeMemberEdgeIds(
   return new Set(edges.map((edge) => edge.id));
 }
 
+export type PedigreeEdgeMembership = {
+  ids: ReadonlySet<string>;
+  idFormat: 'network' | 'legacy';
+};
+
+/**
+ * The pedigree's committed edge ids together with their persistence format.
+ * Versioned snapshots use ids from the shared network. Unversioned snapshots
+ * predate that normalization and can contain interface-local ids.
+ */
+export function pedigreeEdgeMembership(
+  metadata: StageMetadata[string] | undefined,
+): PedigreeEdgeMembership | null {
+  const ids = pedigreeMemberEdgeIds(metadata);
+  if (ids === null || !isFamilyPedigreeStageMetadata(metadata)) return null;
+  return {
+    ids,
+    idFormat: metadata.edgeIdVersion === 1 ? 'network' : 'legacy',
+  };
+}
+
 /**
  * Restrict the shared network to edges wholly owned by a committed pedigree.
  * Endpoint filtering rejects dangling or foreign relationships even when old
@@ -45,21 +66,28 @@ export function edgesWithinPedigreeMembership(
   edges: readonly NcEdge[],
   edgeType: string,
   nodeIds: ReadonlySet<string>,
-  edgeIds: ReadonlySet<string> | null,
+  edgeMembership: PedigreeEdgeMembership | null,
 ): NcEdge[] {
   const withinEndpoints = edges.filter(
     (edge) =>
       edge.type === edgeType && nodeIds.has(edge.from) && nodeIds.has(edge.to),
   );
-  if (edgeIds === null) return withinEndpoints;
+  if (edgeMembership === null) return withinEndpoints;
 
-  const committed = withinEndpoints.filter((edge) => edgeIds.has(edge._uid));
+  const committed = withinEndpoints.filter((edge) =>
+    edgeMembership.ids.has(edge._uid),
+  );
   // Pedigrees saved before edge ids were normalized can mix Redux ids from the
   // seeded network with Zustand ids from relationships added in the interface.
   // Any missing id therefore makes the whole non-empty list a legacy snapshot;
   // endpoint membership is the only stable ownership record left. Keep an
-  // explicitly empty committed list authoritative.
-  if (edgeIds.size > 0 && committed.length < edgeIds.size) {
+  // explicitly empty committed list authoritative. Versioned metadata is
+  // authoritative even when a later stage deleted one of its committed edges.
+  if (
+    edgeMembership.idFormat === 'legacy' &&
+    edgeMembership.ids.size > 0 &&
+    committed.length < edgeMembership.ids.size
+  ) {
     return withinEndpoints;
   }
   return committed;
