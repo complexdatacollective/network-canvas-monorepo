@@ -79,6 +79,15 @@ const codebook = {
           options: BIOLOGICAL_SEX_OPTIONS,
         },
         condition: { name: 'Condition', type: 'boolean' },
+        generationMarker: {
+          name: 'Generation marker',
+          type: 'ordinal',
+          options: [
+            { label: 'Earlier', value: 1 },
+            { label: 'Same', value: 2 },
+            { label: 'Later', value: 3 },
+          ],
+        },
       },
     },
     'person': {
@@ -221,6 +230,38 @@ describe('FamilyPedigree materialization', () => {
     }
   });
 
+  it('includes eligible nodes from earlier stages in committed membership', () => {
+    const earlierStage = {
+      id: 'earlier-family-members',
+      type: 'NameGenerator',
+      label: 'Earlier family members',
+      subject: { entity: 'node', type: 'family-member' },
+      prompts: [{ id: 'people', text: 'Name people' }],
+      behaviours: { minNodes: 2, maxNodes: 2 },
+    } as unknown as Stage;
+    const { network, stageMetadata } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [earlierStage, familyStage, narrativeStage],
+    });
+    const earlierNodeIds = network.nodes
+      .filter((node) => node.stageId === earlierStage.id)
+      .map((node) => node[entityPrimaryKeyProperty]);
+    const metadata = stageMetadata?.[1] as
+      | { nodes?: { id: string }[] }
+      | undefined;
+    const metadataNodeIds = metadata?.nodes?.map(({ id }) => id) ?? [];
+
+    expect(earlierNodeIds).toHaveLength(2);
+    expect(metadataNodeIds).toEqual(expect.arrayContaining(earlierNodeIds));
+    expect(metadataNodeIds.toSorted()).toEqual(
+      network.nodes
+        .filter((node) => node.type === 'family-member')
+        .map((node) => node[entityPrimaryKeyProperty])
+        .toSorted(),
+    );
+  });
+
   it.each([
     ['adoption', 'adoptive'],
     ['donorConception', 'donor'],
@@ -262,5 +303,18 @@ describe('FamilyPedigree materialization', () => {
     expect(withoutUids(first.nodes, first.edges)).toEqual(
       withoutUids(second.nodes, second.edges),
     );
+
+    const afterOrdinary = generateNetwork({
+      seed: 91,
+      codebook,
+      stages: [ordinaryStage, familyStage, narrativeStage],
+      familyPedigree: { scenario: 'adoption' },
+    }).network;
+    expect(
+      withoutUids(
+        afterOrdinary.nodes.filter((node) => node.type === 'family-member'),
+        afterOrdinary.edges.filter((edge) => edge.type === 'family-edge'),
+      ),
+    ).toEqual(withoutUids(first.nodes, first.edges));
   });
 });

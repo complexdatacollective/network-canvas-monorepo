@@ -157,6 +157,13 @@ export function materializeFamilyPedigree(
   const nodeVariables =
     familyCtx.entityConstraints.node.get(nodeType) ?? new Map();
   const nodeIds = new Map<string, string>();
+  // The live interface seeds every existing node of its configured type into
+  // the pedigree, then serializes that complete membership when committing.
+  // Preserve the same membership boundary in synthetic interviews so a
+  // committed metadata list never hides eligible nodes created earlier.
+  const preexistingFamilyNodes = draft.nodes.filter(
+    (node) => node.type === nodeType,
+  );
   const familyNodes: NcNode[] = [];
 
   for (const [index, person] of plan.people.entries()) {
@@ -195,7 +202,7 @@ export function materializeFamilyPedigree(
     const attributes = generateAttributesForEntity(
       familyCtx,
       nodeScope,
-      draft.nodes.length + index,
+      index,
       {
         existing: fixed,
         only,
@@ -245,28 +252,30 @@ export function materializeFamilyPedigree(
   }
   draft.edges.push(...familyEdges);
 
-  const metadataNodes = familyNodes.map((node) => {
-    const attributes = node[entityAttributesProperty];
-    const isEgo =
-      nodeConfig.egoVariable !== undefined &&
-      attributes[nodeConfig.egoVariable] === true;
-    const storedLabel = nodeConfig.nodeLabelVariable
-      ? attributes[nodeConfig.nodeLabelVariable]
-      : undefined;
-    return {
-      id: node[entityPrimaryKeyProperty],
-      label: isEgo
-        ? 'You'
-        : typeof storedLabel === 'string' && storedLabel.length > 0
-          ? storedLabel
-          : String(
-              (nodeConfig.relationshipVariable
-                ? attributes[nodeConfig.relationshipVariable]
-                : undefined) ?? 'Family Member',
-            ),
-      isEgo,
-    };
-  });
+  const metadataNodes = [...preexistingFamilyNodes, ...familyNodes].map(
+    (node) => {
+      const attributes = node[entityAttributesProperty];
+      const isEgo =
+        nodeConfig.egoVariable !== undefined &&
+        attributes[nodeConfig.egoVariable] === true;
+      const storedLabel = nodeConfig.nodeLabelVariable
+        ? attributes[nodeConfig.nodeLabelVariable]
+        : undefined;
+      return {
+        id: node[entityPrimaryKeyProperty],
+        label: isEgo
+          ? 'You'
+          : typeof storedLabel === 'string' && storedLabel.length > 0
+            ? storedLabel
+            : String(
+                (nodeConfig.relationshipVariable
+                  ? attributes[nodeConfig.relationshipVariable]
+                  : undefined) ?? 'Family Member',
+              ),
+        isEgo,
+      };
+    },
+  );
   const metadataEdges = familyEdges.map((edge) => ({
     id: edge[entityPrimaryKeyProperty],
     from: edge.from,
