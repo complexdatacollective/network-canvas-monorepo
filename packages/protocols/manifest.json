@@ -64,6 +64,15 @@
       "architectTemplate": true
     },
     {
+      "id": "family-health-support-networks",
+      "kind": "template",
+      "name": "Family Health & Support Networks",
+      "description": "A family pedigree connected to wider networks of health communication and support",
+      "protocolPath": "templates/family-health-support-networks/protocol.json",
+      "assetDir": "templates/family-health-support-networks/assets",
+      "architectTemplate": true
+    },
+    {
       "id": "sample",
       "kind": "sample",
       "name": "Sample Protocol",

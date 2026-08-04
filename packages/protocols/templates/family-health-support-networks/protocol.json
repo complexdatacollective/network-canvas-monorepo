@@ -1,0 +1,744 @@
+{
+  "name": "Family Health & Support Networks",
+  "description": "A CEGRM-inspired interview that combines a family pedigree and condition view with a wider map of health communication, practical help, emotional support, and spiritual support.",
+  "schemaVersion": 8,
+  "codebook": {
+    "ego": {
+      "variables": {
+        "participant_consent": {
+          "name": "participant_consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "options": [
+            {
+              "label": "I consent to take part",
+              "value": true
+            },
+            {
+              "label": "I do not consent to take part",
+              "value": false,
+              "negative": true
+            }
+          ],
+          "validation": {
+            "required": true
+          }
+        },
+        "health_topic": {
+          "name": "health_topic",
+          "type": "text",
+          "component": "TextArea"
+        }
+      }
+    },
+    "node": {
+      "network_member": {
+        "name": "Network member",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": {
+          "default": "circle"
+        },
+        "variables": {
+          "pedigree_name": {
+            "name": "pedigree_name",
+            "type": "text",
+            "component": "Text"
+          },
+          "network_name": {
+            "name": "network_name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "is_ego": {
+            "name": "is_ego",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "relationship_to_participant": {
+            "name": "relationship_to_participant",
+            "type": "text",
+            "component": "Text"
+          },
+          "biological_sex": {
+            "name": "biological_sex",
+            "type": "categorical",
+            "readOnly": true,
+            "options": [
+              {
+                "value": "female",
+                "label": "Female"
+              },
+              {
+                "value": "male",
+                "label": "Male"
+              },
+              {
+                "value": "intersex",
+                "label": "Intersex or a variation in sex characteristics"
+              },
+              {
+                "value": "unknown",
+                "label": "Don’t know"
+              },
+              {
+                "value": "preferNotToSay",
+                "label": "Prefer not to say"
+              }
+            ]
+          },
+          "living_status": {
+            "name": "living_status",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              {
+                "label": "Living",
+                "value": "living"
+              },
+              {
+                "label": "Deceased",
+                "value": "deceased"
+              },
+              {
+                "label": "Don’t know",
+                "value": "unknown"
+              }
+            ]
+          },
+          "birth_year": {
+            "name": "birth_year",
+            "type": "number",
+            "component": "Number"
+          },
+          "condition_of_interest": {
+            "name": "condition_of_interest",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "network_context": {
+            "name": "network_context",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              {
+                "label": "Friend",
+                "value": "friend"
+              },
+              {
+                "label": "Neighbour",
+                "value": "neighbour"
+              },
+              {
+                "label": "Coworker or classmate",
+                "value": "work_or_school"
+              },
+              {
+                "label": "Community or faith connection",
+                "value": "community_or_faith"
+              },
+              {
+                "label": "Healthcare professional",
+                "value": "healthcare_professional"
+              },
+              {
+                "label": "Service or support-group member",
+                "value": "service_or_support_group"
+              },
+              {
+                "label": "Another kind of connection",
+                "value": "other"
+              }
+            ],
+            "validation": {
+              "minSelected": 1
+            }
+          },
+          "closeness": {
+            "name": "closeness",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": "Not at all close",
+                "value": 1
+              },
+              {
+                "label": "A little close",
+                "value": 2
+              },
+              {
+                "label": "Moderately close",
+                "value": 3
+              },
+              {
+                "label": "Very close",
+                "value": 4
+              },
+              {
+                "label": "Extremely close",
+                "value": 5
+              }
+            ]
+          },
+          "contact_frequency": {
+            "name": "contact_frequency",
+            "type": "ordinal",
+            "component": "RadioGroup",
+            "options": [
+              {
+                "label": "Less than once a month",
+                "value": 1
+              },
+              {
+                "label": "A few times a month",
+                "value": 2
+              },
+              {
+                "label": "About once a week",
+                "value": 3
+              },
+              {
+                "label": "A few times a week",
+                "value": 4
+              },
+              {
+                "label": "Every day",
+                "value": 5
+              }
+            ]
+          },
+          "cegrm_layout": {
+            "name": "cegrm_layout",
+            "type": "layout"
+          },
+          "information_exchange": {
+            "name": "information_exchange",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "practical_support": {
+            "name": "practical_support",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "emotional_support": {
+            "name": "emotional_support",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "spiritual_support": {
+            "name": "spiritual_support",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "information_gatherer": {
+            "name": "information_gatherer",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "information_sharer": {
+            "name": "information_sharer",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "reluctant_health_discussion": {
+            "name": "reluctant_health_discussion",
+            "type": "boolean",
+            "component": "Toggle"
+          }
+        }
+      }
+    },
+    "edge": {
+      "family_relationship": {
+        "name": "Family relationship",
+        "color": "edge-color-seq-1",
+        "variables": {
+          "relationship_type": {
+            "name": "relationship_type",
+            "type": "categorical",
+            "readOnly": true,
+            "options": [
+              {
+                "value": "biological",
+                "label": "Biological"
+              },
+              {
+                "value": "social",
+                "label": "Social"
+              },
+              {
+                "value": "donor",
+                "label": "Donor"
+              },
+              {
+                "value": "surrogate",
+                "label": "Surrogate"
+              },
+              {
+                "value": "adoptive",
+                "label": "Adoptive"
+              },
+              {
+                "value": "partner",
+                "label": "Partner"
+              }
+            ]
+          },
+          "relationship_active": {
+            "name": "relationship_active",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "gestational_carrier": {
+            "name": "gestational_carrier",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "gamete_role": {
+            "name": "gamete_role",
+            "type": "categorical",
+            "readOnly": true,
+            "options": [
+              {
+                "value": "egg",
+                "label": "Egg"
+              },
+              {
+                "value": "sperm",
+                "label": "Sperm"
+              }
+            ]
+          }
+        }
+      },
+      "knows_each_other": {
+        "name": "Knows each other",
+        "color": "edge-color-seq-2"
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "information-researcher-notes",
+      "type": "Information",
+      "label": "Template notes (delete before fielding)",
+      "title": "Template notes",
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template is **inspired by**, rather than a validated digital implementation of, the Colored Eco-Genetic Relationship Map (CEGRM). CEGRM combines a family pedigree with non-family relationships and color-coded social roles to support an active, semi-structured conversation about health communication and support.\n\nBefore fielding:\n\n1. Replace **Condition of interest** in the Family Pedigree and Narrative Pedigree stages with the condition your study addresses. Set its inheritance pattern accurately. Leave the pattern as **unknown** when no clinically supported pattern applies.\n2. Keep **Show possible (at-risk) statuses** off unless a qualified clinician will interpret the display. Inferred status is not a diagnosis, and the Narrative Pedigree assumes full penetrance.\n3. Adapt the consent, participant information, referral, safeguarding, and distress procedures to your setting and obtain the necessary ethics approval.\n4. Decide whether spiritual or religious support is relevant and acceptable in your setting; remove that prompt if it is not.\n5. Decide how the reflective conversation will be recorded. Narrative free-draw marks are temporary and are not included in exported data.\n\nThe template uses separate pedigree and social-network name variables on one shared node type. This is deliberate: Family Pedigree writes its label without form validation, while the later Name Generator validates names. Both kinds of people still appear together on the Sociogram and Narrative.\n\nKey sources:\n\n- [Kenen R, Peters JA (2001). The Colored, Eco-Genetic Relationship Map: A Conceptual Approach and Tool for Genetic Counseling Research.](https://doi.org/10.1023/A:1016627426430)\n- [Peters JA et al. (2004). Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/)\n- [Peters JA et al. (2012). Close ties: an exploratory CEGRM study of social connections of men in Familial Testicular Cancer families.](https://pmc.ncbi.nlm.nih.gov/articles/PMC3323467/)\n- [Koehly LM et al. (2011). Sisters in hereditary breast and ovarian cancer families: communal coping, social integration, and psychological well-being.](https://pmc.ncbi.nlm.nih.gov/articles/PMC3125979/)"
+        }
+      ]
+    },
+    {
+      "id": "ego-consent",
+      "type": "EgoForm",
+      "label": "Welcome and consent",
+      "introductionPanel": {
+        "title": "About this interview",
+        "text": "Thank you for considering taking part. In this interview, you will build a picture of your family and the wider group of people connected to your health and wellbeing. You can pause, skip a question, or stop at any time. The researcher should explain how your responses will be used and answer your questions before you choose an option below."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "participant_consent",
+            "prompt": "Do you consent to take part in this study?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ego-health-context",
+      "type": "EgoForm",
+      "label": "About you and this interview",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "skip-without-consent",
+              "type": "ego",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
+      },
+      "introductionPanel": {
+        "title": "The health topic you will discuss",
+        "text": "Before you map the people in your life, record the health condition or family-health topic that this interview will focus on. The researcher may replace or remove this question when the study already has one fixed topic."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "health_topic",
+            "prompt": "What health condition or family-health topic will you be talking about today?",
+            "hint": "You may leave this blank if you would rather not name it here."
+          }
+        ]
+      }
+    },
+    {
+      "id": "family-pedigree",
+      "type": "FamilyPedigree",
+      "label": "Build your family",
+      "interviewScript": "Invite the participant to include the family relationships that matter for the study. Grandparents and contributors to children are recommended, not required, so uncertainty or missing information does not prevent progress. Do not press for details the participant does not wish to provide.",
+      "nodeConfig": {
+        "type": "network_member",
+        "nodeLabelVariable": "pedigree_name",
+        "egoVariable": "is_ego",
+        "relationshipVariable": "relationship_to_participant",
+        "biologicalSexVariable": "biological_sex",
+        "form": [
+          {
+            "variable": "living_status",
+            "prompt": "Is this person living or deceased?"
+          },
+          {
+            "variable": "birth_year",
+            "prompt": "What year was this person born?",
+            "hint": "Leave this blank if you do not know."
+          }
+        ]
+      },
+      "edgeConfig": {
+        "type": "family_relationship",
+        "relationshipTypeVariable": "relationship_type",
+        "isActiveVariable": "relationship_active",
+        "isGestationalCarrierVariable": "gestational_carrier",
+        "gameteRoleVariable": "gamete_role"
+      },
+      "framing": {
+        "mode": "participantChoice"
+      },
+      "boundaries": {
+        "requireGrandparents": "recommended",
+        "requireChildrenContributors": "recommended"
+      },
+      "introScreen": {
+        "items": [
+          {
+            "id": "family-pedigree-intro",
+            "type": "text",
+            "content": "## Build a picture of your family\n\nYou will create a family diagram to help show how people are related and where a health condition may appear across generations.\n\nYou can include biological, adoptive, donor, surrogate, social, and partner relationships. If you do not know an answer or would rather not provide it, tell the interviewer and continue with what you do know."
+          }
+        ]
+      },
+      "censusPrompt": "Add the family members and relationships that are relevant to this family-health story.",
+      "nominationPrompts": [
+        {
+          "id": "condition-nomination",
+          "text": "Select each family member who has been diagnosed with the condition of interest.",
+          "variable": "condition_of_interest"
+        }
+      ]
+    },
+    {
+      "id": "narrative-pedigree",
+      "type": "NarrativePedigree",
+      "label": "Conditions in your family",
+      "interviewScript": "This display reports the participant's family structure and nominations; it does not establish a diagnosis. Replace the placeholder condition and inheritance pattern before fielding. Keep possible at-risk statuses off unless a qualified clinician will interpret them in context.",
+      "sourceStageId": "family-pedigree",
+      "showAtRiskStatuses": false,
+      "diseases": [
+        {
+          "id": "condition-of-interest",
+          "label": "Condition of interest",
+          "color": "#e26d5a",
+          "variable": "condition_of_interest",
+          "inheritancePattern": "unknown"
+        }
+      ]
+    },
+    {
+      "id": "name-generator-wider-network",
+      "type": "NameGenerator",
+      "label": "People outside your family map",
+      "interviewScript": "These prompts extend the pedigree into the participant's wider social world. Use the Already mentioned panel whenever one person fits more than one prompt so their roles accumulate on a single record. Family members already in the pedigree do not need to be entered again.",
+      "subject": {
+        "entity": "node",
+        "type": "network_member"
+      },
+      "panels": [
+        {
+          "id": "wider-network-existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ],
+      "form": {
+        "title": "Add a person",
+        "fields": [
+          {
+            "variable": "network_name",
+            "prompt": "What is this person's first name, nickname, or initials?",
+            "hint": "Use whatever will help you recognise them during this interview."
+          },
+          {
+            "variable": "network_context",
+            "prompt": "How is this person connected to your life?",
+            "hint": "Select all that apply."
+          }
+        ]
+      },
+      "behaviours": {
+        "minNodes": 0
+      },
+      "prompts": [
+        {
+          "id": "friends-and-neighbours",
+          "text": "Outside the family members already shown, which **friends or neighbours** are connected to your health, wellbeing, or family-health story?"
+        },
+        {
+          "id": "work-community-faith",
+          "text": "Which people from **work, school, community, cultural, or faith settings** are connected to your health, wellbeing, or family-health story?"
+        },
+        {
+          "id": "professionals-and-services",
+          "text": "Which **healthcare professionals, service providers, or support-group members** are important to this health or family-health story?"
+        }
+      ]
+    },
+    {
+      "id": "ordinal-closeness-contact",
+      "type": "OrdinalBin",
+      "label": "Closeness and contact",
+      "subject": {
+        "entity": "node",
+        "type": "network_member"
+      },
+      "filter": {
+        "rules": [
+          {
+            "id": "exclude-participant",
+            "type": "node",
+            "options": {
+              "type": "network_member",
+              "attribute": "is_ego",
+              "operator": "NOT",
+              "value": true
+            }
+          }
+        ]
+      },
+      "prompts": [
+        {
+          "id": "closeness",
+          "text": "Place each person according to **how close you feel to them**.",
+          "variable": "closeness",
+          "color": "ord-color-seq-1"
+        },
+        {
+          "id": "contact-frequency",
+          "text": "Place each person according to **how often you are usually in contact with them**.",
+          "variable": "contact_frequency",
+          "color": "ord-color-seq-2"
+        }
+      ]
+    },
+    {
+      "id": "sociogram-support-communication",
+      "type": "Sociogram",
+      "label": "Map support and communication",
+      "interviewScript": "Begin by placing the participant near the centre and arranging everyone else by felt closeness; the explicit closeness variable collected on the preceding stage remains the analytic measure. Ask about people with no ties so the visual task does not hide isolated network members. The seven highlighting prompts intentionally allow overlapping roles.",
+      "subject": {
+        "entity": "node",
+        "type": "network_member"
+      },
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": false,
+        "allowRepositioning": true,
+        "freeDraw": false
+      },
+      "prompts": [
+        {
+          "id": "arrange-and-connect",
+          "text": "Place yourself near the centre. Arrange the other people so those who feel closer to you are nearer the centre, then connect any **two people who know one another**.",
+          "layout": {
+            "layoutVariable": "cegrm_layout"
+          },
+          "edges": {
+            "create": "knows_each_other",
+            "display": ["knows_each_other"]
+          }
+        },
+        {
+          "id": "information-exchange",
+          "text": "Select each person with whom you **exchange health information or advice**.",
+          "layout": {
+            "layoutVariable": "cegrm_layout"
+          },
+          "edges": {
+            "display": ["knows_each_other"]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "information_exchange"
+          }
+        },
+        {
+          "id": "practical-support",
+          "text": "Select each person with whom you exchange **practical help**, such as transport, meals, childcare, errands, or help at appointments.",
+          "layout": {
+            "layoutVariable": "cegrm_layout"
+          },
+          "edges": {
+            "display": ["knows_each_other"]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "practical_support"
+          }
+        },
+        {
+          "id": "emotional-support",
+          "text": "Select each person with whom you exchange **emotional support**, care, encouragement, or understanding.",
+          "layout": {
+            "layoutVariable": "cegrm_layout"
+          },
+          "edges": {
+            "display": ["knows_each_other"]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "emotional_support"
+          }
+        },
+        {
+          "id": "spiritual-support",
+          "text": "Select each person with whom you exchange **spiritual, religious, or meaning-based support**, if this is part of your life.",
+          "layout": {
+            "layoutVariable": "cegrm_layout"
+          },
+          "edges": {
+            "display": ["knows_each_other"]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "spiritual_support"
+          }
+        },
+        {
+          "id": "information-gatherer",
+          "text": "Select each person who **looks for new information** about health, the condition, or genetic testing.",
+          "layout": {
+            "layoutVariable": "cegrm_layout"
+          },
+          "edges": {
+            "display": ["knows_each_other"]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "information_gatherer"
+          }
+        },
+        {
+          "id": "information-sharer",
+          "text": "Select each person who helps **pass health information on** to other people.",
+          "layout": {
+            "layoutVariable": "cegrm_layout"
+          },
+          "edges": {
+            "display": ["knows_each_other"]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "information_sharer"
+          }
+        },
+        {
+          "id": "reluctant-health-discussion",
+          "text": "Select each person who **prefers not to discuss or pass on health information**.",
+          "layout": {
+            "layoutVariable": "cegrm_layout"
+          },
+          "edges": {
+            "display": ["knows_each_other"]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "reluctant_health_discussion"
+          }
+        }
+      ]
+    },
+    {
+      "id": "narrative-reflection",
+      "type": "Narrative",
+      "label": "Reflect on your map",
+      "interviewScript": "Use each preset as a focused conversation guide. Invite the participant to describe overlaps, missing support, isolated people, and anything surprising in the map. Arrange separate audio or screen recording if the study needs a record of the conversation or free-draw marks; this stage does not write them to interview data.",
+      "subject": {
+        "entity": "node",
+        "type": "network_member"
+      },
+      "presets": [
+        {
+          "id": "support-exchanges",
+          "label": "Forms of support",
+          "layoutVariable": "cegrm_layout",
+          "edges": {
+            "display": ["knows_each_other"]
+          },
+          "highlight": [
+            "information_exchange",
+            "practical_support",
+            "emotional_support",
+            "spiritual_support"
+          ]
+        },
+        {
+          "id": "health-communication",
+          "label": "Health communication",
+          "layoutVariable": "cegrm_layout",
+          "edges": {
+            "display": ["knows_each_other"]
+          },
+          "highlight": [
+            "information_gatherer",
+            "information_sharer",
+            "reluctant_health_discussion"
+          ]
+        }
+      ],
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": false,
+        "allowRepositioning": false,
+        "freeDraw": true
+      }
+    },
+    {
+      "id": "information-closing",
+      "type": "Information",
+      "label": "Thank you",
+      "title": "Thank you",
+      "items": [
+        {
+          "id": "closing-message",
+          "type": "text",
+          "content": "## Thank you for sharing\n\nYou have finished this interview. The map reflects what you chose to share today; it is not a diagnosis or a complete clinical family history.\n\nIf the conversation raised questions or difficult feelings, you can speak with the interviewer now. The researcher will add the study's relevant contact details, clinical resources, and local support services here before fielding."
+        }
+      ]
+    }
+  ]
+}

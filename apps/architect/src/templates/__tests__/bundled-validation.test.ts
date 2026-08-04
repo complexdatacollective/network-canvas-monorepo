@@ -56,6 +56,13 @@ const consentFlows = [
     consentVariableId: 'participant_consent',
     postConsentStageId: 'ego-form-background',
   },
+  {
+    name: 'Family Health & Support Networks',
+    protocol: getBundledTemplateProtocol('family-health-support-networks'),
+    consentStageId: 'ego-consent',
+    consentVariableId: 'participant_consent',
+    postConsentStageId: 'ego-health-context',
+  },
 ] satisfies {
   name: string;
   protocol: CurrentProtocol;
@@ -128,4 +135,70 @@ describe('bundled consent flows', () => {
       });
     });
   }
+});
+
+describe('Family Health & Support Networks template', () => {
+  const protocol = getBundledTemplateProtocol('family-health-support-networks');
+
+  it('keeps the guided pedigree and social-network sequence', () => {
+    expect(protocol.stages.map((stage) => stage.type)).toStrictEqual([
+      'Information',
+      'EgoForm',
+      'EgoForm',
+      'FamilyPedigree',
+      'NarrativePedigree',
+      'NameGenerator',
+      'OrdinalBin',
+      'Sociogram',
+      'Narrative',
+      'Information',
+    ]);
+  });
+
+  it('uses participant-chosen pedigree language and conservative risk display', () => {
+    const pedigree = protocol.stages.find(
+      (stage) => stage.id === 'family-pedigree',
+    );
+    const narrativePedigree = protocol.stages.find(
+      (stage) => stage.id === 'narrative-pedigree',
+    );
+
+    expect(pedigree).toMatchObject({
+      type: 'FamilyPedigree',
+      framing: { mode: 'participantChoice' },
+      boundaries: {
+        requireGrandparents: 'recommended',
+        requireChildrenContributors: 'recommended',
+      },
+    });
+    expect(narrativePedigree).toMatchObject({
+      type: 'NarrativePedigree',
+      sourceStageId: 'family-pedigree',
+      showAtRiskStatuses: false,
+      diseases: [{ inheritancePattern: 'unknown' }],
+    });
+  });
+
+  it('captures overlapping support and communication roles', () => {
+    const sociogram = protocol.stages.find(
+      (stage) => stage.id === 'sociogram-support-communication',
+    );
+    if (sociogram?.type !== 'Sociogram') {
+      throw new Error('Missing support and communication Sociogram');
+    }
+
+    expect(
+      sociogram.prompts.flatMap((prompt) =>
+        prompt.highlight?.variable ? [prompt.highlight.variable] : [],
+      ),
+    ).toStrictEqual([
+      'information_exchange',
+      'practical_support',
+      'emotional_support',
+      'spiritual_support',
+      'information_gatherer',
+      'information_sharer',
+      'reluctant_health_discussion',
+    ]);
+  });
 });
