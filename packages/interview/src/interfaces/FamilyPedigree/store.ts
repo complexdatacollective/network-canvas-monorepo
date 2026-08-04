@@ -86,6 +86,7 @@ type FamilyPedigreeState = {
   };
   nodeMetadata: Map<string, NodeMetadata>;
   storeToReduxIdMap: Map<string, string>;
+  storeToReduxEdgeIdMap: Map<string, string>;
 };
 
 type NetworkActions = {
@@ -176,6 +177,7 @@ export const createFamilyPedigreeStore = (
         },
         nodeMetadata: initialNodeMetadata,
         storeToReduxIdMap: new Map<string, string>(),
+        storeToReduxEdgeIdMap: new Map<string, string>(),
 
         setStep: (step) =>
           set((state) => {
@@ -319,18 +321,17 @@ export const createFamilyPedigreeStore = (
 
         syncMetadata: () => {
           const { nodes, edges } = get().network;
-          const { storeToReduxIdMap } = get();
+          const { storeToReduxIdMap, storeToReduxEdgeIdMap } = get();
 
           // The persisted membership snapshot must be keyed by the ids the shared
-          // Redux graph uses, because every consumer (pedigreeMemberIds ->
-          // NarrativePedigree, and this stage's own revisit view) matches it
-          // against Redux `node._uid`. After finalize, nodes created here live in
-          // Redux under fresh ids recorded in storeToReduxIdMap; seeded/pre-finalize
-          // nodes are absent from the map and keep their id (which already equals
-          // their Redux id). So map every store id through it, falling back to
-          // itself.
+          // Redux graph uses, because NarrativePedigree and this stage's revisit
+          // view match it against Redux entities. Finalizing nodes and edges creates
+          // fresh Redux ids recorded in these maps; seeded entities already use
+          // their Redux ids, so missing map entries safely fall back to themselves.
           const toReduxId = (storeId: string): string =>
             storeToReduxIdMap.get(storeId) ?? storeId;
+          const toReduxEdgeId = (storeId: string): string =>
+            storeToReduxEdgeIdMap.get(storeId) ?? storeId;
 
           const egoEntry = [...nodes.entries()].find(
             ([, n]) =>
@@ -371,7 +372,7 @@ export const createFamilyPedigreeStore = (
           });
 
           const serializedEdges = [...edges.entries()].map(([id, edge]) => ({
-            id,
+            id: toReduxEdgeId(id),
             from: toReduxId(edge.from),
             to: toReduxId(edge.to),
             attributes: edge[entityAttributesProperty],
@@ -425,6 +426,7 @@ export const createFamilyPedigreeStore = (
           // Only the nodes this finalize created. resetNetwork deletes these;
           // pre-existing shared-graph nodes must survive a pedigree reset.
           const createdReduxIds = new Map<string, string>();
+          const createdReduxEdgeIds = new Map<string, string>();
 
           for (const [storeId, node] of network.nodes) {
             // Pre-existing same-type nodes already live in Redux; re-committing
@@ -467,7 +469,7 @@ export const createFamilyPedigreeStore = (
             const mappedFrom = idMap.get(edge.from);
             const mappedTo = idMap.get(edge.to);
             if (mappedFrom && mappedTo) {
-              await dispatch(
+              const result = await dispatch(
                 addEdgeToNetwork({
                   type: variableConfig.edgeType,
                   from: mappedFrom,
@@ -476,11 +478,16 @@ export const createFamilyPedigreeStore = (
                   currentStep: currentStep ?? 0,
                 }),
               );
+
+              if (addEdgeToNetwork.fulfilled.match(result)) {
+                createdReduxEdgeIds.set(edgeId, result.payload.edgeId);
+              }
             }
           }
 
           set((state) => {
             state.storeToReduxIdMap = new Map(createdReduxIds);
+            state.storeToReduxEdgeIdMap = new Map(createdReduxEdgeIds);
             for (const key of state.nodeMetadata.keys()) {
               const meta = state.nodeMetadata.get(key);
               if (meta) {
@@ -504,6 +511,7 @@ export const createFamilyPedigreeStore = (
             state.network.edges.clear();
             state.nodeMetadata.clear();
             state.storeToReduxIdMap.clear();
+            state.storeToReduxEdgeIdMap.clear();
             state.step = 'scaffolding';
             state.activeNominationVariable = null;
           });

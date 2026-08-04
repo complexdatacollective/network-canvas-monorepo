@@ -12,7 +12,10 @@ import { createInitialNetwork } from '../../../contract/network';
 import sessionReducer from '../../../store/modules/session';
 import type { useAppDispatch } from '../../../store/store';
 import { createFamilyPedigreeStore, type VariableConfig } from '../store';
-import { pedigreeMemberIds } from '../utils/pedigreeMembership';
+import {
+  pedigreeMemberEdgeIds,
+  pedigreeMemberIds,
+} from '../utils/pedigreeMembership';
 
 const testConfig: VariableConfig = {
   nodeType: 'person',
@@ -598,7 +601,7 @@ describe('finalizeNetwork', () => {
     ).toBeUndefined();
   });
 
-  it('records committed Redux node ids (not store ids) in the membership metadata', async () => {
+  it('records committed Redux node and edge ids in membership metadata', async () => {
     const { reduxStore, dispatch } = createReduxStore([]);
 
     const store = createFamilyPedigreeStore(
@@ -622,7 +625,7 @@ describe('finalizeNetwork', () => {
         [testConfig.nodeLabelVariable]: 'Mum',
       },
     });
-    store.getState().addEdge({
+    const edgeStoreId = store.getState().addEdge({
       from: parentStoreId,
       to: egoStoreId,
       attributes: {
@@ -637,6 +640,11 @@ describe('finalizeNetwork', () => {
       reduxStore
         .getState()
         .session.network.nodes.map((n) => n[entityPrimaryKeyProperty]),
+    );
+    const committedEdgeIds = new Set(
+      reduxStore
+        .getState()
+        .session.network.edges.map((edge) => edge[entityPrimaryKeyProperty]),
     );
 
     // pedigreeMemberIds is the real consumer (NarrativePedigree + revisit view);
@@ -655,6 +663,16 @@ describe('finalizeNetwork', () => {
     // The pre-finalize store ids must NOT leak into the persisted membership.
     expect(memberIds.has(egoStoreId)).toBe(false);
     expect(memberIds.has(parentStoreId)).toBe(false);
+
+    const memberEdgeIds = pedigreeMemberEdgeIds(
+      reduxStore.getState().session.stageMetadata?.[0],
+    );
+    if (memberEdgeIds === null) {
+      throw new Error('expected committed edge membership metadata');
+    }
+
+    expect(memberEdgeIds).toEqual(committedEdgeIds);
+    expect(memberEdgeIds.has(edgeStoreId)).toBe(false);
   });
 
   it('does not duplicate pre-existing same-type nodes already in Redux', async () => {
