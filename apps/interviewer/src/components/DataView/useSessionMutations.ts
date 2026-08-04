@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
@@ -65,11 +65,25 @@ export function useSessionMutations({
   const analytics = useAnalytics();
   const { requireFreshUnlock } = useStepUpAuth();
   const [exportFlow, setExportFlow] = useState<ExportFlow>({ phase: 'idle' });
+  // True from the Export tap until handleExport settles. The flow stays
+  // `idle` through the pre-build awaits (id resolution, settings, step-up),
+  // so without this render-visible flag the toolbar's competing mutations
+  // would stay enabled and a delete confirmation could race the build.
+  const [preparingExport, setPreparingExport] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [markingUnfinishedId, setMarkingUnfinishedId] = useState<string | null>(
     null,
   );
   const abortBuildRef = useRef<AbortController | null>(null);
+
+  // Leaving the view (back gesture, view switch) unmounts the dialog and its
+  // Cancel action — abort any in-flight build so the pipeline (and its ZIP
+  // sink) tears down instead of burning CPU and memory headlessly.
+  useEffect(() => {
+    return () => {
+      abortBuildRef.current?.abort();
+    };
+  }, []);
 
   // Like shareInFlightRef below: state commits are scheduled, so two Export
   // clicks in the same frame would both read `idle` — the ref closes that
@@ -85,6 +99,7 @@ export function useSessionMutations({
       return;
     }
     exportInFlightRef.current = true;
+    setPreparingExport(true);
     const controller = new AbortController();
     try {
       const ids = await resolveSelectedIds();
@@ -177,6 +192,7 @@ export function useSessionMutations({
       });
     } finally {
       exportInFlightRef.current = false;
+      setPreparingExport(false);
       if (abortBuildRef.current === controller) {
         abortBuildRef.current = null;
       }
@@ -358,6 +374,7 @@ export function useSessionMutations({
 
   return {
     exportFlow,
+    preparingExport,
     deleting,
     markingUnfinishedId,
     handleExport,

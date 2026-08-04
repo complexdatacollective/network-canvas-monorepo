@@ -2,9 +2,12 @@ export type DownloadResult = { saved: boolean };
 
 export type SaveAction = 'save-as' | 'share' | 'download';
 
-function getSavePicker(): Window['showSaveFilePicker'] | null {
+function getSavePicker(): NonNullable<Window['showSaveFilePicker']> | null {
+  // Bound to window: a detached Web-IDL method throws "Illegal invocation"
+  // when called, which would silently degrade the picker rung to the anchor
+  // download.
   return typeof window.showSaveFilePicker === 'function'
-    ? window.showSaveFilePicker
+    ? window.showSaveFilePicker.bind(window)
     : null;
 }
 

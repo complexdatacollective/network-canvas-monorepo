@@ -24,7 +24,15 @@ function stubSavePicker() {
   const write = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn().mockResolvedValue(undefined);
   const createWritable = vi.fn().mockResolvedValue({ write, close });
-  const showSaveFilePicker = vi.fn().mockResolvedValue({ createWritable });
+  // Enforces the Window receiver like the real Web-IDL method: browsers
+  // throw "Illegal invocation" for a detached call, which would silently
+  // degrade the picker rung to the anchor download.
+  const showSaveFilePicker = vi.fn(function (this: unknown) {
+    if (this !== window && this !== globalThis) {
+      throw new TypeError('Illegal invocation');
+    }
+    return Promise.resolve({ createWritable });
+  });
   vi.stubGlobal('showSaveFilePicker', showSaveFilePicker);
   return { showSaveFilePicker, createWritable, write, close };
 }

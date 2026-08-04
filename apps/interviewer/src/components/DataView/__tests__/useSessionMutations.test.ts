@@ -90,12 +90,14 @@ async function buildReadyArchive(
 // tests can observe the building state and drive cancellation.
 function hangingRunExport() {
   let emit: ((event: unknown) => void) | undefined;
+  let signal: AbortSignal | undefined;
   runExport.mockImplementation(
     (invocation: {
       onEvent?: (event: unknown) => void;
       signal?: AbortSignal;
     }) => {
       emit = invocation.onEvent;
+      signal = invocation.signal;
       return new Promise((_, reject) => {
         invocation.signal?.addEventListener('abort', () =>
           reject(new Error('interrupted')),
@@ -103,7 +105,10 @@ function hangingRunExport() {
       });
     },
   );
-  return { emit: (event: unknown) => emit?.(event) };
+  return {
+    emit: (event: unknown) => emit?.(event),
+    getSignal: () => signal,
+  };
 }
 
 describe('useSessionMutations — export flow marks exported from the save outcome alone', () => {
@@ -216,6 +221,69 @@ describe('useSessionMutations — export flow lifecycle', () => {
 
     expect(runExport).toHaveBeenCalledTimes(1);
     expect(result.current.exportFlow.phase).toBe('ready');
+  });
+
+  it('exposes a render-visible preparing flag during pre-build resolution', async () => {
+    let resolveIds: ((ids: string[]) => void) | undefined;
+    const slowResolveSelectedIds = () =>
+      new Promise<string[]>((resolve) => {
+        resolveIds = resolve;
+      });
+    runExport.mockResolvedValue({
+      result: {
+        successfulExports: [{ sessionId: 's1' }],
+        failedExports: [],
+      },
+      blob: new Blob(['x']),
+      fileName: 'export.zip',
+    });
+    const { result } = renderHook(() =>
+      useSessionMutations({
+        selectedCount: 1,
+        resolveSelectedIds: slowResolveSelectedIds,
+        clearSelection,
+        onReload: () => Promise.resolve(),
+        reloadData: () => Promise.resolve(),
+      }),
+    );
+
+    let exportPromise: Promise<void> | undefined;
+    act(() => {
+      exportPromise = result.current.handleExport();
+    });
+
+    // The flow is still idle while the selection resolves, but the flag must
+    // already disable the toolbar's competing mutations.
+    await waitFor(() => expect(result.current.preparingExport).toBe(true));
+    expect(result.current.exportFlow.phase).toBe('idle');
+
+    await act(async () => {
+      resolveIds?.(['s1']);
+      await exportPromise;
+    });
+
+    expect(result.current.preparingExport).toBe(false);
+    expect(result.current.exportFlow.phase).toBe('ready');
+  });
+
+  it('aborts an in-flight build when the view unmounts', async () => {
+    const { getSignal } = hangingRunExport();
+    const { result, unmount } = makeHook();
+
+    let exportPromise: Promise<void> | undefined;
+    act(() => {
+      exportPromise = result.current.handleExport();
+    });
+    await waitFor(() => expect(runExport).toHaveBeenCalled(), {
+      timeout: 2000,
+    });
+
+    unmount();
+
+    expect(getSignal()?.aborted).toBe(true);
+    await act(async () => {
+      await exportPromise;
+    });
   });
 
   it('dismissing a ready archive discards it without marking, keeping the selection', async () => {

@@ -137,6 +137,7 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
 
   const {
     exportFlow,
+    preparingExport,
     deleting,
     markingUnfinishedId,
     handleExport,
@@ -202,7 +203,7 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
         statusCounts={statusCounts}
         protocolOptions={protocolOptions}
         selectedCount={selectedCount}
-        exporting={exportFlow.phase !== 'idle'}
+        exporting={exportFlow.phase !== 'idle' || preparingExport}
         deleting={deleting}
         onExport={() => void handleExport()}
         onDelete={() => void handleDelete()}
