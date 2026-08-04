@@ -26,6 +26,12 @@ import { SyntheticDataConstraintError } from '../error';
 
 const config = resolveGenerationConfig({ today: '2026-07-27' });
 
+// A pedigree builds at most three parent links per person (a donated gamete
+// adds a third alongside the carrier) plus one partnership — mirroring
+// `PEDIGREE_EDGES_PER_PERSON` in entityCounts.ts. It was `n - 1` while the
+// generator built a single-parent tree.
+const PEDIGREE_EDGES_PER_PERSON = 4;
+
 function nameGenerator(overrides: Record<string, unknown> = {}): Stage {
   return {
     id: 'stage-1',
@@ -153,7 +159,7 @@ describe('worstCaseEntityCounts', () => {
       config,
     );
     expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(
-      config.familyPedigreeNodeCount.max - 1,
+      config.familyPedigreeNodeCount.max * PEDIGREE_EDGES_PER_PERSON,
     );
   });
 
@@ -166,7 +172,7 @@ describe('worstCaseEntityCounts', () => {
       config,
     );
     expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(
-      config.familyPedigreeNodeCount.max - 1,
+      config.familyPedigreeNodeCount.max * PEDIGREE_EDGES_PER_PERSON,
     );
     expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
   });
@@ -231,7 +237,7 @@ describe('worstCaseEntityCounts', () => {
       config,
     );
     expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(
-      config.familyPedigreeNodeCount.max - 1,
+      config.familyPedigreeNodeCount.max * PEDIGREE_EDGES_PER_PERSON,
     );
     expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
   });
@@ -262,7 +268,7 @@ describe('worstCaseEntityCounts', () => {
 
     const counts = worstCaseEntityCounts([familyPedigree(), filtered], config);
     expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(
-      config.familyPedigreeNodeCount.max - 1,
+      config.familyPedigreeNodeCount.max * PEDIGREE_EDGES_PER_PERSON,
     );
     expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
   });
@@ -275,7 +281,7 @@ describe('worstCaseEntityCounts', () => {
       config,
     );
     expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(
-      config.familyPedigreeNodeCount.max - 1,
+      config.familyPedigreeNodeCount.max * PEDIGREE_EDGES_PER_PERSON,
     );
   });
 
@@ -2185,7 +2191,7 @@ describe('generateNetwork with a census configured to create no edges', () => {
       never,
     );
     expect(edgeCountFor(counts.edge, 'kin', ['closeness'])).toBe(
-      never.familyPedigreeNodeCount.max - 1,
+      never.familyPedigreeNodeCount.max * PEDIGREE_EDGES_PER_PERSON,
     );
   });
 });

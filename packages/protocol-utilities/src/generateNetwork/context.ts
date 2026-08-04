@@ -19,6 +19,15 @@ export type StageOfType<T extends Stage['type']> = Extract<Stage, { type: T }>;
  */
 export type GenerationContext = {
   codebook: StructuralCodebook;
+  /**
+   * The reachable stage list, in run order. Read where a handler's output
+   * depends on another stage's configuration — a pedigree takes its inheritance
+   * patterns from the NarrativePedigree that renders it.
+   *
+   * Optional because most helpers are unit-tested against a bare context and
+   * genuinely have no stage list; only handlers that read across stages need it.
+   */
+  stages?: Stage[];
   valueGen: ValueGenerator;
   config: ResolvedGenerationConfig;
   /** Roster rows already drawn into the network, shared across stages. */

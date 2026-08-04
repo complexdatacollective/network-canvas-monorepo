@@ -15,6 +15,8 @@ describe('resolveGenerationConfig', () => {
       dropOutFactor: 0.15,
       sociogramEdgeProbability: { min: 0.3, max: 0.5 },
       sociogramLayoutRange: { min: 0.1, max: 0.9 },
+      sociogramHighlightProbability: 0.35,
+      pedigreeMode: 'showcase',
       censusEdgeProbability: { min: 0.4, max: 0.6 },
       networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
       familyPedigreeNodeCount: { min: 4, max: 10 },

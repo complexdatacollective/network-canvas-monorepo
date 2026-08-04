@@ -30,6 +30,21 @@ export type GenerationConfig = {
   sociogramEdgeProbability: Range;
   /** {x, y} position range for Sociogram layout variables (unit-square inset). */
   sociogramLayoutRange: Range;
+  /**
+   * Chance a node is highlighted on a Sociogram prompt collecting one. Below a
+   * half because a highlight prompt names a subset — "who supports you" —
+   * rather than splitting the network evenly.
+   */
+  sociogramHighlightProbability: number;
+  /**
+   * Which pedigree parameter set to sample from. `showcase` guarantees the
+   * unusual arrangements — adoption, donated gametes, a gestational carrier —
+   * appear, which is what a preview or an interface test needs; at true
+   * population rates a single pedigree contains one under 5% of the time, so a
+   * faithfully-calibrated default would leave that code untested.
+   * `populationRates` is the right choice for a corpus somebody will count.
+   */
+  pedigreeMode: 'showcase' | 'populationRates';
   /** Per-pair edge probability for DyadCensus and TieStrengthCensus prompts. */
   censusEdgeProbability: Range;
   /** Per-pair edge probability for NetworkComposer edge types. */
@@ -64,9 +79,16 @@ const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> = {
   dropOutFactor: 0.15,
   sociogramEdgeProbability: { min: 0.3, max: 0.5 },
   sociogramLayoutRange: { min: 0.1, max: 0.9 },
+  sociogramHighlightProbability: 0.35,
+  pedigreeMode: 'showcase',
   censusEdgeProbability: { min: 0.4, max: 0.6 },
   networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
-  familyPedigreeNodeCount: { min: 4, max: 10 },
+  // A pedigree's size is drawn from fertility distributions rather than from
+  // this range: four generations around ego average about 29 people. `max` is
+  // the cap the generator trims its cousin tail to, and the worst case
+  // feasibility counts against — the two must agree or a `unique` variable
+  // passes the check and then runs out mid-run.
+  familyPedigreeNodeCount: { min: 12, max: 40 },
   inProgressClearRatio: 0.5,
 };
 

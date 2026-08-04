@@ -30,6 +30,7 @@ import {
   pedigreeNodeCeiling,
   unwrittenEdgeVariables,
   worstCaseEntityCounts,
+  unwrittenNodeVariables,
 } from './entityCounts';
 import type { ConstraintConflict } from './error';
 import { comparatorFoldEmptied } from './generateEntityAttributes';
@@ -1482,11 +1483,22 @@ export function analyseFeasibility(
         ? { entityTypeName: definition.name }
         : {}),
       variables: definition.variables,
-      unvalidated: binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES,
-      // Every stage creating a node generates its whole attribute set, so a
-      // fabricated node spends a value for each of the type's variables. Roster
-      // rows are the one place that differs, and only where the group's value
-      // is one they repeat between them — see `nodeCountFor`.
+      // Two reasons a node variable's rules do not apply: nothing validating
+      // writes it (a bin's prompt value), or nothing writes it at all. The
+      // second is new, and is what stops a run being refused over a `unique`
+      // variable no stage collects — the node twin of `unwrittenEdgeVariables`.
+      unvalidated: new Set([
+        ...(binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES),
+        ...unwrittenNodeVariables(
+          counts.node,
+          type,
+          equalityGroupsOf(definition.variables, config.today),
+        ),
+      ]),
+      // A node spends a value for each variable its creating stage collects,
+      // plus any a later stage writes onto it. Roster rows differ again, and
+      // only where the group's value is one they repeat between them — see
+      // `nodeCountFor`.
       worstCaseCountFor: (variableIds) =>
         nodeCountFor(counts.node, type, variableIds),
       fixedValues: promptFixed.get(type) ?? NO_FIXED_VALUES,

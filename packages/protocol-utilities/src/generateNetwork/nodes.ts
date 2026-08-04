@@ -31,6 +31,10 @@ import {
 import { valueKey } from './constraints/uniqueRegistry';
 import { distinctOptionValues } from './constraints/valueSpace';
 import type { GenerationContext, StageOfType } from './context';
+import {
+  declaresNodeCollection,
+  nodeVariablesWrittenOnCreation,
+} from './constraints/stageWrites';
 import { getSubjectType } from './subject';
 
 /**
@@ -1023,6 +1027,15 @@ export function createNodesForStage(
 
   const scope = { entity: 'node', type: nodeType } as const;
   const variableIds = Object.keys(nodeTypeDef.variables ?? {});
+  // A Network Canvas interview is linear: this stage fills what it collects,
+  // and later stages fill theirs onto the nodes they reach. Filling every
+  // variable the type declares would put a pedigree's proband flag on a name
+  // generator's colleagues — a network no walk of the protocol could produce.
+  // A stage that says what it collects fills exactly that; one that says
+  // nothing — a roster, whose rows decide — keeps the old whole-type fill.
+  const stageWrites = declaresNodeCollection(stage)
+    ? nodeVariablesWrittenOnCreation(stage)
+    : new Set(variableIds);
   const constraints: EntityConstraints =
     ctx.entityConstraints.node.get(nodeType) ?? new Map();
 
@@ -1150,17 +1163,12 @@ export function createNodesForStage(
     // after would leave a `sameAs`, `differentFrom` or comparator spanning a
     // fixed and a drawn variable broken on the finished node.
     const hasFixed = Object.keys(fixed).length > 0;
-    const generated = generateAttributesForEntity(
-      ctx,
-      scope,
-      nodeIndex,
-      hasFixed
-        ? {
-            existing: fixed,
-            only: new Set(variableIds.filter((id) => !(id in fixed))),
-          }
-        : undefined,
-    );
+    const generated = generateAttributesForEntity(ctx, scope, nodeIndex, {
+      existing: fixed,
+      only: new Set(
+        variableIds.filter((id) => stageWrites.has(id) && !(id in fixed)),
+      ),
+    });
 
     const attrs = { ...generated, ...fixed };
     if (hasFixed) claimFixedValues(ctx, scope, fixed);

@@ -19,6 +19,12 @@ import {
 } from '../nodes';
 import { getSubjectType } from '../subject';
 import { completionCheckFor } from './generateEntityAttributes';
+import {
+  declaresNodeCollection,
+  lastExistingWriterByType,
+  nodeVariablesWrittenOnCreation,
+  pedigreeNodeVariables,
+} from './stageWrites';
 import type { EntityConstraints } from './types';
 import { valueKey } from './uniqueRegistry';
 
@@ -204,13 +210,41 @@ export function unwrittenEdgeVariables(
  * ceiling is shared: rows are drawn without replacement across every prompt and
  * stage, so two stages reading one roster cannot each have all of it.
  */
+/**
+ * One stage's fabrication of nodes: how many it can build, where it runs, and
+ * which variables it fills on them.
+ *
+ * The write set is what stops the count assuming every variable of a type is
+ * drawn on every node of it. A stage collecting one variable spends one value
+ * per node, not one per variable per node, and a variable nothing writes spends
+ * nothing at all.
+ */
+type NodeCreation = {
+  count: number;
+  stageIndex: number;
+  /**
+   * The variables this stage fills, or `'all'` where it declares no collection
+   * surface to read — a roster stage, whose rows decide, or a hand-built
+   * fixture. `'all'` is the conservative reading: it can over-count, never
+   * under-count, and an under-count is what lets a draw run out mid-run.
+   */
+  writes: ReadonlySet<string> | 'all';
+};
+
 type NodeTally = {
   /** From stages nothing external bounds, at their configured maxima. */
-  fabricated: number;
+  fabricated: NodeCreation[];
   /** From roster-bounded stages, before the shared rows are accounted for. */
   rosterDrawn: number;
   /** Rows those stages offer between them, keyed by primary key. */
   rosterRows: RosterRows;
+  /**
+   * The last stage index writing each variable onto nodes it did not create.
+   * The node twin of {@link EdgeCounts.named}, read the same way: a stage
+   * writing this variable runs no later than the recorded index, so every node
+   * created at or before it can end up holding a value.
+   */
+  written: Map<string, number>;
 };
 
 /**
@@ -370,7 +404,8 @@ function tallyFor(tallies: NodeCounts, nodeType: string): NodeTally {
   if (existing) return existing;
 
   const tally: NodeTally = {
-    fabricated: 0,
+    fabricated: [],
+    written: new Map(),
     rosterDrawn: 0,
     rosterRows: new Map(),
   };
@@ -525,9 +560,11 @@ function rosterCarrierCount(
 
 /** Every node of a type, whatever variable is being asked about. */
 function nodeTotal(tally: NodeTally): number {
-  return (
-    tally.fabricated + Math.min(tally.rosterDrawn, totalRows(tally.rosterRows))
+  const fabricated = tally.fabricated.reduce(
+    (sum, creation) => sum + creation.count,
+    0,
   );
+  return fabricated + Math.min(tally.rosterDrawn, totalRows(tally.rosterRows));
 }
 
 /**
@@ -552,13 +589,58 @@ export function nodeCountFor(
 ): number {
   const tally = counts.get(type);
   if (tally === undefined) return 0;
+
+  // The latest stage that writes any member of the group onto nodes it did not
+  // create. Nodes made at or before it can end up holding a value; nodes made
+  // after it cannot, because the writer has already run.
+  let writtenAt = -1;
+  for (const id of variableIds) {
+    const at = tally.written.get(id);
+    if (at !== undefined) writtenAt = Math.max(writtenAt, at);
+  }
+
+  let fabricated = 0;
+  for (const creation of tally.fabricated) {
+    const { writes } = creation;
+    const filledAtCreation =
+      writes === 'all' || variableIds.some((id) => writes.has(id));
+    if (filledAtCreation || creation.stageIndex <= writtenAt) {
+      fabricated += creation.count;
+    }
+  }
+
   return (
-    tally.fabricated +
+    fabricated +
     Math.min(
       tally.rosterDrawn,
       rosterCarrierCount(tally.rosterRows, variableIds),
     )
   );
+}
+
+/**
+ * The node variables of `type` that nothing in the run writes, per equality
+ * group. The node twin of {@link unwrittenEdgeVariables}.
+ *
+ * Per group and never per variable: a `unique` rule belongs to the whole
+ * equality group, so exempting one member while a form fills a sibling held
+ * equal to it would drop exactly the constraint that matters.
+ */
+export function unwrittenNodeVariables(
+  counts: NodeCounts,
+  type: string,
+  groups: readonly (readonly string[])[],
+): ReadonlySet<string> {
+  const unwritten = new Set<string>();
+  const tally = counts.get(type);
+  if (tally === undefined) return unwritten;
+
+  for (const members of groups) {
+    if (nodeCountFor(counts, type, members) > 0) continue;
+    for (const id of members) unwritten.add(id);
+  }
+
+  return unwritten;
 }
 
 /**
@@ -569,6 +651,13 @@ export function nodeCountFor(
  * and an under-count lets a `unique` variable pass feasibility and then run out
  * of values partway through the run.
  */
+/**
+ * The most edges a pedigree builds per person: at most three parent links (a
+ * donated gamete adds a third alongside the carrier) plus one partnership.
+ * Replaces the old `n - 1`, which described a single-parent tree.
+ */
+const PEDIGREE_EDGES_PER_PERSON = 4;
+
 export function pedigreeNodeCeiling(config: GenerationConfig): number {
   const { min, max } = config.familyPedigreeNodeCount;
   return Math.max(max, min);
@@ -614,6 +703,29 @@ const PEDIGREE_EDGE_RELATIONSHIP_TYPE: RelationshipType = 'biological';
  * that. A real pedigree with no such feature carries no such write either, so
  * writing neither is faithful, while writing either would invent a fact.
  */
+/**
+ * The edge variables a FamilyPedigree stage writes on every edge it builds.
+ *
+ * All four its `edgeConfig` names. The relationship type and active flag were
+ * always written; the gamete role and gestational-carrier flag are new, because
+ * the generator now models who supplied which gamete and who carried the
+ * pregnancy rather than leaving both undefined.
+ */
+export function pedigreeEdgeVariables(
+  edgeConfig: StageOfType<'FamilyPedigree'>['edgeConfig'],
+): Set<string> {
+  const written = new Set<string>();
+  for (const id of [
+    edgeConfig?.relationshipTypeVariable,
+    edgeConfig?.isActiveVariable,
+    edgeConfig?.gameteRoleVariable,
+    edgeConfig?.isGestationalCarrierVariable,
+  ]) {
+    if (id) written.add(id);
+  }
+  return written;
+}
+
 export function pedigreeEdgeValues(
   edgeConfig: StageOfType<'FamilyPedigree'>['edgeConfig'],
 ): Record<string, VariableValue> {
@@ -663,7 +775,7 @@ function isUnwrittenPedigreeEdgeReference(
   const stage = stages[stageIndex];
   if (stage?.type !== 'FamilyPedigree') return false;
 
-  return !(variableId in pedigreeEdgeValues(stage.edgeConfig));
+  return !pedigreeEdgeVariables(stage.edgeConfig).has(variableId);
 }
 
 /**
@@ -944,7 +1056,13 @@ export function worstCaseEntityCounts(
           : undefined;
 
       if (pool === undefined) {
-        tally.fabricated += maxNodes;
+        tally.fabricated.push({
+          count: maxNodes,
+          stageIndex,
+          writes: declaresNodeCollection(stage)
+            ? nodeVariablesWrittenOnCreation(stage)
+            : 'all',
+        });
       } else {
         tally.rosterDrawn += Math.min(maxNodes, pool.length);
         addRosterRows(tally.rosterRows, pool);
@@ -1022,7 +1140,18 @@ export function worstCaseEntityCounts(
       const nodeType = stage.nodeConfig?.type;
       if (nodeType === undefined) continue;
 
-      tallyFor(node, nodeType).fabricated += pedigreeNodeCeiling(config);
+      tallyFor(node, nodeType).fabricated.push({
+        count: pedigreeNodeCeiling(config),
+        stageIndex,
+        // A pedigree names four required node variables plus its nomination
+        // prompts. One naming none is out of contract — the schema requires
+        // all four — so it falls back to the whole type like any other stage
+        // that declares no collection surface.
+        writes:
+          pedigreeNodeVariables(stage).size > 0
+            ? pedigreeNodeVariables(stage)
+            : 'all',
+      });
 
       const edgeType = stage.edgeConfig?.type;
       // Tallied apart from the rest because these edges start holding only what
@@ -1030,14 +1159,19 @@ export function worstCaseEntityCounts(
       // being undefined — see {@link edgeCountFor}, which decides that per
       // variable.
       if (edgeType !== undefined) {
-        // `handleFamilyPedigree` creates exactly `n - 1` edges (one per node
-        // index 1..n-1), never pairwise, so the pair count over-counts by
-        // roughly 5x at the default config maximum. Bound it by the true
-        // maximum instead.
+        // Still `'partial'`: a pedigree fills the four variables its
+        // `edgeConfig` names and nothing else, so an edge type carrying any
+        // other variable is left part-filled exactly as before. What changed is
+        // which four — the generator now writes the gamete role and the carrier
+        // flag, which the old one deliberately left undefined.
+        //
+        // The count is no longer `n - 1`. That described a single-parent tree;
+        // a real pedigree carries roughly two parent links per person plus a
+        // partnership per union.
         ownNodeEdges.push({
           edgeType,
           nodeType,
-          count: Math.max(pedigreeNodeCeiling(config) - 1, 0),
+          count: pedigreeNodeCeiling(config) * PEDIGREE_EDGES_PER_PERSON,
           stageIndex,
           born: 'partial',
         });
@@ -1091,6 +1225,14 @@ export function worstCaseEntityCounts(
     const forType = pedigree.get(edgeType) ?? [];
     forType.push({ count, stageIndex });
     pedigree.set(edgeType, forType);
+  }
+
+  // Which variables later stages write onto nodes they did not create — a bin's
+  // prompt variable, a Sociogram's layout and highlight, an alter form's
+  // fields. Recorded per node type, and read by `nodeCountFor` the way
+  // `edgeCountFor` reads `named`.
+  for (const [nodeType, writers] of lastExistingWriterByType(stages)) {
+    tallyFor(node, nodeType).written = writers;
   }
 
   return { node, edge: { base, pedigree, named: namedEdgeAttributes(stages) } };

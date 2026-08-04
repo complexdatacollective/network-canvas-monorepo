@@ -26,6 +26,8 @@ import type { GenerationContext, NetworkDraft, StageOfType } from './context';
 import { createEdgesForPairs } from './edges';
 import { getStageFilteredEdges, getStageFilteredNodes } from './filtering';
 import { createNodesForStage, type RosterDraw } from './nodes';
+import { generatePedigree, type PedigreeNomination } from './pedigree/generatePedigree';
+import type { InheritancePattern } from './pedigree/inheritance';
 import { getSubjectType } from './subject';
 
 export function handleNameGenerators(
@@ -101,6 +103,19 @@ export function handleSociogram(
             ctx.config.sociogramLayoutRange.max,
           ),
         };
+      }
+    }
+
+    // Tapping a node toggles the prompt's highlight variable, so this stage is
+    // its writer. Nothing else in a protocol need name it, and node creation no
+    // longer fills what the creating stage did not collect, so without this
+    // pass a highlight variable would stay unset for the whole run.
+    const highlightVariable = prompt.highlight?.variable;
+    if (highlightVariable) {
+      for (const node of subjectNodes) {
+        node[entityAttributesProperty][highlightVariable] =
+          ctx.valueGen.randomFloat(0, 1) <
+          ctx.config.sociogramHighlightProbability;
       }
     }
   }
@@ -649,108 +664,88 @@ export function handleFamilyPedigree(
   stage: StageOfType<'FamilyPedigree'>,
   stageIndex: number,
 ): void {
-  const nodeCount = ctx.valueGen.randomInt(
-    ctx.config.familyPedigreeNodeCount.min,
-    ctx.config.familyPedigreeNodeCount.max,
-  );
-
   const nodeType = stage.nodeConfig?.type;
   const edgeType = stage.edgeConfig?.type;
-  const egoVariable = stage.nodeConfig?.egoVariable;
+  if (!nodeType || !edgeType) return;
 
-  if (!nodeType) return;
-
-  // Attribute generation randomises egoVariable per node like any other boolean
-  // codebook variable, but the runtime marks exactly one pedigree node as ego
-  // (FamilyPedigree's egoCellTransform sets true on the proband and explicit
-  // false on every other alter/partner/child). That flag is therefore a value
-  // fixed for the node rather than drawn for it.
-  //
-  // Where the flag's value is read by anything outside the node, it is settled
-  // before anything is drawn and the rest of the node generated around it — the
-  // mechanism a roster row and a prompt's `additionalAttributes` use — and then
-  // claimed. Two things read it. A rule resolving against it: a `sameAs`
-  // counterpart would otherwise keep whatever the shared draw landed on and the
-  // finished node would break the rule generation had just satisfied. And the
-  // `unique` registry: drawing a value that is thrown away leaves the registry
-  // holding one no node carries while the value the node does carry is
-  // unrecorded, so a later entity can be issued the proband's own flag.
-  //
-  // Where neither reads it, the flag is written after generation instead:
-  // nothing resolves against it and no slot issues it, so drawing every
-  // variable as before costs the pin no RNG draws and leaves the stage's random
-  // stream where it was.
+  // A pedigree is generated whole, by its own module, rather than assembled
+  // from the generic attribute draw. Its variables are not attributes that
+  // happen to sit on a person: sex, gamete role, relationship type and the edge
+  // topology constrain one another, so filling them independently cannot
+  // produce a pedigree. See `pedigree/generatePedigree.ts`.
   const scope: EntityScopeRef = { entity: 'node', type: nodeType };
-  const nodeVariables: EntityConstraints =
-    ctx.entityConstraints.node.get(nodeType) ?? new Map();
-  const drawnVariables =
-    egoVariable &&
-    (ruleResolvesAgainst(nodeVariables, egoVariable) ||
-      isUniqueSlotVariable(nodeVariables, egoVariable))
-      ? new Set([...nodeVariables.keys()].filter((id) => id !== egoVariable))
-      : undefined;
+  const nominations = pedigreeNominations(ctx, stage);
 
-  const familyNodes: NcNode[] = [];
-  for (let nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
-    const fixed = egoVariable ? { [egoVariable]: nodeIndex === 0 } : undefined;
+  const generated = generatePedigree({
+    rng: ctx.valueGen,
+    mode: ctx.config.pedigreeMode,
+    config: {
+      nodeType,
+      edgeType,
+      nodeLabelVariable: stage.nodeConfig?.nodeLabelVariable,
+      egoVariable: stage.nodeConfig?.egoVariable,
+      relationshipVariable: stage.nodeConfig?.relationshipVariable,
+      biologicalSexVariable: stage.nodeConfig?.biologicalSexVariable,
+      relationshipTypeVariable: stage.edgeConfig?.relationshipTypeVariable,
+      isActiveVariable: stage.edgeConfig?.isActiveVariable,
+      isGestationalCarrierVariable:
+        stage.edgeConfig?.isGestationalCarrierVariable,
+      gameteRoleVariable: stage.edgeConfig?.gameteRoleVariable,
+    },
+    nominations,
+    maxPeople: Math.max(
+      ctx.config.familyPedigreeNodeCount.max,
+      ctx.config.familyPedigreeNodeCount.min,
+    ),
+    nextId: () => uuid(),
+    nextName: () => ctx.valueGen.generateName(),
+    stageId: stage.id,
+  });
 
-    const attrs = generateAttributesForEntity(
-      ctx,
-      scope,
-      draft.nodes.length + nodeIndex,
-      fixed && drawnVariables
-        ? { existing: fixed, only: drawnVariables }
-        : undefined,
-    );
-    if (fixed) Object.assign(attrs, fixed);
-    if (fixed && drawnVariables) claimFixedValues(ctx, scope, fixed);
-
-    familyNodes.push({
-      [entityPrimaryKeyProperty]: uuid(),
-      type: nodeType,
-      [entityAttributesProperty]: attrs,
-      stageId: stage.id,
-    });
+  // Every value the pedigree writes is written rather than drawn, so each has
+  // to be claimed: a value the registry does not know about can be issued to a
+  // later entity, and the proband flag in particular must never be.
+  for (const node of generated.nodes) {
+    claimFixedValues(ctx, scope, node[entityAttributesProperty]);
   }
 
-  draft.nodes.push(...familyNodes);
+  draft.nodes.push(...generated.nodes);
+  draft.edges.push(...generated.edges);
 
-  if (edgeType && familyNodes.length > 1) {
-    // The relationship every parent-child edge records, written rather than
-    // drawn — see `pedigreeEdgeValues`, which the feasibility pass counts from
-    // as well. Written AFTER the parent index is drawn and never through the
-    // draw, so the values cost the stage no random numbers and leave every
-    // other value in the run exactly where it was.
-    //
-    // Nothing claims them into the `unique` registry the way a pedigree node's
-    // ego flag is claimed. A claim is what stops a value already in the network
-    // being issued a second time, and `reserveFamilyPedigreeFixedValues`
-    // already holds these back for the whole run — before the first stage and
-    // after the last, since nothing ever gives the hold back. The one thing a
-    // reservation does not survive is a slot with nothing else left, which is a
-    // protocol asking for more distinct values than it has, and feasibility's
-    // to refuse rather than the registry's to work around.
-    const edgeValues = pedigreeEdgeValues(stage.edgeConfig);
+  // The committed membership list, as the interface writes it. Without it
+  // `pedigreeMemberIds` returns null and NarrativePedigree falls back to every
+  // node of the pedigree's type — sweeping alters named by later stages onto
+  // the family tree.
+  draft.stageMetadata[stageIndex] = generated.metadata;
+}
 
-    for (let childIndex = 1; childIndex < familyNodes.length; childIndex++) {
-      const parentIdx = ctx.valueGen.randomInt(
-        0,
-        Math.min(childIndex - 1, familyNodes.length - 1),
-      );
-      const edge: NcEdge = {
-        [entityPrimaryKeyProperty]: uuid(),
-        type: edgeType,
-        from: familyNodes[parentIdx]![entityPrimaryKeyProperty],
-        to: familyNodes[childIndex]![entityPrimaryKeyProperty],
-        // Its own copy, because a later AlterEdgeForm fills each edge's
-        // attributes in place and would otherwise write through every one.
-        [entityAttributesProperty]: { ...edgeValues },
-      };
-      draft.edges.push(edge);
+/**
+ * The nomination prompts a pedigree writes, each paired with the inheritance
+ * pattern it should follow.
+ *
+ * The pattern is read from the `NarrativePedigree` stage that renders this
+ * pedigree, where one exists, so the generated data matches what will actually
+ * be drawn: a dominant pathway rendered under a recessive model looks broken,
+ * and the fault would appear to lie with the interface.
+ */
+function pedigreeNominations(
+  ctx: GenerationContext,
+  stage: StageOfType<'FamilyPedigree'>,
+): PedigreeNomination[] {
+  const patternByVariable = new Map<string, InheritancePattern>();
+  for (const candidate of ctx.stages ?? []) {
+    if (candidate.type !== 'NarrativePedigree') continue;
+    if (candidate.sourceStageId !== stage.id) continue;
+    for (const disease of candidate.diseases) {
+      patternByVariable.set(disease.variable, disease.inheritancePattern);
     }
   }
 
-  draft.stageMetadata[stageIndex] = { isNetworkCommitted: true };
+  return (stage.nominationPrompts ?? []).map((prompt) => ({
+    variable: prompt.variable,
+    inheritancePattern:
+      patternByVariable.get(prompt.variable) ?? 'autosomalDominant',
+  }));
 }
 
 export function handleGeospatial(

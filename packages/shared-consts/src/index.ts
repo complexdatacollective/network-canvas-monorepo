@@ -2,6 +2,7 @@ export * from './date-fields.ts';
 export * from './export-process.ts';
 export * from './family-pedigree.ts';
 export * from './family-pedigree-framing.ts';
+export * from './pedigree-structure.ts';
 export * from './narrative-pedigree.ts';
 export * from './network.ts';
 export * from './session.ts';

@@ -185,6 +185,7 @@ export function generateNetwork(
   // always a node, and its edge forms name edge types.
   const ctx: GenerationContext = {
     codebook: renderedCodebook,
+    stages,
     valueGen,
     config: resolvedConfig,
     usedRosterUids: new Set<string>(),
