@@ -16,6 +16,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../generateNetwork';
+import { US_FAMILY_PEDIGREE_POPULATION } from '../familyPedigree/referencePopulation';
 import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from '../familyPedigree/types';
 
 const familyStage = {
@@ -47,21 +48,21 @@ const familyStage = {
   ],
 } as unknown as Stage;
 
+const narrativeDisease = {
+  id: 'condition',
+  label: 'Condition',
+  color: '#cc0000',
+  variable: 'condition',
+  inheritancePattern: 'autosomalDominant',
+} as const;
+
 const narrativeStage = {
   id: 'narrative-stage',
   type: 'NarrativePedigree',
   label: 'Disease',
   sourceStageId: familyStage.id,
   showAtRiskStatuses: true,
-  diseases: [
-    {
-      id: 'condition',
-      label: 'Condition',
-      color: '#cc0000',
-      variable: 'condition',
-      inheritancePattern: 'autosomalDominant',
-    },
-  ],
+  diseases: [narrativeDisease],
 } as unknown as Stage;
 
 const codebook = {
@@ -414,6 +415,91 @@ describe('FamilyPedigree materialization', () => {
     ).toBe(true);
   });
 
+  it('uses the reused ego biological sex for later pedigree parentage', () => {
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+    } as unknown as Stage;
+    const population = {
+      ...US_FAMILY_PEDIGREE_POPULATION,
+      completedFamilySize: [{ value: 2, weight: 1 }],
+      childlessPartnerProbability: 0,
+      scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+    };
+    // The two stage-local streams draw opposite ego sexes for this seed unless
+    // the second plan is explicitly anchored to the already-committed ego.
+    const { network } = generateNetwork({
+      seed: 2,
+      codebook,
+      stages: [familyStage, laterFamilyStage],
+      familyPedigree: {
+        population,
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 20,
+      },
+    });
+    const ego = network.nodes.find(
+      (node) => node[entityAttributesProperty].isEgo === true,
+    );
+    const laterChild = network.nodes.find(
+      (node) =>
+        node.stageId === laterFamilyStage.id &&
+        node[entityAttributesProperty].relationship === 'Child',
+    );
+    if (!ego || !laterChild) throw new Error('missing later child branch');
+
+    const egoParentage = network.edges.find(
+      (edge) =>
+        edge.from === ego[entityPrimaryKeyProperty] &&
+        edge.to === laterChild[entityPrimaryKeyProperty],
+    );
+    const biologicalSex = ego[entityAttributesProperty].biologicalSex;
+    const expectedRole =
+      Array.isArray(biologicalSex) && biologicalSex[0] === 'female'
+        ? 'egg'
+        : 'sperm';
+
+    expect(egoParentage?.[entityAttributesProperty].gameteRole).toEqual([
+      expectedRole,
+    ]);
+  });
+
+  it('preserves disease assignments owned by an earlier pedigree', () => {
+    const recessiveNarrative = {
+      ...narrativeStage,
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'autosomalRecessive',
+        },
+      ],
+    } as unknown as Stage;
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+    } as unknown as Stage;
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [familyStage, recessiveNarrative, laterFamilyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'visualization',
+        maxNodes: 7,
+      },
+    });
+    const affectedEarlierMembers = network.nodes.filter(
+      (node) =>
+        node.stageId === familyStage.id &&
+        node[entityAttributesProperty].condition === true,
+    );
+
+    expect(affectedEarlierMembers).toHaveLength(2);
+  });
+
   it('uses the attainable forced-scenario ceiling during feasibility', () => {
     const exactCodebook = structuredClone(codebook);
     const variables = exactCodebook.node?.['family-member']?.variables;
@@ -440,6 +526,62 @@ describe('FamilyPedigree materialization', () => {
 
     expect(values).toHaveLength(7);
     expect(new Set(values).size).toBe(7);
+  });
+
+  it('ignores unreachable Narrative diseases during materialization', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 7 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
+      validation: { unique: true },
+    };
+    const unreachableNarrative = {
+      ...narrativeStage,
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'xLinkedRecessive',
+        },
+      ],
+      skipLogic: {
+        action: 'SKIP',
+        filter: {
+          rules: [
+            {
+              id: 'missing-consent',
+              type: 'ego',
+              options: {
+                attribute: asEntityAttributeReference('consent'),
+                operator: 'NOT_EXISTS',
+              },
+            },
+          ],
+        },
+      },
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages: [familyStage, unreachableNarrative],
+      respectSkipLogicAndFiltering: true,
+      familyPedigree: {
+        population: {
+          ...US_FAMILY_PEDIGREE_POPULATION,
+          femaleAtBirthProbability: 1,
+        },
+        scenario: 'none',
+        maxNodes: 7,
+      },
+    });
+
+    expect(network.nodes).toHaveLength(7);
   });
 
   it.each([

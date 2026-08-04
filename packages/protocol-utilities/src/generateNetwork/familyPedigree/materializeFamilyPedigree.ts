@@ -2,8 +2,10 @@ import { v4 as uuid } from 'uuid';
 
 import type { Stage } from '@codaco/protocol-validation';
 import {
+  BIOLOGICAL_SEX_VALUES,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  type BiologicalSex,
   type NcEdge,
   type NcNode,
   type VariableValue,
@@ -169,12 +171,20 @@ function constraintConnectedVariables(
   return connected;
 }
 
+function biologicalSexFromValue(
+  value: VariableValue | undefined,
+): BiologicalSex | undefined {
+  if (!Array.isArray(value) || value.length !== 1) return undefined;
+  return BIOLOGICAL_SEX_VALUES.find((candidate) => candidate === value[0]);
+}
+
 export function materializeFamilyPedigree(
   ctx: GenerationContext,
   draft: NetworkDraft,
   stage: StageOfType<'FamilyPedigree'>,
   stageIndex: number,
   stages: readonly Stage[],
+  diseaseStages: readonly Stage[],
   familySeed: number,
   options: ResolvedFamilyPedigreeGenerationOptions,
 ): void {
@@ -183,7 +193,7 @@ export function materializeFamilyPedigree(
   const nodeType = nodeConfig?.type;
   const edgeType = edgeConfig?.type;
   if (!nodeType) return;
-  const diseases = diseasesForStage(stage, stages);
+  const diseases = diseasesForStage(stage, diseaseStages);
 
   const familyCtx: GenerationContext = {
     ...ctx,
@@ -192,17 +202,9 @@ export function materializeFamilyPedigree(
     // any other stage, and adding an earlier ordinary stage cannot reshape it.
     valueGen: new ValueGenerator(familySeed, ctx.config.today),
   };
-  const plan = generateFamilyPedigreePlan(
-    familyCtx.valueGen,
-    options,
-    diseases,
-    stage.boundaries?.requireChildrenContributors === 'required',
-  );
-
   const nodeScope: EntityScopeRef = { entity: 'node', type: nodeType };
   const nodeVariables =
     familyCtx.entityConstraints.node.get(nodeType) ?? new Map();
-  const nodeIds = new Map<string, string>();
   // The live interface seeds every existing node of its configured type into
   // the pedigree, then serializes that complete membership when committing.
   // Preserve the same membership boundary in synthetic interviews so a
@@ -233,7 +235,22 @@ export function materializeFamilyPedigree(
           node[entityAttributesProperty][egoVariable] === true,
       )
     : undefined;
-  const planEgo = plan.people.find((person) => person.key === plan.egoKey);
+  const inheritedEgoSex =
+    inheritedEgo !== undefined && nodeConfig.biologicalSexVariable !== undefined
+      ? biologicalSexFromValue(
+          inheritedEgo[entityAttributesProperty][
+            nodeConfig.biologicalSexVariable
+          ],
+        )
+      : undefined;
+  const plan = generateFamilyPedigreePlan(
+    familyCtx.valueGen,
+    options,
+    diseases,
+    stage.boundaries?.requireChildrenContributors === 'required',
+    inheritedEgoSex,
+  );
+  const nodeIds = new Map<string, string>();
   const pedigreeVariables = new Set([
     nodeConfig.egoVariable,
     nodeConfig.relationshipVariable,
@@ -300,21 +317,23 @@ export function materializeFamilyPedigree(
   }
   draft.nodes.push(...familyNodes);
 
-  // The live interface keeps earlier same-typed nodes in the pedigree. Apply
-  // this stage's ego/disease ownership through the same constraint-aware draw
-  // used for generated people, regenerating only variables connected to those
-  // fixed semantics and preserving every unrelated earlier-stage attribute.
+  // The live interface keeps earlier same-typed nodes in the pedigree. Nodes
+  // owned by an earlier committed pedigree remain authoritative for that
+  // stage's Narrative views, so preserve all their semantic assignments. Apply
+  // this stage's ego/disease ownership only to ordinary inherited nodes, using
+  // the same constraint-aware draw as generated people and preserving every
+  // unrelated earlier-stage attribute.
   for (const [index, node] of preexistingFamilyNodes.entries()) {
+    const ownedByEarlierPedigree =
+      node.stageId !== undefined && earlierPedigreeStageIds.has(node.stageId);
+    if (ownedByEarlierPedigree) continue;
+
     const fixed: Record<string, VariableValue> = {};
-    const isInheritedEgo = node === inheritedEgo;
     if (nodeConfig.egoVariable) {
-      fixed[nodeConfig.egoVariable] = isInheritedEgo;
+      fixed[nodeConfig.egoVariable] = false;
     }
     for (const disease of diseases) {
-      fixed[disease.variable] =
-        isInheritedEgo && planEgo !== undefined
-          ? planEgo.affectedVariables.has(disease.variable)
-          : false;
+      fixed[disease.variable] = false;
     }
     if (Object.keys(fixed).length === 0) continue;
 

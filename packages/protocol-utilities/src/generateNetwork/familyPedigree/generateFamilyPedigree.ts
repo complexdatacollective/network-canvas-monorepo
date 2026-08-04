@@ -273,6 +273,7 @@ export function generateFamilyPedigreePlan(
   options: ResolvedFamilyPedigreeGenerationOptions,
   diseases: readonly PedigreeDisease[],
   requireChildrenContributors: boolean,
+  egoBiologicalSex?: BiologicalSex,
 ): FamilyPedigreePlan {
   const builder = new PlanBuilder(options.maxNodes);
   const { population } = options;
@@ -294,7 +295,7 @@ export function generateFamilyPedigreePlan(
     'male',
     true,
   );
-  const egoSex = drawSex();
+  const egoSex = egoBiologicalSex ?? drawSex();
   builder.addPerson('ego', 0, undefined, egoSex, true);
 
   builder.addParentage(

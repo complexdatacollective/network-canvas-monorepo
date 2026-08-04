@@ -333,6 +333,7 @@ export function generateNetwork(
             stage,
             i,
             stages,
+            feasibilityStages,
             familyPedigreeSeed(runSeed, stage.id),
             resolvedFamilyPedigree,
           );
