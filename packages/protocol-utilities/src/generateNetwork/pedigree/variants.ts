@@ -20,7 +20,11 @@
  */
 
 import { chance, type PedigreeDemography, type Rng } from './demography.ts';
-import type { AbstractPedigree, AbstractPerson, ParentLink } from './kinship.ts';
+import type {
+  AbstractPedigree,
+  AbstractPerson,
+  ParentLink,
+} from './kinship.ts';
 
 type VariantContext = {
   rng: Rng;
@@ -47,8 +51,18 @@ function addDonorPerson(
   return person;
 }
 
-/** The people whose parentage may be varied without disturbing ego's own descent. */
-function variableChildren(pedigree: AbstractPedigree): AbstractPerson[] {
+/**
+ * The people whose parentage may be varied without disturbing ego's own descent
+ * or anything a required completeness boundary reaches.
+ *
+ * `protect` carries the second of those: a co-parent whose two generations
+ * `requireChildrenContributors` inspects cannot be quietly adopted, or the
+ * pedigree stops satisfying the boundary it was built to satisfy.
+ */
+function variableChildren(
+  pedigree: AbstractPedigree,
+  protect: ReadonlySet<string>,
+): AbstractPerson[] {
   const byId = new Map(pedigree.people.map((person) => [person.id, person]));
   const egoAncestors = new Set<string>();
 
@@ -62,7 +76,10 @@ function variableChildren(pedigree: AbstractPedigree): AbstractPerson[] {
   walkUp(pedigree.egoId);
 
   return [...pedigree.parents.keys()]
-    .filter((id) => id !== pedigree.egoId && !egoAncestors.has(id))
+    .filter(
+      (id) =>
+        id !== pedigree.egoId && !egoAncestors.has(id) && !protect.has(id),
+    )
     .map((id) => byId.get(id))
     .filter((person): person is AbstractPerson => person !== undefined);
 }
@@ -73,7 +90,12 @@ function applyDonorEgg(context: VariantContext, child: AbstractPerson): void {
   const eggLink = links.find((link) => link.gameteRole === 'egg');
   if (!eggLink) return;
 
-  const donor = addDonorPerson(context, 'female', child.generation - 1, 'donor');
+  const donor = addDonorPerson(
+    context,
+    'female',
+    child.generation - 1,
+    'donor',
+  );
   const intendedMother = eggLink.parent;
 
   context.pedigree.parents.set(child.id, [
@@ -178,6 +200,7 @@ export function applyParentageVariants(
   rng: Rng,
   demography: PedigreeDemography,
   pedigree: AbstractPedigree,
+  protect: ReadonlySet<string> = new Set(),
 ): AbstractPedigree {
   const context: VariantContext = {
     rng,
@@ -186,7 +209,7 @@ export function applyParentageVariants(
     counter: { value: 0 },
   };
 
-  for (const child of variableChildren(pedigree)) {
+  for (const child of variableChildren(pedigree, protect)) {
     // At most one variant per child: they are alternative accounts of the same
     // conception, not independent events that can stack.
     if (chance(rng, demography.adoptionRate)) {

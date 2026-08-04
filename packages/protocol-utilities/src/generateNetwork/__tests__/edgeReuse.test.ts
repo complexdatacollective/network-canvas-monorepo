@@ -210,22 +210,33 @@ describe('TieStrengthCensus over an edge it did not create', () => {
   } as unknown as Stage;
 
   it('writes its edge variable onto the reused edge instead of drawing another', () => {
-    // A pedigree edge is born with no attributes at all, and the census is
-    // given no chance of drawing one of its own, so every edge here is a
-    // pedigree edge the census answered — the generator's stand-in for
+    // The census is given no chance of drawing an edge of its own, so every
+    // edge here is a pedigree edge it answered — the generator's stand-in for
     // `updateEdge`, which merges the ordinal value into whatever the edge held.
+    const config = {
+      familyPedigreeNodeCount: { min: 4, max: 4 },
+      censusEdgeProbability: { min: 0, max: 0 },
+    };
+
+    const pedigreeOnly = generateNetwork({
+      seed: 3,
+      codebook,
+      stages: [pedigree],
+      config,
+    });
     const { network } = generateNetwork({
       seed: 3,
       codebook,
       stages: [pedigree, tieStrength],
-      config: {
-        familyPedigreeNodeCount: { min: 4, max: 4 },
-        censusEdgeProbability: { min: 0, max: 0 },
-      },
+      config,
     });
 
-    // `handleFamilyPedigree` creates exactly one edge per node after the first.
-    expect(network.edges).toHaveLength(3);
+    // Counted against the pedigree alone rather than a literal: a pedigree's
+    // size follows from the fertility distributions it samples, and it has a
+    // floor of its own — ego, two parents and four grandparents — so a
+    // configured cap below that cannot be honoured.
+    expect(network.edges).toHaveLength(pedigreeOnly.network.edges.length);
+    expect(network.edges.length).toBeGreaterThan(0);
     for (const edge of network.edges) {
       expect(edge[entityAttributesProperty].strength).toBeDefined();
     }
@@ -244,9 +255,13 @@ describe('TieStrengthCensus over an edge it did not create', () => {
       },
     });
 
+    // Every pair among the pedigree's people, each joined exactly once: the
+    // census adds only the pairs the pedigree left unjoined and removes
+    // nothing. The count is derived rather than written down, because a
+    // pedigree's size follows from the distributions it samples.
+    const people = network.nodes.length;
     const keys = pairKeys(network.edges);
-    // C(4, 2) = 6 pairs, three of them already joined by the pedigree.
-    expect(keys).toHaveLength(6);
-    expect(new Set(keys).size).toBe(6);
+    expect(keys).toHaveLength((people * (people - 1)) / 2);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });

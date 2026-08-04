@@ -18,7 +18,11 @@ import {
   type Rng,
 } from './demography.ts';
 import { computeAffected, type InheritancePattern } from './inheritance.ts';
-import { type AbstractPedigree, buildKinshipSkeleton } from './kinship.ts';
+import {
+  type AbstractPedigree,
+  buildKinshipSkeleton,
+  type PedigreeBoundaries,
+} from './kinship.ts';
 import {
   type PedigreeRenderResult,
   type PedigreeVariableConfig,
@@ -51,12 +55,53 @@ export type GeneratePedigreeOptions = {
   stageId: string;
   /** Upper bound on people, so feasibility can count a worst case. */
   maxPeople?: number;
+  /**
+   * The stage's own completeness boundaries. A `required` boundary is what the
+   * interface refuses to finalize without, so it is the only thing that forces
+   * the generator to draw a branch it would otherwise sample.
+   */
+  boundaries?: PedigreeBoundaries;
+  /** The framing the stage fixed, or the participant chose, for the metadata. */
+  selectedFraming?: string;
 };
 
 export type GeneratedPedigree = PedigreeRenderResult & {
   /** The abstract structure, for tests and for callers that want to inspect it. */
   structure: AbstractPedigree;
 };
+
+/**
+ * Everyone a `required` boundary inspects, and so everyone the variant pass
+ * must leave alone. Ego's own ancestors are already excluded by the variant
+ * pass itself; this adds the descent `requireChildrenContributors` reaches —
+ * each child, its other parent, and that parent's two generations.
+ */
+function boundaryProtected(
+  pedigree: AbstractPedigree,
+  boundaries: GeneratePedigreeOptions['boundaries'],
+): Set<string> {
+  const protect = new Set<string>();
+  if (boundaries?.requireChildrenContributors !== 'required') return protect;
+
+  const ascend = (id: string): void => {
+    for (const link of pedigree.parents.get(id) ?? []) {
+      if (protect.has(link.parent)) continue;
+      protect.add(link.parent);
+      ascend(link.parent);
+    }
+  };
+
+  for (const [childId, links] of pedigree.parents) {
+    if (!links.some((link) => link.parent === pedigree.egoId)) continue;
+    protect.add(childId);
+    for (const link of links) {
+      protect.add(link.parent);
+      ascend(link.parent);
+    }
+  }
+
+  return protect;
+}
 
 export function generatePedigree(
   options: GeneratePedigreeOptions,
@@ -65,8 +110,32 @@ export function generatePedigree(
   const demography =
     options.demography ?? demographyFor(options.mode ?? 'showcase');
 
-  const skeleton = buildKinshipSkeleton(rng, demography, options.maxPeople);
-  const structure = applyParentageVariants(rng, demography, skeleton);
+  const skeleton = buildKinshipSkeleton(rng, demography, {
+    maxPeople: options.maxPeople,
+    boundaries: options.boundaries,
+  });
+  const structure = applyParentageVariants(
+    rng,
+    demography,
+    skeleton,
+    boundaryProtected(skeleton, options.boundaries),
+  );
+
+  // Re-settle the children affirmation after the variant pass. The interface
+  // counts only *genetic* children toward `requireChildrenContributors`, and an
+  // adoption strips exactly those links — so a pedigree whose only children are
+  // adopted has to affirm having none, or the interface will not finalize it.
+  if (options.boundaries?.requireChildrenContributors === 'required') {
+    const hasGeneticChild = [...structure.parents.values()].some((links) =>
+      links.some(
+        (link) =>
+          link.parent === structure.egoId &&
+          (link.relationshipType === 'biological' ||
+            link.relationshipType === 'donor'),
+      ),
+    );
+    if (!hasGeneticChild) structure.noChildrenAffirmed = true;
+  }
 
   const nominations = (options.nominations ?? []).map((nomination) => ({
     variable: nomination.variable,
@@ -84,5 +153,15 @@ export function generatePedigree(
     stageId,
   });
 
-  return { ...rendered, structure };
+  return {
+    ...rendered,
+    metadata: {
+      ...rendered.metadata,
+      noChildrenAffirmed: structure.noChildrenAffirmed,
+      ...(options.selectedFraming === undefined
+        ? {}
+        : { selectedFraming: options.selectedFraming }),
+    },
+    structure,
+  };
 }

@@ -28,6 +28,21 @@ function build(seed: number): AbstractPedigree {
   return buildKinshipSkeleton(makeRng(seed), DEFAULT_DEMOGRAPHY);
 }
 
+/**
+ * The same family with every branch recorded.
+ *
+ * The register figures count a person's *actual* living kin; a pedigree records
+ * only what the participant can name, and `grandparentsRecordedRate` is what
+ * separates the two. Calibration belongs against the underlying family, so this
+ * turns the recording rate off before comparing.
+ */
+function buildFullyRecorded(seed: number): AbstractPedigree {
+  return buildKinshipSkeleton(makeRng(seed), {
+    ...DEFAULT_DEMOGRAPHY,
+    grandparentsRecordedRate: 1,
+  });
+}
+
 /** People in ego's generation who descend from a grandparental couple. */
 function cousinCount(pedigree: AbstractPedigree): number {
   return pedigree.people.filter((person) => person.id.includes('cousin'))
@@ -35,16 +50,20 @@ function cousinCount(pedigree: AbstractPedigree): number {
 }
 
 describe('kinship skeleton', () => {
-  it('gives every non-founder exactly two parents, and founders none', () => {
+  it('records either both parents or neither, and marks founders accordingly', () => {
     for (let seed = 1; seed <= 200; seed++) {
       const pedigree = build(seed);
+      // A person either has no parents recorded — which makes them a founder,
+      // and is normal wherever an ascent stops — or has a full pair.
       for (const person of pedigree.people) {
         const links = pedigree.parents.get(person.id) ?? [];
-        if (person.isFounder) {
-          expect(links, `seed ${seed}, ${person.id}`).toHaveLength(0);
-        } else {
-          expect(links.length, `seed ${seed}, ${person.id}`).toBe(2);
-        }
+        expect(
+          links.length === 0 || links.length === 2,
+          `seed ${seed}, ${person.id}`,
+        ).toBe(true);
+        expect(person.isFounder, `seed ${seed}, ${person.id}`).toBe(
+          links.length === 0,
+        );
       }
     }
   });
@@ -103,7 +122,7 @@ describe('kinship skeleton', () => {
     let total = 0;
     let withElephantSibships = 0;
     for (let seed = 1; seed <= runs; seed++) {
-      const cousins = cousinCount(build(seed));
+      const cousins = cousinCount(buildFullyRecorded(seed));
       total += cousins;
       if (cousins >= 11) withElephantSibships += 1;
     }
@@ -121,7 +140,7 @@ describe('kinship skeleton', () => {
     const runs = 2000;
     let total = 0;
     for (let seed = 1; seed <= runs; seed++) {
-      total += build(seed).people.length;
+      total += buildFullyRecorded(seed).people.length;
     }
     const mean = total / runs;
     expect(mean).toBeGreaterThan(18);

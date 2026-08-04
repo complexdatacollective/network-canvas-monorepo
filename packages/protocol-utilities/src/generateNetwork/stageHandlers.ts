@@ -2,15 +2,18 @@ import { v4 as uuid } from 'uuid';
 
 import type { Stage } from '@codaco/protocol-validation';
 import {
+  BIOLOGICAL_SEX_VALUES,
+  FRAMING_IDS,
   type DyadCensusMetadataItem,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  GAMETE_ROLES,
   type NcNode,
+  RELATIONSHIP_TYPES,
   type VariableValue,
 } from '@codaco/shared-consts';
 
 import { claimFixedValues, generateAttributesForEntity } from './attributes';
-import { pedigreeEdgeValues } from './constraints/entityCounts';
 import {
   type EntityScopeRef,
   scopeKey,
@@ -26,6 +29,7 @@ import {
   type PedigreeNomination,
 } from './pedigree/generatePedigree';
 import type { InheritancePattern } from './pedigree/inheritance';
+import { PEDIGREE_RELATIONSHIP_TERMS } from './pedigree/render';
 import { getSubjectType } from './subject';
 
 export function handleNameGenerators(
@@ -592,23 +596,83 @@ export function reserveFamilyPedigreeFixedValues(
     if (stage.type !== 'FamilyPedigree') continue;
 
     const nodeType = stage.nodeConfig?.type;
-    const egoVariable = stage.nodeConfig?.egoVariable;
-    if (nodeType !== undefined && egoVariable !== undefined) {
-      reserveWrittenValue(
-        ctx,
-        { entity: 'node', type: nodeType },
-        egoVariable,
-        true,
+    if (nodeType !== undefined) {
+      const nodeRef: EntityScopeRef = { entity: 'node', type: nodeType };
+
+      // Every value the generator *may* write, not just the ones a given seed
+      // does. Reservation runs once before the stage loop, so a slot cannot
+      // hand one of these to an earlier stage and leave the pedigree unable to
+      // write its own; claiming after the fact would be too late for anything
+      // drawn before the pedigree runs.
+      const egoVariable = stage.nodeConfig?.egoVariable;
+      if (egoVariable) {
+        for (const value of [true, false]) {
+          reserveWrittenValue(ctx, nodeRef, egoVariable, value);
+        }
+      }
+
+      const sexVariable = stage.nodeConfig?.biologicalSexVariable;
+      if (sexVariable) {
+        for (const value of BIOLOGICAL_SEX_VALUES) {
+          reserveWrittenValue(ctx, nodeRef, sexVariable, [value]);
+        }
+      }
+
+      const relationshipVariable = stage.nodeConfig?.relationshipVariable;
+      if (relationshipVariable) {
+        for (const value of PEDIGREE_RELATIONSHIP_TERMS) {
+          reserveWrittenValue(ctx, nodeRef, relationshipVariable, value);
+        }
+      }
+
+      // The nomination booleans, plus any disease variable a NarrativePedigree
+      // renders from this pedigree — both end up on the same nodes.
+      const nominated = new Set(
+        (stage.nominationPrompts ?? []).map((prompt) => prompt.variable),
       );
+      for (const candidate of stages) {
+        if (candidate.type !== 'NarrativePedigree') continue;
+        if (candidate.sourceStageId !== stage.id) continue;
+        for (const disease of candidate.diseases)
+          nominated.add(disease.variable);
+      }
+      for (const variable of nominated) {
+        for (const value of [true, false]) {
+          reserveWrittenValue(ctx, nodeRef, variable, value);
+        }
+      }
     }
 
     const edgeType = stage.edgeConfig?.type;
     if (edgeType === undefined) continue;
-    const ref: EntityScopeRef = { entity: 'edge', type: edgeType };
-    for (const [variableId, value] of Object.entries(
-      pedigreeEdgeValues(stage.edgeConfig),
-    )) {
-      reserveWrittenValue(ctx, ref, variableId, value);
+    const edgeRef: EntityScopeRef = { entity: 'edge', type: edgeType };
+
+    const relationshipTypeVariable = stage.edgeConfig?.relationshipTypeVariable;
+    if (relationshipTypeVariable) {
+      for (const value of RELATIONSHIP_TYPES) {
+        reserveWrittenValue(ctx, edgeRef, relationshipTypeVariable, [value]);
+      }
+    }
+
+    const isActiveVariable = stage.edgeConfig?.isActiveVariable;
+    if (isActiveVariable) {
+      for (const value of [true, false]) {
+        reserveWrittenValue(ctx, edgeRef, isActiveVariable, value);
+      }
+    }
+
+    const carrierVariable = stage.edgeConfig?.isGestationalCarrierVariable;
+    if (carrierVariable) {
+      for (const value of [true, false]) {
+        reserveWrittenValue(ctx, edgeRef, carrierVariable, value);
+      }
+    }
+
+    const gameteRoleVariable = stage.edgeConfig?.gameteRoleVariable;
+    if (gameteRoleVariable) {
+      for (const value of GAMETE_ROLES) {
+        reserveWrittenValue(ctx, edgeRef, gameteRoleVariable, [value]);
+      }
     }
   }
 }
@@ -652,14 +716,54 @@ export function handleFamilyPedigree(
       ctx.config.familyPedigreeNodeCount.max,
       ctx.config.familyPedigreeNodeCount.min,
     ),
+    // The stage's own completeness rules. Ignoring them produces pedigrees the
+    // interface would refuse to finalize — a `required` grandparents boundary
+    // with no grandparents drawn — or ones deeper than it ever asked for.
+    boundaries: stage.boundaries,
+    // `participantChoice` records what the participant picked; a fixed framing
+    // records itself. Either way the interface writes it, and the pedigree
+    // layout reads it back.
+    selectedFraming:
+      stage.framing?.mode === 'fixed'
+        ? stage.framing.value
+        : FRAMING_IDS[ctx.valueGen.randomInt(0, FRAMING_IDS.length - 1)],
     nextId: () => uuid(),
     nextName: () => ctx.valueGen.generateName(),
     stageId: stage.id,
   });
 
-  // Every value the pedigree writes is written rather than drawn, so each has
-  // to be claimed: a value the registry does not know about can be issued to a
-  // later entity, and the proband flag in particular must never be.
+  // The pedigree creates these nodes and renders no form, so it behaves like a
+  // roster: it fills the rest of its node type around the values it settled
+  // itself. That is not the linearity problem — nothing here reaches a node
+  // another stage created — and it is what keeps a rule spanning a pedigree
+  // variable and a drawn one satisfiable. `sameAs`, `differentFrom` and the
+  // comparators all resolve against the fixed values rather than around them.
+  const written = new Set(
+    generated.nodes.flatMap((node) =>
+      Object.keys(node[entityAttributesProperty]),
+    ),
+  );
+  const toDraw = new Set(
+    Object.keys(ctx.codebook.node?.[nodeType]?.variables ?? {}).filter(
+      (id) => !written.has(id),
+    ),
+  );
+
+  if (toDraw.size > 0) {
+    generated.nodes.forEach((node, index) => {
+      const attrs = node[entityAttributesProperty];
+      Object.assign(
+        attrs,
+        generateAttributesForEntity(ctx, scope, draft.nodes.length + index, {
+          existing: attrs,
+          only: toDraw,
+        }),
+      );
+    });
+  }
+
+  // Every value the pedigree wrote itself has to be claimed, or the registry
+  // can hand the proband's own flag to a later entity.
   for (const node of generated.nodes) {
     claimFixedValues(ctx, scope, node[entityAttributesProperty]);
   }

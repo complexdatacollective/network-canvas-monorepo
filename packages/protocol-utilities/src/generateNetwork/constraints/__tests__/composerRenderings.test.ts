@@ -573,7 +573,11 @@ describe('NetworkComposer field renderings', () => {
       }),
       // The composer has to collect `flag` for it to be drawn at all: a stage
       // now fills what it declares rather than every variable of the type.
-      stages: [composerStage({ nodeFields: [{ variable: 'flag' }] })],
+      stages: [
+        composerStage({
+          nodeFields: [{ variable: 'flag', component: 'Boolean' }],
+        }),
+      ],
       seed: 7,
       config: { today: TODAY },
     });
@@ -610,7 +614,11 @@ describe('NetworkComposer field renderings', () => {
           booleanOptions: [{ label: 'Yes', value: true }],
           booleanValidation: { unique: true },
         }),
-        stages: [composerStage({ nodeFields: [{ variable: 'flag' }] })],
+        stages: [
+          composerStage({
+            nodeFields: [{ variable: 'flag', component: 'Boolean' }],
+          }),
+        ],
         seed: 7,
         config: { today: TODAY },
       });

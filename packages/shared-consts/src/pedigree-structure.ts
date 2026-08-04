@@ -23,7 +23,9 @@ export type PedigreeStructureIssue = {
     | 'gamete-role-placement'
     | 'gamete-sex-disagreement'
     | 'carrier-count'
-    | 'duplicate-edge';
+    | 'duplicate-edge'
+    | 'boundary-grandparents'
+    | 'boundary-children-contributors';
   message: string;
   entityId?: string;
 };
@@ -40,6 +42,17 @@ export type PedigreeStructureInput = {
     gameteRoleVariable?: string;
     isGestationalCarrierVariable?: string;
   };
+  /**
+   * The stage's completeness boundaries, if they should be checked. Only a
+   * `required` boundary blocks the interface from finalizing, so only a
+   * `required` boundary is an error here.
+   */
+  boundaries?: {
+    requireGrandparents: 'required' | 'recommended' | 'off';
+    requireChildrenContributors: 'required' | 'recommended' | 'off';
+  };
+  /** Whether ego affirmed having no children — the other way to satisfy it. */
+  noChildrenAffirmed?: boolean;
 };
 
 /** Categorical values are stored as single-element arrays. */
@@ -90,7 +103,10 @@ export function validatePedigreeStructure(
       const raw = node.attributes[sexVariable];
       if (raw === undefined || raw === null) continue;
       const value = single(raw);
-      if (value === undefined || !BIOLOGICAL_SEX_VALUES.includes(value as never)) {
+      if (
+        value === undefined ||
+        !BIOLOGICAL_SEX_VALUES.includes(value as never)
+      ) {
         issues.push({
           code: 'biological-sex',
           entityId: node.id,
@@ -140,7 +156,9 @@ export function validatePedigreeStructure(
 
   for (const edge of parentageEdges) {
     const type = relationshipOf(edge.attributes);
-    const role = gameteVariable ? single(edge.attributes[gameteVariable]) : undefined;
+    const role = gameteVariable
+      ? single(edge.attributes[gameteVariable])
+      : undefined;
 
     if (role !== undefined && type !== undefined && !GENETIC_TYPES.has(type)) {
       issues.push({
@@ -204,12 +222,81 @@ export function validatePedigreeStructure(
     }
   }
 
+  // Boundary rules. `requireGrandparents` reaches only ego's *genetic* parents,
+  // so an adopted ego — who has none — satisfies it vacuously. That is not a
+  // loophole: an adoptee's genetic line is genuinely absent, and a donor's
+  // parents are essentially never known.
+  const geneticParentsOf = (childId: string): string[] =>
+    parentageEdges
+      .filter((edge) => {
+        const type = relationshipOf(edge.attributes);
+        return (
+          edge.to === childId && type !== undefined && GENETIC_TYPES.has(type)
+        );
+      })
+      .map((edge) => edge.from);
+
+  const egoId = egoVariable
+    ? nodes.find((node) => node.attributes[egoVariable] === true)?.id
+    : undefined;
+
+  if (input.boundaries?.requireGrandparents === 'required' && egoId) {
+    for (const parentId of geneticParentsOf(egoId)) {
+      if (geneticParentsOf(parentId).length < 2) {
+        issues.push({
+          code: 'boundary-grandparents',
+          entityId: parentId,
+          message:
+            'requireGrandparents is required, but a genetic parent of the proband has fewer than two genetic parents',
+        });
+      }
+    }
+  }
+
+  if (
+    input.boundaries?.requireChildrenContributors === 'required' &&
+    egoId &&
+    input.noChildrenAffirmed !== true
+  ) {
+    const children = nodes
+      .map((node) => node.id)
+      .filter((id) => geneticParentsOf(id).includes(egoId));
+
+    if (children.length === 0) {
+      issues.push({
+        code: 'boundary-children-contributors',
+        entityId: egoId,
+        message:
+          'requireChildrenContributors is required, but the proband has no genetic children and did not affirm having none',
+      });
+    }
+
+    for (const childId of children) {
+      for (const coParent of geneticParentsOf(childId).filter(
+        (id) => id !== egoId,
+      )) {
+        const coParentParents = geneticParentsOf(coParent);
+        const deepEnough =
+          coParentParents.length >= 2 &&
+          coParentParents.every((id) => geneticParentsOf(id).length >= 2);
+        if (!deepEnough) {
+          issues.push({
+            code: 'boundary-children-contributors',
+            entityId: coParent,
+            message:
+              "requireChildrenContributors is required, but a child's other parent lacks two generations of recorded parents",
+          });
+        }
+      }
+    }
+  }
+
   // The runtime store throws on a second edge of one relationship type between
   // the same pair, in either direction.
   const seen = new Set<string>();
   for (const edge of edges) {
     const type = relationshipOf(edge.attributes) ?? 'unknown';
-    const [left, right] = [edge.from, edge.to].sort();
+    const [left, right] = [edge.from, edge.to].toSorted();
     const key = `${type}\n${left}\n${right}`;
     if (seen.has(key)) {
       issues.push({

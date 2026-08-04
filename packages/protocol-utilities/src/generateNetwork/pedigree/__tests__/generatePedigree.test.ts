@@ -38,14 +38,24 @@ const CONFIG: PedigreeVariableConfig = {
   gameteRoleVariable: 'gameteRole',
 };
 
+type Severity = 'required' | 'recommended' | 'off';
+
 function generate(
   seed: number,
-  options: { mode?: 'showcase' | 'populationRates'; pattern?: string } = {},
+  options: {
+    mode?: 'showcase' | 'populationRates';
+    pattern?: string;
+    boundaries?: {
+      requireGrandparents: Severity;
+      requireChildrenContributors: Severity;
+    };
+  } = {},
 ) {
   let counter = 0;
   return generatePedigree({
     rng: makeRng(seed),
     mode: options.mode ?? 'showcase',
+    boundaries: options.boundaries,
     config: CONFIG,
     nominations: [
       {
@@ -121,9 +131,9 @@ describe('generatePedigree', () => {
       expect(result.metadata.isNetworkCommitted).toBe(true);
       expect(result.metadata.nodes).toHaveLength(result.nodes.length);
       expect(result.metadata.edges).toHaveLength(result.edges.length);
-      expect(
-        result.metadata.nodes.filter((entry) => entry.isEgo),
-      ).toHaveLength(1);
+      expect(result.metadata.nodes.filter((entry) => entry.isEgo)).toHaveLength(
+        1,
+      );
 
       const nodeIds = new Set(
         result.nodes.map((node) => node[entityPrimaryKeyProperty]),
@@ -174,7 +184,9 @@ describe('generatePedigree', () => {
       const result = generate(seed);
       const affectedIds = new Set(
         result.nodes
-          .filter((node) => node[entityAttributesProperty].hasCondition === true)
+          .filter(
+            (node) => node[entityAttributesProperty].hasCondition === true,
+          )
           .map((node) => node[entityPrimaryKeyProperty]),
       );
       if (affectedIds.size === 0) continue;
@@ -198,6 +210,58 @@ describe('generatePedigree', () => {
       expect(orphanAffected, `seed ${seed}`).toEqual([]);
     }
     expect(checked).toBeGreaterThan(0);
+  });
+
+  // The stage decides how complete a pedigree has to be. Generating a deeper
+  // one than it asked for hides the shallow cases the interface supports; a
+  // shallower one produces a pedigree the interface would refuse to finalize.
+  it('satisfies whatever boundaries the stage configures', () => {
+    const severities: Severity[] = ['off', 'recommended', 'required'];
+    for (const requireGrandparents of severities) {
+      for (const requireChildrenContributors of severities) {
+        const boundaries = { requireGrandparents, requireChildrenContributors };
+        for (let seed = 1; seed <= 60; seed++) {
+          const result = generate(seed, { boundaries });
+          const issues = validatePedigreeStructure({
+            ...asStructureInput(result),
+            boundaries,
+            noChildrenAffirmed: result.metadata.noChildrenAffirmed,
+          });
+          expect(
+            issues.map((issue) => `${issue.code}: ${issue.message}`),
+            `${requireGrandparents}/${requireChildrenContributors} seed ${seed}`,
+          ).toEqual([]);
+        }
+      }
+    }
+  });
+
+  // A pedigree does not have to reach the grandparents. `requireGrandparents`
+  // defaults to `off`, a donor's parents are essentially never known, and an
+  // adoptee's genetic line is usually absent — so a generator that always drew
+  // four grandparents could not produce the cases the interface exists for.
+  it('produces pedigrees that stop short of the grandparents when nothing requires them', () => {
+    let shallow = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const result = generate(seed, {
+        boundaries: {
+          requireGrandparents: 'off',
+          requireChildrenContributors: 'off',
+        },
+      });
+      const egoId = result.structure.egoId;
+      const genetic = (id: string) =>
+        (result.structure.parents.get(id) ?? []).filter(
+          (link) =>
+            link.relationshipType === 'biological' ||
+            link.relationshipType === 'donor',
+        );
+      const anyParentWithoutParents = genetic(egoId).some(
+        (link) => genetic(link.parent).length === 0,
+      );
+      if (anyParentWithoutParents) shallow += 1;
+    }
+    expect(shallow).toBeGreaterThan(0);
   });
 
   it('is deterministic for a given seed', () => {

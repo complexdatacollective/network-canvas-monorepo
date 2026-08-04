@@ -42,6 +42,8 @@ export type PedigreeRenderResult = {
   edges: NcEdge[];
   metadata: {
     isNetworkCommitted: true;
+    noChildrenAffirmed?: boolean;
+    selectedFraming?: string;
     nodes: { id: string; label: string; isEgo: boolean }[];
     edges: {
       id: string;
@@ -51,6 +53,24 @@ export type PedigreeRenderResult = {
     }[];
   };
 };
+
+/**
+ * Every kinship term {@link relationshipTerms} can produce. Shared with the
+ * value reservation so the registry holds each back before any stage draws:
+ * a term issued to an earlier entity would leave the pedigree unable to write
+ * its own.
+ */
+export const PEDIGREE_RELATIONSHIP_TERMS = [
+  '',
+  'Parent',
+  'Grandparent',
+  'Partner',
+  'Sibling',
+  'Aunt/Uncle',
+  'Cousin',
+  'Child',
+  'Family Member',
+] as const;
 
 /**
  * Kinship terms, computed from the structure rather than drawn.
@@ -71,7 +91,9 @@ function relationshipTerms(pedigree: AbstractPedigree): Map<string, string> {
   );
   const partnersOfEgo = new Set(
     pedigree.unions
-      .filter((union) => union.a === pedigree.egoId || union.b === pedigree.egoId)
+      .filter(
+        (union) => union.a === pedigree.egoId || union.b === pedigree.egoId,
+      )
       .map((union) => (union.a === pedigree.egoId ? union.b : union.a)),
   );
 
@@ -89,7 +111,9 @@ function relationshipTerms(pedigree: AbstractPedigree): Map<string, string> {
     } else if (parentsOf(person.id).some((id) => egoGrandparents.has(id))) {
       terms.set(person.id, 'Aunt/Uncle');
     } else if (
-      parentsOf(person.id).some((id) => parentsOf(id).some((g) => egoGrandparents.has(g)))
+      parentsOf(person.id).some((id) =>
+        parentsOf(id).some((g) => egoGrandparents.has(g)),
+      )
     ) {
       terms.set(person.id, 'Cousin');
     } else if (parentsOf(person.id).includes(pedigree.egoId)) {

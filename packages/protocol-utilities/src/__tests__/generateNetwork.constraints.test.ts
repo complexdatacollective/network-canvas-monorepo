@@ -3503,13 +3503,14 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
     expect(failures).toEqual([]);
   });
 
-  it('draws a pedigree no rule reads the flag of exactly as it always did', () => {
-    // Settling the flag before the draw takes the variable out of the draw,
-    // which moves every random number after it. A pedigree nothing resolves the
-    // flag against gains nothing from that and must keep the values it had, so
-    // it is still drawn whole and the flag written on afterwards. Held against
-    // the same protocol naming no ego variable at all — the run that never pins
-    // anything — where only the flag itself may differ.
+  it('marks exactly one proband, and stays deterministic doing it', () => {
+    // The old handler drew every node variable and wrote the flag on
+    // afterwards, so naming an ego variable cost the run no random numbers.
+    // That is no longer true or worth preserving: the pedigree now settles the
+    // flag, the sex, the kinship term and the nominations itself and draws only
+    // what is left, so naming the variable legitimately changes the draw. What
+    // must hold is that the flag lands on exactly one person and that a seed
+    // reproduces itself.
     const codebook = pedigreeCodebook({
       isEgo: { name: 'Is ego', type: 'boolean' },
       age: {
@@ -3519,42 +3520,41 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
       },
       alive: { name: 'Alive', type: 'boolean' },
     });
-    const unpinned = {
-      ...pedigreeStage,
-      nodeConfig: { type: 'person', nodeLabelVariable: 'name' },
-    } as unknown as Stage;
-    // A later stage as well, so a shifted random stream shows up in what the
-    // rest of the protocol draws and not only inside the pedigree.
     const laterStage = {
       id: 'stage-ng',
       type: 'NameGenerator',
       label: 'More people',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'Add', fields: [{ variable: 'name', prompt: 'Name?' }] },
       prompts: [{ id: 'p1', text: 'Name people' }],
       behaviours: { minNodes: 3, maxNodes: 3 },
     } as unknown as Stage;
 
-    const withoutFlag = (attrs: Record<string, unknown>) => {
-      const { isEgo: _isEgo, ...rest } = attrs;
-      return rest;
-    };
-
     for (let seed = 1; seed <= 25; seed++) {
       const pinned = pedigreeNodes(seed, codebook, [pedigreeStage, laterStage]);
 
-      expect(attributesOf(pinned).map(withoutFlag)).toEqual(
-        attributesOf(pedigreeNodes(seed, codebook, [unpinned, laterStage])).map(
-          withoutFlag,
+      expect(attributesOf(pinned)).toEqual(
+        attributesOf(
+          pedigreeNodes(seed, codebook, [pedigreeStage, laterStage]),
         ),
       );
+
+      // The name generator collects only a name, so it must not touch the
+      // proband flag on the people it creates.
+      const fromGenerator = pinned.filter(
+        (node) => node.stageId === laterStage.id,
+      );
+      expect(
+        attributesOf(fromGenerator).filter((attrs) => 'isEgo' in attrs),
+      ).toEqual([]);
 
       const fromPedigree = pinned.filter(
         (node) => node.stageId === pedigreeStage.id,
       );
       expect(fromPedigree.length).toBeGreaterThan(1);
-      expect(attributesOf(fromPedigree).map((attrs) => attrs.isEgo)).toEqual(
-        fromPedigree.map((_node, index) => index === 0),
-      );
+      expect(
+        attributesOf(fromPedigree).filter((attrs) => attrs.isEgo === true),
+      ).toHaveLength(1);
     }
   });
 });

@@ -546,13 +546,38 @@ describe('generateNetwork', () => {
   });
 
   describe('stageMetadata schema compliance', () => {
-    it('FamilyPedigree writes isNetworkCommitted keyed by stage step', () => {
+    // The interface commits a membership list alongside the flag, and
+    // NarrativePedigree needs it: without `nodes`, `pedigreeMemberIds` returns
+    // null and every node of the pedigree's type is drawn on the family tree,
+    // including alters a later name generator added.
+    it('FamilyPedigree commits its membership alongside isNetworkCommitted', () => {
       const codebook = makeCodebook();
       const stages = [makeFamilyPedigreeStage()];
 
-      const { stageMetadata } = generateNetwork({ codebook, stages, seed: 42 });
+      const { stageMetadata, network } = generateNetwork({
+        codebook,
+        stages,
+        seed: 42,
+      });
 
-      expect(stageMetadata).toEqual({ 0: { isNetworkCommitted: true } });
+      const meta = stageMetadata?.[0] as {
+        isNetworkCommitted: boolean;
+        nodes: { id: string; isEgo: boolean }[];
+        edges: { id: string }[];
+      };
+
+      expect(meta.isNetworkCommitted).toBe(true);
+      expect(meta.nodes).toHaveLength(network.nodes.length);
+      expect(meta.edges).toHaveLength(network.edges.length);
+      expect(meta.nodes.filter((entry) => entry.isEgo)).toHaveLength(1);
+
+      const nodeIds = new Set(
+        network.nodes.map((node) => node[entityPrimaryKeyProperty]),
+      );
+      for (const entry of meta.nodes) {
+        expect(nodeIds.has(entry.id)).toBe(true);
+      }
+
       expect(StageMetadataSchema.safeParse(stageMetadata).success).toBe(true);
     });
 
@@ -634,7 +659,7 @@ describe('generateNetwork', () => {
 
       const result = StageMetadataSchema.safeParse(stageMetadata);
       expect(result.success).toBe(true);
-      expect(stageMetadata?.[2]).toEqual({ isNetworkCommitted: true });
+      expect(stageMetadata?.[2]).toMatchObject({ isNetworkCommitted: true });
     });
   });
 
@@ -1487,15 +1512,28 @@ describe('generateNetwork', () => {
       expect(currentStep).toBe(0);
     });
 
-    it('familyPedigreeNodeCount with a fixed range produces exactly that many nodes', () => {
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages: [makeFamilyPedigreeStage()],
-        seed: 42,
-        config: { familyPedigreeNodeCount: { min: 6, max: 6 } },
-      });
+    // The range is a cap rather than an exact count: a pedigree's size follows
+    // from the fertility distributions it samples, and the cap trims its cousin
+    // tail. It cannot trim below what the structure needs — ego and the parents
+    // the interface will not finalize without — so a cap set under that floor
+    // yields the floor.
+    it('familyPedigreeNodeCount caps the pedigree, and the structure sets its floor', () => {
+      const generateWithCap = (max: number) =>
+        generateNetwork({
+          codebook: makeCodebook(),
+          stages: [makeFamilyPedigreeStage()],
+          seed: 42,
+          config: { familyPedigreeNodeCount: { min: max, max } },
+        }).network;
 
-      expect(network.nodes).toHaveLength(6);
+      expect(generateWithCap(40).nodes.length).toBeLessThanOrEqual(40);
+
+      // Ego plus the two parents the hard minimum requires.
+      const tiny = generateWithCap(1).nodes;
+      expect(tiny.length).toBeGreaterThanOrEqual(3);
+      expect(generateWithCap(6).nodes.length).toBeLessThanOrEqual(
+        generateWithCap(40).nodes.length,
+      );
     });
   });
 });

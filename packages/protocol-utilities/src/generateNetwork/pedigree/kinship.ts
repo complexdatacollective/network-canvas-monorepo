@@ -66,6 +66,25 @@ export type AbstractPedigree = {
   /** Child id → the links naming that child's parents. */
   parents: Map<string, ParentLink[]>;
   unions: Union[];
+  /**
+   * Whether ego affirmed having no children, which is the other way to satisfy
+   * `requireChildrenContributors`. Written to stage metadata, where the
+   * interface's own completeness check reads it.
+   */
+  noChildrenAffirmed: boolean;
+};
+
+/** How strictly a boundary is enforced. Mirrors the stage's own config. */
+export type BoundarySeverity = 'required' | 'recommended' | 'off';
+
+export type PedigreeBoundaries = {
+  requireGrandparents: BoundarySeverity;
+  requireChildrenContributors: BoundarySeverity;
+};
+
+export type KinshipOptions = {
+  boundaries?: PedigreeBoundaries;
+  maxPeople?: number;
 };
 
 type Builder = {
@@ -159,6 +178,23 @@ function addFounderCouple(
   return { mother, father };
 }
 
+/**
+ * Gives someone a founder couple as parents. Used to satisfy the depth-2 reach
+ * of `requireChildrenContributors` without drawing a whole sibship.
+ */
+function addFounderParentsFor(builder: Builder, person: AbstractPerson): void {
+  if (builder.parents.has(person.id)) return;
+  const { mother, father } = addFounderCouple(
+    builder,
+    person.generation - 1,
+    `anc${person.id}`,
+  );
+  builder.parents.set(person.id, [
+    { parent: mother.id, relationshipType: 'biological', gameteRole: 'egg' },
+    { parent: father.id, relationshipType: 'biological', gameteRole: 'sperm' },
+  ]);
+}
+
 /** A partner who married in, so has no parents on the pedigree. */
 function addPartnerFor(
   builder: Builder,
@@ -250,11 +286,14 @@ function addAscendingBranch(
  * made of, and they are the least load-bearing part of the structure, so the
  * shape survives the trim.
  */
-function trimTo(pedigree: AbstractPedigree, maxPeople: number): AbstractPedigree {
+function trimTo(
+  pedigree: AbstractPedigree,
+  maxPeople: number,
+): AbstractPedigree {
   if (pedigree.people.length <= maxPeople) return pedigree;
 
   const keep = new Set(pedigree.people.slice(0, maxPeople).map((p) => p.id));
-  // Never drop ego or anyone ego descends from.
+
   const keepAncestors = (id: string): void => {
     for (const link of pedigree.parents.get(id) ?? []) {
       if (keep.has(link.parent)) continue;
@@ -262,8 +301,23 @@ function trimTo(pedigree: AbstractPedigree, maxPeople: number): AbstractPedigree
       keepAncestors(link.parent);
     }
   };
+
+  // Everything a completeness boundary can reach is protected from the trim.
+  // Ego and their ancestors, obviously — but also ego's children and each
+  // child's other parent, whose own two generations `requireChildrenContributors`
+  // reaches. Trimming those produced a pedigree the interface would refuse to
+  // finalize, which is the one thing the generator must never emit.
   keep.add(pedigree.egoId);
   keepAncestors(pedigree.egoId);
+
+  for (const [childId, links] of pedigree.parents) {
+    if (!links.some((link) => link.parent === pedigree.egoId)) continue;
+    keep.add(childId);
+    for (const link of links) {
+      keep.add(link.parent);
+      keepAncestors(link.parent);
+    }
+  }
 
   const people = pedigree.people.filter((person) => keep.has(person.id));
   const parents = new Map(
@@ -276,14 +330,31 @@ function trimTo(pedigree: AbstractPedigree, maxPeople: number): AbstractPedigree
     (union) => keep.has(union.a) && keep.has(union.b),
   );
 
-  return { egoId: pedigree.egoId, people, parents, unions };
+  return {
+    egoId: pedigree.egoId,
+    people,
+    parents,
+    unions,
+    noChildrenAffirmed: pedigree.noChildrenAffirmed,
+  };
 }
 
 export function buildKinshipSkeleton(
   rng: Rng,
   demography: PedigreeDemography,
-  maxPeople?: number,
+  options: KinshipOptions = {},
 ): AbstractPedigree {
+  const boundaries = options.boundaries ?? {
+    requireGrandparents: 'off',
+    requireChildrenContributors: 'off',
+  };
+  // Only a `required` boundary blocks the interface from finalizing, so only a
+  // `required` boundary forces the generator's hand. Anything looser is left to
+  // the population rate, which is what produces pedigrees that legitimately
+  // stop short of the grandparents.
+  const mustHaveGrandparents = boundaries.requireGrandparents === 'required';
+  const mustHaveChildContributors =
+    boundaries.requireChildrenContributors === 'required';
   const builder: Builder = {
     rng,
     demography,
@@ -312,20 +383,60 @@ export function buildKinshipSkeleton(
     addChildOf(builder, mother, father, 0, 'sibling');
   }
 
-  addAscendingBranch(builder, mother, 'm');
-  addAscendingBranch(builder, father, 'p');
+  // Grandparents are drawn where the stage requires them, and otherwise only as
+  // often as they are actually recorded. `requireGrandparents` defaults to
+  // `off`, and a participant frequently cannot name all four — a donor's
+  // parents are essentially never known, and an adoptee's genetic line is
+  // usually absent entirely. Always drawing them would make every generated
+  // pedigree deeper than the interface asks for and hide the shallow cases.
+  //
+  // Each side is decided independently: knowing one set of grandparents and not
+  // the other is commonplace.
+  const recordGrandparents = () =>
+    mustHaveGrandparents || chance(rng, demography.grandparentsRecordedRate);
 
-  // Ego's own partner and children.
-  if (chance(rng, demography.partnershipRate)) {
+  if (recordGrandparents()) addAscendingBranch(builder, mother, 'm');
+  if (recordGrandparents()) addAscendingBranch(builder, father, 'p');
+
+  // Ego's own partner and children. A `required` children-contributors boundary
+  // forces the issue: either ego has children whose other parent is recorded
+  // deeply enough, or ego affirms having none. Affirming is the cheaper of the
+  // two and is what a participant without children does.
+  let noChildrenAffirmed = false;
+  const wantsChildren =
+    chance(rng, demography.partnershipRate) &&
+    chance(rng, demography.egoHasChildrenRate);
+
+  if (wantsChildren) {
     const partner = addPartnerFor(builder, ego);
-    if (chance(rng, demography.egoHasChildrenRate)) {
-      const childCount = sampleSibshipOfKnownParent(rng, demography);
-      const childMother = ego.sex === 'female' ? ego : partner;
-      const childFather = ego.sex === 'female' ? partner : ego;
-      for (let index = 0; index < childCount; index++) {
-        addChildOf(builder, childMother, childFather, 1, 'child');
-      }
+    const childCount = sampleSibshipOfKnownParent(rng, demography);
+    const childMother = ego.sex === 'female' ? ego : partner;
+    const childFather = ego.sex === 'female' ? partner : ego;
+    for (let index = 0; index < childCount; index++) {
+      addChildOf(builder, childMother, childFather, 1, 'child');
     }
+
+    // The boundary reaches two generations past the co-parent, so satisfying it
+    // means recording the co-parent's parents and their parents in turn.
+    if (mustHaveChildContributors && childCount > 0) {
+      addAscendingBranch(builder, partner, 'cp');
+      for (const link of builder.parents.get(partner.id) ?? []) {
+        const grandparent = builder.people.find((p) => p.id === link.parent);
+        if (grandparent) addFounderParentsFor(builder, grandparent);
+      }
+    } else if (mustHaveChildContributors) {
+      noChildrenAffirmed = true;
+    }
+  } else if (mustHaveChildContributors) {
+    noChildrenAffirmed = true;
+  }
+
+  // A person is a founder when the pedigree records no parents for them. That
+  // is settled here rather than at creation, because whether a branch ascends
+  // is decided after the people on it exist: ego's mother is not a founder by
+  // nature, only by whether her own parents were recorded.
+  for (const person of builder.people) {
+    person.isFounder = !builder.parents.has(person.id);
   }
 
   const pedigree: AbstractPedigree = {
@@ -333,7 +444,10 @@ export function buildKinshipSkeleton(
     people: builder.people,
     parents: builder.parents,
     unions: builder.unions,
+    noChildrenAffirmed,
   };
 
-  return maxPeople === undefined ? pedigree : trimTo(pedigree, maxPeople);
+  return options.maxPeople === undefined
+    ? pedigree
+    : trimTo(pedigree, options.maxPeople);
 }

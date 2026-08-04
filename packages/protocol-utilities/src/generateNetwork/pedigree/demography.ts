@@ -86,6 +86,23 @@ export type PedigreeDemography = {
    * CDC ART 2021: 4.4% of ART cycles, and ART is ≈ 2.6% of US births.
    */
   surrogacyRate: number;
+  /**
+   * P(a genetic parent's own parents are recorded on the pedigree.
+   *
+   * Grandparents are not a requirement: `requireGrandparents` is a
+   * configurable boundary that defaults to `off`. Plenty of valid pedigrees
+   * stop short of them — a donor's parents are almost never known, an adoptee's
+   * genetic line is usually absent, and participants routinely cannot name all
+   * four. A generator that always draws them cannot produce the cases the
+   * interface exists to support.
+   */
+  grandparentsRecordedRate: number;
+  /**
+   * P(ego was themselves adopted, donor-conceived or carried by someone else.
+   * Modelled separately from the rate for other children because it truncates
+   * the genetic ascent — which is the point of including it.
+   */
+  egoNonStandardConceptionRate: number;
   /** P(a person is recorded male at birth). */
   maleRate: number;
   /**
@@ -108,6 +125,8 @@ export const DEFAULT_DEMOGRAPHY: PedigreeDemography = {
   donorEggRate: 0.0027,
   donorSpermRate: 0.007,
   surrogacyRate: 0.0011,
+  grandparentsRecordedRate: 0.8,
+  egoNonStandardConceptionRate: 0.04,
   maleRate: 0.512,
   sexNotRecordedRate: 0.02,
 };
@@ -127,6 +146,8 @@ export const SHOWCASE_DEMOGRAPHY: PedigreeDemography = {
   donorEggRate: 0.08,
   donorSpermRate: 0.08,
   surrogacyRate: 0.06,
+  grandparentsRecordedRate: 0.75,
+  egoNonStandardConceptionRate: 0.25,
 };
 
 /**
