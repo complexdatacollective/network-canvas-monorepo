@@ -3,7 +3,7 @@
  *
  * Layered on top of `themes/default.css`. Activates on any element
  * carrying the `data-theme-interview` attribute. The wrapper sets a
- * base `--theme-root-size` (0.9rem, the shared product base), which the
+ * base `--theme-root-size` (1rem, the shared product base), which the
  * type scale in `theme.css` consumes via calc(N * var(--theme-root-size)).
  * The interview Shell ramps this sentinel with viewport width (see
  * `Shell.tsx` in @codaco/interview); here it is the non-responsive base for

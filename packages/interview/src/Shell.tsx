@@ -135,12 +135,14 @@ function Interview({
             'relative flex size-full flex-1 overflow-hidden',
             // Fluid viewport-width ramp for the --theme-root-size type-scale
             // sentinel, scoped to the Shell so only the full-screen interview
-            // scales (not other themed regions). Shares the 0.9rem product base
-            // but climbs early, reaching ~1rem (the interview theme's former
-            // base value) by ~1280px and a 1.25rem cap by ~2560px. Spacing and
-            // node sizes ramp with it via interview.css's --spacing-base
+            // scales (not other themed regions). Piecewise, breakpoint-aligned:
+            // phones (≤480px) hold a dense 0.9rem floor; 480–768px ramps up so
+            // tablets (768–1280px) hold the full 1rem base — which also keeps
+            // md form controls at the 24px WCAG 2.5.8 minimum; ≥1280px resumes
+            // the original ramp to a 1.25rem cap at 2560px. Spacing and node
+            // sizes ramp with it via interview.css's --spacing-base
             // redeclaration.
-            '[--theme-root-size:clamp(0.9rem,0.75rem+0.3125vw,1.25rem)]',
+            '[--theme-root-size:clamp(0.9rem,max(min(0.7333rem+0.5556vw,1rem),0.75rem+0.3125vw),1.25rem)]',
             isHorizontalNav ? 'flex-col' : 'flex-row-reverse',
           )}
         />
