@@ -216,6 +216,17 @@ export function useAutoLayout({
     );
   }, [store]);
 
+  // Push the measured radius into the store so its boundary clamp insets by
+  // the SAME radius the worker's bounds force uses (the seeding effect below
+  // resolves <= 0 to the fallback exactly as the store does). Runs even when
+  // the layout is disabled (e.g. manual-mode Sociogram) so plain drags clamp
+  // against the real rendered radius too. Declared before the seeding effect
+  // so a radius change re-clamps stored positions before the worker re-seeds
+  // from them.
+  useEffect(() => {
+    store.getState().setNodeRadius(nodeRadius);
+  }, [store, nodeRadius]);
+
   useEffect(() => {
     if (!enabled) return;
     // Defer until the canvas has been measured: seeding against a 0-size canvas
@@ -239,10 +250,11 @@ export function useAutoLayout({
     // connected nodes onto the floor — the closest spacing in the layout — while
     // charge spreads unconnected nodes beyond it. Tune visually.
     const linkDistance = 1.9 * collideRadius;
-    // Bounds inset is keyed to FALLBACK_NODE_RADIUS (px) so it EXACTLY matches the
-    // store clamp's fixed inset, then divided by height into sim units — that
-    // equality is what makes the store clamp a no-op on settled positions.
-    const boundsInset = edgeInsetForNode(FALLBACK_NODE_RADIUS) / dims.height;
+    // Bounds inset is keyed to the SAME resolved radius the setNodeRadius
+    // effect above pushed into the store's clamp, then divided by height into
+    // sim units — that equality is what makes the store clamp a no-op on
+    // settled positions.
+    const boundsInset = edgeInsetForNode(resolvedRadius) / dims.height;
 
     // In e2e tests, swap in a deterministic worker so visual snapshots aren't
     // sensitive to simulation randomness.
