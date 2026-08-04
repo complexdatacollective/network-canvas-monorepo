@@ -107,6 +107,10 @@ export function useSessionMutations({
     exportInFlightRef.current = true;
     setPreparingExport(true);
     const controller = new AbortController();
+    // Registered before the pre-build awaits so the unmount cleanup can
+    // cancel an export that is still resolving ids, settings, or step-up —
+    // otherwise the continuation would start a headless build.
+    abortBuildRef.current = controller;
     try {
       const ids = await resolveSelectedIds();
       if (ids.length === 0) return;
@@ -115,7 +119,7 @@ export function useSessionMutations({
         const stepUp = await requireFreshUnlock();
         if (!stepUp.ok) return;
       }
-      abortBuildRef.current = controller;
+      if (controller.signal.aborted) return;
       setExportFlow({
         phase: 'building',
         sessionCount: ids.length,
@@ -298,7 +302,16 @@ export function useSessionMutations({
   }, [analytics, clearSelection, exportFlow, onReload, reloadData, toast]);
 
   const handleDelete = useCallback(async () => {
-    if (selectedCount === 0 || deleting) return;
+    // Also guarded against the export flow: the toolbar disables Delete while
+    // an export is preparing/active, but the guard is the correctness layer.
+    if (
+      selectedCount === 0 ||
+      deleting ||
+      preparingExport ||
+      exportFlow.phase !== 'idle'
+    ) {
+      return;
+    }
     const noun = selectedCount === 1 ? 'interview' : 'interviews';
     const confirmed = await dialog.openDialog({
       type: 'choice',
@@ -335,7 +348,9 @@ export function useSessionMutations({
     clearSelection,
     deleting,
     dialog,
+    exportFlow.phase,
     onReload,
+    preparingExport,
     reloadData,
     resolveSelectedIds,
     selectedCount,
@@ -347,7 +362,15 @@ export function useSessionMutations({
       session: Pick<StoredSessionLite, 'id' | 'caseId'>,
       stages: CurrentProtocol['stages'],
     ) => {
-      if (markingUnfinishedId !== null) return;
+      // Guarded against the export flow so a session mutation can't race an
+      // export that is preparing or has an unsaved archive in flight.
+      if (
+        markingUnfinishedId !== null ||
+        preparingExport ||
+        exportFlow.phase !== 'idle'
+      ) {
+        return;
+      }
       const confirmed = await dialog.openDialog({
         type: 'choice',
         title: 'Mark unfinished?',
@@ -379,7 +402,15 @@ export function useSessionMutations({
         setMarkingUnfinishedId(null);
       }
     },
-    [dialog, markingUnfinishedId, onReload, reloadData, toast],
+    [
+      dialog,
+      exportFlow.phase,
+      markingUnfinishedId,
+      onReload,
+      preparingExport,
+      reloadData,
+      toast,
+    ],
   );
 
   return {

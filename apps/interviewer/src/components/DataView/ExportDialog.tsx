@@ -241,7 +241,7 @@ export function ExportDialog({
     );
     children = (
       <>
-        <Surface spacing="xs" className="mt-4 flex items-center gap-4">
+        <Surface spacing="xs" className="my-4 flex items-center gap-4">
           <FileArchive className="text-success size-8 shrink-0" aria-hidden />
           <div className="min-w-0">
             <Paragraph margin="none" className="font-semibold break-all">

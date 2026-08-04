@@ -22,6 +22,9 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
   let aborted: unknown = null;
 
   const onChunk = (chunk: Uint8Array, final: boolean) => {
+    // After an abort the consumer is gone; buffering further chunks would
+    // only retain memory nothing will ever drain.
+    if (aborted) return;
     queue.push(chunk);
     if (final) queue.push(null);
     if (resolveNext) {
@@ -103,6 +106,10 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
     zip.add(passThrough);
     try {
       for await (const chunk of data) {
+        // Interrupting the pipeline cannot cancel this already-running
+        // promise, so the producer observes the abort itself: throwing here
+        // also closes `data`'s source iterator via its return() hook.
+        if (aborted) throw aborted;
         passThrough.push(chunk);
       }
       passThrough.push(new Uint8Array(0), true);

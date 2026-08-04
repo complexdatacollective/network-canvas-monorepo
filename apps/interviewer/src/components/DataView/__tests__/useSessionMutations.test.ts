@@ -266,6 +266,56 @@ describe('useSessionMutations — export flow lifecycle', () => {
     expect(result.current.exportFlow.phase).toBe('ready');
   });
 
+  it('unmounting during pre-build resolution prevents the build from starting', async () => {
+    let resolveSettings: ((settings: unknown) => void) | undefined;
+    getSettings.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSettings = resolve;
+        }),
+    );
+    const { result, unmount } = makeHook();
+
+    let exportPromise: Promise<void> | undefined;
+    act(() => {
+      exportPromise = result.current.handleExport();
+    });
+    await waitFor(() => expect(getSettings).toHaveBeenCalled());
+
+    unmount();
+
+    await act(async () => {
+      resolveSettings?.({
+        requireUnlockOnExport: false,
+        exportGraphML: true,
+        exportCSV: false,
+        useScreenLayoutCoordinates: false,
+        screenLayoutHeight: 0,
+        screenLayoutWidth: 0,
+      });
+      await exportPromise;
+    });
+
+    // The controller was registered before the awaits, so the unmount abort
+    // reaches the continuation and no headless build starts.
+    expect(runExport).not.toHaveBeenCalled();
+  });
+
+  it('mark unfinished is refused while an export archive is unsaved', async () => {
+    const { result } = makeHook();
+    await buildReadyArchive(result);
+
+    await act(async () => {
+      await result.current.handleMarkUnfinished(
+        { id: 's1', caseId: 'case-1' },
+        [],
+      );
+    });
+
+    expect(openDialog).not.toHaveBeenCalled();
+    expect(markSessionUnfinished).not.toHaveBeenCalled();
+  });
+
   it('aborts an in-flight build when the view unmounts', async () => {
     const { getSignal } = hangingRunExport();
     const { result, unmount } = makeHook();

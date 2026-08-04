@@ -162,6 +162,7 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
     allOnPageSelected,
     someOnPageSelected,
     markingUnfinishedId,
+    mutationsBusy: exportFlow.phase !== 'idle' || preparingExport || deleting,
     onMarkUnfinished: (session) => {
       void handleMarkUnfinished(
         session,
