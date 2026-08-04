@@ -772,7 +772,9 @@ jobs:
       github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.detect.outputs.website == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Budgets two sequential 15-minute Netlify status polls (website, then
+    # documentation) plus the reachability probes and the crawl itself.
+    timeout-minutes: 40
     permissions:
       contents: read
       statuses: read
