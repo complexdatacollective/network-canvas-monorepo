@@ -297,6 +297,89 @@ describe('worstCaseEntityCounts', () => {
     expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(14);
   });
 
+  it('budgets X-linked siblings after an intervening sex-variable rewrite', () => {
+    const tightConfig = resolveGenerationConfig({
+      today: '2026-08-04',
+      familyPedigreeNodeCount: { min: 7, max: 7 },
+    });
+    const options = resolveFamilyPedigreeGenerationOptions(
+      {
+        population: {
+          id: 'all-male',
+          label: 'All male births',
+          sources: [],
+          completedFamilySize: [{ value: 0, weight: 1 }],
+          femaleAtBirthProbability: 0,
+          childlessPartnerProbability: 0,
+          scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+        },
+        scenario: 'none',
+        diseaseMode: 'visualization',
+        maxNodes: 7,
+      },
+      7,
+    );
+    const sharedNodeConfig = {
+      type: 'relative',
+      egoVariable: 'isEgo',
+      biologicalSexVariable: 'biologicalSex',
+    };
+    const first = familyPedigree({
+      id: 'first-pedigree',
+      nodeConfig: sharedNodeConfig,
+    });
+    const rewriteSex = {
+      id: 'rewrite-sex',
+      type: 'CategoricalBin',
+      label: 'Rewrite sex',
+      subject: { entity: 'node', type: 'relative' },
+      prompts: [
+        {
+          id: 'sex-bin',
+          text: 'Group by sex',
+          variable: 'biologicalSex',
+        },
+      ],
+    } as unknown as Stage;
+    const second = familyPedigree({
+      id: 'second-pedigree',
+      nodeConfig: sharedNodeConfig,
+    });
+    const narrative = {
+      id: 'narrative',
+      type: 'NarrativePedigree',
+      label: 'Condition',
+      sourceStageId: second.id,
+      diseases: [
+        {
+          id: 'condition',
+          label: 'Condition',
+          color: '#000000',
+          variable: 'condition',
+          inheritancePattern: 'xLinkedRecessive',
+        },
+      ],
+    } as unknown as Stage;
+
+    const afterFirst = worstCaseEntityCounts(
+      [first, rewriteSex, second, narrative],
+      tightConfig,
+      undefined,
+      undefined,
+      options,
+    );
+    expect(nodeCountFor(afterFirst.node, 'relative', ['name'])).toBe(14);
+
+    const beforeFirst = worstCaseEntityCounts(
+      [rewriteSex, first, second, narrative],
+      tightConfig,
+      undefined,
+      undefined,
+      options,
+    );
+    expect(nodeCountFor(beforeFirst.node, 'relative', ['name'])).toBe(13);
+  });
+
   it('bounds every contributor branch introduced by an intervening pairing stage', () => {
     const shared = {
       nodeConfig: { type: 'relative', egoVariable: 'isEgo' },

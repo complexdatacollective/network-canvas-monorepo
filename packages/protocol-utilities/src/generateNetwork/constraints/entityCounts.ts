@@ -776,6 +776,32 @@ function canPlanEgoChildBranch(
   );
 }
 
+const EXISTING_NODE_ATTRIBUTE_WRITER_TYPES: ReadonlySet<Stage['type']> =
+  new Set([
+    'Sociogram',
+    'OrdinalBin',
+    'CategoricalBin',
+    'AlterForm',
+    'Geospatial',
+  ]);
+
+/** Whether a stage can rewrite one attribute on nodes already in the draft. */
+function writesExistingNodeAttribute(
+  stage: Stage,
+  nodeType: string,
+  variableId: string,
+): boolean {
+  if (!EXISTING_NODE_ATTRIBUTE_WRITER_TYPES.has(stage.type)) return false;
+
+  return collectEntityAttributeReferences({ stages: [stage] }).some(
+    (hit) =>
+      hit.usage !== undefined &&
+      hit.subject?.entity === 'node' &&
+      hit.subject.type === nodeType &&
+      hit.variableId === variableId,
+  );
+}
+
 function inheritedEgoSexCanBeIndependent({
   stage,
   stages,
@@ -792,14 +818,36 @@ function inheritedEgoSexCanBeIndependent({
   }
 
   const stageIndex = stages.indexOf(stage);
+  let firstCompatiblePedigreeIndex = -1;
+  for (let candidateIndex = 0; candidateIndex < stageIndex; candidateIndex++) {
+    const candidate = stages[candidateIndex];
+    if (
+      candidate?.type !== 'FamilyPedigree' ||
+      candidate.nodeConfig?.type !== nodeType ||
+      candidate.nodeConfig?.egoVariable !== egoVariable
+    ) {
+      continue;
+    }
+
+    if (firstCompatiblePedigreeIndex < 0) {
+      firstCompatiblePedigreeIndex = candidateIndex;
+    }
+    if (candidate.nodeConfig?.biologicalSexVariable !== biologicalSexVariable) {
+      return true;
+    }
+  }
+
+  if (firstCompatiblePedigreeIndex < 0) return false;
+
+  // The inherited ego does not exist until the first compatible pedigree has
+  // created it. From then on, any whole-population writer can replace the sex
+  // value that a later pedigree reads, independently of the reference
+  // population's birth-sex draw. A writer before that pedigree cannot reach
+  // the future ego and therefore does not widen this floor.
   return stages
-    .slice(0, stageIndex)
-    .some(
-      (candidate) =>
-        candidate.type === 'FamilyPedigree' &&
-        candidate.nodeConfig?.type === nodeType &&
-        candidate.nodeConfig?.egoVariable === egoVariable &&
-        candidate.nodeConfig?.biologicalSexVariable !== biologicalSexVariable,
+    .slice(firstCompatiblePedigreeIndex + 1, stageIndex)
+    .some((candidate) =>
+      writesExistingNodeAttribute(candidate, nodeType, biologicalSexVariable),
     );
 }
 
