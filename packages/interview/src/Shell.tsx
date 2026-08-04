@@ -151,18 +151,18 @@ function Interview({
           style={textScaleStyle}
           className={cx(
             'relative flex size-full flex-1 overflow-hidden',
-            // Fluid viewport-width ramp for the --theme-root-size type-scale
+            // Fluid viewport ramp for the --theme-root-size type-scale
             // sentinel, scoped to the Shell so only the full-screen interview
-            // scales (not other themed regions). Piecewise, breakpoint-aligned:
-            // phones (≤480px) hold a dense 0.9rem floor; 480–768px ramps up so
-            // tablets (768–1280px) hold the full 1rem base — which also keeps
-            // md form controls at the 24px WCAG 2.5.8 minimum; ≥1280px resumes
-            // the original ramp to a 1.25rem cap at 2560px. Spacing and node
-            // sizes ramp with it via interview.css's --spacing-base
-            // redeclaration. The whole ramp is multiplied by the participant's
-            // text-size preference (see the style prop above), so one factor
-            // scales type, spacing, and touch targets coherently.
-            '[--theme-root-size:calc(var(--interview-text-scale,1)*clamp(0.9rem,max(min(0.7333rem+0.5556vw,1rem),0.75rem+0.3125vw),1.25rem))]',
+            // scales (not other themed regions). Defined in interview.css:
+            // phones hold a dense 0.9rem-floored curve (including landscape,
+            // via its height/width media condition), tablets hold the full
+            // 1rem base, large displays ramp to a 1.25rem cap. Spacing and
+            // node sizes ramp with it via interview.css's --spacing-base
+            // redeclaration. The ramp multiplies by the participant's
+            // text-size preference (--interview-text-scale, set via the style
+            // prop above), so one factor scales type, spacing, and touch
+            // targets coherently.
+            'shell-type-ramp',
             isHorizontalNav ? 'flex-col' : 'flex-row-reverse',
           )}
         />

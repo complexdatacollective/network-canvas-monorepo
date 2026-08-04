@@ -205,6 +205,50 @@
 }
 
 @layer components {
+  /*
+   * Full-screen interview type-scale ramp, applied by the interview Shell's
+   * <main> (see Shell.tsx in @codaco/interview) so only the Shell subtree
+   * scales — embedded themed regions keep the flat 1rem base above.
+   *
+   * The base declaration is a continuous width ramp (0.9rem floor at phone
+   * widths, ~1rem by 1280px, 1.25rem cap at 2560px). Devices with a viewport
+   * both shorter than 480px and narrower than 1024px — phones in landscape —
+   * stay on it, keeping the deliberately dense phone scale on the most
+   * height-constrained layout.
+   *
+   * Taller-or-wider viewports (tablets in either orientation, laptops,
+   * desktops) get the piecewise curve: the 480–768px segment ramps off the
+   * phone floor early so tablet widths (768–1280px) hold the full 1rem base
+   * — which also keeps md form controls at the 24px WCAG 2.5.8 minimum —
+   * then the original ramp resumes at 1280px, unchanged, to the 1.25rem cap.
+   * The min-width arm keeps landscape tablets (≥1024px wide) on the plateau
+   * even when a software keyboard collapses the reported viewport height
+   * mid-interview.
+   *
+   * Both declarations multiply by --interview-text-scale — the participant's
+   * text-size preference, set by the Shell (default 1) — so one factor scales
+   * type, spacing, and touch targets coherently.
+   */
+  .shell-type-ramp {
+    --theme-root-size: calc(
+      var(--interview-text-scale, 1) *
+        clamp(0.9rem, 0.75rem + 0.3125vw, 1.25rem)
+    );
+  }
+
+  @media (min-height: 480px), (min-width: 1024px) {
+    .shell-type-ramp {
+      --theme-root-size: calc(
+        var(--interview-text-scale, 1) *
+          clamp(
+            0.9rem,
+            max(min(0.7333rem + 0.5556vw, 1rem), 0.75rem + 0.3125vw),
+            1.25rem
+          )
+      );
+    }
+  }
+
   /* CategoricalBin layout.
      .catbin-circles is the positioning context for the absolute expanded
      panel; .catbin-inflow is the actual grid AND the query container.
