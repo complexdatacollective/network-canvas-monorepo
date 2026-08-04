@@ -584,15 +584,25 @@ function compatibleContributorPedigree(
   second: StageOfType<'FamilyPedigree'>,
 ): boolean {
   return (
-    first.nodeConfig?.type !== undefined &&
-    first.nodeConfig.type === second.nodeConfig?.type &&
-    first.nodeConfig.egoVariable !== undefined &&
-    first.nodeConfig.egoVariable === second.nodeConfig?.egoVariable &&
+    reusableEgoPedigree(first, second) &&
     first.edgeConfig?.type !== undefined &&
     first.edgeConfig.type === second.edgeConfig?.type &&
     first.edgeConfig.relationshipTypeVariable !== undefined &&
     first.edgeConfig.relationshipTypeVariable ===
       second.edgeConfig?.relationshipTypeVariable
+  );
+}
+
+/** Whether the later pedigree can inherit the focal node from the earlier one. */
+function reusableEgoPedigree(
+  first: StageOfType<'FamilyPedigree'>,
+  second: StageOfType<'FamilyPedigree'>,
+): boolean {
+  return (
+    first.nodeConfig?.type !== undefined &&
+    first.nodeConfig.type === second.nodeConfig?.type &&
+    first.nodeConfig.egoVariable !== undefined &&
+    first.nodeConfig.egoVariable === second.nodeConfig?.egoVariable
   );
 }
 
@@ -669,17 +679,16 @@ export function inheritedContributorAncestryCeiling(
 
   let incompleteContributorBranches = 0;
   let completedContributorIndex = -1;
-  let firstContributorIndex = -1;
+  let firstReusableEgoIndex = -1;
   for (const [candidateIndex, candidate] of stages
     .slice(0, stageIndex)
     .entries()) {
-    if (
-      candidate.type !== 'FamilyPedigree' ||
-      !compatibleContributorPedigree(candidate, stage)
-    ) {
-      continue;
+    if (candidate.type !== 'FamilyPedigree') continue;
+    if (firstReusableEgoIndex < 0 && reusableEgoPedigree(candidate, stage)) {
+      firstReusableEgoIndex = candidateIndex;
     }
-    if (firstContributorIndex < 0) firstContributorIndex = candidateIndex;
+    if (!compatibleContributorPedigree(candidate, stage)) continue;
+
     if (candidate.boundaries?.requireChildrenContributors === 'required') {
       // This stage completed every older inherited branch and its own new one.
       incompleteContributorBranches = 0;
@@ -694,7 +703,7 @@ export function inheritedContributorAncestryCeiling(
 
   const contributorGraphStartIndex = Math.max(
     completedContributorIndex,
-    firstContributorIndex,
+    firstReusableEgoIndex,
   );
   const hasExternalContributorEdges =
     preexistingNodeCeiling > 0 &&
@@ -776,30 +785,67 @@ function canPlanEgoChildBranch(
   );
 }
 
-const EXISTING_NODE_ATTRIBUTE_WRITER_TYPES: ReadonlySet<Stage['type']> =
-  new Set([
-    'Sociogram',
-    'OrdinalBin',
-    'CategoricalBin',
-    'AlterForm',
-    'Geospatial',
-  ]);
-
 /** Whether a stage can rewrite one attribute on nodes already in the draft. */
 function writesExistingNodeAttribute(
   stage: Stage,
   nodeType: string,
   variableId: string,
 ): boolean {
-  if (!EXISTING_NODE_ATTRIBUTE_WRITER_TYPES.has(stage.type)) return false;
+  switch (stage.type) {
+    case 'Sociogram':
+      return (
+        getSubjectType(stage.subject, 'node') === nodeType &&
+        stage.prompts.some(
+          (prompt) => prompt.layout?.layoutVariable === variableId,
+        )
+      );
+    case 'OrdinalBin':
+    case 'CategoricalBin':
+    case 'Geospatial':
+      return (
+        getSubjectType(stage.subject, 'node') === nodeType &&
+        stage.prompts.some((prompt) => prompt.variable === variableId)
+      );
+    case 'AlterForm':
+      return (
+        getSubjectType(stage.subject, 'node') === nodeType &&
+        (stage.form?.fields.some((field) => field.variable === variableId) ??
+          false)
+      );
+    default:
+      return false;
+  }
+}
 
-  return collectEntityAttributeReferences({ stages: [stage] }).some(
-    (hit) =>
-      hit.usage !== undefined &&
-      hit.subject?.entity === 'node' &&
-      hit.subject.type === nodeType &&
-      hit.variableId === variableId,
-  );
+/** Whether the materializer is guaranteed to find an earlier focal node. */
+function canReusePedigreeEgo(
+  stageIndex: number,
+  stages: readonly Stage[],
+  stage: StageOfType<'FamilyPedigree'>,
+): boolean {
+  const nodeType = stage.nodeConfig?.type;
+  const egoVariable = stage.nodeConfig?.egoVariable;
+  if (nodeType === undefined || egoVariable === undefined) return false;
+
+  let lastReusablePedigreeIndex = -1;
+  for (let candidateIndex = 0; candidateIndex < stageIndex; candidateIndex++) {
+    const candidate = stages[candidateIndex];
+    if (
+      candidate?.type === 'FamilyPedigree' &&
+      reusableEgoPedigree(candidate, stage)
+    ) {
+      lastReusablePedigreeIndex = candidateIndex;
+    }
+  }
+  if (lastReusablePedigreeIndex < 0) return false;
+
+  // Every compatible pedigree leaves one focal flag set. Only writers after
+  // the most recent one can remove that guarantee before this stage runs.
+  return !stages
+    .slice(lastReusablePedigreeIndex + 1, stageIndex)
+    .some((candidate) =>
+      writesExistingNodeAttribute(candidate, nodeType, egoVariable),
+    );
 }
 
 function inheritedEgoSexCanBeIndependent({
@@ -1121,7 +1167,6 @@ export function worstCaseEntityCounts(
   const pedigree = new Map<string, PedigreeEdges[]>();
   const node: NodeCounts = new Map();
   const nodeBeforeStage = new Map<number, Map<string, number>>();
-  const pedigreeEgoVariables = new Map<string, Set<string>>();
 
   // `completionCheckFor` resolves a whole type's generation order and solves
   // its tractable components, so a type's judge is built once rather than once
@@ -1307,11 +1352,7 @@ export function worstCaseEntityCounts(
       const pedigreeContext = familyPedigree
         ? { options: familyPedigree, stage, stages }
         : undefined;
-      const egoVariable = stage.nodeConfig?.egoVariable;
-      const knownEgoVariables = pedigreeEgoVariables.get(nodeType);
-      const reusesEgo =
-        egoVariable !== undefined &&
-        knownEgoVariables?.has(egoVariable) === true;
+      const reusesEgo = canReusePedigreeEgo(stageIndex, stages, stage);
       const tally = tallyFor(node, nodeType);
       const inheritedContributorCeiling = inheritedContributorAncestryCeiling(
         stageIndex,
@@ -1324,11 +1365,6 @@ export function worstCaseEntityCounts(
           pedigreeNodeCeiling(config, pedigreeContext) - (reusesEgo ? 1 : 0),
           0,
         ) + inheritedContributorCeiling.nodes;
-      if (egoVariable !== undefined) {
-        const variables = knownEgoVariables ?? new Set<string>();
-        variables.add(egoVariable);
-        pedigreeEgoVariables.set(nodeType, variables);
-      }
 
       const edgeType = stage.edgeConfig?.type;
       // Tallied apart from the rest because these edges start holding only what

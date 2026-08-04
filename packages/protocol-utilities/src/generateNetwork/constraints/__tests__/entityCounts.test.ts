@@ -68,6 +68,21 @@ function alterEdgeForm(...variables: string[]): Stage {
   } as unknown as Stage;
 }
 
+function alterForm(nodeType: string, ...variables: string[]): Stage {
+  return {
+    id: 'stage-alter-form',
+    type: 'AlterForm',
+    label: 'About this person',
+    subject: { entity: 'node', type: nodeType },
+    form: {
+      fields: variables.map((variable) => ({
+        variable,
+        prompt: 'Tell us about it',
+      })),
+    },
+  } as unknown as Stage;
+}
+
 /** The same form, gated on a filter rule testing one edge variable. */
 function filteredAlterEdgeForm(
   filtered: string,
@@ -159,6 +174,51 @@ describe('worstCaseEntityCounts', () => {
     expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
       pedigreeNodeCeiling(config) * 2 - 1,
     );
+  });
+
+  it('retains the full ceiling after an intervening ego-flag rewrite', () => {
+    const tightConfig = resolveGenerationConfig({
+      today: '2026-08-04',
+      familyPedigreeNodeCount: { min: 7, max: 7 },
+    });
+    const options = resolveFamilyPedigreeGenerationOptions(
+      { scenario: 'none', diseaseMode: 'none', maxNodes: 7 },
+      7,
+    );
+    const shared = {
+      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
+    };
+    const first = familyPedigree({ ...shared, id: 'first-pedigree' });
+    const rewriteEgo = alterForm('relative', 'isEgo');
+    const second = familyPedigree({ ...shared, id: 'second-pedigree' });
+    const third = familyPedigree({ ...shared, id: 'third-pedigree' });
+
+    const afterFirst = worstCaseEntityCounts(
+      [first, rewriteEgo, second],
+      tightConfig,
+      undefined,
+      undefined,
+      options,
+    );
+    expect(nodeCountFor(afterFirst.node, 'relative', ['name'])).toBe(14);
+
+    const beforeFirst = worstCaseEntityCounts(
+      [rewriteEgo, first, second],
+      tightConfig,
+      undefined,
+      undefined,
+      options,
+    );
+    expect(nodeCountFor(beforeFirst.node, 'relative', ['name'])).toBe(13);
+
+    const restoredBySecond = worstCaseEntityCounts(
+      [first, rewriteEgo, second, third],
+      tightConfig,
+      undefined,
+      undefined,
+      options,
+    );
+    expect(nodeCountFor(restoredBySecond.node, 'relative', ['name'])).toBe(20);
   });
 
   it('counts ancestry required for inherited contributor branches', () => {
@@ -425,6 +485,52 @@ describe('worstCaseEntityCounts', () => {
     expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
       inheritedPopulation * 10 - 1,
     );
+  });
+
+  it('starts contributor scans after a reusable ego with different edge semantics', () => {
+    const sharedNodeConfig = {
+      type: 'relative',
+      egoVariable: 'isEgo',
+    };
+    const first = familyPedigree({
+      id: 'first-pedigree',
+      nodeConfig: sharedNodeConfig,
+      edgeConfig: {
+        type: 'legacy-kin',
+        relationshipTypeVariable: 'legacyRelationshipType',
+      },
+    });
+    const pairing = {
+      id: 'pair-relatives',
+      type: 'Sociogram',
+      label: 'Pair relatives',
+      subject: { entity: 'node', type: 'relative' },
+      prompts: [
+        {
+          id: 'pair-prompt',
+          text: 'Connect relatives',
+          edges: { create: 'kin' },
+        },
+      ],
+    } as unknown as Stage;
+    const second = familyPedigree({
+      id: 'second-pedigree',
+      nodeConfig: sharedNodeConfig,
+      edgeConfig: {
+        type: 'kin',
+        relationshipTypeVariable: 'relationshipType',
+      },
+      boundaries: { requireChildrenContributors: 'required' },
+    });
+    const stages = [first, pairing, second];
+    const inheritedPopulation = pedigreeNodeCeiling(config);
+
+    expect(
+      inheritedContributorAncestryCeiling(2, stages, inheritedPopulation),
+    ).toEqual({
+      nodes: inheritedPopulation * 8,
+      edges: inheritedPopulation * 12,
+    });
   });
 
   it('ignores graph writers that run before the first compatible pedigree', () => {
