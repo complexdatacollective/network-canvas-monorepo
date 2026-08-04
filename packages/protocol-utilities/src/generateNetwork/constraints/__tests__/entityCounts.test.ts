@@ -2466,10 +2466,12 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
   });
 
   it('still refuses for a pedigree whose edges a later form does fill', () => {
-    // The ordering that decides which pedigrees a writer reaches is untouched:
-    // a form naming an unwritten variable after the first pedigree really does
-    // put a value on all nine of its edges, while the second pedigree runs
-    // after the form and leaves that variable undefined on its own.
+    // The ordering that decides which pedigrees a writer reaches is untouched.
+    // What changed is which variables a pedigree writes: it now records the
+    // gestational carrier itself, so the second pedigree no longer leaves that
+    // variable undefined on its own edges — it names it at its own index and
+    // fills it. Both pedigrees' edges therefore hold a value, and the count is
+    // the sum of the two rather than the first alone.
     const generate = (): unknown =>
       generateNetwork({
         seed: 1,
@@ -2482,7 +2484,7 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
       });
 
     expect(generate).toThrow(SyntheticDataConstraintError);
-    expect(generate).toThrow(/up to 160 edges of this type can be generated/);
+    expect(generate).toThrow(/up to 320 edges of this type can be generated/);
   });
 
   /**
@@ -2537,11 +2539,16 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
           (edge) => edge[entityAttributesProperty].relationshipType,
         );
 
-        expect(values, `seed ${seed}`).toHaveLength(2);
+        // Derived rather than written down: a pedigree's size follows from the
+        // fertility distributions it samples, not from a node range. What the
+        // rule asks for is that every value is distinct, and a categorical
+        // holds a subset of its options, so six options offer far more than six
+        // distinct values.
+        expect(values.length, `seed ${seed}`).toBeGreaterThan(0);
         expect(
           new Set(values.map((value) => JSON.stringify(value))).size,
           `seed ${seed}`,
-        ).toBe(2);
+        ).toBe(values.length);
       }
     });
 
@@ -2578,9 +2585,9 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
       const values = network.edges.map(
         (edge) => edge[entityAttributesProperty].relationshipType,
       );
-      expect(values).toHaveLength(2);
+      expect(values.length).toBeGreaterThan(0);
       expect(new Set(values.map((value) => JSON.stringify(value))).size).toBe(
-        2,
+        values.length,
       );
     });
 

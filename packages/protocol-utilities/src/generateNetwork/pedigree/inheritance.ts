@@ -94,7 +94,10 @@ function seedFounders(
   const pick = (from: AbstractPerson[]): AbstractPerson | undefined =>
     from.length === 0 ? undefined : from[rng.randomInt(0, from.length - 1)];
 
-  const set = (person: AbstractPerson | undefined, value: Partial<Genotype>) => {
+  const set = (
+    person: AbstractPerson | undefined,
+    value: Partial<Genotype>,
+  ) => {
     if (!person) return;
     genotypes.set(person.id, { ...CLEAR, ...value });
   };

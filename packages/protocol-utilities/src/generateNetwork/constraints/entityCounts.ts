@@ -711,7 +711,7 @@ const PEDIGREE_EDGE_RELATIONSHIP_TYPE: RelationshipType = 'biological';
  * the generator now models who supplied which gamete and who carried the
  * pregnancy rather than leaving both undefined.
  */
-export function pedigreeEdgeVariables(
+function pedigreeEdgeVariables(
   edgeConfig: StageOfType<'FamilyPedigree'>['edgeConfig'],
 ): Set<string> {
   const written = new Set<string>();

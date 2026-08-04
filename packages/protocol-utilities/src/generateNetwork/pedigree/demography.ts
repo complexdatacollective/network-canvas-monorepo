@@ -24,7 +24,7 @@ export type Rng = {
  * The 4+ tail is split across 4 and 5 because a pedigree needs an actual
  * sibship size, not a bucket. Mean ≈ 1.9.
  */
-export const COMPLETED_FERTILITY: readonly number[] = [
+const COMPLETED_FERTILITY: readonly number[] = [
   0.19, 0.19, 0.32, 0.2, 0.08, 0.03,
 ];
 
@@ -33,7 +33,7 @@ export const COMPLETED_FERTILITY: readonly number[] = [
  * childbearing around 1990, which is when a present-day 35-year-old's parents
  * and aunts and uncles were having children. Mean ≈ 2.0.
  */
-export const PARENTAL_FERTILITY: readonly number[] = [
+const PARENTAL_FERTILITY: readonly number[] = [
   0.16, 0.17, 0.35, 0.2, 0.08, 0.04,
 ];
 
@@ -48,7 +48,7 @@ export const PARENTAL_FERTILITY: readonly number[] = [
  * it was near 3 produces a family visibly too small: it under-produces cousins
  * by about a third against the Swedish register figures.
  */
-export const GRANDPARENTAL_FERTILITY: readonly number[] = [
+const GRANDPARENTAL_FERTILITY: readonly number[] = [
   0.1, 0.1, 0.22, 0.22, 0.17, 0.12, 0.07,
 ];
 
@@ -169,7 +169,7 @@ function normalise(weights: readonly number[]): number[] {
 }
 
 /** Draws an index from a weight vector. Weights need not sum to 1. */
-export function sampleIndex(rng: Rng, weights: readonly number[]): number {
+function sampleIndex(rng: Rng, weights: readonly number[]): number {
   const probabilities = normalise(weights);
   let roll = rng.randomFloat(0, 1);
   for (let index = 0; index < probabilities.length; index++) {
@@ -191,7 +191,7 @@ export function chance(rng: Rng, probability: number): boolean {
  */
 export type FertilityCohort = 'ego' | 'parental' | 'grandparental';
 
-export function fertilityFor(
+function fertilityFor(
   demography: PedigreeDemography,
   cohort: FertilityCohort,
 ): readonly number[] {
@@ -249,40 +249,4 @@ export function sampleSibshipOfKnownChild(
     (weight, count) => weight * count,
   );
   return Math.max(1, sampleIndex(rng, sizeBiased));
-}
-
-/**
- * The most people a pedigree can contain under a parameter set.
- *
- * Feasibility counts worst cases, and a pedigree's size is drawn rather than
- * configured, so the bound is derived from the fertility distributions instead
- * of read off a config range. It is deliberately loose: over-counting can only
- * refuse a protocol that would have generated, while under-counting lets a
- * `unique` variable pass and then run out partway through a run.
- */
-export function pedigreeNodeBound(demography: PedigreeDemography): number {
-  const maxOf = (weights: readonly number[]) => Math.max(0, weights.length - 1);
-  const ego = maxOf(demography.completedFertility);
-  const parental = maxOf(demography.parentalFertility);
-  const grand = maxOf(demography.grandparentalFertility);
-
-  const core =
-    1 + // ego
-    2 + // parents
-    4 + // grandparents
-    Math.max(0, parental - 1) + // siblings
-    2 * Math.max(0, grand - 1) * (2 + parental) + // aunts/uncles, partners, cousins
-    1 + // ego's partner
-    ego; // ego's children
-
-  // Each varied conception can introduce one donor or carrier.
-  return core * 2;
-}
-
-/**
- * The most edges a pedigree can contain: at most three parent links per person
- * (a donated gamete adds a third) plus one partnership per person.
- */
-export function pedigreeEdgeBound(demography: PedigreeDemography): number {
-  return pedigreeNodeBound(demography) * 4;
 }

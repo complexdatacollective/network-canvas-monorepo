@@ -54,7 +54,10 @@ describe('parentage variants', () => {
       for (const person of pedigree.people) {
         if (person.isFounder) continue;
         const links = pedigree.parents.get(person.id) ?? [];
-        expect(links.length, `seed ${seed}, ${person.id}`).toBeGreaterThanOrEqual(2);
+        expect(
+          links.length,
+          `seed ${seed}, ${person.id}`,
+        ).toBeGreaterThanOrEqual(2);
       }
     }
   });
@@ -87,7 +90,9 @@ describe('parentage variants', () => {
         const adopted = links.every(
           (link) => link.relationshipType === 'adoptive',
         );
-        expect(carriers.length, `seed ${seed}, ${childId}`).toBe(adopted ? 0 : 1);
+        expect(carriers.length, `seed ${seed}, ${childId}`).toBe(
+          adopted ? 0 : 1,
+        );
       }
     }
   });
@@ -98,8 +103,14 @@ describe('parentage variants', () => {
       for (const [childId, links] of pedigree.parents) {
         const eggs = links.filter((link) => link.gameteRole === 'egg');
         const sperm = links.filter((link) => link.gameteRole === 'sperm');
-        expect(eggs.length, `seed ${seed}, ${childId} eggs`).toBeLessThanOrEqual(1);
-        expect(sperm.length, `seed ${seed}, ${childId} sperm`).toBeLessThanOrEqual(1);
+        expect(
+          eggs.length,
+          `seed ${seed}, ${childId} eggs`,
+        ).toBeLessThanOrEqual(1);
+        expect(
+          sperm.length,
+          `seed ${seed}, ${childId} sperm`,
+        ).toBeLessThanOrEqual(1);
       }
     }
   });
@@ -111,7 +122,7 @@ describe('parentage variants', () => {
         for (const link of links) seen.add(link.relationshipType);
       }
     }
-    expect([...seen].sort()).toEqual(
+    expect([...seen].toSorted()).toEqual(
       expect.arrayContaining(['adoptive', 'biological', 'donor', 'surrogate']),
     );
   });
@@ -223,7 +234,10 @@ describe('inheritance', () => {
       }
       // Not every seed need manifest — a recessive condition can fail to
       // surface — but a pattern that never shows anything is broken.
-      expect(withAffected, `${pattern} never produced an affected person`).toBeGreaterThan(0);
+      expect(
+        withAffected,
+        `${pattern} never produced an affected person`,
+      ).toBeGreaterThan(0);
     }
   });
 

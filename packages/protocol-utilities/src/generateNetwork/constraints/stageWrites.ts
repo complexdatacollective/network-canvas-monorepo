@@ -41,8 +41,6 @@ function setOf(values: readonly (string | undefined)[]): Set<string> {
   return new Set(values.filter((value): value is string => Boolean(value)));
 }
 
-const EMPTY: ReadonlySet<string> = new Set();
-
 /**
  * The node variables a FamilyPedigree stage writes on the people it builds:
  * the four `nodeConfig` slots, plus one boolean per nomination prompt.
@@ -115,7 +113,7 @@ export function nodeVariablesWrittenOnCreation(stage: Stage): Set<string> {
 }
 
 /** The node variables a stage writes onto nodes it did not create. */
-export function nodeVariablesWrittenOnExisting(stage: Stage): Set<string> {
+function nodeVariablesWrittenOnExisting(stage: Stage): Set<string> {
   switch (stage.type) {
     case 'Sociogram':
       return setOf(
@@ -153,7 +151,7 @@ function nodeTypeOf(stage: Stage): string | undefined {
  * per-variable model (`named` plus the pedigree split), and duplicating it
  * would give two answers to one question.
  */
-export function collectStageWrites(stages: Stage[]): StageWrites[] {
+function collectStageWrites(stages: Stage[]): StageWrites[] {
   const writes: StageWrites[] = [];
 
   for (let stageIndex = 0; stageIndex < stages.length; stageIndex++) {
@@ -187,12 +185,13 @@ export function lastExistingWriterByType(
     if (write.onExisting.size === 0) continue;
     const forType = byType.get(write.type) ?? new Map<string, number>();
     for (const variable of write.onExisting) {
-      forType.set(variable, Math.max(forType.get(variable) ?? -1, write.stageIndex));
+      forType.set(
+        variable,
+        Math.max(forType.get(variable) ?? -1, write.stageIndex),
+      );
     }
     byType.set(write.type, forType);
   }
 
   return byType;
 }
-
-export { EMPTY as NO_WRITES };

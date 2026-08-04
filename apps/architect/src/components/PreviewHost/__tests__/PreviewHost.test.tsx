@@ -337,9 +337,19 @@ describe('PreviewHost', () => {
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       payload: InterviewPayload;
     };
-    expect(call.payload.session.stageMetadata).toEqual({
-      '0': { isNetworkCommitted: true },
-    });
+    // The pedigree commits its membership alongside the flag, exactly as the
+    // interface does — without the `nodes` list `pedigreeMemberIds` returns
+    // null and NarrativePedigree draws every node of the pedigree's type on the
+    // family tree, including alters a later stage added.
+    const pedigreeMetadata = call.payload.session.stageMetadata?.[0] as {
+      isNetworkCommitted: boolean;
+      nodes: { id: string; isEgo: boolean }[];
+      edges: unknown[];
+    };
+    expect(pedigreeMetadata.isNetworkCommitted).toBe(true);
+    expect(pedigreeMetadata.nodes.length).toBeGreaterThan(0);
+    expect(pedigreeMetadata.edges.length).toBeGreaterThan(0);
+    expect(pedigreeMetadata.nodes.filter((node) => node.isEgo)).toHaveLength(1);
   });
 
   it('shows an error fallback when payload processing throws', async () => {

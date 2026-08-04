@@ -23,6 +23,10 @@ import {
   type EntityScopeRef,
 } from './constraints/generateEntityAttributes';
 import {
+  declaresNodeCollection,
+  nodeVariablesWrittenOnCreation,
+} from './constraints/stageWrites';
+import {
   COMPARATOR_DIRECTION,
   COMPARISON_RULES,
   type ConstrainedVariable,
@@ -31,10 +35,6 @@ import {
 import { valueKey } from './constraints/uniqueRegistry';
 import { distinctOptionValues } from './constraints/valueSpace';
 import type { GenerationContext, StageOfType } from './context';
-import {
-  declaresNodeCollection,
-  nodeVariablesWrittenOnCreation,
-} from './constraints/stageWrites';
 import { getSubjectType } from './subject';
 
 /**
