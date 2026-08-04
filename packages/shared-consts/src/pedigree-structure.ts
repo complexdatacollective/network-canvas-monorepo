@@ -30,11 +30,24 @@ export type PedigreeStructureIssue = {
   entityId?: string;
 };
 
-type Attributes = Record<string, unknown>;
+/**
+ * An entity's attribute bag.
+ *
+ * An index signature rather than `Record<string, unknown>`: the declaration
+ * bundler cannot follow the `Record` symbol out through an exported type and
+ * fails the package build when it tries, which is why every other `Record` in
+ * this package sits on a non-exported const.
+ */
+export type PedigreeEntityAttributes = { [key: string]: unknown };
 
 export type PedigreeStructureInput = {
-  nodes: { id: string; attributes: Attributes }[];
-  edges: { id: string; from: string; to: string; attributes: Attributes }[];
+  nodes: { id: string; attributes: PedigreeEntityAttributes }[];
+  edges: {
+    id: string;
+    from: string;
+    to: string;
+    attributes: PedigreeEntityAttributes;
+  }[];
   config: {
     egoVariable?: string;
     biologicalSexVariable?: string;
@@ -116,7 +129,9 @@ export function validatePedigreeStructure(
     }
   }
 
-  const relationshipOf = (attributes: Attributes): string | undefined =>
+  const relationshipOf = (
+    attributes: PedigreeEntityAttributes,
+  ): string | undefined =>
     typeVariable ? single(attributes[typeVariable]) : undefined;
 
   const parentageEdges = edges.filter((edge) => {
