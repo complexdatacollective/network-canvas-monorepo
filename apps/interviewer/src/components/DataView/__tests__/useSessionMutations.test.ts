@@ -231,7 +231,7 @@ describe('useSessionMutations — export flow lifecycle', () => {
     expect(clearSelection).not.toHaveBeenCalled();
   });
 
-  it('surfaces stage and progress events while building', async () => {
+  it('surfaces stage and progress events while building, resetting counts per stage', async () => {
     const { emit } = hangingRunExport();
     const { result } = makeHook();
 
@@ -239,9 +239,10 @@ describe('useSessionMutations — export flow lifecycle', () => {
     act(() => {
       exportPromise = result.current.handleExport();
     });
-    await waitFor(() =>
-      expect(result.current.exportFlow.phase).toBe('building'),
-    );
+    // The build waits out the dialog's entry animation before starting.
+    await waitFor(() => expect(runExport).toHaveBeenCalled(), {
+      timeout: 2000,
+    });
 
     act(() => {
       emit({
@@ -255,7 +256,25 @@ describe('useSessionMutations — export flow lifecycle', () => {
     expect(result.current.exportFlow).toMatchObject({
       phase: 'building',
       stageMessage: 'Generating files...',
-      percent: 75,
+      current: 3,
+      total: 4,
+    });
+
+    // A stage transition resets stage-local progress: the finished stage's
+    // full bar must not bleed into the next stage.
+    act(() => {
+      emit({
+        type: 'stage',
+        stage: 'outputting',
+        message: 'Writing output...',
+      });
+    });
+
+    expect(result.current.exportFlow).toMatchObject({
+      phase: 'building',
+      stageMessage: 'Writing output...',
+      current: null,
+      total: null,
     });
 
     await act(async () => {
@@ -322,11 +341,19 @@ describe('useSessionMutations — export flow lifecycle', () => {
     expect(runExport).not.toHaveBeenCalled();
   });
 
-  it('partial failures surface on the ready state, not as a toast', async () => {
+  it('collapses per-format export results to interview-level counts on the ready state', async () => {
+    // One interview yields one entry per generated file (format × partition):
+    // counts must come from unique session ids, not raw entries.
     runExport.mockResolvedValue({
       result: {
-        successfulExports: [{ sessionId: 's1' }],
-        failedExports: [{ sessionId: 's2' }],
+        successfulExports: [
+          { sessionId: 's1', format: 'graphml' },
+          { sessionId: 's1', format: 'ego' },
+        ],
+        failedExports: [
+          { sessionId: 's2', kind: 'generation' },
+          { sessionId: 's2', kind: 'generation' },
+        ],
       },
       blob: new Blob(['x']),
       fileName: 'export.zip',
@@ -339,9 +366,41 @@ describe('useSessionMutations — export flow lifecycle', () => {
 
     expect(result.current.exportFlow).toMatchObject({
       phase: 'ready',
+      sessionIds: ['s1'],
       failedCount: 1,
     });
     expect(toastAdd).not.toHaveBeenCalled();
+  });
+
+  it('a refresh failure after a successful save does not resurrect the save flow', async () => {
+    saveBlob.mockResolvedValue({ saved: true });
+    const failingReload = vi.fn().mockRejectedValue(new Error('reload failed'));
+    const { result } = renderHook(() =>
+      useSessionMutations({
+        selectedCount: 1,
+        resolveSelectedIds: () => Promise.resolve(['s1']),
+        clearSelection,
+        onReload: failingReload,
+        reloadData: () => Promise.resolve(),
+      }),
+    );
+    await buildReadyArchive(result);
+
+    await act(async () => {
+      await result.current.handleShareReady();
+    });
+
+    // The archive is saved and marked: a reload failure is reported, but must
+    // not reopen the dialog and invite a duplicate export.
+    expect(markSessionsExported).toHaveBeenCalledTimes(1);
+    expect(result.current.exportFlow.phase).toBe('idle');
+    expect(captureException).toHaveBeenCalledOnce();
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Export complete' }),
+    );
+    expect(toastAdd).not.toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Export failed' }),
+    );
   });
 });
 

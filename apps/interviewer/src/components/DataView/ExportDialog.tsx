@@ -1,10 +1,11 @@
-import { Download, Save, Share2 } from 'lucide-react';
+import { Download, FileArchive, Save, Share2 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
+import Spinner from '@codaco/fresco-ui/Spinner';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { saveAction, type SaveAction } from '~/lib/files/download';
 
@@ -79,13 +80,17 @@ export function ExportDialog({
 
   let title: string;
   let description: string | undefined;
-  let accent: 'destructive' | undefined;
+  let accent: 'destructive' | 'success' | undefined;
   let dismissible: boolean;
   let announcement: string;
   let footer: ReactNode;
   let children: ReactNode = null;
 
   if (flow.phase === 'building') {
+    const percent =
+      flow.current !== null && flow.total !== null && flow.total > 0
+        ? Math.round((flow.current / flow.total) * 100)
+        : null;
     title =
       flow.sessionCount === 1
         ? 'Exporting 1 interview'
@@ -101,16 +106,24 @@ export function ExportDialog({
     );
     children = (
       <>
+        <div className="flex items-center gap-3">
+          <Spinner size="sm" />
+          <Paragraph margin="none" emphasis="muted">
+            {flow.stageMessage}
+          </Paragraph>
+        </div>
         <ProgressBar
           orientation="horizontal"
-          indeterminate={flow.percent === null}
-          percentProgress={flow.percent ?? 0}
+          indeterminate={percent === null}
+          percentProgress={percent ?? 0}
           label="Export progress"
-          className="text-sea-green h-2"
+          className="text-sea-green mt-4 h-2"
         />
-        <Paragraph emphasis="muted" className="mt-4 mb-0">
-          {flow.stageMessage}
-        </Paragraph>
+        {flow.current !== null && flow.total !== null && (
+          <Paragraph margin="none" emphasis="muted" className="mt-2 text-sm">
+            {`${flow.current} of ${flow.total} files`}
+          </Paragraph>
+        )}
       </>
     );
   } else if (flow.phase === 'error') {
@@ -130,6 +143,7 @@ export function ExportDialog({
     const ActionIcon = READY_ACTION_ICONS[resolvedAction];
     title = 'Archive ready';
     description = READY_DESCRIPTIONS[resolvedAction];
+    accent = 'success';
     dismissible = !saving;
     announcement = 'Archive ready';
     footer = (
@@ -155,19 +169,24 @@ export function ExportDialog({
     );
     children = (
       <>
-        <Paragraph margin="none" className="font-semibold break-all">
-          {flow.fileName}
-        </Paragraph>
-        <Paragraph emphasis="muted" margin="none" className="mt-1">
-          {flow.sessionIds.length === 1
-            ? 'Contains 1 interview.'
-            : `Contains ${flow.sessionIds.length} interviews.`}
-        </Paragraph>
+        <div className="bg-surface-1 text-surface-1-contrast publish-colors flex items-center gap-4 rounded-lg p-4">
+          <FileArchive className="text-success size-8 shrink-0" aria-hidden />
+          <div className="min-w-0">
+            <Paragraph margin="none" className="font-semibold break-all">
+              {flow.fileName}
+            </Paragraph>
+            <Paragraph emphasis="muted" margin="none" className="mt-1 text-sm">
+              {flow.sessionIds.length === 1
+                ? 'Contains 1 interview.'
+                : `Contains ${flow.sessionIds.length} interviews.`}
+            </Paragraph>
+          </div>
+        </div>
         {flow.failedCount > 0 && (
           <Alert variant="warning" className="mt-4">
             {flow.failedCount === 1
-              ? '1 interview could not be exported and is not included in this archive.'
-              : `${flow.failedCount} interviews could not be exported and are not included in this archive.`}
+              ? '1 interview could not be exported completely and may be missing from this archive.'
+              : `${flow.failedCount} interviews could not be exported completely and may be missing from this archive.`}
           </Alert>
         )}
       </>

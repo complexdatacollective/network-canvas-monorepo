@@ -172,4 +172,38 @@ describe('makeZipOutput', () => {
     // We don't care whether end() succeeds or fails - only that it resolves promptly.
     expect(['Left', 'Right']).toContain(endExit._tag);
   });
+
+  it('abort settles a sink awaiting more chunks instead of stranding it', async () => {
+    // Without abort, a sink suspended on iterable.next() after an interrupted
+    // pipeline would never settle, pinning every chunk it buffered.
+    let sinkSettled = false;
+
+    const sink = (stream: AsyncIterable<Uint8Array>, fileName: string) =>
+      Effect.tryPromise({
+        try: async () => {
+          try {
+            for await (const _chunk of stream) {
+              // drain
+            }
+          } finally {
+            sinkSettled = true;
+          }
+          return { key: fileName };
+        },
+        catch: (cause) => new OutputError({ cause }),
+      });
+
+    const program = Effect.gen(function* () {
+      const out = yield* Output;
+      const handle = yield* out.begin();
+      yield* out.writeEntry(handle, { name: 'a.txt', data: bytesOf('a') });
+      // No end(): simulate the pipeline being interrupted mid-write.
+      yield* out.abort?.(handle) ?? Effect.void;
+    });
+
+    await Effect.runPromise(program.pipe(Effect.provide(makeZipOutput(sink))));
+    // One macrotask beat for the rejected iterator promise to propagate.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(sinkSettled).toBe(true);
+  });
 });

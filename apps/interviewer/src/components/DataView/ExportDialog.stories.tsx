@@ -18,7 +18,8 @@ function AfterBuildHarness(props: ComponentProps<typeof ExportDialog>) {
     phase: 'building',
     sessionCount: 12,
     stageMessage: stageMessages.outputting,
-    percent: 90,
+    current: 36,
+    total: 40,
   });
   useEffect(() => {
     const timer = setTimeout(() => setFlow(props.flow), 150);
@@ -101,14 +102,16 @@ constraint). Driven entirely by the \`ExportFlow\` state from
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Before any progress event with a total arrives the bar is indeterminate.
+// Before the current stage emits a progress event with a total, the bar is
+// indeterminate and only the spinner + stage message signal activity.
 export const BuildingIndeterminate: Story = {
   args: {
     flow: {
       phase: 'building',
       sessionCount: 12,
       stageMessage: stageMessages.fetching,
-      percent: null,
+      current: null,
+      total: null,
     },
   },
 };
@@ -119,7 +122,8 @@ export const BuildingWithProgress: Story = {
       phase: 'building',
       sessionCount: 12,
       stageMessage: stageMessages.generating,
-      percent: 62,
+      current: 74,
+      total: 120,
     },
   },
   play: async ({ args }) => {
@@ -143,7 +147,8 @@ export const BuildingSingleInterview: Story = {
       phase: 'building',
       sessionCount: 1,
       stageMessage: stageMessages.formatting,
-      percent: null,
+      current: null,
+      total: null,
     },
   },
 };

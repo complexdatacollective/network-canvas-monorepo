@@ -28,8 +28,11 @@ export type ExportFlow =
       phase: 'building';
       sessionCount: number;
       stageMessage: string;
-      // null until a progress event with a total arrives (indeterminate).
-      percent: number | null;
+      // null until the current stage emits a progress event with a total
+      // (indeterminate); reset on every stage transition so a finished
+      // stage's bar never bleeds into the next stage.
+      current: number | null;
+      total: number | null;
     }
   | {
       phase: 'ready' | 'saving';
@@ -96,8 +99,13 @@ export function useSessionMutations({
         phase: 'building',
         sessionCount: ids.length,
         stageMessage: stageMessages.fetching,
-        percent: null,
+        current: null,
+        total: null,
       });
+      // Let the dialog finish animating in before the CPU-heavy build starts
+      // competing with it for the main thread.
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      if (controller.signal.aborted) return;
       const options = buildExportOptions({
         exportGraphML: settings.exportGraphML,
         exportCSV: settings.exportCSV,
@@ -113,35 +121,55 @@ export function useSessionMutations({
           setExportFlow((current) => {
             if (current.phase !== 'building') return current;
             if (event.type === 'stage') {
-              return { ...current, stageMessage: event.message };
+              // Progress is stage-local: carrying the previous stage's counts
+              // forward would show a full bar for work that hasn't started.
+              return {
+                ...current,
+                stageMessage: event.message,
+                current: null,
+                total: null,
+              };
             }
             if (event.total <= 0) return current;
-            return {
-              ...current,
-              percent: Math.round((event.current / event.total) * 100),
-            };
+            return { ...current, current: event.current, total: event.total };
           });
         },
       });
       // Cancellation can race a build that was already resolving; the cancel
-      // wins — never resurface a dialog the user dismissed.
-      if (controller.signal.aborted) return;
+      // wins — never resurface a dialog the user dismissed. handleCancelBuild
+      // already reset the flow; the extra reset here is defence against that
+      // coupling changing.
+      if (controller.signal.aborted) {
+        setExportFlow({ phase: 'idle' });
+        return;
+      }
       if (!blob || !fileName) {
         throw new Error('Export produced no file');
       }
+      // successfulExports/failedExports carry one entry per generated file
+      // (format × partition), not per interview — collapse to interview-level
+      // before anything user-facing (counts, marking, analytics) consumes it.
+      const exportedIds = [
+        ...new Set(result.successfulExports.map((s) => s.sessionId)),
+      ];
+      const failedCount = new Set(result.failedExports.map((f) => f.sessionId))
+        .size;
       setExportFlow({
         phase: 'ready',
         blob,
         fileName,
-        sessionIds: result.successfulExports.map((s) => s.sessionId),
+        sessionIds: exportedIds,
         exportGraphML: settings.exportGraphML,
         exportCSV: settings.exportCSV,
-        failedCount: result.failedExports.length,
+        failedCount,
       });
     } catch (cause) {
       // A cancelled build already reset the flow; its rejection is not an
       // error.
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        setExportFlow({ phase: 'idle' });
+        return;
+      }
       analytics.captureException(cause, { feature: 'export' });
       setExportFlow({
         phase: 'error',
@@ -213,17 +241,14 @@ export function useSessionMutations({
       });
       setExportFlow({ phase: 'idle' });
       clearSelection();
-      // Refresh so the just-set exportedAt shows in the Export status column
-      // and the status filter/counts.
-      await Promise.all([onReload(), reloadData()]);
       toast.add({
         title: 'Export complete',
         description: fileName,
         variant: 'success',
       });
     } catch (cause) {
-      // The built archive is still valid, so the dialog returns to the ready
-      // state for a retry.
+      // Failures up to the save/mark boundary keep the archive and return the
+      // dialog to the ready state for a retry.
       analytics.captureException(cause, { feature: 'export' });
       setExportFlow({ ...exportFlow, phase: 'ready' });
       toast.add({
@@ -231,8 +256,18 @@ export function useSessionMutations({
         description: cause instanceof Error ? cause.message : String(cause),
         variant: 'destructive',
       });
+      return;
     } finally {
       shareInFlightRef.current = false;
+    }
+    // Refresh so the just-set exportedAt shows in the Export status column and
+    // the status filter/counts. Deliberately outside the retry domain: the
+    // archive is saved and the sessions are marked, so a refresh failure must
+    // not resurrect the save flow and invite a duplicate export.
+    try {
+      await Promise.all([onReload(), reloadData()]);
+    } catch (cause) {
+      analytics.captureException(cause, { feature: 'export' });
     }
   }, [analytics, clearSelection, exportFlow, onReload, reloadData, toast]);
 

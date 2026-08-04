@@ -254,7 +254,38 @@ implementation that nothing in the pipeline's `ExportReturn` consumes
   `preparing-e2e-visual-baselines` skill — the dialog appears mid-flow, so
   only screenshots taken during export (if any) can shift.
 
+## Post-approval refinements (2026-08-04)
+
+From live testing on desktop Chrome and PR #1191 review:
+
+- **Progress actually paints.** The Effect pipeline ran in one microtask
+  chain, so browsers never rendered a frame between "Fetching interview
+  data..." and the ready state. `@codaco/network-exporters` now yields a
+  macrotask at each stage boundary and every 25 generated/written files.
+- **Build start waits ~400ms** so the dialog's entry animation completes
+  before CPU-heavy work competes for the main thread.
+- **Building state**: spinner + stage message, plus an "N of M files" line.
+  Progress is stage-local (`current`/`total`), reset on every stage
+  transition so a finished stage's full bar never bleeds into the next.
+- **Ready state**: `accent="success"`, and the file name + interview count
+  are grouped into a summary card with an archive icon.
+- **Interview-level counts.** `successfulExports`/`failedExports` carry one
+  entry per generated file (format × partition); the flow collapses both to
+  unique session ids before display, `markSessionsExported`, and analytics.
+  The partial-failure copy is now "could not be exported completely and may
+  be missing", since a failure entry can mean a partially included interview.
+- **Refresh runs outside the retry domain.** After a successful save + mark,
+  a failing reload is reported via `captureException` but never returns the
+  dialog to `ready` (which would invite a duplicate export).
+- **Cancellation tears down the ZIP sink.** Interrupting the pipeline alone
+  stranded the `runFork`ed sink fiber awaiting its next chunk, pinning the
+  buffered archive. The `Output` service gained an optional `abort(handle)`,
+  implemented by `makeZipOutput` and invoked via `Effect.onInterrupt`
+  (`@codaco/network-exporters` patch).
+
 ## Shipping
 
 Single PR. App-lane changeset, `minor`, researcher-facing notes ("Exporting
-now shows progress and finishes in a single guided dialog"). Closes #1187.
+now shows progress and finishes in a single guided dialog"), plus a
+`@codaco/network-exporters` patch changeset for the interruption teardown and
+event-loop yields. Closes #1187.

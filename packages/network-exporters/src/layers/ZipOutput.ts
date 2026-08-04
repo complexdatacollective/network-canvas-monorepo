@@ -182,4 +182,18 @@ export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
         ),
       );
     },
+
+    // The sink fiber lives on the global runtime (see begin), so pipeline
+    // interruption alone would strand it awaiting the next chunk forever,
+    // pinning everything it buffered. Rejecting the iterable unblocks it;
+    // the interrupt then reaps it regardless of where it was suspended.
+    abort: (rawHandle) => {
+      const { handle, sinkFiber } = rawHandle as {
+        handle: ZipStreamHandle;
+        sinkFiber: Fiber.RuntimeFiber<OutputResult, OutputError>;
+      };
+      return Effect.sync(() =>
+        handle.abort(new Error('Export was cancelled')),
+      ).pipe(Effect.zipRight(Fiber.interrupt(sinkFiber)), Effect.asVoid);
+    },
   });

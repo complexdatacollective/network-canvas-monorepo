@@ -34,6 +34,10 @@ export const exportPipeline = (
       stage: 'formatting',
       message: stageMessages.formatting,
     });
+    // A macrotask boundary before the synchronous formatting work: without
+    // it, browser hosts never paint the stage message (Effect's default
+    // scheduler yields only microtasks, which block rendering).
+    yield* Effect.sleep(0);
 
     const failuresRef = yield* Ref.make<ExportFailure[]>([]);
 
@@ -62,29 +66,41 @@ export const exportPipeline = (
       stage: 'outputting',
       message: stageMessages.outputting,
     });
+    yield* Effect.sleep(0);
 
     const handle = yield* output
       .begin()
       .pipe(Effect.withSpan('export.outputBegin'));
 
-    const total = successes.length;
-    let written = 0;
-    for (const { entry } of successes) {
-      yield* output
-        .writeEntry(handle, entry)
-        .pipe(Effect.withSpan('export.writeEntry'));
-      written += 1;
-      yield* Queue.offer(progressQueue, {
-        type: 'progress',
-        stage: 'outputting',
-        current: written,
-        total,
-      });
-    }
+    const writeAndFinalize = Effect.gen(function* () {
+      const total = successes.length;
+      let written = 0;
+      for (const { entry } of successes) {
+        yield* output
+          .writeEntry(handle, entry)
+          .pipe(Effect.withSpan('export.writeEntry'));
+        written += 1;
+        yield* Queue.offer(progressQueue, {
+          type: 'progress',
+          stage: 'outputting',
+          current: written,
+          total,
+        });
+        // Periodic macrotask boundary so browser hosts can paint progress.
+        if (written % 25 === 0) yield* Effect.sleep(0);
+      }
 
-    const outputResult = yield* output
-      .end(handle)
-      .pipe(Effect.withSpan('export.outputEnd'));
+      return yield* output
+        .end(handle)
+        .pipe(Effect.withSpan('export.outputEnd'));
+    });
+
+    // Interruption between begin and end would otherwise strand whatever the
+    // output backend holds outside this fiber (e.g. the ZIP sink fiber and
+    // its buffered chunks) — give it the chance to tear down.
+    const outputResult = yield* writeAndFinalize.pipe(
+      Effect.onInterrupt(() => output.abort?.(handle) ?? Effect.void),
+    );
 
     const finalFailures = yield* Ref.get(failuresRef);
     const successfulExports: ExportSuccess[] = successes.map((s) => s.success);
