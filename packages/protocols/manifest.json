@@ -64,6 +64,15 @@
       "architectTemplate": true
     },
     {
+      "id": "eco-genetic-relationship-maps",
+      "kind": "template",
+      "name": "Eco-Genetic Relationship Maps",
+      "description": "A family pedigree overlaid with the support network around an inherited condition",
+      "protocolPath": "templates/eco-genetic-relationship-maps/protocol.json",
+      "assetDir": "templates/eco-genetic-relationship-maps/assets",
+      "architectTemplate": true
+    },
+    {
       "id": "sample",
       "kind": "sample",
       "name": "Sample Protocol",

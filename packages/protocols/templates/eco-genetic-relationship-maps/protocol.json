@@ -1,0 +1,587 @@
+{
+  "name": "Eco-Genetic Relationship Maps",
+  "description": "An example template for families living with an inherited condition. It builds a family pedigree, adds the friends and others who matter to the participant, records the information, practical help, feelings and spiritual connection they exchange with each person, and closes on a colour-coded map and an inheritance view.",
+  "schemaVersion": 8,
+  "lastModified": "2026-08-04T00:00:00.000Z",
+  "codebook": {
+    "ego": {
+      "variables": {
+        "participant_consent": {
+          "name": "participant_consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "validation": { "required": true },
+          "options": [
+            {
+              "label": "Yes. I agree to take part.",
+              "value": true,
+              "negative": false
+            },
+            {
+              "label": "No. I do not agree to take part.",
+              "value": false,
+              "negative": true
+            }
+          ]
+        },
+        "ego_age": {
+          "name": "ego_age",
+          "type": "number",
+          "component": "Number"
+        },
+        "ego_education": {
+          "name": "ego_education",
+          "type": "ordinal",
+          "component": "RadioGroup",
+          "options": [
+            { "label": "Secondary school or less", "value": 1 },
+            { "label": "Post-secondary or vocational training", "value": 2 },
+            { "label": "University degree", "value": 3 },
+            { "label": "Postgraduate degree", "value": 4 }
+          ]
+        },
+        "ego_partnered": {
+          "name": "ego_partnered",
+          "type": "boolean",
+          "component": "Boolean"
+        },
+        "ego_affected": {
+          "name": "ego_affected",
+          "type": "boolean",
+          "component": "Boolean"
+        },
+        "ego_tested": {
+          "name": "ego_tested",
+          "type": "boolean",
+          "component": "Boolean"
+        }
+      }
+    },
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": {
+          "default": "circle",
+          "dynamic": {
+            "type": "discrete",
+            "variable": "biologicalSex",
+            "map": [
+              { "value": "male", "shape": "square" },
+              { "value": "female", "shape": "circle" },
+              { "value": "intersex", "shape": "diamond" }
+            ]
+          }
+        },
+        "variables": {
+          "name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text"
+          },
+          "contact_name": {
+            "name": "contact_name",
+            "type": "text",
+            "component": "Text",
+            "validation": { "required": true }
+          },
+          "is_ego": {
+            "name": "is_ego",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "relationship_to_ego": {
+            "name": "relationship_to_ego",
+            "type": "text",
+            "component": "Text"
+          },
+          "biologicalSex": {
+            "name": "biologicalSex",
+            "type": "categorical",
+            "options": [
+              { "value": "female", "label": "Female" },
+              { "value": "male", "label": "Male" },
+              {
+                "value": "intersex",
+                "label": "Intersex or a variation in sex characteristics"
+              },
+              { "value": "unknown", "label": "Don’t know" },
+              { "value": "preferNotToSay", "label": "Prefer not to say" }
+            ]
+          },
+          "layout": { "name": "layout", "type": "layout" },
+          "tie_type": {
+            "name": "tie_type",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              { "label": "Close friend", "value": "close_friend" },
+              { "label": "Friend", "value": "friend" },
+              { "label": "Colleague or classmate", "value": "colleague" },
+              { "label": "Neighbour", "value": "neighbour" },
+              { "label": "Faith community", "value": "faith" },
+              { "label": "Health professional", "value": "professional" }
+            ]
+          },
+          "tie_type_other": {
+            "name": "tie_type_other",
+            "type": "text",
+            "component": "Text"
+          },
+          "has_condition": {
+            "name": "has_condition",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "had_testing": {
+            "name": "had_testing",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "is_deceased": {
+            "name": "is_deceased",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "exch_information": {
+            "name": "exch_information",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "exch_tangible": {
+            "name": "exch_tangible",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "exch_emotional": {
+            "name": "exch_emotional",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "exch_spiritual": {
+            "name": "exch_spiritual",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "role_gatherer": {
+            "name": "role_gatherer",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "role_disseminator": {
+            "name": "role_disseminator",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "role_blocker": {
+            "name": "role_blocker",
+            "type": "boolean",
+            "component": "Toggle"
+          }
+        }
+      }
+    },
+    "edge": {
+      "family_relationship": {
+        "name": "Family relationship",
+        "color": "edge-color-seq-1",
+        "variables": {
+          "relationshipType": {
+            "name": "relationshipType",
+            "type": "categorical",
+            "options": [
+              { "value": "biological", "label": "Biological" },
+              { "value": "social", "label": "Social" },
+              { "value": "donor", "label": "Donor" },
+              { "value": "surrogate", "label": "Surrogate" },
+              { "value": "adoptive", "label": "Adoptive" },
+              { "value": "partner", "label": "Partner" }
+            ]
+          },
+          "isActive": { "name": "isActive", "type": "boolean" },
+          "isGestationalCarrier": {
+            "name": "isGestationalCarrier",
+            "type": "boolean"
+          },
+          "gameteRole": {
+            "name": "gameteRole",
+            "type": "categorical",
+            "options": [
+              { "value": "egg", "label": "Egg" },
+              { "value": "sperm", "label": "Sperm" }
+            ]
+          }
+        }
+      },
+      "knows": { "name": "Knows", "color": "edge-color-seq-2" }
+    }
+  },
+  "stages": [
+    {
+      "id": "information-researcher-notes",
+      "type": "Information",
+      "label": "Template notes (delete before fielding)",
+      "title": "Template notes",
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view is configured as `autosomalDominant`. Change it to match your condition — the options are autosomal dominant/recessive, X-linked dominant/recessive, Y-linked, mitochondrial, multifactorial, and unknown. Multifactorial and unknown deliberately infer nothing beyond who was named as affected.\n- **Decide about at-risk statuses.** They are switched on so the inheritance view shows who may be affected or carrying. This is a teaching aid, not a diagnosis, and it can surface information a participant has not been told. Switch it off if that is not appropriate for your study.\n\n### Why there are two name variables\n\nFamily members are named on the pedigree and stored in `name`; everyone added afterwards is stored in `contact_name`. This is deliberate. A variable cannot be written both by a form and outside a form — Architect warns when that happens, because values written outside a form skip the validation rules the form would apply. The pedigree writes names outside a form, and the quick-add screen writes them through one, so they need separate variables. Each person still displays under whichever of the two is filled in, and you can merge the two columns when you analyse the data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) and three family communication roles (gatherer, disseminator, blocker), each recorded as a yes/no per person. From these you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4).\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://pubmed.ncbi.nlm.nih.gov/26141156/) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
+        }
+      ]
+    },
+    {
+      "id": "information-intro",
+      "type": "EgoForm",
+      "label": "Welcome and consent",
+      "introductionPanel": {
+        "title": "About this interview",
+        "text": "## Thank you for taking part\n\nIn this interview we will build a map together. First your family and who in it has been affected by this condition, then the friends and other people who matter to you, and then what you share with each of them — information, practical help, feelings, and spiritual connection.\n\n### Some of these questions are personal\n\nWe will ask about illness and about people in your family who have died. We will also ask who finds this subject hard to talk about. You are free to skip any question, to pause, or to stop at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If talking about your family's health brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate support whether or not you choose to take part.**"
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "participant_consent",
+            "prompt": "Do you consent to participate in this study?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ego-form-background",
+      "type": "EgoForm",
+      "label": "About you",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d40",
+              "type": "ego",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": { "type": "finish" }
+      },
+      "introductionPanel": {
+        "title": "A little about you",
+        "text": "A few short questions before we start on the map."
+      },
+      "form": {
+        "fields": [
+          { "variable": "ego_age", "prompt": "How old are you?" },
+          {
+            "variable": "ego_education",
+            "prompt": "What is the highest level of education you have completed?"
+          },
+          {
+            "variable": "ego_partnered",
+            "prompt": "Do you have a partner or spouse?"
+          },
+          {
+            "variable": "ego_affected",
+            "prompt": "Have you been diagnosed with this condition?"
+          },
+          {
+            "variable": "ego_tested",
+            "prompt": "Have you had genetic testing for this condition?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "family-pedigree",
+      "type": "FamilyPedigree",
+      "label": "Family pedigree",
+      "interviewScript": "Build the pedigree with the participant rather than handing them the device. Published CEGRM sessions are co-constructed, and recent studies pre-populate the pedigree before the session and review it with the participant instead of drawing it from scratch — do that if your study design allows, since it substantially reduces burden.\n\nThe three questions after the pedigree is finalised are asked by tapping people on the finished tree. Take them slowly. Asking who has died, in a family living with an inherited condition, will often prompt a story; let it run, and capture it using your approved study procedure.",
+      "nodeConfig": {
+        "type": "person",
+        "nodeLabelVariable": "name",
+        "egoVariable": "is_ego",
+        "relationshipVariable": "relationship_to_ego",
+        "biologicalSexVariable": "biologicalSex"
+      },
+      "edgeConfig": {
+        "type": "family_relationship",
+        "relationshipTypeVariable": "relationshipType",
+        "isActiveVariable": "isActive",
+        "isGestationalCarrierVariable": "isGestationalCarrier",
+        "gameteRoleVariable": "gameteRole"
+      },
+      "framing": { "mode": "participantChoice" },
+      "boundaries": {
+        "requireGrandparents": "recommended",
+        "requireChildrenContributors": "off"
+      },
+      "introScreen": {
+        "items": [
+          {
+            "id": "pedigree-intro",
+            "type": "text",
+            "content": "A family tree like this one maps **biological** relationships — the people whose egg and sperm you came from, rather than the people who raised you. That is what lets us follow how a condition passes down a family.\n\nYou will be able to add everyone else who matters to you straight afterwards."
+          }
+        ]
+      },
+      "censusPrompt": "Let's map out your family. Who is in it?",
+      "nominationPrompts": [
+        {
+          "id": "nom-condition",
+          "text": "Who in your family has had **this condition**?",
+          "variable": "has_condition"
+        },
+        {
+          "id": "nom-testing",
+          "text": "Who has had **genetic testing** for it?",
+          "variable": "had_testing"
+        },
+        {
+          "id": "nom-deceased",
+          "text": "Who has **died**?",
+          "variable": "is_deceased"
+        }
+      ]
+    },
+    {
+      "id": "information-beyond-family",
+      "type": "Information",
+      "label": "Beyond the family",
+      "title": "The people beyond your family",
+      "items": [
+        {
+          "id": "beyond-text",
+          "type": "text",
+          "content": "A family tree only shows the people you are related to. The next few screens add everyone else who matters — friends, colleagues, neighbours, people from groups you belong to, and the people who look after your health.\n\nThey will sit alongside your family on the same map."
+        }
+      ]
+    },
+    {
+      "id": "ng-non-kin",
+      "type": "NameGeneratorQuickAdd",
+      "label": "People in your life",
+      "interviewScript": "The same person can belong in several of these questions. Add them once, then pick them from the panel of people already named rather than typing the name again.\n\nThe published instrument treats this step as widening the map to the participant's whole social universe, so do not rush it — friends and co-members of groups are where the spiritual and emotional domains usually turn out to live.",
+      "subject": { "entity": "node", "type": "person" },
+      "quickAdd": "contact_name",
+      "panels": [
+        {
+          "id": "already-mentioned",
+          "title": "People you already named",
+          "dataSource": "existing"
+        }
+      ],
+      "prompts": [
+        {
+          "id": "p-friends",
+          "text": "Who are the **friends** who matter most to you?"
+        },
+        {
+          "id": "p-work",
+          "text": "Who are the people you know through **work or study**?"
+        },
+        {
+          "id": "p-groups",
+          "text": "Who do you know through **groups you belong to** — a faith community, a team, a club, or a community you are part of online?"
+        },
+        {
+          "id": "p-care",
+          "text": "Who is involved in looking after your **health**?"
+        }
+      ]
+    },
+    {
+      "id": "bin-tie-type",
+      "type": "CategoricalBin",
+      "label": "How you know each person",
+      "subject": { "entity": "node", "type": "person" },
+      "prompts": [
+        {
+          "id": "p-tie-type",
+          "text": "Sort the people you have just named by **how you know them**.",
+          "variable": "tie_type",
+          "otherVariable": "tie_type_other",
+          "otherVariablePrompt": "How would you describe how you know this person?",
+          "otherOptionLabel": "Something else"
+        }
+      ]
+    },
+    {
+      "id": "socio-exchanges",
+      "type": "Sociogram",
+      "label": "Exchanges of support",
+      "interviewScript": "These four questions are the coloured dots of the original paper instrument: information, practical help, feelings, and spiritual connection. Each is asked about every person on the map, family and non-family alike.\n\nAll the people are placed automatically so the participant reads the map rather than arranging it. Answer the first question about who knows whom before the four exchange questions — the connections make the later views legible.",
+      "subject": { "entity": "node", "type": "person" },
+      "background": { "concentricCircles": 0 },
+      "behaviours": { "automaticLayout": true, "allowRepositioning": true },
+      "prompts": [
+        {
+          "id": "p-ties",
+          "text": "Connect any of these people who **know one another**.",
+          "layout": { "layoutVariable": "layout" },
+          "edges": { "create": "knows", "display": ["knows"] }
+        },
+        {
+          "id": "p-information",
+          "text": "Who do you **share health or genetic information** with?",
+          "layout": { "layoutVariable": "layout" },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "exch_information"
+          }
+        },
+        {
+          "id": "p-tangible",
+          "text": "Who gives you **practical help** — a lift to an appointment, a meal, looking after the children?",
+          "layout": { "layoutVariable": "layout" },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "exch_tangible"
+          }
+        },
+        {
+          "id": "p-emotional",
+          "text": "Who do you **share your feelings** with about all of this?",
+          "layout": { "layoutVariable": "layout" },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "exch_emotional"
+          }
+        },
+        {
+          "id": "p-spiritual",
+          "text": "Who do you share a **spiritual or religious connection** with?",
+          "layout": { "layoutVariable": "layout" },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "exch_spiritual"
+          }
+        }
+      ]
+    },
+    {
+      "id": "socio-roles",
+      "type": "Sociogram",
+      "label": "Talking about the condition",
+      "interviewScript": "These three questions are the coloured stars of the paper instrument — the gatherer, disseminator and blocker roles described by Koehly and colleagues. The third one names someone as a barrier to family communication, so frame it gently and without judgement: people usually have reasons, and those reasons are often the most useful thing the participant tells you.",
+      "subject": { "entity": "node", "type": "person" },
+      "background": { "concentricCircles": 0 },
+      "behaviours": { "automaticLayout": true, "allowRepositioning": true },
+      "prompts": [
+        {
+          "id": "p-gatherer",
+          "text": "Who **looks for information** about this condition — reads about it, asks questions, keeps track of what is known?",
+          "layout": { "layoutVariable": "layout" },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "role_gatherer"
+          }
+        },
+        {
+          "id": "p-disseminator",
+          "text": "Who **helps the family talk** about it and passes news on?",
+          "layout": { "layoutVariable": "layout" },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "role_disseminator"
+          }
+        },
+        {
+          "id": "p-blocker",
+          "text": "Who finds it **hard to talk** about it, or would rather not know?",
+          "layout": { "layoutVariable": "layout" },
+          "highlight": { "allowHighlighting": true, "variable": "role_blocker" }
+        }
+      ]
+    },
+    {
+      "id": "narrative-cegrm",
+      "type": "Narrative",
+      "label": "The completed map",
+      "interviewScript": "This is the payoff of the whole session, and the point at which the CEGRM stops being a questionnaire and becomes an elicitation device. Operate it yourself and use it to prompt the participant.\n\nStep through the overlays and ask what they notice. Where do the colours cluster? Where are they absent? Absence is as informative as presence — a person with no one in the feelings overlay, or a family where practical help comes entirely from outside it, is the finding. Participants in the published studies consistently reported insight from seeing the pattern rather than from being asked about it.\n\nOne overlay shows at a time. Move between them at the participant's pace, and let them ask to go back. Nothing on this screen is saved, including any drawing, so capture the conversation using your approved study procedure.",
+      "subject": { "entity": "node", "type": "person" },
+      "background": { "concentricCircles": 3, "skewedTowardCenter": true },
+      "behaviours": {
+        "automaticLayout": false,
+        "allowRepositioning": true,
+        "freeDraw": true
+      },
+      "presets": [
+        {
+          "id": "preset-everyone",
+          "label": "Everyone on your map",
+          "layoutVariable": "layout",
+          "groupVariable": "tie_type",
+          "edges": { "display": ["knows"] }
+        },
+        {
+          "id": "preset-information",
+          "label": "Information",
+          "layoutVariable": "layout",
+          "groupVariable": "tie_type",
+          "highlight": ["exch_information"]
+        },
+        {
+          "id": "preset-tangible",
+          "label": "Practical help",
+          "layoutVariable": "layout",
+          "groupVariable": "tie_type",
+          "highlight": ["exch_tangible"]
+        },
+        {
+          "id": "preset-emotional",
+          "label": "Feelings",
+          "layoutVariable": "layout",
+          "groupVariable": "tie_type",
+          "highlight": ["exch_emotional"]
+        },
+        {
+          "id": "preset-spiritual",
+          "label": "Spiritual connection",
+          "layoutVariable": "layout",
+          "groupVariable": "tie_type",
+          "highlight": ["exch_spiritual"]
+        },
+        {
+          "id": "preset-roles",
+          "label": "Talking about the condition",
+          "layoutVariable": "layout",
+          "highlight": ["role_gatherer", "role_disseminator", "role_blocker"]
+        }
+      ]
+    },
+    {
+      "id": "narrative-pedigree",
+      "type": "NarrativePedigree",
+      "label": "How the condition runs in the family",
+      "interviewScript": "Set the inheritance pattern to match your study's condition before fielding — it is currently autosomal dominant.\n\nSelecting one person shows only the relatives who bear on how they would inherit, which is usually easier to follow than the whole tree at once. At-risk statuses are shown: these are inferred from the pattern and from who was named as affected, and they are neither a diagnosis nor a test result. Say so plainly if the participant reads them as one, and be ready for the possibility that this view shows a participant something about their family they had not put together before.",
+      "sourceStageId": "family-pedigree",
+      "showAtRiskStatuses": true,
+      "diseases": [
+        {
+          "id": "condition",
+          "label": "This condition",
+          "color": "#e53e3e",
+          "variable": "has_condition",
+          "inheritancePattern": "autosomalDominant"
+        }
+      ]
+    },
+    {
+      "id": "information-close",
+      "type": "Information",
+      "label": "Closing",
+      "title": "Thank you",
+      "items": [
+        {
+          "id": "close-text",
+          "type": "text",
+          "content": "Thank you for building this map with us.\n\nIf anything we have talked about today has left you wanting to speak to someone, please tell the interviewer before you leave. They can help you find the right support."
+        }
+      ]
+    }
+  ]
+}
