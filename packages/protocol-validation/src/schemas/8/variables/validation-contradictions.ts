@@ -4355,12 +4355,10 @@ function mixedResolutionSameAsContradictions(
           dateResolutionOf(variables[edge.source]) !==
             dateResolutionOf(variables[edge.target]),
       )
-      .map(
-        (edge): VariableRuleRef => ({
-          variableId: edge.source,
-          rule: 'sameAs',
-        }),
-      );
+      .map((edge): VariableRuleRef => ({
+        variableId: edge.source,
+        rule: 'sameAs',
+      }));
     const [first, ...rest] = strips;
     if (!first) continue;
     const names = members.map(

@@ -11,6 +11,10 @@
   // taskkill is the Windows process-termination tool used by
   // apps/architect-classic/scripts/dev.mjs to tear down dev-server processes.
   "ignoreBinaries": ["electron-builder", "xcrun", "taskkill"],
+  // unplugin-dts loads @typescript/typescript6 by name at build time (TypeScript
+  // 7 dropped the JavaScript Compiler API it needs for declaration emit), so it
+  // is never imported from source.
+  "ignoreDependencies": ["@typescript/typescript6"],
   "tags": ["-public"],
   "workspaces": {
     "apps/networkcanvas.com": {
@@ -18,6 +22,25 @@
     },
     "apps/documentation": {
       "ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
+    },
+    // Ported from apps/fresco/knip.config.ts, which knip does not read in
+    // monorepo mode. That file (and fresco's .github tooling) still ships to the
+    // standalone Fresco repo on mirror, so it is ignored rather than deleted.
+    "apps/fresco": {
+      "project": ["**/*.{js,jsx,ts,tsx}"],
+      "ignore": ["knip.config.ts"],
+      "ignoreDependencies": [
+        "sharp", // Used by next/image but not directly imported
+        "@tailwindcss/forms", // Used in globals.css but not detected as used
+        "tailwindcss-animate", // Used in globals.css but not detected as used
+        "@prisma/client" // Used at runtime by the Prisma generated client
+      ],
+      "ignoreIssues": {
+        // Server actions for passkey password management — UI not yet wired
+        "actions/webauthn.ts": ["exports"],
+        // Pre-existing unused type exports
+        "lib/protocol/validateAndMigrateProtocol.ts": ["types"]
+      }
     },
     "packages/interview": {
       "entry": [
@@ -28,7 +51,10 @@
         "e2e/scripts/*.ts",
         "e2e/helpers/assetServer.ts",
         "e2e/fixtures/window-test.d.ts",
-        "e2e/host/src/global-augmentations.d.ts"
+        "e2e/host/src/global-augmentations.d.ts",
+        // Resolved by vite.config.ts's inlineWorkerPlugin for the library
+        // build, never by an import — see createAutoLayoutWorker.ts.
+        "src/canvas/createAutoLayoutWorker.inline.ts"
       ],
       "project": [
         "src/**/*.{ts,tsx,js}",
@@ -38,6 +64,11 @@
       "paths": {
         "~/*": ["./*"]
       }
+    },
+    "packages/fresco-ui": {
+      // Resolved by vite.config.ts's inlineWorkerPlugin for the library build,
+      // never by an import — see createSearchWorker.ts.
+      "entry": ["src/collection/filtering/createSearchWorker.inline.ts"]
     },
     "packages/protocol-validation": {},
     "packages/network-exporters": {},

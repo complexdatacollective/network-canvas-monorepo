@@ -34,13 +34,10 @@ import {
 import { useContractFlags } from '../contract/context';
 import type { AppDispatch } from '../store/store';
 import type { AutoLayoutForceOptions } from './autoLayout.worker';
-// Workers are imported with `?worker&inline` so Vite emits a self-contained
-// Worker constructor backed by an inlined blob URL. This sidesteps the
-// absolute `/assets/<hash>.js` URLs that library-mode worker chunks emit
-// (which non-Vite consumer bundlers like Turbopack can't resolve), at the
-// cost of bundling the worker source into the main chunk.
-import AutoLayoutWorker from './autoLayout.worker?worker&inline';
-import AutoLayoutMockWorker from './autoLayout.worker.mock?worker&inline';
+import {
+  createAutoLayoutMockWorker,
+  createAutoLayoutWorker,
+} from './createAutoLayoutWorker.ts';
 import { getGroupKeys } from './groupMembership';
 import {
   type CanvasDimensions,
@@ -258,7 +255,9 @@ export function useAutoLayout({
 
     // In e2e tests, swap in a deterministic worker so visual snapshots aren't
     // sensitive to simulation randomness.
-    const worker = isE2E ? new AutoLayoutMockWorker() : new AutoLayoutWorker();
+    const worker = isE2E
+      ? createAutoLayoutMockWorker()
+      : createAutoLayoutWorker();
     workerRef.current = worker;
 
     worker.onmessage = (event: MessageEvent) => {

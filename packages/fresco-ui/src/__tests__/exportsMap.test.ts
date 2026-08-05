@@ -29,9 +29,9 @@ type FrescoUiPackageJson = {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(here, '../..');
-const pkg: FrescoUiPackageJson = JSON.parse(
+const pkg = JSON.parse(
   readFileSync(resolve(packageRoot, 'package.json'), 'utf8'),
-);
+) as FrescoUiPackageJson;
 
 function relPathOf(value: ExportValue) {
   return (typeof value === 'string' ? value : value.default).replace(
