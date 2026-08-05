@@ -956,6 +956,55 @@ describe('FamilyPedigree materialization', () => {
     expect(new Set(values).size).toBe(13);
   });
 
+  it('accepts a unique value space covering the population-attainable family size', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 16 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
+      validation: { unique: true },
+    };
+    const stages = [
+      collectingFamilyStage(familyStage, 'generationMarker'),
+      collectingFamilyStage(
+        {
+          ...familyStage,
+          id: 'later-family-stage',
+          label: 'Later family',
+        } as unknown as Stage,
+        'generationMarker',
+      ),
+    ];
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages,
+      familyPedigree: {
+        population: {
+          ...US_FAMILY_PEDIGREE_POPULATION,
+          completedFamilySize: [{ value: 0, weight: 1 }],
+          childlessPartnerProbability: 1,
+          scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+        },
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 9,
+      },
+    });
+    const values = network.nodes.map(
+      (node) => node[entityAttributesProperty].generationMarker,
+    );
+
+    expect(values).toHaveLength(15);
+    expect(new Set(values).size).toBe(15);
+  });
+
   it('uses the attainable forced-scenario ceiling during feasibility', () => {
     const exactCodebook = structuredClone(codebook);
     const variables = exactCodebook.node?.['family-member']?.variables;

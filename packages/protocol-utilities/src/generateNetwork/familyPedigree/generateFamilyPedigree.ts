@@ -38,6 +38,109 @@ function sampleWeightedCount(
   return Math.max(0, Math.round(eligible.at(-1)?.value ?? 0));
 }
 
+function sampledCountSupport(
+  distribution: readonly FamilyPedigreeWeightedCount[],
+  sizeBiased: boolean,
+): number[] {
+  const eligible = distribution.filter(
+    ({ value, weight }) => weight > 0 && (!sizeBiased || value > 0),
+  );
+  if (eligible.length === 0) return [sizeBiased ? 1 : 0];
+  return [
+    ...new Set(eligible.map(({ value }) => Math.max(0, Math.round(value)))),
+  ];
+}
+
+function nonnegativeProbability(probability: number): number {
+  return Number.isNaN(probability) ? 0 : Math.max(0, probability);
+}
+
+function reachableScenarios(
+  options: ResolvedFamilyPedigreeGenerationOptions,
+): FamilyPedigreePlan['scenario'][] {
+  if (options.scenario !== 'population') return [options.scenario];
+
+  const reachable: FamilyPedigreePlan['scenario'][] = [];
+  let probabilityBefore = 0;
+  for (const [scenario, probability] of [
+    ['adoption', options.population.scenarios.adoption],
+    ['donorConception', options.population.scenarios.donorConception],
+    ['surrogacy', options.population.scenarios.surrogacy],
+  ] as const) {
+    const normalizedProbability = nonnegativeProbability(probability);
+    if (probabilityBefore < 1 && normalizedProbability > 0) {
+      reachable.push(scenario);
+    }
+    probabilityBefore += normalizedProbability;
+  }
+  if (probabilityBefore < 1) reachable.push('none');
+  return reachable;
+}
+
+function requiredNodesForScenario(
+  scenario: FamilyPedigreePlan['scenario'],
+): number {
+  switch (scenario) {
+    case 'none':
+      return 7;
+    case 'donorConception':
+    case 'surrogacy':
+      return 8;
+    case 'adoption':
+      return 9;
+  }
+}
+
+export function attainableFamilyPedigreeNodeCeiling(
+  options: ResolvedFamilyPedigreeGenerationOptions,
+  requiresMaleSibling: boolean,
+  requireChildrenContributors: boolean,
+): number {
+  const familySizeSupport = sampledCountSupport(
+    options.population.completedFamilySize,
+    true,
+  );
+  const childCountSupport = sampledCountSupport(
+    options.population.completedFamilySize,
+    false,
+  );
+  const sampledSiblingCeiling = Math.max(Math.max(...familySizeSupport) - 1, 0);
+  const auntUncleCeiling = sampledSiblingCeiling;
+  const cousinCeiling = Math.max(...childCountSupport);
+  const collateralCeiling =
+    2 * auntUncleCeiling * (1 + (cousinCeiling > 0 ? 1 + cousinCeiling : 0));
+  const addWithinSafetyCap = (count: number, additions: number) =>
+    Math.max(count, Math.min(options.maxNodes, count + additions));
+
+  return Math.max(
+    ...reachableScenarios(options).map((scenario) => {
+      const requiredSiblingCount = requiresMaleSibling ? 1 : 0;
+      let count = requiredNodesForScenario(scenario) + requiredSiblingCount;
+      count = addWithinSafetyCap(
+        count,
+        Math.max(sampledSiblingCeiling - requiredSiblingCount, 0),
+      );
+
+      const contributorAncestry = requireChildrenContributors ? 6 : 0;
+      const childBranchCeiling = Math.max(
+        0,
+        ...childCountSupport.map((childCount) => {
+          if (childCount > 0) {
+            const additions = 1 + childCount + contributorAncestry;
+            return count + additions <= options.maxNodes ? additions : 0;
+          }
+          return options.population.childlessPartnerProbability > 0 &&
+            count < options.maxNodes
+            ? 1
+            : 0;
+        }),
+      );
+      count += childBranchCeiling;
+      return addWithinSafetyCap(count, collateralCeiling);
+    }),
+  );
+}
+
 function sexFor(valueGen: ValueGenerator, femaleProbability: number) {
   return valueGen.randomFloat(0, 1) < femaleProbability ? 'female' : 'male';
 }
@@ -53,17 +156,15 @@ function scenarioFor(
   if (options.scenario !== 'population') return options.scenario;
 
   const { adoption, donorConception, surrogacy } = options.population.scenarios;
+  const adoptionProbability = nonnegativeProbability(adoption);
+  const donorProbability = nonnegativeProbability(donorConception);
+  const surrogacyProbability = nonnegativeProbability(surrogacy);
   const draw = valueGen.randomFloat(0, 1);
-  if (draw < Math.max(0, adoption)) return 'adoption';
-  if (draw < Math.max(0, adoption) + Math.max(0, donorConception)) {
+  if (draw < adoptionProbability) return 'adoption';
+  if (draw < adoptionProbability + donorProbability) {
     return 'donorConception';
   }
-  if (
-    draw <
-    Math.max(0, adoption) +
-      Math.max(0, donorConception) +
-      Math.max(0, surrogacy)
-  ) {
+  if (draw < adoptionProbability + donorProbability + surrogacyProbability) {
     return 'surrogacy';
   }
   return 'none';

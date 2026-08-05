@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import type { InheritancePattern } from '@codaco/shared-consts';
 
 import { ValueGenerator } from '../../../ValueGenerator';
-import { generateFamilyPedigreePlan } from '../generateFamilyPedigree';
+import {
+  attainableFamilyPedigreeNodeCeiling,
+  generateFamilyPedigreePlan,
+} from '../generateFamilyPedigree';
 import {
   resolveFamilyPedigreeGenerationOptions,
   US_FAMILY_PEDIGREE_POPULATION,
@@ -125,6 +128,70 @@ describe('generateFamilyPedigreePlan', () => {
         expect(keys.has(key), `seed ${seed}: ${key}`).toBe(true);
       }
     }
+  });
+
+  it('bounds every plan by the population-attainable node ceiling', () => {
+    const childlessPopulation = {
+      ...US_FAMILY_PEDIGREE_POPULATION,
+      completedFamilySize: [{ value: 0, weight: 1 }],
+      childlessPartnerProbability: 1,
+      scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+    };
+    const profiles = [US_FAMILY_PEDIGREE_POPULATION, childlessPopulation];
+    const scenarios: FamilyPedigreeScenario[] = [
+      'population',
+      'none',
+      'adoption',
+      'donorConception',
+      'surrogacy',
+    ];
+
+    for (const population of profiles) {
+      for (const scenario of scenarios) {
+        for (const maxNodes of [7, 8, 9, 12, 32]) {
+          for (const requireContributors of [false, true]) {
+            const options = resolveFamilyPedigreeGenerationOptions(
+              { population, scenario, maxNodes },
+              maxNodes,
+            );
+            const ceiling = attainableFamilyPedigreeNodeCeiling(
+              options,
+              true,
+              requireContributors,
+            );
+
+            for (let seed = 1; seed <= 20; seed++) {
+              const subject = generateFamilyPedigreePlan(
+                new ValueGenerator(seed, '2026-08-05'),
+                options,
+                [
+                  {
+                    variable: 'condition',
+                    inheritancePattern: 'xLinkedRecessive',
+                  },
+                ],
+                requireContributors,
+                'female',
+              );
+              expect(subject.people.length).toBeLessThanOrEqual(ceiling);
+            }
+          }
+        }
+      }
+    }
+
+    const childlessOptions = resolveFamilyPedigreeGenerationOptions(
+      {
+        population: childlessPopulation,
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 9,
+      },
+      9,
+    );
+    expect(
+      attainableFamilyPedigreeNodeCeiling(childlessOptions, false, false),
+    ).toBe(8);
   });
 
   it.each([

@@ -13,6 +13,7 @@ import {
 
 import type { GenerationConfig } from '../config';
 import type { StageOfType } from '../context';
+import { attainableFamilyPedigreeNodeCeiling } from '../familyPedigree/generateFamilyPedigree';
 import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/types';
 import {
   getNodeCountBounds,
@@ -925,30 +926,9 @@ function inheritedEgoSexCanBeIndependent({
     );
 }
 
-function requiredPedigreeNodeFloor(context: PedigreeCeilingContext): number {
+function pedigreeRequiresMaleSibling(context: PedigreeCeilingContext): boolean {
   const { options, stage, stages } = context;
-  const scenarioFloor = (() => {
-    switch (options.scenario) {
-      case 'none':
-        return 7;
-      case 'donorConception':
-      case 'surrogacy':
-        return 8;
-      case 'adoption':
-        return 9;
-      case 'population': {
-        const { adoption, donorConception, surrogacy } =
-          options.population.scenarios;
-        return Math.max(
-          7,
-          adoption > 0 ? 9 : 0,
-          donorConception > 0 ? 8 : 0,
-          surrogacy > 0 ? 8 : 0,
-        );
-      }
-    }
-  })();
-  const requiresMaleSibling =
+  return (
     options.diseaseMode === 'visualization' &&
     (options.population.femaleAtBirthProbability > 0 ||
       inheritedEgoSexCanBeIndependent(context)) &&
@@ -959,9 +939,8 @@ function requiredPedigreeNodeFloor(context: PedigreeCeilingContext): number {
         candidate.diseases.some(
           (disease) => disease.inheritancePattern === 'xLinkedRecessive',
         ),
-    );
-
-  return scenarioFloor + (requiresMaleSibling ? 1 : 0);
+    )
+  );
 }
 
 export function pedigreeNodeCeiling(
@@ -970,11 +949,15 @@ export function pedigreeNodeCeiling(
 ): number {
   const { min, max } = config.familyPedigreeNodeCount;
   // Without resolved options retain the conservative all-scenarios bound used
-  // by direct callers. Generation supplies the context, allowing forced modes
-  // to use their actual required floor rather than rejecting value spaces for
-  // people that scenario can never create.
-  const requiredFloor = context ? requiredPedigreeNodeFloor(context) : 10;
-  return Math.max(max, min, requiredFloor);
+  // by direct callers. Generation supplies the context, allowing the count to
+  // follow the population-supported family sizes and reachable scenarios that
+  // actually drive the planner.
+  if (!context) return Math.max(max, min, 10);
+  return attainableFamilyPedigreeNodeCeiling(
+    context.options,
+    pedigreeRequiresMaleSibling(context),
+    context.stage.boundaries?.requireChildrenContributors === 'required',
+  );
 }
 
 /** Conservative upper bound for parentage, partner, and scenario edges. */

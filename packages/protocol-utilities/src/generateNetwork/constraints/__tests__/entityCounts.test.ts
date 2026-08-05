@@ -249,6 +249,42 @@ describe('worstCaseEntityCounts', () => {
     );
   });
 
+  it('caps repeated pedigrees at the largest family the population can emit', () => {
+    const tightConfig = resolveGenerationConfig({
+      today: '2026-08-05',
+      familyPedigreeNodeCount: { min: 7, max: 9 },
+    });
+    const options = resolveFamilyPedigreeGenerationOptions(
+      {
+        population: {
+          id: 'childless',
+          label: 'Childless families',
+          sources: [],
+          completedFamilySize: [{ value: 0, weight: 1 }],
+          femaleAtBirthProbability: 0.5,
+          childlessPartnerProbability: 1,
+          scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+        },
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 9,
+      },
+      9,
+    );
+    const first = familyPedigree({ id: 'first-pedigree' });
+    const second = familyPedigree({ id: 'second-pedigree' });
+
+    const counts = worstCaseEntityCounts(
+      [first, second],
+      tightConfig,
+      undefined,
+      undefined,
+      options,
+    );
+
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(15);
+  });
+
   it('retains the full ceiling after an intervening ego-flag rewrite', () => {
     const tightConfig = resolveGenerationConfig({
       today: '2026-08-04',
