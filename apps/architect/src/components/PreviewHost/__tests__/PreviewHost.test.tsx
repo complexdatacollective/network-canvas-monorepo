@@ -181,6 +181,17 @@ describe('PreviewHost', () => {
     expect(call.allowStageNavigation).toBe(true);
   });
 
+  it('enables interview development tools in Architect preview', async () => {
+    render(<PreviewHost />);
+    postPayload(openerStub, makePayload());
+
+    await screen.findByTestId('shell-mounted');
+    const call = shellMock.mock.calls.at(-1)?.[0] as {
+      flags?: { isDevelopment?: boolean };
+    };
+    expect(call.flags?.isDevelopment).toBe(true);
+  });
+
   it('initialises currentStep from payload.startStage', async () => {
     render(<PreviewHost />);
     postPayload(openerStub, makePayload({ startStage: 3 }));
