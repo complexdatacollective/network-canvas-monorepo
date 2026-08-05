@@ -12,6 +12,7 @@ import {
   scopeKey,
   uniqueSlotMembers,
 } from './constraints/generateEntityAttributes';
+import { withRuleTiedVariables } from './constraints/stageWrites';
 import { valueKey } from './constraints/uniqueRegistry';
 import type { GenerationContext, NetworkDraft, StageOfType } from './context';
 import { createEdgesForPairs } from './edges';
@@ -58,6 +59,8 @@ export function handleSociogram(
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
+  const nodeTypeDef = ctx.codebook.node?.[subjectType];
+  const scope: EntityScopeRef = { entity: 'node', type: subjectType };
 
   for (const prompt of stage.prompts) {
     const createEdge = prompt.edges?.create;
@@ -102,10 +105,37 @@ export function handleSociogram(
         ? prompt.highlight.variable
         : undefined;
     if (highlightVariable) {
-      for (const node of subjectNodes) {
-        node[entityAttributesProperty][highlightVariable] =
-          ctx.valueGen.randomFloat(0, 1) <
-          ctx.config.sociogramHighlightProbability;
+      const connected = withRuleTiedVariables(
+        nodeTypeDef?.variables,
+        new Set([highlightVariable]),
+      );
+      const highlightRules = ctx.entityConstraints.node
+        .get(subjectType)
+        ?.get(highlightVariable)?.constraints;
+      const requiresConstraintDraw =
+        connected.size > 1 || highlightRules?.unique === true;
+
+      for (let nodeIndex = 0; nodeIndex < subjectNodes.length; nodeIndex++) {
+        const node = subjectNodes[nodeIndex]!;
+        if (!requiresConstraintDraw) {
+          node[entityAttributesProperty][highlightVariable] =
+            ctx.valueGen.randomFloat(0, 1) <
+            ctx.config.sociogramHighlightProbability;
+          continue;
+        }
+
+        // A highlight is a write onto an existing node. When its variable is
+        // tied to another value, or is unique across nodes, redraw the whole
+        // connected component so both the finished attributes and the unique
+        // registry continue to describe the same valid assignment.
+        Object.assign(
+          node[entityAttributesProperty],
+          generateAttributesForEntity(ctx, scope, nodeIndex, {
+            existing: existingForRegeneration(node, connected),
+            only: connected,
+          }),
+        );
+        clearOutOfBandWrites(node, connected);
       }
     }
   }

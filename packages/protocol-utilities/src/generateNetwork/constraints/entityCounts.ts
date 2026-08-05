@@ -13,7 +13,10 @@ import {
 
 import type { GenerationConfig } from '../config';
 import type { StageOfType } from '../context';
-import { attainableFamilyPedigreeNodeCeiling } from '../familyPedigree/generateFamilyPedigree';
+import {
+  attainableFamilyPedigreeNodeCeiling,
+  canAttainFamilyPedigreeEgoChildBranch,
+} from '../familyPedigree/generateFamilyPedigree';
 import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/types';
 import {
   getNodeCountBounds,
@@ -751,7 +754,13 @@ export function inheritedContributorAncestryCeiling(
       completedContributorIndex = candidateIndex;
     } else {
       // Each generated pedigree can introduce at most one co-parent branch.
-      if (options === undefined || canPlanEgoChildBranch(options)) {
+      if (
+        options === undefined ||
+        canAttainFamilyPedigreeEgoChildBranch(
+          options,
+          pedigreeGuaranteesMaleSibling({ options, stage: candidate, stages }),
+        )
+      ) {
         incompleteContributorBranches += 1;
       }
     }
@@ -792,53 +801,6 @@ export function inheritedContributorAncestryCeiling(
     nodes: incompleteContributorBranches * CONTRIBUTOR_ANCESTRY_NODE_CEILING,
     edges: incompleteContributorBranches * CONTRIBUTOR_ANCESTRY_EDGE_CEILING,
   };
-}
-
-function minimumScenarioNodeFloor(
-  options: ResolvedFamilyPedigreeGenerationOptions,
-): number {
-  switch (options.scenario) {
-    case 'none':
-      return 7;
-    case 'donorConception':
-    case 'surrogacy':
-      return 8;
-    case 'adoption':
-      return 9;
-    case 'population': {
-      const { adoption, donorConception, surrogacy } =
-        options.population.scenarios;
-      const scenarioFloors: number[] = [];
-      let probabilityBefore = 0;
-      for (const [probability, floor] of [
-        [adoption, 9],
-        [donorConception, 8],
-        [surrogacy, 8],
-      ] as const) {
-        const reachableProbability = Number.isNaN(probability)
-          ? 0
-          : Math.max(0, probability);
-        if (probabilityBefore < 1 && reachableProbability > 0) {
-          scenarioFloors.push(floor);
-        }
-        probabilityBefore += reachableProbability;
-      }
-      if (probabilityBefore < 1) scenarioFloors.push(7);
-      return Math.min(...scenarioFloors);
-    }
-  }
-}
-
-/** Whether any resolved plan can fit a partner and at least one ego child. */
-function canPlanEgoChildBranch(
-  options: ResolvedFamilyPedigreeGenerationOptions,
-): boolean {
-  const canSampleChild = options.population.completedFamilySize.some(
-    ({ value, weight }) => weight > 0 && Math.round(value) > 0,
-  );
-  return (
-    canSampleChild && options.maxNodes >= minimumScenarioNodeFloor(options) + 2
-  );
 }
 
 /** Whether the materializer is guaranteed to find an earlier focal node. */
@@ -940,6 +902,18 @@ function pedigreeRequiresMaleSibling(context: PedigreeCeilingContext): boolean {
           (disease) => disease.inheritancePattern === 'xLinkedRecessive',
         ),
     )
+  );
+}
+
+/** Whether every plan must add the X-linked visualization sibling. */
+function pedigreeGuaranteesMaleSibling(
+  context: PedigreeCeilingContext,
+): boolean {
+  const { options } = context;
+  return (
+    pedigreeRequiresMaleSibling(context) &&
+    options.population.femaleAtBirthProbability >= 1 &&
+    !inheritedEgoSexCanBeIndependent(context)
   );
 }
 

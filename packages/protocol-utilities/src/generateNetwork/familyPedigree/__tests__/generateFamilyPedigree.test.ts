@@ -194,6 +194,39 @@ describe('generateFamilyPedigreePlan', () => {
     ).toBe(8);
   });
 
+  it('evaluates child branches at every supported sibling count', () => {
+    const population = {
+      ...US_FAMILY_PEDIGREE_POPULATION,
+      completedFamilySize: [
+        { value: 1, weight: 1 },
+        { value: 2, weight: 1 },
+      ],
+      femaleAtBirthProbability: 0,
+      childlessPartnerProbability: 0,
+      scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+    };
+    const options = resolveFamilyPedigreeGenerationOptions(
+      { population, scenario: 'none', diseaseMode: 'none', maxNodes: 15 },
+      15,
+    );
+    const subject = generateFamilyPedigreePlan(
+      new ValueGenerator(11, '2026-08-05'),
+      options,
+      [],
+      true,
+      'male',
+    );
+
+    expect(
+      subject.people.filter((person) => person.relationshipToEgo === 'Sibling'),
+    ).toHaveLength(0);
+    expect(
+      subject.people.filter((person) => person.relationshipToEgo === 'Child'),
+    ).toHaveLength(1);
+    expect(subject.people).toHaveLength(15);
+    expect(attainableFamilyPedigreeNodeCeiling(options, false, true)).toBe(15);
+  });
+
   it.each([
     ['adoption', 'adoptive', 2],
     ['donorConception', 'donor', 1],

@@ -401,6 +401,68 @@ describe('worstCaseEntityCounts', () => {
     expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(13);
   });
 
+  it('includes a forced disease sibling when deciding whether children fit', () => {
+    const options = resolveFamilyPedigreeGenerationOptions(
+      {
+        population: {
+          id: 'one-child-all-female',
+          label: 'One-child, all-female population',
+          sources: [],
+          completedFamilySize: [{ value: 1, weight: 1 }],
+          femaleAtBirthProbability: 1,
+          childlessPartnerProbability: 0,
+          scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+        },
+        scenario: 'none',
+        diseaseMode: 'visualization',
+        maxNodes: 9,
+      },
+      9,
+    );
+    const shared = {
+      nodeConfig: {
+        type: 'relative',
+        egoVariable: 'isEgo',
+        biologicalSexVariable: 'biologicalSex',
+      },
+      edgeConfig: {
+        type: 'kin',
+        relationshipTypeVariable: 'relationshipType',
+      },
+    };
+    const first = familyPedigree({
+      ...shared,
+      id: 'first-pedigree',
+      boundaries: { requireChildrenContributors: 'off' },
+    });
+    const narrative = {
+      id: 'narrative',
+      type: 'NarrativePedigree',
+      label: 'Condition',
+      sourceStageId: first.id,
+      diseases: [
+        {
+          id: 'condition',
+          label: 'Condition',
+          color: '#000000',
+          variable: 'condition',
+          inheritancePattern: 'xLinkedRecessive',
+        },
+      ],
+    } as unknown as Stage;
+    const second = familyPedigree({
+      ...shared,
+      id: 'second-pedigree',
+      boundaries: { requireChildrenContributors: 'required' },
+    });
+    const stages = [first, narrative, second];
+
+    expect(inheritedContributorAncestryCeiling(2, stages, 8, options)).toEqual({
+      nodes: 0,
+      edges: 0,
+    });
+  });
+
   it('budgets X-linked siblings when a reused ego gets sex from another variable', () => {
     const tightConfig = resolveGenerationConfig({
       today: '2026-08-04',

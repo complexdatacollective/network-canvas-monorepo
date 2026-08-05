@@ -1037,7 +1037,7 @@ export function createNodesForStage(
   const stageWrites = declaresNodeCollection(stage)
     ? withRuleTiedVariables(
         nodeTypeDef.variables,
-        nodeVariablesWrittenOnCreation(stage),
+        nodeVariablesWrittenOnCreation(stage, [stage], prompt),
       )
     : new Set(variableIds);
   const constraints: EntityConstraints =

@@ -32,7 +32,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function promptFixedVariables(stage: Stage): string[] {
+type CreationPrompt = {
+  additionalAttributes?: readonly { variable: string }[];
+};
+
+function promptFixedVariables(stage: Stage, prompt?: CreationPrompt): string[] {
   if (
     stage.type !== 'NameGenerator' &&
     stage.type !== 'NameGeneratorQuickAdd' &&
@@ -41,8 +45,11 @@ function promptFixedVariables(stage: Stage): string[] {
     return [];
   }
 
-  return stage.prompts.flatMap((prompt) =>
-    (prompt.additionalAttributes ?? []).map((attribute) => attribute.variable),
+  const prompts = prompt === undefined ? stage.prompts : [prompt];
+  return prompts.flatMap((candidate) =>
+    (candidate.additionalAttributes ?? []).map(
+      (attribute) => attribute.variable,
+    ),
   );
 }
 
@@ -149,15 +156,16 @@ export function withRuleTiedVariables(
 export function nodeVariablesWrittenOnCreation(
   stage: Stage,
   stages: readonly Stage[] = [stage],
+  prompt?: CreationPrompt,
 ): Set<string> {
   switch (stage.type) {
     case 'NameGenerator':
       return setOf([
         ...(stage.form?.fields ?? []).map((field) => field.variable),
-        ...promptFixedVariables(stage),
+        ...promptFixedVariables(stage, prompt),
       ]);
     case 'NameGeneratorQuickAdd':
-      return setOf([stage.quickAdd, ...promptFixedVariables(stage)]);
+      return setOf([stage.quickAdd, ...promptFixedVariables(stage, prompt)]);
     case 'NameGeneratorRoster':
       return new Set();
     case 'FamilyPedigree':
@@ -197,7 +205,10 @@ export function nodeVariablesWrittenOnCreation(
  */
 export function declaresNodeCollection(stage: Stage): boolean {
   if (stage.type === 'NameGeneratorRoster') return false;
-  return nodeVariablesWrittenOnCreation(stage).size > 0;
+  // Fixed prompt attributes are assignments, not a collection surface. A
+  // hand-built NameGenerator fixture with no form therefore keeps the legacy
+  // whole-type fallback even if one of its prompts carries a fixed value.
+  return nodeVariablesWrittenOnCreation(stage, [stage], {}).size > 0;
 }
 
 /** Variables a stage writes onto nodes that existed before it ran. */

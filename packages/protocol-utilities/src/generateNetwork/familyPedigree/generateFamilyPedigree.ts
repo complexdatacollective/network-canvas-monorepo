@@ -117,32 +117,89 @@ export function attainableFamilyPedigreeNodeCeiling(
     Math.max(count, Math.min(options.maxNodes, count + additions));
 
   return Math.max(
-    ...reachableScenarios(options).map((scenario) => {
-      const requiredSiblingCount = requiresMaleSibling ? 1 : 0;
-      let count = requiredNodesForScenario(scenario) + requiredSiblingCount;
-      count = addWithinSafetyCap(
-        count,
-        Math.max(sampledSiblingCeiling - requiredSiblingCount, 0),
+    ...familyPedigreeBranchOutcomes(
+      options,
+      familySizeSupport,
+      childCountSupport,
+      requiresMaleSibling,
+      requireChildrenContributors,
+    ).map(({ count }) => addWithinSafetyCap(count, collateralCeiling)),
+  );
+}
+
+type FamilyPedigreeBranchOutcome = {
+  count: number;
+  hasEgoChildren: boolean;
+};
+
+/**
+ * Every attainable sibling/child prefix before collateral branches are added.
+ *
+ * Siblings and children are independent population draws. Maximising siblings
+ * first can consume just enough of the safety cap to suppress a larger child
+ * branch that a smaller supported sibling draw would admit, so ceilings and
+ * child-branch feasibility both enumerate their compatible combinations here.
+ */
+function familyPedigreeBranchOutcomes(
+  options: ResolvedFamilyPedigreeGenerationOptions,
+  familySizeSupport: readonly number[],
+  childCountSupport: readonly number[],
+  requiresMaleSibling: boolean,
+  requireChildrenContributors: boolean,
+): FamilyPedigreeBranchOutcome[] {
+  const requiredSiblingCount = requiresMaleSibling ? 1 : 0;
+  const contributorAncestry = requireChildrenContributors ? 6 : 0;
+  const addWithinSafetyCap = (count: number, additions: number) =>
+    Math.max(count, Math.min(options.maxNodes, count + additions));
+  const outcomes: FamilyPedigreeBranchOutcome[] = [];
+
+  for (const scenario of reachableScenarios(options)) {
+    for (const familySize of familySizeSupport) {
+      const sampledSiblingCount = Math.max(familySize - 1, 0);
+      const requiredCount =
+        requiredNodesForScenario(scenario) + requiredSiblingCount;
+      const countWithSiblings = addWithinSafetyCap(
+        requiredCount,
+        Math.max(sampledSiblingCount - requiredSiblingCount, 0),
       );
 
-      const contributorAncestry = requireChildrenContributors ? 6 : 0;
-      const childBranchCeiling = Math.max(
-        0,
-        ...childCountSupport.map((childCount) => {
-          if (childCount > 0) {
-            const additions = 1 + childCount + contributorAncestry;
-            return count + additions <= options.maxNodes ? additions : 0;
-          }
-          return options.population.childlessPartnerProbability > 0 &&
-            count < options.maxNodes
-            ? 1
-            : 0;
-        }),
-      );
-      count += childBranchCeiling;
-      return addWithinSafetyCap(count, collateralCeiling);
-    }),
-  );
+      for (const childCount of childCountSupport) {
+        if (childCount > 0) {
+          const additions = 1 + childCount + contributorAncestry;
+          const fits = countWithSiblings + additions <= options.maxNodes;
+          outcomes.push({
+            count: fits ? countWithSiblings + additions : countWithSiblings,
+            hasEgoChildren: fits,
+          });
+          continue;
+        }
+
+        const partnerFits =
+          options.population.childlessPartnerProbability > 0 &&
+          countWithSiblings < options.maxNodes;
+        outcomes.push({
+          count: countWithSiblings + (partnerFits ? 1 : 0),
+          hasEgoChildren: false,
+        });
+      }
+    }
+  }
+
+  return outcomes;
+}
+
+/** Whether any resolved plan can fit a partner and at least one ego child. */
+export function canAttainFamilyPedigreeEgoChildBranch(
+  options: ResolvedFamilyPedigreeGenerationOptions,
+  requiresMaleSibling: boolean,
+): boolean {
+  return familyPedigreeBranchOutcomes(
+    options,
+    sampledCountSupport(options.population.completedFamilySize, true),
+    sampledCountSupport(options.population.completedFamilySize, false),
+    requiresMaleSibling,
+    false,
+  ).some(({ hasEgoChildren }) => hasEgoChildren);
 }
 
 function sexFor(valueGen: ValueGenerator, femaleProbability: number) {
