@@ -39,6 +39,7 @@ import {
   pedigreeNodeCeiling,
   pedigreePossibleEdgeValues,
   unwrittenEdgeVariables,
+  unwrittenNodeVariables,
   worstCaseEntityCounts,
 } from './entityCounts';
 import type { ConstraintConflict } from './error';
@@ -1445,6 +1446,7 @@ export function analyseFeasibility(
     externalData,
     nodeConstraints,
     familyPedigree,
+    (type) => codebook.node?.[type]?.variables,
   );
   const promptFixed = countPromptFixedValues(stages, config, externalData);
   const pedigreeFixed = countPedigreeFixedValues(
@@ -1507,14 +1509,11 @@ export function analyseFeasibility(
 
   // A codebook type the stage list never names carries no entity: no stage
   // creates one, and nothing writes onto one. No value of its variables is ever
-  // drawn or submitted, so a rule declared on them is never applied, and
-  // analysing it refuses a protocol over a variable the run never reaches — a
-  // Person-only interview blocked by an unused type's `minLength` above its
-  // `maxLength`. Dropping the whole scope is right wherever a type's entities
-  // are born filled: every stage that creates one generates its type's whole
-  // attribute set, so a type with any carrier has no unpopulated variable to
-  // exempt. A pedigree edge is the one entity born empty, and its type is
-  // exempted per equality group instead — see `unwrittenEdgeVariables`.
+  // drawn or submitted, so a rule declared on them is never applied. For a type
+  // that is created, the same reasoning applies per equality group: a shared
+  // node type can carry variables collected by only one of several stages, and
+  // rules on a variable no stage writes must not refuse an otherwise feasible
+  // protocol. See `unwrittenNodeVariables`.
   //
   // Asked of the type rather than of the counts, because the zeroes reaching
   // this pass do not all mean the same thing. An edge type's per-variable count
@@ -1556,11 +1555,17 @@ export function analyseFeasibility(
         ? { entityTypeName: definition.name }
         : {}),
       variables: definition.variables,
-      unvalidated: binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES,
-      // Every stage creating a node generates its whole attribute set, so a
-      // fabricated node spends a value for each of the type's variables. Roster
-      // rows are the one place that differs, and only where the group's value
-      // is one they repeat between them — see `nodeCountFor`.
+      unvalidated: new Set([
+        ...(binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES),
+        ...unwrittenNodeVariables(
+          counts.node,
+          type,
+          equalityGroupsOf(definition.variables, config.today),
+        ),
+      ]),
+      // Count only nodes that can actually carry this equality group: those
+      // whose creating stage writes it, plus earlier nodes reached by a later
+      // stage writer. Roster values remain row-driven.
       worstCaseCountFor: (variableIds) =>
         nodeCountFor(counts.node, type, variableIds),
       fixedValues: promptFixed.get(type) ?? NO_FIXED_VALUES,

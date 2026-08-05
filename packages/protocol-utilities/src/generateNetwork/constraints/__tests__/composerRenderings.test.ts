@@ -571,7 +571,11 @@ describe('NetworkComposer field renderings', () => {
       codebook: codebookWith({
         booleanOptions: [{ label: 'Yes', value: true }],
       }),
-      stages: [composerStage({})],
+      stages: [
+        composerStage({
+          nodeFields: [{ variable: 'flag', component: 'Boolean' }],
+        }),
+      ],
       seed: 7,
       config: { today: TODAY },
     });
@@ -608,7 +612,11 @@ describe('NetworkComposer field renderings', () => {
           booleanOptions: [{ label: 'Yes', value: true }],
           booleanValidation: { unique: true },
         }),
-        stages: [composerStage({})],
+        stages: [
+          composerStage({
+            nodeFields: [{ variable: 'flag', component: 'Boolean' }],
+          }),
+        ],
         seed: 7,
         config: { today: TODAY },
       });

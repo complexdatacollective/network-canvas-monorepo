@@ -1822,15 +1822,14 @@ describe('the ego flag a pedigree stage pins', () => {
     );
   });
 
-  it('still counts a unique codebook variable the stage does not pin', () => {
+  it('ignores a unique codebook variable no stage writes', () => {
     const stage = {
       ...pedigree(),
       nodeConfig: { type: 'person' },
     } as unknown as Stage;
 
     const conflicts = analyseFeasibility(uniqueFlag, [stage], compactConfig);
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.rules).toEqual(['unique']);
+    expect(conflicts).toEqual([]);
   });
 
   it('names both protocol writers when a prompt and pedigree pin true', () => {

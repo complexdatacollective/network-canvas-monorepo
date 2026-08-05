@@ -20,7 +20,10 @@ import {
 } from '../attributes';
 import { SyntheticDataConstraintError } from '../constraints/error';
 import type { EntityScopeRef } from '../constraints/generateEntityAttributes';
-import { COMPARISON_RULES, type EntityConstraints } from '../constraints/types';
+import {
+  pedigreeDrawnNodeVariables,
+  withRuleTiedVariables,
+} from '../constraints/stageWrites';
 import type { GenerationContext, NetworkDraft, StageOfType } from '../context';
 import { ruleBrokenByFixedValues } from '../nodes';
 import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
@@ -130,47 +133,6 @@ function edgeAttributes(
     attributes[edgeConfig.gameteRoleVariable] = [relationship.gameteRole];
   }
   return attributes;
-}
-
-const REFERENCE_RULES = [
-  'sameAs',
-  'differentFrom',
-  ...COMPARISON_RULES,
-] as const;
-
-/** Variables in the same cross-variable constraint component as a fixed flag. */
-function constraintConnectedVariables(
-  constraints: EntityConstraints,
-  fixedIds: Iterable<string>,
-): Set<string> {
-  const connected = new Set(fixedIds);
-  const neighbours = new Map<string, Set<string>>();
-
-  for (const [id, variable] of constraints) {
-    for (const rule of REFERENCE_RULES) {
-      const target = variable.constraints[rule];
-      if (target === undefined || !constraints.has(target)) continue;
-      const from = neighbours.get(id) ?? new Set<string>();
-      const to = neighbours.get(target) ?? new Set<string>();
-      from.add(target);
-      to.add(id);
-      neighbours.set(id, from);
-      neighbours.set(target, to);
-    }
-  }
-
-  const pending = [...connected];
-  while (pending.length > 0) {
-    const id = pending.pop();
-    if (id === undefined) break;
-    for (const neighbour of neighbours.get(id) ?? []) {
-      if (connected.has(neighbour)) continue;
-      connected.add(neighbour);
-      pending.push(neighbour);
-    }
-  }
-
-  return connected;
 }
 
 function biologicalSexFromValue(
@@ -425,8 +387,6 @@ export function materializeFamilyPedigree(
     valueGen: new ValueGenerator(familySeed, ctx.config.today),
   };
   const nodeScope: EntityScopeRef = { entity: 'node', type: nodeType };
-  const nodeVariables =
-    familyCtx.entityConstraints.node.get(nodeType) ?? new Map();
   // The live interface seeds every existing node of its configured type into
   // the pedigree, then serializes that complete membership when committing.
   // Preserve the same membership boundary in synthetic interviews so a
@@ -527,12 +487,8 @@ export function materializeFamilyPedigree(
   ];
   const planEgo = plan.people.find((person) => person.key === plan.egoKey);
   const nodeIds = new Map(contributorAncestry.anchors);
-  const pedigreeVariables = new Set([
-    nodeConfig.egoVariable,
-    nodeConfig.relationshipVariable,
-    nodeConfig.biologicalSexVariable,
-    ...diseases.map((disease) => disease.variable),
-  ]);
+  const drawnVariables = pedigreeDrawnNodeVariables(stage);
+  const codebookNodeVariables = familyCtx.codebook.node?.[nodeType]?.variables;
   const familyNodes: NcNode[] = [];
 
   for (const [index, person] of planPeople.entries()) {
@@ -559,14 +515,16 @@ export function materializeFamilyPedigree(
     }
 
     assertFixedValuesAccepted(familyCtx, nodeScope, fixed);
-    // The interface owns these semantic variables. Leave a value absent when
-    // FamilyPedigree itself cannot derive one instead of filling it with an
-    // unrelated generic draw (for example, relationship-to-ego on ego).
-    const only = new Set(
-      [...nodeVariables.keys()].filter(
-        (variableId) => !pedigreeVariables.has(variableId),
-      ),
+    // Draw the fields this stage actually renders, plus variables whose rules
+    // tie them to those fields or to a semantic value fixed above. A variable
+    // merely sharing this node type is left unset. Semantic variables absent
+    // from `fixed` stay absent too — for example relationship-to-ego on ego —
+    // because the interface owns them and has no value to derive there.
+    const only = withRuleTiedVariables(
+      codebookNodeVariables,
+      new Set([...drawnVariables, ...Object.keys(fixed)]),
     );
+    for (const id of Object.keys(fixed)) only.delete(id);
     const attributes = generateAttributesForEntity(
       familyCtx,
       nodeScope,
@@ -637,9 +595,9 @@ export function materializeFamilyPedigree(
       ...preserved,
       ...fixed,
     });
-    const connected = constraintConnectedVariables(
-      nodeVariables,
-      Object.keys(fixed),
+    const connected = withRuleTiedVariables(
+      codebookNodeVariables,
+      new Set(Object.keys(fixed)),
     );
     for (const id of Object.keys(fixed)) connected.delete(id);
     for (const id of protectedVariables) connected.delete(id);

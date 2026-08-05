@@ -30,6 +30,12 @@ export type GenerationConfig = {
   sociogramEdgeProbability: Range;
   /** {x, y} position range for Sociogram layout variables (unit-square inset). */
   sociogramLayoutRange: Range;
+  /**
+   * Chance a node is highlighted on a Sociogram prompt collecting one. Optional
+   * on the public type so adding this tuning knob does not break consumers that
+   * annotate a complete config object; it is always present after resolution.
+   */
+  sociogramHighlightProbability?: number;
   /** Per-pair edge probability for DyadCensus and TieStrengthCensus prompts. */
   censusEdgeProbability: Range;
   /** Per-pair edge probability for NetworkComposer edge types. */
@@ -60,14 +66,19 @@ export type GenerationConfig = {
  * reproducible: reading the clock per draw made a fixed seed stop reproducing
  * across UTC midnight.
  */
-export type ResolvedGenerationConfig = GenerationConfig & { today: string };
+export type ResolvedGenerationConfig = GenerationConfig & {
+  today: string;
+  sociogramHighlightProbability: number;
+};
 
-const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> = {
+const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> &
+  Pick<ResolvedGenerationConfig, 'sociogramHighlightProbability'> = {
   rosterDrawRatio: 0.7,
   nodeCount: { min: 1, max: 8 },
   dropOutFactor: 0.15,
   sociogramEdgeProbability: { min: 0.3, max: 0.5 },
   sociogramLayoutRange: { min: 0.1, max: 0.9 },
+  sociogramHighlightProbability: 0.35,
   censusEdgeProbability: { min: 0.4, max: 0.6 },
   networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
   familyPedigreeNodeCount: { min: 7, max: 32 },

@@ -42,14 +42,25 @@ function nameGenerator(overrides: Record<string, unknown> = {}): Stage {
 }
 
 function familyPedigree(overrides: Record<string, unknown> = {}): Stage {
+  const nodeConfigOverride = (overrides.nodeConfig ?? {}) as Record<
+    string,
+    unknown
+  >;
   return {
     id: 'stage-fp',
     type: 'FamilyPedigree',
     label: 'Pedigree',
-    nodeConfig: { type: 'relative' },
     edgeConfig: { type: 'kin' },
     prompts: [],
     ...overrides,
+    nodeConfig: {
+      type: 'relative',
+      nodeLabelVariable: 'name',
+      egoVariable: 'isEgo',
+      relationshipVariable: 'relationshipToEgo',
+      biologicalSexVariable: 'biologicalSex',
+      ...nodeConfigOverride,
+    },
   } as unknown as Stage;
 }
 
@@ -150,6 +161,68 @@ describe('worstCaseEntityCounts', () => {
       config,
     );
     expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(12);
+  });
+
+  it('counts creation-time writes per variable on a shared node type', () => {
+    const first = nameGenerator({
+      id: 'names',
+      form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
+      behaviours: { minNodes: 5, maxNodes: 5 },
+    });
+    const second = nameGenerator({
+      id: 'ages',
+      form: { fields: [{ variable: 'age', prompt: 'Age?' }] },
+      behaviours: { minNodes: 7, maxNodes: 7 },
+    });
+
+    const counts = worstCaseEntityCounts([first, second], config);
+
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(5);
+    expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(7);
+    expect(nodeCountFor(counts.node, 'person', ['isEgo'])).toBe(0);
+  });
+
+  it('applies a later writer only to nodes that already exist', () => {
+    const before = nameGenerator({
+      id: 'before',
+      form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
+      behaviours: { minNodes: 5, maxNodes: 5 },
+    });
+    const writeAge = nodeAlterForm('person', 'age');
+    const after = nameGenerator({
+      id: 'after',
+      form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
+      behaviours: { minNodes: 7, maxNodes: 7 },
+    });
+
+    const counts = worstCaseEntityCounts([before, writeAge, after], config);
+
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(12);
+    expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(5);
+  });
+
+  it('shares pedigree rule closure with the per-variable count', () => {
+    const variables = {
+      name: { name: 'Name', type: 'text' },
+      isEgo: { name: 'Is ego', type: 'boolean' },
+      mirrorsEgo: {
+        name: 'Mirrors ego',
+        type: 'boolean',
+        validation: { sameAs: 'isEgo' },
+      },
+    };
+    const counts = worstCaseEntityCounts(
+      [familyPedigree()],
+      config,
+      undefined,
+      undefined,
+      undefined,
+      (type) => (type === 'relative' ? variables : undefined),
+    );
+
+    expect(nodeCountFor(counts.node, 'relative', ['mirrorsEgo'])).toBe(
+      config.familyPedigreeNodeCount.max,
+    );
   });
 
   it('counts FamilyPedigree nodes against its configured node type', () => {

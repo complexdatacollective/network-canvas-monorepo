@@ -21,6 +21,15 @@ import {
 } from '../nodes';
 import { getSubjectType } from '../subject';
 import { completionCheckFor } from './generateEntityAttributes';
+import {
+  declaresNodeCollection,
+  lastExistingWriterByType,
+  nodeVariablesWrittenOnCreation,
+  pedigreeNodeVariables,
+  stageWritesExistingNodeVariable,
+  withRuleTiedVariables,
+  type NodeVariablesFor,
+} from './stageWrites';
 import type { EntityConstraints } from './types';
 import { valueKey } from './uniqueRegistry';
 
@@ -203,13 +212,22 @@ export function unwrittenEdgeVariables(
  * ceiling is shared: rows are drawn without replacement across every prompt and
  * stage, so two stages reading one roster cannot each have all of it.
  */
+type NodeCreation = {
+  count: number;
+  stageIndex: number;
+  /** Exact creation-time writes, or the conservative whole-type fallback. */
+  writes: ReadonlySet<string> | 'all';
+};
+
 type NodeTally = {
   /** From stages nothing external bounds, at their configured maxima. */
-  fabricated: number;
+  fabricated: NodeCreation[];
   /** From roster-bounded stages, before the shared rows are accounted for. */
   rosterDrawn: number;
   /** Rows those stages offer between them, keyed by primary key. */
   rosterRows: RosterRows;
+  /** Last stage index writing each variable onto pre-existing nodes. */
+  written: Map<string, number>;
 };
 
 /**
@@ -369,9 +387,10 @@ function tallyFor(tallies: NodeCounts, nodeType: string): NodeTally {
   if (existing) return existing;
 
   const tally: NodeTally = {
-    fabricated: 0,
+    fabricated: [],
     rosterDrawn: 0,
     rosterRows: new Map(),
+    written: new Map(),
   };
   tallies.set(nodeType, tally);
   return tally;
@@ -524,9 +543,11 @@ function rosterCarrierCount(
 
 /** Every node of a type, whatever variable is being asked about. */
 function nodeTotal(tally: NodeTally): number {
-  return (
-    tally.fabricated + Math.min(tally.rosterDrawn, totalRows(tally.rosterRows))
+  const fabricated = tally.fabricated.reduce(
+    (sum, creation) => sum + creation.count,
+    0,
   );
+  return fabricated + Math.min(tally.rosterDrawn, totalRows(tally.rosterRows));
 }
 
 /**
@@ -551,13 +572,47 @@ export function nodeCountFor(
 ): number {
   const tally = counts.get(type);
   if (tally === undefined) return 0;
+
+  let writtenAt = -1;
+  for (const id of variableIds) {
+    const at = tally.written.get(id);
+    if (at !== undefined) writtenAt = Math.max(writtenAt, at);
+  }
+
+  let fabricated = 0;
+  for (const creation of tally.fabricated) {
+    const { writes } = creation;
+    const filledAtCreation =
+      writes === 'all' || variableIds.some((id) => writes.has(id));
+    if (filledAtCreation || creation.stageIndex <= writtenAt) {
+      fabricated += creation.count;
+    }
+  }
+
   return (
-    tally.fabricated +
+    fabricated +
     Math.min(
       tally.rosterDrawn,
       rosterCarrierCount(tally.rosterRows, variableIds),
     )
   );
+}
+
+/** Variables whose equality group no stage ever writes on an existing node. */
+export function unwrittenNodeVariables(
+  counts: NodeCounts,
+  type: string,
+  groups: readonly (readonly string[])[],
+): ReadonlySet<string> {
+  const unwritten = new Set<string>();
+  if (!counts.has(type)) return unwritten;
+
+  for (const members of groups) {
+    if (nodeCountFor(counts, type, members) > 0) continue;
+    for (const id of members) unwritten.add(id);
+  }
+
+  return unwritten;
 }
 
 /**
@@ -785,38 +840,6 @@ function canPlanEgoChildBranch(
   );
 }
 
-/** Whether a stage can rewrite one attribute on nodes already in the draft. */
-function writesExistingNodeAttribute(
-  stage: Stage,
-  nodeType: string,
-  variableId: string,
-): boolean {
-  switch (stage.type) {
-    case 'Sociogram':
-      return (
-        getSubjectType(stage.subject, 'node') === nodeType &&
-        stage.prompts.some(
-          (prompt) => prompt.layout?.layoutVariable === variableId,
-        )
-      );
-    case 'OrdinalBin':
-    case 'CategoricalBin':
-    case 'Geospatial':
-      return (
-        getSubjectType(stage.subject, 'node') === nodeType &&
-        stage.prompts.some((prompt) => prompt.variable === variableId)
-      );
-    case 'AlterForm':
-      return (
-        getSubjectType(stage.subject, 'node') === nodeType &&
-        (stage.form?.fields.some((field) => field.variable === variableId) ??
-          false)
-      );
-    default:
-      return false;
-  }
-}
-
 /** Whether the materializer is guaranteed to find an earlier focal node. */
 function canReusePedigreeEgo(
   stageIndex: number,
@@ -844,7 +867,7 @@ function canReusePedigreeEgo(
   return !stages
     .slice(lastReusablePedigreeIndex + 1, stageIndex)
     .some((candidate) =>
-      writesExistingNodeAttribute(candidate, nodeType, egoVariable),
+      stageWritesExistingNodeVariable(candidate, stages, nodeType, egoVariable),
     );
 }
 
@@ -893,7 +916,12 @@ function inheritedEgoSexCanBeIndependent({
   return stages
     .slice(firstCompatiblePedigreeIndex + 1, stageIndex)
     .some((candidate) =>
-      writesExistingNodeAttribute(candidate, nodeType, biologicalSexVariable),
+      stageWritesExistingNodeVariable(
+        candidate,
+        stages,
+        nodeType,
+        biologicalSexVariable,
+      ),
     );
 }
 
@@ -1162,6 +1190,7 @@ export function worstCaseEntityCounts(
   externalData?: Record<string, NcNode[]>,
   nodeConstraints?: NodeConstraintsFor,
   familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
+  nodeVariables?: NodeVariablesFor,
 ): WorstCaseCounts {
   const base = new Map<string, number>();
   const pedigree = new Map<string, PedigreeEdges[]>();
@@ -1271,7 +1300,16 @@ export function worstCaseEntityCounts(
           : undefined;
 
       if (pool === undefined) {
-        tally.fabricated += maxNodes;
+        tally.fabricated.push({
+          count: maxNodes,
+          stageIndex,
+          writes: declaresNodeCollection(stage)
+            ? withRuleTiedVariables(
+                nodeVariables?.(nodeType),
+                nodeVariablesWrittenOnCreation(stage, stages),
+              )
+            : 'all',
+        });
       } else {
         tally.rosterDrawn += Math.min(maxNodes, pool.length);
         addRosterRows(tally.rosterRows, pool);
@@ -1360,11 +1398,18 @@ export function worstCaseEntityCounts(
         nodeTotal(tally),
         familyPedigree,
       );
-      tally.fabricated +=
-        Math.max(
-          pedigreeNodeCeiling(config, pedigreeContext) - (reusesEgo ? 1 : 0),
-          0,
-        ) + inheritedContributorCeiling.nodes;
+      tally.fabricated.push({
+        count:
+          Math.max(
+            pedigreeNodeCeiling(config, pedigreeContext) - (reusesEgo ? 1 : 0),
+            0,
+          ) + inheritedContributorCeiling.nodes,
+        stageIndex,
+        writes: withRuleTiedVariables(
+          nodeVariables?.(nodeType),
+          pedigreeNodeVariables(stage, stages),
+        ),
+      });
 
       const edgeType = stage.edgeConfig?.type;
       // Tallied apart from the rest because these edges start holding only what
@@ -1427,6 +1472,13 @@ export function worstCaseEntityCounts(
     const forType = pedigree.get(edgeType) ?? [];
     forType.push({ count, stageIndex });
     pedigree.set(edgeType, forType);
+  }
+
+  for (const [nodeType, writers] of lastExistingWriterByType(
+    stages,
+    nodeVariables,
+  )) {
+    tallyFor(node, nodeType).written = writers;
   }
 
   return {

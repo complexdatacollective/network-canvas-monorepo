@@ -244,6 +244,52 @@ function makeSkipRoutingCodebook(): Codebook {
 }
 
 describe('generateNetwork', () => {
+  it('writes Sociogram highlights only when the prompt collects them', () => {
+    const codebook = makeCodebook({
+      node: {
+        'node-type-1': {
+          color: 'node-color-seq-1',
+          variables: {
+            'var-name': { name: 'Name', type: 'text' },
+            'highlighted': { name: 'Highlighted', type: 'boolean' },
+          },
+        },
+      },
+    });
+    const generator = makeNameGeneratorStage({
+      form: {
+        fields: [{ variable: 'var-name', prompt: 'What is their name?' }],
+      },
+      behaviours: { minNodes: 3, maxNodes: 3 },
+    });
+    const sociogram = {
+      id: 'stage-sociogram',
+      type: 'Sociogram',
+      label: 'Support network',
+      subject: { entity: 'node', type: 'node-type-1' },
+      prompts: [
+        {
+          id: 'prompt-highlight',
+          text: 'Who supports you?',
+          highlight: { allowHighlighting: true, variable: 'highlighted' },
+        },
+      ],
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      codebook,
+      stages: [generator, sociogram],
+      seed: 42,
+      config: { sociogramHighlightProbability: 1 },
+    });
+
+    expect(network.nodes).toHaveLength(3);
+    for (const node of network.nodes) {
+      expect(node[entityAttributesProperty]['var-name']).toBeDefined();
+      expect(node[entityAttributesProperty].highlighted).toBe(true);
+    }
+  });
+
   describe('targeted skip destinations', () => {
     it('still analyses a hidden stage when skip logic is disabled', () => {
       const stages = [

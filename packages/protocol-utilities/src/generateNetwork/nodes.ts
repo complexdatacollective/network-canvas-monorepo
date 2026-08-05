@@ -23,6 +23,11 @@ import {
   type EntityScopeRef,
 } from './constraints/generateEntityAttributes';
 import {
+  declaresNodeCollection,
+  nodeVariablesWrittenOnCreation,
+  withRuleTiedVariables,
+} from './constraints/stageWrites';
+import {
   COMPARATOR_DIRECTION,
   COMPARISON_RULES,
   type ConstrainedVariable,
@@ -1023,6 +1028,18 @@ export function createNodesForStage(
 
   const scope = { entity: 'node', type: nodeType } as const;
   const variableIds = Object.keys(nodeTypeDef.variables ?? {});
+  // A creating stage fills only what that stage collects. A shared node type
+  // may also carry pedigree semantics or variables collected much later; giving
+  // those to a name generator would create a network no interview path can
+  // produce. A roster (or an incomplete fixture with no declared collection
+  // surface) keeps the conservative whole-type fallback because its rows decide
+  // which values arrive.
+  const stageWrites = declaresNodeCollection(stage)
+    ? withRuleTiedVariables(
+        nodeTypeDef.variables,
+        nodeVariablesWrittenOnCreation(stage),
+      )
+    : new Set(variableIds);
   const constraints: EntityConstraints =
     ctx.entityConstraints.node.get(nodeType) ?? new Map();
 
@@ -1150,17 +1167,12 @@ export function createNodesForStage(
     // after would leave a `sameAs`, `differentFrom` or comparator spanning a
     // fixed and a drawn variable broken on the finished node.
     const hasFixed = Object.keys(fixed).length > 0;
-    const generated = generateAttributesForEntity(
-      ctx,
-      scope,
-      nodeIndex,
-      hasFixed
-        ? {
-            existing: fixed,
-            only: new Set(variableIds.filter((id) => !(id in fixed))),
-          }
-        : undefined,
-    );
+    const generated = generateAttributesForEntity(ctx, scope, nodeIndex, {
+      existing: fixed,
+      only: new Set(
+        variableIds.filter((id) => stageWrites.has(id) && !(id in fixed)),
+      ),
+    });
 
     const attrs = { ...generated, ...fixed };
     if (hasFixed) claimFixedValues(ctx, scope, fixed);

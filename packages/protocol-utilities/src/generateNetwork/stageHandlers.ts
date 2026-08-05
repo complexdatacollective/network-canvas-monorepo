@@ -32,10 +32,8 @@ export function handleNameGenerators(
     allowFabrication: stage.type !== 'NameGeneratorRoster',
   };
 
-  // A stage form needs no fill pass of its own: `createNodesForStage` gives
-  // every node a value for every variable its type declares, so a form field
-  // naming one is already answered, and a field naming anything else has no
-  // codebook entry to generate from.
+  // A stage form needs no fill pass of its own: `createNodesForStage` fills the
+  // variables this creating stage collects as it builds each node.
   let stageNodeCount = 0;
   for (const prompt of stage.prompts) {
     const newNodes = createNodesForStage(
@@ -92,6 +90,22 @@ export function handleSociogram(
             ctx.config.sociogramLayoutRange.max,
           ),
         };
+      }
+    }
+
+    // Tapping a node toggles the prompt's highlight variable, so the synthetic
+    // walk must settle it here now that node creation no longer fills unrelated
+    // variables. Gate it exactly as the interface does: highlighting is the
+    // alternative to edge creation and only runs when explicitly enabled.
+    const highlightVariable =
+      prompt.highlight?.allowHighlighting === true && !createEdge
+        ? prompt.highlight.variable
+        : undefined;
+    if (highlightVariable) {
+      for (const node of subjectNodes) {
+        node[entityAttributesProperty][highlightVariable] =
+          ctx.valueGen.randomFloat(0, 1) <
+          ctx.config.sociogramHighlightProbability;
       }
     }
   }

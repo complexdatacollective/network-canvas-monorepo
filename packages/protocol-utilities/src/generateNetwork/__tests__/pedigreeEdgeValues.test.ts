@@ -48,6 +48,26 @@ const familyStage = {
   ],
 } as unknown as Stage;
 
+function collectingFamilyStage(stage: Stage, variable: string): Stage {
+  if (stage.type !== 'FamilyPedigree') {
+    throw new Error('expected a FamilyPedigree stage');
+  }
+
+  return {
+    ...stage,
+    nodeConfig: {
+      ...stage.nodeConfig,
+      form: [
+        ...(stage.nodeConfig?.form ?? []),
+        {
+          variable: asEntityAttributeReference(variable),
+          prompt: 'Record this value.',
+        },
+      ],
+    },
+  };
+}
+
 const narrativeDisease = {
   id: 'condition',
   label: 'Condition',
@@ -820,19 +840,26 @@ describe('FamilyPedigree materialization', () => {
       })),
       validation: { unique: true },
     };
-    const laterFamily = {
-      ...familyStage,
-      id: 'later-family-stage',
-      boundaries: {
-        requireGrandparents: 'required',
-        requireChildrenContributors: 'required',
-      },
-    } as unknown as Stage;
+    const laterFamily = collectingFamilyStage(
+      {
+        ...familyStage,
+        id: 'later-family-stage',
+        boundaries: {
+          requireGrandparents: 'required',
+          requireChildrenContributors: 'required',
+        },
+      } as unknown as Stage,
+      'generationMarker',
+    );
+    const earlierFamily = collectingFamilyStage(
+      familyStage,
+      'generationMarker',
+    );
 
     const { network } = generateNetwork({
       seed: 42,
       codebook: exactCodebook,
-      stages: [familyStage, laterFamily],
+      stages: [earlierFamily, laterFamily],
       familyPedigree: {
         scenario: 'none',
         diseaseMode: 'none',
@@ -898,16 +925,23 @@ describe('FamilyPedigree materialization', () => {
       })),
       validation: { unique: true },
     };
-    const laterFamilyStage = {
-      ...familyStage,
-      id: 'later-family-stage',
-      label: 'Later family',
-    } as unknown as Stage;
+    const laterFamilyStage = collectingFamilyStage(
+      {
+        ...familyStage,
+        id: 'later-family-stage',
+        label: 'Later family',
+      } as unknown as Stage,
+      'generationMarker',
+    );
+    const earlierFamilyStage = collectingFamilyStage(
+      familyStage,
+      'generationMarker',
+    );
 
     const { network } = generateNetwork({
       seed: 42,
       codebook: exactCodebook,
-      stages: [familyStage, laterFamilyStage],
+      stages: [earlierFamilyStage, laterFamilyStage],
       familyPedigree: {
         scenario: 'none',
         diseaseMode: 'none',
@@ -939,7 +973,10 @@ describe('FamilyPedigree materialization', () => {
     const { network } = generateNetwork({
       seed: 42,
       codebook: exactCodebook,
-      stages: [familyStage, narrativeStage],
+      stages: [
+        collectingFamilyStage(familyStage, 'generationMarker'),
+        narrativeStage,
+      ],
       familyPedigree: { scenario: 'none', maxNodes: 7 },
     });
     const values = network.nodes.map(
