@@ -10,7 +10,9 @@
           "name": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
-          "validation": { "required": true },
+          "validation": {
+            "required": true
+          },
           "options": [
             {
               "label": "Yes. I agree to take part.",
@@ -34,24 +36,26 @@
           "type": "ordinal",
           "component": "RadioGroup",
           "options": [
-            { "label": "Secondary school or less", "value": 1 },
-            { "label": "Post-secondary or vocational training", "value": 2 },
-            { "label": "University degree", "value": 3 },
-            { "label": "Postgraduate degree", "value": 4 }
+            {
+              "label": "Secondary school or less",
+              "value": 1
+            },
+            {
+              "label": "Post-secondary or vocational training",
+              "value": 2
+            },
+            {
+              "label": "University degree",
+              "value": 3
+            },
+            {
+              "label": "Postgraduate degree",
+              "value": 4
+            }
           ]
         },
         "ego_partnered": {
           "name": "ego_partnered",
-          "type": "boolean",
-          "component": "Boolean"
-        },
-        "ego_affected": {
-          "name": "ego_affected",
-          "type": "boolean",
-          "component": "Boolean"
-        },
-        "ego_tested": {
-          "name": "ego_tested",
           "type": "boolean",
           "component": "Boolean"
         }
@@ -63,14 +67,31 @@
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": {
-          "default": "circle",
+          "default": "diamond",
           "dynamic": {
             "type": "discrete",
             "variable": "biologicalSex",
             "map": [
-              { "value": "male", "shape": "square" },
-              { "value": "female", "shape": "circle" },
-              { "value": "intersex", "shape": "diamond" }
+              {
+                "value": "male",
+                "shape": "square"
+              },
+              {
+                "value": "female",
+                "shape": "circle"
+              },
+              {
+                "value": "intersex",
+                "shape": "diamond"
+              },
+              {
+                "value": "unknown",
+                "shape": "diamond"
+              },
+              {
+                "value": "preferNotToSay",
+                "shape": "diamond"
+              }
             ]
           }
         },
@@ -84,7 +105,10 @@
             "name": "contact_name",
             "type": "text",
             "component": "Text",
-            "validation": { "required": true }
+            "validation": {
+              "required": true,
+              "unique": true
+            }
           },
           "is_ego": {
             "name": "is_ego",
@@ -100,28 +124,61 @@
             "name": "biologicalSex",
             "type": "categorical",
             "options": [
-              { "value": "female", "label": "Female" },
-              { "value": "male", "label": "Male" },
+              {
+                "value": "female",
+                "label": "Female"
+              },
+              {
+                "value": "male",
+                "label": "Male"
+              },
               {
                 "value": "intersex",
                 "label": "Intersex or a variation in sex characteristics"
               },
-              { "value": "unknown", "label": "Don’t know" },
-              { "value": "preferNotToSay", "label": "Prefer not to say" }
+              {
+                "value": "unknown",
+                "label": "Don’t know"
+              },
+              {
+                "value": "preferNotToSay",
+                "label": "Prefer not to say"
+              }
             ]
           },
-          "layout": { "name": "layout", "type": "layout" },
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          },
           "tie_type": {
             "name": "tie_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
-              { "label": "Close friend", "value": "close_friend" },
-              { "label": "Friend", "value": "friend" },
-              { "label": "Colleague or classmate", "value": "colleague" },
-              { "label": "Neighbour", "value": "neighbour" },
-              { "label": "Faith community", "value": "faith" },
-              { "label": "Health professional", "value": "professional" }
+              {
+                "label": "Close friend",
+                "value": "close_friend"
+              },
+              {
+                "label": "Friend",
+                "value": "friend"
+              },
+              {
+                "label": "Colleague or classmate",
+                "value": "colleague"
+              },
+              {
+                "label": "Neighbour",
+                "value": "neighbour"
+              },
+              {
+                "label": "Faith community",
+                "value": "faith"
+              },
+              {
+                "label": "Health professional",
+                "value": "professional"
+              }
             ]
           },
           "tie_type_other": {
@@ -191,15 +248,36 @@
             "name": "relationshipType",
             "type": "categorical",
             "options": [
-              { "value": "biological", "label": "Biological" },
-              { "value": "social", "label": "Social" },
-              { "value": "donor", "label": "Donor" },
-              { "value": "surrogate", "label": "Surrogate" },
-              { "value": "adoptive", "label": "Adoptive" },
-              { "value": "partner", "label": "Partner" }
+              {
+                "value": "biological",
+                "label": "Biological"
+              },
+              {
+                "value": "social",
+                "label": "Social"
+              },
+              {
+                "value": "donor",
+                "label": "Donor"
+              },
+              {
+                "value": "surrogate",
+                "label": "Surrogate"
+              },
+              {
+                "value": "adoptive",
+                "label": "Adoptive"
+              },
+              {
+                "value": "partner",
+                "label": "Partner"
+              }
             ]
           },
-          "isActive": { "name": "isActive", "type": "boolean" },
+          "isActive": {
+            "name": "isActive",
+            "type": "boolean"
+          },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
             "type": "boolean"
@@ -208,13 +286,22 @@
             "name": "gameteRole",
             "type": "categorical",
             "options": [
-              { "value": "egg", "label": "Egg" },
-              { "value": "sperm", "label": "Sperm" }
+              {
+                "value": "egg",
+                "label": "Egg"
+              },
+              {
+                "value": "sperm",
+                "label": "Sperm"
+              }
             ]
           }
         }
       },
-      "knows": { "name": "Knows", "color": "edge-color-seq-2" }
+      "knows": {
+        "name": "Knows",
+        "color": "edge-color-seq-2"
+      }
     }
   },
   "stages": [
@@ -267,7 +354,9 @@
             }
           ]
         },
-        "destination": { "type": "finish" }
+        "destination": {
+          "type": "finish"
+        }
       },
       "introductionPanel": {
         "title": "A little about you",
@@ -275,7 +364,10 @@
       },
       "form": {
         "fields": [
-          { "variable": "ego_age", "prompt": "How old are you?" },
+          {
+            "variable": "ego_age",
+            "prompt": "How old are you?"
+          },
           {
             "variable": "ego_education",
             "prompt": "What is the highest level of education you have completed?"
@@ -283,14 +375,6 @@
           {
             "variable": "ego_partnered",
             "prompt": "Do you have a partner or spouse?"
-          },
-          {
-            "variable": "ego_affected",
-            "prompt": "Have you been diagnosed with this condition?"
-          },
-          {
-            "variable": "ego_tested",
-            "prompt": "Have you had genetic testing for this condition?"
           }
         ]
       }
@@ -314,7 +398,9 @@
         "isGestationalCarrierVariable": "isGestationalCarrier",
         "gameteRoleVariable": "gameteRole"
       },
-      "framing": { "mode": "participantChoice" },
+      "framing": {
+        "mode": "participantChoice"
+      },
       "boundaries": {
         "requireGrandparents": "recommended",
         "requireChildrenContributors": "off"
@@ -324,7 +410,7 @@
           {
             "id": "pedigree-intro",
             "type": "text",
-            "content": "A family tree like this one maps **biological** relationships — the people whose egg and sperm you came from, rather than the people who raised you. That is what lets us follow how a condition passes down a family.\n\nYou will be able to add everyone else who matters to you straight afterwards."
+            "content": "A family tree records everyone in your family — partners, step-parents, adoptive parents, and anyone who helped you come into the world.\n\nIt also keeps track of who you are **biologically** related to, because that is what lets us follow how a condition passes down a family. You will be asked about both, so please include everyone."
           }
         ]
       },
@@ -365,7 +451,10 @@
       "type": "NameGeneratorQuickAdd",
       "label": "People in your life",
       "interviewScript": "The same person can belong in several of these questions. Add them once, then pick them from the panel of people already named rather than typing the name again.\n\nThe published instrument treats this step as widening the map to the participant's whole social universe, so do not rush it — friends and co-members of groups are where the spiritual and emotional domains usually turn out to live.",
-      "subject": { "entity": "node", "type": "person" },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
       "quickAdd": "contact_name",
       "panels": [
         {
@@ -397,7 +486,10 @@
       "id": "bin-tie-type",
       "type": "CategoricalBin",
       "label": "How you know each person",
-      "subject": { "entity": "node", "type": "person" },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
       "prompts": [
         {
           "id": "p-tie-type",
@@ -407,103 +499,220 @@
           "otherVariablePrompt": "How would you describe how you know this person?",
           "otherOptionLabel": "Something else"
         }
-      ]
+      ],
+      "filter": {
+        "join": "AND",
+        "rules": [
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d40",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "is_ego",
+              "operator": "NOT",
+              "value": true
+            }
+          },
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d44",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "relationship_to_ego",
+              "operator": "NOT_EXISTS"
+            }
+          }
+        ]
+      }
     },
     {
       "id": "socio-exchanges",
       "type": "Sociogram",
       "label": "Exchanges of support",
       "interviewScript": "These four questions are the coloured dots of the original paper instrument: information, practical help, feelings, and spiritual connection. Each is asked about every person on the map, family and non-family alike.\n\nAll the people are placed automatically so the participant reads the map rather than arranging it. Answer the first question about who knows whom before the four exchange questions — the connections make the later views legible.",
-      "subject": { "entity": "node", "type": "person" },
-      "background": { "concentricCircles": 0 },
-      "behaviours": { "automaticLayout": true, "allowRepositioning": true },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 0
+      },
+      "behaviours": {
+        "automaticLayout": true,
+        "allowRepositioning": true
+      },
       "prompts": [
         {
           "id": "p-ties",
           "text": "Connect any of these people who **know one another**.",
-          "layout": { "layoutVariable": "layout" },
-          "edges": { "create": "knows", "display": ["knows"] }
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "create": "knows",
+            "display": ["knows"]
+          }
         },
         {
           "id": "p-information",
           "text": "Who do you **share health or genetic information** with?",
-          "layout": { "layoutVariable": "layout" },
+          "layout": {
+            "layoutVariable": "layout"
+          },
           "highlight": {
             "allowHighlighting": true,
             "variable": "exch_information"
+          },
+          "edges": {
+            "display": ["knows"]
           }
         },
         {
           "id": "p-tangible",
           "text": "Who gives you **practical help** — a lift to an appointment, a meal, looking after the children?",
-          "layout": { "layoutVariable": "layout" },
+          "layout": {
+            "layoutVariable": "layout"
+          },
           "highlight": {
             "allowHighlighting": true,
             "variable": "exch_tangible"
+          },
+          "edges": {
+            "display": ["knows"]
           }
         },
         {
           "id": "p-emotional",
           "text": "Who do you **share your feelings** with about all of this?",
-          "layout": { "layoutVariable": "layout" },
+          "layout": {
+            "layoutVariable": "layout"
+          },
           "highlight": {
             "allowHighlighting": true,
             "variable": "exch_emotional"
+          },
+          "edges": {
+            "display": ["knows"]
           }
         },
         {
           "id": "p-spiritual",
           "text": "Who do you share a **spiritual or religious connection** with?",
-          "layout": { "layoutVariable": "layout" },
+          "layout": {
+            "layoutVariable": "layout"
+          },
           "highlight": {
             "allowHighlighting": true,
             "variable": "exch_spiritual"
+          },
+          "edges": {
+            "display": ["knows"]
           }
         }
-      ]
+      ],
+      "filter": {
+        "rules": [
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d41",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "is_ego",
+              "operator": "NOT",
+              "value": true
+            }
+          }
+        ]
+      }
     },
     {
       "id": "socio-roles",
       "type": "Sociogram",
       "label": "Talking about the condition",
       "interviewScript": "These three questions are the coloured stars of the paper instrument — the gatherer, disseminator and blocker roles described by Koehly and colleagues. The third one names someone as a barrier to family communication, so frame it gently and without judgement: people usually have reasons, and those reasons are often the most useful thing the participant tells you.",
-      "subject": { "entity": "node", "type": "person" },
-      "background": { "concentricCircles": 0 },
-      "behaviours": { "automaticLayout": true, "allowRepositioning": true },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 0
+      },
+      "behaviours": {
+        "automaticLayout": true,
+        "allowRepositioning": true
+      },
       "prompts": [
         {
           "id": "p-gatherer",
           "text": "Who **looks for information** about this condition — reads about it, asks questions, keeps track of what is known?",
-          "layout": { "layoutVariable": "layout" },
+          "layout": {
+            "layoutVariable": "layout"
+          },
           "highlight": {
             "allowHighlighting": true,
             "variable": "role_gatherer"
+          },
+          "edges": {
+            "display": ["knows"]
           }
         },
         {
           "id": "p-disseminator",
           "text": "Who **helps the family talk** about it and passes news on?",
-          "layout": { "layoutVariable": "layout" },
+          "layout": {
+            "layoutVariable": "layout"
+          },
           "highlight": {
             "allowHighlighting": true,
             "variable": "role_disseminator"
+          },
+          "edges": {
+            "display": ["knows"]
           }
         },
         {
           "id": "p-blocker",
           "text": "Who finds it **hard to talk** about it, or would rather not know?",
-          "layout": { "layoutVariable": "layout" },
-          "highlight": { "allowHighlighting": true, "variable": "role_blocker" }
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "role_blocker"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
         }
-      ]
+      ],
+      "filter": {
+        "rules": [
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d42",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "is_ego",
+              "operator": "NOT",
+              "value": true
+            }
+          }
+        ]
+      }
     },
     {
       "id": "narrative-cegrm",
       "type": "Narrative",
       "label": "The completed map",
       "interviewScript": "This is the payoff of the whole session, and the point at which the CEGRM stops being a questionnaire and becomes an elicitation device. Operate it yourself and use it to prompt the participant.\n\nStep through the overlays and ask what they notice. Where do the colours cluster? Where are they absent? Absence is as informative as presence — a person with no one in the feelings overlay, or a family where practical help comes entirely from outside it, is the finding. Participants in the published studies consistently reported insight from seeing the pattern rather than from being asked about it.\n\nOne overlay shows at a time. Move between them at the participant's pace, and let them ask to go back. Nothing on this screen is saved, including any drawing, so capture the conversation using your approved study procedure.",
-      "subject": { "entity": "node", "type": "person" },
-      "background": { "concentricCircles": 3, "skewedTowardCenter": true },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
       "behaviours": {
         "automaticLayout": false,
         "allowRepositioning": true,
@@ -515,7 +724,9 @@
           "label": "Everyone on your map",
           "layoutVariable": "layout",
           "groupVariable": "tie_type",
-          "edges": { "display": ["knows"] }
+          "edges": {
+            "display": ["knows"]
+          }
         },
         {
           "id": "preset-information",
@@ -551,7 +762,21 @@
           "layoutVariable": "layout",
           "highlight": ["role_gatherer", "role_disseminator", "role_blocker"]
         }
-      ]
+      ],
+      "filter": {
+        "rules": [
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d43",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "is_ego",
+              "operator": "NOT",
+              "value": true
+            }
+          }
+        ]
+      }
     },
     {
       "id": "narrative-pedigree",
