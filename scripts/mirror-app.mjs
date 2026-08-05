@@ -34,7 +34,7 @@ import { tmpdir } from 'node:os';
 import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { resolveManifest } from './resolve-manifest.mjs';
+import { parseCatalog, resolveManifest } from './resolve-manifest.mjs';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 
@@ -186,6 +186,48 @@ overrides:
   valibot: '^1.4.2'
 `;
 
+// Fresco's tsconfig extends the private `@codaco/tsconfig` package, which
+// resolve-manifest correctly drops from the mirrored manifest — it is
+// unpublished, so the standalone tree cannot install it. Vendor the shared
+// configs into the tree and repoint `extends` at them, so the Dockerfile's
+// `next build` can still load the base config. The configs name
+// `@total-typescript/ts-reset` in `types`; that is a root devDependency here
+// rather than one of Fresco's own, so it has to be added to the mirrored
+// manifest too or the vendored config resolves to nothing.
+function vendorSharedTsconfig(staging, manifest) {
+  const sharedDir = join(repoRoot, 'tooling', 'typescript');
+  const vendorDir = join(staging, 'tsconfig');
+  // web.json extends './base.json', so co-locating the pair keeps that working.
+  for (const file of ['base.json', 'web.json']) {
+    cpSync(join(sharedDir, file), join(vendorDir, file));
+  }
+
+  const tsconfigPath = join(staging, 'tsconfig.json');
+  const original = readFileSync(tsconfigPath, 'utf8');
+  const shared = '"@codaco/tsconfig/web.json"';
+  if (!original.includes(shared)) {
+    throw new Error(
+      `Expected ${tsconfigPath} to extend ${shared}; the mirror's tsconfig rewrite would be a no-op.`,
+    );
+  }
+  writeFileSync(
+    tsconfigPath,
+    original.replace(shared, '"./tsconfig/web.json"'),
+  );
+
+  const catalog = parseCatalog(
+    readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8'),
+  );
+  const tsResetVersion = catalog['@total-typescript/ts-reset'];
+  if (!tsResetVersion) {
+    throw new Error(
+      'No catalog entry for @total-typescript/ts-reset; the vendored tsconfig names it in `types`.',
+    );
+  }
+  manifest.devDependencies ??= {};
+  manifest.devDependencies['@total-typescript/ts-reset'] = tsResetVersion;
+}
+
 // Architect renders the Interviewer app in its preview window from a bundle that
 // electron-builder copies via extraResources. In the monorepo that bundle lives at
 // ../interviewer-classic/out; vendor it into the mirror and repoint the config.
@@ -266,6 +308,10 @@ function main() {
       );
     }
     resolved.packageManager = root.packageManager;
+  }
+  if (appName === 'fresco') {
+    // Before the manifest is written — this adds a devDependency to it.
+    vendorSharedTsconfig(staging, resolved);
   }
   writeFileSync(
     join(staging, 'package.json'),

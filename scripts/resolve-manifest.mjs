@@ -29,7 +29,7 @@ const DEP_FIELDS = [
 // Parse the (single, default) `catalog:` block of pnpm-workspace.yaml into a
 // { packageName: versionRange } map. Deliberately minimal — the block is a flat
 // list of `key: value` pairs, optionally quoted.
-function parseCatalog(workspaceYaml) {
+export function parseCatalog(workspaceYaml) {
   const catalog = {};
   let inCatalog = false;
   for (const line of workspaceYaml.split('\n')) {

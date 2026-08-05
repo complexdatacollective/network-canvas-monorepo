@@ -1654,7 +1654,12 @@ jobs:
   # The GitHub release is created on the Fresco repo, tagged v<version>, while
   # the local `fresco@<version>` tag is what makes this job idempotent.
   apps-release-fresco:
-    needs: apps-release-detect
+    # Also needs `release`: the mirror resolves Fresco's workspace: dependencies
+    # to registry ranges and generates a lockfile against npm, so any @codaco/*
+    # version bumped in this same release must be published first. The Netlify
+    # app releases have no such ordering constraint because they build from the
+    # workspace itself.
+    needs: [apps-release-detect, release]
     if: needs.apps-release-detect.outputs.fresco_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30

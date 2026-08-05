@@ -51,7 +51,7 @@ Consequences worth remembering:
 pnpm --filter fresco dev          # Postgres + MinIO via Docker, then next dev
 pnpm --filter fresco build        # next build
 pnpm --filter fresco typecheck
-pnpm --filter fresco test:unit    # vitest, units project
+pnpm --filter fresco test        # vitest, units project
 pnpm --filter fresco storybook
 ```
 

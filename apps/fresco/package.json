@@ -12,8 +12,7 @@
     "start": "next start",
     "vercel-build": "pnpm build:platform",
     "knip": "SKIP_ENV_VALIDATION=true knip",
-    "test": "SKIP_ENV_VALIDATION=true vitest",
-    "test:unit": "SKIP_ENV_VALIDATION=true vitest --run --project=units",
+    "test": "SKIP_ENV_VALIDATION=true vitest run --project=units",
     "test:storybook": "vitest --project=storybook",
     "load-test": "docker run -i grafana/k6 run - <load-test.js",
     "typecheck": "SKIP_ENV_VALIDATION=true tsc --noEmit",
@@ -21,7 +20,8 @@
     "build-storybook": "SKIP_ENV_VALIDATION=true storybook build",
     "chromatic": "SKIP_ENV_VALIDATION=true pnpx chromatic --exit-zero-on-changes --project-token=chpt_be05032bf2520b5",
     "docker-build": "docker build -t fresco:latest .",
-    "db:generate": "SKIP_ENV_VALIDATION=true prisma generate"
+    "db:generate": "SKIP_ENV_VALIDATION=true prisma generate",
+    "test:watch": "SKIP_ENV_VALIDATION=true vitest --project=units"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",
