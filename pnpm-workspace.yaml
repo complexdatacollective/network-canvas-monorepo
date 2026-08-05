@@ -45,7 +45,7 @@ catalog:
   '@faker-js/faker': ^10.4.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
-  '@microsoft/api-extractor': ^7.58.9
+  '@microsoft/api-extractor': ^7.58.12
   '@next/bundle-analyzer': ^16.3.0
   '@next/third-parties': ^16.3.0
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
