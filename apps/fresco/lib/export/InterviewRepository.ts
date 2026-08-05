@@ -16,10 +16,12 @@ export const PrismaInterviewRepository = Layer.succeed(InterviewRepository, {
 
       const inputs: InterviewExportInput[] = rows.map((row) => ({
         id: row.id,
-        participantIdentifier:
-          row.participant.label && row.participant.label !== ''
-            ? row.participant.label
-            : row.participant.identifier,
+        // Always the stable identifier, never the optional human-readable
+        // label: this becomes the case ID in the exported CSV/GraphML, and it
+        // must match the identifier used by recruitment URLs and participant
+        // rows. Labels are neither unique nor stable, so using one here would
+        // make cases ambiguous across an export.
+        participantIdentifier: row.participant.identifier,
         startTime: row.startTime,
         finishTime: row.finishTime,
         network: NcNetworkSchema.parse(row.network),
