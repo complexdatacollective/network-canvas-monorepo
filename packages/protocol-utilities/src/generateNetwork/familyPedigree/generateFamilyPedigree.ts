@@ -210,7 +210,7 @@ function oppositeSex(sex: BiologicalSex): BiologicalSex {
   return sex === 'female' ? 'male' : 'female';
 }
 
-function scenarioFor(
+export function sampleFamilyPedigreeScenario(
   valueGen: ValueGenerator,
   options: ResolvedFamilyPedigreeGenerationOptions,
 ): FamilyPedigreePlan['scenario'] {
@@ -440,7 +440,7 @@ export function generateFamilyPedigreePlan(
   const builder = new PlanBuilder(options.maxNodes);
   const { population } = options;
   const drawSex = () => sexFor(valueGen, population.femaleAtBirthProbability);
-  const scenario = scenarioFor(valueGen, options);
+  const scenario = sampleFamilyPedigreeScenario(valueGen, options);
 
   // The seven-person core guarantees two genetic parents and two genetic
   // parents for each of them, satisfying the interface's hard minimum and its

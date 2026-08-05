@@ -6,6 +6,7 @@ import { ValueGenerator } from '../../../ValueGenerator';
 import {
   attainableFamilyPedigreeNodeCeiling,
   generateFamilyPedigreePlan,
+  sampleFamilyPedigreeScenario,
 } from '../generateFamilyPedigree';
 import {
   resolveFamilyPedigreeGenerationOptions,
@@ -348,9 +349,14 @@ describe('generateFamilyPedigreePlan', () => {
 
   it('samples rare reproductive scenarios at the configured population rates', () => {
     const samples = 25_000;
+    const valueGen = new ValueGenerator(104, '2026-08-04');
+    const options = resolveFamilyPedigreeGenerationOptions(
+      { scenario: 'population', maxNodes: 100 },
+      100,
+    );
     const observed = new Map<string, number>();
-    for (let seed = 1; seed <= samples; seed++) {
-      const scenario = plan(seed, 'population').scenario;
+    for (let sample = 0; sample < samples; sample++) {
+      const scenario = sampleFamilyPedigreeScenario(valueGen, options);
       observed.set(scenario, (observed.get(scenario) ?? 0) + 1);
     }
 
