@@ -66,21 +66,17 @@ export const sliderThumbVariants = compose(
       // Positioning - base-ui sets --slider-thumb-position
       'absolute top-1/2 aspect-square -translate-1/2',
       'left-(--slider-thumb-position)',
-      // Appearance
       'block rounded-full',
       // focusable-within: the nested <input type="range"> receives focus, not the div
       'focusable-within outline-primary',
-      'transition-colors duration-200',
     ),
     variants: {
       state: {
-        normal: 'bg-primary cursor-grab active:cursor-grabbing',
-        pristine: 'bg-primary cursor-grab opacity-40 active:cursor-grabbing',
-        disabled:
-          'pointer-events-none bg-[color-mix(in_oklch,var(--input-contrast)_30%,currentColor)]',
-        readOnly:
-          'pointer-events-none bg-[color-mix(in_oklch,var(--input-contrast)_50%,currentColor)]',
-        invalid: 'bg-destructive cursor-grab active:cursor-grabbing',
+        normal: 'cursor-grab active:cursor-grabbing',
+        pristine: 'cursor-grab active:cursor-grabbing',
+        disabled: 'pointer-events-none',
+        readOnly: 'pointer-events-none',
+        invalid: 'cursor-grab active:cursor-grabbing',
       },
     },
     defaultVariants: {
@@ -88,6 +84,33 @@ export const sliderThumbVariants = compose(
     },
   }),
 );
+
+// The thumb's visible surface, rendered as a child of the thumb rather than on
+// the thumb itself. base-ui registers the thumb element in the slider's
+// internal thumb list, and handing it a `motion` component breaks that
+// registration — which silently disables every track press, since base-ui can
+// no longer resolve which thumb a press belongs to. Keeping the animated
+// element nested leaves the thumb a plain element that base-ui can register.
+export const sliderThumbSurfaceVariants = cva({
+  base: cx(
+    'block h-full w-full rounded-full',
+    'transition-colors duration-200',
+  ),
+  variants: {
+    state: {
+      normal: 'bg-primary',
+      pristine: 'bg-primary opacity-40',
+      disabled:
+        'bg-[color-mix(in_oklch,var(--input-contrast)_30%,currentColor)]',
+      readOnly:
+        'bg-[color-mix(in_oklch,var(--input-contrast)_50%,currentColor)]',
+      invalid: 'bg-destructive',
+    },
+  },
+  defaultVariants: {
+    state: 'normal',
+  },
+});
 
 export const sliderTickContainerStyles = cx('absolute inset-0 w-full');
 

@@ -2,13 +2,14 @@
 
 import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
   sliderControlVariants,
   sliderRootVariants,
+  sliderThumbSurfaceVariants,
   sliderThumbVariants,
   sliderTrackVariants,
 } from '../../styles/controlVariants';
@@ -78,16 +79,28 @@ export default function VisualAnalogScaleField(
   const [thumbEl, setThumbEl] = useState<HTMLElement | null>(null);
   const active = useSliderActive();
 
+  // Whether the current pointer interaction has already moved the slider, so
+  // the pristine commit below doesn't overwrite a position the participant
+  // actually chose.
+  const pointerMovedValueRef = useRef(false);
+
   const handleValueChange = (newValue: number | number[]) => {
     if (readOnly) return;
     const val = Array.isArray(newValue) ? newValue[0] : newValue;
     if (val !== undefined) {
+      pointerMovedValueRef.current = true;
       onChange?.(val);
     }
   };
 
+  // base-ui only reports a value change when the press actually moves the
+  // slider, so a pristine scale pressed on the thumb — or on the midpoint the
+  // thumb already rests at — would never record a response. Committing on
+  // release (rather than on press) also leaves a press that *does* move the
+  // thumb free to record the position the participant chose.
   const commitPristineValue = () => {
-    if (readOnly || hasValue) return;
+    if (disabled || readOnly || hasValue || pointerMovedValueRef.current)
+      return;
     onChange?.(midpoint);
   };
 
@@ -108,10 +121,11 @@ export default function VisualAnalogScaleField(
             readOnly
               ? undefined
               : () => {
-                  commitPristineValue();
+                  pointerMovedValueRef.current = false;
                   active.onPointerDown();
                 }
           }
+          onPointerUp={readOnly ? undefined : commitPristineValue}
           onKeyDown={(event) => {
             if (readOnly) return;
             handleKeyDown(event);
@@ -140,21 +154,6 @@ export default function VisualAnalogScaleField(
                 inputRef={(input) => {
                   if (input && id) input.id = id;
                 }}
-                render={
-                  <motion.div
-                    // base-ui's nested <input type="range"> is the focusable
-                    // control; motion otherwise auto-adds tabIndex={0} to a
-                    // `whileTap` element, which would make the thumb a second
-                    // tab stop. Keep the div out of the tab order.
-                    tabIndex={-1}
-                    whileTap={{ scale: 1.1 }}
-                    transition={{
-                      type: 'spring',
-                      duration: 0.3,
-                      bounce: 0.4,
-                    }}
-                  />
-                }
                 className={sliderThumbVariants({ state: thumbState })}
                 aria-label={
                   ariaLabelledBy
@@ -166,7 +165,22 @@ export default function VisualAnalogScaleField(
                 getAriaValueText={(_, currentValue) =>
                   formatVasValue(currentValue, min, max)
                 }
-              />
+              >
+                <motion.div
+                  // base-ui's nested <input type="range"> is the focusable
+                  // control; motion otherwise auto-adds tabIndex={0} to a
+                  // `whileTap` element, which would make the thumb a second
+                  // tab stop. Keep the div out of the tab order.
+                  tabIndex={-1}
+                  whileTap={{ scale: 1.1 }}
+                  transition={{
+                    type: 'spring',
+                    duration: 0.3,
+                    bounce: 0.4,
+                  }}
+                  className={sliderThumbSurfaceVariants({ state: thumbState })}
+                />
+              </Slider.Thumb>
             </Slider.Track>
           </Slider.Control>
         </Slider.Root>
