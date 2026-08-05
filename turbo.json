@@ -268,7 +268,7 @@
         "!**/node_modules/**"
       ],
       "outputs": [],
-      "dependsOn": ["fresco#db:generate"]
+      "dependsOn": ["fresco#codegen"]
     },
     "//#knip": {
       "inputs": [
@@ -284,7 +284,7 @@
         "!**/node_modules/**"
       ],
       "outputs": [],
-      "dependsOn": ["fresco#db:generate"]
+      "dependsOn": ["fresco#codegen"]
     },
     "dev": {
       "cache": false,
@@ -475,17 +475,8 @@
       "env": ["NODE_ENV"],
       "outputs": []
     },
-    "fresco#db:generate": {
-      "inputs": [
-        "lib/db/schema.prisma",
-        "prisma.config.ts",
-        "env.js",
-        "package.json"
-      ],
-      "outputs": ["lib/db/generated/**"]
-    },
     "fresco#build": {
-      "dependsOn": ["^topo", "fresco#db:generate"],
+      "dependsOn": ["^topo", "fresco#codegen"],
       "inputs": [
         "app/**",
         "actions/**",
@@ -514,7 +505,7 @@
       "outputs": [".next/**", "!.next/cache/**"]
     },
     "fresco#typecheck": {
-      "dependsOn": ["^topo", "fresco#db:generate"],
+      "dependsOn": ["^topo", "fresco#codegen"],
       "inputs": [
         "app/**",
         "actions/**",
@@ -543,7 +534,7 @@
       "outputs": []
     },
     "fresco#test": {
-      "dependsOn": ["^topo", "fresco#db:generate"],
+      "dependsOn": ["^topo", "fresco#codegen"],
       "inputs": [
         "app/**",
         "actions/**",
@@ -571,6 +562,17 @@
         ".env"
       ],
       "outputs": []
+    },
+    "fresco#codegen": {
+      "inputs": [
+        "lib/db/schema.prisma",
+        "prisma.config.ts",
+        "env.js",
+        "next.config.ts",
+        "app/**",
+        "package.json"
+      ],
+      "outputs": ["lib/db/generated/**", "next-env.d.ts", ".next/types/**"]
     }
   },
   "futureFlags": {

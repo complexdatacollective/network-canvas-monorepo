@@ -26,16 +26,14 @@ import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { checkRateLimit, recordLoginAttempt } from '~/lib/rateLimit';
 import { isAppConfigured } from '~/queries/appSettings';
-import { changePasswordSchema } from '~/schemas/users';
+import { strongPasswordSchema } from '~/schemas/users';
 import { getClientIp } from '~/utils/getClientIp';
+import { STRONG_PASSWORD_MESSAGE } from '~/utils/isStrongPassword';
 import { hashPassword, verifyPassword } from '~/utils/password';
 
 import { addEvent } from './activityFeed';
 
 const CHALLENGE_COOKIE_NAME = 'webauthn_challenge';
-
-// Same strength rule the change-password flow enforces.
-const strongPasswordSchema = changePasswordSchema.shape.newPassword;
 
 function splitTransports(
   transports: string | null,
@@ -639,8 +637,7 @@ export async function switchToPasswordMode(newPassword: string) {
   const parsedPassword = strongPasswordSchema.safeParse(newPassword);
   if (!parsedPassword.success) {
     return {
-      error:
-        'Password must be at least 8 characters and contain at least 1 lowercase, 1 uppercase, 1 number, and 1 symbol.',
+      error: STRONG_PASSWORD_MESSAGE,
       data: null,
     };
   }

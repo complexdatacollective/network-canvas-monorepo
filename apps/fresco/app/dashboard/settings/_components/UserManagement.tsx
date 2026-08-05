@@ -47,6 +47,11 @@ import TwoFactorSettings from '~/app/dashboard/settings/_components/TwoFactorSet
 import SettingsField from '~/components/settings/SettingsField';
 import { useClientDataTable } from '~/hooks/useClientDataTable';
 import { type GetUsersReturnType } from '~/queries/users';
+import {
+  PASSWORD_CHARACTER_RULES,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MIN_LENGTH_MESSAGE,
+} from '~/utils/isStrongPassword';
 
 type UserRow = GetUsersReturnType[number];
 
@@ -84,13 +89,19 @@ const usernameUniqueSchema = z.string().check(
   }, 'Username is already taken'),
 );
 
+// Built from the shared rule in ~/utils/isStrongPassword rather than restating
+// it: the server enforces the same rule through `strongPasswordSchema`, which
+// cannot be imported here (schemas/ is server-only, and client code uses
+// zod/mini). Each check stays separate so the form reports precisely which
+// requirement is unmet.
 const passwordSchema = z
   .string()
-  .check(z.minLength(8, 'Password must be at least 8 characters'))
-  .check(z.regex(/[a-z]/, 'Password must contain at least 1 lowercase letter'))
-  .check(z.regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter'))
-  .check(z.regex(/[0-9]/, 'Password must contain at least 1 number'))
-  .check(z.regex(/[^a-zA-Z0-9]/, 'Password must contain at least 1 symbol'));
+  .check(
+    z.minLength(PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE),
+    ...PASSWORD_CHARACTER_RULES.map(({ pattern, message }) =>
+      z.regex(pattern, message),
+    ),
+  );
 
 function makeUserColumns(
   currentUserId: string,

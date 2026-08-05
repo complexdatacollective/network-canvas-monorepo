@@ -457,12 +457,12 @@ jobs:
       # oxlint-tsgolint's type-aware rules resolve workspace types directly from
       # each package's `src` (exports point at source), so no built `.d.ts` is
       # needed and the job runs without a prior package build. Fresco is the one
-      # exception: its Prisma client is generated and gitignored, and the install
-      # above runs with --ignore-scripts, so without this its queries lint as
-      # untyped. The PR path below calls oxlint directly rather than through
+      # exception: its Prisma client and Next type declarations are generated
+      # and gitignored, and the install above runs with --ignore-scripts, so
+      # without this its queries lint as untyped. The PR path below calls oxlint directly rather than through
       # turbo, so the task cannot be reached as a dependency.
-      - name: Generate Fresco's Prisma client
-        run: pnpm exec turbo run fresco#db:generate
+      - name: Generate Fresco's Prisma client and Next types
+        run: pnpm exec turbo run fresco#codegen
       - name: Lint and check formatting
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
