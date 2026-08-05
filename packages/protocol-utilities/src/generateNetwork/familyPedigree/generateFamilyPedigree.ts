@@ -88,6 +88,10 @@ function requiredNodesForScenario(
       return 8;
     case 'adoption':
       return 9;
+    default: {
+      const exhaustive: never = scenario;
+      throw new Error(`Unsupported pedigree scenario: ${String(exhaustive)}`);
+    }
   }
 }
 
