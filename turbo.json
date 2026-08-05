@@ -267,7 +267,8 @@
         "!**/storybook-static/**",
         "!**/node_modules/**"
       ],
-      "outputs": []
+      "outputs": [],
+      "dependsOn": ["fresco#db:generate"]
     },
     "//#knip": {
       "inputs": [
@@ -282,7 +283,8 @@
         "!**/.next/**",
         "!**/node_modules/**"
       ],
-      "outputs": []
+      "outputs": [],
+      "dependsOn": ["fresco#db:generate"]
     },
     "dev": {
       "cache": false,
@@ -471,6 +473,55 @@
         "package.json"
       ],
       "env": ["NODE_ENV"],
+      "outputs": []
+    },
+    "fresco#db:generate": {
+      "inputs": [
+        "lib/db/schema.prisma",
+        "prisma.config.ts",
+        "env.js",
+        "package.json"
+      ],
+      "outputs": ["lib/db/generated/**"]
+    },
+    "fresco#build": {
+      "dependsOn": ["^topo", "fresco#db:generate"]
+    },
+    "fresco#typecheck": {
+      "dependsOn": ["^topo", "fresco#db:generate"],
+      "inputs": [
+        "src/**",
+        "e2e/**/*.ts",
+        "e2e/**/*.tsx",
+        "e2e/tsconfig.json",
+        ".storybook/**/*.ts",
+        ".storybook/**/*.tsx",
+        "*.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
+    "fresco#test": {
+      "dependsOn": ["^topo", "fresco#db:generate"],
+      "inputs": [
+        "app/**",
+        "actions/**",
+        "components/**",
+        "hooks/**",
+        "lib/**",
+        "queries/**",
+        "schemas/**",
+        "scripts/**",
+        "utils/**",
+        "env.js",
+        "vitest.config.*",
+        "vitest.setup.*",
+        "tsconfig*.json",
+        "package.json",
+        ".env"
+      ],
       "outputs": []
     }
   },

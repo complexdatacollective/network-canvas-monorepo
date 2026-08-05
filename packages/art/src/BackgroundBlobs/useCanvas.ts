@@ -67,11 +67,13 @@ const useCanvas = (
       let cssWidth: number;
       let cssHeight: number;
       if (entry.contentBoxSize) {
-        const box = Array.isArray(entry.contentBoxSize)
-          ? entry.contentBoxSize[0]
-          : entry.contentBoxSize;
-        cssWidth = box.inlineSize;
-        cssHeight = box.blockSize;
+        // `contentBoxSize` is a single object in older implementations and an
+        // array in the spec. Narrow on the object's own shape rather than with
+        // `Array.isArray`, which does not narrow a `readonly T[]` union.
+        const boxes = entry.contentBoxSize;
+        const box = 'length' in boxes ? boxes[0] : boxes;
+        cssWidth = box?.inlineSize ?? entry.contentRect.width;
+        cssHeight = box?.blockSize ?? entry.contentRect.height;
       } else {
         cssWidth = entry.contentRect.width;
         cssHeight = entry.contentRect.height;
