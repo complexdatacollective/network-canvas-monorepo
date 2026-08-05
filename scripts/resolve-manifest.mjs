@@ -49,10 +49,12 @@ function parseCatalog(workspaceYaml) {
 }
 
 // Map of every workspace package name -> { version, private } by scanning the
-// directories that hold publishable/app packages.
+// directories that hold publishable/app packages. `tooling` is included because
+// @codaco/tailwind-config lives there and is a real runtime dependency of the
+// apps (Fresco depends on it directly).
 function readWorkspacePackages() {
   const map = {};
-  for (const group of ['packages', 'apps']) {
+  for (const group of ['packages', 'apps', 'tooling']) {
     const base = join(repoRoot, group);
     if (!existsSync(base)) continue;
     for (const entry of readdirSync(base)) {

@@ -1,0 +1,26 @@
+{
+  "extends": "@codaco/tsconfig/web.json",
+  "compilerOptions": {
+    "paths": {
+      "~/*": ["./*"]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    "types/**/*.d.ts",
+    "**/*.cjs",
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.mjs",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", "storybook-static", "lib/db/generated"]
+}

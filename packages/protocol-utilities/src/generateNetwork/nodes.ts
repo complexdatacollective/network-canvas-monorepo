@@ -101,7 +101,8 @@ function getPromptAdditionalAttributes(
  * {@link countPromptFixedValues}.
  */
 type FixedValueTally = {
-  value: boolean;
+  /** The fixed value itself, as written onto the node. */
+  value: VariableValue;
   count: number;
   /**
    * The last stage that writes this value onto a node whatever the registry
