@@ -9,8 +9,7 @@
     - button "why meh" [expanded]
     - button "Next preset" [disabled]
   - status
-  - dialog:
-    - region
+  - dialog
   - navigation:
     - button "Previous Step"
     - progressbar "Progress indicator": x
