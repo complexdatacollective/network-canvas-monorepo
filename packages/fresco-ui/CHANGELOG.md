@@ -1,5 +1,29 @@
 # @codaco/fresco-ui
 
+## 5.1.0
+
+### Minor Changes
+
+- fa88ae4: Likert and visual analog scales respond to being tapped again. Pressing anywhere
+  along the scale had stopped moving the marker at all, so a participant could
+  only answer by dragging it — and on a scale they had not answered yet, pressing
+  the marker without moving it recorded nothing. Both now register the position
+  that was pressed, and pressing an unanswered scale without moving it records the
+  value the marker is resting on.
+
+  The marker's press animation moved to a nested element to make this work, so
+  `sliderThumbVariants` no longer carries the marker's fill. The new
+  `sliderThumbSurfaceVariants` supplies it, and both scales pair the two.
+
+  The same restructure clears the render loop that had held Base UI at 1.6, so the
+  workspace now tracks 1.7.
+
+### Patch Changes
+
+- 3c8fe35: Generate realistic, source-backed family pedigrees with reproductive scenarios and multi-generational disease lineages, while respecting each stage's collected variables, keeping pedigree membership isolated from other interview stages, correctly rendering shared and multiple unions, widening partnership response columns, and warning participants before discarding onboarding progress.
+
+  Improve pedigree editing and parentage capture by confirming destructive deletions, preserving biological-sex values, allowing current/ex-partner status changes, and recording reproductive roles independently from sex recorded at birth.
+
 ## 5.0.3
 
 ### Patch Changes
