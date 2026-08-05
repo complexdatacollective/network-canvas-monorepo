@@ -55,7 +55,7 @@
     "@base-ui/react": "catalog:",
     "@codaco/network-query": "workspace:^",
     "@faker-js/faker": "catalog:",
-    "@mapbox/search-js-react": "^1.5.1",
+    "@mapbox/search-js-react": "^1.6.0",
     "@reduxjs/toolkit": "catalog:",
     "concaveman": "^2.0.0",
     "csvtojson": "catalog:",

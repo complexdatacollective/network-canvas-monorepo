@@ -1741,8 +1741,8 @@ importers:
         specifier: 'catalog:'
         version: 10.4.0
       '@mapbox/search-js-react':
-        specifier: ^1.5.1
-        version: 1.5.1(mapbox-gl@3.25.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^1.6.0
+        version: 1.6.0(mapbox-gl@3.25.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@reduxjs/toolkit':
         specifier: 'catalog:'
         version: 2.12.0(react-redux@9.3.0(@types/react@19.2.18)(react@19.2.8)(redux@5.0.1))(react@19.2.8)
@@ -4659,19 +4659,19 @@ packages:
   '@manypkg/get-packages@1.1.3':
     resolution: {integrity: sha512-fo+QhuU3qE/2TQMQmbVMqaQ6EWbMhi4ABWP+O4AM1NqPBuy0OrApV5LO6BrrgnhtAHS2NH6RrVk9OL181tTi8A==}
 
-  '@mapbox/search-js-core@1.5.1':
-    resolution: {integrity: sha512-aXv9LoN8FvTkMhOOWxIEwFsh8aZFMid1xZfGD71nxWGEWG+TufjCdMCExOI/q7XI49xR1+kEc3ONI21X484uow==}
+  '@mapbox/search-js-core@1.6.0':
+    resolution: {integrity: sha512-MEr1scUV6H8ZdkP0XRA4q07gim5XDdjdO6Jp7pV5kSA35s7xvpN5E3ywkHm6Wif6+nRsRA45KwlXH8MiD9I8Bw==}
     engines: {node: '>=12.20.1'}
 
-  '@mapbox/search-js-react@1.5.1':
-    resolution: {integrity: sha512-+5t7WkAOhpVvqWF9A+BZYEjkFaZ6i5lvLwkXqV5a/UrpsHCCDpcg2Ii5TKvtCJ1GW7VVnCocDH2aF49tIvtM2g==}
+  '@mapbox/search-js-react@1.6.0':
+    resolution: {integrity: sha512-J7/f/j71wp2Djs/6lSfbT4uy02mGqPWF3AzdYluiiTOshLhYEmwVYFbnrwpU0VHa/pvlRoJxuzyxlxYctpnvIA==}
     engines: {node: '>=12.20.1'}
     peerDependencies:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
 
-  '@mapbox/search-js-web@1.5.1':
-    resolution: {integrity: sha512-hhPbcbamv8Mzitzwgzzxac7GA1TUW5S4aKGDdDkOgbgTyoudunSm4Jem364yxv4bJi4dPFk+WSyhNdF1m5VCkw==}
+  '@mapbox/search-js-web@1.6.0':
+    resolution: {integrity: sha512-H/dAlsDsXNLykAwm5OHgW0pqnk3IVl9e26hLhYAp5TvG8WyAu3/njrTmZYw1s3Utp4NjrRSCCgQE+4aJo7taWQ==}
     engines: {node: '>=12.20.1'}
     peerDependencies:
       mapbox-gl: '>=2.7.0'
@@ -17242,24 +17242,24 @@ snapshots:
       globby: 11.1.0
       read-yaml-file: 1.1.0
 
-  '@mapbox/search-js-core@1.5.1':
+  '@mapbox/search-js-core@1.6.0':
     dependencies:
       '@types/geojson': 7946.0.16
 
-  '@mapbox/search-js-react@1.5.1(mapbox-gl@3.25.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@mapbox/search-js-react@1.6.0(mapbox-gl@3.25.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
-      '@mapbox/search-js-core': 1.5.1
-      '@mapbox/search-js-web': 1.5.1(mapbox-gl@3.25.0)
+      '@mapbox/search-js-core': 1.6.0
+      '@mapbox/search-js-web': 1.6.0(mapbox-gl@3.25.0)
       '@types/geojson': 7946.0.16
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
     transitivePeerDependencies:
       - mapbox-gl
 
-  '@mapbox/search-js-web@1.5.1(mapbox-gl@3.25.0)':
+  '@mapbox/search-js-web@1.6.0(mapbox-gl@3.25.0)':
     dependencies:
       '@floating-ui/dom': 0.5.4
-      '@mapbox/search-js-core': 1.5.1
+      '@mapbox/search-js-core': 1.6.0
       '@mapbox/sphericalmercator': 1.2.0
       focus-trap: 6.9.4
       mapbox-gl: 3.25.0
