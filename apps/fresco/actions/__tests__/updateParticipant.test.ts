@@ -30,7 +30,7 @@ vi.mock('~/actions/activityFeed', () => ({
   addEvent: vi.fn(),
 }));
 
-import { updateParticipant } from '../participants';
+import { updateParticipant } from '~/actions/participants';
 
 describe('updateParticipant', () => {
   beforeEach(() => {
