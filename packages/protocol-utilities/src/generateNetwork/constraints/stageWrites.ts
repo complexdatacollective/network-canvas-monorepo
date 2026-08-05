@@ -28,6 +28,10 @@ function setOf(values: readonly (string | undefined)[]): Set<string> {
   return new Set(values.filter((value): value is string => Boolean(value)));
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 function promptFixedVariables(stage: Stage): string[] {
   if (
     stage.type !== 'NameGenerator' &&
@@ -107,10 +111,8 @@ export function withRuleTiedVariables(
   const partnersOf = (id: string): string[] => {
     const definition = variables[id];
     const validation =
-      typeof definition === 'object' && definition !== null
-        ? ((definition as { validation?: unknown }).validation as
-            | Record<string, unknown>
-            | undefined)
+      isRecord(definition) && isRecord(definition.validation)
+        ? definition.validation
         : undefined;
     if (!validation) return [];
 
@@ -167,7 +169,20 @@ export function nodeVariablesWrittenOnCreation(
         stage.convexHullVariable,
         ...(stage.nodeForm?.fields ?? []).map((field) => field.variable),
       ]);
-    default:
+    case 'AlterEdgeForm':
+    case 'AlterForm':
+    case 'Anonymisation':
+    case 'CategoricalBin':
+    case 'DyadCensus':
+    case 'EgoForm':
+    case 'Geospatial':
+    case 'Information':
+    case 'Narrative':
+    case 'NarrativePedigree':
+    case 'OneToManyDyadCensus':
+    case 'OrdinalBin':
+    case 'Sociogram':
+    case 'TieStrengthCensus':
       return new Set();
   }
 }
@@ -217,7 +232,19 @@ function nodeVariablesWrittenOnExisting(
         ? directlyWritten
         : withRuleTiedVariables(variablesFor?.(type), directlyWritten);
     }
-    default:
+    case 'AlterEdgeForm':
+    case 'Anonymisation':
+    case 'DyadCensus':
+    case 'EgoForm':
+    case 'Information':
+    case 'NameGenerator':
+    case 'NameGeneratorQuickAdd':
+    case 'NameGeneratorRoster':
+    case 'Narrative':
+    case 'NarrativePedigree':
+    case 'NetworkComposer':
+    case 'OneToManyDyadCensus':
+    case 'TieStrengthCensus':
       return new Set();
   }
 }
