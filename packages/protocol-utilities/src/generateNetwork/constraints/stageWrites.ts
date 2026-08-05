@@ -194,7 +194,13 @@ function nodeVariablesWrittenOnExisting(stage: Stage): Set<string> {
       return setOf(
         stage.prompts.flatMap((prompt) => [
           prompt.layout?.layoutVariable,
-          prompt.highlight?.variable,
+          // Gated as `handleSociogram` gates it, which is as the interface
+          // does: the highlight branch is the `else` of edge creation, and only
+          // runs when `allowHighlighting` is on. Counting a disabled highlight
+          // as written refuses protocols that generate perfectly well.
+          prompt.highlight?.allowHighlighting === true && !prompt.edges?.create
+            ? prompt.highlight.variable
+            : undefined,
         ]),
       );
     case 'OrdinalBin':

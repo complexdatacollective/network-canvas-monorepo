@@ -2,7 +2,10 @@ import { enableMapSet } from 'immer';
 import { createStore } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  validatePedigreeStructure,
+} from '@codaco/shared-consts';
 import type {
   FramingId,
   GAMETE_ROLES,
@@ -398,6 +401,34 @@ export const createFamilyPedigreeStore = (
           if (!dispatch) return;
 
           const { network, syncMetadata: sync } = get();
+
+          // The same structural invariants the synthetic generator is held to,
+          // read from one place so the two cannot drift. This is a development
+          // assertion rather than a gate: the wizard is meant to make a broken
+          // pedigree unreachable, so a violation here is a bug in the wizard,
+          // and refusing to finalize would strand a participant mid-interview.
+          if (import.meta.env?.DEV) {
+            const issues = validatePedigreeStructure({
+              nodes: [...network.nodes].map(([id, node]) => ({
+                id,
+                attributes: node[entityAttributesProperty],
+              })),
+              edges: [...network.edges].map(([id, edge]) => ({
+                id,
+                from: edge.from,
+                to: edge.to,
+                attributes: edge[entityAttributesProperty],
+              })),
+              config: variableConfig,
+            });
+            if (issues.length > 0) {
+              // eslint-disable-next-line no-console
+              console.error(
+                'FamilyPedigree finalize produced a structurally invalid pedigree:',
+                issues.map((issue) => `${issue.code}: ${issue.message}`),
+              );
+            }
+          }
 
           const egoEntry = [...network.nodes.entries()].find(
             ([, n]) =>

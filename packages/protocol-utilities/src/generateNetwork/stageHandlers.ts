@@ -726,6 +726,10 @@ export function handleFamilyPedigree(
       ctx.config.familyPedigreeNodeCount.max,
       ctx.config.familyPedigreeNodeCount.min,
     ),
+    minPeople: Math.min(
+      ctx.config.familyPedigreeNodeCount.min,
+      ctx.config.familyPedigreeNodeCount.max,
+    ),
     // The stage's own completeness rules. Ignoring them produces pedigrees the
     // interface would refuse to finalize — a `required` grandparents boundary
     // with no grandparents drawn — or ones deeper than it ever asked for.

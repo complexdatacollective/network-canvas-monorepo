@@ -83,9 +83,10 @@ export type AbstractPedigree = {
  * of them, but only where the stage's boundaries actually reach that far — so
  * the floor is a function of the stage, not a constant.
  *
- * Measured over 8,000 runs per setting, across both modes: 4 with boundaries
- * off (ego, two parents, and a donor or carrier), 8 with grandparents required,
- * and 20 when the children-contributors boundary pulls in a co-parent's own two
+ * Measured over 8,000 runs per setting, across both modes: 8 with the
+ * grandparents boundary off or required — a kept child keeps every one of its
+ * parents, so ego's own contributors and their partners come along — and 20
+ * when the children-contributors boundary pulls in a co-parent's own two
  * generations. A configured cap below the applicable floor cannot be honoured —
  * the structure wins,
  * because emitting a pedigree the interface refuses to finalize is worse than
@@ -96,8 +97,7 @@ export function pedigreeStructuralFloor(
   boundaries: PedigreeBoundaries | undefined,
 ): number {
   if (boundaries?.requireChildrenContributors === 'required') return 20;
-  if (boundaries?.requireGrandparents === 'required') return 8;
-  return 4;
+  return 8;
 }
 
 /** How strictly a boundary is enforced. Mirrors the stage's own config. */
@@ -111,6 +111,13 @@ export type PedigreeBoundaries = {
 export type KinshipOptions = {
   boundaries?: PedigreeBoundaries;
   maxPeople?: number;
+  /**
+   * Lower bound on people. The structure is drawn from fertility distributions,
+   * which can land well under a caller's floor, so the ascent is extended a
+   * generation at a time until the floor is met or there is nothing left to
+   * add.
+   */
+  minPeople?: number;
 };
 
 type Builder = {
@@ -367,13 +374,40 @@ function trimTo(
     }
   }
 
-  // Protected first, then everyone else in order until the cap is reached.
-  // Filling the cap first and adding the protected set afterwards overshot it,
-  // because the two overlap only partly — which is how a pedigree capped at 24
-  // came out with 26 people.
+  // A kept child keeps every one of its parents: `parents` is filtered to
+  // entries whose links are all kept, so dropping one contributor would
+  // silently strip the child's whole parentage and leave it a founder with
+  // none. The closure therefore has to be part of deciding who fits, not a pass
+  // afterwards — running it last overshoots the cap by whatever it drags in.
+  const withParents = (seed: string): Set<string> => {
+    const closed = new Set<string>([seed]);
+    const queue = [seed];
+    while (queue.length > 0) {
+      const id = queue.pop()!;
+      for (const link of pedigree.parents.get(id) ?? []) {
+        if (closed.has(link.parent)) continue;
+        closed.add(link.parent);
+        queue.push(link.parent);
+      }
+    }
+    return closed;
+  };
+
+  // Snapshotted deliberately: the loop adds to `keep` as it goes.
+  const protectedSeeds = Array.from(keep);
+  for (const id of protectedSeeds) {
+    for (const ancestor of withParents(id)) keep.add(ancestor);
+  }
+
+  // Protected first, then everyone else in order — each taken only if their
+  // whole parent chain still fits.
   for (const person of pedigree.people) {
-    if (keep.size >= maxPeople) break;
-    keep.add(person.id);
+    if (keep.has(person.id)) continue;
+    const needed = withParents(person.id);
+    let size = keep.size;
+    for (const id of needed) if (!keep.has(id)) size += 1;
+    if (size > maxPeople) continue;
+    for (const id of needed) keep.add(id);
   }
 
   const people = pedigree.people.filter((person) => keep.has(person.id));
@@ -603,6 +637,25 @@ export function buildKinshipSkeleton(
   // nature, only by whether her own parents were recorded.
   for (const person of builder.people) {
     person.isFounder = !builder.parents.has(person.id);
+  }
+
+  // Grow toward the requested floor by recording branches the draw left out,
+  // rather than by inventing people the structure does not call for. Bounded by
+  // the number of people who can still take an ascent.
+  if (options.minPeople !== undefined) {
+    let grew = true;
+    while (builder.people.length < options.minPeople && grew) {
+      grew = false;
+      // Snapshotted deliberately: `addFounderParentsFor` appends as it goes.
+      const candidates = Array.from(builder.people);
+      for (const person of candidates) {
+        if (builder.people.length >= options.minPeople) break;
+        if (builder.parents.has(person.id)) continue;
+        if (person.generation <= -2) continue;
+        addFounderParentsFor(builder, person);
+        grew = true;
+      }
+    }
   }
 
   const pedigree: AbstractPedigree = {

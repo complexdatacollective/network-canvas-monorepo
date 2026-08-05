@@ -63,6 +63,8 @@ export type PedigreeRenderResult = {
 export const PEDIGREE_RELATIONSHIP_TERMS = [
   '',
   'Parent',
+  'Donor',
+  'Surrogate',
   'Grandparent',
   'Partner',
   'Sibling',
@@ -85,7 +87,20 @@ function relationshipTerms(pedigree: AbstractPedigree): Map<string, string> {
   const parentsOf = (id: string) =>
     (pedigree.parents.get(id) ?? []).map((link) => link.parent);
 
-  const egoParents = new Set(parentsOf(pedigree.egoId));
+  const egoParentLinks = pedigree.parents.get(pedigree.egoId) ?? [];
+  const egoParents = new Set(egoParentLinks.map((link) => link.parent));
+  // `computeRelationshipsToEgo` labels a direct donor or surrogate edge by its
+  // relationship rather than as a parent, so a donor-conceived or carrier-born
+  // proband would otherwise carry attributes no interview produces.
+  const directLabelOverrides = new Map<string, string>();
+  for (const link of egoParentLinks) {
+    if (link.relationshipType === 'donor') {
+      directLabelOverrides.set(link.parent, 'Donor');
+    }
+    if (link.relationshipType === 'surrogate') {
+      directLabelOverrides.set(link.parent, 'Surrogate');
+    }
+  }
   const egoGrandparents = new Set(
     [...egoParents].flatMap((parent) => parentsOf(parent)),
   );
@@ -100,7 +115,10 @@ function relationshipTerms(pedigree: AbstractPedigree): Map<string, string> {
   for (const person of pedigree.people) {
     if (person.id === pedigree.egoId) continue;
 
-    if (egoParents.has(person.id)) {
+    const override = directLabelOverrides.get(person.id);
+    if (override) {
+      terms.set(person.id, override);
+    } else if (egoParents.has(person.id)) {
       terms.set(person.id, 'Parent');
     } else if (egoGrandparents.has(person.id)) {
       terms.set(person.id, 'Grandparent');

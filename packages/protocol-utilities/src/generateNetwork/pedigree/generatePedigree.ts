@@ -56,6 +56,8 @@ export type GeneratePedigreeOptions = {
   stageId: string;
   /** Upper bound on people, so feasibility can count a worst case. */
   maxPeople?: number;
+  /** Lower bound on people, honouring the configured range's own floor. */
+  minPeople?: number;
   /**
    * The stage's own completeness boundaries. A `required` boundary is what the
    * interface refuses to finalize without, so it is the only thing that forces
@@ -113,6 +115,7 @@ export function generatePedigree(
 
   const skeleton = buildKinshipSkeleton(rng, demography, {
     maxPeople: options.maxPeople,
+    minPeople: options.minPeople,
     boundaries: options.boundaries,
   });
   const structure = applyParentageVariants(
@@ -167,7 +170,12 @@ export function generatePedigree(
 
   const nominations = (options.nominations ?? []).map((nomination) => ({
     variable: nomination.variable,
-    affected: computeAffected(rng, structure, nomination.inheritancePattern),
+    affected: computeAffected(rng, structure, nomination.inheritancePattern, {
+      // A showcase pedigree exists to be looked at, so it must actually show
+      // the condition rather than merely carry it.
+      guaranteeManifestation:
+        (options.mode ?? 'showcase') === 'showcase' && !options.demography,
+    }),
   }));
 
   const rendered = renderPedigree({

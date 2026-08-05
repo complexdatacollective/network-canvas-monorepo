@@ -31,6 +31,16 @@ type VariantContext = {
   demography: PedigreeDemography;
   pedigree: AbstractPedigree;
   counter: { value: number };
+  /**
+   * Marks the namespace a person's id was allocated from.
+   *
+   * The skeleton has already issued ids of the form `carrier-4`, and a variant
+   * counter starting from zero reissues them — an ego born to a carrier and a
+   * fourth appended carrier both become `carrier-4`. The render keys its
+   * network-id map by this id, so one mapping overwrites the other and parent
+   * edges are routed to the wrong rendered person.
+   */
+  namespace: string;
 };
 
 function addDonorPerson(
@@ -41,7 +51,7 @@ function addDonorPerson(
 ): AbstractPerson {
   context.counter.value += 1;
   const person: AbstractPerson = {
-    id: `${prefix}-${context.counter.value}`,
+    id: `${prefix}-${context.namespace}${context.counter.value}`,
     generation,
     sex,
     isEgo: false,
@@ -207,6 +217,7 @@ export function applyParentageVariants(
     demography,
     pedigree,
     counter: { value: 0 },
+    namespace: 'v',
   };
 
   for (const child of variableChildren(pedigree, protect)) {
@@ -254,7 +265,8 @@ export function ensureShowcaseCoverage(
     rng,
     demography,
     pedigree,
-    counter: { value: 1000 },
+    counter: { value: 0 },
+    namespace: 'c',
   };
 
   const present = new Set<string>();
@@ -262,16 +274,16 @@ export function ensureShowcaseCoverage(
     for (const link of links) present.add(link.relationshipType);
   }
 
-  // Prefer a child whose parentage is still plain — replacing one arrangement
-  // with another would leave the first missing again — but fall back to any
-  // eligible child rather than skip the guarantee entirely.
-  const candidates = variableChildren(pedigree, protect);
-  const plain = candidates.filter((child) =>
+  // Only children whose parentage is still plain. Layering an arrangement over
+  // one that already has another does not replace it — a donor egg over a
+  // surrogate birth leaves the child with two gestational carriers, which the
+  // shared validator rightly rejects — so a pedigree without enough plain
+  // children simply shows fewer arrangements.
+  const eligible = variableChildren(pedigree, protect).filter((child) =>
     (pedigree.parents.get(child.id) ?? []).every(
       (link) => link.relationshipType === 'biological',
     ),
   );
-  const eligible = [...plain, ...candidates.filter((c) => !plain.includes(c))];
 
   let next = 0;
   const takeChild = (): AbstractPerson | undefined => eligible[next++];

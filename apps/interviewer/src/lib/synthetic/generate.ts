@@ -56,7 +56,13 @@ export async function generateSyntheticSessions(
 
     for (let i = 0; i < count; i++) {
       const { network, stageMetadata, currentStep, droppedOut } =
-        generateNetwork(genOptions);
+        generateNetwork({
+          ...genOptions,
+          // A corpus, not a preview. `showcase` forces the rare pedigree
+          // arrangements into every session, which is what a single previewed
+          // pedigree wants and what an aggregate emphatically does not.
+          config: { pedigreeMode: 'populationRates' as const },
+        });
 
       const session = await createSession({
         protocolHash,

@@ -1761,7 +1761,7 @@ describe('the ego flag a pedigree stage pins', () => {
     expect(pin?.rules).toEqual(['unique', 'egoVariable']);
     expect(pin?.variableNames).toEqual(['Is ego']);
     expect(pin?.reason).toBe(
-      'a family pedigree fixes this to true on up to 2 nodes and to false on up to 6 nodes, but unique allows one node to hold a value',
+      'a family pedigree fixes this to true on up to 2 nodes and to false on up to 14 nodes, but unique allows one node to hold a value',
     );
   });
 
@@ -1783,7 +1783,7 @@ describe('the ego flag a pedigree stage pins', () => {
 
     expect(pinConflict(conflicts)).toBeDefined();
     expect(pinConflict(conflicts)?.reason).toBe(
-      'a family pedigree fixes this to false on up to 3 nodes, but unique allows one node to hold a value',
+      'a family pedigree fixes this to false on up to 7 nodes, but unique allows one node to hold a value',
     );
   });
 
@@ -1849,7 +1849,7 @@ describe('the ego flag a pedigree stage pins', () => {
       'unique',
     ]);
     expect(pinConflict(conflicts)?.reason).toBe(
-      'the protocol fixes this to true on up to 2 nodes and to false on up to 3 nodes, but unique allows one node to hold a value',
+      'the protocol fixes this to true on up to 2 nodes and to false on up to 7 nodes, but unique allows one node to hold a value',
     );
   });
 
@@ -1905,7 +1905,7 @@ describe('the ego flag a pedigree stage pins', () => {
 
     expect(pinConflict(conflicts)?.rules).toEqual(['unique', 'egoVariable']);
     expect(pinConflict(conflicts)?.reason).toBe(
-      'a family pedigree and a roster row fix this to true on up to 2 nodes and to false on up to 3 nodes, but unique allows one node to hold a value',
+      'a family pedigree and a roster row fix this to true on up to 2 nodes and to false on up to 7 nodes, but unique allows one node to hold a value',
     );
 
     // The other order no longer implicates the row: the pedigree claims the
@@ -1922,7 +1922,7 @@ describe('the ego flag a pedigree stage pins', () => {
         ),
       )?.reason,
     ).toBe(
-      'a family pedigree fixes this to false on up to 3 nodes, but unique allows one node to hold a value',
+      'a family pedigree fixes this to false on up to 7 nodes, but unique allows one node to hold a value',
     );
   });
 });

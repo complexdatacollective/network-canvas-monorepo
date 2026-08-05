@@ -208,6 +208,7 @@ export function computeAffected(
   rng: Rng,
   pedigree: AbstractPedigree,
   pattern: InheritancePattern,
+  options: { guaranteeManifestation?: boolean } = {},
 ): Set<string> {
   if (pattern === 'multifactorial' || pattern === 'unknown') {
     const affected = new Set<string>();
@@ -253,5 +254,23 @@ export function computeAffected(
     const genotype = genotypes.get(person.id) ?? CLEAR;
     if (isAffected(person, genotype, pattern)) affected.add(person.id);
   }
+
+  // Transmission is a coin toss, so a pattern can descend through a pedigree
+  // without surfacing: a recessive condition seeded on two carriers gives each
+  // child one chance in four, and a whole family can come out unaffected. That
+  // leaves the inheritance view with nothing to draw, which is the one thing a
+  // showcase pedigree must not do — so the founder the condition was seeded on
+  // is made affected outright.
+  if (options.guaranteeManifestation === true && affected.size === 0) {
+    const seeded = [...genotypes.keys()].find((id) => {
+      const genotype = genotypes.get(id);
+      return (
+        genotype !== undefined &&
+        (genotype.autosomal > 0 || genotype.x > 0 || genotype.y || genotype.mt)
+      );
+    });
+    if (seeded !== undefined) affected.add(seeded);
+  }
+
   return affected;
 }
