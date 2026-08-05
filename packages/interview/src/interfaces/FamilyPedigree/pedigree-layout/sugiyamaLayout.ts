@@ -315,11 +315,11 @@ function buildConstraintBlocks(
     }
   }
 
-  // A spouse can be attached to a sibling's sibship block only when the spouse
-  // is not itself holding another sibship together (i.e. is not in a real
-  // sibship on this layer). When both spouses have siblings shown (two sibships
-  // intermarry) the couple becomes an inter-block link — the only arrangement
-  // that keeps BOTH sibships contiguous.
+  // A spouse can be attached to a sibling's sibship block directly only when
+  // the spouse is not itself holding another sibship together (i.e. is not in a
+  // real sibship on this layer). Cross-sibship partnerships are combined into a
+  // compound block below so both sibships stay contiguous and the partners meet
+  // at the boundary between them.
   const attachableSpouses = (sibling: number): number[] =>
     (spousesOf.get(sibling) ?? []).filter(
       (sp) => !inRealSibship.has(sp) && !assigned.has(sp),
@@ -349,6 +349,61 @@ function buildConstraintBlocks(
       }
     });
     blocks.push({ nodes: ordered, barycenter: 0 });
+  }
+
+  // 1b. Join sibship blocks connected by a partnership. Leaving these as two
+  // independent blocks lets barycentric sorting put unrelated people between
+  // the partners; group encoding only represents adjacent partners, so that
+  // silently drops both the partnership line and its shared line of descent.
+  //
+  // Put the partnered member of the left block at its right boundary and the
+  // partnered member of the right block at its left boundary. The combined
+  // block can still move or reverse as one unit during crossing minimization.
+  // If an anchor already has a partner inside its block, carry that partner with
+  // it so a two-partnership chain remains contiguous around the anchor.
+  const movePartnerAnchorToBoundary = (
+    nodes: number[],
+    anchor: number,
+    boundary: 'left' | 'right',
+  ): number[] => {
+    const partnersInBlock = graph.partnerGroups
+      .filter((pg) => pg.members.includes(anchor))
+      .flatMap((pg) => pg.members.filter((member) => member !== anchor))
+      .filter(
+        (partner, index, partners) =>
+          nodes.includes(partner) && partners.indexOf(partner) === index,
+      );
+    const boundaryNodes = new Set([anchor, ...partnersInBlock]);
+    const remaining = nodes.filter((node) => !boundaryNodes.has(node));
+
+    if (boundary === 'left') {
+      return [anchor, ...partnersInBlock, ...remaining];
+    }
+
+    return [...remaining, ...partnersInBlock, anchor];
+  };
+
+  for (const pg of graph.partnerGroups) {
+    if (pg.members.length !== 2) continue;
+    const [partnerA, partnerB] = pg.members;
+    const blockA = blocks.findIndex((block) => block.nodes.includes(partnerA!));
+    const blockB = blocks.findIndex((block) => block.nodes.includes(partnerB!));
+    if (blockA < 0 || blockB < 0 || blockA === blockB) continue;
+
+    const leftBlockIndex = Math.min(blockA, blockB);
+    const rightBlockIndex = Math.max(blockA, blockB);
+    const leftBlock = blocks[leftBlockIndex]!;
+    const rightBlock = blocks[rightBlockIndex]!;
+    const leftPartner = leftBlock.nodes.includes(partnerA!)
+      ? partnerA!
+      : partnerB!;
+    const rightPartner = leftPartner === partnerA ? partnerB! : partnerA!;
+
+    leftBlock.nodes = [
+      ...movePartnerAnchorToBoundary(leftBlock.nodes, leftPartner, 'right'),
+      ...movePartnerAnchorToBoundary(rightBlock.nodes, rightPartner, 'left'),
+    ];
+    blocks.splice(rightBlockIndex, 1);
   }
 
   // 2. Partner blocks for the remaining couples — those where neither partner is
