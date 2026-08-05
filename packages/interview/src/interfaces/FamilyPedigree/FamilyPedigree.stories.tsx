@@ -937,11 +937,27 @@ export const WithPartnerAndChildren: ScenarioStory = {
     await setFieldInput('childWithPartner[1].biologicalSex', 'female');
     await setFieldInput('childWithPartner[1].gender_identity', 'woman');
 
-    // Both children should show the egg/sperm parent selectors; nuclear-family
-    // defaults (You → egg, Jennifer → sperm) are already valid.
+    // Both children show the egg/sperm parent selectors. Ego and Jennifer are
+    // both female, so only the egg side is pre-selected — the sperm side is
+    // deliberately left blank for the participant to name a donor, and is
+    // required before continuing.
     const childrenDialog = await getDialog();
     expect(within(childrenDialog).getAllByText('Egg Parent')).toHaveLength(2);
     expect(within(childrenDialog).getAllByText('Sperm Parent')).toHaveLength(2);
+
+    for (const index of [0, 1]) {
+      const parentage = `childWithPartner[${index}].parentage`;
+      await setFieldInput(`${parentage}.sperm-source`, 'new');
+      await setFieldInput(`${parentage}.sperm-source-is-donor`, true);
+      await setFieldInput(
+        `${parentage}.new-sperm-source.biologicalSex`,
+        'male',
+      );
+      await setFieldInput(
+        `${parentage}.new-sperm-source.gender_identity`,
+        'man',
+      );
+    }
 
     await clickNext();
   },
