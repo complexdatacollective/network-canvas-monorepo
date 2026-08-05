@@ -57,13 +57,30 @@ describe('AnonymisationValidation', () => {
     renderSection({ withError: false });
 
     expect(
-      screen.queryByRole('button', { name: 'Add new' }),
+      screen.queryByRole('group', { name: 'Limits' }),
     ).not.toBeInTheDocument();
   });
 
   it('opens while a validation sync error stands', () => {
     renderSection({ withError: true });
 
-    expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Limits' })).toBeInTheDocument();
+  });
+
+  it('offers only the length limits', () => {
+    renderSection({ withError: true });
+
+    expect(
+      screen.queryByRole('group', { name: 'Requirements' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'Compare to another variable' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', { name: 'Minimum length' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', { name: 'Maximum length' }),
+    ).toBeInTheDocument();
   });
 });

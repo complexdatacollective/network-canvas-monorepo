@@ -1,16 +1,9 @@
-import { keys as getKeys, isNull, toPairs } from 'es-toolkit/compat';
-import { Plus } from 'lucide-react';
-import {
-  useId,
-  useMemo,
-  useState,
-  type ReactNode,
-  type ComponentProps,
-} from 'react';
+import { isEqual, map, omit } from 'es-toolkit/compat';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Field } from 'redux-form';
 
-import Button from '@codaco/fresco-ui/Button';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { Variable } from '@codaco/protocol-validation';
 
 import {
@@ -18,125 +11,218 @@ import {
   findLegalReferenceTargets,
   floorIssue,
 } from './contradictions';
-import { isValidationWithListValue } from './options';
-import Validation from './Validation';
+import {
+  isValidationWithListValue,
+  isValidationWithoutValue,
+  type ValidationGroup,
+} from './options';
+import { formatCommitted, isDraftComplete, parseForRule } from './ruleValue';
+import ValidationRule from './ValidationRule';
 
-// redux-form calls a field validator with the field's raw value, which is null
-// or undefined until the field holds one.
-type ValidationsValue = Record<string, unknown> | null | undefined;
+const EMPTY_KEYS: ReadonlySet<string> = new Set();
+const EMPTY_RECORD: Record<string, unknown> = {};
 
-const validate = (validations: ValidationsValue): string | undefined => {
-  const values = toPairs(validations ?? {});
-
-  const check = values.reduce((acc: string[], [key, value]) => {
-    if (!isNull(value)) {
-      return acc;
-    }
-    acc.push(key);
-    return acc;
-  }, []);
-
-  if (check.length === 0) {
-    return undefined;
-  }
-
-  return `Validations (${check.join(', ')}) must have values`;
-};
-
-const format = (value: Record<string, unknown> = {}) => toPairs(value);
-
-const getOptionsWithUsedDisabled = (
-  options: ValidationOption[],
-  used: string[],
-) =>
-  options.map((option) => {
-    if (!used.includes(option.value)) {
-      return option;
-    }
-    return { ...option, disabled: true };
-  });
-
-const AddItem = (props: ComponentProps<typeof Button>) => (
-  <Button
-    color="primary"
-    icon={<Plus />}
-    className="self-start"
-    // eslint-disable-next-line react/jsx-props-no-spreading
-    {...props}
-  >
-    Add new
-  </Button>
-);
-
-type ValidationOption = {
-  label: string;
-  value: string;
-  disabled?: boolean;
-};
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 type ValidationsFieldProps = {
-  input: {
-    value: Array<[string, string | number | boolean | null]>;
-  };
-  options?: ValidationOption[];
-  existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
   meta: {
     submitFailed: boolean;
     error?: string;
   };
   children?: ReactNode;
-  editingKey: string | null;
-  onEditKey: (key: string | null) => void;
-  onUpdate?: (key: string, value: unknown, itemKey: string) => void;
-  onDelete?: (itemKey: string) => void;
 };
 
 const ValidationsField = ({
-  input,
-  options = [],
-  existingVariables,
   meta: { submitFailed, error },
   children = null,
-  editingKey,
-  onEditKey,
-  ...rest
 }: ValidationsFieldProps) => {
-  const hasError = !!(submitFailed && error);
   const errorId = useId();
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-5">
-        {input.value.map(([key, value]) => (
-          <Validation
-            key={key}
-            itemKey={key}
-            itemValue={value}
-            options={options}
-            existingVariables={existingVariables}
-            isBeingEdited={key === editingKey}
-            onEdit={() => onEditKey(key)}
-            onCancel={() => onEditKey(null)}
-            // eslint-disable-next-line react/jsx-props-no-spreading
-            {...rest}
-          />
-        ))}
-        {children}
-      </div>
-      <FieldErrors id={errorId} errors={error ? [error] : []} show={hasError} />
+      {children}
+      <FieldErrors
+        id={errorId}
+        errors={error ? [error] : []}
+        show={!!(submitFailed && error)}
+      />
+    </div>
+  );
+};
+
+type CheckDraft = (ruleKey: string, ruleValue: unknown) => string[];
+
+type RuleListProps = {
+  groups: ValidationGroup[];
+  committed: Record<string, unknown>;
+  update: (value: Record<string, unknown>) => void;
+  checkDraft: CheckDraft;
+  legalTargetsByRule: ReadonlyMap<string, Set<string>>;
+  existingVariableOptions: { label: string; value: string }[];
+  candidateCount: number;
+  uniqueValueCount?: number;
+};
+
+const RuleList = ({
+  groups,
+  committed,
+  update,
+  checkDraft,
+  legalTargetsByRule,
+  existingVariableOptions,
+  candidateCount,
+  uniqueValueCount,
+}: RuleListProps) => {
+  const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(EMPTY_KEYS);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [focusRequest, setFocusRequest] = useState<string | null>(null);
+
+  const isOn = (ruleKey: string) =>
+    Object.hasOwn(committed, ruleKey) || openKeys.has(ruleKey);
+
+  const textFor = (ruleKey: string) =>
+    Object.hasOwn(drafts, ruleKey)
+      ? drafts[ruleKey]!
+      : formatCommitted(committed[ruleKey]);
+
+  const commitRule = (ruleKey: string, ruleValue: unknown) =>
+    update({ ...committed, [ruleKey]: ruleValue });
+
+  const removeRule = (ruleKey: string) => update(omit(committed, ruleKey));
+
+  const handleToggle = (ruleKey: string, nextState: boolean) => {
+    if (!nextState) {
+      setOpenKeys((current) => {
+        const next = new Set(current);
+        next.delete(ruleKey);
+        return next;
+      });
+      setDrafts((current) => omit(current, ruleKey));
+      setFocusRequest((current) => (current === ruleKey ? null : current));
+      if (Object.hasOwn(committed, ruleKey)) {
+        removeRule(ruleKey);
+      }
+      return;
+    }
+
+    setOpenKeys((current) => new Set(current).add(ruleKey));
+
+    if (isValidationWithoutValue(ruleKey)) {
+      commitRule(ruleKey, true);
+      return;
+    }
+
+    setFocusRequest(ruleKey);
+  };
+
+  const handleTextChange = (ruleKey: string, text: string) => {
+    setOpenKeys((current) =>
+      current.has(ruleKey) ? current : new Set(current).add(ruleKey),
+    );
+    setDrafts((current) => ({ ...current, [ruleKey]: text }));
+  };
+
+  const handleCommit = (ruleKey: string, text: string) => {
+    const parsed = parseForRule(ruleKey, text);
+    const isCommitted = Object.hasOwn(committed, ruleKey);
+
+    if (
+      !isDraftComplete(ruleKey, parsed) ||
+      checkDraft(ruleKey, parsed).length > 0
+    ) {
+      if (isCommitted) {
+        removeRule(ruleKey);
+      }
+      return;
+    }
+
+    if (!isEqual(committed[ruleKey], parsed)) {
+      commitRule(ruleKey, parsed);
+    }
+  };
+
+  const issuesFor = (ruleKey: string): string[] => {
+    if (!isOn(ruleKey)) {
+      return [];
+    }
+    const parsed = parseForRule(ruleKey, textFor(ruleKey));
+    if (!isDraftComplete(ruleKey, parsed)) {
+      return [];
+    }
+    if (isEqual(committed[ruleKey], parsed)) {
+      return [];
+    }
+    return checkDraft(ruleKey, parsed);
+  };
+
+  const hintFor = (ruleKey: string, isUnavailable: boolean) => {
+    if (isUnavailable) {
+      return candidateCount === 0
+        ? 'No other variable of this type exists to compare against.'
+        : 'Every comparable variable would make this rule impossible to satisfy.';
+    }
+    if (ruleKey === 'unique' && uniqueValueCount !== undefined) {
+      return `This variable has only ${uniqueValueCount} possible values. Interview preview will refuse to generate synthetic data if more than ${uniqueValueCount} entities can hold a value while ‘Must be unique’ is enabled.`;
+    }
+    return undefined;
+  };
+
+  const targetOptionsFor = (ruleKey: string) => {
+    const legal = legalTargetsByRule.get(ruleKey);
+    if (!legal) {
+      return existingVariableOptions;
+    }
+    const selected = textFor(ruleKey);
+    return existingVariableOptions.filter(
+      (option) => option.value === selected || legal.has(option.value),
+    );
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-8">
+      {groups.map((group) => (
+        <fieldset key={group.id} className="flex min-w-0 flex-col gap-1">
+          <legend className="mb-2">
+            <Heading level="h4">{group.heading}</Heading>
+          </legend>
+          {group.rules.map((rule) => {
+            const on = isOn(rule.value);
+            const isUnavailable =
+              !on &&
+              isValidationWithListValue(rule.value) &&
+              (legalTargetsByRule.get(rule.value)?.size ?? 0) === 0;
+
+            return (
+              <ValidationRule
+                key={rule.value}
+                ruleKey={rule.value}
+                label={rule.label}
+                isOn={on}
+                isUnavailable={isUnavailable}
+                hint={hintFor(rule.value, isUnavailable)}
+                text={textFor(rule.value)}
+                issues={issuesFor(rule.value)}
+                targetOptions={targetOptionsFor(rule.value)}
+                onToggle={handleToggle}
+                onTextChange={handleTextChange}
+                onCommit={handleCommit}
+                shouldFocusValue={focusRequest === rule.value}
+              />
+            );
+          })}
+        </fieldset>
+      ))}
     </div>
   );
 };
 
 type ValidationsProps = {
   name: string;
-  validationOptions?: ValidationOption[];
-  value?: Record<string, unknown>;
-  addNew: boolean;
-  setAddNew: (value: boolean) => void;
-  handleChange: (key: string, value: unknown, itemKey: string) => void;
-  handleDelete: (itemKey: string) => void;
-  handleAddNew: (key: string, value: unknown, itemKey: string) => void;
+  entity?: string;
+  validationGroups?: ValidationGroup[];
+  value?: Record<string, unknown> | null;
+  update: (value: Record<string, unknown>) => void;
   existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
   variableType?: string;
   allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
@@ -149,14 +235,11 @@ type ValidationsProps = {
 
 const Validations = ({
   name,
-  validationOptions = [],
+  entity,
+  validationGroups = [],
   existingVariables = {},
-  value = {},
-  addNew,
-  setAddNew,
-  handleChange,
-  handleDelete,
-  handleAddNew,
+  value,
+  update,
   variableType,
   allVariables,
   currentVariableId,
@@ -165,17 +248,12 @@ const Validations = ({
   draftParameters,
   draftVariableName,
 }: ValidationsProps) => {
-  // Only one row (existing or the "add new" draft) is ever open for editing
-  // at a time.
-  const [editingKey, setEditingKey] = useState<string | null>(null);
-  const usedOptions = getKeys(value);
+  const committed = isRecord(value) ? value : EMPTY_RECORD;
 
   const uniqueValueCount = useMemo(() => {
     if (variableType !== 'boolean' && variableType !== 'ordinal') {
       return undefined;
     }
-    const isRecord = (v: unknown): v is Record<string, unknown> =>
-      typeof v === 'object' && v !== null && !Array.isArray(v);
     const current = allVariables?.[currentVariableId ?? ''];
     const storedOptions =
       isRecord(current) && 'options' in current ? current.options : undefined;
@@ -203,21 +281,14 @@ const Validations = ({
   }, [variableType, draftOptions, allVariables, currentVariableId]);
 
   const checkDraft = useMemo(
-    () =>
-      (
-        ruleKey: string,
-        ruleValue: unknown,
-        replacingKey?: string,
-      ): string[] => {
+    (): CheckDraft =>
+      (ruleKey: string, ruleValue: unknown): string[] => {
         // R1 floor check runs ahead of the contradiction analyser: a
         // below-floor value is input the schema would reject outright, so
         // there is no point feeding it into findDraftContradictions.
         const floor = floorIssue(ruleKey, ruleValue);
         if (floor) return [floor];
-        const prospective: Record<string, unknown> = { ...value };
-        if (replacingKey && replacingKey !== ruleKey) {
-          delete prospective[replacingKey];
-        }
+        const prospective: Record<string, unknown> = { ...committed };
         prospective[ruleKey] = ruleValue;
         // The Anonymisation passphrase is not a codebook variable; a text
         // surrogate lets the local length-pair check still apply.
@@ -239,7 +310,7 @@ const Validations = ({
         }).map((contradiction) => contradiction.message);
       },
     [
-      value,
+      committed,
       allVariables,
       currentVariableId,
       variableType,
@@ -250,134 +321,82 @@ const Validations = ({
     ],
   );
 
-  // Twenty-third-wave Finding 3: the reference-target dropdown needs the
-  // legal candidates for one rule, not just one candidate at a time — see
-  // findLegalReferenceTargets for why that can be answered in one shared
-  // analysis pass instead of one `checkDraft` call per candidate.
-  const findLegalTargets = useMemo(
+  const candidateIds = useMemo(
+    () => Object.keys(existingVariables),
+    [existingVariables],
+  );
+
+  const existingVariableOptions = useMemo(
     () =>
-      (
-        ruleKey: string,
-        candidateIds: string[],
-        replacingKey?: string,
-      ): Set<string> => {
-        const isPassphrase = variableType === 'passphrase';
-        return findLegalReferenceTargets({
+      map(existingVariables, (variableValue, variableKey) => ({
+        label: variableValue.name,
+        value: variableKey,
+      })),
+    [existingVariables],
+  );
+
+  const referenceRuleKeys = useMemo(
+    () =>
+      validationGroups
+        .flatMap((group) => group.rules.map((rule) => rule.value))
+        .filter(isValidationWithListValue),
+    [validationGroups],
+  );
+
+  // Twenty-seventh-wave Finding 1: one shared, UnionFind-batched analysis pass
+  // per reference RULE — never one per candidate, which made rendering this
+  // section quadratic in codebook size. The same Set answers both questions
+  // the list asks: "may this rule be switched on at all" (is it non-empty)
+  // and "which targets may it offer" (the set itself).
+  const legalTargetsByRule = useMemo(() => {
+    const isPassphrase = variableType === 'passphrase';
+    const byRule = new Map<string, Set<string>>();
+    for (const ruleKey of referenceRuleKeys) {
+      byRule.set(
+        ruleKey,
+        findLegalReferenceTargets({
           allVariables: isPassphrase ? {} : (allVariables ?? {}),
           currentVariableId: currentVariableId ?? '',
           variableType: isPassphrase ? 'text' : (variableType ?? ''),
-          validation: value,
+          validation: committed,
           ruleKey,
-          replacingKey,
           candidateIds,
           options: draftOptions,
           component: draftComponent,
           parameters: draftParameters,
           draftVariableName,
-        });
-      },
-    [
-      value,
-      allVariables,
-      currentVariableId,
-      variableType,
-      draftOptions,
-      draftComponent,
-      draftParameters,
-      draftVariableName,
-    ],
-  );
-
-  // A reference rule (e.g. "Same as") is disabled in the dropdown once no
-  // existing variable could legally serve as its target.
-  //
-  // Twenty-seventh-wave Finding 1: this used to call `checkDraft` once per
-  // candidate variable per unused reference rule, and each call re-ran
-  // `findDraftContradictions` over the WHOLE record — O(rule types ×
-  // variable count) analyser passes, each itself O(variable count), so
-  // rendering this section was quadratic in codebook size and could freeze
-  // Architect on large protocols. `findLegalTargets` answers "does this rule
-  // have any legal target at all" for every candidate in one shared,
-  // UnionFind-batched analysis pass (see findLegalReferenceTargets) — the
-  // same path the target dropdown itself already uses — so a rule is enabled
-  // exactly when that set is non-empty.
-  const candidateIds = Object.keys(existingVariables);
-  const availableOptions = getOptionsWithUsedDisabled(
-    validationOptions,
-    usedOptions,
-  ).map((option) => {
-    if (option.disabled || !isValidationWithListValue(option.value)) {
-      return option;
+        }),
+      );
     }
-    const hasLegalTarget =
-      findLegalTargets(option.value, candidateIds, editingKey ?? undefined)
-        .size > 0;
-    return hasLegalTarget ? option : { ...option, disabled: true };
-  });
-  // Twenty-first-wave Finding 5: when all unused validation rules are
-  // reference rules with no legal target, the options map disables every
-  // remaining option, but isFull below still compared only the number of used
-  // rules with the total option count. Treat disabled unused options as
-  // unavailable when deciding whether another rule can be added.
-  const enabledUnusedOptions = availableOptions.filter(
-    (option) => !option.disabled && !usedOptions.includes(option.value),
-  );
-  const isFull = enabledUnusedOptions.length === 0;
-  const isEditingSomething = addNew || editingKey !== null;
-
-  const handleSaveExisting = (
-    key: string,
-    itemValue: unknown,
-    itemKey: string,
-  ) => {
-    handleChange(key, itemValue, itemKey);
-    setEditingKey(null);
-  };
-
-  const handleDeleteExisting = (itemKey: string) => {
-    handleDelete(itemKey);
-    setEditingKey((current) => (current === itemKey ? null : current));
-  };
-
-  const handleStartAddNew = () => {
-    setEditingKey(null);
-    setAddNew(true);
-  };
+    return byRule;
+  }, [
+    referenceRuleKeys,
+    candidateIds,
+    committed,
+    allVariables,
+    currentVariableId,
+    variableType,
+    draftOptions,
+    draftComponent,
+    draftParameters,
+    draftVariableName,
+  ]);
 
   return (
     <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
-      <Field
-        name={name}
-        component={ValidationsField}
-        format={format}
-        options={availableOptions}
-        existingVariables={existingVariables}
-        onUpdate={handleSaveExisting}
-        onDelete={handleDeleteExisting}
-        editingKey={editingKey}
-        onEditKey={setEditingKey}
-        validate={validate}
-        checkDraft={checkDraft}
-        findLegalTargets={findLegalTargets}
-        uniqueValueCount={uniqueValueCount}
-      >
-        {addNew && (
-          <Validation
-            isBeingEdited
-            onUpdate={handleAddNew}
-            onCancel={() => setAddNew(false)}
-            options={availableOptions}
-            existingVariables={existingVariables}
-            checkDraft={checkDraft}
-            findLegalTargets={findLegalTargets}
-            uniqueValueCount={uniqueValueCount}
-          />
-        )}
+      <Field name={name} component={ValidationsField}>
+        <RuleList
+          key={`${currentVariableId ?? ''}|${variableType ?? ''}|${entity ?? ''}`}
+          groups={validationGroups}
+          committed={committed}
+          update={update}
+          checkDraft={checkDraft}
+          legalTargetsByRule={legalTargetsByRule}
+          existingVariableOptions={existingVariableOptions}
+          candidateCount={candidateIds.length}
+          uniqueValueCount={uniqueValueCount}
+        />
       </Field>
-
-      {!isFull && (
-        <AddItem onClick={handleStartAddNew} disabled={isEditingSomething} />
-      )}
     </div>
   );
 };

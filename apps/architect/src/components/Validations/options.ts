@@ -26,9 +26,8 @@ const VALIDATIONS_WITH_NUMBER_VALUES = [
 
 const VALIDATIONS_WITHOUT_VALUES = ['required', 'unique'];
 
-// Human-readable labels for the "Select validation rule" dropdown and for the
-// collapsed-row summary text. Anything not listed here (there shouldn't be
-// any) falls back to a start-cased version of the key.
+// Human-readable labels for each rule's row in the editor. Anything not listed
+// here (there shouldn't be any) falls back to a start-cased version of the key.
 const VALIDATION_LABELS: Record<string, string> = {
   required: 'Required',
   unique: 'Must be unique',
@@ -58,7 +57,7 @@ const isValidationWithListValue = (validation: string): boolean =>
   VARIABLE_REFERENCE_VALIDATIONS.some((key) => key === validation);
 
 // Internal helper - not exported. Derived from the protocol schema's own
-// per-type `validation` picks, so the dropdown can never offer a rule that
+// per-type `validation` picks, so the editor can never offer a rule that
 // would make the saved protocol fail validation.
 const getValidationsForVariableType = (variableType: string): string[] => {
   if (variableType === 'passphrase') {
@@ -81,7 +80,7 @@ const getValidationsForEntity = (
 const getValidationOptionsForVariableType = (
   variableType: string,
   entity: string,
-) =>
+): ValidationOption[] =>
   getValidationsForEntity(
     getValidationsForVariableType(variableType),
     entity,
@@ -90,8 +89,54 @@ const getValidationOptionsForVariableType = (
     value: validation,
   }));
 
+type ValidationOption = {
+  label: string;
+  value: string;
+};
+
+type ValidationGroupId = 'requirements' | 'limits' | 'comparisons';
+
+type ValidationGroup = {
+  id: ValidationGroupId;
+  heading: string;
+  rules: ValidationOption[];
+};
+
+const VALIDATION_GROUPS: readonly {
+  id: ValidationGroupId;
+  heading: string;
+  includes: (validation: string) => boolean;
+}[] = [
+  {
+    id: 'requirements',
+    heading: 'Requirements',
+    includes: isValidationWithoutValue,
+  },
+  { id: 'limits', heading: 'Limits', includes: isValidationWithNumberValue },
+  {
+    id: 'comparisons',
+    heading: 'Compare to another variable',
+    includes: isValidationWithListValue,
+  },
+];
+
+const getGroupedValidationsForVariableType = (
+  variableType: string,
+  entity: string,
+): ValidationGroup[] => {
+  const options = getValidationOptionsForVariableType(variableType, entity);
+
+  return VALIDATION_GROUPS.map(({ id, heading, includes }) => ({
+    id,
+    heading,
+    rules: options.filter((option) => includes(option.value)),
+  })).filter((group) => group.rules.length > 0);
+};
+
+export type { ValidationGroup, ValidationOption };
+
 export {
-  getValidationLabel,
+  getGroupedValidationsForVariableType,
   getValidationOptionsForVariableType,
   isValidationWithListValue,
   isValidationWithNumberValue,

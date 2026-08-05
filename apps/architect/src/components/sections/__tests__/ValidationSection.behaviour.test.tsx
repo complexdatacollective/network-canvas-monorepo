@@ -111,7 +111,7 @@ describe('ValidationSection with a target-only contradiction', () => {
     // collapsed, so its children (the Validations field and its FieldErrors)
     // are unmounted.
     expect(
-      screen.queryByRole('button', { name: 'Add new' }),
+      screen.queryByRole('group', { name: 'Requirements' }),
     ).not.toBeInTheDocument();
 
     // The draft edit switches the picker to year resolution, breaking the
@@ -120,7 +120,9 @@ describe('ValidationSection with a target-only contradiction', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Switch to year resolution' }),
     );
-    expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: 'Requirements' }),
+    ).toBeInTheDocument();
     // The message itself waits for a failed save (FieldErrors shows on
     // submitFailed).
     expect(screen.queryByText(/different resolutions/)).not.toBeInTheDocument();
@@ -129,5 +131,58 @@ describe('ValidationSection with a target-only contradiction', () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByText(/different resolutions/)).toBeInTheDocument();
+  });
+});
+
+const ClearableHarness = ({ handleSubmit, onSubmit, change }: HarnessProps) => (
+  <form onSubmit={handleSubmit(onSubmit)}>
+    <ValidationSection
+      form={FORM_NAME}
+      entity="node"
+      variableType="number"
+      existingVariables={{}}
+      allVariables={{}}
+      currentVariableId="c"
+    />
+    <button type="button" onClick={() => change('validation', {})}>
+      Clear the last rule
+    </button>
+  </form>
+);
+
+const ClearableReduxHarness = reduxForm<Record<string, unknown>, OwnProps>({
+  form: FORM_NAME,
+  touchOnBlur: false,
+  touchOnChange: true,
+})(ClearableHarness);
+
+describe('ValidationSection expansion latch', () => {
+  it('stays open when the last rule is cleared', () => {
+    const store = configureStore({
+      reducer: { form: formReducer },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({ serializableCheck: false }),
+    });
+
+    render(
+      <Provider store={store}>
+        <ClearableReduxHarness
+          onSubmit={vi.fn()}
+          initialValues={{ variable: 'c', validation: { minValue: 3 } }}
+        />
+      </Provider>,
+    );
+
+    expect(
+      screen.getByRole('group', { name: 'Requirements' }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Clear the last rule' }),
+    );
+
+    expect(
+      screen.getByRole('group', { name: 'Requirements' }),
+    ).toBeInTheDocument();
   });
 });

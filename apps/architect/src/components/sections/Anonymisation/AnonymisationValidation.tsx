@@ -9,6 +9,7 @@ import type { StageEditorSectionProps } from '~/components/StageEditor/Interface
 import Validations from '~/components/Validations';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
+import useLatchedExpansion from '~/hooks/useLatchedExpansion';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -24,6 +25,7 @@ const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
     );
   }, [form]);
   const hasValidation = useSelector(hasValidationSelector);
+  const startExpanded = useLatchedExpansion(!!hasValidation);
   // Audit sweep: the shape ValidationSection was already fixed for. A
   // collapsed toggleable Section unmounts its children, and redux-form only
   // fails a submit over errors on REGISTERED fields — so a sync error keyed
@@ -47,10 +49,10 @@ const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
       title="Passphrase Validation"
       summary={
         <Paragraph>
-          Add one or more validation rules for the passphrase.
+          Choose which validation rules apply to the passphrase.
         </Paragraph>
       }
-      startExpanded={!!hasValidation}
+      startExpanded={startExpanded}
       forceExpanded={hasValidationSyncError}
       handleToggleChange={handleToggleValidation}
     >
