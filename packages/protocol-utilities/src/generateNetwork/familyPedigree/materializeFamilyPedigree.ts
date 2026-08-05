@@ -27,6 +27,10 @@ import {
 import type { GenerationContext, NetworkDraft, StageOfType } from '../context';
 import { ruleBrokenByFixedValues } from '../nodes';
 import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
+import {
+  readPedigreeOptionValue,
+  storedPedigreeOptionValue,
+} from './semanticValues';
 import type {
   PedigreeDisease,
   PedigreePerson,
@@ -113,12 +117,14 @@ function assertFixedValuesAccepted(
 function edgeAttributes(
   edgeConfig: Partial<StageOfType<'FamilyPedigree'>['edgeConfig']>,
   relationship: PedigreeRelationship,
+  edgeVariables: Record<string, { type: string }> | undefined,
 ): Record<string, VariableValue> {
   const attributes: Record<string, VariableValue> = {};
   if (edgeConfig.relationshipTypeVariable) {
-    attributes[edgeConfig.relationshipTypeVariable] = [
+    attributes[edgeConfig.relationshipTypeVariable] = storedPedigreeOptionValue(
+      edgeVariables?.[edgeConfig.relationshipTypeVariable],
       relationship.relationshipType,
-    ];
+    );
   }
   if (edgeConfig.isActiveVariable) {
     attributes[edgeConfig.isActiveVariable] = relationship.isActive;
@@ -130,7 +136,10 @@ function edgeAttributes(
     attributes[edgeConfig.isGestationalCarrierVariable] = true;
   }
   if (relationship.gameteRole && edgeConfig.gameteRoleVariable) {
-    attributes[edgeConfig.gameteRoleVariable] = [relationship.gameteRole];
+    attributes[edgeConfig.gameteRoleVariable] = storedPedigreeOptionValue(
+      edgeVariables?.[edgeConfig.gameteRoleVariable],
+      relationship.gameteRole,
+    );
   }
   return attributes;
 }
@@ -138,16 +147,8 @@ function edgeAttributes(
 function biologicalSexFromValue(
   value: VariableValue | undefined,
 ): BiologicalSex | undefined {
-  if (!Array.isArray(value) || value.length !== 1) return undefined;
-  return BIOLOGICAL_SEX_VALUES.find((candidate) => candidate === value[0]);
-}
-
-function categoricalValue(
-  value: VariableValue | undefined,
-): string | undefined {
-  return Array.isArray(value) && value.length === 1
-    ? String(value[0])
-    : undefined;
+  const stored = readPedigreeOptionValue(value);
+  return BIOLOGICAL_SEX_VALUES.find((candidate) => candidate === stored);
 }
 
 type ContributorAncestryTopUp = {
@@ -198,7 +199,9 @@ function inheritedContributorAncestry(
       nodesById.has(edge.to),
   );
   const relationshipType = (edge: NcEdge) =>
-    categoricalValue(edge[entityAttributesProperty][relationshipVariable]);
+    readPedigreeOptionValue(
+      edge[entityAttributesProperty][relationshipVariable],
+    );
   const geneticEdges = relevantEdges.filter((edge) => {
     const type = relationshipType(edge);
     return type === 'biological' || type === 'donor';
@@ -280,7 +283,7 @@ function inheritedContributorAncestry(
     });
   const roleForExistingParent = (edge: NcEdge): 'egg' | 'sperm' | undefined => {
     const configuredRole = edgeConfig.gameteRoleVariable
-      ? categoricalValue(
+      ? readPedigreeOptionValue(
           edge[entityAttributesProperty][edgeConfig.gameteRoleVariable],
         )
       : undefined;
@@ -456,13 +459,23 @@ export function materializeFamilyPedigree(
           node[entityAttributesProperty][egoVariable] === true,
       )
     : undefined;
+  const inheritedEgoSourceSexVariable = earlierPedigreeStages.find(
+    ({ candidate }) => candidate.id === inheritedEgo?.stageId,
+  )?.candidate.nodeConfig.biologicalSexVariable;
   const inheritedEgoSex =
     inheritedEgo !== undefined && nodeConfig.biologicalSexVariable !== undefined
-      ? biologicalSexFromValue(
+      ? (biologicalSexFromValue(
           inheritedEgo[entityAttributesProperty][
             nodeConfig.biologicalSexVariable
           ],
-        )
+        ) ??
+        (inheritedEgoSourceSexVariable
+          ? biologicalSexFromValue(
+              inheritedEgo[entityAttributesProperty][
+                inheritedEgoSourceSexVariable
+              ],
+            )
+          : undefined))
       : undefined;
   const plan = generateFamilyPedigreePlan(
     familyCtx.valueGen,
@@ -505,10 +518,16 @@ export function materializeFamilyPedigree(
       nodeConfig.relationshipVariable &&
       person.relationshipToEgo !== undefined
     ) {
-      fixed[nodeConfig.relationshipVariable] = person.relationshipToEgo;
+      fixed[nodeConfig.relationshipVariable] = storedPedigreeOptionValue(
+        codebookNodeVariables?.[nodeConfig.relationshipVariable],
+        person.relationshipToEgo,
+      );
     }
     if (nodeConfig.biologicalSexVariable) {
-      fixed[nodeConfig.biologicalSexVariable] = [person.biologicalSex];
+      fixed[nodeConfig.biologicalSexVariable] = storedPedigreeOptionValue(
+        codebookNodeVariables?.[nodeConfig.biologicalSexVariable],
+        person.biologicalSex,
+      );
     }
     for (const disease of diseases) {
       fixed[disease.variable] = person.affectedVariables.has(disease.variable);
@@ -581,6 +600,17 @@ export function materializeFamilyPedigree(
           ? planEgo.affectedVariables.has(disease.variable)
           : false;
     }
+    if (
+      node === inheritedEgo &&
+      planEgo !== undefined &&
+      nodeConfig.biologicalSexVariable &&
+      !protectedVariables.has(nodeConfig.biologicalSexVariable)
+    ) {
+      fixed[nodeConfig.biologicalSexVariable] = storedPedigreeOptionValue(
+        codebookNodeVariables?.[nodeConfig.biologicalSexVariable],
+        planEgo.biologicalSex,
+      );
+    }
     if (Object.keys(fixed).length === 0) continue;
 
     const preserved = Object.fromEntries(
@@ -624,6 +654,7 @@ export function materializeFamilyPedigree(
     return;
   }
   const edgeScope: EntityScopeRef = { entity: 'edge', type: edgeType };
+  const codebookEdgeVariables = familyCtx.codebook.edge?.[edgeType]?.variables;
   const memberNodeIds = new Set(
     [...preexistingFamilyNodes, ...familyNodes].map(
       (node) => node[entityPrimaryKeyProperty],
@@ -644,7 +675,11 @@ export function materializeFamilyPedigree(
         `FamilyPedigree relationship references a missing person: ${relationship.from} -> ${relationship.to}`,
       );
     }
-    const attributes = edgeAttributes(edgeConfig, relationship);
+    const attributes = edgeAttributes(
+      edgeConfig,
+      relationship,
+      codebookEdgeVariables,
+    );
     assertFixedValuesAccepted(familyCtx, edgeScope, attributes);
     claimFixedValues(familyCtx, edgeScope, attributes);
     familyEdges.push({

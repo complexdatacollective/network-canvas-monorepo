@@ -12,6 +12,7 @@ import {
   type EntityScopeRef,
 } from '../constraints/generateEntityAttributes';
 import type { GenerationContext } from '../context';
+import { storedPedigreeOptionValue } from './semanticValues';
 import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from './types';
 
 function reserveWrittenValue(
@@ -46,6 +47,7 @@ export function reserveFamilyPedigreeFixedValues(
       entity: 'node' as const,
       type: nodeConfig.type,
     };
+    const nodeVariables = ctx.codebook.node?.[nodeConfig.type]?.variables;
     if (nodeConfig.egoVariable) {
       for (const value of [true, false]) {
         reserveWrittenValue(ctx, nodeRef, nodeConfig.egoVariable, value);
@@ -76,15 +78,24 @@ export function reserveFamilyPedigreeFixedValues(
           ctx,
           nodeRef,
           nodeConfig.relationshipVariable,
-          value,
+          storedPedigreeOptionValue(
+            nodeVariables?.[nodeConfig.relationshipVariable],
+            value,
+          ),
         );
       }
     }
     if (nodeConfig.biologicalSexVariable) {
       for (const value of BIOLOGICAL_SEX_VALUES) {
-        reserveWrittenValue(ctx, nodeRef, nodeConfig.biologicalSexVariable, [
-          value,
-        ]);
+        reserveWrittenValue(
+          ctx,
+          nodeRef,
+          nodeConfig.biologicalSexVariable,
+          storedPedigreeOptionValue(
+            nodeVariables?.[nodeConfig.biologicalSexVariable],
+            value,
+          ),
+        );
       }
     }
 
@@ -93,11 +104,18 @@ export function reserveFamilyPedigreeFixedValues(
       entity: 'edge' as const,
       type: edgeConfig.type,
     };
+    const edgeVariables = ctx.codebook.edge?.[edgeConfig.type]?.variables;
     if (edgeConfig.relationshipTypeVariable) {
       for (const value of RELATIONSHIP_TYPES) {
-        reserveWrittenValue(ctx, edgeRef, edgeConfig.relationshipTypeVariable, [
-          value,
-        ]);
+        reserveWrittenValue(
+          ctx,
+          edgeRef,
+          edgeConfig.relationshipTypeVariable,
+          storedPedigreeOptionValue(
+            edgeVariables?.[edgeConfig.relationshipTypeVariable],
+            value,
+          ),
+        );
       }
     }
     if (edgeConfig.isActiveVariable) {
@@ -115,9 +133,15 @@ export function reserveFamilyPedigreeFixedValues(
     }
     if (edgeConfig.gameteRoleVariable) {
       for (const value of GAMETE_ROLES) {
-        reserveWrittenValue(ctx, edgeRef, edgeConfig.gameteRoleVariable, [
-          value,
-        ]);
+        reserveWrittenValue(
+          ctx,
+          edgeRef,
+          edgeConfig.gameteRoleVariable,
+          storedPedigreeOptionValue(
+            edgeVariables?.[edgeConfig.gameteRoleVariable],
+            value,
+          ),
+        );
       }
     }
   }

@@ -496,6 +496,102 @@ describe('FamilyPedigree materialization', () => {
     ]);
   });
 
+  it('copies a reused ego sex into a later pedigree sex variable', () => {
+    const differentSexCodebook = structuredClone(codebook);
+    const variables = differentSexCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.laterBiologicalSex = {
+      name: 'Later biological sex',
+      type: 'categorical',
+      options: BIOLOGICAL_SEX_OPTIONS,
+    };
+    if (familyStage.type !== 'FamilyPedigree') {
+      throw new Error('expected family stage');
+    }
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+      nodeConfig: {
+        ...familyStage.nodeConfig,
+        biologicalSexVariable: 'laterBiologicalSex',
+      },
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: differentSexCodebook,
+      stages: [familyStage, laterFamilyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
+    });
+    const ego = network.nodes.find(
+      (node) => node[entityAttributesProperty].isEgo === true,
+    );
+    if (!ego) throw new Error('missing reused ego');
+
+    expect(ego[entityAttributesProperty].laterBiologicalSex).toEqual(
+      ego[entityAttributesProperty].biologicalSex,
+    );
+  });
+
+  it('stores pedigree option values as scalars for ordinal variables', () => {
+    const ordinalSexCodebook = structuredClone(codebook);
+    const variables = ordinalSexCodebook.node?.['family-member']?.variables;
+    const edgeVariables = ordinalSexCodebook.edge?.['family-edge']?.variables;
+    if (!variables || !edgeVariables) {
+      throw new Error('missing family variables');
+    }
+    variables.biologicalSex = {
+      name: 'Biological sex',
+      type: 'ordinal',
+      options: BIOLOGICAL_SEX_OPTIONS,
+    };
+    edgeVariables.relationshipType = {
+      name: 'Relationship type',
+      type: 'ordinal',
+      options: RELATIONSHIP_TYPE_OPTIONS,
+    };
+    edgeVariables.gameteRole = {
+      name: 'Gamete role',
+      type: 'ordinal',
+      options: GAMETE_ROLE_OPTIONS,
+    };
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: ordinalSexCodebook,
+      stages: [familyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
+    });
+
+    for (const node of network.nodes) {
+      const sex = node[entityAttributesProperty].biologicalSex;
+      expect(Array.isArray(sex)).toBe(false);
+      expect(BIOLOGICAL_SEX_OPTIONS.map(({ value }) => value)).toContain(sex);
+    }
+    for (const edge of network.edges) {
+      const attributes = edge[entityAttributesProperty];
+      expect(Array.isArray(attributes.relationshipType)).toBe(false);
+      expect(RELATIONSHIP_TYPE_OPTIONS.map(({ value }) => value)).toContain(
+        attributes.relationshipType,
+      );
+      if (attributes.gameteRole !== undefined) {
+        expect(Array.isArray(attributes.gameteRole)).toBe(false);
+        expect(GAMETE_ROLE_OPTIONS.map(({ value }) => value)).toContain(
+          attributes.gameteRole,
+        );
+      }
+    }
+  });
+
   it('preserves disease assignments owned by an earlier pedigree', () => {
     const recessiveNarrative = {
       ...narrativeStage,
