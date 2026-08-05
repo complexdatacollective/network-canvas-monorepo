@@ -5,6 +5,7 @@ import { useContext } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
 import Node from '@codaco/fresco-ui/Node';
 import { entityAttributesProperty } from '@codaco/shared-consts';
@@ -57,6 +58,8 @@ type PedigreeViewProps = {
   isFinalized?: boolean;
 };
 
+const INTERNAL_EDIT_NAMESPACE = '__familyPedigreeEdit';
+
 export default function PedigreeView({
   overrideNodes,
   overrideEdges,
@@ -86,6 +89,7 @@ export default function PedigreeView({
   const addEdge = useFamilyPedigreeStore((s) => s.addEdge);
   const updateNode = useFamilyPedigreeStore((s) => s.updateNode);
   const updateEdge = useFamilyPedigreeStore((s) => s.updateEdge);
+  const syncMetadata = useFamilyPedigreeStore((s) => s.syncMetadata);
   const removeNode = useFamilyPedigreeStore((s) => s.removeNode);
   const commitBatch = useFamilyPedigreeStore((s) => s.commitBatch);
 
@@ -270,23 +274,25 @@ export default function PedigreeView({
             }}
           />
           {partnerships.length > 0 && (
-            <Field
-              name="partnerships"
-              label={`Are these people current or ex-partners of **${displayName}**?`}
-              component={RadioMatrixField}
-              rows={partnerships.map(({ edgeId, partnerLabel }) => ({
-                id: edgeId,
-                label: partnerLabel,
-              }))}
-              options={[
-                { value: 'current', label: 'Current partner' },
-                { value: 'ex', label: 'Ex-partner' },
-              ]}
-              initialValue={partnerships.map(({ edgeId, status }) => ({
-                id: edgeId,
-                value: status,
-              }))}
-            />
+            <FieldNamespace prefix={INTERNAL_EDIT_NAMESPACE}>
+              <Field
+                name="partnerships"
+                label={`Are these people current or ex-partners of **${displayName}**?`}
+                component={RadioMatrixField}
+                rows={partnerships.map(({ edgeId, partnerLabel }) => ({
+                  id: edgeId,
+                  label: partnerLabel,
+                }))}
+                options={[
+                  { value: 'current', label: 'Current partner' },
+                  { value: 'ex', label: 'Ex-partner' },
+                ]}
+                initialValue={partnerships.map(({ edgeId, status }) => ({
+                  id: edgeId,
+                  value: status,
+                }))}
+              />
+            </FieldNamespace>
           )}
         </>
       ),
@@ -313,9 +319,15 @@ export default function PedigreeView({
       ...formAttrs,
     });
 
-    if (Array.isArray(result.partnerships)) {
+    const internalResult = result[INTERNAL_EDIT_NAMESPACE];
+    const partnershipUpdates =
+      typeof internalResult === 'object' && internalResult !== null
+        ? (internalResult as Record<string, unknown>).partnerships
+        : undefined;
+    let partnershipChanged = false;
+    if (Array.isArray(partnershipUpdates)) {
       const editableEdgeIds = new Set(partnerships.map(({ edgeId }) => edgeId));
-      for (const update of result.partnerships) {
+      for (const update of partnershipUpdates) {
         if (typeof update !== 'object' || update === null) continue;
         const { id, value } = update as Record<string, unknown>;
         if (
@@ -325,9 +337,13 @@ export default function PedigreeView({
         ) {
           continue;
         }
-        updateEdge(id, { [isActiveVariable]: value === 'current' });
+        await updateEdge(id, {
+          [isActiveVariable]: value === 'current',
+        });
+        partnershipChanged = true;
       }
     }
+    if (partnershipChanged && isFinalized) syncMetadata();
   };
 
   const handleAddChild = async (nodeId: string) => {

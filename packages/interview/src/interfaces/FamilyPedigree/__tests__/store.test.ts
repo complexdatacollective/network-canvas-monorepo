@@ -491,7 +491,10 @@ describe('syncMetadata', () => {
 describe('finalizeNetwork', () => {
   const STAGE_ID = 'pedigree-stage';
 
-  function createReduxStore(preloadedNodes: NcNode[]) {
+  function createReduxStore(
+    preloadedNodes: NcNode[],
+    preloadedEdges: NcEdge[] = [],
+  ) {
     const protocolState = {
       codebook: {
         node: { [testConfig.nodeType]: { name: 'Person' } },
@@ -513,7 +516,11 @@ describe('finalizeNetwork', () => {
       finishTime: null,
       exportTime: null,
       lastUpdated: new Date().toISOString(),
-      network: { ...createInitialNetwork(), nodes: preloadedNodes },
+      network: {
+        ...createInitialNetwork(),
+        nodes: preloadedNodes,
+        edges: preloadedEdges,
+      },
       currentStep: 0,
       promptIndex: 0,
     };
@@ -673,6 +680,84 @@ describe('finalizeNetwork', () => {
 
     expect(memberEdgeIds).toEqual(committedEdgeIds);
     expect(memberEdgeIds.has(edgeStoreId)).toBe(false);
+
+    await store.getState().updateEdge(edgeStoreId, {
+      [testConfig.isActiveVariable]: false,
+    });
+    store.getState().syncMetadata();
+
+    const [committedEdge] = reduxStore.getState().session.network.edges;
+    expect(
+      committedEdge?.[entityAttributesProperty][testConfig.isActiveVariable],
+    ).toBe(false);
+    const refreshedMetadata = reduxStore.getState().session.stageMetadata?.[0];
+    expect(refreshedMetadata).toEqual(
+      expect.objectContaining({
+        edges: [
+          expect.objectContaining({
+            attributes: expect.objectContaining({
+              [testConfig.isActiveVariable]: false,
+            }),
+          }),
+        ],
+      }),
+    );
+  });
+
+  it('persists updates to an edge seeded from Redux', async () => {
+    const first = {
+      _uid: 'first',
+      type: testConfig.nodeType,
+      [entityAttributesProperty]: {
+        [testConfig.egoVariable]: true,
+        [testConfig.nodeLabelVariable]: 'First',
+      },
+    } as NcNode;
+    const second = {
+      _uid: 'second',
+      type: testConfig.nodeType,
+      [entityAttributesProperty]: {
+        [testConfig.egoVariable]: false,
+        [testConfig.nodeLabelVariable]: 'Second',
+      },
+    } as NcNode;
+    const partnership = {
+      _uid: 'partnership',
+      type: testConfig.edgeType,
+      from: first._uid,
+      to: second._uid,
+      [entityAttributesProperty]: {
+        [testConfig.relationshipTypeVariable]: ['partner'],
+        [testConfig.isActiveVariable]: true,
+      },
+    } as NcEdge;
+    const { reduxStore, dispatch } = createReduxStore(
+      [first, second],
+      [partnership],
+    );
+    const store = createFamilyPedigreeStore(
+      new Map([
+        [first._uid, first],
+        [second._uid, second],
+      ]),
+      new Map([[partnership._uid, partnership]]),
+      new Map(),
+      testConfig,
+      dispatch,
+      0,
+      new Set([first._uid, second._uid]),
+      new Set([partnership._uid]),
+    );
+
+    await store.getState().updateEdge(partnership._uid, {
+      [testConfig.isActiveVariable]: false,
+    });
+
+    expect(
+      reduxStore.getState().session.network.edges[0]?.[
+        entityAttributesProperty
+      ][testConfig.isActiveVariable],
+    ).toBe(false);
   });
 
   it('does not duplicate pre-existing same-type nodes already in Redux', async () => {

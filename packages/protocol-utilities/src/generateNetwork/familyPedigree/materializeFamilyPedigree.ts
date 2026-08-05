@@ -39,10 +39,15 @@ import type {
 } from './types';
 
 function diseasesForStage(
+  ctx: GenerationContext,
   stage: StageOfType<'FamilyPedigree'>,
   stages: readonly Stage[],
 ): PedigreeDisease[] {
   const byVariable = new Map<string, PedigreeDisease>();
+  const narrativePatternByVariable = new Map<
+    string,
+    PedigreeDisease['inheritancePattern']
+  >();
 
   for (const prompt of stage.nominationPrompts ?? []) {
     byVariable.set(prompt.variable, {
@@ -59,6 +64,39 @@ function diseasesForStage(
       continue;
     }
     for (const disease of candidate.diseases) {
+      const existingPattern = narrativePatternByVariable.get(disease.variable);
+      if (
+        existingPattern !== undefined &&
+        existingPattern !== disease.inheritancePattern
+      ) {
+        const nodeType = stage.nodeConfig.type;
+        throw new SyntheticDataConstraintError(
+          [
+            {
+              entity: 'node',
+              entityType: nodeType,
+              entityTypeName: ctx.codebook.node?.[nodeType]?.name,
+              variableIds: [disease.variable],
+              variableNames: [
+                variableName(
+                  ctx,
+                  { entity: 'node', type: nodeType },
+                  disease.variable,
+                ),
+              ],
+              rules: ['inheritancePattern'],
+              reason:
+                `NarrativePedigree stages assign both ${existingPattern} and ` +
+                `${disease.inheritancePattern} to the same disease variable`,
+            },
+          ],
+          'one disease variable cannot represent conflicting inheritance patterns',
+        );
+      }
+      narrativePatternByVariable.set(
+        disease.variable,
+        disease.inheritancePattern,
+      );
       byVariable.set(disease.variable, {
         variable: disease.variable,
         inheritancePattern: disease.inheritancePattern,
@@ -380,7 +418,7 @@ export function materializeFamilyPedigree(
   const nodeType = nodeConfig?.type;
   const edgeType = edgeConfig?.type;
   if (!nodeType) return;
-  const diseases = diseasesForStage(stage, diseaseStages);
+  const diseases = diseasesForStage(ctx, stage, diseaseStages);
 
   const familyCtx: GenerationContext = {
     ...ctx,
@@ -426,7 +464,7 @@ export function materializeFamilyPedigree(
           candidate.nodeConfig?.egoVariable,
           candidate.nodeConfig?.relationshipVariable,
           candidate.nodeConfig?.biologicalSexVariable,
-          ...diseasesForStage(candidate, diseaseStages).map(
+          ...diseasesForStage(ctx, candidate, diseaseStages).map(
             (disease) => disease.variable,
           ),
         ].filter((variable): variable is string => variable !== undefined),

@@ -17,6 +17,7 @@ import {
   addNode as addNodeToNetwork,
   deleteEdge,
   deleteNode,
+  updateEdge as updateEdgeInNetwork,
   updateStageMetadata,
 } from '../../store/modules/session';
 import type { useAppDispatch } from '../../store/store';
@@ -41,7 +42,7 @@ export type VariableConfig = {
   isGestationalCarrierVariable: string;
   /** Edge variable storing the gamete role ('egg'|'sperm') of a biological/donor parent. */
   gameteRoleVariable: string;
-  /** Node variable storing the biological sex of non-gamete-parent people. */
+  /** Node variable storing each person's reported biological sex. */
   biologicalSexVariable: string;
 };
 
@@ -103,7 +104,10 @@ type NetworkActions = {
     attributes: Record<string, VariableValue>;
     id?: string;
   }) => string;
-  updateEdge: (id: string, attributes: Record<string, VariableValue>) => void;
+  updateEdge: (
+    id: string,
+    attributes: Record<string, VariableValue>,
+  ) => Promise<void>;
   removeEdge: (id: string) => void;
   clearNetwork: () => void;
   setStep: (step: FamilyPedigreeState['step']) => void;
@@ -264,13 +268,25 @@ export const createFamilyPedigreeStore = (
           return edgeId;
         },
 
-        updateEdge: (id, attributes) => {
+        updateEdge: async (id, attributes) => {
           set((state) => {
             const edge = state.network.edges.get(id);
             if (edge) {
               Object.assign(edge[entityAttributesProperty], attributes);
             }
           });
+
+          const reduxEdgeId =
+            get().storeToReduxEdgeIdMap.get(id) ??
+            (preexistingReduxEdgeIds.has(id) ? id : undefined);
+          if (dispatch === undefined || reduxEdgeId === undefined) return;
+
+          await dispatch(
+            updateEdgeInNetwork({
+              edgeId: reduxEdgeId,
+              newAttributeData: attributes,
+            }),
+          ).unwrap();
         },
 
         removeEdge: (id) => {

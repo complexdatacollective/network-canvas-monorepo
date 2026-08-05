@@ -810,6 +810,38 @@ describe('FamilyPedigree materialization', () => {
     );
   });
 
+  it('rejects conflicting inheritance patterns that reuse one disease variable', () => {
+    const secondNarrative = {
+      ...narrativeStage,
+      id: 'second-narrative-stage',
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'autosomalRecessive',
+        },
+      ],
+    } as unknown as Stage;
+
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 42,
+        codebook,
+        stages: [familyStage, narrativeStage, secondNarrative],
+        familyPedigree: {
+          scenario: 'none',
+          diseaseMode: 'visualization',
+          maxNodes: 7,
+        },
+      });
+
+    expect(generate).toThrow(
+      'one disease variable cannot represent conflicting inheritance patterns',
+    );
+    expect(generate).toThrow(
+      /assign both autosomalDominant and autosomalRecessive to the same disease variable/,
+    );
+  });
+
   it('completes ancestry for co-parents inherited by a later required boundary', () => {
     const laterFamily = {
       ...familyStage,

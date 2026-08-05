@@ -94,6 +94,30 @@ function nodeAlterForm(nodeType: string, ...variables: string[]): Stage {
   } as unknown as Stage;
 }
 
+function filteredNodeAlterForm(
+  filtered: string,
+  ...variables: string[]
+): Stage {
+  return {
+    ...nodeAlterForm('person', ...variables),
+    filter: {
+      join: 'AND',
+      rules: [
+        {
+          id: 'node-rule-1',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: filtered,
+            operator: 'EXACTLY',
+            value: 1,
+          },
+        },
+      ],
+    },
+  } as unknown as Stage;
+}
+
 /** The same form, gated on a filter rule testing one edge variable. */
 function filteredAlterEdgeForm(
   filtered: string,
@@ -2074,6 +2098,71 @@ describe('generateNetwork with a roster-capped unique variable', () => {
     expect(() =>
       generateNetwork({ seed: 1, codebook, stages: [rosterStage()] }),
     ).toThrow(SyntheticDataConstraintError);
+  });
+});
+
+describe('generateNetwork with a filtered writer on existing nodes', () => {
+  const codebook = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        variables: {
+          band: {
+            name: 'Band',
+            type: 'ordinal',
+            options: Array.from({ length: 10 }, (_, index) => ({
+              label: `Band ${String(index + 1)}`,
+              value: index + 1,
+            })),
+            validation: { unique: true },
+          },
+          selected: {
+            name: 'Selected',
+            type: 'boolean',
+            validation: { unique: true },
+          },
+        },
+      },
+    },
+  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+  const stages = [
+    nameGenerator({
+      form: { fields: [{ variable: 'band', prompt: 'Band?' }] },
+      behaviours: { minNodes: 10, maxNodes: 10 },
+    }),
+    filteredNodeAlterForm('band', 'selected'),
+  ];
+
+  it('does not promote a filtered write to every earlier node', () => {
+    const counts = worstCaseEntityCounts(
+      stages,
+      config,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    );
+
+    expect(nodeCountFor(counts.node, 'person', ['selected'])).toBe(0);
+  });
+
+  it('generates when the filter reaches one holder of a unique boolean', () => {
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages,
+      respectSkipLogicAndFiltering: true,
+    });
+
+    expect(network.nodes).toHaveLength(10);
+    expect(
+      network.nodes.filter(
+        (node) => node[entityAttributesProperty].selected !== undefined,
+      ),
+    ).toHaveLength(1);
   });
 });
 

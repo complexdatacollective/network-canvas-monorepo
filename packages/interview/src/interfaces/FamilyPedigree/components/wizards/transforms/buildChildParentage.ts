@@ -87,18 +87,14 @@ export function buildChildParentage(
       if (!personValues) continue;
       const name = (personValues.name as string | undefined) ?? '';
       const extraAttrs = extractCustomAttributes(personValues);
-      const isGameteParen =
-        roleKey === 'egg-source' || roleKey === 'sperm-source';
       const nodeAttrs: Record<string, VariableValue> = {
         [variableConfig.nodeLabelVariable]: name,
         [variableConfig.egoVariable]: false,
         ...extraAttrs,
       };
-      if (!isGameteParen) {
-        const sex = readBiologicalSex(personValues.biologicalSex);
-        if (sex !== undefined) {
-          nodeAttrs[variableConfig.biologicalSexVariable] = [sex];
-        }
+      const sex = readBiologicalSex(personValues.biologicalSex);
+      if (sex !== undefined) {
+        nodeAttrs[variableConfig.biologicalSexVariable] = [sex];
       }
       parentEntries.push({
         tempId: namespace,

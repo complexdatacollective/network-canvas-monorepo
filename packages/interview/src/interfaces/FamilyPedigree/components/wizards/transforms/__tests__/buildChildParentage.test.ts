@@ -52,7 +52,10 @@ describe('buildChildParentage', () => {
       {
         'egg-source': 'ego-1',
         'sperm-source': 'new',
-        'new-sperm-source': { name: 'Donor Dan' },
+        'new-sperm-source': {
+          name: 'Donor Dan',
+          biologicalSex: 'female',
+        },
         'sperm-source-is-donor': true,
         'egg-parent-carried': true,
       },
@@ -62,7 +65,13 @@ describe('buildChildParentage', () => {
     expect(nodes).toHaveLength(1);
     expect(nodes[0]).toMatchObject({
       tempId: 'new-sperm-source',
-      data: { attributes: { name: 'Donor Dan', isEgo: false } },
+      data: {
+        attributes: {
+          name: 'Donor Dan',
+          isEgo: false,
+          biologicalSex: ['female'],
+        },
+      },
     });
     const donorEdge = edges.find((e) => e.source === 'new-sperm-source');
     expect(donorEdge?.data.attributes.relationship).toEqual(['donor']);

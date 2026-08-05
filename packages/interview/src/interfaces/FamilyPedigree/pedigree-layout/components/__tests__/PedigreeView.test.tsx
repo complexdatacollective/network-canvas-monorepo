@@ -89,7 +89,7 @@ vi.mock('../../../utils/nodeUtils', () => ({
   getEgoVariable: () => 'isEgo',
   getRelationshipVariable: () => 'relationship',
   getBiologicalSexVariable: () => 'biologicalSex',
-  getResolvedNodeFormFields: () => [],
+  getResolvedNodeFormFields: () => [{ variableId: 'partnerships' }],
   getNodeShapeDefinition: () => null,
   getNodeForm: () => null,
   getNodeColorSelector: () => 'node-color-seq-1',
@@ -183,6 +183,7 @@ vi.mock('../../../../../store/modules/session', () => ({
   addNode: vi.fn(),
   addEdge: vi.fn(),
   deleteNode: vi.fn(),
+  updateEdge: vi.fn(),
   updateStageMetadata: vi.fn(),
   default: (state = {}) => state,
 }));
@@ -445,7 +446,10 @@ describe('PedigreeView — person menu actions', () => {
     mockOpenDialog.mockResolvedValueOnce({
       name: 'Edited Person',
       biologicalSex: 'male',
-      partnerships: [{ id: 'partnership', value: 'ex' }],
+      partnerships: ['participant-answer'],
+      __familyPedigreeEdit: {
+        partnerships: [{ id: 'partnership', value: 'ex' }],
+      },
     });
 
     render(
@@ -463,6 +467,10 @@ describe('PedigreeView — person menu actions', () => {
       store.getState().network.nodes.get('person')?.[entityAttributesProperty]
         .biologicalSex,
     ).toEqual(['male']);
+    expect(
+      store.getState().network.nodes.get('person')?.[entityAttributesProperty]
+        .partnerships,
+    ).toEqual(['participant-answer']);
     expect(
       store.getState().network.edges.get('partnership')?.[
         entityAttributesProperty

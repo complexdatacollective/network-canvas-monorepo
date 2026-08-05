@@ -1170,6 +1170,7 @@ export function worstCaseEntityCounts(
   nodeConstraints?: NodeConstraintsFor,
   familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
   nodeVariables?: NodeVariablesFor,
+  respectSkipLogicAndFiltering = false,
 ): WorstCaseCounts {
   const base = new Map<string, number>();
   const pedigree = new Map<string, PedigreeEdges[]>();
@@ -1483,6 +1484,7 @@ export function worstCaseEntityCounts(
   for (const [nodeType, writers] of lastExistingWriterByType(
     stages,
     nodeVariables,
+    respectSkipLogicAndFiltering,
   )) {
     tallyFor(node, nodeType).written = writers;
   }

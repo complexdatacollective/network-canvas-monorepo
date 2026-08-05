@@ -287,10 +287,24 @@ export function stageWritesExistingNodeVariable(
 export function lastExistingWriterByType(
   stages: readonly Stage[],
   variablesFor?: NodeVariablesFor,
+  respectSkipLogicAndFiltering = false,
 ): Map<string, Map<string, number>> {
   const byType = new Map<string, Map<string, number>>();
 
   for (const [stageIndex, stage] of stages.entries()) {
+    // With filtering enabled, this stage may write only a subset of the
+    // existing population. Promoting its variables to every earlier creation
+    // would turn a one-node write into a whole-type feasibility demand. The
+    // creation tally remains authoritative for variables written when those
+    // nodes were made; filtered population writes are settled by the actual
+    // filtered set at generation time.
+    if (
+      respectSkipLogicAndFiltering &&
+      'filter' in stage &&
+      stage.filter !== undefined
+    ) {
+      continue;
+    }
     const type = nodeTypeOf(stage);
     if (type === undefined) continue;
     const written = nodeVariablesWrittenOnExisting(stage, stages, variablesFor);
