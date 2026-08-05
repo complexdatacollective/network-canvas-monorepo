@@ -65,15 +65,15 @@ describe('biologicalSex capture — siblingCellTransform', () => {
     ).toEqual(['female']);
   });
 
-  it('does NOT write biologicalSex on egg-source or sperm-source new person nodes (gamete parents derive sex from role)', () => {
+  it('preserves captured biologicalSex independently of egg and sperm roles', () => {
     const nodes = makeNodes([['anchor', { isEgo: false, name: 'Anchor' }]]);
 
     const values: Record<string, unknown> = {
       'sibling': { name: 'Alex' },
       'egg-source': 'new',
-      'new-egg-source': { name: 'Mom' },
+      'new-egg-source': { name: 'Egg source', biologicalSex: 'male' },
       'sperm-source': 'new',
-      'new-sperm-source': { name: 'Dad' },
+      'new-sperm-source': { name: 'Sperm source', biologicalSex: 'female' },
       'egg-parent-carried': true,
     };
 
@@ -94,10 +94,10 @@ describe('biologicalSex capture — siblingCellTransform', () => {
 
     expect(
       eggSourceNode?.data.attributes[variableConfig.biologicalSexVariable],
-    ).toBeUndefined();
+    ).toEqual(['male']);
     expect(
       spermSourceNode?.data.attributes[variableConfig.biologicalSexVariable],
-    ).toBeUndefined();
+    ).toEqual(['female']);
   });
 
   it('new carrier-source DOES get biologicalSex (carrier is not a gamete parent)', () => {

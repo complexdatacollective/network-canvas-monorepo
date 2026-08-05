@@ -37,9 +37,16 @@ function renderGroupLine(
   idx: number,
   color: string,
 ) {
+  const endpointLines = conn.endpointSegments?.map((segment, endpointIndex) =>
+    renderLine(segment, color, `group-endpoint-${idx}-${endpointIndex}`, {
+      strokeLinecap: 'round',
+    }),
+  );
+
   if (conn.double) {
     return (
       <g key={`consang-${idx}`}>
+        {endpointLines}
         {renderLine(conn.segment, color, `consang-line1-${idx}`)}
         {conn.doubleSegment &&
           renderLine(conn.doubleSegment, color, `consang-line2-${idx}`)}
@@ -48,12 +55,22 @@ function renderGroupLine(
   }
 
   if (!conn.isActive) {
-    return renderInactiveGroupLine(conn, idx, color);
+    return (
+      <g key={`group-routed-inactive-${idx}`}>
+        {endpointLines}
+        {renderInactiveGroupLine(conn, idx, color)}
+      </g>
+    );
   }
 
-  return renderLine(conn.segment, color, `group-bar-${idx}`, {
-    strokeLinecap: 'round',
-  });
+  return (
+    <g key={`group-routed-${idx}`}>
+      {endpointLines}
+      {renderLine(conn.segment, color, `group-bar-${idx}`, {
+        strokeLinecap: 'round',
+      })}
+    </g>
+  );
 }
 
 function renderInactiveGroupLine(
@@ -395,6 +412,20 @@ function renderCoupleGroupLine(
 
   return (
     <g key={`gl-dim-${idx}`}>
+      {gl.endpointSegments?.map((segment, endpointIndex) =>
+        renderLine(
+          segment,
+          endpointIndex === 0
+            ? leftContributes
+              ? color
+              : dimColor(color)
+            : rightContributes
+              ? color
+              : dimColor(color),
+          `gl-endpoint-${idx}-${endpointIndex}`,
+          { strokeLinecap: 'round' },
+        ),
+      )}
       {renderSplitBar(gl.segment, descentXs, isHalfDimmed, color, `gl-${idx}`)}
       {/* A consanguineous couple bar is two parallel lines; split the second one
           the same way so both track the focal lineage. */}

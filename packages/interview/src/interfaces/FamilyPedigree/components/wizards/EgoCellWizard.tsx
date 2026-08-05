@@ -97,6 +97,14 @@ export default function EgoCellWizard({
       title: 'Your Biological Parents',
       className: 'tablet-portrait:min-w-[70ch]',
       progress: null,
+      confirmCancel: {
+        title: 'Close family pedigree setup?',
+        description:
+          'If you continue, all information you have entered in this family pedigree will be lost. You will need to start again.',
+        primaryLabel: 'Close and lose progress',
+        cancelLabel: 'Continue setup',
+        intent: 'destructive',
+      },
       steps: [
         // IntroStep and FramingSelectionStep depend only on stage config
         // (known now), so include them conditionally rather than relying on a

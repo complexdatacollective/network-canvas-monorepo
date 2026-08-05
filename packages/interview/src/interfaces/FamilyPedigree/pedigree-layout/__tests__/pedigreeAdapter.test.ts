@@ -410,6 +410,161 @@ describe('buildConnectorData', () => {
       expect(gl.segment.x1).toBeGreaterThanOrEqual(0);
     }
   });
+
+  test('renders one shared union and descent for partners from separate sibships', () => {
+    const nodes = makeNodes([
+      { id: 'gpA1' },
+      { id: 'gpA2' },
+      { id: 'gpB1' },
+      { id: 'gpB2' },
+      { id: 'sibA1' },
+      { id: 'sibA2' },
+      { id: 'sibA3' },
+      { id: 'sibB1' },
+      { id: 'sibB2' },
+      { id: 'sibB3' },
+      { id: 'ego', isEgo: true },
+      { id: 'sibling' },
+    ]);
+    const edges = makeEdges([
+      { from: 'gpA1', to: 'gpA2', relationshipType: 'partner' },
+      { from: 'gpB1', to: 'gpB2', relationshipType: 'partner' },
+      { from: 'gpA1', to: 'sibA1', relationshipType: 'biological' },
+      { from: 'gpA2', to: 'sibA1', relationshipType: 'biological' },
+      { from: 'gpA1', to: 'sibA2', relationshipType: 'biological' },
+      { from: 'gpA2', to: 'sibA2', relationshipType: 'biological' },
+      { from: 'gpA1', to: 'sibA3', relationshipType: 'biological' },
+      { from: 'gpA2', to: 'sibA3', relationshipType: 'biological' },
+      { from: 'gpB1', to: 'sibB1', relationshipType: 'biological' },
+      { from: 'gpB2', to: 'sibB1', relationshipType: 'biological' },
+      { from: 'gpB1', to: 'sibB2', relationshipType: 'biological' },
+      { from: 'gpB2', to: 'sibB2', relationshipType: 'biological' },
+      { from: 'gpB1', to: 'sibB3', relationshipType: 'biological' },
+      { from: 'gpB2', to: 'sibB3', relationshipType: 'biological' },
+      { from: 'sibA1', to: 'sibB1', relationshipType: 'partner' },
+      { from: 'sibA1', to: 'ego', relationshipType: 'biological' },
+      { from: 'sibB1', to: 'ego', relationshipType: 'biological' },
+      { from: 'sibA1', to: 'sibling', relationshipType: 'biological' },
+      { from: 'sibB1', to: 'sibling', relationshipType: 'biological' },
+    ]);
+
+    const { input, indexToId, idToIndex } = storeToPedigreeInput(
+      nodes,
+      edges,
+      variableConfig,
+    );
+    const layout = alignPedigree(input);
+    const { connectors } = buildConnectorData(
+      layout,
+      edges,
+      TEST_DIMENSIONS,
+      variableConfig,
+      input.parents,
+      idToIndex,
+      undefined,
+      indexToId,
+    );
+    const union = connectors.groupLines.find(
+      (line) =>
+        line.partnerIds?.includes('sibA1') && line.partnerIds.includes('sibB1'),
+    );
+    const descent = connectors.parentChildLines.find(
+      (line) =>
+        line.parentIds?.includes('sibA1') && line.parentIds.includes('sibB1'),
+    );
+
+    expect(union).toBeDefined();
+    expect(union!.descentXPositions).toHaveLength(1);
+    expect(union!.descentXPositions![0]).toBeCloseTo(
+      (union!.segment.x1 + union!.segment.x2) / 2,
+    );
+    expect(descent).toBeDefined();
+    expect(new Set(descent!.uplineChildIds)).toEqual(
+      new Set(['ego', 'sibling']),
+    );
+  });
+
+  test('preserves three explicit former partnerships that share one parent', () => {
+    const nodes = makeNodes([
+      { id: 'margaret' },
+      { id: 'biologicalParent' },
+      { id: 'melville' },
+      { id: 'white' },
+      { id: 'robert', isEgo: true },
+    ]);
+    const edges = makeEdges([
+      {
+        from: 'margaret',
+        to: 'biologicalParent',
+        relationshipType: 'partner',
+        isActive: false,
+      },
+      {
+        from: 'margaret',
+        to: 'melville',
+        relationshipType: 'partner',
+        isActive: false,
+      },
+      {
+        from: 'margaret',
+        to: 'white',
+        relationshipType: 'partner',
+        isActive: false,
+      },
+      {
+        from: 'margaret',
+        to: 'robert',
+        relationshipType: 'biological',
+      },
+      {
+        from: 'biologicalParent',
+        to: 'robert',
+        relationshipType: 'biological',
+      },
+      { from: 'melville', to: 'robert', relationshipType: 'social' },
+      { from: 'white', to: 'robert', relationshipType: 'social' },
+    ]);
+
+    const { input, indexToId, idToIndex } = storeToPedigreeInput(
+      nodes,
+      edges,
+      variableConfig,
+    );
+    const layout = alignPedigree(input);
+    const { connectors } = buildConnectorData(
+      layout,
+      edges,
+      TEST_DIMENSIONS,
+      variableConfig,
+      input.parents,
+      idToIndex,
+      undefined,
+      indexToId,
+    );
+
+    const partnershipPairs = connectors.groupLines
+      .map((line) => line.partnerIds?.toSorted().join('|'))
+      .filter((pair): pair is string => pair !== undefined)
+      .toSorted();
+
+    expect(partnershipPairs).toEqual([
+      'biologicalParent|margaret',
+      'margaret|melville',
+      'margaret|white',
+    ]);
+    expect(connectors.groupLines.every((line) => !line.isActive)).toBe(true);
+    expect(
+      connectors.groupLines.filter(
+        (line) => line.endpointSegments !== undefined,
+      ),
+    ).toHaveLength(1);
+
+    const socialParentPairs = connectors.auxiliaryLines
+      .filter((line) => line.edgeType === 'social')
+      .map((line) => line.endpointIds?.filter(Boolean).toSorted().join('|'));
+    expect(socialParentPairs).toContain('melville|robert');
+    expect(socialParentPairs).toContain('robert|white');
+  });
 });
 
 describe('end-to-end: store → layout → positions', () => {

@@ -12,7 +12,6 @@ import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 function buildPersonAttributes(
   person: Record<string, unknown>,
   variableConfig: VariableConfig,
-  includeBiologicalSex: boolean,
 ): Record<string, VariableValue> {
   const name = (person.name as string | undefined) ?? '';
   const extraAttrs = extractCustomAttributes(person);
@@ -23,11 +22,9 @@ function buildPersonAttributes(
     ...extraAttrs,
   };
 
-  if (includeBiologicalSex) {
-    const sex = readBiologicalSex(person.biologicalSex);
-    if (sex !== undefined) {
-      attrs[variableConfig.biologicalSexVariable] = [sex];
-    }
+  const sex = readBiologicalSex(person.biologicalSex);
+  if (sex !== undefined) {
+    attrs[variableConfig.biologicalSexVariable] = [sex];
   }
 
   return attrs;
@@ -56,7 +53,7 @@ export function siblingCellTransform(
   batch.nodes.push({
     tempId: 'sibling',
     data: {
-      attributes: buildPersonAttributes(siblingData, variableConfig, true),
+      attributes: buildPersonAttributes(siblingData, variableConfig),
     },
   });
 
@@ -78,18 +75,10 @@ export function siblingCellTransform(
     } else if (selection === 'new') {
       const newPersonData = values[`new-${roleKey}`] as Record<string, unknown>;
       const tempId = `new-${roleKey}`;
-      // Egg and sperm gamete parents derive sex from gameteRole; carrier-source
-      // (and the separate new-carrier namespace below) is not a gamete parent.
-      const isGameteParen =
-        roleKey === 'egg-source' || roleKey === 'sperm-source';
       batch.nodes.push({
         tempId,
         data: {
-          attributes: buildPersonAttributes(
-            newPersonData,
-            variableConfig,
-            !isGameteParen,
-          ),
+          attributes: buildPersonAttributes(newPersonData, variableConfig),
         },
       });
       resolvedParents.push({ roleKey, tempId, isExisting: false });
@@ -199,7 +188,7 @@ export function siblingCellTransform(
       batch.nodes.push({
         tempId,
         data: {
-          attributes: buildPersonAttributes(ap, variableConfig, true),
+          attributes: buildPersonAttributes(ap, variableConfig),
         },
       });
 

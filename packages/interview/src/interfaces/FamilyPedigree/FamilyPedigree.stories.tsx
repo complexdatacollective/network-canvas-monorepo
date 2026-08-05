@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -267,6 +267,48 @@ export const Default: Story = {
     };
 
     return <FamilyPedigreeStoryWrapper buildFn={buildFn} />;
+  },
+};
+
+export const OnboardingCloseConfirmation: Story = {
+  ...Default,
+  play: async () => {
+    await clickGetStarted();
+
+    const wizard = await getDialog();
+    await userEvent.click(
+      within(wizard).getByRole('button', { name: 'Close' }),
+    );
+
+    await expect(
+      await screen.findByText('Close family pedigree setup?'),
+    ).toBeVisible();
+    await expect(
+      screen.getByText(
+        'If you continue, all information you have entered in this family pedigree will be lost. You will need to start again.',
+      ),
+    ).toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Continue setup' }),
+    );
+    await expect(
+      screen.getByRole('heading', { name: 'Introduction' }),
+    ).toBeVisible();
+
+    await userEvent.click(
+      within(wizard).getByRole('button', { name: 'Close' }),
+    );
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Close and lose progress',
+      }),
+    );
+
+    await waitFor(async () => {
+      await expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      await expect(screen.getByTestId('pedigree-get-started')).toBeVisible();
+    });
   },
 };
 

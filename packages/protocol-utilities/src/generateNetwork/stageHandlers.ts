@@ -1,26 +1,18 @@
-import { v4 as uuid } from 'uuid';
-
-import {
-  type Stage,
-  VARIABLE_REFERENCE_VALIDATIONS,
-} from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  type NcEdge,
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { claimFixedValues, generateAttributesForEntity } from './attributes';
-import { pedigreeEdgeValues } from './constraints/entityCounts';
+import { generateAttributesForEntity } from './attributes';
 import {
   type EntityScopeRef,
   scopeKey,
   uniqueSlotMembers,
 } from './constraints/generateEntityAttributes';
-import type { EntityConstraints } from './constraints/types';
+import { withRuleTiedVariables } from './constraints/stageWrites';
 import { valueKey } from './constraints/uniqueRegistry';
 import type { GenerationContext, NetworkDraft, StageOfType } from './context';
 import { createEdgesForPairs } from './edges';
@@ -41,10 +33,8 @@ export function handleNameGenerators(
     allowFabrication: stage.type !== 'NameGeneratorRoster',
   };
 
-  // A stage form needs no fill pass of its own: `createNodesForStage` gives
-  // every node a value for every variable its type declares, so a form field
-  // naming one is already answered, and a field naming anything else has no
-  // codebook entry to generate from.
+  // A stage form needs no fill pass of its own: `createNodesForStage` fills the
+  // variables this creating stage collects as it builds each node.
   let stageNodeCount = 0;
   for (const prompt of stage.prompts) {
     const newNodes = createNodesForStage(
@@ -69,6 +59,8 @@ export function handleSociogram(
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
+  const nodeTypeDef = ctx.codebook.node?.[subjectType];
+  const scope: EntityScopeRef = { entity: 'node', type: subjectType };
 
   for (const prompt of stage.prompts) {
     const createEdge = prompt.edges?.create;
@@ -101,6 +93,49 @@ export function handleSociogram(
             ctx.config.sociogramLayoutRange.max,
           ),
         };
+      }
+    }
+
+    // Tapping a node toggles the prompt's highlight variable, so the synthetic
+    // walk must settle it here now that node creation no longer fills unrelated
+    // variables. Gate it exactly as the interface does: highlighting is the
+    // alternative to edge creation and only runs when explicitly enabled.
+    const highlightVariable =
+      prompt.highlight?.allowHighlighting === true && !createEdge
+        ? prompt.highlight.variable
+        : undefined;
+    if (highlightVariable) {
+      const connected = withRuleTiedVariables(
+        nodeTypeDef?.variables,
+        new Set([highlightVariable]),
+      );
+      const highlightRules = ctx.entityConstraints.node
+        .get(subjectType)
+        ?.get(highlightVariable)?.constraints;
+      const requiresConstraintDraw =
+        connected.size > 1 || highlightRules?.unique === true;
+
+      for (let nodeIndex = 0; nodeIndex < subjectNodes.length; nodeIndex++) {
+        const node = subjectNodes[nodeIndex]!;
+        if (!requiresConstraintDraw) {
+          node[entityAttributesProperty][highlightVariable] =
+            ctx.valueGen.randomFloat(0, 1) <
+            ctx.config.sociogramHighlightProbability;
+          continue;
+        }
+
+        // A highlight is a write onto an existing node. When its variable is
+        // tied to another value, or is unique across nodes, redraw the whole
+        // connected component so both the finished attributes and the unique
+        // registry continue to describe the same valid assignment.
+        Object.assign(
+          node[entityAttributesProperty],
+          generateAttributesForEntity(ctx, scope, nodeIndex, {
+            existing: existingForRegeneration(node, connected),
+            only: connected,
+          }),
+        );
+        clearOutOfBandWrites(node, connected);
       }
     }
   }
@@ -524,233 +559,6 @@ export function handleAlterEdgeForm(
       ),
     );
   }
-}
-
-/**
- * Whether any rule of `entity` resolves against `variableId` — the variable
- * declaring a rule that names another, or another naming it as their target.
- *
- * A value fixed for a variable nothing resolves against changes no other
- * variable's, so this is what separates a pin the rest of the entity has to be
- * generated around from one that can simply be written on afterwards. Read from
- * the schema's own list of rules whose value is a variable id, so a rule added
- * there is accounted for here without this being updated.
- */
-function ruleResolvesAgainst(
-  entity: EntityConstraints,
-  variableId: string,
-): boolean {
-  for (const [id, { constraints }] of entity) {
-    for (const rule of VARIABLE_REFERENCE_VALIDATIONS) {
-      const target = constraints[rule];
-      if (target === undefined) continue;
-      if (id === variableId || target === variableId) return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Whether `variableId`'s value is one the `unique` registry issues — its own
- * rule declaring it, or a rule holding it equal to a variable that does.
- *
- * Asked of the slots themselves rather than of the variable's own `unique`, so
- * the judgement is the one {@link claimFixedValues} goes on to act against.
- */
-function isUniqueSlotVariable(
-  entity: EntityConstraints,
-  variableId: string,
-): boolean {
-  for (const memberIds of uniqueSlotMembers(entity).values()) {
-    if (memberIds.includes(variableId)) return true;
-  }
-
-  return false;
-}
-
-/** Holds one written value back from every `unique` slot that would issue it. */
-function reserveWrittenValue(
-  ctx: GenerationContext,
-  ref: { entity: 'node' | 'edge'; type: string },
-  variableId: string,
-  value: VariableValue,
-): void {
-  const entity = ctx.entityConstraints[ref.entity].get(ref.type);
-  if (entity === undefined) return;
-
-  const registry = scopeKey(ref);
-  for (const [slot, memberIds] of uniqueSlotMembers(entity)) {
-    if (!memberIds.includes(variableId)) continue;
-    ctx.uniqueRegistry.reserve(registry, slot, value);
-  }
-}
-
-/**
- * Holds back the values every FamilyPedigree stage is going to write itself,
- * for the whole run and before any stage draws.
- *
- * These are values the interface writes rather than ones the generator picks,
- * so a `unique` variable carrying one has it spoken for from the start. A draw
- * that ran earlier knows nothing about it — the value only reaches the registry
- * when the pedigree's own entities are built — and a name generator ahead of
- * the pedigree is issued `true` on the first position of the slot's sequence,
- * which the pedigree then writes on its proband as well: the duplicate `unique`
- * forbids, on every seed. The pedigree's edge values are the same shape, and
- * are held for the same reason.
- *
- * Only the proband's `true` is held of the ego flag. Every pedigree marks
- * exactly one node ego whatever its node count, while the `false` on the others
- * is written only where the stage builds more than one — and holding both would
- * empty a boolean's domain, where a draw left nothing takes a reserved value
- * anyway and lands back on the collision. A protocol where that `false` is
- * genuinely contested has a pedigree of two or more nodes plus a node from
- * somewhere else, which is more entities than a two-value space covers and is
- * refused before any of this runs.
- *
- * The edge values are held once apiece for the same reason. A pedigree writing
- * one value onto two or more edges of a `unique` variable is a contradiction no
- * seed resolves and no reservation helps with, and is feasibility's to refuse
- * rather than the registry's to work around — the same division the ego flag's
- * `false` is settled by.
- */
-export function reserveFamilyPedigreeFixedValues(
-  ctx: GenerationContext,
-  stages: Stage[],
-): void {
-  for (const stage of stages) {
-    if (stage.type !== 'FamilyPedigree') continue;
-
-    const nodeType = stage.nodeConfig?.type;
-    const egoVariable = stage.nodeConfig?.egoVariable;
-    if (nodeType !== undefined && egoVariable !== undefined) {
-      reserveWrittenValue(
-        ctx,
-        { entity: 'node', type: nodeType },
-        egoVariable,
-        true,
-      );
-    }
-
-    const edgeType = stage.edgeConfig?.type;
-    if (edgeType === undefined) continue;
-    const ref: EntityScopeRef = { entity: 'edge', type: edgeType };
-    for (const [variableId, value] of Object.entries(
-      pedigreeEdgeValues(stage.edgeConfig),
-    )) {
-      reserveWrittenValue(ctx, ref, variableId, value);
-    }
-  }
-}
-
-export function handleFamilyPedigree(
-  ctx: GenerationContext,
-  draft: NetworkDraft,
-  stage: StageOfType<'FamilyPedigree'>,
-  stageIndex: number,
-): void {
-  const nodeCount = ctx.valueGen.randomInt(
-    ctx.config.familyPedigreeNodeCount.min,
-    ctx.config.familyPedigreeNodeCount.max,
-  );
-
-  const nodeType = stage.nodeConfig?.type;
-  const edgeType = stage.edgeConfig?.type;
-  const egoVariable = stage.nodeConfig?.egoVariable;
-
-  if (!nodeType) return;
-
-  // Attribute generation randomises egoVariable per node like any other boolean
-  // codebook variable, but the runtime marks exactly one pedigree node as ego
-  // (FamilyPedigree's egoCellTransform sets true on the proband and explicit
-  // false on every other alter/partner/child). That flag is therefore a value
-  // fixed for the node rather than drawn for it.
-  //
-  // Where the flag's value is read by anything outside the node, it is settled
-  // before anything is drawn and the rest of the node generated around it — the
-  // mechanism a roster row and a prompt's `additionalAttributes` use — and then
-  // claimed. Two things read it. A rule resolving against it: a `sameAs`
-  // counterpart would otherwise keep whatever the shared draw landed on and the
-  // finished node would break the rule generation had just satisfied. And the
-  // `unique` registry: drawing a value that is thrown away leaves the registry
-  // holding one no node carries while the value the node does carry is
-  // unrecorded, so a later entity can be issued the proband's own flag.
-  //
-  // Where neither reads it, the flag is written after generation instead:
-  // nothing resolves against it and no slot issues it, so drawing every
-  // variable as before costs the pin no RNG draws and leaves the stage's random
-  // stream where it was.
-  const scope: EntityScopeRef = { entity: 'node', type: nodeType };
-  const nodeVariables: EntityConstraints =
-    ctx.entityConstraints.node.get(nodeType) ?? new Map();
-  const drawnVariables =
-    egoVariable &&
-    (ruleResolvesAgainst(nodeVariables, egoVariable) ||
-      isUniqueSlotVariable(nodeVariables, egoVariable))
-      ? new Set([...nodeVariables.keys()].filter((id) => id !== egoVariable))
-      : undefined;
-
-  const familyNodes: NcNode[] = [];
-  for (let nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++) {
-    const fixed = egoVariable ? { [egoVariable]: nodeIndex === 0 } : undefined;
-
-    const attrs = generateAttributesForEntity(
-      ctx,
-      scope,
-      draft.nodes.length + nodeIndex,
-      fixed && drawnVariables
-        ? { existing: fixed, only: drawnVariables }
-        : undefined,
-    );
-    if (fixed) Object.assign(attrs, fixed);
-    if (fixed && drawnVariables) claimFixedValues(ctx, scope, fixed);
-
-    familyNodes.push({
-      [entityPrimaryKeyProperty]: uuid(),
-      type: nodeType,
-      [entityAttributesProperty]: attrs,
-      stageId: stage.id,
-    });
-  }
-
-  draft.nodes.push(...familyNodes);
-
-  if (edgeType && familyNodes.length > 1) {
-    // The relationship every parent-child edge records, written rather than
-    // drawn — see `pedigreeEdgeValues`, which the feasibility pass counts from
-    // as well. Written AFTER the parent index is drawn and never through the
-    // draw, so the values cost the stage no random numbers and leave every
-    // other value in the run exactly where it was.
-    //
-    // Nothing claims them into the `unique` registry the way a pedigree node's
-    // ego flag is claimed. A claim is what stops a value already in the network
-    // being issued a second time, and `reserveFamilyPedigreeFixedValues`
-    // already holds these back for the whole run — before the first stage and
-    // after the last, since nothing ever gives the hold back. The one thing a
-    // reservation does not survive is a slot with nothing else left, which is a
-    // protocol asking for more distinct values than it has, and feasibility's
-    // to refuse rather than the registry's to work around.
-    const edgeValues = pedigreeEdgeValues(stage.edgeConfig);
-
-    for (let childIndex = 1; childIndex < familyNodes.length; childIndex++) {
-      const parentIdx = ctx.valueGen.randomInt(
-        0,
-        Math.min(childIndex - 1, familyNodes.length - 1),
-      );
-      const edge: NcEdge = {
-        [entityPrimaryKeyProperty]: uuid(),
-        type: edgeType,
-        from: familyNodes[parentIdx]![entityPrimaryKeyProperty],
-        to: familyNodes[childIndex]![entityPrimaryKeyProperty],
-        // Its own copy, because a later AlterEdgeForm fills each edge's
-        // attributes in place and would otherwise write through every one.
-        [entityAttributesProperty]: { ...edgeValues },
-      };
-      draft.edges.push(edge);
-    }
-  }
-
-  draft.stageMetadata[stageIndex] = { isNetworkCommitted: true };
 }
 
 export function handleGeospatial(

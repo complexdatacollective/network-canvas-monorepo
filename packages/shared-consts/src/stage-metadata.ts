@@ -4,6 +4,9 @@ import { FRAMING_IDS } from './family-pedigree-framing.ts';
 
 const FamilyPedigreeStageMetadataSchema = z.object({
   isNetworkCommitted: z.boolean(),
+  // Version 1 records edge ids from the shared Redux network. Older pedigree
+  // snapshots omitted this marker and may contain interface-local edge ids.
+  edgeIdVersion: z.optional(z.literal(1)),
   selectedFraming: z.optional(z.enum([...FRAMING_IDS])),
   noChildrenAffirmed: z.optional(z.boolean()),
   nodes: z.optional(

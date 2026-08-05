@@ -290,6 +290,7 @@ export function PreviewHost() {
         onRequestAsset={onRequestAsset}
         currentStep={currentStep}
         onStepChange={setCurrentStep}
+        flags={{ isDevelopment: import.meta.env.DEV }}
         initialStageOverrideIndex={bypassedStageIndex ?? undefined}
         allowStageNavigation
         disableAnalytics
