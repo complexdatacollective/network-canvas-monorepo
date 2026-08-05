@@ -142,7 +142,7 @@ catalogs:
       specifier: ^17.4.2
       version: 17.4.2
     effect:
-      specifier: ^3.22.0
+      specifier: ^3.20.0
       version: 3.22.1
     electron:
       specifier: ^43.0.0
