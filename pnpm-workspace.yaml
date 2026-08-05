@@ -26,10 +26,7 @@ allowBuilds:
   msgpackr-extract: false
 
 catalog:
-  # Held at 1.6.x: 1.7.0 sends fresco-ui's Slider into an infinite update loop
-  # ("Maximum update depth exceeded" in VisualAnalogScale and the composite
-  # field migration tests). Adopting 1.7 needs that investigated first.
-  '@base-ui/react': ~1.6.0
+  '@base-ui/react': ~1.7.0
   '@capacitor/android': ^8.4.0
   '@capacitor/app': ^8.1.0
   '@capacitor/assets': ^3.0.5

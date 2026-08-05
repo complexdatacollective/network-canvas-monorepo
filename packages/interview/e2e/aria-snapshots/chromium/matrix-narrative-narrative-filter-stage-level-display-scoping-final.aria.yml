@@ -9,8 +9,7 @@
     - button "bleakly custody" [expanded]
     - button "Next preset" [disabled]
   - status
-  - dialog:
-    - region
+  - dialog
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

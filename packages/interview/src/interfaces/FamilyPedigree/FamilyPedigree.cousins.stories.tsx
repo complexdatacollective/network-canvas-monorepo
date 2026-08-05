@@ -420,11 +420,15 @@ export const FirstCousinCreationViaWizard: Story = {
 
     // DefineParentsWizard opens on BioTriadStep. Robert has no existing parents,
     // so the egg-/sperm-source selectors auto-resolve to "new" (rendered hidden)
-    // and we fill the new-person fields. is-donor defaults false and
-    // egg-parent-carried defaults true, so those are left at their defaults.
+    // and we fill the new-person fields. Sex recorded at birth is required for
+    // each new person (BioTriadStep supplies no initial value, unlike the
+    // quick-start steps); is-donor defaults false and egg-parent-carried
+    // defaults true, so those are left at their defaults.
     await setFieldInput('new-egg-source.name', 'Helen');
+    await setFieldInput('new-egg-source.biologicalSex', 'female');
     await setFieldInput('new-egg-source.gender_identity', 'woman');
     await setFieldInput('new-sperm-source.name', 'George');
+    await setFieldInput('new-sperm-source.biologicalSex', 'male');
     await setFieldInput('new-sperm-source.gender_identity', 'man');
     await clickNext(); // BioTriadStep → Other parents
 
@@ -487,8 +491,10 @@ export const FirstCousinCreationViaWizard: Story = {
 
     // Carol is preselected as the egg source. She has no recorded partner, so
     // the sperm source is unset and required — create a new (unknown) person for
-    // Emma's other parent so the step can advance.
+    // Emma's other parent so the step can advance. The new person's sex recorded
+    // at birth is required too; "Don't know" is the answer for an unknown parent.
     await setFieldInput('sperm-source', 'new');
+    await setFieldInput('new-sperm-source.biologicalSex', 'unknown');
     await clickNext(); // BioTriadStep → Other parents
 
     await setFieldInput('hasOtherParents', false);

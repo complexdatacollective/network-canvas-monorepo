@@ -16,10 +16,9 @@
     - button "Next preset" [disabled]
   - status
   - dialog:
-    - region:
-      - heading "Groups" [level=3]:
-        - button "Groups" [expanded]
-      - region "Groups": Family Work imported
+    - heading "Groups" [level=3]:
+      - button "Groups" [expanded]
+    - region "Groups": Family Work imported
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
