@@ -1,5 +1,21 @@
 # @codaco/architect
 
+## 8.0.2
+
+### Patch Changes
+
+- 3c8fe35: Generate realistic, source-backed family pedigrees with reproductive scenarios and multi-generational disease lineages, while respecting each stage's collected variables, keeping pedigree membership isolated from other interview stages, correctly rendering shared and multiple unions, widening partnership response columns, and warning participants before discarding onboarding progress.
+
+  Improve pedigree editing and parentage capture by confirming destructive deletions, preserving biological-sex values, allowing current/ex-partner status changes, and recording reproductive roles independently from sex recorded at birth.
+
+- Updated dependencies [3c8fe35]
+- Updated dependencies [fa88ae4]
+- Updated dependencies [2325d34]
+  - @codaco/protocol-utilities@3.2.0
+  - @codaco/fresco-ui@5.1.0
+  - @codaco/interview@7.1.1
+  - @codaco/shared-consts@5.6.1
+
 ## 8.0.1
 
 ### Patch Changes
