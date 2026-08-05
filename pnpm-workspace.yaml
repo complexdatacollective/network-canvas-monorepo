@@ -26,7 +26,10 @@ allowBuilds:
   msgpackr-extract: false
 
 catalog:
-  '@base-ui/react': ^1.6.0
+  # Held at 1.6.x: 1.7.0 sends fresco-ui's Slider into an infinite update loop
+  # ("Maximum update depth exceeded" in VisualAnalogScale and the composite
+  # field migration tests). Adopting 1.7 needs that investigated first.
+  '@base-ui/react': ~1.6.0
   '@capacitor/android': ^8.4.0
   '@capacitor/app': ^8.1.0
   '@capacitor/assets': ^3.0.5
@@ -68,8 +71,8 @@ catalog:
   '@testing-library/react': ^16.3.2
   '@total-typescript/ts-reset': ^0.6.1
   '@types/node': ^24.13.3
-  '@types/react': ^19.2.17
-  '@types/react-dom': ^19.2.3
+  '@types/react': ^19.2.18
+  '@types/react-dom': ^19.2.4
   # vite-plugin-dts/unplugin-dts needs the TypeScript JavaScript Compiler API,
   # which TS7 does not ship; it looks for this exact fallback package name.
   '@typescript/typescript6': ^6.0.2
