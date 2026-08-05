@@ -87,10 +87,12 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
 
   const popoverOption = options[sliderValue];
 
-  // Whether the current pointer interaction has already moved the slider, so
-  // the pristine commit below doesn't overwrite a position the participant
-  // actually chose.
-  const pointerMovedValueRef = useRef(false);
+  // The in-progress pointer press. `started` is only true for a primary press
+  // that began on this slider, so a release belonging to some other gesture —
+  // a secondary-button click, or a drag that started elsewhere and happens to
+  // end over the scale — can't record a response. `movedValue` records whether
+  // that press has already chosen an option.
+  const pointerPressRef = useRef({ started: false, movedValue: false });
 
   const handleValueChange = (newValue: number | number[]) => {
     if (readOnly) return;
@@ -98,7 +100,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
     if (index !== undefined) {
       const selectedOption = options[index];
       if (selectedOption) {
-        pointerMovedValueRef.current = true;
+        pointerPressRef.current.movedValue = true;
         onChange?.(selectedOption.value);
       }
     }
@@ -107,14 +109,30 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
   // base-ui only reports a value change when the press actually moves the
   // slider, so a pristine scale pressed on the thumb — or on the midpoint the
   // thumb already rests at — would never record a response. Commit whatever the
-  // thumb is resting on when the pointer is released instead.
+  // thumb is resting on instead.
   const commitPristineValue = () => {
-    if (disabled || readOnly || hasValue || pointerMovedValueRef.current)
-      return;
+    if (disabled || readOnly || hasValue) return;
     const restingOption = options[sliderValue];
     if (restingOption) {
       onChange?.(restingOption.value);
     }
+  };
+
+  const handlePointerDown = (event: React.PointerEvent) => {
+    pointerPressRef.current = {
+      started: event.button === 0,
+      movedValue: false,
+    };
+    if (pointerPressRef.current.started) active.onPointerDown();
+  };
+
+  // Committing on release rather than on press leaves a press that *does* move
+  // the thumb free to record the option the participant chose.
+  const handlePointerUp = () => {
+    const press = pointerPressRef.current;
+    pointerPressRef.current = { started: false, movedValue: false };
+    if (!press.started || press.movedValue) return;
+    commitPristineValue();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -145,15 +163,11 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
             handleKeyDown(event);
             active.onKeyDown(event);
           }}
-          onPointerDown={
-            readOnly
-              ? undefined
-              : () => {
-                  pointerMovedValueRef.current = false;
-                  active.onPointerDown();
-                }
-          }
-          onPointerUp={readOnly ? undefined : commitPristineValue}
+          onPointerDown={readOnly ? undefined : handlePointerDown}
+          onPointerUp={readOnly ? undefined : handlePointerUp}
+          onPointerCancel={() => {
+            pointerPressRef.current = { started: false, movedValue: false };
+          }}
           onBlur={(event) => {
             active.onBlur();
             onBlur?.(event);
