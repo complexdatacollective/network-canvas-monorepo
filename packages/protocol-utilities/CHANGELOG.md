@@ -1,5 +1,11 @@
 # @codaco/protocol-utilities
 
+## 3.1.1
+
+### Patch Changes
+
+- d985cd3: Expose the shared default seed used by `SyntheticInterview` so deterministic fixtures can use the same value explicitly.
+
 ## 3.1.0
 
 ### Minor Changes

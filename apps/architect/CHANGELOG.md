@@ -1,5 +1,46 @@
 # @codaco/architect
 
+## 8.0.1
+
+### Patch Changes
+
+- c5f30fd: Restore the full-size interview type scale on tablets.
+
+  The interview's viewport ramp for `--theme-root-size` rendered below the full
+  `1rem` base for every viewport narrower than 1280px — sitting at its `0.9rem`
+  floor (14.4px) up to tablet-portrait width and only climbing to 15.7px by iPad
+  Pro landscape width — so tablets rendered the participant interview at the
+  smallest text sizes in the product, with spacing and touch targets
+  (checkboxes, radios) shrinking in lockstep below recommended minimum sizes.
+  The ramp is now piecewise: phones keep the dense `0.9rem`-floored curve in
+  both orientations, tablets (768–1280px) get the full `1rem` base — matching
+  the interview's pre-July size and returning default form controls to the 24px
+  WCAG 2.5.8 minimum — and displays at 1280px and above are unchanged.
+
+  The interview theme also gains a 16px font-size floor for text-entry elements
+  (text inputs, textareas, selects, and rich-text editors), expressed as
+  `max(16px, 1em)` so explicitly larger sizes pass through. iOS Safari zooms the
+  page when a focused editable element renders below 16px; with the phone-width
+  type scale this made every form field a zoom trigger in browser hosts. Editable
+  text in the interview now never renders below 16px at any viewport size. To
+  support this, `SegmentedCodeField` now carries its text-size class on the
+  segment group wrapper (segment inputs inherit), so the floor preserves its
+  `lg`/`xl` sizes; computed sizes are unchanged.
+
+- Updated dependencies [ea589ec]
+- Updated dependencies [48572ed]
+- Updated dependencies [8ff0e2d]
+- Updated dependencies [c5f30fd]
+- Updated dependencies [8ff0e2d]
+- Updated dependencies [b95af22]
+- Updated dependencies [66da138]
+- Updated dependencies [d985cd3]
+- Updated dependencies [cd974f7]
+  - @codaco/fresco-ui@5.0.3
+  - @codaco/interview@7.1.0
+  - @codaco/tailwind-config@1.2.2
+  - @codaco/protocol-utilities@3.1.1
+
 ## 8.0.0
 
 ### Patch Changes

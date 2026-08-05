@@ -114,7 +114,9 @@ quality:
     GITHUB_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
   steps:
     - uses: actions/checkout@<pinned-sha>
-    - uses: pnpm/action-setup@<pinned-sha>
+    - uses: pnpm/setup@<pinned-sha>
+      with:
+        install: false
     - uses: actions/setup-node@<pinned-sha>
       with:
         node-version-file: '.nvmrc'
