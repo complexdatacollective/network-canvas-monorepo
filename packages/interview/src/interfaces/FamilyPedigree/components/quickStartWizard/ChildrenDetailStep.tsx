@@ -13,25 +13,31 @@ import { readBiologicalSex } from '../wizards/transforms/personAttributes';
 import PersonFields from './PersonFields';
 
 export default function ChildrenDetailStep() {
-  const { childrenWithPartnerCount, partner, biologicalSex } = useFormValue([
+  const values = useFormValue([
     'childrenWithPartnerCount',
-    'partner',
+    'partner.name',
+    'partner.biologicalSex',
     'biologicalSex',
   ]);
+  const childrenWithPartnerCount = values.childrenWithPartnerCount;
   const count = Number(childrenWithPartnerCount ?? 0);
-  const partnerObj = partner as
-    | { name?: string; biologicalSex?: unknown }
-    | undefined;
-  const partnerName = partnerObj?.name || 'Your partner';
+  const partnerNameValue = values['partner.name'];
+  const partnerName =
+    typeof partnerNameValue === 'string' && partnerNameValue.length > 0
+      ? partnerNameValue
+      : 'Your partner';
 
   if (count === 0) return null;
 
-  // Pre-select who provided each gamete from ego's and the partner's biological
-  // sex; fall back to the positional default (you → egg, partner → sperm) when
-  // it cannot be inferred.
+  const egoSex = readBiologicalSex(values.biologicalSex);
+  const partnerSex = readBiologicalSex(values['partner.biologicalSex']);
+
+  // Use known binary values only to choose convenient initial selections. Both
+  // people remain eligible for both gamete roles; sex recorded at birth and
+  // reproductive role are captured independently.
   const preselection = inferGameteProviders(
-    { value: 'ego', sex: readBiologicalSex(biologicalSex) },
-    { value: 'partner', sex: readBiologicalSex(partnerObj?.biologicalSex) },
+    { value: 'ego', sex: egoSex },
+    { value: 'partner', sex: partnerSex },
     {
       eggSource: 'ego',
       spermSource: 'partner',
@@ -39,11 +45,19 @@ export default function ChildrenDetailStep() {
     },
   );
 
+  const existingNodes = [
+    {
+      value: 'ego',
+      label: 'You',
+    },
+    {
+      value: 'partner',
+      label: partnerName,
+    },
+  ];
+
   const bioTriadConfig = {
-    existingNodes: [
-      { value: 'ego', label: 'You' },
-      { value: 'partner', label: partnerName },
-    ],
+    existingNodes,
     preselection,
   };
 

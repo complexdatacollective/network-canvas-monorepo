@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
@@ -163,6 +169,71 @@ describe('BioTriadStep egg/sperm mutual exclusion', () => {
     // exactly once rather than in both selectors.
     expect(screen.getAllByRole('radio', { name: 'Linda' })).toHaveLength(1);
     expect(screen.getAllByRole('radio', { name: 'Robert' })).toHaveLength(1);
+  });
+
+  it('keeps all reproductive-role candidates but excludes the selected egg parent from the carrier list', () => {
+    const Wrapper = framingWrapper('gendered');
+    render(
+      <Wrapper>
+        <Form onSubmit={() => ({ success: true })}>
+          <BioTriadConfigProvider
+            value={{
+              existingNodes: [
+                { value: 'linda', label: 'Linda' },
+                { value: 'robert', label: 'Robert' },
+                { value: 'susan', label: 'Susan' },
+              ],
+              preselection: {
+                eggSource: 'linda',
+                spermSource: 'robert',
+                eggParentCarried: false,
+              },
+            }}
+          >
+            <BioTriadStep />
+          </BioTriadConfigProvider>
+        </Form>
+      </Wrapper>,
+    );
+
+    const carrierHeading = screen.getByRole('heading', {
+      name: 'Gestational Carrier',
+    });
+    const carrierSection = carrierHeading.parentElement;
+    expect(carrierSection).not.toBeNull();
+
+    // Linda is excluded only because she answered that she did not carry.
+    // Every other candidate remains eligible.
+    expect(
+      within(carrierSection!).queryByRole('radio', { name: 'Linda' }),
+    ).toBeNull();
+    expect(
+      within(carrierSection!).getByRole('radio', { name: 'Robert' }),
+    ).toBeTruthy();
+    expect(
+      within(carrierSection!).getByRole('radio', { name: 'Susan' }),
+    ).toBeTruthy();
+    expect(screen.getAllByRole('radio', { name: 'Linda' })).toHaveLength(2);
+    expect(screen.getAllByRole('radio', { name: 'Robert' })).toHaveLength(3);
+  });
+
+  it('asks biological sex independently for newly created egg and sperm parents', () => {
+    const Wrapper = framingWrapper('gamete');
+    render(
+      <Wrapper>
+        <Form onSubmit={() => ({ success: true })}>
+          <BioTriadConfigProvider value={{}}>
+            <BioTriadStep />
+          </BioTriadConfigProvider>
+        </Form>
+      </Wrapper>,
+    );
+
+    expect(
+      screen.getAllByText('What sex was this person recorded as at birth?'),
+    ).toHaveLength(2);
+    expect(screen.getAllByRole('radio', { name: 'Female' })).toHaveLength(2);
+    expect(screen.getAllByRole('radio', { name: 'Male' })).toHaveLength(2);
   });
 });
 

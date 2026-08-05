@@ -24,7 +24,7 @@ describe('PersonFields', () => {
     expect(screen.getByRole('textbox', { name: /name/i })).toBeTruthy();
   });
 
-  it('renders the biological sex question with all values when askBiologicalSex is true (default)', () => {
+  it('renders the biological sex question with all values', () => {
     render(
       <Form onSubmit={() => ({ success: true })}>
         <PersonFields namespace="child" />
@@ -47,16 +47,23 @@ describe('PersonFields', () => {
     ).toBeTruthy();
   });
 
-  it('does not render the biological sex field when askBiologicalSex is false', () => {
+  it('preselects the initial biological sex when editing a person', () => {
     render(
       <Form onSubmit={() => ({ success: true })}>
-        <PersonFields namespace="new-egg-source" askBiologicalSex={false} />
+        <PersonFields initial={{ biologicalSex: 'female' }} />
       </Form>,
     );
 
-    expect(
-      screen.queryByText('What sex was this person recorded as at birth?'),
-    ).toBeNull();
-    expect(screen.queryByRole('radio', { name: 'Female' })).toBeNull();
+    expect(screen.getByRole('radio', { name: 'Female' })).toBeChecked();
+  });
+
+  it("preselects Don't know when editing a person with no stored biological sex", () => {
+    render(
+      <Form onSubmit={() => ({ success: true })}>
+        <PersonFields initial={{ name: 'Legacy Person' }} />
+      </Form>,
+    );
+
+    expect(screen.getByRole('radio', { name: 'Don’t know' })).toBeChecked();
   });
 });

@@ -688,6 +688,13 @@ function boundariesChildrenContributorsRequired(): ScenarioDefinition {
 
       await fp.setField('childWithPartner[0].name', 'Daniel');
       await fp.setField('childWithPartner[0].biologicalSex', 'male');
+      // Both prospective parents are recorded female, so the interface cannot
+      // infer a sperm contributor. Select one explicitly, as a participant
+      // must, now that reproductive roles are not filtered by recorded sex.
+      await fp.setField(
+        'childWithPartner[0].parentage.sperm-source',
+        'partner',
+      );
       await fp.clickWizardNext();
       await fp.dismissBuildHint();
 

@@ -4,6 +4,8 @@ import { invariant } from 'es-toolkit';
 import { useContext } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
 import Node from '@codaco/fresco-ui/Node';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
@@ -20,6 +22,7 @@ import {
   addableParentTypeOptions,
   countGeneticParents,
 } from '../../components/wizards/parentTypeOptions';
+import { readBiologicalSex } from '../../components/wizards/transforms/personAttributes';
 import {
   FamilyPedigreeContext,
   FamilyPedigreeStoreBridge,
@@ -82,6 +85,7 @@ export default function PedigreeView({
   const addNode = useFamilyPedigreeStore((s) => s.addNode);
   const addEdge = useFamilyPedigreeStore((s) => s.addEdge);
   const updateNode = useFamilyPedigreeStore((s) => s.updateNode);
+  const updateEdge = useFamilyPedigreeStore((s) => s.updateEdge);
   const removeNode = useFamilyPedigreeStore((s) => s.removeNode);
   const commitBatch = useFamilyPedigreeStore((s) => s.commitBatch);
 
@@ -114,11 +118,20 @@ export default function PedigreeView({
     biologicalSexVariable,
   };
 
-  const { openDialog } = useDialog();
+  const { confirm, openDialog } = useDialog();
 
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
     component: <Node size="sm" />,
   });
+
+  // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is null
+  // only the intro/chooser steps render and no gamete-parent labels exist yet.
+  const displayLabels = computeNodeDisplayLabels(
+    nodes,
+    edges,
+    variableConfig,
+    storeFraming ?? 'gamete',
+  );
 
   const handleAddPerson = async (nodeId: string) => {
     const result = await openDialog({
@@ -162,6 +175,10 @@ export default function PedigreeView({
       if (result[field.variableId] !== undefined) {
         formAttrs[field.variableId] = result[field.variableId] as VariableValue;
       }
+    }
+    const biologicalSex = readBiologicalSex(result.biologicalSex);
+    if (biologicalSex) {
+      formAttrs[biologicalSexVariable] = [biologicalSex];
     }
 
     const newNodeId = addNode({
@@ -211,6 +228,30 @@ export default function PedigreeView({
       'string'
         ? currentNode[entityAttributesProperty][nodeLabelVariable]
         : '';
+    const partnerships = [...edges.entries()].flatMap(([edgeId, edge]) => {
+      if (
+        getEdgeRelationshipType(edge, relationshipTypeVariable) !== 'partner'
+      ) {
+        return [];
+      }
+
+      const partnerId =
+        edge.from === nodeId ? edge.to : edge.to === nodeId ? edge.from : null;
+      if (!partnerId) return [];
+
+      return [
+        {
+          edgeId,
+          partnerLabel: displayLabels.get(partnerId) ?? 'Unnamed person',
+          status:
+            edge[entityAttributesProperty][isActiveVariable] === false
+              ? 'ex'
+              : 'current',
+        },
+      ];
+    });
+    const displayName =
+      currentName || displayLabels.get(nodeId) || 'this person';
 
     const result = await openDialog({
       type: 'form',
@@ -218,12 +259,36 @@ export default function PedigreeView({
       submitLabel: 'Done',
       cancelLabel: 'Cancel',
       children: (
-        <PersonFields
-          initial={{
-            name: currentName,
-            attributes: currentNode[entityAttributesProperty],
-          }}
-        />
+        <>
+          <PersonFields
+            initial={{
+              name: currentName,
+              biologicalSex: readBiologicalSex(
+                currentNode[entityAttributesProperty][biologicalSexVariable],
+              ),
+              attributes: currentNode[entityAttributesProperty],
+            }}
+          />
+          {partnerships.length > 0 && (
+            <Field
+              name="partnerships"
+              label={`Are these people current or ex-partners of **${displayName}**?`}
+              component={RadioMatrixField}
+              rows={partnerships.map(({ edgeId, partnerLabel }) => ({
+                id: edgeId,
+                label: partnerLabel,
+              }))}
+              options={[
+                { value: 'current', label: 'Current partner' },
+                { value: 'ex', label: 'Ex-partner' },
+              ]}
+              initialValue={partnerships.map(({ edgeId, status }) => ({
+                id: edgeId,
+                value: status,
+              }))}
+            />
+          )}
+        </>
       ),
     });
 
@@ -237,12 +302,32 @@ export default function PedigreeView({
         formAttrs[field.variableId] = result[field.variableId] as VariableValue;
       }
     }
+    const biologicalSex = readBiologicalSex(result.biologicalSex);
+    if (biologicalSex) {
+      formAttrs[biologicalSexVariable] = [biologicalSex];
+    }
 
     updateNode(nodeId, {
       ...currentNode[entityAttributesProperty],
       [nodeLabelVariable]: name,
       ...formAttrs,
     });
+
+    if (Array.isArray(result.partnerships)) {
+      const editableEdgeIds = new Set(partnerships.map(({ edgeId }) => edgeId));
+      for (const update of result.partnerships) {
+        if (typeof update !== 'object' || update === null) continue;
+        const { id, value } = update as Record<string, unknown>;
+        if (
+          typeof id !== 'string' ||
+          !editableEdgeIds.has(id) ||
+          (value !== 'current' && value !== 'ex')
+        ) {
+          continue;
+        }
+        updateEdge(id, { [isActiveVariable]: value === 'current' });
+      }
+    }
   };
 
   const handleAddChild = async (nodeId: string) => {
@@ -307,8 +392,26 @@ export default function PedigreeView({
     }
   };
 
-  const handleDeleteNode = (nodeId: string) => {
-    removeNode(nodeId);
+  const handleDeleteNode = async (nodeId: string) => {
+    const node = nodes.get(nodeId);
+    if (!node) return;
+    const rawName = node[entityAttributesProperty][nodeLabelVariable];
+    const name =
+      typeof rawName === 'string' && rawName.length > 0
+        ? rawName
+        : displayLabels.get(nodeId) || 'this person';
+
+    await confirm({
+      title: `Delete ${name}?`,
+      description:
+        'This will delete this person and all of their relationships from the family pedigree. This action cannot be undone.',
+      confirmLabel: 'Delete person',
+      cancelLabel: 'Cancel',
+      intent: 'destructive',
+      onConfirm: () => {
+        removeNode(nodeId);
+      },
+    });
   };
 
   const handleMenuAction = (nodeId: string, action: NodeContextMenuAction) => {
@@ -321,20 +424,11 @@ export default function PedigreeView({
     } else if (action === 'parent') {
       void handleAddParent(nodeId);
     } else if (action === 'delete') {
-      handleDeleteNode(nodeId);
+      void handleDeleteNode(nodeId);
     } else {
       void handleAddPerson(nodeId);
     }
   };
-
-  // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is null
-  // only the intro/chooser steps render and no gamete-parent labels exist yet.
-  const displayLabels = computeNodeDisplayLabels(
-    nodes,
-    edges,
-    variableConfig,
-    storeFraming ?? 'gamete',
-  );
 
   return (
     <div className="absolute inset-0 overflow-x-auto pt-6">

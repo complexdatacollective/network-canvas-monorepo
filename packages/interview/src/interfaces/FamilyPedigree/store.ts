@@ -103,6 +103,7 @@ type NetworkActions = {
     attributes: Record<string, VariableValue>;
     id?: string;
   }) => string;
+  updateEdge: (id: string, attributes: Record<string, VariableValue>) => void;
   removeEdge: (id: string) => void;
   clearNetwork: () => void;
   setStep: (step: FamilyPedigreeState['step']) => void;
@@ -263,6 +264,15 @@ export const createFamilyPedigreeStore = (
           return edgeId;
         },
 
+        updateEdge: (id, attributes) => {
+          set((state) => {
+            const edge = state.network.edges.get(id);
+            if (edge) {
+              Object.assign(edge[entityAttributesProperty], attributes);
+            }
+          });
+        },
+
         removeEdge: (id) => {
           set((state) => {
             state.network.edges.delete(id);
@@ -278,8 +288,9 @@ export const createFamilyPedigreeStore = (
         },
 
         commitBatch: (rawBatch) => {
-          // Every pedigree node must carry a biological-sex value: keep what was
-          // asked, otherwise infer it from the person's reproductive role.
+          // Every pedigree node must carry a biological-sex value. Current
+          // flows capture it directly; the helper supplies a defensive legacy
+          // fallback without ever replacing a captured answer.
           const batch = withInferredBiologicalSex(rawBatch, variableConfig);
           set((state) => {
             const tempIdToRealId = new Map<string, string>();
