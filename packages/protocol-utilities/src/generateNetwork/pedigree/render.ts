@@ -75,6 +75,15 @@ export const PEDIGREE_RELATIONSHIP_TERMS = [
 ] as const;
 
 /**
+ * A kinship term every pedigree with more than one relative writes twice.
+ *
+ * Ego has two parents, so `Parent` is the term that always repeats. Feasibility
+ * counts it to refuse a `unique` rule over the kinship variable, which no
+ * pedigree can satisfy however wide the text domain.
+ */
+export const PEDIGREE_REPEATED_TERM = 'Parent';
+
+/**
  * Kinship terms, computed from the structure rather than drawn.
  *
  * The interface writes this variable itself at finalize, from a breadth-first

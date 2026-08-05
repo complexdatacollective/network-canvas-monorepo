@@ -64,6 +64,32 @@ describe('a unique rule on a variable the pedigree writes', () => {
     isEgo: { name: 'Is ego', type: 'boolean', validation: { unique: true } },
   });
 
+  // The kinship term, the recorded sex and the nomination booleans repeat by
+  // their nature — a family has two parents, most people are recorded female or
+  // male — so a `unique` rule over any of them is unsatisfiable however wide the
+  // domain. Counting only the proband flag let a `unique` text kinship variable
+  // pass analysis and then put "Parent" on two people.
+  it('refuses a unique kinship term, whose domain is unbounded', () => {
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 1,
+        codebook: personCodebook({
+          rel: { name: 'Rel', type: 'text', validation: { unique: true } },
+        }),
+        stages: [
+          {
+            id: 'stage-pedigree',
+            type: 'FamilyPedigree',
+            label: 'Family',
+            nodeConfig: { type: 'person', relationshipVariable: 'rel' },
+            edgeConfig: { type: 'family' },
+          } as unknown as Stage,
+        ],
+      });
+
+    expect(generate).toThrow(SyntheticDataConstraintError);
+  });
+
   it('is refused up front, naming the pedigree as the writer', () => {
     const generate = (): unknown =>
       generateNetwork({

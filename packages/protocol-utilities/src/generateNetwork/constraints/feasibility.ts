@@ -19,6 +19,7 @@ import {
   type RosterCarriedValues,
   ruleBrokenByFixedValues,
 } from '../nodes';
+import { PEDIGREE_REPEATED_TERM } from '../pedigree/render';
 import { getSubjectType } from '../subject';
 import { collectBinOnlyVariables } from './binOnlyVariables';
 import { buildEntityConstraints } from './buildConstraints';
@@ -315,6 +316,39 @@ function countPedigreeFixedValues(
         [egoVariable, true, Math.min(ceiling, 1)],
         [egoVariable, false, Math.max(ceiling - 1, 0)],
       ]);
+    }
+
+    // The other structural node values the pedigree writes rather than draws.
+    // They repeat by their nature — a family has two parents and several
+    // cousins, and most people are recorded female or male — so a `unique` rule
+    // over any of them is unsatisfiable however wide the domain. Counting only
+    // the proband flag let a `unique` kinship term pass analysis and then put
+    // "Parent" on two people.
+    //
+    // Counted as "the commonest value lands on at least two nodes", which is
+    // the weakest claim that still refuses: the exact split depends on the
+    // family the seed draws.
+    const repeated = Math.min(ceiling, 2);
+    if (nodeType !== undefined && repeated > 1) {
+      const relationshipVariable = stage.nodeConfig?.relationshipVariable;
+      if (relationshipVariable !== undefined) {
+        recordPinned(node, nodeType, stageIndex, [
+          [relationshipVariable, PEDIGREE_REPEATED_TERM, repeated],
+        ]);
+      }
+
+      const sexVariable = stage.nodeConfig?.biologicalSexVariable;
+      if (sexVariable !== undefined) {
+        recordPinned(node, nodeType, stageIndex, [
+          [sexVariable, ['female'], repeated],
+        ]);
+      }
+
+      for (const prompt of stage.nominationPrompts ?? []) {
+        recordPinned(node, nodeType, stageIndex, [
+          [prompt.variable, false, repeated],
+        ]);
+      }
     }
 
     const edgeType = stage.edgeConfig?.type;
