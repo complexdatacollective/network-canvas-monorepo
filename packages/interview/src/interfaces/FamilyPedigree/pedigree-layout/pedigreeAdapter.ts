@@ -201,17 +201,23 @@ export function buildConnectorData(
     vScale: 1,
   };
 
-  // Build set of active partner pairs (numeric index keys)
+  // Build sets of all and active partner pairs (numeric index keys). The full
+  // set is authoritative for connector endpoints; the active subset controls
+  // whether the relationship break mark is rendered.
+  let partnerPairs: Set<string> | undefined;
   let activePartnerPairs: Set<string> | undefined;
   if (idToIndex) {
+    partnerPairs = new Set<string>();
     activePartnerPairs = new Set<string>();
     for (const edge of edges.values()) {
       const { relationshipType, isActive } = readEdge(edge, variableConfig);
-      if (relationshipType !== 'partner' || !isActive) continue;
+      if (relationshipType !== 'partner') continue;
       const i1 = idToIndex.get(edge.from);
       const i2 = idToIndex.get(edge.to);
       if (i1 === undefined || i2 === undefined) continue;
-      activePartnerPairs.add(`${Math.min(i1, i2)},${Math.max(i1, i2)}`);
+      const pairKey = `${Math.min(i1, i2)},${Math.max(i1, i2)}`;
+      partnerPairs.add(pairKey);
+      if (isActive) activePartnerPairs.add(pairKey);
     }
   }
 
@@ -224,6 +230,7 @@ export function buildConnectorData(
     undefined,
     nodeNames,
     indexToId,
+    partnerPairs,
   );
 
   // Transform all coordinates to pixel space
@@ -233,6 +240,9 @@ export function buildConnectorData(
 
   for (const sp of connectors.groupLines) {
     transformSegment(sp.segment, sx, sy, xOffset);
+    for (const endpoint of sp.endpointSegments ?? []) {
+      transformSegment(endpoint, sx, sy, xOffset);
+    }
     if (sp.doubleSegment) {
       transformSegment(sp.doubleSegment, sx, sy, xOffset);
     }
@@ -291,6 +301,9 @@ export function buildConnectorData(
   if (Number.isFinite(rawMinX) && rawMinX !== 0) {
     for (const sp of connectors.groupLines) {
       shiftSegment(sp.segment, -rawMinX, 0);
+      for (const endpoint of sp.endpointSegments ?? []) {
+        shiftSegment(endpoint, -rawMinX, 0);
+      }
       if (sp.doubleSegment) shiftSegment(sp.doubleSegment, -rawMinX, 0);
     }
     for (const pc of connectors.parentChildLines) {
@@ -323,6 +336,9 @@ export function buildConnectorData(
   if (rawMinY !== 0) {
     for (const sp of connectors.groupLines) {
       shiftSegment(sp.segment, 0, -rawMinY);
+      for (const endpoint of sp.endpointSegments ?? []) {
+        shiftSegment(endpoint, 0, -rawMinY);
+      }
       if (sp.doubleSegment) shiftSegment(sp.doubleSegment, 0, -rawMinY);
     }
     for (const pc of connectors.parentChildLines) {

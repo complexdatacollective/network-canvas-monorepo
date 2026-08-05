@@ -104,6 +104,18 @@ export default function PedigreeLayout({
   // produces a bounding box ~1.2× the node size. Add inset so nodes and edges
   // are shifted inward, preventing diamond tips from being clipped.
   const diamondInset = Math.ceil(nodeWidth * 0.1);
+  const routedConnectorMinY = Math.min(
+    0,
+    ...connectorData.connectors.groupLines.flatMap((line) => [
+      line.segment.y1,
+      line.segment.y2,
+      ...(line.endpointSegments ?? []).flatMap((segment) => [
+        segment.y1,
+        segment.y2,
+      ]),
+    ]),
+  );
+  const routedConnectorInset = -routedConnectorMinY;
 
   let totalWidth = 0;
   let totalHeight = 0;
@@ -115,7 +127,7 @@ export default function PedigreeLayout({
   }
 
   totalWidth += diamondInset * 2;
-  totalHeight += diamondInset * 2;
+  totalHeight += diamondInset * 2 + routedConnectorInset;
 
   const edgeColor = 'var(--edge-1)';
 
@@ -130,7 +142,7 @@ export default function PedigreeLayout({
         width={totalWidth}
         height={totalHeight}
         offsetX={diamondInset}
-        offsetY={diamondInset}
+        offsetY={diamondInset + routedConnectorInset}
         highlightedNodeIds={highlightedNodeIds}
         highlightedEdgeKeys={highlightedEdgeKeys}
       />
@@ -143,7 +155,7 @@ export default function PedigreeLayout({
             key={id}
             className="absolute"
             style={{
-              top: pos.y + diamondInset,
+              top: pos.y + diamondInset + routedConnectorInset,
               left: pos.x + diamondInset,
               width: metrics.containerWidth,
               height: metrics.containerHeight,

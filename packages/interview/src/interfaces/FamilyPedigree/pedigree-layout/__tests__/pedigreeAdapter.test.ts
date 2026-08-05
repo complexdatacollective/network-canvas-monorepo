@@ -483,6 +483,88 @@ describe('buildConnectorData', () => {
       new Set(['ego', 'sibling']),
     );
   });
+
+  test('preserves three explicit former partnerships that share one parent', () => {
+    const nodes = makeNodes([
+      { id: 'margaret' },
+      { id: 'biologicalParent' },
+      { id: 'melville' },
+      { id: 'white' },
+      { id: 'robert', isEgo: true },
+    ]);
+    const edges = makeEdges([
+      {
+        from: 'margaret',
+        to: 'biologicalParent',
+        relationshipType: 'partner',
+        isActive: false,
+      },
+      {
+        from: 'margaret',
+        to: 'melville',
+        relationshipType: 'partner',
+        isActive: false,
+      },
+      {
+        from: 'margaret',
+        to: 'white',
+        relationshipType: 'partner',
+        isActive: false,
+      },
+      {
+        from: 'margaret',
+        to: 'robert',
+        relationshipType: 'biological',
+      },
+      {
+        from: 'biologicalParent',
+        to: 'robert',
+        relationshipType: 'biological',
+      },
+      { from: 'melville', to: 'robert', relationshipType: 'social' },
+      { from: 'white', to: 'robert', relationshipType: 'social' },
+    ]);
+
+    const { input, indexToId, idToIndex } = storeToPedigreeInput(
+      nodes,
+      edges,
+      variableConfig,
+    );
+    const layout = alignPedigree(input);
+    const { connectors } = buildConnectorData(
+      layout,
+      edges,
+      TEST_DIMENSIONS,
+      variableConfig,
+      input.parents,
+      idToIndex,
+      undefined,
+      indexToId,
+    );
+
+    const partnershipPairs = connectors.groupLines
+      .map((line) => line.partnerIds?.toSorted().join('|'))
+      .filter((pair): pair is string => pair !== undefined)
+      .toSorted();
+
+    expect(partnershipPairs).toEqual([
+      'biologicalParent|margaret',
+      'margaret|melville',
+      'margaret|white',
+    ]);
+    expect(connectors.groupLines.every((line) => !line.isActive)).toBe(true);
+    expect(
+      connectors.groupLines.filter(
+        (line) => line.endpointSegments !== undefined,
+      ),
+    ).toHaveLength(1);
+
+    const socialParentPairs = connectors.auxiliaryLines
+      .filter((line) => line.edgeType === 'social')
+      .map((line) => line.endpointIds?.filter(Boolean).toSorted().join('|'));
+    expect(socialParentPairs).toContain('melville|robert');
+    expect(socialParentPairs).toContain('robert|white');
+  });
 });
 
 describe('end-to-end: store → layout → positions', () => {

@@ -6,6 +6,7 @@ import {
   minimizeCrossings,
   sugiyamaLayout,
 } from '../sugiyamaLayout';
+import type { PedigreeInput } from '../types';
 import {
   consanguineousUnion,
   crossSibshipPartnership,
@@ -102,6 +103,36 @@ describe('buildPedigreeGraph', () => {
     );
     expect(fu1!.children).toEqual([3]);
     expect(fu2!.children).toEqual([4]);
+  });
+
+  it('does not infer a partnership between social parents who each partner the biological parent', () => {
+    const pedigree: PedigreeInput = {
+      id: ['margaret', 'biologicalParent', 'melville', 'white', 'robert'],
+      parents: [
+        [],
+        [],
+        [],
+        [],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'biological' },
+          { parentIndex: 2, edgeType: 'social' },
+          { parentIndex: 3, edgeType: 'social' },
+        ],
+      ],
+      partners: [
+        { partnerIndex1: 0, partnerIndex2: 1, isActive: false },
+        { partnerIndex1: 0, partnerIndex2: 2, isActive: false },
+        { partnerIndex1: 0, partnerIndex2: 3, isActive: false },
+      ],
+    };
+
+    const groupKeys = buildPedigreeGraph(pedigree)
+      .partnerGroups.map((group) => group.members.join(','))
+      .toSorted();
+
+    expect(groupKeys).toEqual(['0,1', '0,2', '0,3']);
+    expect(groupKeys).not.toContain('2,3');
   });
 
   it('stores parents on the graph', () => {

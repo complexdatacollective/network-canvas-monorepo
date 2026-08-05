@@ -108,6 +108,10 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     }
   }
 
+  // Explicit partner edges are authoritative. Implicit co-parent inference is
+  // only a fallback for parents whose partnership was not recorded.
+  const explicitPartnerPairs = new Set(groupMap.keys());
+
   // From implicit co-parent detection
   for (let i = 0; i < n; i++) {
     const pConns = ped.parents[i]!;
@@ -124,6 +128,26 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
       for (let b = a + 1; b < primaryParents.length; b++) {
         const pa = primaryParents[a]!;
         const pb = primaryParents[b]!;
+
+        const hasExplicitPartnerAmongOtherParents = (parent: number) =>
+          primaryParents.some(
+            (candidate) =>
+              candidate !== parent &&
+              candidate !== (parent === pa ? pb : pa) &&
+              explicitPartnerPairs.has(partnerGroupKey([parent, candidate])),
+          );
+
+        // When either co-parent has an explicit partnership to another parent
+        // of this child, do not invent a partnership between this pair. This is
+        // common in multi-parent families: two social parents may each be an
+        // ex-partner of the same biological parent without being partners of
+        // one another.
+        if (
+          hasExplicitPartnerAmongOtherParents(pa) ||
+          hasExplicitPartnerAmongOtherParents(pb)
+        ) {
+          continue;
+        }
 
         const edgeA = pConns.find(
           (p) => p.parentIndex === pa && isPrimaryEdge(p.edgeType),
