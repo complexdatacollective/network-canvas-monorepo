@@ -34,7 +34,7 @@ function makeSession(overrides: Partial<SessionState> = {}): SessionState {
 const mutateSession = createAction<Partial<SessionState>>('TEST/MUTATE');
 
 function createTestStore(
-  middleware: ReturnType<typeof createSyncMiddleware>,
+  middleware: ReturnType<typeof createSyncMiddleware>['middleware'],
   initialSession?: SessionState,
 ) {
   const session = initialSession ?? makeSession();
@@ -58,7 +58,8 @@ function createTestStore(
 // --- Test suite ---
 
 let onSyncMock: Mock;
-let middleware: ReturnType<typeof createSyncMiddleware>;
+let middleware: ReturnType<typeof createSyncMiddleware>['middleware'];
+let flush: ReturnType<typeof createSyncMiddleware>['flush'];
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -66,7 +67,7 @@ beforeEach(() => {
   vi.spyOn(console, 'log').mockImplementation(vi.fn());
   vi.spyOn(console, 'error').mockImplementation(vi.fn());
 
-  middleware = createSyncMiddleware({ onSync: onSyncMock });
+  ({ middleware, flush } = createSyncMiddleware({ onSync: onSyncMock }));
 });
 
 afterEach(() => {
@@ -315,5 +316,87 @@ describe('syncMiddleware', () => {
     expect(allSteps.every((step) => step === '2026-01-01T00:00:01.000Z')).toBe(
       true,
     );
+  });
+});
+
+describe('syncMiddleware flush', () => {
+  it('writes a pending change immediately without waiting out the debounce', async () => {
+    const store = createTestStore(middleware);
+
+    // Leading edge consumes the first change.
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
+
+    // A later change is now sitting in the trailing debounce window.
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
+
+    // No timer advance: flush must write it right now.
+    await flush();
+
+    expect(onSyncMock).toHaveBeenCalledTimes(2);
+    expect(onSyncMock).toHaveBeenLastCalledWith(
+      'interview-1',
+      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:02.000Z' }),
+    );
+  });
+
+  it('waits for an already in-flight sync before resolving', async () => {
+    let resolveSync!: () => void;
+    onSyncMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSync = resolve;
+        }),
+    );
+
+    const store = createTestStore(middleware);
+
+    // Leading edge sync starts and stays in-flight.
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
+
+    // A newer answer arrives while that write is on the wire.
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:02.000Z' }));
+
+    let settled = false;
+    const flushed = flush().then(() => {
+      settled = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(false);
+
+    resolveSync();
+    await flushed;
+
+    expect(settled).toBe(true);
+    expect(onSyncMock).toHaveBeenCalledTimes(2);
+    expect(onSyncMock).toHaveBeenLastCalledWith(
+      'interview-1',
+      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:02.000Z' }),
+    );
+  });
+
+  it('resolves rather than rejecting when the final sync fails', async () => {
+    onSyncMock.mockRejectedValue(new Error('Vault locked'));
+
+    const store = createTestStore(middleware);
+
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+
+    // Finishing must never be blocked by a failed write.
+    await expect(flush()).resolves.toBeUndefined();
+    expect(onSyncMock).toHaveBeenCalled();
+  });
+
+  it('is a no-op when nothing has changed', async () => {
+    createTestStore(middleware);
+
+    await flush();
+
+    expect(onSyncMock).not.toHaveBeenCalled();
   });
 });

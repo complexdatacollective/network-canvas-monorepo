@@ -33,30 +33,37 @@ export const store = (
   { session: sessionPayload, protocol: protocolPayload }: InterviewPayload,
   options: StoreOptions,
 ) => {
-  const syncMiddleware = createSyncMiddleware({ onSync: options.onSync });
+  const { middleware: syncMiddleware, flush } = createSyncMiddleware({
+    onSync: options.onSync,
+  });
   const tracker = options.tracker ?? NULL_TRACKER;
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
   }).middleware;
 
-  return configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({
-        serializableCheck: {
-          ignoredActions: ['dialogs/addDialog', 'dialogs/open/pending'],
-        },
-      }).concat(
-        ...(options.isDevelopment ? [logger] : []),
-        syncMiddleware,
-        analyticsMiddleware,
-        ...(options.extraMiddleware ?? []),
-      ),
-    preloadedState: {
-      session: sessionPayload,
-      protocol: protocolPayload,
-    },
-  });
+  // Object.assign rather than a cast so the store's inferred type (dispatch
+  // thunk overloads included) survives alongside the added flushSync.
+  return Object.assign(
+    configureStore({
+      reducer: rootReducer,
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({
+          serializableCheck: {
+            ignoredActions: ['dialogs/addDialog', 'dialogs/open/pending'],
+          },
+        }).concat(
+          ...(options.isDevelopment ? [logger] : []),
+          syncMiddleware,
+          analyticsMiddleware,
+          ...(options.extraMiddleware ?? []),
+        ),
+      preloadedState: {
+        session: sessionPayload,
+        protocol: protocolPayload,
+      },
+    }),
+    { flushSync: flush },
+  );
 };
 
 export type RootState = ReturnType<typeof rootReducer>;
