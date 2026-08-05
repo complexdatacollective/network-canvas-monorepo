@@ -156,7 +156,7 @@ function isPromptedNodeStage(stage: Stage): stage is PromptedNodeStage {
 }
 
 /**
- * Whether the prompt a stage lists at `index` can create a node on any seed.
+ * The most nodes the prompt at `index` can create when the stage fabricates.
  *
  * `createNodesForStage` counts every prompt of a stage against one `maxNodes`
  * and draws at least `minNodes` of whatever that ceiling still leaves, so by
@@ -166,15 +166,22 @@ function isPromptedNodeStage(stage: Stage): stage is PromptedNodeStage {
  * the prompts before it drew generously — and its `additionalAttributes` reach
  * no node at all.
  *
- * A prompt that can draw on some seed is not judged by this: a value it fixes
- * lands on those seeds, and a fixed value nothing can satisfy is exactly the
- * seed-dependent failure the analysis exists to refuse ahead of time.
+ * This is both the reachability test and the prompt-specific feasibility
+ * ceiling. Keeping the arithmetic here means the creation write tally and the
+ * fixed-value tally cannot disagree about how much stage capacity remains.
  */
-function promptCanDraw(
+export function fabricatedPromptNodeCeiling(
   index: number,
   { minNodes, maxNodes }: { minNodes: number; maxNodes: number },
+): number {
+  return Math.max(maxNodes - Math.min(index * minNodes, maxNodes), 0);
+}
+
+function promptCanDraw(
+  index: number,
+  bounds: { minNodes: number; maxNodes: number },
 ): boolean {
-  return index * minNodes < maxNodes;
+  return fabricatedPromptNodeCeiling(index, bounds) > 0;
 }
 
 /**
@@ -187,14 +194,13 @@ function promptCanDraw(
  * allows are going to end up holding it. Counted at each stage's node ceiling,
  * for the same reason the rest of feasibility counts worst cases.
  *
- * The ceiling belongs to the stage rather than to each of its prompts:
- * `createNodesForStage` counts every prompt of a stage against the same
- * `maxNodes`, so a stage allowed one node creates one node however many of its
- * prompts fix the value, and summing each prompt's independent maximum would
- * refuse a protocol that generates perfectly well. That capacity is spent in
- * prompt order, so the prompts past the point where it runs out spend nothing
- * at all — see {@link promptCanDraw}. Stages are summed against each other,
- * because a `unique` value is claimed once for the whole run.
+ * Every fabricating prompt is counted against the capacity left after the
+ * minimum its predecessors must spend. A stage allowed one node therefore
+ * creates one node however many prompts fix the value, while a later prompt
+ * cannot be credited with capacity already guaranteed to earlier prompts.
+ * Where several prompts fix the same value their ceilings are maxed rather
+ * than summed: they spend one shared stage capacity. Stages are summed against
+ * each other, because a `unique` value is claimed once for the whole run.
  *
  * A roster stage is the one place a prompt's value can fail to land: the row's
  * own value for the variable wins there (see `createNodesForStage`), so only
@@ -223,26 +229,31 @@ export function countPromptFixedValues(
       stage.type === 'NameGeneratorRoster'
         ? externalData?.[stage.id]
         : undefined;
-    // A roster stage handed rows builds every node from one; anything else may
-    // fabricate, and writes its prompt's value onto whatever it fabricates.
-    const fabricates = pool === undefined;
+    // NameGenerator and QuickAdd may fabricate even when they were handed
+    // rows. Roster does so only for its deliberate missing-entry fallback.
+    const fabricates =
+      stage.type !== 'NameGeneratorRoster' || pool === undefined;
 
     const forStage: PromptFixedValues = new Map();
 
     for (const [index, prompt] of stage.prompts.entries()) {
-      // The capacity a prompt is left runs out for good, so the first prompt
-      // that cannot draw ends the stage's list rather than being stepped over.
-      if (!promptCanDraw(index, bounds)) break;
+      const promptCeiling = fabricatedPromptNodeCeiling(index, bounds);
+      // A fabricating stage spends at least its minimum on every predecessor,
+      // so its capacity runs out for good. A row-bound roster may draw fewer
+      // than its minimum under one prompt and still reach a later one.
+      if (fabricates && promptCeiling === 0) break;
 
       for (const { variable, value } of prompt.additionalAttributes ?? []) {
-        const carriers = pool
-          ? Math.min(
-              maxNodes,
-              pool.filter(
-                (row) => row[entityAttributesProperty][variable] === undefined,
-              ).length,
-            )
-          : maxNodes;
+        const carriers =
+          !fabricates && pool
+            ? Math.min(
+                maxNodes,
+                pool.filter(
+                  (row) =>
+                    row[entityAttributesProperty][variable] === undefined,
+                ).length,
+              )
+            : promptCeiling;
         if (carriers === 0) continue;
 
         const forVariable =
@@ -1034,7 +1045,7 @@ export function createNodesForStage(
   // produce. A roster (or an incomplete fixture with no declared collection
   // surface) keeps the conservative whole-type fallback because its rows decide
   // which values arrive.
-  const stageWrites = declaresNodeCollection(stage)
+  const stageWrites = declaresNodeCollection(stage, prompt)
     ? withRuleTiedVariables(
         nodeTypeDef.variables,
         nodeVariablesWrittenOnCreation(stage, [stage], prompt),

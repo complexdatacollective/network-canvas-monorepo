@@ -199,16 +199,17 @@ export function nodeVariablesWrittenOnCreation(
  * Whether a stage declares a collection surface for the nodes it creates.
  *
  * A roster's rows decide what is present, so it keeps the former whole-type
- * fill for values a row omits. An incomplete hand-built fixture with no
- * collection surface gets the same conservative fallback: it may over-count,
- * but cannot let a real draw run out after feasibility under-counted it.
+ * fill for values a row omits. An incomplete hand-built fixture with neither
+ * fields nor prompt assignments gets the same conservative fallback: it may
+ * over-count, but cannot let a real draw run out after feasibility
+ * under-counted it.
  */
-export function declaresNodeCollection(stage: Stage): boolean {
+export function declaresNodeCollection(
+  stage: Stage,
+  prompt?: CreationPrompt,
+): boolean {
   if (stage.type === 'NameGeneratorRoster') return false;
-  // Fixed prompt attributes are assignments, not a collection surface. A
-  // hand-built NameGenerator fixture with no form therefore keeps the legacy
-  // whole-type fallback even if one of its prompts carries a fixed value.
-  return nodeVariablesWrittenOnCreation(stage, [stage], {}).size > 0;
+  return nodeVariablesWrittenOnCreation(stage, [stage], prompt).size > 0;
 }
 
 /** Variables a stage writes onto nodes that existed before it ran. */

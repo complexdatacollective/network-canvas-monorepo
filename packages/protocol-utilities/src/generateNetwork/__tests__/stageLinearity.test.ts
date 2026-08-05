@@ -11,7 +11,7 @@ import { generateNetwork } from '../../generateNetwork';
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 
 describe('stage-linear node writes', () => {
-  it("keeps one prompt's fixed attributes off nodes created by another prompt", () => {
+  it("keeps each prompt's distinct fixed attributes on its own nodes", () => {
     const codebook = {
       node: {
         person: {
@@ -19,7 +19,8 @@ describe('stage-linear node writes', () => {
           color: 'node-color-seq-1',
           variables: {
             name: { name: 'Name', type: 'text' },
-            flagged: { name: 'Flagged', type: 'boolean' },
+            firstFlag: { name: 'First flag', type: 'boolean' },
+            secondFlag: { name: 'Second flag', type: 'boolean' },
           },
         },
       },
@@ -31,40 +32,48 @@ describe('stage-linear node writes', () => {
       subject: { entity: 'node', type: 'person' },
       prompts: [
         {
-          id: 'flagged-prompt',
-          text: 'Name flagged people',
-          additionalAttributes: [{ variable: 'flagged', value: true }],
+          id: 'first-prompt',
+          text: 'Name the first group',
+          additionalAttributes: [{ variable: 'firstFlag', value: true }],
         },
-        { id: 'plain-prompt', text: 'Name other people' },
+        {
+          id: 'second-prompt',
+          text: 'Name the second group',
+          additionalAttributes: [{ variable: 'secondFlag', value: true }],
+        },
       ],
       behaviours: { minNodes: 1, maxNodes: 2 },
       form: { fields: [{ variable: 'name', prompt: 'Name' }] },
     } as unknown as Stage;
 
-    let observedPlainPrompt = false;
+    let observedSecondPrompt = false;
     for (let seed = 1; seed <= 20; seed++) {
       const { network } = generateNetwork({ codebook, stages: [stage], seed });
-      const flagged = network.nodes.filter((node) =>
-        node.promptIDs?.includes('flagged-prompt'),
+      const first = network.nodes.filter((node) =>
+        node.promptIDs?.includes('first-prompt'),
       );
-      const plain = network.nodes.filter((node) =>
-        node.promptIDs?.includes('plain-prompt'),
+      const second = network.nodes.filter((node) =>
+        node.promptIDs?.includes('second-prompt'),
       );
-      observedPlainPrompt ||= plain.length > 0;
+      observedSecondPrompt ||= second.length > 0;
 
       expect(
-        flagged.every(
-          (node) => node[entityAttributesProperty].flagged === true,
+        first.every(
+          (node) =>
+            node[entityAttributesProperty].firstFlag === true &&
+            node[entityAttributesProperty].secondFlag === undefined,
         ),
       ).toBe(true);
       expect(
-        plain.every(
-          (node) => node[entityAttributesProperty].flagged === undefined,
+        second.every(
+          (node) =>
+            node[entityAttributesProperty].firstFlag === undefined &&
+            node[entityAttributesProperty].secondFlag === true,
         ),
       ).toBe(true);
     }
 
-    expect(observedPlainPrompt).toBe(true);
+    expect(observedSecondPrompt).toBe(true);
   });
 
   it('preserves unique and sameAs rules when a Sociogram writes highlights', () => {

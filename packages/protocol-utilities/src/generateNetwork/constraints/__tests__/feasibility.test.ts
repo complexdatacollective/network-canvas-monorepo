@@ -1204,6 +1204,41 @@ describe('values a prompt fixes', () => {
     ).toEqual([]);
   });
 
+  it('accepts a unique value fixed only by a later prompt with one slot left', () => {
+    const codebook = codebookWith({
+      firstFlag: { name: 'First flag', type: 'boolean' },
+      secondFlag: { name: 'Second flag', type: 'boolean' },
+      flagged: {
+        name: 'Flagged',
+        type: 'boolean',
+        validation: { unique: true },
+      },
+    });
+    const stage = {
+      ...fixingGenerator(5),
+      prompts: [
+        {
+          id: 'p1',
+          text: 'First prompt',
+          additionalAttributes: [{ variable: 'firstFlag', value: true }],
+        },
+        {
+          id: 'p2',
+          text: 'Second prompt',
+          additionalAttributes: [{ variable: 'secondFlag', value: true }],
+        },
+        {
+          id: 'p3',
+          text: 'Third prompt',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+      ],
+      behaviours: { minNodes: 2, maxNodes: 5 },
+    } as unknown as Stage;
+
+    expect(analyseFeasibility(codebook, [stage], config)).toEqual([]);
+  });
+
   it('accepts a fixed value no rule holds unique', () => {
     const codebook = codebookWith({
       flagged: { name: 'Flagged', type: 'boolean' },

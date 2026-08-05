@@ -182,6 +182,37 @@ describe('worstCaseEntityCounts', () => {
     expect(nodeCountFor(counts.node, 'person', ['isEgo'])).toBe(0);
   });
 
+  it('counts each prompt write against the capacity left when it runs', () => {
+    const stage = nameGenerator({
+      form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'First prompt',
+          additionalAttributes: [{ variable: 'firstFlag', value: true }],
+        },
+        {
+          id: 'p2',
+          text: 'Second prompt',
+          additionalAttributes: [{ variable: 'secondFlag', value: true }],
+        },
+        {
+          id: 'p3',
+          text: 'Third prompt',
+          additionalAttributes: [{ variable: 'thirdFlag', value: true }],
+        },
+      ],
+      behaviours: { minNodes: 2, maxNodes: 5 },
+    });
+
+    const counts = worstCaseEntityCounts([stage], config);
+
+    expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(5);
+    expect(nodeCountFor(counts.node, 'person', ['firstFlag'])).toBe(5);
+    expect(nodeCountFor(counts.node, 'person', ['secondFlag'])).toBe(3);
+    expect(nodeCountFor(counts.node, 'person', ['thirdFlag'])).toBe(1);
+  });
+
   it('applies a later writer only to nodes that already exist', () => {
     const before = nameGenerator({
       id: 'before',

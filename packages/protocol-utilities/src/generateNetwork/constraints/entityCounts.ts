@@ -19,6 +19,7 @@ import {
 } from '../familyPedigree/generateFamilyPedigree';
 import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/types';
 import {
+  fabricatedPromptNodeCeiling,
   getNodeCountBounds,
   type NodeCreationStage,
   ruleBrokenByFixedValues,
@@ -219,8 +220,16 @@ export function unwrittenEdgeVariables(
 type NodeCreation = {
   count: number;
   stageIndex: number;
-  /** Exact creation-time writes, or the conservative whole-type fallback. */
-  writes: ReadonlySet<string> | 'all';
+  /**
+   * Prompt-specific creation-time writes and their remaining capacities, or
+   * the conservative whole-type fallback.
+   */
+  writes:
+    | readonly {
+        count: number;
+        variables: ReadonlySet<string> | 'all';
+      }[]
+    | 'all';
 };
 
 type NodeTally = {
@@ -586,11 +595,24 @@ export function nodeCountFor(
   let fabricated = 0;
   for (const creation of tally.fabricated) {
     const { writes } = creation;
-    const filledAtCreation =
-      writes === 'all' || variableIds.some((id) => writes.has(id));
-    if (filledAtCreation || creation.stageIndex <= writtenAt) {
+    if (writes === 'all' || creation.stageIndex <= writtenAt) {
       fabricated += creation.count;
+      continue;
     }
+
+    // Prompts consume one shared stage capacity in order. The largest window
+    // writing any member of the equality group is therefore the earliest such
+    // prompt's remaining capacity; summing windows would count the same stage
+    // capacity more than once.
+    fabricated += Math.max(
+      0,
+      ...writes
+        .filter(
+          ({ variables }) =>
+            variables === 'all' || variableIds.some((id) => variables.has(id)),
+        )
+        .map(({ count }) => count),
+    );
   }
 
   return (
@@ -1246,7 +1268,8 @@ export function worstCaseEntityCounts(
       if (nodeType === undefined) continue;
 
       const tally = tallyFor(node, nodeType);
-      const { maxNodes } = getNodeCountBounds(stage, config);
+      const bounds = getNodeCountBounds(stage, config);
+      const { maxNodes } = bounds;
       // Only a roster stage is held to its rows. Every other node-creation
       // stage may fabricate, so a roster it also draws from lowers nothing. Of
       // those rows, only the ones the rules admit bound it — a pool none of
@@ -1257,15 +1280,35 @@ export function worstCaseEntityCounts(
           : undefined;
 
       if (pool === undefined) {
+        const variables = nodeVariables?.(nodeType);
+        const writes =
+          stage.type === 'NetworkComposer'
+            ? [
+                {
+                  count: maxNodes,
+                  variables: withRuleTiedVariables(
+                    variables,
+                    nodeVariablesWrittenOnCreation(stage, stages),
+                  ),
+                },
+              ]
+            : stage.type === 'NameGeneratorRoster'
+              ? 'all'
+              : stage.prompts
+                  .map((prompt, promptIndex) => ({
+                    count: fabricatedPromptNodeCeiling(promptIndex, bounds),
+                    variables: declaresNodeCollection(stage, prompt)
+                      ? withRuleTiedVariables(
+                          variables,
+                          nodeVariablesWrittenOnCreation(stage, stages, prompt),
+                        )
+                      : ('all' as const),
+                  }))
+                  .filter(({ count }) => count > 0);
         tally.fabricated.push({
           count: maxNodes,
           stageIndex,
-          writes: declaresNodeCollection(stage)
-            ? withRuleTiedVariables(
-                nodeVariables?.(nodeType),
-                nodeVariablesWrittenOnCreation(stage, stages),
-              )
-            : 'all',
+          writes,
         });
       } else {
         tally.rosterDrawn += Math.min(maxNodes, pool.length);
@@ -1355,17 +1398,23 @@ export function worstCaseEntityCounts(
         nodeTotal(tally),
         familyPedigree,
       );
+      const created =
+        Math.max(
+          pedigreeNodeCeiling(config, pedigreeContext) - (reusesEgo ? 1 : 0),
+          0,
+        ) + inheritedContributorCeiling.nodes;
       tally.fabricated.push({
-        count:
-          Math.max(
-            pedigreeNodeCeiling(config, pedigreeContext) - (reusesEgo ? 1 : 0),
-            0,
-          ) + inheritedContributorCeiling.nodes,
+        count: created,
         stageIndex,
-        writes: withRuleTiedVariables(
-          nodeVariables?.(nodeType),
-          pedigreeNodeVariables(stage, stages),
-        ),
+        writes: [
+          {
+            count: created,
+            variables: withRuleTiedVariables(
+              nodeVariables?.(nodeType),
+              pedigreeNodeVariables(stage, stages),
+            ),
+          },
+        ],
       });
 
       const edgeType = stage.edgeConfig?.type;
