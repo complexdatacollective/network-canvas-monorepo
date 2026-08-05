@@ -96,6 +96,11 @@ const APP_MIRROR_OVERRIDES = {
       'storybook-static',
       'test-results',
       'playwright-report',
+      // Agent tooling is monorepo-only: the skills live in the canonical
+      // .agents/skills tree at the repo root, and the mirror is not a place
+      // anyone develops.
+      '.agents',
+      '.claude',
     ],
   },
 };

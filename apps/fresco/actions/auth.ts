@@ -53,38 +53,11 @@ export async function signup(formData: unknown) {
     return { success: false, error: 'Setup is already complete.' };
   }
 
-  const data = formData as Record<string, unknown>;
-  const password = data.password;
-
-  // Passkey-only signup: password is null
-  if (password === null || password === undefined) {
-    const username = data.username;
-    if (typeof username !== 'string' || username.length < 4) {
-      return { success: false, error: 'Invalid username' };
-    }
-
-    let user;
-    try {
-      user = await prisma.user.create({
-        data: {
-          username,
-          key: {
-            create: {
-              id: `username:${username}`,
-              hashed_password: null,
-            },
-          },
-        },
-      });
-    } catch {
-      return { success: false, error: 'Username already taken' };
-    }
-
-    await createSessionCookie(user.id);
-    return { success: true };
-  }
-
-  // Password-based signup
+  // Password-based signup only. Passkey-only accounts must go through
+  // `signupWithPasskey`, which creates the user and stores the credential in a
+  // single step after registration has been verified — accepting a null
+  // password here would let a direct Server Action call create a credential-less
+  // account and claim the setup session.
   const parsedFormData = createUserSchema.safeParse(formData);
 
   if (!parsedFormData.success) {

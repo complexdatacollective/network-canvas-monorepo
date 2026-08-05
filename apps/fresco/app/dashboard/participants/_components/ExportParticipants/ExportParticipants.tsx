@@ -24,8 +24,12 @@ export function useExportParticipants(protocols: ProtocolWithInterviews[]) {
 
           for (const protocol of protocols) {
             const name = protocol.name.split('.')[0] ?? protocol.id;
+            // The onboard route only reads `participantIdentifier`; this must
+            // match the URL built by GenerateParticipantURLButton.
             row[`interview_url_${name}`] =
-              `${window.location.origin}/onboard/${protocol.id}/?participantId=${participant.id}`;
+              `${window.location.origin}/onboard/${protocol.id}/?participantIdentifier=${encodeURIComponent(
+                participant.identifier,
+              )}`;
           }
 
           return row;

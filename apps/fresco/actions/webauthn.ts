@@ -26,12 +26,16 @@ import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { checkRateLimit, recordLoginAttempt } from '~/lib/rateLimit';
 import { isAppConfigured } from '~/queries/appSettings';
+import { changePasswordSchema } from '~/schemas/users';
 import { getClientIp } from '~/utils/getClientIp';
 import { hashPassword, verifyPassword } from '~/utils/password';
 
 import { addEvent } from './activityFeed';
 
 const CHALLENGE_COOKIE_NAME = 'webauthn_challenge';
+
+// Same strength rule the change-password flow enforces.
+const strongPasswordSchema = changePasswordSchema.shape.newPassword;
 
 function splitTransports(
   transports: string | null,
@@ -629,7 +633,19 @@ export async function switchToPasswordMode(newPassword: string) {
     return { error: 'Account is already in password mode.', data: null };
   }
 
-  const hashed = await hashPassword(newPassword);
+  // The dialog applies this strength check client-side, but this Server Action
+  // is directly invokable — without it, a weak or empty password could replace
+  // the account's passkeys.
+  const parsedPassword = strongPasswordSchema.safeParse(newPassword);
+  if (!parsedPassword.success) {
+    return {
+      error:
+        'Password must be at least 8 characters and contain at least 1 lowercase, 1 uppercase, 1 number, and 1 symbol.',
+      data: null,
+    };
+  }
+
+  const hashed = await hashPassword(parsedPassword.data);
 
   await prisma.$transaction([
     prisma.key.updateMany({
