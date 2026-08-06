@@ -4,9 +4,9 @@ import { z } from 'zod/mini';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type {
   CustomFieldValidation,
-  FieldValue,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
 
@@ -63,6 +63,9 @@ export default function PersonNameField({
   const codebook = useSelector(getCodebook);
   const pedigreeNodes = useFamilyPedigreeStore((state) => state.network.nodes);
   const baseValidationContext = useStageSelector(getValidationContext);
+  const getActiveFormValues = useFormStore(
+    (state) => state.getActiveFormValues,
+  );
 
   const nodeVariables = codebook.node?.[nodeType]?.variables ?? {};
   const validationMetadata = selectValidationMetadataForVariable(
@@ -76,12 +79,13 @@ export default function PersonNameField({
     validationProps.unique !== undefined
       ? {
           hint: 'Must also be unique within this family setup.',
-          schema: (formValues: Record<string, FieldValue>) =>
+          schema: () =>
             z.unknown().check(
               z.superRefine((value, ctx) => {
                 if (
                   typeof value === 'string' &&
-                  countPendingNames(formValues, value) > 1
+                  value.trim().length > 0 &&
+                  countPendingNames(getActiveFormValues(), value) > 1
                 ) {
                   ctx.addIssue({
                     code: 'custom',

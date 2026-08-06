@@ -64,6 +64,8 @@ export type ValidationContext = {
   network: NcNetwork;
   currentEntityId?: string;
   currentEntityAttributes?: NcNode[EntityAttributesProperty];
+  /** Resolve form-to-form comparison rules within this FieldNamespace. */
+  formValueNamespace?: string;
 };
 
 // ═══════════════════════════════════════════════════════════════

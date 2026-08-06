@@ -4,7 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Form from '@codaco/fresco-ui/form/Form';
 import type { NcNode } from '@codaco/shared-consts';
 
@@ -21,6 +25,11 @@ const fixtures = vi.hoisted(() => {
             type: 'text' as const,
             component: 'Text' as const,
             validation: { required: true, unique: true },
+          },
+          alias: {
+            name: 'Alias',
+            type: 'text' as const,
+            component: 'Text' as const,
           },
         },
       },
@@ -102,6 +111,11 @@ function renderForm(
 describe('PersonNameField', () => {
   beforeEach(() => {
     fixtures.localNodes = new Map();
+    const validation = fixtures.codebook.node.person.variables.name
+      .validation as Record<string, unknown>;
+    validation.required = true;
+    validation.unique = true;
+    delete validation.sameAs;
   });
 
   it('applies the label variable required rule', async () => {
@@ -162,6 +176,28 @@ describe('PersonNameField', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
   });
 
+  it('allows multiple optional pedigree names to be left blank', async () => {
+    const validation = fixtures.codebook.node.person.variables.name
+      .validation as Record<string, unknown>;
+    validation.required = false;
+    fixtures.localNodes = new Map([
+      [
+        'unnamed',
+        {
+          _uid: 'unnamed',
+          type: 'person',
+          attributes: { name: '' },
+        },
+      ],
+    ]);
+    const user = userEvent.setup();
+    const onSubmit = renderForm(<PersonNameField label="Name" />);
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+  });
+
   it('rejects duplicate names entered in one multi-person wizard', async () => {
     const user = userEvent.setup();
     const onSubmit = renderForm(
@@ -190,6 +226,71 @@ describe('PersonNameField', () => {
     for (const error of errors) {
       expect(error).toHaveTextContent(/must be unique/i);
     }
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('ignores names retained by an unmounted creation branch', async () => {
+    const user = userEvent.setup();
+    const onSubmit = renderForm(
+      <>
+        <Field
+          name="selection"
+          label="Choose a person"
+          component={RadioGroupField}
+          options={[
+            { value: 'new', label: 'Create a new person' },
+            { value: 'existing', label: 'Existing person' },
+          ]}
+          initialValue="new"
+        />
+        <FieldGroup
+          watch={['selection']}
+          condition={(values) => values.selection === 'new'}
+        >
+          <FieldNamespace prefix="discarded">
+            <PersonNameField label="Discarded name" />
+          </FieldNamespace>
+        </FieldGroup>
+        <FieldNamespace prefix="active">
+          <PersonNameField label="Active name" />
+        </FieldNamespace>
+      </>,
+    );
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Discarded name' }),
+      'Alice',
+    );
+    await user.click(screen.getByRole('radio', { name: 'Existing person' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Active name' }),
+      'Alice',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+  });
+
+  it('applies comparison rules within the current person namespace', async () => {
+    const validation = fixtures.codebook.node.person.variables.name
+      .validation as Record<string, unknown>;
+    validation.unique = false;
+    validation.sameAs = 'alias';
+    const user = userEvent.setup();
+    const onSubmit = renderForm(
+      <FieldNamespace prefix="parent">
+        <Field name="alias" label="Alias" component={InputField} />
+        <PersonNameField label="Name" />
+      </FieldNamespace>,
+    );
+
+    await user.type(screen.getByRole('textbox', { name: 'Alias' }), 'Alice');
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Bob');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByTestId('name-field-error')).toHaveTextContent(
+      /same as/i,
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });

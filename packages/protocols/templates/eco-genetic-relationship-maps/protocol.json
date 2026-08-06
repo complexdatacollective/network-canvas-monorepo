@@ -682,7 +682,7 @@
             "options": {
               "type": "person",
               "attribute": "living_status",
-              "operator": "NOT",
+              "operator": "EXCLUDES",
               "value": "deceased"
             }
           }

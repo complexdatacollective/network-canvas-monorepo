@@ -608,6 +608,32 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(true);
     });
 
+    it('should accept unanswered optional values even when another entity is also unanswered', () => {
+      const mockNetwork = {
+        nodes: [
+          {
+            _uid: 'node1',
+            type: 'person',
+            [entityAttributesProperty]: { name: '' },
+          },
+        ],
+        edges: [],
+        ego: {
+          _uid: 'ego',
+          [entityAttributesProperty]: {},
+        },
+      } as NcNetwork;
+
+      const validator = validations.unique(
+        'name',
+        createMockContext({ network: mockNetwork }),
+      )({});
+
+      expect(validator.safeParse('').success).toBe(true);
+      expect(validator.safeParse('   ').success).toBe(true);
+      expect(validator.safeParse(undefined).success).toBe(true);
+    });
+
     it('should throw error for ego entities', () => {
       const context = createMockContext({
         stageSubject: { entity: 'ego' } as StageSubject,
@@ -783,6 +809,19 @@ describe('Validation Functions', () => {
 
       const result = validator.safeParse('sameValue');
       expect(result.success).toBe(true);
+    });
+
+    it('resolves comparison fields relative to the active namespace', () => {
+      const validator = validations.sameAs(
+        'testAttribute',
+        createMockContext({ formValueNamespace: 'parent' }),
+      )({
+        testAttribute: 'wrong top-level person',
+        parent: { testAttribute: 'sameValue' },
+      });
+
+      expect(validator.safeParse('sameValue').success).toBe(true);
+      expect(validator.safeParse('differentValue').success).toBe(false);
     });
 
     it('should throw error when attribute is not specified', () => {

@@ -58,6 +58,7 @@ export type FormStore = {
 
   // Getters with selective subscription
   getFieldState: (fieldName: string) => FieldState | undefined;
+  getActiveFormValues: () => Record<string, FieldValue>;
   getFormValues: () => Record<string, FieldValue>;
   getFormErrors: () => string[] | null;
   getFieldErrors: (fieldName: string) => string[] | null;
@@ -346,6 +347,15 @@ export const createFormStore = (): FormStoreApi => {
           state.dormantValues.get(fieldName) ??
           undefined
         );
+      },
+
+      getActiveFormValues: () => {
+        const state = get();
+        const values = {};
+        state.fields.forEach((fieldState, fieldName) => {
+          setValue(values, fieldName, fieldState.value);
+        });
+        return values as Record<string, FieldValue>;
       },
 
       getFormValues: () => {

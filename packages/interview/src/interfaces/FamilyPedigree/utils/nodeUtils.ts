@@ -1,7 +1,7 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, FormField } from '@codaco/protocol-validation';
 
 import { getCurrentStage } from '../../../selectors/session';
 import { getCodebook } from '../../../store/modules/protocol';
@@ -35,7 +35,26 @@ export const getRelationshipVariable = createSelector(
   getNodeConfig,
   (c) => c.relationshipVariable,
 );
-export const getNodeForm = createSelector(getNodeConfig, (c) => c.form);
+
+export function excludeNodeLabelVariable<T extends { variable: string }>(
+  form: readonly T[] | undefined,
+  nodeLabelVariable: string,
+): T[] | undefined {
+  return form?.filter((field) => field.variable !== nodeLabelVariable);
+}
+
+// The pedigree always renders its configured label through PersonNameField.
+// If an author also places that variable in the additional node form, suppress
+// the duplicate control rather than registering two writers for one value.
+export const getNodeForm: (
+  state: RootState,
+  currentStep: number,
+) => FormField[] | undefined = createSelector(
+  getNodeConfig,
+  getNodeLabelVariable,
+  (config, nodeLabelVariable) =>
+    excludeNodeLabelVariable(config.form, nodeLabelVariable),
+);
 export const getBiologicalSexVariable = createSelector(
   getNodeConfig,
   (c) => c.biologicalSexVariable,

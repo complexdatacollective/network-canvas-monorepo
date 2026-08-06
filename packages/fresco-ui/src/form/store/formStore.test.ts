@@ -405,6 +405,22 @@ describe('FormStore', () => {
       });
     });
 
+    it('can read active values without dormant unmounted fields', () => {
+      store.getState().unregisterField('user.name');
+
+      expect(store.getState().getActiveFormValues()).toEqual({
+        user: { email: 'john@example.com' },
+        preferences: { theme: 'dark' },
+      });
+      expect(store.getState().getFormValues()).toEqual({
+        user: {
+          name: 'John',
+          email: 'john@example.com',
+        },
+        preferences: { theme: 'dark' },
+      });
+    });
+
     it('should get form errors with nested structure', async () => {
       const mockError1 = new z.core.$ZodError([
         { code: 'custom', message: 'Name required', path: ['user', 'name'] },
