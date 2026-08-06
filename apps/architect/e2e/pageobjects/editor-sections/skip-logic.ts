@@ -1,7 +1,12 @@
 import { type Page } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
-import { addRule, chooseJoin, type RuleSpec } from './rule-builder.js';
+import {
+  addRule,
+  assertJoinMatchesRules,
+  chooseJoin,
+  type RuleSpec,
+} from './rule-builder.js';
 
 // SkipLogic section (sections/SkipLogic.tsx, `Section title="Skip Logic"`,
 // toggleable, collapsed on a fresh stage, never subject-gated). Facts
@@ -29,6 +34,7 @@ export async function configureSkipLogic(
     destination?: 'End the interview';
   },
 ): Promise<void> {
+  assertJoinMatchesRules(opts.rules, opts.join);
   const section = editor.section('Skip Logic');
   await section
     .getByRole('switch', { name: 'Turn this feature on or off' })

@@ -168,7 +168,10 @@ test.describe.serial('sample protocol built from scratch', () => {
   // observed worst cases without masking a genuine hang.
   test.describe.configure({ timeout: 120_000 });
 
-  let context: BrowserContext;
+  // Undefined until `beforeAll` assigns them, which is what `afterAll` has to
+  // tolerate: if setup throws before the assignment, an unguarded teardown
+  // raises a TypeError that replaces the real failure in the report.
+  let context: BrowserContext | undefined;
   let page: Page;
   let editor: StageEditor;
 
@@ -202,7 +205,7 @@ test.describe.serial('sample protocol built from scratch', () => {
   });
 
   test.afterAll(async () => {
-    await context.close();
+    await context?.close();
   });
 
   async function saveStage(

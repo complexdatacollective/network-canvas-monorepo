@@ -45,9 +45,14 @@ export async function pickResource(
   page: Page,
   assetName: string,
 ): Promise<void> {
-  await page
-    .getByRole('dialog', { name: 'Resource Browser' })
+  const dialog = page.getByRole('dialog', { name: 'Resource Browser' });
+  await dialog
     .getByRole('listbox', { name: 'Resource library' })
     .getByRole('heading', { level: 4, name: assetName, exact: true })
     .click();
+  // Selection closes the browser. Wait for that, as the upload path already
+  // does: otherwise the caller can act while the dialog still covers the
+  // page, and callers that assert nothing afterwards (setImageBackground)
+  // would return with the field value still uncommitted.
+  await expect(dialog).toBeHidden();
 }

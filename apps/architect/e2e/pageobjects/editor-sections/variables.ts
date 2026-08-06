@@ -151,8 +151,13 @@ export async function createVariableWithOptions(
     await page.getByRole('option', { name: typeLabel }).click();
   }
 
+  // Scope to this dialog (InlineEditScreen renders `Dialog title="Create New
+  // Variable"`). The prompt editor underneath has its own "Variable Options"
+  // list with an identically-labelled 'Add new' — it only mounts once the
+  // prompt's `variable` is set, which is after this runs, but relying on that
+  // ordering would make a strict-mode collision one refactor away.
   await fillOptionRows(
-    page.locator('body'),
+    page.getByRole('dialog', { name: 'Create New Variable' }),
     opts.options.map((option) =>
       typeof option === 'string'
         ? { label: option, value: option.toLowerCase() }

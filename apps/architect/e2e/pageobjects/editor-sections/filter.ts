@@ -1,5 +1,10 @@
 import { type StageEditor } from '../stage-editor.js';
-import { addRule, chooseJoin, type RuleSpec } from './rule-builder.js';
+import {
+  addRule,
+  assertJoinMatchesRules,
+  chooseJoin,
+  type RuleSpec,
+} from './rule-builder.js';
 
 // Stage-level network filter (sections/Filter.tsx, `Section title="Filter"`,
 // toggleable, collapsed on a fresh stage). Rendered NESTED inside the
@@ -16,6 +21,7 @@ export async function configureStageFilter(
   editor: StageEditor,
   opts: { rules: RuleSpec[]; join?: 'All rules' | 'Any rule' },
 ): Promise<void> {
+  assertJoinMatchesRules(opts.rules, opts.join);
   const section = editor.section('Filter');
   await section
     .getByRole('switch', { name: 'Turn this feature on or off' })

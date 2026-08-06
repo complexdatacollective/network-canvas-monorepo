@@ -40,7 +40,12 @@ export type RuleSpec =
       kind: 'alterBooleanAttribute';
       nodeTypeName: string;
       variableName: string;
-      value: boolean;
+      // `true` only, deliberately. An entity rule's boolean starts as '' (not
+      // false), so authoring `false` means toggling on then off — a sequence
+      // no sample-protocol rule needs and none of these tests would cover.
+      // The type says so rather than a runtime throw, so a caller finds out
+      // at compile time.
+      value: true;
     };
 
 export async function addRule(host: Locator, spec: RuleSpec): Promise<void> {
@@ -92,13 +97,6 @@ export async function addRule(host: Locator, spec: RuleSpec): Promise<void> {
       await dialog
         .getByRole('combobox', { name: 'Operator' })
         .selectOption({ label: 'is exactly' });
-      if (!spec.value) {
-        // An untouched entity-rule boolean stays '' (invalid); false would
-        // need an ON-then-OFF toggle no sample-protocol rule requires.
-        throw new Error(
-          'alterBooleanAttribute with value:false is not implemented',
-        );
-      }
       await dialog
         .locator('[data-name="Attribute Value"]')
         .getByRole('switch')
@@ -110,6 +108,21 @@ export async function addRule(host: Locator, spec: RuleSpec): Promise<void> {
   // Wait out the exit animation before the caller adds the next rule or
   // touches controls behind the dialog (see prompts.ts for the pattern).
   await dialog.waitFor({ state: 'detached' });
+}
+
+// The rule validator rejects a multi-rule filter with no join ("Please select
+// a join type"), and it does so at save() — long after the helper that built
+// the rules returned. Fail where the mistake was made instead.
+export function assertJoinMatchesRules(
+  rules: readonly RuleSpec[],
+  join: 'All rules' | 'Any rule' | undefined,
+): void {
+  if (rules.length > 1 && !join) {
+    throw new Error(
+      `${rules.length} rules need a join ('All rules' or 'Any rule') — ` +
+        'without one the rule validator blocks the stage from saving.',
+    );
+  }
 }
 
 // 'Must match' radios: 'All rules' → AND, 'Any rule' → OR. Only rendered
