@@ -11,6 +11,7 @@ import {
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol, seedProtocol } from '../fixtures/seed.js';
 import {
+  assertBuiltProtocolInvariants,
   dropForcedRequiredValidation,
   normalizeProtocol,
 } from '../helpers/normalize-protocol.js';
@@ -1024,6 +1025,14 @@ test.describe.serial('sample protocol built from scratch', () => {
     const validation = await validateProtocol(built);
     expect(validation.error?.message ?? '').toBe('');
     expect(validation.success).toBe(true);
+
+    // The comparison below deletes a handful of fields from BOTH documents to
+    // forgive 2022-era authoring artifacts, which would otherwise make it
+    // blind to those fields entirely. Assert them against the built protocol
+    // on its own terms first, so a migration that (say) stopped minting
+    // form-field ids or assigned every entity the same colour still fails —
+    // schema validation would not catch either.
+    assertBuiltProtocolInvariants(built);
 
     const normalizedBuilt = normalizeProtocol(built);
     const normalizedCanonical = normalizeProtocol(canonicalRaw);

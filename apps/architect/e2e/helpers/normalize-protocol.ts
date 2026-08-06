@@ -312,6 +312,131 @@ export function normalizeProtocol(input: unknown): unknown {
   return remap(stripped, idMap);
 }
 
+// Every tolerance above deletes a field from BOTH documents, which makes the
+// comparison blind to that field entirely — not just to the historical
+// artifact it was meant to forgive. For a spec whose job is to be the
+// regression oracle for the redux-form migration, that is the wrong trade:
+// a migration that stopped writing form-field ids, or assigned every entity
+// the same colour, would produce a document that is still schema-valid and
+// still compares equal.
+//
+// So each deletion that hides a *live* value carries a compensating check
+// here, asserted against the BUILT protocol on its own terms. Anything the
+// canonical file cannot express (its opaque asset sources, its colour-sequence
+// gaps) is checked as an invariant of what Architect writes today instead.
+// `lastModified` and the toggle/rule defaults need nothing — they have no
+// meaningful value to regress.
+export function assertBuiltProtocolInvariants(built: unknown): void {
+  const problems: string[] = [];
+  if (!isRecord(built)) throw new Error('built protocol is not an object');
+
+  // --- assetManifest[*].source (deleted: canonical uses opaque storage keys)
+  // Upload writes `source: file.name` and `name: file.name` from the same
+  // File, so they must agree; a source whose extension contradicts its type
+  // (the '.txt for a video' case) would break export ZIP entries and preview
+  // MIME types while still validating.
+  const EXTENSIONS: Record<string, RegExp> = {
+    image: /\.(png|svg|jpe?g|gif)$/i,
+    video: /\.(mov|mp4)$/i,
+    audio: /\.(mp3|aiff|m4a)$/i,
+    network: /\.(csv|json)$/i,
+    geojson: /\.geojson$/i,
+  };
+  const manifest = isRecord(built.assetManifest) ? built.assetManifest : {};
+  for (const [id, entry] of Object.entries(manifest)) {
+    if (!isRecord(entry)) {
+      problems.push(`assetManifest[${id}] is not an object`);
+      continue;
+    }
+    const { name, source, type } = entry;
+    if (typeof source !== 'string' || source === '') {
+      problems.push(`assetManifest[${id}].source is missing`);
+      continue;
+    }
+    if (source !== name) {
+      problems.push(
+        `assetManifest[${id}].source ${JSON.stringify(source)} !== name ${JSON.stringify(name)} — upload derives both from File.name`,
+      );
+    }
+    const expected = typeof type === 'string' ? EXTENSIONS[type] : undefined;
+    if (expected && !expected.test(source)) {
+      problems.push(
+        `assetManifest[${id}].source ${JSON.stringify(source)} does not carry a ${String(type)} extension`,
+      );
+    }
+  }
+
+  // --- codebook.{node,edge}[*].color (deleted: canonical has authoring gaps)
+  // Built from scratch, `getNextCategoryColor` assigns from the type count, so
+  // N types must hold exactly seq-1..N — distinct and dense. That is what
+  // catches "every new type got seq-1", which the canonical file's own gapped
+  // sequence (1,2,5,7) cannot be compared against.
+  const codebook = isRecord(built.codebook) ? built.codebook : {};
+  for (const entity of ['node', 'edge'] as const) {
+    const types = isRecord(codebook[entity]) ? codebook[entity] : {};
+    const colors = Object.values(types).map((entry) =>
+      isRecord(entry) ? entry.color : undefined,
+    );
+    const expected = colors
+      .map((_, index) => `${entity}-color-seq-${index + 1}`)
+      .toSorted();
+    const actual = [...colors].toSorted();
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      problems.push(
+        `codebook.${entity} colours ${JSON.stringify(actual)} are not the dense sequence ${JSON.stringify(expected)}`,
+      );
+    }
+  }
+
+  // --- stages[*].form.fields[*].id (deleted: canonical predates them)
+  // DialogArrayField mints these so ordered-list keying survives reorder and
+  // delete. PR 2 rewrites that component, so this is precisely the regression
+  // this oracle exists to catch.
+  const stages = Array.isArray(built.stages) ? built.stages : [];
+  const fieldIds = new Set<string>();
+  for (const [index, stage] of stages.entries()) {
+    if (!isRecord(stage) || !isRecord(stage.form)) continue;
+    const fields = Array.isArray(stage.form.fields) ? stage.form.fields : [];
+    for (const field of fields) {
+      const id = isRecord(field) ? field.id : undefined;
+      if (typeof id !== 'string' || id === '') {
+        problems.push(`stages[${index}].form has a field with no id`);
+        continue;
+      }
+      if (fieldIds.has(id)) {
+        problems.push(`form field id ${id} is reused across forms`);
+      }
+      fieldIds.add(id);
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      `built protocol violates invariants the comparison tolerances hide:\n- ${problems.join('\n- ')}`,
+    );
+  }
+}
+
+// The variables whose forced `required` the comparison is allowed to forgive:
+// exactly those a CategoricalBin prompt points at with `otherVariable`. Any
+// OTHER text variable that acquires `{required: true}` is a real regression
+// (QuickAdd's `name`, or a form variable like `visit_purpose`), and must not
+// be swallowed — see dropForcedRequiredValidation.
+function collectOtherVariableIds(protocol: unknown): Set<string> {
+  const ids = new Set<string>();
+  const stages =
+    isRecord(protocol) && Array.isArray(protocol.stages) ? protocol.stages : [];
+  for (const stage of stages) {
+    if (!isRecord(stage) || !Array.isArray(stage.prompts)) continue;
+    for (const prompt of stage.prompts) {
+      if (isRecord(prompt) && typeof prompt.otherVariable === 'string') {
+        ids.add(prompt.otherVariable);
+      }
+    }
+  }
+  return ids;
+}
+
 // Tolerance (pair-aware): the CategoricalBin other-variable creation path
 // hard-codes `validation: { required: true }` onto the text variables it
 // creates (withVariableHandlers.tsx), and the only in-editor escape hatch —
@@ -326,13 +451,30 @@ export function normalizeProtocol(input: unknown): unknown {
 // fails. (The QuickAdd `name` variable does NOT need this: its Validation
 // section lives in the stage form, where clearing works — see
 // editor-sections/quick-add.ts.)
+// Scoped to the `otherVariable` targets only. A blanket "any text variable
+// with exactly {required:true}" rule would also forgive a regression that
+// forced `required` onto QuickAdd's `name` or a form variable like
+// `visit_purpose` — schema-valid, so `validateProtocol` would not catch it
+// either, and the oracle would pass while the protocol had changed.
 export function dropForcedRequiredValidation(
   built: unknown,
   canonical: unknown,
 ): unknown {
-  const walk = (builtValue: unknown, canonicalValue: unknown): unknown => {
+  const forgiven = collectOtherVariableIds(built);
+
+  // `variableId` is the id of the variable object currently being walked, and
+  // it is knowable in exactly one place: a `variables` map keys its children
+  // by it. `inVariablesMap` marks the step where that is true.
+  const walk = (
+    builtValue: unknown,
+    canonicalValue: unknown,
+    variableId: string | undefined,
+    inVariablesMap: boolean,
+  ): unknown => {
     if (Array.isArray(builtValue) && Array.isArray(canonicalValue)) {
-      return builtValue.map((item, index) => walk(item, canonicalValue[index]));
+      return builtValue.map((item, index) =>
+        walk(item, canonicalValue[index], variableId, false),
+      );
     }
     if (!isRecord(builtValue) || !isRecord(canonicalValue)) {
       return builtValue;
@@ -341,6 +483,8 @@ export function dropForcedRequiredValidation(
     for (const [key, child] of Object.entries(builtValue)) {
       if (
         key === 'validation' &&
+        variableId !== undefined &&
+        forgiven.has(variableId) &&
         builtValue.type === 'text' &&
         !('validation' in canonicalValue) &&
         isRecord(child) &&
@@ -349,9 +493,14 @@ export function dropForcedRequiredValidation(
       ) {
         continue;
       }
-      out[key] = walk(child, canonicalValue[key]);
+      out[key] = walk(
+        child,
+        canonicalValue[key],
+        inVariablesMap ? key : variableId,
+        key === 'variables',
+      );
     }
     return out;
   };
-  return walk(built, canonical);
+  return walk(built, canonical, undefined, false);
 }
