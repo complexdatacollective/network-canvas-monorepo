@@ -1,7 +1,8 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { render } from '@testing-library/react';
+import { configureStore, type UnknownAction } from '@reduxjs/toolkit';
+import { act, render } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import {
+  change,
   reducer as formReducer,
   reduxForm,
   type InjectedFormProps,
@@ -94,11 +95,14 @@ const setup = (
       getDefaultMiddleware({ serializableCheck: false }),
   });
 
-  return render(
-    <Provider store={store}>
-      <ReduxHarness initialValues={{ validation }} {...ownProps} />
-    </Provider>,
-  );
+  return {
+    ...render(
+      <Provider store={store}>
+        <ReduxHarness initialValues={{ validation }} {...ownProps} />
+      </Provider>,
+    ),
+    store,
+  };
 };
 
 // Six reference-type rules (sameAs, differentFrom, and the four numeric
@@ -174,5 +178,19 @@ describe('Validations: reference-rule gating batches per rule, not per candidate
     expect(atForty).toBeLessThanOrEqual(
       atTwenty * 2 + REFERENCE_RULE_COUNT * 4,
     );
+  });
+
+  it('does not re-run the analyser for form activity unrelated to validation', () => {
+    const { store, unmount } = setup(buildCodebook(10), {});
+    const afterMount = analyser.calls;
+
+    act(() => {
+      store.dispatch(change(FORM_NAME, 'name', 'unrelated') as UnknownAction);
+    });
+
+    expect(afterMount).toBeGreaterThan(0);
+    expect(analyser.calls).toBe(afterMount);
+
+    unmount();
   });
 });

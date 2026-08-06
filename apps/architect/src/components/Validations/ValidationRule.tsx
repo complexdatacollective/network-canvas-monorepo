@@ -12,7 +12,7 @@ import {
   isValidationWithNumberValue,
 } from './options';
 
-type TargetOption = {
+export type TargetOption = {
   label: string;
   value: string;
 };

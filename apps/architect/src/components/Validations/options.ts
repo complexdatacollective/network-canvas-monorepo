@@ -3,12 +3,16 @@ import { startCase, without } from 'es-toolkit/compat';
 import {
   VARIABLE_REFERENCE_VALIDATIONS,
   VARIABLE_TYPE_VALIDATIONS,
+  type ValidationName,
 } from '@codaco/protocol-validation';
 
 // The Anonymisation stage's passphrase is not a codebook variable — its
 // validation lives on the stage schema — so it has no entry in the shared
 // per-variable-type record.
-const PASSPHRASE_VALIDATIONS = ['minLength', 'maxLength'];
+const PASSPHRASE_VALIDATIONS = [
+  'minLength',
+  'maxLength',
+] as const satisfies readonly ValidationName[];
 
 const isVariableType = (
   type: string,
@@ -28,7 +32,7 @@ const VALIDATIONS_WITHOUT_VALUES = ['required', 'unique'];
 
 // Human-readable labels for each rule's row in the editor. Anything not listed
 // here (there shouldn't be any) falls back to a start-cased version of the key.
-const VALIDATION_LABELS: Record<string, string> = {
+const VALIDATION_LABELS: Partial<Record<ValidationName, string>> = {
   required: 'Required',
   unique: 'Must be unique',
   minLength: 'Minimum length',
@@ -45,7 +49,7 @@ const VALIDATION_LABELS: Record<string, string> = {
   greaterThanOrEqualToVariable: 'Greater than or equal to',
 };
 
-const getValidationLabel = (validation: string): string =>
+const getValidationLabel = (validation: ValidationName): string =>
   VALIDATION_LABELS[validation] ?? startCase(validation);
 
 const isValidationWithoutValue = (validation: string): boolean =>
@@ -59,22 +63,26 @@ const isValidationWithListValue = (validation: string): boolean =>
 // Internal helper - not exported. Derived from the protocol schema's own
 // per-type `validation` picks, so the editor can never offer a rule that
 // would make the saved protocol fail validation.
-const getValidationsForVariableType = (variableType: string): string[] => {
+const getValidationsForVariableType = (
+  variableType: string,
+): ValidationName[] => {
   if (variableType === 'passphrase') {
-    return PASSPHRASE_VALIDATIONS;
+    return [...PASSPHRASE_VALIDATIONS];
   }
 
   if (!isVariableType(variableType)) {
     return [];
   }
 
-  return Object.keys(VARIABLE_TYPE_VALIDATIONS[variableType]);
+  return Object.keys(
+    VARIABLE_TYPE_VALIDATIONS[variableType],
+  ) as ValidationName[];
 };
 
 const getValidationsForEntity = (
-  validations: string[],
+  validations: ValidationName[],
   entity: string,
-): string[] =>
+): ValidationName[] =>
   entity === 'ego' ? without(validations, 'unique') : validations;
 
 const getValidationOptionsForVariableType = (
@@ -91,7 +99,7 @@ const getValidationOptionsForVariableType = (
 
 type ValidationOption = {
   label: string;
-  value: string;
+  value: ValidationName;
 };
 
 type ValidationGroupId = 'requirements' | 'limits' | 'comparisons';
@@ -120,17 +128,30 @@ const VALIDATION_GROUPS: readonly {
   },
 ];
 
+const groupsCache = new Map<string, ValidationGroup[]>();
+
 const getGroupedValidationsForVariableType = (
   variableType: string,
   entity: string,
 ): ValidationGroup[] => {
+  const cacheKey = `${variableType}:${entity}`;
+  const cached = groupsCache.get(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
   const options = getValidationOptionsForVariableType(variableType, entity);
 
-  return VALIDATION_GROUPS.map(({ id, heading, includes }) => ({
+  const groups = VALIDATION_GROUPS.map(({ id, heading, includes }) => ({
     id,
     heading,
     rules: options.filter((option) => includes(option.value)),
   })).filter((group) => group.rules.length > 0);
+
+  groupsCache.set(cacheKey, groups);
+
+  return groups;
 };
 
 export type { ValidationGroup, ValidationOption };

@@ -17,7 +17,7 @@ import {
   type ValidationGroup,
 } from './options';
 import { formatCommitted, isDraftComplete, parseForRule } from './ruleValue';
-import ValidationRule from './ValidationRule';
+import ValidationRule, { type TargetOption } from './ValidationRule';
 
 const EMPTY_KEYS: ReadonlySet<string> = new Set();
 const EMPTY_RECORD: Record<string, unknown> = {};
@@ -59,7 +59,7 @@ type RuleListProps = {
   update: (value: Record<string, unknown>) => void;
   checkDraft: CheckDraft;
   legalTargetsByRule: ReadonlyMap<string, Set<string>>;
-  existingVariableOptions: { label: string; value: string }[];
+  existingVariableOptions: TargetOption[];
   candidateCount: number;
   uniqueValueCount?: number;
 };
