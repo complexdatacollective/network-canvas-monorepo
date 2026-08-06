@@ -18,6 +18,8 @@ import useProtocolForm from '../useProtocolForm';
 
 const NODE_TYPE = 'person';
 const NAME_VAR = 'name';
+const DISPLAY_NAME_VAR = 'displayName';
+const ALIAS_VAR = 'alias';
 
 // A FamilyPedigree stage has no top-level subject, so getStageSubject — and
 // therefore the base validation context's stageSubject — is null.
@@ -48,6 +50,17 @@ function makeWrapper() {
                   type: 'text',
                   component: 'Text',
                   validation: { unique: true },
+                },
+                [DISPLAY_NAME_VAR]: {
+                  name: DISPLAY_NAME_VAR,
+                  type: 'text',
+                  component: 'Text',
+                },
+                [ALIAS_VAR]: {
+                  name: ALIAS_VAR,
+                  type: 'text',
+                  component: 'Text',
+                  validation: { sameAs: DISPLAY_NAME_VAR },
                 },
               },
             },
@@ -87,6 +100,13 @@ function firstFieldStageSubject(node: ReactNode): unknown {
   return validationContext.stageSubject;
 }
 
+function firstFieldProp(node: ReactNode, prop: string): unknown {
+  const element = Array.isArray(node) ? node[0] : node;
+  if (!isValidElement(element)) return undefined;
+  if (!isRecord(element.props)) return undefined;
+  return element.props[prop];
+}
+
 describe('useProtocolForm stageSubject', () => {
   it('uses the provided subject as the validation stageSubject on a subjectless stage', () => {
     const { result } = renderHook(
@@ -106,5 +126,27 @@ describe('useProtocolForm stageSubject', () => {
       entity: 'node',
       type: NODE_TYPE,
     });
+  });
+
+  it('aliases validation references to a separately registered form field', () => {
+    const comparisonFields: FormField[] = [
+      {
+        variable: asEntityAttributeReference(ALIAS_VAR),
+        prompt: 'Alias',
+      },
+    ];
+    const { result } = renderHook(
+      () =>
+        useProtocolForm({
+          fields: comparisonFields,
+          subject: { entity: 'node', type: NODE_TYPE },
+          variableReferenceAliases: { [DISPLAY_NAME_VAR]: NAME_VAR },
+        }),
+      { wrapper: makeWrapper() },
+    );
+
+    expect(firstFieldProp(result.current.fieldComponents, 'sameAs')).toBe(
+      NAME_VAR,
+    );
   });
 });

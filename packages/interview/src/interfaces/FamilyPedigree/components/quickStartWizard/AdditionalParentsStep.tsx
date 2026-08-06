@@ -8,9 +8,7 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import useProtocolForm from '../../../../forms/useProtocolForm';
-import { useStageSelector } from '../../../../hooks/useStageSelector';
-import { getNodeForm, getNodeType } from '../../utils/nodeUtils';
+import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
 import PersonNameField from '../PersonNameField';
 
 const PARENT_ROLE_OPTIONS = [
@@ -20,16 +18,7 @@ const PARENT_ROLE_OPTIONS = [
 ];
 
 function AdditionalParentFields({ index }: { index: number }) {
-  const nodeType = useStageSelector(getNodeType);
-  const nodeForm = useStageSelector(getNodeForm);
-
-  const { fieldComponents } = useProtocolForm({
-    subject: {
-      entity: 'node',
-      type: nodeType,
-    },
-    fields: nodeForm ?? [],
-  });
+  const { fieldComponents } = usePedigreeNodeForm();
 
   return (
     <Surface spacing="sm" shadow="sm">

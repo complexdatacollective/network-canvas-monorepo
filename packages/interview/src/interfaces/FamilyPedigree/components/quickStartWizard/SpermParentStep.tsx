@@ -6,10 +6,8 @@ import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { FRAMING_TERMS, type FramingId } from '@codaco/shared-consts';
 
-import useProtocolForm from '../../../../forms/useProtocolForm';
-import { useStageSelector } from '../../../../hooks/useStageSelector';
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
-import { getNodeForm, getNodeType } from '../../utils/nodeUtils';
+import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
 import PersonNameField from '../PersonNameField';
 
 const INTRO_COPY: Record<FramingId, string> = {
@@ -20,19 +18,11 @@ const INTRO_COPY: Record<FramingId, string> = {
 };
 
 export default function SpermParentStep() {
-  const nodeType = useStageSelector(getNodeType);
-  const nodeForm = useStageSelector(getNodeForm);
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const framingKey = framing ?? 'gamete';
   const terms = FRAMING_TERMS[framingKey];
 
-  const { fieldComponents } = useProtocolForm({
-    subject: {
-      entity: 'node',
-      type: nodeType,
-    },
-    fields: nodeForm ?? [],
-  });
+  const { fieldComponents } = usePedigreeNodeForm();
 
   return (
     <>

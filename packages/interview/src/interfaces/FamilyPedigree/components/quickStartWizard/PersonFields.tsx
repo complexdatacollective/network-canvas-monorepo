@@ -4,9 +4,7 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import type { BiologicalSex } from '@codaco/shared-consts';
 
-import useProtocolForm from '../../../../forms/useProtocolForm';
-import { useStageSelector } from '../../../../hooks/useStageSelector';
-import { getNodeForm, getNodeType } from '../../utils/nodeUtils';
+import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
 import BiologicalSexField from '../BiologicalSexField';
 import PersonNameField from '../PersonNameField';
 
@@ -28,18 +26,11 @@ export default function PersonFields({
   namePlaceholder = 'Enter name',
   currentEntityId,
 }: PersonFieldsProps) {
-  const nodeType = useStageSelector(getNodeType);
-  const nodeForm = useStageSelector(getNodeForm);
-
-  const { fieldComponents } = useProtocolForm({
-    subject: {
-      entity: 'node',
-      type: nodeType,
-    },
-    fields: nodeForm ?? [],
+  const { fieldComponents } = usePedigreeNodeForm({
     initialValues: initial?.attributes as
       | Record<string, FieldValue>
       | undefined,
+    currentEntityId,
   });
 
   const content = (
