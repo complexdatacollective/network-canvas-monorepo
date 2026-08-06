@@ -340,6 +340,7 @@ export class SyntheticInterview {
       icon: opts?.icon ?? 'add-a-person',
       shape: opts?.shape ?? { default: 'circle' },
       variables: new Map(),
+      ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
 
     // Seed a "name" text variable so generated initial nodes receive a
@@ -376,6 +377,7 @@ export class SyntheticInterview {
       name: opts?.name ?? `Edge ${this.edgeTypeCounter}`,
       color: opts?.color ?? EDGE_COLORS[colorIndex]!,
       variables: new Map(),
+      ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
 
     this.edgeTypes.set(id, entry);
@@ -429,6 +431,7 @@ export class SyntheticInterview {
       validation: opts?.validation,
       parameters: opts?.parameters,
       encrypted: opts?.encrypted,
+      ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
 
     nodeType.variables.set(varId, entry);
@@ -468,6 +471,7 @@ export class SyntheticInterview {
       options,
       validation: opts?.validation,
       parameters: opts?.parameters,
+      ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
 
     edgeType.variables.set(varId, entry);
@@ -497,6 +501,7 @@ export class SyntheticInterview {
       options,
       validation: opts?.validation,
       parameters: opts?.parameters,
+      ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
 
     this.egoVariables.set(varId, entry);
@@ -2319,6 +2324,7 @@ export class SyntheticInterview {
         if (varEntry.validation) variable.validation = varEntry.validation;
         if (varEntry.parameters) variable.parameters = varEntry.parameters;
         if (varEntry.encrypted) variable.encrypted = varEntry.encrypted;
+        if (varEntry.synthetic) variable.synthetic = varEntry.synthetic;
         variables[varId] = variable;
       }
       node[id] = {
@@ -2327,6 +2333,7 @@ export class SyntheticInterview {
         icon: entry.icon,
         shape: entry.shape,
         variables,
+        ...(entry.synthetic ? { synthetic: entry.synthetic } : {}),
       };
     }
 
@@ -2336,6 +2343,7 @@ export class SyntheticInterview {
         name: entry.name,
         color: entry.color,
       };
+      if (entry.synthetic) edgeEntry.synthetic = entry.synthetic;
       // Serialize edge type variables if any exist
       if (entry.variables.size > 0) {
         const variables: Record<string, unknown> = {};
@@ -2348,6 +2356,7 @@ export class SyntheticInterview {
           if (varEntry.options) variable.options = varEntry.options;
           if (varEntry.validation) variable.validation = varEntry.validation;
           if (varEntry.parameters) variable.parameters = varEntry.parameters;
+          if (varEntry.synthetic) variable.synthetic = varEntry.synthetic;
           variables[varId] = variable;
         }
         edgeEntry.variables = variables;
@@ -2368,6 +2377,7 @@ export class SyntheticInterview {
         if (varEntry.options) variable.options = varEntry.options;
         if (varEntry.validation) variable.validation = varEntry.validation;
         if (varEntry.parameters) variable.parameters = varEntry.parameters;
+        if (varEntry.synthetic) variable.synthetic = varEntry.synthetic;
         variables[varId] = variable;
       }
       ego = { variables };

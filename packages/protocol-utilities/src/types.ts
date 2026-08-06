@@ -1,5 +1,6 @@
 import type {
   ComponentType,
+  EdgeSynthetic,
   FamilyPedigreeBoundaries,
   FamilyPedigreeEdgeConfigInput,
   FamilyPedigreeFraming,
@@ -8,7 +9,9 @@ import type {
   FamilyPedigreeNominationPromptInput,
   FilterOperator,
   Item,
+  NodeSynthetic,
   StageType,
+  VariableSynthetic,
   VariableType,
 } from '@codaco/protocol-validation';
 
@@ -67,6 +70,8 @@ export type VariableEntry = {
   // Only meaningful on node text variables; the variable schema rejects
   // `encrypted` on ego/edge variables, so only the node codebook emits it.
   encrypted?: boolean;
+  /** Synthetic-generation metadata, emitted verbatim into the codebook. */
+  synthetic?: VariableSynthetic;
 };
 
 type ShapeMapping =
@@ -88,6 +93,7 @@ export type NodeTypeEntry = {
   icon: string;
   shape: { default: string; dynamic?: ShapeMapping };
   variables: Map<string, VariableEntry>;
+  synthetic?: NodeSynthetic;
 };
 
 export type EdgeTypeEntry = {
@@ -95,6 +101,7 @@ export type EdgeTypeEntry = {
   name: string;
   color: string;
   variables: Map<string, VariableEntry>;
+  synthetic?: EdgeSynthetic;
 };
 
 export type NameGeneratorPromptEntry = {
@@ -369,11 +376,15 @@ export type AddNodeTypeInput = {
   color?: string;
   icon?: string;
   shape?: { default: string; dynamic?: ShapeMapping };
+  /** Population metadata for the type, e.g. `{ count: { … } }`. */
+  synthetic?: NodeSynthetic;
 };
 
 export type AddEdgeTypeInput = {
   name?: string;
   color?: string;
+  /** Topology metadata for the type, e.g. `{ topology: { … } }`. */
+  synthetic?: EdgeSynthetic;
 };
 
 export type AddVariableInput = {
@@ -385,6 +396,8 @@ export type AddVariableInput = {
   validation?: Record<string, unknown>;
   parameters?: Record<string, unknown>;
   encrypted?: boolean;
+  /** Value-distribution metadata for the variable's type. */
+  synthetic?: VariableSynthetic;
 };
 
 export type FormFieldInput = {
