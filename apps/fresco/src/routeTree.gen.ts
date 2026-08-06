@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root';
 import { Route as ApiVersionInterviewRouteImport } from './routes/api.$version.interview';
+import { Route as ApiExportInterviewsBatchRouteImport } from './routes/api.export-interviews.batch';
 import { Route as ApiHealthRouteImport } from './routes/api.health';
 import { Route as DashboardRouteImport } from './routes/dashboard';
 import { Route as DashboardInterviewsRouteImport } from './routes/dashboard.interviews';
@@ -46,6 +47,12 @@ const ApiVersionInterviewRoute = ApiVersionInterviewRouteImport.update({
   path: '/api/$version/interview',
   getParentRoute: () => rootRouteImport,
 } as any);
+const ApiExportInterviewsBatchRoute =
+  ApiExportInterviewsBatchRouteImport.update({
+    id: '/api/export-interviews/batch',
+    path: '/api/export-interviews/batch',
+    getParentRoute: () => rootRouteImport,
+  } as any);
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
@@ -54,6 +61,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute;
   '/dashboard/interviews': typeof DashboardInterviewsRoute;
   '/api/$version/interview': typeof ApiVersionInterviewRoute;
+  '/api/export-interviews/batch': typeof ApiExportInterviewsBatchRoute;
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
@@ -62,6 +70,7 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute;
   '/dashboard/interviews': typeof DashboardInterviewsRoute;
   '/api/$version/interview': typeof ApiVersionInterviewRoute;
+  '/api/export-interviews/batch': typeof ApiExportInterviewsBatchRoute;
 }
 export interface FileRoutesById {
   '__root__': typeof rootRouteImport;
@@ -71,6 +80,7 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute;
   '/dashboard/interviews': typeof DashboardInterviewsRoute;
   '/api/$version/interview': typeof ApiVersionInterviewRoute;
+  '/api/export-interviews/batch': typeof ApiExportInterviewsBatchRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
@@ -80,7 +90,8 @@ export interface FileRouteTypes {
     | '/signin'
     | '/api/health'
     | '/dashboard/interviews'
-    | '/api/$version/interview';
+    | '/api/$version/interview'
+    | '/api/export-interviews/batch';
   fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
@@ -88,7 +99,8 @@ export interface FileRouteTypes {
     | '/signin'
     | '/api/health'
     | '/dashboard/interviews'
-    | '/api/$version/interview';
+    | '/api/$version/interview'
+    | '/api/export-interviews/batch';
   id:
     | '__root__'
     | '/'
@@ -96,7 +108,8 @@ export interface FileRouteTypes {
     | '/signin'
     | '/api/health'
     | '/dashboard/interviews'
-    | '/api/$version/interview';
+    | '/api/$version/interview'
+    | '/api/export-interviews/batch';
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
@@ -105,6 +118,7 @@ export interface RootRouteChildren {
   SigninRoute: typeof SigninRoute;
   ApiHealthRoute: typeof ApiHealthRoute;
   ApiVersionInterviewRoute: typeof ApiVersionInterviewRoute;
+  ApiExportInterviewsBatchRoute: typeof ApiExportInterviewsBatchRoute;
 }
 
 declare module '@tanstack/react-router' {
@@ -151,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVersionInterviewRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/api/export-interviews/batch': {
+      id: '/api/export-interviews/batch';
+      path: '/api/export-interviews/batch';
+      fullPath: '/api/export-interviews/batch';
+      preLoaderRoute: typeof ApiExportInterviewsBatchRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
@@ -172,6 +193,7 @@ const rootRouteChildren: RootRouteChildren = {
   SigninRoute: SigninRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiVersionInterviewRoute: ApiVersionInterviewRoute,
+  ApiExportInterviewsBatchRoute: ApiExportInterviewsBatchRoute,
 };
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

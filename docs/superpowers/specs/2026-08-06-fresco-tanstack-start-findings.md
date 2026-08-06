@@ -7,8 +7,9 @@
 Its conclusions are restated here where this document corrects or confirms
 them, so "the assessment" below refers to a document that no longer exists in
 the repository.
-**Status:** Phase A complete (green). Phase B slice reached and green on five of
-six routes; stopped at the checkpoint as the brief requires.
+**Status:** Phase A complete (green). **Phase B complete — all six routes
+green**, including the container verified through the real mirror lane. Stopped
+before Phase C, as the brief requires.
 
 What was actually built and measured. The assessment was written from static
 analysis; this is the first thing to run it.
@@ -28,12 +29,19 @@ upstream, and neither lands on Fresco's code at 1.168.38 — verified against th
 real `webauthn.ts` cookie sequence and the real `next.config.ts` header rules, in
 dev, in a production `.output` server, and inside `node:lts-alpine`.
 
-**Nothing found so far is a stop condition.** The port is feasible. What the
-slice actually cost is below, and the surprises were not where the assessment
-expected them: none of the five real problems hit during Phase B appear in its
-risk register, and three of them fail _silently_ — a megabyte of Prisma in the
-browser bundle, security headers dropped on every redirect, and an SSR crash
-that still returns HTTP 200.
+**No stop condition was hit.** The port is feasible: all six slice routes work
+against real Postgres, the API contract is byte-identical to `main`, and the
+container boots from the real mirrored tree, migrates, and serves.
+
+The surprises were not where the assessment expected them. **None of the eight
+real problems below appear in its risk register**, and four of them fail
+_silently_: a megabyte of Prisma in the browser bundle, security headers dropped
+on every redirect, an SSR crash that still returns HTTP 200, and a leak gate
+that passes because it was only looking for four strings.
+
+**This branch is not shippable and must not be merged as-is.** The `Dockerfile`
+now builds `build:start`, so the image serves the six-route slice and 404s
+everything else. That is correct for a measurement and wrong for a release.
 
 ---
 
@@ -146,14 +154,18 @@ Next.js app in `app/` is untouched as an app and still builds. Both trees share
 `lib/`, `actions/`, `queries/`, `schemas/` and `components/`, which is what makes
 the diff below a measurement rather than a rewrite.
 
-| Route                                                                                                                          | Status                                                                                                  |
-| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| `/signin` + session cookie + password sign-in, sign-out, route guards                                                          | **GREEN**                                                                                               |
-| `/dashboard/interviews` — `getInterviews` raw SQL, filter options, search-param state, the `@tanstack/react-table` client tree | **GREEN**                                                                                               |
-| A mutation visible immediately after it completes                                                                              | **GREEN**                                                                                               |
-| `/api/health` + `/api/[version]/interview`                                                                                     | **GREEN** — byte-identical to `main`                                                                    |
-| `/api/export-interviews/batch`                                                                                                 | **NOT DONE** — S4 answered the mechanism; the route itself was not ported                               |
-| Production build in the container shape, `no-referrer` applied                                                                 | **PARTIAL** — `.output` builds and serves the slice; `docker-compose.prod.yml` not exercised against it |
+| Route                                                                                                                          | Status                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `/signin` + session cookie + password sign-in, sign-out, route guards                                                          | **GREEN**                                                                         |
+| `/dashboard/interviews` — `getInterviews` raw SQL, filter options, search-param state, the `@tanstack/react-table` client tree | **GREEN**                                                                         |
+| A mutation visible immediately after it completes                                                                              | **GREEN**                                                                         |
+| `/api/health` + `/api/[version]/interview`                                                                                     | **GREEN** — byte-identical to `main`                                              |
+| `/api/export-interviews/batch`                                                                                                 | **GREEN** — real export streamed end to end                                       |
+| Production build in the container shape, `no-referrer` applied                                                                 | **GREEN** — verified through the actual mirror lane, not a monorepo approximation |
+
+**All six routes are green.** The two that remained after the first checkpoint
+were completed by parallel subagents and re-verified together afterwards; the
+combined result is what is reported below.
 
 Passkey register and login are ported (`src/server/webauthn.ts`) and typecheck,
 but were **not** driven end to end: that needs Chromium's virtual authenticator
@@ -190,9 +202,55 @@ Referrer-Policy, all MATCH:  /  /dashboard/interviews  /interview/abc
                              /onboard/xyz  /api/health
 ```
 
+A third probe covers the export route, 14/14: 401 without a session with the
+same envelope; 400 on unparseable JSON; 400 on a schema failure; 413 on an
+oversized batch; 404 on an unknown interview id; `text/event-stream` with
+`no-store` on a valid request; a terminal frame; an undrained buffer of zero.
+
+**The export streams for real.** Against 300 interviews × 40 nodes: headers and
+the first frame at 9 ms, 4,107 frames and 802 KB still arriving 500 ms later,
+`complete` at 524 ms, nothing left in the buffer. Real GraphML and CSV content
+came over the wire. So on a long-lived Node server the `after()` removal is a
+genuine deletion, not a substitution — returning a `Response` wrapping a
+`readable` streams through untouched, and the detached Effect fiber runs to
+completion long after the handler returned.
+
+**The container was verified through the real shipping lane.** Rather than
+approximating, `scripts/mirror-app.mjs` was run to stage the standalone tree and
+generate its lockfile, and the unmodified `Dockerfile` was built from _that_ —
+so the install was `pnpm i --frozen-lockfile` against published npm dists of
+`@codaco/*`, exactly as the mirror does. The image boots, applies all 14
+migrations, and listens on 3000:
+
+```
+14 migrations found in prisma/migrations
+Applying migration `0_init` … All migrations have been successfully applied.
+Setting initializedAt to 2026-08-06T21:28:55.781Z.
+Listening on http://[::]:3000
+
+GET /api/health           -> 200  {"status":"healthy",…}
+GET /signin               -> 200  <h2>Sign In To Fresco</h2>  (SSR'd)
+GET /dashboard/interviews -> 307  location: /signin
+GET /                     -> 307  location: /dashboard/interviews
+/assets/index-*.css       -> 200  220522 bytes
+/favicon.ico              -> 200  15086 bytes   (from public/, via .output/public)
+```
+
+`docker compose -f apps/fresco/docker-compose.prod.yml up` was run against the
+real, unedited compose file (with a scratchpad-only `-f` override supplying the
+local image, since the file pins a GHCR tag). All five services came up and the
+app served identically.
+
+**`PUBLIC_URL` is honoured at runtime, not baked at build.** Proven by starting
+`node .output/server/index.mjs` directly with `PUBLIC_URL=not-a-url`: the server
+listens, then the first request 500s from `@t3-oss/env-core` inside
+`.output/server/chunks/_/env-*.mjs`. So `env.js` reads `process.env` at request
+time from within the Nitro bundle. With a valid value the same route returns 200.
+
 Standing checks, all clean with no rule suppressed beyond the one recorded
 below: `pnpm typecheck`, `pnpm lint`, `pnpm knip`, and `pnpm --filter fresco
-test` (373 tests, 46 files).
+test` (373 tests, 46 files). Re-run over both subagents' combined work, plus an
+expanded client-bundle leak gate (see finding 6).
 
 ### What the slice cost
 
@@ -316,6 +374,45 @@ Turbopack; here it is CJS interop that Turbopack forgives and Vite does not.
 Fixed with a default import. **Every CJS dependency in the client tree needs the
 same audit**, and a smoke assertion that SSR responses are non-empty.
 
+### 6. The client-bundle leak gate needs a marker per route, not four generic ones
+
+The gate that caught finding 1 greps `dist/client` for `PrismaClient`,
+`__NEXT_ERROR_CODE`, `posthog-node` and `auth_session`. **None of those would
+have caught a leak of the export route**, whose distinguishing content is Effect
+code and literal strings — and that route imports `~/lib/export/streamProtocol`,
+which the _client_ `ExportProgressProvider` also imports, so a shared-module
+mis-split was a live possibility. It was checked explicitly
+(`Too many interviews in one batch` and `exportPipeline`, both absent from
+`dist/client`) and Vite split it correctly.
+
+The lesson generalises: **every ported route needs its own marker string in the
+gate.** A generic gate that passes tells you only that the four things you
+thought of are absent. The gate now in use covers seven markers.
+
+### 7. The boot script's `prisma generate` costs ~210 MB of image
+
+The final image is 551 MB: `.output` 68.7 MB, `/app/node_modules` 350.6 MB. The
+runtime-deps tree dominates, and it is entirely pre-existing and
+framework-agnostic — `@prisma` 169 MB (engines pulled in by the `prisma` CLI's
+postinstall) plus `prisma` 41.9 MB, with `effect` 33.8 MB, `@electric-sql`
+25.4 MB and `elkjs` 7.7 MB dragged in transitively by
+`@codaco/protocol-validation`.
+
+This confirms the "engine-free at runtime" result in an interesting way: **the
+application bundle genuinely needs no Prisma engine, but the boot script still
+pays for one.** Running `prisma migrate deploy` in a throwaway init step would
+reclaim most of it. Out of scope here, but it is a real and newly-quantified
+optimisation target that exists on `main` today.
+
+### 8. A `binaryTargets` gap that predates this work
+
+`lib/db/schema.prisma` lists `binaryTargets = ["native",
+"linux-musl-arm64-openssl-3.0.x"]` — no `linux-musl-x64` entry. Everything here
+was built and run on arm64. The app runtime is engine-free so this does not
+affect serving, but the boot script's `prisma generate` would run on an
+unlisted target if the GHCR image is built for amd64. Untested, unchanged,
+flagged.
+
 ### Smaller, but real
 
 - **Duplicate router copies break module augmentation.** `fresco` depended on
@@ -423,12 +520,30 @@ Worth stating, because most of it was.
 
 ## Remaining before a Phase C decision
 
-1. **`/api/export-interviews/batch`** — the SSE + Effect + `after()` route. S4
-   answered the mechanism; the route was not ported.
-2. **The container** — `.output` serves the slice on a port, but
-   `docker-compose.prod.yml` was not run against a Start image, and `PUBLIC_URL`
-   was not exercised.
-3. **Passkeys end to end** — needs a virtual authenticator. This is where risk
-   #1 lived, so it should be verified before, not after.
-4. **Netlify branch preview** — S7's two open questions.
-5. **Phase 1** — the baseline that option (i) should have been decided against.
+1. **Passkeys end to end** — needs Chromium's virtual authenticator over CDP.
+   This is where risk #1 lived, so it should be closed before Phase C, not
+   after. S2 proves the cookie mechanism; the UI path is unexercised.
+2. **Netlify** — S7's two open questions, plus the concrete work the container
+   agent scoped: `publish = ".output/public"`, a Nitro **`netlify`** preset
+   instead of the hardcoded `node-server` in `vite.config.ts` (so the preset
+   needs to key off the platform, e.g. `NITRO_PRESET`), and suppressing the
+   implicit `@netlify/plugin-nextjs`. `netlify.toml` was deliberately left
+   unchanged: Netlify still deploys the Next app, and flipping it now would
+   break the preview lane.
+3. **Whether the export route survives a frozen serverless invocation.** This is
+   the one place the Node streaming result does not transfer, and it is exactly
+   what `after()` existed to prevent.
+4. **Whether the abort listener interrupts the Effect fiber.** The server
+   survives a client disconnect and logs nothing, but a fiber running to
+   completion into a detached stream is externally indistinguishable from a
+   cancelled one.
+5. **Phase 1** — the baseline that cache option (i) should have been decided
+   against. Still the largest unmeasured thing in this whole exercise.
+6. **amd64** — see finding 8.
+
+## What is deliberately not done
+
+The `(interview)` participant surface, the setup wizard, participants,
+protocols, settings, uploadthing and Storybook are all excluded by the brief —
+volume rather than uncertainty. `(interview)` in particular is last for a
+reason: a lost in-flight interview network is unrecoverable research data.

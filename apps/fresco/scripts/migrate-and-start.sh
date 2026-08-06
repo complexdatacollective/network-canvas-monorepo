@@ -10,4 +10,4 @@ TSX=./node_modules/.bin/tsx
 "$PRISMA" generate
 "$TSX" scripts/setup-database.ts
 "$TSX" scripts/initialize.ts
-exec node server.js
+exec node .output/server/index.mjs
