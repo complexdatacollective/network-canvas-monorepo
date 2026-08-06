@@ -33,6 +33,10 @@ const UUID_EXACT_RE =
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+// What `new Date().toISOString()` produces — what the commit listener stamps,
+// and what the schema's `z.string().datetime()` accepts.
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+
 // Compare two RichText-backed markdown strings by round-tripping BOTH through
 // the app's own adapter (parse → serialize). Byte equality between eras is
 // impossible by construction: the current serializer emits `- ` bullet
@@ -323,12 +327,36 @@ export function normalizeProtocol(input: unknown): unknown {
 // So each deletion that hides a *live* value carries a compensating check
 // here, asserted against the BUILT protocol on its own terms. Anything the
 // canonical file cannot express (its opaque asset sources, its colour-sequence
-// gaps) is checked as an invariant of what Architect writes today instead.
-// `lastModified` and the toggle/rule defaults need nothing — they have no
-// meaningful value to regress.
+// gaps, its per-run timestamp) is checked as an invariant of what Architect
+// writes today instead.
+//
+// The three conditional deletions are the exception, deliberately: each fires
+// only when the value IS the default it treats as equivalent to absent
+// (`skewedTowardCenter: false`, `automaticLayout: false`, a rule's
+// `options.value: ''`). A changed value still compares, and for those three
+// "written as the default" and "not written at all" are indistinguishable to
+// every consumer — so no regression survives the tolerance.
 export function assertBuiltProtocolInvariants(built: unknown): void {
   const problems: string[] = [];
   if (!isRecord(built)) throw new Error('built protocol is not an object');
+
+  // --- lastModified (deleted: re-stamped per commit, so never comparable)
+  // The value cannot be compared between runs, but its PRESENCE can, and it
+  // is not cosmetic: every accepted commit stamps it and `emptyProtocol()`
+  // seeds none, so if the commit pipeline stopped stamping it the exported
+  // protocol would carry no modification time at all — at which point the
+  // printable summary's cover silently substitutes the current date and
+  // misreports when the protocol was last changed.
+  const { lastModified } = built;
+  if (
+    typeof lastModified !== 'string' ||
+    !ISO_DATETIME.test(lastModified) ||
+    Number.isNaN(Date.parse(lastModified))
+  ) {
+    problems.push(
+      `lastModified ${JSON.stringify(lastModified)} is not an ISO timestamp — every accepted commit must stamp one`,
+    );
+  }
 
   // --- assetManifest[*].source (deleted: canonical uses opaque storage keys)
   // Upload writes `source: file.name` and `name: file.name` from the same
