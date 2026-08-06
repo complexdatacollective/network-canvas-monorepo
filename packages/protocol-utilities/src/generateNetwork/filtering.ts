@@ -3,13 +3,12 @@ import type { Filter, Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  type NcEdge,
   type NcNetwork,
   type NcNode,
 } from '@codaco/shared-consts';
 
 import type { GenerationContext, NetworkDraft } from './context';
-import { getEdgesOfType, getNodesOfType } from './edges';
+import { getNodesOfType } from './edges';
 
 export function buildCurrentNetwork(draft: NetworkDraft): NcNetwork {
   return {
@@ -42,4 +41,3 @@ export function getStageFilteredNodes(
   const filtered = getFilter(stageFilter)(buildCurrentNetwork(draft));
   return getNodesOfType(filtered.nodes, nodeType);
 }
-

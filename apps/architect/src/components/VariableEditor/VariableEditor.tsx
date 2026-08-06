@@ -1,6 +1,7 @@
 import { get } from 'es-toolkit/compat';
 import { Check, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo } from 'react';
+import * as z from 'zod/mini';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -123,6 +124,36 @@ function VariableEditorInner({
     };
   }, [variable]);
 
+  /** The name rules, in the order their messages are most useful. */
+  const nameError = useCallback(
+    (value: unknown): string | undefined => {
+      const name = String(value ?? '').trim();
+      return (
+        validations.required('You must enter a variable name')(name) ??
+        validations.uniqueByList(existingVariableNames)(name) ??
+        validations.allowedVariableName()(name)
+      );
+    },
+    [existingVariableNames],
+  );
+
+  /**
+   * Those rules as one live field validation. They run again at submit, so a
+   * name that slipped past — an untouched field, say — still cannot be saved.
+   */
+  const nameValidation = useMemo(
+    () => ({
+      schema: z.string().check((ctx) => {
+        const error = nameError(ctx.value);
+        if (error) {
+          ctx.issues.push({ code: 'custom', message: error, input: ctx.value });
+        }
+      }),
+      hint: 'A unique name for this variable',
+    }),
+    [nameError],
+  );
+
   const guardedClose = useCallback(async (): Promise<boolean> => {
     if (!isDirty) return true;
     const confirmed = await confirm({
@@ -150,14 +181,11 @@ function VariableEditorInner({
       if (!variable || !context) return { success: false };
 
       const name = String(values.name ?? '').trim();
-      const nameError =
-        validations.required('You must enter a variable name')(name) ??
-        validations.uniqueByList(existingVariableNames)(name) ??
-        validations.allowedVariableName()(name);
-      if (nameError) {
+      const error = nameError(name);
+      if (error) {
         return {
           success: false,
-          fieldErrors: { name: [nameError] },
+          fieldErrors: { name: [error] },
         } as FormSubmissionResult;
       }
 
@@ -190,7 +218,7 @@ function VariableEditorInner({
       onSaved(name);
       return { success: true };
     },
-    [context, dispatch, existingVariableNames, onSaved, uuid, variable],
+    [context, dispatch, nameError, onSaved, uuid, variable],
   );
 
   if (!variable || !context) return null;
@@ -205,6 +233,16 @@ function VariableEditorInner({
       placeholder="Enter a variable name..."
       required
       autoFocus
+      // Checked as the author types rather than only on submit: a name
+      // colliding with another variable of the same entity is the mistake
+      // this editor exists to catch, and a submit-time-only message would
+      // leave the pill header looking accepted until then.
+      custom={nameValidation}
+      validateOnChange
+      // Well under the one-second default: this is a short identifier being
+      // checked against a list already in memory, and the author is looking
+      // straight at the field as they type it.
+      validateOnChangeDelay={300}
       className="h-full w-full rounded-l-none! outline-none!"
     />
   );
@@ -241,6 +279,9 @@ function VariableEditorInner({
           size="sm"
           color="primary"
           icon={<Check aria-hidden />}
+          // An untouched draft has nothing to save, and offering to save it
+          // would put a redundant entry on the undo timeline.
+          disabled={!isDirty || isSubmitting}
         >
           Save Changes
         </SubmitButton>

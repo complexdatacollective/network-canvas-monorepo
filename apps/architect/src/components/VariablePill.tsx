@@ -5,6 +5,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import type { VariableType } from '@codaco/protocol-validation';
 import { getColorForType, getIconForType } from '~/config/variables';
 import { useAppSelector } from '~/ducks/hooks';
@@ -194,57 +199,70 @@ export const VariablePill = ({
 
   return (
     <>
-      <Popover open={editing} onOpenChange={handleOpenChange}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-label={`Edit variable: ${label}`}
-            title="Edit variable"
-            className={getVariablePillClassName({
-              animated,
-              fluid: width === '100%',
-              interactive: true,
-            })}
-            style={style}
+      <Tooltip>
+        <Popover open={editing} onOpenChange={handleOpenChange}>
+          {/*
+           * The popover trigger renders the tooltip trigger, which renders the
+           * pill itself: one button carrying both behaviours, rather than a
+           * wrapper that would break the pill's layout or steal its focus.
+           */}
+          <PopoverTrigger
+            render={
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-label={`Edit variable: ${label}`}
+                    className={getVariablePillClassName({
+                      animated,
+                      fluid: width === '100%',
+                      interactive: true,
+                    })}
+                    style={style}
+                  >
+                    <VariablePillContents type={type}>
+                      <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
+                        {label}
+                      </span>
+                    </VariablePillContents>
+                  </button>
+                }
+              />
+            }
+          />
+          <PopoverContent
+            aria-label="Edit variable"
+            side="bottom"
+            align="start"
+            showArrow
+            className="w-[min(90vw,42rem)]"
           >
-            <VariablePillContents type={type}>
-              <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
-                {label}
-              </span>
-            </VariablePillContents>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          aria-label="Edit variable"
-          side="bottom"
-          align="start"
-          showArrow
-          className="w-[min(90vw,42rem)]"
-        >
-          {editing && (
-            <VariableEditor
-              uuid={uuid}
-              formId={formId}
-              onSaved={(name) => closeEditor(`Variable ${name} saved`)}
-              onCancelled={() => closeEditor('Variable edit cancelled')}
-              registerCloseGuard={(guard) => {
-                closeGuardRef.current = guard;
-              }}
-              renderHeader={(nameField) => (
-                <div
-                  className={getVariablePillClassName({ animated: false })}
-                  style={headerPillStyle}
-                >
-                  <VariablePillContents type={type}>
-                    {nameField}
-                  </VariablePillContents>
-                </div>
-              )}
-            />
-          )}
-        </PopoverContent>
-      </Popover>
+            {editing && (
+              <VariableEditor
+                uuid={uuid}
+                formId={formId}
+                onSaved={(name) => closeEditor(`Variable ${name} saved`)}
+                onCancelled={() => closeEditor('Variable edit cancelled')}
+                registerCloseGuard={(guard) => {
+                  closeGuardRef.current = guard;
+                }}
+                renderHeader={(nameField) => (
+                  <div
+                    className={getVariablePillClassName({ animated: false })}
+                    style={headerPillStyle}
+                  >
+                    <VariablePillContents type={type}>
+                      {nameField}
+                    </VariablePillContents>
+                  </div>
+                )}
+              />
+            )}
+          </PopoverContent>
+        </Popover>
+        <TooltipContent side="top">Edit variable: {label}</TooltipContent>
+      </Tooltip>
 
       <span className="sr-only" aria-live="polite">
         {announcement}

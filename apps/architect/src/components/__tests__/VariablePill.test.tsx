@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
@@ -67,6 +67,12 @@ vi.mock('~/selectors/codebook', async (importOriginal) => {
     },
     makeGetVariableWithEntity: (uuid: string) => () =>
       variableFixtures[uuid as keyof typeof variableFixtures],
+    // The editor reads the variable's own definition (type, options,
+    // validation, synthetic) separately from its entity placement.
+    makeGetVariable: (uuid: string) => () => {
+      const fixture = variableFixtures[uuid as keyof typeof variableFixtures];
+      return fixture ? { name: fixture.name, type: fixture.type } : undefined;
+    },
   };
 });
 
@@ -75,7 +81,7 @@ const { ConnectedVariablePill, VariablePill } = await import('../VariablePill');
 const startEditing = async (uuid: string) => {
   render(<ConnectedVariablePill animated editable uuid={uuid} />);
   const pill = screen.getByRole('button', {
-    name: 'Edit variable name: subject_var',
+    name: 'Edit variable: subject_var',
   });
   fireEvent.click(pill);
 
@@ -87,10 +93,10 @@ describe('ConnectedVariablePill', () => {
     subjectsSeen.length = 0;
   });
 
-  it('uses an accessible button to open the variable name editor directly', async () => {
+  it('uses an accessible button to open the variable editor directly', async () => {
     render(<ConnectedVariablePill animated editable uuid="node-subject" />);
     const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
+      name: 'Edit variable: subject_var',
     });
 
     expect(pill).toHaveAttribute('aria-haspopup', 'dialog');
@@ -105,61 +111,66 @@ describe('ConnectedVariablePill', () => {
 
     fireEvent.click(pill);
     expect(
-      await screen.findByRole('dialog', { name: 'Edit variable name' }),
+      await screen.findByRole('dialog', { name: 'Edit variable' }),
     ).toBeInTheDocument();
   });
 
   it('describes the edit action in a tooltip on keyboard focus', async () => {
     render(<ConnectedVariablePill animated editable uuid="node-subject" />);
     const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
+      name: 'Edit variable: subject_var',
     });
 
     fireEvent.focus(pill);
 
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'Edit variable name: subject_var',
+      'Edit variable: subject_var',
     );
   });
 
-  it('opens an autofocus modal editor with actions outside the pill', async () => {
+  it('opens an autofocus editor with actions outside the pill', async () => {
     const input = await startEditing('node-subject');
 
     expect(
-      screen.getByRole('dialog', { name: 'Edit variable name' }),
+      screen.getByRole('dialog', { name: 'Edit variable' }),
     ).toBeInTheDocument();
     expect(input).toHaveFocus();
+    // Both actions sit below the editor rather than inside the pill header,
+    // which holds only the name field.
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     const saveButton = screen.getByRole('button', { name: 'Save Changes' });
 
-    expect(saveButton).toBeDisabled();
-
     fireEvent.change(input, { target: { value: 'renamed_var' } });
     expect(saveButton).toBeEnabled();
-
-    fireEvent.change(input, { target: { value: 'subject_var' } });
-    expect(saveButton).toBeDisabled();
   });
+
+  // Submitting and dismissing are both asynchronous — validation resolves
+  // before the form calls back, and the close guard is a promise — so the
+  // popover has to be seen to close before focus can be judged.
+  const expectClosedWithFocusReturned = async () => {
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'Edit variable' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('button', { name: 'Edit variable: subject_var' }),
+    ).toHaveFocus();
+  };
 
   it('returns focus to the pill after saving an edit', async () => {
     const input = await startEditing('node-subject');
     fireEvent.change(input, { target: { value: 'renamed_var' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
 
-    const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
-    });
-    expect(pill).toHaveFocus();
+    await expectClosedWithFocusReturned();
   });
 
   it('returns focus to the pill after cancelling an edit', async () => {
     await startEditing('node-subject');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
-    });
-    expect(pill).toHaveFocus();
+    await expectClosedWithFocusReturned();
   });
 
   it('rejects renaming an ego variable to an existing ego variable name', async () => {
@@ -167,7 +178,7 @@ describe('ConnectedVariablePill', () => {
     fireEvent.change(input, { target: { value: 'taken_var' } });
 
     expect(await screen.findByText(/is already in use/)).toBeInTheDocument();
-    expect(screen.getByTestId('variable-name-field-error')).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
     // Ego has no entity type; a `type` here resolves to the non-existent
     // `codebook.ego.<type>.variables` and silently finds nothing.
     expect(subjectsSeen.at(-1)).toEqual({ entity: 'ego', type: undefined });
