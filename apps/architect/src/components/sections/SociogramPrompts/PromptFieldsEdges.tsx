@@ -1,23 +1,22 @@
-import { union } from 'es-toolkit/compat';
-import { useEffect, useMemo, type ComponentType } from 'react';
+import { isEqual, union } from 'es-toolkit/compat';
+import { useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
-import type { FormAction } from 'redux-form';
-import { change, Field, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { useStageFormValue } from '~/components/StageEditor/stageFormHooks';
 
-import { getEdgeFilters, getEdgesForSubject } from './selectors';
+import {
+  type CurrentFilters,
+  getEdgeFilters,
+  getEdgesForSubject,
+} from './selectors';
 import getEdgeFilteringWarning from './utils';
-
-const FrescoCheckboxGroupField = CheckboxGroupField as ComponentType<
-  Record<string, unknown>
->;
 
 type Option = {
   value: string;
@@ -25,24 +24,25 @@ type Option = {
   type?: string;
   color?: string;
 };
+
 type DisplayEdgesProps = {
-  form: string;
-  entity: string;
-  type: string;
+  /** The row's own pre-edit values, supplied by DialogArrayField's `item` spread. */
+  edges?: { create?: string | null; display?: string[] | null };
 };
-const DisplayEdges = ({ form }: DisplayEdgesProps) => {
-  const dispatch = useAppDispatch();
-  // Fix 1: Use the already memoized selector directly
+
+const DisplayEdges = ({ edges: initialEdges }: DisplayEdgesProps) => {
   const edgesForSubject = useSelector(getEdgesForSubject);
-  // Fix 2: Memoize form selectors
-  const formSelector = useMemo(() => formValueSelector(form), [form]);
-  const createEdge = useSelector((state: RootState) =>
-    formSelector(state, 'edges.create'),
-  ) as string | undefined;
-  const displayEdges = useSelector((state: RootState) =>
-    formSelector(state, 'edges.display'),
-  ) as string[] | null | undefined;
-  // Fix 3: Memoize the mapped array
+  const setLocalFieldValue = useFormStore((store) => store.setFieldValue);
+
+  const liveValues = useFormValue(['edges.create', 'edges.display'] as const);
+  const createEdge =
+    typeof liveValues['edges.create'] === 'string'
+      ? liveValues['edges.create']
+      : undefined;
+  const displayEdges = Array.isArray(liveValues['edges.display'])
+    ? (liveValues['edges.display'] as string[])
+    : undefined;
+
   const displayEdgesOptions = useMemo(
     () =>
       edgesForSubject.map((edge) => {
@@ -64,22 +64,24 @@ const DisplayEdges = ({ form }: DisplayEdgesProps) => {
         }
       ).disabled,
   );
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fix inifinite loop
+
+  // Observer effect: the edge type being created must always be displayed —
+  // keep it included in `edges.display` whenever it changes.
   useEffect(() => {
+    if (!createEdge) return;
     const displayEdgesWithCreatedEdge = union(displayEdges ?? [], [createEdge]);
-    dispatch(
-      change(
-        form,
-        'edges.display',
-        displayEdgesWithCreatedEdge,
-      ) as unknown as FormAction,
-    );
-  }, [createEdge, dispatch, form]);
-  const edgeFilters = useSelector((state: RootState) => getEdgeFilters(state));
+    if (!isEqual(displayEdgesWithCreatedEdge, displayEdges ?? [])) {
+      setLocalFieldValue('edges.display', displayEdgesWithCreatedEdge);
+    }
+  }, [createEdge, displayEdges, setLocalFieldValue]);
+
+  const stageFilter = useStageFormValue<CurrentFilters | undefined>('filter');
+  const edgeFilters = getEdgeFilters(stageFilter);
   const shouldShowNetworkFilterWarning = getEdgeFilteringWarning(
     edgeFilters,
-    displayEdges || [],
+    displayEdges ?? [],
   );
+
   return (
     <Section
       title="Display Edges"
@@ -91,7 +93,7 @@ const DisplayEdges = ({ form }: DisplayEdgesProps) => {
         </Paragraph>
       }
       toggleable
-      startExpanded={!!displayEdges}
+      startExpanded={!!initialEdges?.display?.length}
       disabled={edgesForSubject.length === 0}
       handleToggleChange={(value: boolean) => {
         // Disallow closing when there is a disabled edge option
@@ -101,8 +103,8 @@ const DisplayEdges = ({ form }: DisplayEdgesProps) => {
         if (value) {
           return true;
         }
-        // Reset edge creation
-        dispatch(change(form, 'edges.display', null) as unknown as FormAction);
+        // Reset edge display
+        setLocalFieldValue('edges.display', undefined);
         return true;
       }}
       layout="vertical"
@@ -128,13 +130,13 @@ const DisplayEdges = ({ form }: DisplayEdgesProps) => {
             </AlertDescription>
           </Alert>
         )}
-        <Field
+        <ArchitectField
           name="edges.display"
-          component={FrescoReduxField}
-          fieldComponent={FrescoCheckboxGroupField}
+          component={CheckboxGroupField}
           options={displayEdgesOptions}
           label="Display edges of the following type(s)"
           labelHidden
+          initialValue={initialEdges?.display ?? []}
         />
       </Row>
     </Section>

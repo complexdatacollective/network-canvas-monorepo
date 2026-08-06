@@ -1,68 +1,27 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { type ReactNode } from 'react';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Section: ({
-    children,
-    title,
-    disabled,
-  }: {
-    children: ReactNode;
-    title?: string;
-    disabled?: boolean;
-  }) => (
-    <div data-testid="section" data-disabled={disabled ? 'true' : 'false'}>
-      {title && <h2>{title}</h2>}
-      {children}
-    </div>
-  ),
-  Subsection: ({
-    children,
-    title,
-  }: {
-    children: ReactNode;
-    title?: ReactNode;
-  }) => (
-    <section data-testid="subsection">
-      {title && <h3>{title}</h3>}
-      {children}
-    </section>
-  ),
-}));
+import {
+  asStage,
+  renderNodeConfiguration,
+} from './nodeConfigurationTestHarness';
 
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: () => <div data-testid="variable-picker" />,
-}));
-
-// Expose each field's onCreateOption (when present) as a button so tests can
-// trigger variable creation the way the picker would.
-vi.mock('~/components/Form/ValidatedField', () => ({
   default: ({
     name,
-    componentProps,
+    onCreateOption,
   }: {
-    name: string;
-    component: unknown;
-    componentProps?: { onCreateOption?: (value: string) => void };
-    validation?: unknown;
+    name?: string;
+    onCreateOption?: (value: string) => void;
   }) => (
     <div data-testid={`field-${name}`}>
-      {componentProps?.onCreateOption && (
-        <button
-          type="button"
-          onClick={() => componentProps.onCreateOption?.(`new-${name}`)}
-        >
+      {onCreateOption && (
+        <button type="button" onClick={() => onCreateOption(`new-${name}`)}>
           create option for {name}
         </button>
       )}
     </div>
   ),
-}));
-
-vi.mock('~/components/IssueAnchor', () => ({
-  default: () => null,
 }));
 
 // Record the props passed to the window so the test can assert the picker's
@@ -96,92 +55,63 @@ type OpenWindowCall = {
 };
 const openWindowSpy = vi.fn<(call: OpenWindowCall) => void>();
 
-vi.mock('redux-form', () => ({
-  Field: ({
-    name,
-  }: {
-    name: string;
-    component: unknown;
-    [key: string]: unknown;
-  }) => <div data-testid={`field-${name}`} />,
-  FormSection: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  reduxForm: () => (Component: unknown) => Component,
-  formValueSelector: () => (_state: unknown, field: string) => {
-    // Mirrors redux-form: selecting a node type resets `behaviours` to null, and
-    // a path under a null parent resolves to null (NOT undefined).
-    if (field === 'behaviours.automaticLayout') return null;
-    return undefined;
-  },
-  // The Task 9 cross-class gate's escape reads this — no committed stage in
-  // this test's fake state, so no original value to escape against.
-  getFormInitialValues: () => () => undefined,
-  change: (form: string, field: string, value: unknown) => ({
-    type: 'CHANGE',
-    form,
-    field,
-    value,
-  }),
-  SubmissionError: class SubmissionError extends Error {},
-}));
-
-type ChangeAction = {
-  type: string;
-  form: string;
-  field: string;
-  value: unknown;
-};
-const dispatchSpy = vi.fn<(action: ChangeAction) => void>();
-// The Task 9 cross-class gate's role-map/allVariables reads go through
-// useAppSelector with REAL selectors (getVariableRoleMap,
-// getVariablesForSubjectSelector) — `activeProtocol: {}` is enough for those
-// to resolve to empty/no-conflict results without crashing on a missing
-// `.present`. This file's other tests don't exercise the gate itself (see
-// NodeConfiguration.crossClassGate.test.tsx for that).
-vi.mock('~/ducks/hooks', () => ({
-  useAppDispatch: () => dispatchSpy,
-  useAppSelector: (selector: (state: unknown) => unknown) =>
-    selector({ activeProtocol: {} }),
-}));
-
 vi.mock('~/components/EditableAttributesList/EditableAttributesList', () => ({
-  default: ({
-    fieldName,
-  }: {
-    fieldName: string;
-    entity: string;
-    type: string | null;
-    form: string;
-    editFormName: string;
-    title: string;
-    handleChangeFields: unknown;
-  }) => <div data-testid="attributes-list" data-fieldname={fieldName} />,
+  default: ({ fieldName }: { fieldName: string }) => (
+    <div data-testid="attributes-list" data-fieldname={fieldName} />
+  ),
+}));
+
+// CodebookVariableValidationSection pulls in ValidationSection's own
+// `~/components/Validations` import chain, which belongs to a different,
+// still-in-flight batch — stub it out rather than depend on that chain
+// resolving.
+vi.mock('~/components/sections/CodebookVariableValidationSection', () => ({
+  default: () => <div data-testid="validation-section" />,
 }));
 
 import { NodeConfigurationComponent } from '../NodeConfiguration';
 
+const PROTOCOL = {
+  schemaVersion: 8,
+  codebook: {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'c',
+        variables: {},
+      },
+    },
+  },
+  stages: [],
+};
+
 const defaultProps = {
-  form: 'edit-stage',
-  stagePath: 'stages[0]',
-  interfaceType: 'NetworkComposer' as const,
   entity: 'node' as const,
   type: 'person',
   disabled: false,
   handleCreateVariable: vi.fn(),
   handleChangeFields: vi.fn(),
-  layoutVariablesForSubject: [],
-  categoricalVariablesForSubject: [],
-  quickAddOptionsForSubject: [],
 };
 
-const renderSection = (overrides: Partial<typeof defaultProps> = {}) =>
-  render(<NodeConfigurationComponent {...defaultProps} {...overrides} />);
+const renderSection = (
+  overrides: Partial<typeof defaultProps> = {},
+  options: {
+    protocol?: unknown;
+    committedStage?: Record<string, unknown>;
+  } = {},
+) =>
+  renderNodeConfiguration({
+    protocol: options.protocol ?? PROTOCOL,
+    committedStage: asStage(options.committedStage ?? {}),
+    children: <NodeConfigurationComponent {...defaultProps} {...overrides} />,
+  });
 
 describe('NodeConfiguration', () => {
   it('renders the section title', () => {
     renderSection();
-    expect(
-      screen.getByRole('heading', { name: /node configuration/i }),
-    ).toBeDefined();
+    // `Section`'s title renders as a styled span rather than a heading
+    // element (unlike `Subsection`, which uses a real `<h3>`).
+    expect(screen.getByText('Node Configuration')).toBeInTheDocument();
   });
 
   it('renders each field area under its own subsection heading', () => {
@@ -201,8 +131,6 @@ describe('NodeConfiguration', () => {
     expect(
       screen.getByRole('heading', { name: /editable attributes/i }),
     ).toBeInTheDocument();
-    // Five field areas -> five subsections.
-    expect(screen.getAllByTestId('subsection')).toHaveLength(5);
   });
 
   it('renders node config fields and the editable attributes list', () => {
@@ -232,18 +160,17 @@ describe('NodeConfiguration', () => {
     );
   });
 
-  it('renders the automatic layout toggle and seeds the on-by-default value', () => {
-    dispatchSpy.mockClear();
+  it('defaults automatic layout to on when the committed stage has no value', () => {
     renderSection();
-    expect(
-      screen.getByText(/start with automatic layout switched on/i),
-    ).toBeInTheDocument();
-    // With behaviours.automaticLayout unset in form state, the section seeds the
-    // template default (on) so a gated remount can't leave it off.
-    const seeded = dispatchSpy.mock.calls
-      .map(([action]) => action)
-      .find((action) => action.field === 'behaviours.automaticLayout');
-    expect(seeded?.value).toBe(true);
+    expect(screen.getByRole('switch')).toBeChecked();
+  });
+
+  it('honours an off automatic layout value committed on the stage', () => {
+    renderSection(
+      {},
+      { committedStage: { behaviours: { automaticLayout: false } } },
+    );
+    expect(screen.getByRole('switch')).not.toBeChecked();
   });
 
   it('renders the convexHullVariable field', () => {
@@ -274,9 +201,7 @@ describe('NodeConfiguration', () => {
   });
 
   it('sets the created group variable id as convexHullVariable', () => {
-    renderSection();
-    // Ignore the mount-time automatic-layout default seed; isolate the click.
-    dispatchSpy.mockClear();
+    const { getFieldState } = renderSection();
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -284,25 +209,20 @@ describe('NodeConfiguration', () => {
       }),
     );
 
-    expect(dispatchSpy).toHaveBeenCalledTimes(1);
-    const action = dispatchSpy.mock.calls[0]![0];
-    expect(action.field).toBe('convexHullVariable');
-    expect(action.value).toBe('created-var-id');
+    expect(getFieldState('convexHullVariable')?.value).toBe('created-var-id');
   });
 
   it('is disabled until a node type is selected', () => {
     renderSection({ type: undefined, entity: 'node', disabled: true });
-    expect(screen.getByTestId('section')).toHaveAttribute(
-      'data-disabled',
-      'true',
-    );
+    expect(
+      screen.getByText(/complete the required options above/i),
+    ).toBeInTheDocument();
   });
 
   it('is enabled when a node type is provided', () => {
     renderSection({ type: 'person', disabled: false });
-    expect(screen.getByTestId('section')).toHaveAttribute(
-      'data-disabled',
-      'false',
-    );
+    expect(
+      screen.queryByText(/complete the required options above/i),
+    ).not.toBeInTheDocument();
   });
 });

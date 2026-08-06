@@ -1,51 +1,22 @@
-import { compact, flatMap, isPlainObject } from 'es-toolkit/compat';
-
 type FlattenedIssue = {
   issue: string;
   field: string;
 };
 
+/**
+ * One entry per message in the form store's field errors.
+ *
+ * The store already keys errors by resolved field name (`prompts`,
+ * `introductionPanel.title`) with an array of messages, so this only has to
+ * pair each message with its field — the recursive walk this replaced existed
+ * to unpick redux-form's nested error tree.
+ */
 const flattenIssues = (
-  issues: Record<string, unknown>,
-  path = '',
+  fieldErrors: Record<string, string[] | undefined>,
 ): FlattenedIssue[] =>
-  compact(
-    flatMap(issues, (issue: unknown, field: string) => {
-      // field array
-      if (Array.isArray(issue)) {
-        const itemIssues = flatMap(issue, (item: unknown, index: number) =>
-          flattenIssues(
-            item as Record<string, unknown>,
-            `${path}${field}[${index}].`,
-          ),
-        );
-        // array-level errors live on a non-index `_error` prop that the element
-        // iteration above skips
-        const arrayError = (issue as { _error?: unknown })._error;
-        if (arrayError !== undefined) {
-          return [
-            ...itemIssues,
-            { issue: arrayError as string, field: `${path}${field}._error` },
-          ];
-        }
-        return itemIssues;
-      }
-      // nested field
-      if (isPlainObject(issue)) {
-        return flattenIssues(
-          issue as Record<string, unknown>,
-          `${path}${field}.`,
-        );
-      }
-
-      if (issue === undefined) {
-        return null;
-      }
-
-      // we've found the issue node!
-      return { issue: issue as string, field: `${path}${field}` };
-    }),
-  ) as FlattenedIssue[];
+  Object.entries(fieldErrors).flatMap(([field, messages]) =>
+    (messages ?? []).map((issue) => ({ issue, field })),
+  );
 
 const getFieldId = (field: string) => {
   // Needs to be safe for urls and ids

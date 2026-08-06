@@ -1,38 +1,54 @@
-import type { ComponentProps } from 'react';
-import { compose } from 'react-recompose';
+import { useMemo } from 'react';
+import { useSelector } from 'react-redux';
 
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { Row, Section } from '~/components/EditorLayout';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ArchitectField from '~/components/Form/ArchitectField';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import withVariableHandlers from '~/components/sections/CategoricalBinPrompts/withVariableHandlers'; // TODO: should these be moved somewhere more general?
-import withVariableOptions from '~/components/sections/CategoricalBinPrompts/withVariableOptions';
 import PromptText from '~/components/sections/PromptText';
+import type { RootState } from '~/ducks/modules/root';
+import { getVariableOptionsForSubject } from '~/selectors/codebook';
+import { excludeValidatedUses } from '~/selectors/roleFilters';
 
-import VariablePicker, {
-  type VariableOption,
-} from '../../Form/Fields/VariablePicker/VariablePicker';
+import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 
 const VARIABLE_TYPE = 'location';
 
 type PromptFieldsProps = {
-  variable?: string;
-  variableOptions: VariableOption[];
   entity?: string;
   type?: string;
-  changeForm?: (form: string, field: string, value: unknown) => void;
-  form: string;
+  /** The row's own pre-edit `variable`, from DialogArrayField's `item` spread. */
+  variable?: string;
 };
 
 const PromptFields = ({
-  variableOptions,
   entity = '',
   type = '',
-  changeForm = () => {},
-  form,
+  variable,
 }: PromptFieldsProps) => {
+  const subject = useMemo(
+    () => ({ entity: entity as 'node' | 'edge' | 'ego', type }),
+    [entity, type],
+  );
+  // The main `variable` picker is an UNVALIDATED writer: drop options a form
+  // elsewhere already validates (mirrors CategoricalBinPrompts'
+  // withVariableOptions, inlined here to avoid a cross-section HOC
+  // dependency).
+  const variableOptions = useSelector((state: RootState) => {
+    const rawVariableOptions = getVariableOptionsForSubject(state, subject);
+    return excludeValidatedUses(state, subject, rawVariableOptions, variable);
+  });
+  const geoVariableOptions = variableOptions.filter(
+    ({ type: variableType }) => variableType === VARIABLE_TYPE,
+  );
+
+  // Writes into THIS dialog's own (local) form store — the row-editor form,
+  // not the stage.
+  const setLocalFieldValue = useFormStore((store) => store.setFieldValue);
+
   const newVariableWindowInitialProps = {
     entity: entity as Entity,
     type,
@@ -41,7 +57,7 @@ const PromptFields = ({
 
   const handleCreatedNewVariable = (...args: unknown[]) => {
     const [id, params] = args as [string, { field: string }];
-    changeForm(form, params.field, id);
+    setLocalFieldValue(params.field, id);
   };
 
   const [newVariableWindowProps, openNewVariableWindow] =
@@ -56,25 +72,22 @@ const PromptFields = ({
     );
   };
 
-  const geoVariableOptions = variableOptions.filter(
-    ({ type: variableType }) => variableType === VARIABLE_TYPE,
-  );
-
   return (
     <>
       <PromptText />
       <Section title="Selection Variable" layout="vertical">
         <Row>
-          <ValidatedField
+          <ArchitectField
             name="variable"
+            label="Selection variable"
+            labelHidden
             component={VariablePicker}
             validation={{ required: true }}
-            componentProps={{
-              type,
-              entity,
-              options: geoVariableOptions,
-              onCreateOption: handleNewVariable,
-            }}
+            initialValue={variable}
+            type={type}
+            entity={entity}
+            options={geoVariableOptions}
+            onCreateOption={handleNewVariable}
           />
         </Row>
       </Section>
@@ -83,10 +96,4 @@ const PromptFields = ({
   );
 };
 
-export default compose<
-  ComponentProps<typeof PromptFields>,
-  typeof PromptFields
->(
-  withVariableOptions,
-  withVariableHandlers,
-)(PromptFields);
+export default PromptFields;

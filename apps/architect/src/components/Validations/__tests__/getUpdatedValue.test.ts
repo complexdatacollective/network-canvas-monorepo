@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getUpdatedValue } from '../withUpdateHandlers';
+import { getUpdatedValue } from '../Validations';
 
 describe('getUpdatedValue', () => {
   it('does not overwrite another validation when a duplicate key is requested', () => {

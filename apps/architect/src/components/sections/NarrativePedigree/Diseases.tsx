@@ -1,17 +1,28 @@
+import type { ComponentType } from 'react';
 import { useSelector } from 'react-redux';
-import { formValueSelector } from 'redux-form';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Stage } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
-import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/store';
 import { getStage } from '~/selectors/protocol';
 
 import DiseaseFields from './DiseaseFields';
 import DiseasePreview from './DiseasePreview';
+
+// `DiseaseFields` declares `nodeType` as a required prop rather than the
+// array field's generic `Renderer` bag; DialogArrayField always spreads
+// `editorProps` (which supplies it) into the dialog's fields component, so
+// the cast is safe.
+type Renderer = ComponentType<Record<string, unknown>>;
+
 type DiseaseRow = {
   label: string;
   color: string;
@@ -34,12 +45,10 @@ type FamilyPedigreeStage = Extract<
     type: 'FamilyPedigree';
   }
 >;
-const Diseases = ({ form }: StageEditorSectionProps) => {
-  const formSelector = formValueSelector(form);
-  const sourceStageId = useSelector(
-    (state: RootState) =>
-      formSelector(state, 'sourceStageId') as string | undefined,
-  );
+const Diseases = (_props: StageEditorSectionProps) => {
+  const sourceStageId = useStageFormValue<string>('sourceStageId');
+  const diseasesInitial =
+    useStageInitialValue<Record<string, unknown>[]>('diseases');
   const nodeType = useSelector((state: RootState) => {
     if (!sourceStageId) return undefined;
     const stage = getStage(state, sourceStageId);
@@ -56,23 +65,22 @@ const Diseases = ({ form }: StageEditorSectionProps) => {
         </Paragraph>
       }
     >
-      <ValidatedFieldArray
+      <ArchitectArrayField
         name="diseases"
         label="Diseases"
         labelHidden
         component={DialogArrayField}
         validation={{ notEmpty }}
-        componentProps={{
-          addTitle: 'Edit Disease',
-          editorFieldsComponent: DiseaseFields,
-          editorProps: { nodeType },
-          editorTitle: 'Edit Disease',
-          itemLabel: 'disease',
-          itemTemplate: diseaseTemplate,
-          previewComponent: DiseasePreview,
-          requestedEditFormName: 'editable-list-form',
-          sortable: true,
-        }}
+        initialValue={diseasesInitial ?? []}
+        addTitle="Edit Disease"
+        editorFieldsComponent={DiseaseFields as unknown as Renderer}
+        editorProps={{ nodeType }}
+        editorTitle="Edit Disease"
+        itemLabel="disease"
+        itemTemplate={diseaseTemplate}
+        previewComponent={DiseasePreview}
+        requestedEditFormName="editable-list-form"
+        sortable
       />
     </Section>
   );

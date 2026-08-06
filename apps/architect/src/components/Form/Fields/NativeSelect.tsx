@@ -1,20 +1,16 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
 import { sortBy } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
-import type { ComponentType } from 'react';
 import { useCallback, useMemo, useState } from 'react';
-import type { WrappedFieldInputProps, WrappedFieldMetaProps } from 'redux-form';
-import { untouch } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import { useAppDispatch } from '~/ducks/hooks';
 import { cx } from '~/utils/cva';
 import { getValidator } from '~/utils/validations';
 
-import { getReduxFieldErrorState } from '../reduxFieldMeta';
+import type { ArchitectValidation } from '../toZodValidation';
 
 type Option = {
   label: string;
@@ -22,31 +18,30 @@ type Option = {
   disabled?: boolean;
 };
 
-type NativeSelectProps = {
-  className?: string;
-  label?: string | null;
-  labelHidden?: boolean;
-  options?: Option[];
-  placeholder?: string;
-  onCreateOption?: (value: string) => Promise<void> | void;
-  onCreateNew?: () => void;
-  createLabelText?: string;
-  createInputLabel?: string;
-  createInputPlaceholder?: string;
-  allowPlaceholderSelect?: boolean;
-  sortOptionsByLabel?: boolean;
-  reserved?: Option[];
-  validation?: Record<string, unknown> | null;
-  required?: boolean;
-  disabled?: boolean;
-  input: WrappedFieldInputProps;
-  meta?: Partial<WrappedFieldMetaProps> & { form?: string };
-  entity?: string;
-};
-
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoNativeSelectField = NativeSelectField as ComponentType<
-  Record<string, unknown>
+type NativeSelectProps = CreateFormFieldProps<
+  string,
+  'div',
+  {
+    options?: Option[];
+    placeholder?: string;
+    /** Creates the option inline, in this control. */
+    onCreateOption?: (value: string) => Promise<void> | void;
+    /** Hands creation to an external flow (a dialog) instead. */
+    onCreateNew?: () => void;
+    createLabelText?: string;
+    createInputLabel?: string;
+    createInputPlaceholder?: string;
+    allowPlaceholderSelect?: boolean;
+    sortOptionsByLabel?: boolean;
+    /** Names that are taken but not selectable, e.g. reserved variable names. */
+    reserved?: Option[];
+    /** Rules applied to a newly typed option name, not to the selection. Named
+     * apart from `ArchitectField`'s own `validation` prop, which it would
+     * otherwise be swallowed by. */
+    createValidation?: ArchitectValidation | null;
+    /** Named in the "already defined" message for a duplicate option. */
+    entity?: string;
+  }
 >;
 
 const variants = {
@@ -61,9 +56,19 @@ const asStringValue = (value: unknown) => {
   return '';
 };
 
+/**
+ * Native select with an optional inline "create a new option" flow. The
+ * field's own label and hint come from the call site through `ArchitectField`;
+ * the create form's input carries its own label because it is a separate
+ * control that only exists while creating.
+ */
 const NativeSelect = ({
-  label = null,
-  labelHidden = false,
+  id,
+  name = '',
+  value,
+  onChange,
+  onBlur,
+  onFocus,
   options = [],
   placeholder = 'Select an option',
   className = '',
@@ -75,12 +80,14 @@ const NativeSelect = ({
   allowPlaceholderSelect = false,
   sortOptionsByLabel = true,
   reserved = [],
-  validation = null,
-  required = false,
-  disabled = false,
-  input,
-  meta = {},
+  createValidation = null,
   entity,
+  disabled = false,
+  readOnly = false,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-required': ariaRequired,
 }: NativeSelectProps) => {
   const [showCreateOptionForm, setShowCreateOptionForm] = useState(false);
   const [newOptionValue, setNewOptionValue] = useState<string | null>(null);
@@ -88,14 +95,6 @@ const NativeSelect = ({
     false,
   );
   const [isCreating, setIsCreating] = useState(false);
-  const dispatch = useAppDispatch();
-  const { errors: parentErrors, showErrors: showParentErrors } =
-    getReduxFieldErrorState(meta as WrappedFieldMetaProps);
-
-  const untouchParent = useCallback(() => {
-    if (!meta.form) return;
-    dispatch(untouch(meta.form, input.name) as UnknownAction);
-  }, [dispatch, input.name, meta.form]);
 
   const resetForm = useCallback(() => {
     setShowCreateOptionForm(false);
@@ -105,13 +104,10 @@ const NativeSelect = ({
   }, []);
 
   const handleSelectChange = (nextValue: unknown) => {
-    const value = asStringValue(nextValue);
+    const selected = asStringValue(nextValue);
 
-    if (value === '_create') {
-      input.onChange(null);
-      // Clearing the select touches the Redux field. Creation starts a separate
-      // interaction, so keep the parent pristine until the user submits it.
-      untouchParent();
+    if (selected === '_create') {
+      onChange?.(undefined);
 
       if (onCreateNew) {
         onCreateNew();
@@ -123,47 +119,37 @@ const NativeSelect = ({
       return;
     }
 
-    input.onChange(value === '' ? null : value);
+    onChange?.(selected === '' ? undefined : selected);
   };
 
   const getCreateOptionError = useCallback(
-    (value: string | null): string | false => {
-      if (!value) return false;
+    (candidate: string | null): string | false => {
+      if (!candidate) return false;
 
-      const validationError = getValidator(validation ?? {})(value);
+      const validationError = getValidator(createValidation ?? {})(candidate);
       if (validationError) return validationError;
 
       const matchesLabel = ({ label: optionLabel }: Option) =>
-        optionLabel.toLowerCase() === value.toLowerCase();
+        optionLabel.toLowerCase() === candidate.toLowerCase();
 
       if (options.some(matchesLabel) || reserved.some(matchesLabel)) {
-        return `An option named "${value}" is already defined${entity ? ` on entity type ${entity}` : ''}`;
+        return `An option named "${candidate}" is already defined${entity ? ` on entity type ${entity}` : ''}`;
       }
 
       return false;
     },
-    [entity, options, reserved, validation],
+    [entity, options, reserved, createValidation],
   );
 
   const createOptionError = useMemo(
     () => getCreateOptionError(newOptionValue),
     [getCreateOptionError, newOptionValue],
   );
-  const valueButNotSubmitted = newOptionValue !== null;
-  const notSubmittedError = valueButNotSubmitted
-    ? 'You must click "create" to finish creating this option.'
-    : false;
-  const createError =
-    createOptionError ||
-    createRequestError ||
-    notSubmittedError ||
-    parentErrors[0] ||
-    false;
-  const showCreateError = Boolean(
-    createOptionError ||
-    createRequestError ||
-    ((meta.touched || meta.submitFailed) && createError),
-  );
+  // The "you must click create to finish" nudge is gone with redux-form's
+  // submitFailed: the surrounding field renders its own required error under
+  // the create form when a submit is attempted with nothing selected.
+  const createError = createOptionError || createRequestError || false;
+  const showCreateError = Boolean(createError);
 
   const handleCreateOption = async () => {
     if (!onCreateOption || !newOptionValue || createOptionError || isCreating) {
@@ -227,17 +213,16 @@ const NativeSelect = ({
             animate="show"
           >
             <UnconnectedField
-              component={FrescoInputField}
-              name={`${input.name}-create`}
+              component={InputField}
+              name={`${name}-create`}
               label={createInputLabel}
               autoFocus
               required
               placeholder={createInputPlaceholder}
               value={newOptionValue ?? ''}
-              onChange={(value: unknown) => {
-                untouchParent();
+              onChange={(nextValue: unknown) => {
                 setCreateRequestError(false);
-                setNewOptionValue(asStringValue(value));
+                setNewOptionValue(asStringValue(nextValue));
               }}
               errors={createError ? [createError] : []}
               showErrors={showCreateError}
@@ -265,21 +250,21 @@ const NativeSelect = ({
             exit="hide"
             animate="show"
           >
-            <UnconnectedField
-              component={FrescoNativeSelectField}
-              name={input.name}
-              label={label ?? input.name}
-              labelHidden={labelHidden}
+            <NativeSelectField
+              id={id}
+              name={name}
               options={selectOptions}
-              value={input.value ?? ''}
+              value={value ?? ''}
               onChange={handleSelectChange}
-              onBlur={() => input.onBlur(input.value)}
-              onFocus={input.onFocus}
+              onBlur={onBlur}
+              onFocus={onFocus}
               disabled={disabled}
-              required={required || Boolean(validation?.required)}
-              errors={parentErrors}
-              showErrors={showParentErrors}
-              aria-invalid={showParentErrors}
+              readOnly={readOnly}
+              required={Boolean(ariaRequired)}
+              aria-labelledby={ariaLabelledBy}
+              aria-describedby={ariaDescribedBy}
+              aria-invalid={ariaInvalid}
+              aria-required={ariaRequired}
             />
           </motion.div>
         )}

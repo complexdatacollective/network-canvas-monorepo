@@ -2,14 +2,13 @@ import { map } from 'es-toolkit/compat';
 import { TriangleAlert } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { getFormSyncErrors, hasSubmitFailed } from 'redux-form';
 
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
 
 import { candidateIdsFor, flattenIssues, getFieldId } from '../utils/issues';
 import scrollTo from '../utils/scrollTo';
-import { formName } from './StageEditor/configuration';
+import { useStageFormContext } from './StageEditor/stageFormContext';
 
 type UseIssuesToolbarSegmentResult = {
   segment: ToolbarSegment | null;
@@ -28,10 +27,12 @@ const resolveTarget = (field: string): HTMLElement | null => {
 };
 
 export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
-  const formErrors = useSelector(getFormSyncErrors(formName));
-  const submitFailed = useSelector(hasSubmitFailed(formName));
-  const issues = formErrors as Record<string, unknown>;
-  const flatIssues = useMemo(() => flattenIssues(issues), [issues]);
+  // The stage form's field errors are already flat and keyed by field name;
+  // `submitFailed` is tracked by the stage form bridge because the panel only
+  // surfaces issues once a save has been attempted.
+  const fieldErrors = useFormStore((state) => state.errors.fieldErrors);
+  const { submitFailed } = useStageFormContext();
+  const flatIssues = useMemo(() => flattenIssues(fieldErrors), [fieldErrors]);
   const hasIssues = flatIssues.length > 0;
   const issueCount = flatIssues.length;
 

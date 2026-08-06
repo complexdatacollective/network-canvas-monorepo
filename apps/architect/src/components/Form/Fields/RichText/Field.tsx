@@ -1,35 +1,34 @@
 import { isEqual } from 'es-toolkit/compat';
-import type { ComponentType } from 'react';
-import type { WrappedFieldInputProps, WrappedFieldMetaProps } from 'redux-form';
+import { useMemo } from 'react';
 
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
   type RichTextContent,
 } from '~/utils/markdownAdapter';
 
-type RichTextFieldProps = {
-  input: WrappedFieldInputProps;
-  meta?: Partial<WrappedFieldMetaProps>;
-  label?: string | null;
-  labelHidden?: boolean;
-  placeholder?: string;
-  autoFocus?: boolean;
-  inline?: boolean;
-  disallowedTypes?: string[];
-  className?: string | null;
-  disabled?: boolean;
-  readOnly?: boolean;
-  required?: boolean;
-};
-
-const FrescoRichTextEditorField = RichTextEditorField as ComponentType<
-  Record<string, unknown>
->;
-const ReduxFieldAdapter = FrescoReduxField as ComponentType<
-  Record<string, unknown>
+type RichTextFieldProps = CreateFormFieldProps<
+  string,
+  'div',
+  {
+    // Mirrors the props `RichTextEditorField` requires: this field only ever
+    // renders inside a fresco-ui `Field`, which always injects them.
+    'id': string;
+    'name': string;
+    'aria-describedby': string;
+    'placeholder'?: string;
+    'autoFocus'?: boolean;
+    /**
+     * Restricts the editor to a single paragraph of markdown (no headings,
+     * lists, links or rules). Named for the markdown mode rather than `inline`,
+     * which fresco-ui's `Field` reserves for its label/control layout.
+     */
+    'singleLine'?: boolean;
+    /** Toolbar features to withhold, e.g. `['bold', 'lists']`. */
+    'disallowedTypes'?: string[];
+  }
 >;
 
 const asRichTextContent = (value: unknown): RichTextContent | undefined =>
@@ -37,71 +36,56 @@ const asRichTextContent = (value: unknown): RichTextContent | undefined =>
     ? (value as RichTextContent)
     : undefined;
 
+/**
+ * Markdown editor over a plain markdown string. Labelling belongs to the
+ * surrounding field — pass it through `ArchitectField`'s `label`/`hint`.
+ */
 const RichTextField = ({
-  input,
-  meta = {},
-  label = null,
-  labelHidden = false,
-  placeholder,
-  autoFocus = false,
-  inline = false,
+  value,
+  onChange,
+  singleLine = false,
   disallowedTypes = [],
-  className = null,
-  disabled = false,
-  readOnly = false,
-  required = false,
+  ...props
 }: RichTextFieldProps) => {
   const toolbarOptions = {
     bold: !disallowedTypes.includes('bold'),
     italic: !disallowedTypes.includes('italic'),
-    links: !inline,
-    headings: !inline && !disallowedTypes.includes('headings'),
-    lists: !inline && !disallowedTypes.includes('lists'),
-    thematicBreak: !inline && !disallowedTypes.includes('thematic_break'),
+    links: !singleLine,
+    headings: !singleLine && !disallowedTypes.includes('headings'),
+    lists: !singleLine && !disallowedTypes.includes('lists'),
+    thematicBreak: !singleLine && !disallowedTypes.includes('thematic_break'),
     history: !disallowedTypes.includes('history'),
   };
 
-  const handleChange = (nextValue: unknown) => {
-    const currentMarkdown =
-      typeof input.value === 'string' ? input.value : null;
-    const nextMarkdown = typeof nextValue === 'string' ? nextValue : null;
+  const markdown = typeof value === 'string' ? value : null;
+  const content = useMemo(
+    () => markdownToRichTextContent(markdown, singleLine),
+    [markdown, singleLine],
+  );
 
-    if (
-      isEqual(
-        markdownToRichTextContent(currentMarkdown, inline),
-        markdownToRichTextContent(nextMarkdown, inline),
-      )
-    ) {
+  const handleChange = (nextValue: unknown) => {
+    const nextMarkdown = richTextContentToMarkdown(
+      asRichTextContent(nextValue),
+      singleLine,
+    );
+
+    // The editor emits a change as it mounts. Committing a value that
+    // round-trips to the same document would dirty the stage — and add a draft
+    // timeline entry — merely by rendering the field.
+    if (isEqual(content, markdownToRichTextContent(nextMarkdown, singleLine))) {
       return;
     }
 
-    input.onChange(nextValue);
+    onChange?.(nextMarkdown);
   };
 
   return (
-    <ReduxFieldAdapter
-      input={{ ...input, onChange: handleChange }}
-      meta={meta}
-      fieldComponent={FrescoRichTextEditorField}
-      label={label ?? input.name ?? ''}
-      labelHidden={labelHidden}
-      placeholder={placeholder}
-      autoFocus={autoFocus}
-      className={className ?? undefined}
-      disabled={disabled}
-      readOnly={readOnly}
-      required={required}
+    <RichTextEditorField
+      {...props}
       changeMode="input"
       toolbarOptions={toolbarOptions}
-      fromReduxValue={(value: unknown) =>
-        markdownToRichTextContent(
-          typeof value === 'string' ? value : null,
-          inline,
-        )
-      }
-      toReduxValue={(value: unknown) =>
-        richTextContentToMarkdown(asRichTextContent(value), inline)
-      }
+      value={content}
+      onChange={handleChange}
     />
   );
 };

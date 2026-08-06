@@ -1,9 +1,8 @@
-import { useState, type ComponentType, type FocusEventHandler } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { WrappedFieldProps } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { cx } from '~/utils/cva';
 
 import MapView from './MapView';
@@ -34,21 +33,13 @@ export const requiredMapView = (value: unknown) => {
     : 'Required';
 };
 
-type MapSelectionControlProps = {
-  'id'?: string;
-  'name'?: string;
-  'value'?: MapValue;
-  'onChange'?: (value: MapValue) => void;
-  'onBlur'?: FocusEventHandler;
-  'onFocus'?: FocusEventHandler;
-  'disabled'?: boolean;
-  'readOnly'?: boolean;
-  'aria-describedby'?: string;
-  'aria-invalid'?: boolean;
-  'aria-labelledby'?: string;
-};
+type MapSelectionProps = CreateFormFieldProps<MapValue, 'fieldset'>;
 
-const MapSelectionControl = ({
+/**
+ * Opens the map editor to set a stage's initial map view. Labelling belongs to
+ * the surrounding field — pass it through `ArchitectField`'s `label`/`hint`.
+ */
+const MapSelection = ({
   id,
   name,
   value = {},
@@ -60,7 +51,7 @@ const MapSelectionControl = ({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
-}: MapSelectionControlProps) => {
+}: MapSelectionProps) => {
   const [showMap, setShowMap] = useState(false);
 
   return (
@@ -102,33 +93,5 @@ const MapSelectionControl = ({
     </>
   );
 };
-
-type MapSelectionProps = WrappedFieldProps & {
-  label?: string;
-  disabled?: boolean;
-  readOnly?: boolean;
-};
-
-const FrescoMapSelectionControl = MapSelectionControl as ComponentType<
-  Record<string, unknown>
->;
-const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
-  Record<string, unknown>
->;
-
-const MapSelectionBase = ({
-  label = 'Initial map view',
-  ...props
-}: MapSelectionProps) => (
-  <ReduxFieldAdapter
-    {...props}
-    label={label}
-    fieldComponent={FrescoMapSelectionControl}
-  />
-);
-
-const MapSelection = MapSelectionBase as unknown as ComponentType<
-  Record<string, unknown>
->;
 
 export default MapSelection;

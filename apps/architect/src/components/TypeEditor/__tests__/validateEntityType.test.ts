@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import validateEntityType from '../validateEntityType';
+import validateEntityType, {
+  SHAPE_MAPPING_FIELD,
+} from '../validateEntityType';
 
 describe('validateEntityType()', () => {
   it('returns no errors when there is no dynamic shape mapping', () => {
@@ -37,12 +39,13 @@ describe('validateEntityType()', () => {
     ).toEqual({});
   });
 
+  // The mapping is one opaque field, so every message is reported at that
+  // field name — which is what makes fresco-ui mark it errored and focus it.
   it('flags a dynamic mapping with no variable selected', () => {
     const errors = validateEntityType({
       shape: { default: 'circle', dynamic: {} },
     });
-    expect(errors.shape?.dynamic?.variable).toBeTruthy();
-    expect(errors.shape?.dynamic?.thresholds).toBeUndefined();
+    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/Select a variable/);
   });
 
   it('flags a breakpoints mapping with no thresholds', () => {
@@ -52,8 +55,7 @@ describe('validateEntityType()', () => {
         dynamic: { variable: 'var-1', type: 'breakpoints', thresholds: [] },
       },
     });
-    expect(errors.shape?.dynamic?.thresholds).toBeTruthy();
-    expect(errors.shape?.dynamic?.variable).toBeUndefined();
+    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/at least one threshold/);
   });
 
   it('flags duplicate threshold values', () => {
@@ -70,7 +72,7 @@ describe('validateEntityType()', () => {
         },
       },
     });
-    expect(errors.shape?.dynamic?.thresholds).toBeTruthy();
+    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/increase in value/);
   });
 
   it('flags descending threshold values', () => {
@@ -87,6 +89,6 @@ describe('validateEntityType()', () => {
         },
       },
     });
-    expect(errors.shape?.dynamic?.thresholds).toBeTruthy();
+    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/increase in value/);
   });
 });

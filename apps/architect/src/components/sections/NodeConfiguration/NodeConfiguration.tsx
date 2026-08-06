@@ -1,29 +1,32 @@
-import { useCallback, useEffect, useMemo } from 'react';
-import { compose } from 'react-recompose';
-import { connect } from 'react-redux';
-import { change, formValueSelector, getFormInitialValues } from 'redux-form';
+import { isEqual } from 'es-toolkit/compat';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import EditableAttributesList from '~/components/EditableAttributesList/EditableAttributesList';
 import { Row, Section, Subsection } from '~/components/EditorLayout';
-import withCreateVariableHandlers from '~/components/enhancers/withCreateVariableHandler';
-import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
-import withSubject from '~/components/enhancers/withSubject';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ArchitectField from '~/components/Form/ArchitectField';
 import IssueAnchor from '~/components/IssueAnchor';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
+import {
+  useCreateVariable,
+  useSetStageValue,
+  useStageFormValue,
+  useStageInitialValue,
+  useSubject,
+  type CreateStageVariable,
+} from '~/components/StageEditor/stageFormHooks';
 import {
   crossClassPickIssue,
   unvalidatedElsewhereMessage,
   validatedElsewhereMessage,
   variableDisplayName,
 } from '~/components/Validations/contradictions';
-import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import { useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
 import {
   EMPTY_VARIABLES,
@@ -36,17 +39,16 @@ import {
   excludeValidatedUses,
 } from '~/selectors/roleFilters';
 
+import EditableAttributesList from '../../EditableAttributesList/EditableAttributesList';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
-import withComposerFormHandlers from '../Form/withComposerFormHandlers';
+import { useComposerFieldCommit } from '../Form/fieldCommit';
 import { getLayoutVariablesForSubject } from '../SociogramPrompts/selectors';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const nodeFormFieldVariables = (
-  values: Record<string, unknown> | undefined,
-): string[] => {
+const nodeFormFieldVariables = (values: unknown): string[] => {
   const nodeForm = isRecord(values) ? values.nodeForm : undefined;
   const fields =
     isRecord(nodeForm) && Array.isArray(nodeForm.fields) ? nodeForm.fields : [];
@@ -74,54 +76,60 @@ type TextVariableOption = {
   type?: string;
   value: string;
 };
+
 export type NodeConfigurationProps = {
   entity: 'node' | 'edge' | 'ego';
   type: string | null;
-  form: string;
   disabled?: boolean;
   disabledMessage?: string;
-  handleCreateVariable: (
-    value: string,
-    variableType: string,
-    fieldName: string,
-    validation?: { required: true },
-  ) => void;
+  handleCreateVariable: CreateStageVariable;
   handleChangeFields: (field: Record<string, unknown>) => unknown;
-  layoutVariablesForSubject: LayoutVariableOption[];
-  categoricalVariablesForSubject: CategoricalVariableOption[];
-  quickAddOptionsForSubject: TextVariableOption[];
 };
+
+/**
+ * The presentational body of the section — a plain function component so it
+ * stays directly testable, but it reads the stage form (quickAdd,
+ * convexHullVariable, behaviours.automaticLayout, and their committed
+ * originals) through the stage-form hooks rather than taking them as props,
+ * since they are stage-form-scoped concerns the caller has no other reason to
+ * know about.
+ */
 export const NodeConfigurationComponent = ({
   entity,
   type,
-  form,
   disabled = false,
   disabledMessage,
   handleCreateVariable,
   handleChangeFields,
-  layoutVariablesForSubject,
-  categoricalVariablesForSubject,
-  quickAddOptionsForSubject,
 }: NodeConfigurationProps) => {
-  const dispatch = useAppDispatch();
-  const rawAutomaticLayout = useAppSelector((state) =>
-    formValueSelector(form)(state, 'behaviours.automaticLayout'),
+  const setStageValue = useSetStageValue();
+  const quickAddVariable = useStageFormValue<string>('quickAdd');
+  const initialQuickAdd = useStageInitialValue<string>('quickAdd');
+  const convexHullVariable = useStageFormValue<string>('convexHullVariable');
+  const initialConvexHullVariable =
+    useStageInitialValue<string>('convexHullVariable');
+  const initialAutomaticLayout = useStageInitialValue<boolean>(
+    'behaviours.automaticLayout',
   );
-  const quickAddVariable = useAppSelector((state) =>
-    formValueSelector(form)(state, 'quickAdd'),
-  );
-  const automaticLayout =
-    typeof rawAutomaticLayout === 'boolean' ? rawAutomaticLayout : true;
-  // Selecting a node type resets subject-dependent fields, setting `behaviours`
-  // to null (NodeType.handleResetStage) — and redux-form's formValueSelector
-  // returns `null` (not undefined) for a path under a null parent. Re-seed the
-  // template default (on) whenever the value is not a real boolean, so the
-  // default survives the reset and an unset field never renders as off.
+  const initialNodeForm = useStageInitialValue<unknown>('nodeForm');
+  const initialLayoutVariable = useStageInitialValue<string>('layoutVariable');
+
+  // Selecting a node type resets subject-dependent fields (see
+  // useResetStageOnSubjectChange), but that reset writes the whole
+  // `behaviours` object at once and this toggle registers under the nested
+  // name `behaviours.automaticLayout` — a distinct field-store entry the
+  // reset's write never reaches. Re-seed the template default (on)
+  // explicitly whenever the subject actually changes, mirroring the
+  // enhancer-era `NodeType.handleResetStage` behaviour this replaces.
+  const { subject } = useSubject();
+  const previousSubjectRef = useRef(subject);
   useEffect(() => {
-    if (typeof rawAutomaticLayout !== 'boolean') {
-      dispatch(change(form, 'behaviours.automaticLayout', true));
-    }
-  }, [rawAutomaticLayout, dispatch, form]);
+    const previous = previousSubjectRef.current;
+    previousSubjectRef.current = subject;
+    if (!previous || isEqual(previous, subject)) return;
+    setStageValue('behaviours.automaticLayout', true);
+  }, [subject, setStageValue]);
+
   // quickAdd applies codebook validation, while convexHullVariable's group
   // and lasso interactions write directly. Their gates therefore check
   // opposite role classes.
@@ -149,25 +157,11 @@ export const NodeConfigurationComponent = ({
         0,
     [roleMap, nodeVariablesSubject],
   );
-  const stageInitialValues = useAppSelector((state: RootState) =>
-    getFormInitialValues(form)(state),
-  );
-  const originalQuickAdd =
-    isRecord(stageInitialValues) &&
-    typeof stageInitialValues.quickAdd === 'string'
-      ? stageInitialValues.quickAdd
-      : '';
-  const originalConvexHullVariable =
-    isRecord(stageInitialValues) &&
-    typeof stageInitialValues.convexHullVariable === 'string'
-      ? stageInitialValues.convexHullVariable
-      : '';
+  const originalQuickAdd = initialQuickAdd ?? '';
+  const originalConvexHullVariable = initialConvexHullVariable ?? '';
   const committedNodeFormVariableIds = useMemo(
-    () =>
-      nodeFormFieldVariables(
-        isRecord(stageInitialValues) ? stageInitialValues : undefined,
-      ),
-    [stageInitialValues],
+    () => nodeFormFieldVariables(initialNodeForm),
+    [initialNodeForm],
   );
   const quickAddCrossClassValidate = useCallback(
     (value: unknown): string | undefined => {
@@ -217,16 +211,41 @@ export const NodeConfigurationComponent = ({
       originalConvexHullVariable,
     ],
   );
-  const convexHullVariableValue = useAppSelector((state: RootState) =>
-    formValueSelector(form)(state, 'convexHullVariable'),
-  );
   const siblingUnvalidatedVariableIds = useMemo(
     () =>
-      typeof convexHullVariableValue === 'string' &&
-      convexHullVariableValue !== ''
-        ? [convexHullVariableValue]
+      typeof convexHullVariable === 'string' && convexHullVariable !== ''
+        ? [convexHullVariable]
         : [],
-    [convexHullVariableValue],
+    [convexHullVariable],
+  );
+  const layoutVariablesForSubject = useAppSelector(
+    (state: RootState): LayoutVariableOption[] =>
+      nodeVariablesSubject
+        ? (getLayoutVariablesForSubject(
+            state,
+            nodeVariablesSubject,
+          ) as LayoutVariableOption[])
+        : [],
+  );
+  const categoricalVariablesForSubject = useAppSelector(
+    (state: RootState): CategoricalVariableOption[] =>
+      nodeVariablesSubject
+        ? (getConvexHullOptionsForSubject(
+            state,
+            nodeVariablesSubject,
+            convexHullVariable,
+          ) as CategoricalVariableOption[])
+        : [],
+  );
+  const quickAddOptionsForSubject = useAppSelector(
+    (state: RootState): TextVariableOption[] =>
+      nodeVariablesSubject
+        ? (getComposerQuickAddOptionsForSubject(
+            state,
+            nodeVariablesSubject,
+            quickAddVariable,
+          ) as TextVariableOption[])
+        : [],
   );
   const newVariableWindowInitialProps = {
     entity: (entity === 'ego' ? 'node' : entity) as Entity,
@@ -238,7 +257,7 @@ export const NodeConfigurationComponent = ({
     if (typeof id !== 'string') {
       return;
     }
-    dispatch(change(form, 'convexHullVariable', id));
+    setStageValue('convexHullVariable', id);
   };
   const [newVariableWindowProps, openNewVariableWindow] =
     useNewVariableWindowState(
@@ -264,28 +283,27 @@ export const NodeConfigurationComponent = ({
       >
         <Row>
           <IssueAnchor fieldName="quickAdd" description="Quick Add Variable" />
-          <ValidatedField
+          <ArchitectField
             name="quickAdd"
+            label="Create or select a variable for the quick-add form"
             component={VariablePicker}
+            initialValue={initialQuickAdd}
             validation={{
               required: true,
               crossClassPick: quickAddCrossClassValidate,
             }}
-            componentProps={{
-              label: 'Create or select a variable for the quick-add form',
-              type,
-              entity,
-              options: quickAddOptionsForSubject,
-              onCreateOption: (value: string) =>
-                handleCreateVariable(value, 'text', 'quickAdd', {
-                  required: true,
-                }),
-            }}
+            type={type}
+            entity={entity}
+            options={quickAddOptionsForSubject}
+            onCreateOption={(value: string) =>
+              handleCreateVariable(value, 'text', 'quickAdd', {
+                required: true,
+              })
+            }
           />
         </Row>
         {typeof quickAddVariable === 'string' && (
           <CodebookVariableValidationSection
-            form={form}
             fieldName="quickAdd"
             entity={entity}
             type={type}
@@ -303,18 +321,18 @@ export const NodeConfigurationComponent = ({
             fieldName="layoutVariable"
             description="Layout Variable"
           />
-          <ValidatedField
+          <ArchitectField
             name="layoutVariable"
+            label="Create or select a variable to store node coordinates"
             component={VariablePicker}
+            initialValue={initialLayoutVariable}
             validation={{ required: true }}
-            componentProps={{
-              label: 'Create or select a variable to store node coordinates',
-              type,
-              entity,
-              options: layoutVariablesForSubject,
-              onCreateOption: (value: string) =>
-                handleCreateVariable(value, 'layout', 'layoutVariable'),
-            }}
+            type={type}
+            entity={entity}
+            options={layoutVariablesForSubject}
+            onCreateOption={(value: string) =>
+              handleCreateVariable(value, 'layout', 'layoutVariable')
+            }
           />
         </Row>
       </Subsection>
@@ -328,16 +346,13 @@ export const NodeConfigurationComponent = ({
             fieldName="behaviours.automaticLayout"
             description="Default automatic layout"
           />
-          <div className="flex flex-row items-center gap-5">
-            <ToggleField
-              title="Start with automatic layout switched on"
-              value={automaticLayout}
-              onChange={(checked) =>
-                dispatch(change(form, 'behaviours.automaticLayout', checked))
-              }
-            />
-            <span>Start with automatic layout switched on</span>
-          </div>
+          <ArchitectField
+            name="behaviours.automaticLayout"
+            label="Start with automatic layout switched on"
+            component={ToggleField}
+            inline
+            initialValue={initialAutomaticLayout ?? true}
+          />
         </Row>
       </Subsection>
 
@@ -350,21 +365,21 @@ export const NodeConfigurationComponent = ({
             fieldName="convexHullVariable"
             description="Group hull variable"
           />
-          <ValidatedField
+          <ArchitectField
             name="convexHullVariable"
+            label="Create or select a categorical variable for grouping"
             component={VariablePicker}
+            initialValue={initialConvexHullVariable}
             validation={{ crossClassPick: convexHullCrossClassValidate }}
-            componentProps={{
-              label: 'Create or select a categorical variable for grouping',
-              type,
-              entity,
-              options: categoricalVariablesForSubject,
-              onCreateOption: (name: string) =>
-                openNewVariableWindow(
-                  { initialValues: { name, type: 'categorical' } },
-                  { field: 'convexHullVariable' },
-                ),
-            }}
+            type={type}
+            entity={entity}
+            options={categoricalVariablesForSubject}
+            onCreateOption={(name: string) =>
+              openNewVariableWindow(
+                { initialValues: { name, type: 'categorical' } },
+                { field: 'convexHullVariable' },
+              )
+            }
           />
         </Row>
       </Subsection>
@@ -377,7 +392,7 @@ export const NodeConfigurationComponent = ({
           fieldName="nodeForm.fields"
           entity={entity === 'ego' ? 'node' : entity}
           type={type}
-          form={form}
+          form={STAGE_FORM_ID}
           editFormName="node-attr-edit"
           title="Edit attribute"
           handleChangeFields={handleChangeFields}
@@ -392,18 +407,7 @@ export const NodeConfigurationComponent = ({
     </Section>
   );
 };
-type OwnProps = {
-  entity: 'node' | 'edge' | 'ego';
-  type: string | null;
-  form: string;
-};
-const withLayoutOptions = connect(
-  (state: RootState, { entity, type }: OwnProps) => ({
-    layoutVariablesForSubject: type
-      ? getLayoutVariablesForSubject(state, { entity, type })
-      : [],
-  }),
-);
+
 /**
  * convexHullVariable writes group membership without applying codebook
  * validation, so variables already written by a validated form are omitted.
@@ -438,51 +442,24 @@ export const getComposerQuickAddOptionsForSubject = (
   return excludeUnvalidatedUses(state, subject, textOptions, currentValue);
 };
 
-const withCategoricalOptions = connect(
-  (state: RootState, { entity, type, form }: OwnProps) => {
-    if (!type) {
-      return { categoricalVariablesForSubject: [] };
-    }
-    const rawConvexHullVariable = formValueSelector(form)(
-      state,
-      'convexHullVariable',
-    );
-    const convexHullVariable =
-      typeof rawConvexHullVariable === 'string'
-        ? rawConvexHullVariable
-        : undefined;
-    return {
-      categoricalVariablesForSubject: getConvexHullOptionsForSubject(
-        state,
-        { entity, type },
-        convexHullVariable,
-      ),
-    };
-  },
-);
-const withQuickAddOptions = connect(
-  (state: RootState, { entity, type, form }: OwnProps) => {
-    if (!type) {
-      return { quickAddOptionsForSubject: [] };
-    }
-    const quickAdd = formValueSelector(form)(state, 'quickAdd') as
-      | string
-      | undefined;
-    return {
-      quickAddOptionsForSubject: getComposerQuickAddOptionsForSubject(
-        state,
-        { entity, type },
-        quickAdd,
-      ),
-    };
-  },
-);
-export default compose<NodeConfigurationProps, StageEditorSectionProps>(
-  withSubject,
-  withCreateVariableHandlers,
-  withComposerFormHandlers,
-  withDisabledSubjectRequired,
-  withLayoutOptions,
-  withCategoricalOptions,
-  withQuickAddOptions,
-)(NodeConfigurationComponent);
+const NodeConfiguration = (_props: StageEditorSectionProps) => {
+  const { entity, type } = useSubject();
+  const { createVariable } = useCreateVariable();
+  const handleChangeFields = useComposerFieldCommit({
+    entity,
+    type: type ?? '',
+  });
+
+  return (
+    <NodeConfigurationComponent
+      entity={entity}
+      type={type}
+      disabled={!type}
+      disabledMessage="Select a node type above to configure this section."
+      handleCreateVariable={createVariable}
+      handleChangeFields={handleChangeFields}
+    />
+  );
+};
+
+export default NodeConfiguration;

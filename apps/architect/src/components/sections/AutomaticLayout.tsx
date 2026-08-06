@@ -1,29 +1,17 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
-import { useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
-
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
-import IssueAnchor from '../IssueAnchor';
-const FORM_PROPERTY = 'behaviours.automaticLayout';
-const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
-  const dispatch = useAppDispatch();
-  const formSelector = useMemo(() => formValueSelector(form), [form]);
-  const formValue = useSelector(
-    (state: RootState) => !!formSelector(state, FORM_PROPERTY),
-  );
-  const [useAutomaticLayout, setUseAutomaticLayout] = useState(formValue);
-  const handleChooseLayoutMode = (nextValue: boolean | undefined) => {
-    const useNextValue = !!nextValue;
-    dispatch(change(form, FORM_PROPERTY, useNextValue) as UnknownAction);
-    setUseAutomaticLayout(useNextValue);
-  };
+const FIELD_PATH = 'behaviours.automaticLayout';
+
+const AutomaticLayout = () => {
+  // Redux Form omitted an untouched field's value entirely; the interface
+  // template seeds `true` for the interfaces that offer this choice, so an
+  // absent committed value only happens for a protocol saved before this
+  // field existed — fall back to Manual mode rather than silently opting in.
+  const initialValue = useStageInitialValue<boolean>(FIELD_PATH) ?? false;
   return (
     <Section
       title="Layout Mode"
@@ -35,10 +23,6 @@ const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
       }
     >
       <Row>
-        <IssueAnchor
-          fieldName="behaviours.automaticLayout"
-          description="Layout mode"
-        />
         <Paragraph>
           <strong>Automatic mode</strong> positions nodes when the stage is
           first shown by simulating physical forces such as attraction and
@@ -53,9 +37,12 @@ const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
         </Paragraph>
       </Row>
       <Row>
-        <FrescoBooleanField
-          onChange={handleChooseLayoutMode}
-          value={useAutomaticLayout}
+        <ArchitectField
+          name={FIELD_PATH}
+          label="Layout mode"
+          labelHidden
+          component={FrescoBooleanField}
+          initialValue={initialValue}
           options={[
             {
               value: false,

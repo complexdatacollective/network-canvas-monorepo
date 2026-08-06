@@ -1,16 +1,27 @@
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import type { ReactNode } from 'react';
 
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import MultiSelect, { type OptionGetter } from '~/components/Form/MultiSelect';
-import { useAppDispatch } from '~/ducks/hooks';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import MultiSelect, {
+  type ItemValue,
+  type OptionGetter,
+} from '~/components/Form/arrayFields/MultiSelect';
+
 type BinSortOrderSectionProps = {
-  form: string;
+  /**
+   * The row's committed `binSortOrder` value, used only to decide whether the
+   * section starts expanded. Rendered inside a per-item dialog editor (its own
+   * `FormStoreProvider`, remounted per editing session), which has no
+   * whole-form `initialValues` to read a not-yet-mounted field from — the
+   * caller (the item's `editorFieldsComponent`) supplies it from the row.
+   */
+  initialValue?: ItemValue[];
   disabled?: boolean;
   maxItems?: number;
   optionGetter: OptionGetter;
-  summary?: React.ReactNode;
+  summary?: ReactNode;
 };
 const getDefaultSummary = () => (
   <Paragraph>
@@ -19,20 +30,16 @@ const getDefaultSummary = () => (
   </Paragraph>
 );
 const BinSortOrderSection = ({
-  form,
+  initialValue,
   disabled = false,
   maxItems = 5,
   optionGetter,
   summary = getDefaultSummary(),
 }: BinSortOrderSectionProps) => {
-  const dispatch = useAppDispatch();
-  const getFormValue = formValueSelector(form);
-  const hasBinSortOrder = useSelector((state: Record<string, unknown>) =>
-    getFormValue(state, 'binSortOrder'),
-  );
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
   const handleToggleChange = (nextState: boolean) => {
     if (!nextState) {
-      dispatch(change(form, 'binSortOrder', null));
+      setFieldValue('binSortOrder', undefined);
     }
     return true;
   };
@@ -42,13 +49,17 @@ const BinSortOrderSection = ({
       summary={summary}
       toggleable
       disabled={disabled}
-      startExpanded={!!hasBinSortOrder}
+      startExpanded={!!initialValue}
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
       <Row>
-        <MultiSelect
+        <ArchitectArrayField
           name="binSortOrder"
+          label="Bin sort order"
+          labelHidden
+          component={MultiSelect}
+          initialValue={initialValue}
           properties={[{ fieldName: 'property' }, { fieldName: 'direction' }]}
           maxItems={maxItems}
           options={optionGetter}

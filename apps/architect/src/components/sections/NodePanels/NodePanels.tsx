@@ -1,19 +1,41 @@
-import { has } from 'es-toolkit/compat';
 import { useCallback } from 'react';
-import { connect } from 'react-redux';
-import type { FormAction } from 'redux-form';
-import { change, FieldArray, formValueSelector } from 'redux-form';
 import { v4 as uuid } from 'uuid';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import FrescoReduxArrayField from '~/components/Form/FrescoReduxArrayField';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  useSetStageValue,
+  useStageFormValue,
+  useSubject,
+} from '~/components/StageEditor/stageFormHooks';
 
-import IssueAnchor from '../../IssueAnchor';
 import NodePanel, { type NodePanelValue } from './NodePanel';
+
+// FieldArray's own reorderable-connected-field pattern was retired with
+// redux-form (fresco-ui's opaque-array rule deliberately doesn't support
+// atomic re-keying — see plan §2.8's "explicitly NOT requested" list), but
+// NetworkFilter (used by each row below) reads/writes the STAGE form
+// directly. So each panel's fields stay individually registered on the
+// stage — `panels[N].title`/`.dataSource`/`.filter` — exactly as they were
+// under redux-form, and this component only drives the add/remove/reorder UI
+// over them: `ArrayField` renders bounded by `MAX_PANELS`, uncontrolled by a
+// literal `panels` field (registering one would race the individual leaves —
+// see MAX_PANELS below), and `handlePanelsChange` writes the recomputed list
+// back across the same bounded set of field paths.
+const MAX_PANELS = 2;
+
+// `ArrayField` decides whether to re-sync its internal item list from `value`
+// by REFERENCE (`useArrayFieldItems.ts`'s `value !== prevValueRef.current`),
+// not by deep equality. An inline `panels ?? []` fallback would allocate a
+// fresh array every render, so it would look like new external data on every
+// render and wipe out `addItem`'s optimistic local state before the just-
+// registered fields' dormant values ever caught up. A stable module-level
+// empty array keeps the "no panels" case a no-op for that comparison.
+const EMPTY_PANELS: NodePanelValue[] = [];
 
 const createNodePanel = (): NodePanelValue => ({
   id: uuid(),
@@ -48,30 +70,60 @@ export const handlePanelToggleChange = async (
   return true;
 };
 
-type NodePanelsProps = {
-  form: string;
-  panels?: Array<Record<string, unknown>> | null;
-  disabled?: boolean;
-};
-export const NodePanels = ({
-  form,
-  panels = null,
-  disabled = false,
-  ...rest
-}: NodePanelsProps) => {
-  const dispatch = useAppDispatch();
+export const NodePanels = (_props: StageEditorSectionProps) => {
+  const { type } = useSubject();
+  const disabled = !type;
   const { confirm } = useDialog();
+  const setStageValue = useSetStageValue();
+  const panels = useStageFormValue<NodePanelValue[] | null>('panels');
+
+  const writePanelAt = useCallback(
+    (index: number, panel: NodePanelValue | undefined) => {
+      setStageValue(`panels[${index}].id`, panel?.id);
+      setStageValue(`panels[${index}].title`, panel?.title ?? null);
+      setStageValue(
+        `panels[${index}].dataSource`,
+        panel?.dataSource ?? 'existing',
+      );
+      setStageValue(`panels[${index}].filter`, panel?.filter ?? null);
+    },
+    [setStageValue],
+  );
+
+  const handlePanelsChange = useCallback(
+    (nextPanels: NodePanelValue[] | undefined) => {
+      const resolvedPanels = nextPanels ?? [];
+      resolvedPanels.forEach((panel, index) => writePanelAt(index, panel));
+      for (let index = resolvedPanels.length; index < MAX_PANELS; index += 1) {
+        writePanelAt(index, undefined);
+      }
+    },
+    [writePanelAt],
+  );
+
   const handleToggleChange = useCallback(
     (newState: boolean) =>
       handlePanelToggleChange(newState, panels, confirm, () => {
-        dispatch(change(form, 'panels', null) as unknown as FormAction);
+        // The stage's `panels` key was never registered as its own field
+        // (see the file-top note), so an explicit dormant write is the only
+        // way to signal "cleared" — plain unmount would just fall back to
+        // the last committed value (stageFormHooks.ts's useStageFormValue
+        // resolution order). Also clear every panel's own leaves: they are
+        // real per-index fields (`panels[N].id/.title/.dataSource/.filter`),
+        // and `registerField` prefers a dormant value over `initialValue`, so
+        // leaving their dormant slots untouched would let a remount
+        // resurrect the pre-toggle-off data even though `panels` itself
+        // reads as cleared.
+        for (let index = 0; index < MAX_PANELS; index += 1) {
+          writePanelAt(index, undefined);
+        }
+        setStageValue('panels', undefined);
       }),
-    [confirm, dispatch, panels, form],
+    [confirm, panels, setStageValue, writePanelAt],
   );
+
   return (
     <Section
-      // eslint-disable-next-line react/jsx-props-no-spreading
-      {...rest}
       title="Side Panels"
       toggleable
       disabled={disabled}
@@ -84,47 +136,27 @@ export const NodePanels = ({
       startExpanded={!!panels}
       handleToggleChange={handleToggleChange}
     >
-      <div>
-        <IssueAnchor fieldName="panels" description="Panel Configuration" />
-        <FieldArray
-          name="panels"
-          component={FrescoReduxArrayField}
-          label=""
-          itemComponent={NodePanel}
-          itemTemplate={createNodePanel}
-          getId={(panel: NodePanelValue) => panel.id}
-          itemClasses="bg-accent text-accent-contrast elevation-low"
-          addButtonLabel="Add new panel"
-          emptyStateMessage="No side panels configured."
-          immediateAdd
-          sortable
-          maxItems={2}
-          rerenderOnEveryChange
-          confirmDelete={false}
-          disabled={disabled}
-        />
-      </div>
+      <UnconnectedField
+        name="panels"
+        label="Side panel configuration"
+        labelHidden
+        component={ArrayField<NodePanelValue>}
+        value={panels ?? EMPTY_PANELS}
+        onChange={handlePanelsChange}
+        itemComponent={NodePanel}
+        itemTemplate={createNodePanel}
+        getId={(panel: NodePanelValue) => panel.id}
+        itemClasses="bg-accent text-accent-contrast elevation-low"
+        addButtonLabel="Add new panel"
+        emptyStateMessage="No side panels configured."
+        immediateAdd
+        sortable
+        maxItems={MAX_PANELS}
+        confirmDelete={false}
+        disabled={disabled}
+      />
     </Section>
   );
 };
-const mapStateToProps = (
-  state: RootState,
-  props: {
-    form: string;
-  },
-) => {
-  const getFormValues = formValueSelector(props.form);
-  const panels = getFormValues(state, 'panels') as
-    | Array<Record<string, unknown>>
-    | null
-    | undefined;
-  const disabled = !has(
-    getFormValues(state, 'subject') as Record<string, unknown>,
-    'type',
-  );
-  return {
-    disabled,
-    panels,
-  };
-};
-export default connect(mapStateToProps)(NodePanels);
+
+export default NodePanels;

@@ -1,20 +1,20 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { render, fireEvent, screen, within } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import {
-  reducer as formReducer,
-  reduxForm,
-  type InjectedFormProps,
-} from 'redux-form';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { beforeAll, describe, expect, it } from 'vitest';
 
-// The connected component (withStoreState + withAddNew + withUpdateHandlers
-// around the presentational Validations.tsx) is rendered for real, inside a
-// redux-form + Provider harness — the same idiom DialogArrayField.test.tsx and
-// NativeSelect.test.tsx use — so these behaviours are exercised through the
-// actual wiring (real checkDraft, real findDraftContradictions, real
-// NativeSelectField), not a hand-rolled restatement of the logic.
-import Validations from '../index';
+import Form from '@codaco/fresco-ui/form/Form';
+
+// The real presentational component is rendered inside a real fresco-ui form
+// — the same idiom DialogArrayField.test.tsx and NativeSelect.test.tsx use —
+// so these behaviours are exercised through the actual wiring (real
+// checkDraft, real findDraftContradictions, real NativeSelectField), not a
+// hand-rolled restatement of the logic.
+import Validations from '../Validations';
+
+beforeAll(() => {
+  // fresco-ui's default `onSubmitInvalid` scrolls the first invalid field
+  // into view; jsdom implements no scrolling (see ArchitectField.test.tsx).
+  Element.prototype.scrollTo ??= () => undefined;
+});
 
 type TestVariable = {
   name: string;
@@ -33,61 +33,32 @@ type OwnProps = {
   currentVariableId: string;
 };
 
-type HarnessProps = InjectedFormProps<Record<string, unknown>, OwnProps> &
-  OwnProps;
-
-const FORM_NAME = 'validations-behaviour-test';
-
-const Harness = ({
-  variableType,
-  entity,
-  existingVariables,
-  allVariables,
-  currentVariableId,
-}: HarnessProps) => (
-  <Validations
-    form={FORM_NAME}
-    name="validation"
-    variableType={variableType}
-    entity={entity}
-    existingVariables={existingVariables}
-    allVariables={allVariables}
-    currentVariableId={currentVariableId}
-  />
-);
-
-const ReduxHarness = reduxForm<Record<string, unknown>, OwnProps>({
-  form: FORM_NAME,
-})(Harness);
-
-// `component`/`parameters` are seeded as ordinary form values, exactly as the
-// field editor's own controls write them — the connected Validations reads
-// them off the same form through `formValueSelector`.
+// `component`/`parameters` stand in for sibling fields in the surrounding
+// field-editor dialog — the real `ValidationSection` reads them reactively
+// off that form and forwards them as `draftComponent`/`draftParameters`; none
+// of these scenarios change them mid-test, so passing them straight through
+// as static props here is equivalent.
 const setup = ({
   validation = {},
   component,
   parameters,
   ...ownProps
 }: OwnProps & {
-  validation?: Record<string, unknown>;
+  validation?: Record<string, boolean | number | string | null>;
   component?: string;
   parameters?: Record<string, unknown>;
-}) => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-
-  return render(
-    <Provider store={store}>
-      <ReduxHarness
-        initialValues={{ validation, component, parameters }}
+}) =>
+  render(
+    <Form onSubmit={() => ({ success: true })}>
+      <Validations
+        name="validation"
+        initialValue={validation}
+        draftComponent={component}
+        draftParameters={parameters}
         {...ownProps}
       />
-    </Provider>,
+    </Form>,
   );
-};
 
 describe('Validations behaviour', () => {
   it('filters a candidate that would form a strict comparator cycle out of the reference picker', () => {

@@ -1,26 +1,23 @@
 import { Trash2 } from 'lucide-react';
-import type { ComponentType } from 'react';
-import { useCallback } from 'react';
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import { useEffect, useRef } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import type { ArrayFieldItemProps } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import ArchitectField from '~/components/Form/ArchitectField';
 import DataSource from '~/components/Form/Fields/DataSource';
-import type { FrescoReduxArrayFieldItemProps } from '~/components/Form/FrescoReduxArrayField';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
 import NetworkFilter from '~/components/sections/fields/NetworkFilter';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+import {
+  useSetStageValue,
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 import { getFieldId } from '~/utils/issues';
 
 import Section from '../../EditorLayout/Section';
-
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
 
 const EXISTING_DATA_SOURCE = 'existing';
 
@@ -44,12 +41,11 @@ export type NodePanelValue = Record<string, unknown> & {
   filter: unknown;
 };
 
-type NodePanelProps = FrescoReduxArrayFieldItemProps<NodePanelValue>;
+type NodePanelProps = ArrayFieldItemProps<NodePanelValue>;
 
 const NodePanel = ({
-  fieldName,
-  form,
   index,
+  committedIndex,
   itemCount,
   isSortable,
   dragControls,
@@ -59,8 +55,12 @@ const NodePanel = ({
   readOnly,
 }: NodePanelProps) => {
   const { confirm } = useDialog();
-  const dispatch = useAppDispatch();
   const interactionDisabled = disabled || readOnly;
+  // Bind to the committed position, not the live (possibly mid-drag-preview)
+  // index, so the fields stay attached to the right panel while a pointer
+  // reorder is being previewed.
+  const fieldName = `panels[${committedIndex ?? index}]`;
+
   const handleDelete = () => {
     void confirm({
       title: 'Remove this item?',
@@ -72,40 +72,57 @@ const NodePanel = ({
     });
   };
 
-  const dataSource = useSelector((state: RootState) =>
-    formValueSelector(form)(state, `${fieldName}.dataSource`),
-  ) as string | undefined;
-  const filter = useSelector((state: RootState) =>
-    formValueSelector(form)(state, `${fieldName}.filter`),
-  ) as PanelFilter;
-
-  const handleDataSourceChange = useCallback(
-    (_raw: unknown, newValue: string, previousValue: string) => {
-      if (newValue === previousValue || newValue === EXISTING_DATA_SOURCE) {
-        return;
-      }
-      if (!hasEdgeRules(filter)) return;
-
-      void (async () => {
-        const confirmed = await confirm({
-          title: 'This will remove your edge rules',
-          description:
-            'An external data file contains only nodes, so edge rules cannot be applied to it. Switching will delete the edge rules in this panel’s filter. Do you want to continue?',
-          confirmLabel: 'Remove edge rules',
-          cancelLabel: 'Cancel',
-          intent: 'warning',
-          onConfirm: () => {},
-        });
-
-        dispatch(
-          confirmed
-            ? change(form, `${fieldName}.filter`, stripEdgeRules(filter))
-            : change(form, `${fieldName}.dataSource`, previousValue),
-        );
-      })();
-    },
-    [confirm, dispatch, filter, form, fieldName],
+  const setStageValue = useSetStageValue();
+  const dataSource = useStageFormValue<string | undefined>(
+    `${fieldName}.dataSource`,
   );
+  const filter = useStageFormValue<PanelFilter>(`${fieldName}.filter`);
+  const initialTitle = useStageInitialValue<string | null>(
+    `${fieldName}.title`,
+  );
+  const initialDataSource = useStageInitialValue<string | undefined>(
+    `${fieldName}.dataSource`,
+  );
+
+  // Cross-field reactivity (an observer effect, not a `DataSource` `onChange`
+  // side effect — `ArchitectField` strips a caller `onChange` defensively, see
+  // stageFormHooks.ts): switching away from the in-progress interview network
+  // while the panel's filter has edge rules asks for confirmation, since an
+  // external data file has no edges to filter.
+  const previousDataSourceRef = useRef(dataSource);
+  useEffect(() => {
+    const previousValue = previousDataSourceRef.current;
+    previousDataSourceRef.current = dataSource;
+    if (
+      previousValue === undefined ||
+      dataSource === previousValue ||
+      dataSource === EXISTING_DATA_SOURCE ||
+      !hasEdgeRules(filter ?? null)
+    ) {
+      return;
+    }
+
+    void (async () => {
+      const confirmed = await confirm({
+        title: 'This will remove your edge rules',
+        description:
+          'An external data file contains only nodes, so edge rules cannot be applied to it. Switching will delete the edge rules in this panel’s filter. Do you want to continue?',
+        confirmLabel: 'Remove edge rules',
+        cancelLabel: 'Cancel',
+        intent: 'warning',
+        onConfirm: () => {},
+      });
+
+      if (confirmed) {
+        setStageValue(`${fieldName}.filter`, stripEdgeRules(filter ?? null));
+      } else {
+        setStageValue(`${fieldName}.dataSource`, previousValue);
+      }
+    })();
+    // Only the dataSource transition itself should retrigger this — `filter`
+    // and `confirm` are read at fire time, not watched for their own changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataSource, fieldName, setStageValue]);
 
   return (
     <div className="flex w-full items-center gap-4">
@@ -132,16 +149,14 @@ const NodePanel = ({
           layout="vertical"
           className="bg-slate-blue-dark mt-10 text-white [--text-dark:white]"
         >
-          <ValidatedField
+          <ArchitectField
             name={`${fieldName}.title`}
             label="Panel title"
             labelHidden
-            component={FrescoReduxField}
+            component={InputField}
             validation={{ required: true }}
-            componentProps={{
-              fieldComponent: FrescoInputField,
-              placeholder: 'Panel title',
-            }}
+            initialValue={initialTitle ?? ''}
+            placeholder="Panel title"
           />
         </Section>
         <Section
@@ -158,22 +173,21 @@ const NodePanel = ({
           layout="vertical"
           className="bg-slate-blue-dark mt-10 text-white [--text-dark:white]"
         >
-          <ValidatedField
-            component={
-              DataSource as unknown as React.ComponentType<
-                Record<string, unknown>
-              >
-            }
+          <ArchitectField
             name={`${fieldName}.dataSource`}
+            // Every panel repeated the same hardcoded "Data source" label —
+            // distinguish which panel this is (the panel's own index is the
+            // only thing that varies; the panel has no title field value
+            // available here to name it by).
+            label={`Panel ${index + 1} data source`}
+            labelHidden
+            component={DataSource}
             validation={{ required: true }}
-            componentProps={{
-              canUseExisting: true,
-              onChange: handleDataSourceChange,
-            }}
+            initialValue={initialDataSource}
+            canUseExisting
           />
         </Section>
         <NetworkFilter
-          form={form}
           variant="contrast"
           name={`${fieldName}.filter`}
           allowEdgeRules={dataSource === EXISTING_DATA_SOURCE}

@@ -1,103 +1,126 @@
 import { useState } from 'react';
-import type { WrappedFieldProps } from 'redux-form';
 
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import NetworkThumbnail from '~/components/Thumbnail/Network';
 
-import type { FileInputPropsWithoutHOC } from './File';
-import File from './File';
+import ResourcePicker from './File';
 
-type DataSourceProps = WrappedFieldProps & {
-  canUseExisting?: boolean;
-  disabled?: boolean;
-  readOnly?: boolean;
-  required?: boolean;
-};
+type DataSourceProps = CreateFormFieldProps<
+  string,
+  'div',
+  {
+    /** Offers "the in-progress interview network" alongside a network asset. */
+    canUseExisting?: boolean;
+    /** Only reaches the control through `UnconnectedField`; `Field` strips
+     * validation props and signals the same thing via `aria-required`. */
+    required?: boolean;
+  }
+>;
 
-const DataSource = (props: DataSourceProps) => {
-  const {
-    input,
-    canUseExisting = false,
-    meta,
-    disabled = false,
-    readOnly = false,
-    required = false,
-  } = props;
+const EXISTING_NETWORK = 'existing';
+
+/**
+ * Chooses the network a stage reads from: either the in-progress interview
+ * network or an uploaded network asset. One field, one value — the radio group
+ * and the resource picker are two views of it, so the field's label and hint
+ * come from the call site through `ArchitectField`.
+ */
+const DataSource = ({
+  id,
+  name,
+  value,
+  onChange,
+  onBlur,
+  onFocus,
+  canUseExisting = false,
+  disabled = false,
+  readOnly = false,
+  required = false,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-required': ariaRequired,
+}: DataSourceProps) => {
   const [selectNetworkAsset, setSelectNetworkAsset] = useState(false);
 
-  const handleDataSourceChange = (value: string | number | undefined) => {
+  const isRequired = required || Boolean(ariaRequired);
+  const isInterviewNetwork = value === EXISTING_NETWORK;
+  const showNetworkAssetInput = selectNetworkAsset || !isInterviewNetwork;
+
+  const handleDataSourceChange = (nextValue: string | number | undefined) => {
     if (disabled || readOnly) return;
 
-    if (value === 'existing') {
-      if (input.value !== 'existing') {
-        input.onChange('existing');
+    if (nextValue === EXISTING_NETWORK) {
+      if (!isInterviewNetwork) {
+        onChange?.(EXISTING_NETWORK);
       }
       return;
     }
 
-    if (value === 'asset') {
+    if (nextValue === 'asset') {
       setSelectNetworkAsset(true);
     }
   };
 
-  const handleCloseBrowser = () => {
-    setSelectNetworkAsset(false);
-  };
+  const picker = (
+    <ResourcePicker
+      type="network"
+      value={value}
+      selected={value}
+      onChange={onChange}
+      disabled={disabled}
+      readOnly={readOnly}
+      showBrowser={canUseExisting ? selectNetworkAsset : undefined}
+      onCloseBrowser={
+        canUseExisting ? () => setSelectNetworkAsset(false) : undefined
+      }
+      // Only the sole control in a field owns the field's id and labelling; in
+      // the two-control layout the radio group takes them.
+      id={canUseExisting ? undefined : id}
+      name={name}
+      onBlur={canUseExisting ? undefined : onBlur}
+      onFocus={canUseExisting ? undefined : onFocus}
+      aria-labelledby={canUseExisting ? undefined : ariaLabelledBy}
+      aria-describedby={canUseExisting ? undefined : ariaDescribedBy}
+      aria-invalid={canUseExisting ? undefined : ariaInvalid}
+    >
+      {(assetId: string) => <NetworkThumbnail id={assetId} />}
+    </ResourcePicker>
+  );
 
-  const handleBlur = () => {
-    input.onBlur?.(input.value);
-  };
+  if (!canUseExisting) {
+    return picker;
+  }
 
-  const isInterviewNetwork = input.value === 'existing';
-  const showNetworkAssetInput = selectNetworkAsset || !isInterviewNetwork;
-
-  const fileProps: FileInputPropsWithoutHOC = {
-    input,
-    meta,
-    type: 'network',
-    selected: input.value,
-    disabled,
-    readOnly,
-    required,
-  };
-
-  return canUseExisting ? (
+  return (
     <div>
       <RadioGroupField
-        name={`${input.name ?? 'dataSource'}-type`}
-        aria-label="Data source"
+        id={id}
+        name={`${name ?? 'dataSource'}-type`}
         value={
-          input.value ? (isInterviewNetwork ? 'existing' : 'asset') : undefined
+          value ? (isInterviewNetwork ? EXISTING_NETWORK : 'asset') : undefined
         }
         onChange={handleDataSourceChange}
-        onBlur={handleBlur}
-        onFocus={input.onFocus}
+        onBlur={onBlur}
+        onFocus={onFocus}
         disabled={disabled}
         readOnly={readOnly}
-        required={required}
-        aria-required={required || undefined}
+        required={isRequired}
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
+        aria-required={isRequired || undefined}
         options={[
           {
-            value: 'existing',
+            value: EXISTING_NETWORK,
             label: 'Use the network from the in-progress interview',
           },
           { value: 'asset', label: 'Use a network data file' },
         ]}
       />
-      {showNetworkAssetInput && (
-        <div>
-          <File
-            {...fileProps}
-            showBrowser={selectNetworkAsset}
-            onCloseBrowser={handleCloseBrowser}
-          >
-            {(id: string) => <NetworkThumbnail id={id} />}
-          </File>
-        </div>
-      )}
+      {showNetworkAssetInput && <div>{picker}</div>}
     </div>
-  ) : (
-    <File {...fileProps}>{(id: string) => <NetworkThumbnail id={id} />}</File>
   );
 };
 

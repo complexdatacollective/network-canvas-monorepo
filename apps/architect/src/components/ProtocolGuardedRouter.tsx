@@ -13,7 +13,7 @@ import {
   promptLeaveEditor,
   useProtocolNavGuard,
 } from '~/hooks/useProtocolNavGuard';
-import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
+import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 
 const NavGuardListener = () => {
   useProtocolNavGuard();
@@ -45,7 +45,7 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
           collapseProtocolHistory(to, () =>
             nav(to, { ...opts, replace: true }),
           ),
-        getStageDraftDirty(store.getState()),
+        getLiveStageDraftDirty(store.getState()),
       );
     },
     [dispatch, openDialog],

@@ -1,6 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
 vi.mock('~/components/EditorLayout', () => ({
   Section: ({
@@ -35,9 +40,7 @@ vi.mock('~/components/EditorLayout', () => ({
 
 // The multi-select is exercised in its own test; here we only assert it renders.
 vi.mock('../EdgeTypeMultiSelect', () => ({
-  default: ({ form }: { form: string }) => (
-    <div data-testid="edge-type-multiselect" data-parentform={form} />
-  ),
+  default: () => <div data-testid="edge-type-multiselect" />,
 }));
 
 // Surface the wiring (fieldName, entity, type, editFormName) as data-attributes
@@ -68,15 +71,11 @@ vi.mock('~/components/EditableAttributesList/EditableAttributesList', () => ({
   ),
 }));
 
-// withComposerFormHandlers passes through, recording the scoping props it was
-// invoked with (entity/type/form) onto the injected handler-bearing element so
-// the test can prove the handler is scoped per edge type.
-vi.mock('~/components/sections/Form/withComposerFormHandlers', () => ({
-  default:
-    (Component: React.ComponentType<Record<string, unknown>>) =>
-    (props: Record<string, unknown>) => (
-      <Component {...props} handleChangeFields={() => undefined} />
-    ),
+// `EdgeAttributeBlock` calls `useComposerFieldCommit({entity, type})` itself
+// now (no more `withComposerFormHandlers` wrapper) — stub it so the test
+// doesn't need a full `activeProtocol`/dispatch-capable store.
+vi.mock('~/components/sections/Form/fieldCommit', () => ({
+  useComposerFieldCommit: () => () => ({ success: true as const }),
 }));
 
 const mockCodebook = {
@@ -86,37 +85,11 @@ const mockCodebook = {
   },
 };
 
-// Drive useSelector without a Provider: each selector is invoked with a stub
-// state. `getCodebook` (mocked below) ignores it, and the live-edges selector
-// reads from the mocked `formValueSelector`, so the stub state is never used.
-vi.mock('react-redux', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-redux')>();
-  const useSelector = (selector: (state: unknown) => unknown) => selector({});
-  Object.assign(useSelector, { withTypes: actual.useSelector.withTypes });
-  return {
-    ...actual,
-    useSelector,
-  };
-});
-
 vi.mock('~/selectors/protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof import('~/selectors/protocol')>();
   return {
     ...actual,
     getCodebook: () => mockCodebook,
-  };
-});
-
-// `formValueSelector(form)(state, 'edges')` is how the section reads the LIVE
-// edges array. Drive it via a mutable holder so each test exercises the real
-// live-edges code path.
-const liveFormValues: { edges?: unknown } = {};
-vi.mock('redux-form', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('redux-form')>();
-  return {
-    ...actual,
-    formValueSelector: () => (_state: unknown, field: string) =>
-      field === 'edges' ? liveFormValues.edges : undefined,
   };
 });
 
@@ -128,24 +101,28 @@ type EdgeArg = {
   form?: Record<string, unknown>;
 };
 
-const renderSection = ({ edges }: { edges: EdgeArg[] }) => {
-  liveFormValues.edges = edges;
-  return render(
-    <EdgeConfiguration
-      form="edit-stage"
-      stagePath="stages[0]"
-      stagePosition={0}
-      interfaceType="NetworkComposer"
-    />,
-  );
-};
+// The section reads its live `edges` array off the stage form store, which
+// only holds registered fields — `edges` here registers through the (mocked)
+// multi-select's ArchitectField, seeded by the committed stage passed to
+// renderStageForm. Rendering through the real bridge (rather than stubbing
+// `formValueSelector`) is what makes this an honest test of the hook-based
+// read.
+const renderSection = ({ edges }: { edges: EdgeArg[] }) =>
+  renderStageForm({
+    committedStage: asStage({ edges }),
+    children: (
+      <EdgeConfiguration
+        stagePath="stages[0]"
+        stagePosition={0}
+        interfaceType="NetworkComposer"
+      />
+    ),
+  });
 
 describe('EdgeConfiguration', () => {
-  it('renders the multi-select bound to the parent form', () => {
+  it('renders the multi-select', () => {
     renderSection({ edges: [] });
-    const multiSelect = screen.getByTestId('edge-type-multiselect');
-    expect(multiSelect).toBeInTheDocument();
-    expect(multiSelect.getAttribute('data-parentform')).toBe('edit-stage');
+    expect(screen.getByTestId('edge-type-multiselect')).toBeInTheDocument();
   });
 
   it('renders the multi-select under the "Edge types" subsection heading', () => {

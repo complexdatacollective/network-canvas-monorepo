@@ -1,50 +1,20 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-vi.mock('~/components/Form/ValidatedField', () => ({
-  default: ({
-    name,
-    componentProps,
-  }: {
-    name: string;
-    componentProps?: { label?: string };
-  }) => (
-    <div data-testid={`field-${name}`}>
-      {componentProps?.label && <span>{componentProps.label}</span>}
-    </div>
-  ),
-}));
-
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Section: ({
-    children,
-    title,
-    summary,
-  }: {
-    children: React.ReactNode;
-    title: string;
-    summary?: React.ReactNode;
-  }) => (
-    <div>
-      <h2>{title}</h2>
-      <div>{summary}</div>
-      {children}
-    </div>
-  ),
-}));
+import { renderStageForm } from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
 import AtRiskStatuses from '../AtRiskStatuses';
 
 const renderSection = () =>
-  render(
-    <AtRiskStatuses
-      form="edit-stage"
-      stagePath={null}
-      stagePosition={0}
-      interfaceType="NarrativePedigree"
-    />,
-  );
+  renderStageForm({
+    children: (
+      <AtRiskStatuses
+        stagePath={null}
+        stagePosition={0}
+        interfaceType="NarrativePedigree"
+      />
+    ),
+  });
 
 describe('AtRiskStatuses', () => {
   it('renders the section title', () => {
@@ -52,10 +22,13 @@ describe('AtRiskStatuses', () => {
     expect(screen.getByText('At-Risk Statuses')).toBeDefined();
   });
 
-  it('binds the toggle to showAtRiskStatuses with the expected label', () => {
-    renderSection();
-    const field = screen.getByTestId('field-showAtRiskStatuses');
-    expect(field.textContent).toContain('Show possible (at-risk) statuses');
+  it('binds the toggle to showAtRiskStatuses, defaulting to off, with the expected label', () => {
+    const view = renderSection();
+    const toggle = screen.getByRole('switch', {
+      name: 'Show possible (at-risk) statuses',
+    });
+    expect(toggle).not.toBeChecked();
+    expect(view.getFormValues().showAtRiskStatuses).toBe(false);
   });
 
   it('explains what is displayed, how it is calculated, and why it defaults off', () => {

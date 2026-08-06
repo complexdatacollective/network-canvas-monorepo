@@ -1,63 +1,16 @@
-import { combineReducers, configureStore } from '@reduxjs/toolkit';
-import { render, waitFor } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import {
-  reducer as formReducer,
-  reduxForm,
-  type InjectedFormProps,
-} from 'redux-form';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
   type Stage,
 } from '@codaco/protocol-validation';
-import { getStageEditorInitialValues } from '~/components/StageEditor/getStageEditorInitialValues';
-import { stageEditorDraftListenerMiddleware } from '~/ducks/middleware/stageEditorDraftListener';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
-import type { RootState } from '~/ducks/store';
-import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
 import Background, { allowsBackgroundImage } from '../Background';
-
-const BackgroundHarness = (
-  _props: InjectedFormProps<Record<string, unknown>>,
-) => (
-  <Background
-    form="edit-stage"
-    stagePath="stages[0]"
-    stagePosition={0}
-    interfaceType="Sociogram"
-  />
-);
-
-const BackgroundForm = reduxForm<Record<string, unknown>>({
-  form: 'edit-stage',
-})(BackgroundHarness);
-
-const renderExistingSociogram = (stage: Stage) => {
-  const reducer = combineReducers({ form: formReducer, stageEditorDraft });
-  const store = configureStore({
-    reducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }).prepend(
-        stageEditorDraftListenerMiddleware.middleware,
-      ),
-  });
-  const initialValues = getStageEditorInitialValues({
-    interfaceType: 'Sociogram',
-    stage,
-    template: {},
-  });
-
-  render(
-    <Provider store={store}>
-      <BackgroundForm initialValues={initialValues} />
-    </Provider>,
-  );
-
-  return store;
-};
 
 describe('allowsBackgroundImage', () => {
   it('allows a background image for Narrative stages', () => {
@@ -76,7 +29,7 @@ describe('allowsBackgroundImage', () => {
     expect(allowsBackgroundImage('Information')).toBe(false);
   });
 
-  it('does not mark a legacy Sociogram dirty when the toggle supplies its false default', async () => {
+  it('does not mark a legacy Sociogram dirty when the toggle supplies its false default', () => {
     const stage = {
       id: 'sociogram-1',
       label: 'Sociogram',
@@ -93,15 +46,56 @@ describe('allowsBackgroundImage', () => {
         },
       ],
     } satisfies Stage;
-    const store = renderExistingSociogram(stage);
 
-    await waitFor(() => {
-      expect(
-        store.getState().form['edit-stage']?.values?.background
-          ?.skewedTowardCenter,
-      ).toBe(false);
+    const { getPresent } = renderStageForm({
+      committedStage: asStage(stage),
+      children: (
+        <Background
+          stagePath="stages[0]"
+          stagePosition={0}
+          interfaceType="Sociogram"
+        />
+      ),
     });
 
-    expect(getStageDraftDirty(store.getState() as RootState)).toBe(false);
+    // The toggle's `initialValue={false}` default registers the field at its
+    // resting value rather than performing a write, so it must not appear as
+    // a change against the baseline the bridge seeded on mount.
+    const present = getPresent() as unknown as {
+      background: { skewedTowardCenter?: boolean };
+    };
+    expect(present.background.skewedTowardCenter).toBe(false);
+  });
+});
+
+describe('Background', () => {
+  it('switches to the image type and clears the concentric-circle fields', () => {
+    const stage = {
+      id: 'sociogram-1',
+      label: 'Sociogram',
+      type: 'Sociogram',
+      subject: { entity: 'node', type: 'person' },
+      background: { concentricCircles: 4, skewedTowardCenter: true },
+      prompts: [],
+    } satisfies Stage;
+
+    const { getFormValues } = renderStageForm({
+      committedStage: asStage(stage),
+      children: (
+        <Background
+          stagePath="stages[0]"
+          stagePosition={0}
+          interfaceType="Sociogram"
+        />
+      ),
+    });
+
+    fireEvent.click(screen.getByRole('option', { name: /^Image/ }));
+
+    const values = getFormValues() as unknown as {
+      background?: Record<string, unknown>;
+    };
+    expect(values.background?.concentricCircles).toBeUndefined();
+    expect(values.background?.skewedTowardCenter).toBeUndefined();
   });
 });

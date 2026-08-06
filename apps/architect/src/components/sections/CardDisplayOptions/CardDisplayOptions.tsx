@@ -1,23 +1,26 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
 import { compose } from 'react-recompose';
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import withDisabledAssetRequired from '~/components/enhancers/withDisabledAssetRequired';
-import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
-import MultiSelect from '~/components/Form/MultiSelect';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import MultiSelect, {
+  type ItemValue,
+} from '~/components/Form/arrayFields/MultiSelect';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+import {
+  useSetStageValue,
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
 
+import withDisabledAssetRequired from '../../enhancers/withDisabledAssetRequired';
 import getVariableOptionsGetter from '../SortOptionsForExternalData/getVariableOptionsGetter';
+
 type CardDisplayOptionsProps = StageEditorSectionProps & {
-  dataSource: string;
+  dataSource?: string;
   disabled: boolean;
 };
 const CardDisplayOptions = ({
@@ -30,20 +33,15 @@ const CardDisplayOptions = ({
   );
   const variableOptionsGetter = getVariableOptionsGetter(variableOptions);
   const maxVariableOptions = variableOptions.length;
-  const dispatch = useAppDispatch();
-  const getFormValue = formValueSelector('edit-stage');
-  const hasCardDisplayOptions = useSelector((state: RootState) =>
-    getFormValue(state, 'cardOptions.additionalProperties'),
+  const setStageValue = useSetStageValue();
+  const hasCardDisplayOptions =
+    useStageFormValue('cardOptions.additionalProperties') != null;
+  const initialAdditionalProperties = useStageInitialValue<ItemValue[]>(
+    'cardOptions.additionalProperties',
   );
   const handleToggleCardDisplayOptions = (nextState: boolean) => {
     if (!nextState) {
-      dispatch(
-        change(
-          'edit-stage',
-          'cardOptions.additionalProperties',
-          null,
-        ) as unknown as UnknownAction,
-      );
+      setStageValue('cardOptions.additionalProperties', undefined);
     }
     return true;
   };
@@ -57,7 +55,7 @@ const CardDisplayOptions = ({
         </Paragraph>
       }
       toggleable
-      startExpanded={!!hasCardDisplayOptions}
+      startExpanded={hasCardDisplayOptions}
       handleToggleChange={handleToggleCardDisplayOptions}
       disabled={disabled}
     >
@@ -84,8 +82,12 @@ const CardDisplayOptions = ({
           </Paragraph>
         )}
         {maxVariableOptions > 0 && (
-          <MultiSelect
+          <ArchitectArrayField
             name="cardOptions.additionalProperties"
+            label="Additional display properties"
+            labelHidden
+            component={MultiSelect}
+            initialValue={initialAdditionalProperties}
             maxItems={maxVariableOptions}
             properties={[
               {
@@ -107,7 +109,7 @@ const CardDisplayOptions = ({
                 fieldName,
                 rowValues,
                 allValues as Array<Record<string, unknown>>,
-              ) as Array<Record<string, unknown>>
+              )
             }
           />
         )}
@@ -115,7 +117,21 @@ const CardDisplayOptions = ({
     </Section>
   );
 };
-export default compose<CardDisplayOptionsProps, StageEditorSectionProps>(
-  withMapFormToProps('dataSource'),
+
+type GatedProps = StageEditorSectionProps & { dataSource?: string };
+
+/**
+ * `compose` is hoisted to module scope so the gated component keeps a stable
+ * identity across renders — `dataSource` (the redux-form `withMapFormToProps`
+ * replacement) is read via `useStageFormValue` in the wrapper below.
+ */
+const GatedCardDisplayOptions = compose<CardDisplayOptionsProps, GatedProps>(
   withDisabledAssetRequired,
 )(CardDisplayOptions);
+
+const CardDisplayOptionsWithDataSource = (props: StageEditorSectionProps) => {
+  const dataSource = useStageFormValue<string | undefined>('dataSource');
+  return <GatedCardDisplayOptions {...props} dataSource={dataSource} />;
+};
+
+export default CardDisplayOptionsWithDataSource;

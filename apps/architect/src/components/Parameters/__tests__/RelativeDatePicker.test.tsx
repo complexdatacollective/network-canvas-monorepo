@@ -1,41 +1,24 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ComponentType } from 'react';
-import { Provider } from 'react-redux';
-import { reducer as formReducer, reduxForm } from 'redux-form';
 import { describe, expect, it } from 'vitest';
+
+import Form from '@codaco/fresco-ui/form/Form';
 
 import RelativeDatePicker from '../RelativeDatePicker';
 
-const RelativeDatePickerField = RelativeDatePicker as unknown as ComponentType<{
-  name: string;
-  form: string;
-}>;
-
-const FORM = 'relative-date-test';
-
-const Harness = reduxForm({ form: FORM })(() => (
-  <RelativeDatePickerField name="parameters" form={FORM} />
-));
-
-const renderPicker = (initialValues?: Record<string, unknown>) => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-
+const renderPicker = (initialParameters?: Record<string, unknown>) => {
   render(
-    <Provider store={store}>
-      <Harness initialValues={initialValues} />
-    </Provider>,
+    <Form onSubmit={() => ({ success: true })}>
+      <RelativeDatePicker
+        name="parameters"
+        initialParameters={initialParameters}
+      />
+    </Form>,
   );
 };
 
 // The anchor control only mounts once "Use interview date" is off, which the
 // component derives from whether an anchor is already set.
-const renderWithAnchor = (anchor: string) =>
-  renderPicker({ parameters: { anchor } });
+const renderWithAnchor = (anchor: string) => renderPicker({ anchor });
 
 describe('RelativeDatePicker parameters', () => {
   it('gives the day-offset inputs accessible names', () => {
@@ -59,7 +42,7 @@ describe('RelativeDatePicker parameters', () => {
       fireEvent.blur(input);
 
       await waitFor(() => {
-        expect(screen.getByText('Must be at least 0')).toBeInTheDocument();
+        expect(screen.getByText('Too small. Value must be at least 0.')).toBeInTheDocument();
       });
     },
   );
@@ -73,13 +56,13 @@ describe('RelativeDatePicker parameters', () => {
       fireEvent.change(input, { target: { value: '-5' } });
       fireEvent.blur(input);
       await waitFor(() => {
-        expect(screen.getByText('Must be at least 0')).toBeInTheDocument();
+        expect(screen.getByText('Too small. Value must be at least 0.')).toBeInTheDocument();
       });
 
       fireEvent.change(input, { target: { value: '0' } });
       await waitFor(() => {
         expect(
-          screen.queryByText('Must be at least 0'),
+          screen.queryByText('Too small. Value must be at least 0.'),
         ).not.toBeInTheDocument();
       });
     },
@@ -91,7 +74,6 @@ describe('RelativeDatePicker parameters', () => {
 // matching editor rule the dialog saved a below-floor anchor and the protocol
 // validation listener then threw a blocking invalid-protocol dialog offering
 // to revert the edit.
-//
 describe('RelativeDatePicker anchor year floor', () => {
   it('accepts a schema-valid anchor whose year is below 100', async () => {
     renderWithAnchor('2020-01-01');

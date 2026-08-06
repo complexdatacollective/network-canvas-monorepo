@@ -1,14 +1,11 @@
 import { useCallback, useMemo } from 'react';
-import { useLocation } from 'wouter';
 
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   redoWithNavigation,
   undoWithNavigation,
 } from '~/ducks/modules/activeProtocol';
-import { draftRedo, draftUndo } from '~/ducks/modules/stageEditorDraft';
 import { getCanRedo, getCanUndo } from '~/selectors/protocol';
-import { getCanRedoDraft, getCanUndoDraft } from '~/selectors/stageEditorDraft';
 
 type ScopedUndoRedo = {
   canUndo: boolean;
@@ -18,53 +15,30 @@ type ScopedUndoRedo = {
 };
 
 /**
- * Returns undo/redo state and actions scoped to the current route. When the
- * stage editor is on screen, operations target the stage editor draft history;
- * otherwise they target the main protocol timeline.
+ * Undo/redo for the protocol timeline.
+ *
+ * This used to branch on the route because the stage editor's draft history
+ * was also driven from Redux. It is now driven from the stage form store, so
+ * the stage editor uses `useStageDraftHistory` from inside `StageForm`
+ * instead — and `StageEditorPage` renders outside `ProjectLayout`, so this
+ * hook's remaining consumers are never on screen in the stage editor.
  */
 export const useScopedUndoRedo = (): ScopedUndoRedo => {
-  const [location] = useLocation();
-  const isStageEditor = location.startsWith('/protocol/stage/');
-
   const dispatch = useAppDispatch();
 
-  // Hooks must be called unconditionally, so always read both scopes.
-  const canUndoDraft = useAppSelector(getCanUndoDraft);
-  const canRedoDraft = useAppSelector(getCanRedoDraft);
-  const canUndoMain = useAppSelector(getCanUndo);
-  const canRedoMain = useAppSelector(getCanRedo);
+  const canUndo = useAppSelector(getCanUndo);
+  const canRedo = useAppSelector(getCanRedo);
 
-  const handleUndo = useCallback(() => {
-    if (isStageEditor) {
-      dispatch(draftUndo());
-    } else {
-      dispatch(undoWithNavigation());
-    }
-  }, [dispatch, isStageEditor]);
+  const undo = useCallback(() => {
+    dispatch(undoWithNavigation());
+  }, [dispatch]);
 
-  const handleRedo = useCallback(() => {
-    if (isStageEditor) {
-      dispatch(draftRedo());
-    } else {
-      dispatch(redoWithNavigation());
-    }
-  }, [dispatch, isStageEditor]);
+  const redo = useCallback(() => {
+    dispatch(redoWithNavigation());
+  }, [dispatch]);
 
   return useMemo(
-    () => ({
-      canUndo: isStageEditor ? canUndoDraft : canUndoMain,
-      canRedo: isStageEditor ? canRedoDraft : canRedoMain,
-      undo: handleUndo,
-      redo: handleRedo,
-    }),
-    [
-      isStageEditor,
-      canUndoDraft,
-      canRedoDraft,
-      canUndoMain,
-      canRedoMain,
-      handleUndo,
-      handleRedo,
-    ],
+    () => ({ canUndo, canRedo, undo, redo }),
+    [canRedo, canUndo, redo, undo],
   );
 };

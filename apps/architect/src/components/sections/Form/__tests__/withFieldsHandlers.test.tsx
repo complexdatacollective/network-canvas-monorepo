@@ -1,8 +1,15 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { renderHook } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { act, render, renderHook, waitFor } from '@testing-library/react';
+import { useContext, type ContextType, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
+
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
 // Standing in for the codebook: three text variables (all have input controls,
 // so all three survive the pre-existing VARIABLE_TYPES_WITH_COMPONENTS filter)
@@ -10,8 +17,14 @@ import { describe, expect, it, vi } from 'vitest';
 // reference so useSelector sees an unchanged result across re-renders.
 vi.mock('~/selectors/codebook', () => {
   const variables = {
-    v1: { name: 'alpha', type: 'text', component: 'TextInput' },
-    v2: { name: 'beta', type: 'text', component: 'TextInput' },
+    v1: {
+      name: 'alpha',
+      type: 'text',
+      component: 'TextInput',
+      validation: { required: true },
+      parameters: { min: 1 },
+    },
+    v2: { name: 'beta', type: 'text', component: 'TextArea' },
     v3: { name: 'gamma', type: 'text', component: 'TextInput' },
     v4: { name: 'delta', type: 'layout' },
   };
@@ -42,26 +55,44 @@ vi.mock('~/selectors/roleFilters', () => ({
 import { useFieldHandlers } from '../withFieldsHandlers';
 
 type RenderArgs = {
-  values?: Record<string, unknown>;
+  values?: Record<string, string>;
   siblingFields?: unknown;
   editIndex?: number;
 };
 
+/**
+ * The editor's controls live in the dialog's own form store, so the hook is
+ * rendered inside a real one. `variable` is registered by a stand-in control
+ * because the hook distinguishes "not registered yet" from "cleared".
+ */
 const renderFieldHandlers = ({
   values = {},
   siblingFields,
   editIndex,
 }: RenderArgs = {}) => {
-  const store = configureStore({
-    reducer: () => ({ form: { 'attr-edit': { values } } }),
-  });
+  const store = configureStore({ reducer: () => ({}) });
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <Provider store={store}>{children}</Provider>
+    <Provider store={store}>
+      <Form onSubmit={() => ({ success: true })}>
+        <Field
+          name="variable"
+          label="Variable"
+          component={InputField}
+          initialValue={values.variable}
+        />
+        <Field
+          name="component"
+          label="Input control"
+          component={InputField}
+          initialValue={values.component}
+        />
+        {children}
+      </Form>
+    </Provider>
   );
   return renderHook(
     () =>
       useFieldHandlers({
-        form: 'attr-edit',
         entity: 'node',
         type: 'person',
         siblingFields,
@@ -122,5 +153,159 @@ describe('useFieldHandlers variable options', () => {
       'v2',
       'v3',
     ]);
+  });
+});
+
+// The two cross-field resets used to run from the fields' redux-form
+// `onChange` props. As observer effects they must fire on a real change and
+// stay silent while the dialog is settling, or opening a committed row would
+// wipe the very values it opened on.
+describe('useFieldHandlers cross-field observers', () => {
+  const renderEditor = (
+    values: Record<string, string>,
+    { showParametersMax = true }: { showParametersMax?: boolean } = {},
+  ) => {
+    const store = configureStore({ reducer: () => ({}) });
+    let storeApi: StoreApi | null = null;
+    const CaptureStore = () => {
+      storeApi = useContext(FormStoreContext) ?? null;
+      return null;
+    };
+    const Editor = () => {
+      useFieldHandlers({ entity: 'node', type: 'person' });
+      return null;
+    };
+
+    render(
+      <Provider store={store}>
+        <Form onSubmit={() => ({ success: true })}>
+          <CaptureStore />
+          <Field
+            name="variable"
+            label="Variable"
+            component={InputField}
+            initialValue={values.variable}
+          />
+          <Field
+            name="component"
+            label="Input control"
+            component={InputField}
+            initialValue={values.component}
+          />
+          <Field
+            name="validation"
+            label="Validation"
+            component={InputField}
+            initialValue={values.validation}
+          />
+          {/* The real parameter editors register LEAVES under `parameters`,
+              never `parameters` itself — the shape the container reset has to
+              cope with. `parameters.max` starts mounted and is unmounted below
+              to prove a dormant leaf is cleared too. */}
+          <Field
+            name="parameters.type"
+            label="Resolution"
+            component={InputField}
+            initialValue={values.parameterType}
+          />
+          {showParametersMax && (
+            <Field
+              name="parameters.max"
+              label="Maximum"
+              component={InputField}
+              initialValue={values.parameterMax}
+            />
+          )}
+          <Editor />
+        </Form>
+      </Provider>,
+    );
+
+    const getState = () => {
+      if (!storeApi) throw new Error('form store was not captured');
+      return storeApi.getState();
+    };
+
+    return {
+      getValues: () => getState().getFormValues(),
+      getDormant: (name: string) => getState().dormantValues.get(name)?.value,
+      setValue: (name: string, value: string) =>
+        act(() => {
+          getState().setFieldValue(name, value);
+        }),
+    };
+  };
+
+  it('leaves a committed row alone while its fields register', () => {
+    const { getValues } = renderEditor({
+      variable: 'v1',
+      component: 'TextInput',
+      validation: 'kept',
+    });
+
+    expect(getValues()).toMatchObject({
+      variable: 'v1',
+      component: 'TextInput',
+      validation: 'kept',
+    });
+  });
+
+  it('adopts the codebook rendering and rules when an existing variable is picked', async () => {
+    const { getValues, setValue } = renderEditor({
+      variable: 'v1',
+      component: 'TextInput',
+    });
+
+    setValue('variable', 'v2');
+
+    await waitFor(() => {
+      expect(getValues().component).toBe('TextArea');
+    });
+    // v2 has neither, so both are cleared rather than inherited from v1.
+    expect(getValues().validation).toBeUndefined();
+  });
+
+  // The store's field map is exact-string-keyed, so `parameters` itself is
+  // never registered: clearing it has to reach every leaf, mounted or not.
+  it('resets the control-specific parameter leaves when the input control changes', async () => {
+    const { getValues, setValue } = renderEditor({
+      variable: 'v1',
+      component: 'TextInput',
+      parameterType: 'year',
+      parameterMax: '2020-01-01',
+    });
+
+    expect(getValues().parameters).toEqual({
+      type: 'year',
+      max: '2020-01-01',
+    });
+    setValue('component', 'TextArea');
+
+    await waitFor(() => {
+      expect(getValues().parameters).toEqual({
+        type: undefined,
+        max: undefined,
+      });
+    });
+  });
+
+  it('clears a parameter leaf the previous control had already unmounted', async () => {
+    const { getDormant, setValue } = renderEditor(
+      { variable: 'v1', component: 'TextInput', parameterType: 'year' },
+      { showParametersMax: false },
+    );
+
+    // An unmounted leaf's value is parked dormant, and `registerField` prefers
+    // a dormant value over `initialValue` — so leaving it behind would
+    // reinstate the old control's bound the moment a control using the same
+    // leaf is chosen.
+    setValue('parameters.max', '2020-01-01');
+    expect(getDormant('parameters.max')).toBe('2020-01-01');
+
+    setValue('component', 'TextArea');
+
+    await waitFor(() => {
+      expect(getDormant('parameters.max')).toBeUndefined();
+    });
   });
 });

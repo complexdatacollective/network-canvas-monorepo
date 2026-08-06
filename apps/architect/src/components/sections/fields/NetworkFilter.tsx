@@ -1,52 +1,43 @@
-import { get } from 'es-toolkit/compat';
 import { useCallback } from 'react';
-import { useSelector } from 'react-redux';
-import { change, Field, getFormValues } from 'redux-form';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { ruleValidator } from '~/components/Query';
 import {
-  Filter as FilterQuery,
-  ruleValidator,
-  withFieldConnector,
-  withStoreConnector,
-} from '~/components/Query';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+  useSetStageValue,
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 
 import Section from '../../EditorLayout/Section';
 import { handleFilterDeactivate } from '../Filter';
-const FilterField = (
-  withFieldConnector as unknown as (
-    c: React.ComponentType,
-  ) => React.ComponentType<Record<string, unknown>>
-)(
-  withStoreConnector(
-    FilterQuery as unknown as React.ComponentType,
-  ) as unknown as React.ComponentType,
-);
+import { FilterField, type RuleSetValue } from './RuleSetFields';
+
 type NetworkFilterProps = {
-  form: string;
   name?: string;
   variant?: 'contrast';
   allowEdgeRules?: boolean;
 };
+
 const NetworkFilter = ({
-  form,
   name = 'filter',
   variant,
   allowEdgeRules,
 }: NetworkFilterProps) => {
-  const dispatch = useAppDispatch();
   const { confirm } = useDialog();
-  const hasFilter = useSelector(
-    (state: RootState) => get(getFormValues(form)(state), name, null) !== null,
-  );
+  const setStageValue = useSetStageValue();
+  const hasFilter = useStageFormValue(name) != null;
+  // The whole filter object is one registered field; without seeding it, a
+  // committed filter renders blank and save would overwrite it away.
+  const initialFilter = useStageInitialValue<RuleSetValue>(name);
+
   const handleToggleChange = useCallback(
     async (newStatus: boolean) => {
       if (newStatus) {
-        return Promise.resolve(true);
+        return true;
       }
+
       if (hasFilter) {
         const result = await handleFilterDeactivate(
           async () =>
@@ -60,15 +51,18 @@ const NetworkFilter = ({
               onConfirm: () => {},
             })) === true,
         );
+
         if (!result) {
-          return Promise.resolve(false);
+          return false;
         }
       }
-      dispatch(change(form, name, null));
-      return Promise.resolve(true);
+
+      setStageValue(name, undefined);
+      return true;
     },
-    [confirm, dispatch, form, hasFilter, name],
+    [confirm, hasFilter, name, setStageValue],
   );
+
   const contrastProps =
     variant === 'contrast'
       ? {
@@ -76,26 +70,31 @@ const NetworkFilter = ({
           layout: 'vertical' as 'vertical' | 'horizontal',
         }
       : {};
+
   return (
     <Section
       title="Filter"
       toggleable
-      summary={
-        <Paragraph>
-          You can optionally filter which nodes are shown on in this panel.
-        </Paragraph>
-      }
       startExpanded={hasFilter}
       handleToggleChange={handleToggleChange}
       {...contrastProps}
     >
-      <Field
+      <ArchitectField
         name={name}
+        label="Filter"
+        labelHidden
+        hint={
+          <Paragraph>
+            You can optionally filter which nodes are shown on in this panel.
+          </Paragraph>
+        }
         component={FilterField}
-        validate={ruleValidator}
+        initialValue={initialFilter}
         allowEdgeRules={allowEdgeRules}
+        validation={{ validator: ruleValidator }}
       />
     </Section>
   );
 };
+
 export default NetworkFilter;

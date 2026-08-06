@@ -1,7 +1,15 @@
 import { get, omit, reduce } from 'es-toolkit/compat';
-import { formValueSelector } from 'redux-form';
+import type { ComponentProps } from 'react';
 
+import type NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import type { VariablePropertyKey } from '@codaco/protocol-validation';
+import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/DialogArrayField';
+import type ValidationSection from '~/components/sections/ValidationSection';
+import {
+  isBooleanWithOptions,
+  isOrdinalOrCategoricalType,
+  isVariableTypeWithParameters,
+} from '~/config/variables';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
 
@@ -30,27 +38,90 @@ export const getCodebookProperties = (
     {},
   );
 
+/**
+ * Blanks the codebook properties the chosen input control cannot carry.
+ *
+ * The dialog merges its form values over the row it opened on, and that row
+ * arrives already merged with the codebook variable (`itemSelector` below).
+ * `getFormValues()` reports registered fields only, so an editor section that
+ * is no longer rendered — the options list after a boolean switches from
+ * BooleanChoice to Toggle, say — contributes nothing and the codebook's stale
+ * value survives the merge. Deriving applicability from the control (rather
+ * than from which fields happen to be mounted) clears it deterministically;
+ * `prune` and `replaceProperties` then drop it from the codebook.
+ */
+export const clearInapplicableCodebookProperties = (
+  values: Record<string, unknown>,
+  variableType: string | null | undefined,
+  component: string | null | undefined,
+): Record<string, unknown> => ({
+  ...values,
+  ...(isOrdinalOrCategoricalType(variableType) ||
+  isBooleanWithOptions(component)
+    ? {}
+    : { options: undefined }),
+  ...(isVariableTypeWithParameters(variableType)
+    ? {}
+    : { parameters: undefined }),
+});
+
+type InputControlOption = {
+  label: string;
+  value: string | null;
+  disabled?: boolean;
+};
+
+type SelectOption = ComponentProps<typeof NativeSelectField>['options'][number];
+
+type ValidationMap = ComponentProps<typeof ValidationSection>['initialValue'];
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The edited row's own properties arrive untyped (they are whatever the
+ * protocol holds), so each editor narrows them before handing them to a
+ * field's `initialValue`.
+ */
+export const asValidationMap = (value: unknown): ValidationMap =>
+  isRecord(value)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      (value as NonNullable<ValidationMap>)
+    : undefined;
+
+/**
+ * The input-control list for a native select. Its group headers carry no
+ * value; they are disabled, so the empty string the select needs is never
+ * selectable.
+ */
+export const toSelectOptions = (
+  options: readonly InputControlOption[],
+): SelectOption[] =>
+  options.map(({ label, value, disabled }) => ({
+    label,
+    value: value ?? '',
+    disabled,
+  }));
+
 export const normalizeField = (field: Record<string, unknown>) =>
   // Keep `id` so DialogArrayField can retain the item's stable identity across
   // edits, reorders, and deletes.
   omit(field, ['_createNewVariable', ...CODEBOOK_PROPERTIES]);
 
-// Merge item with variable info from codebook
+/**
+ * Opens the row editor on the field merged with its codebook variable's
+ * rendering and rules, which the plain Form keeps on the variable rather than
+ * the field. The edited row arrives directly now that the array is one opaque
+ * field value, replacing the redux-form path lookup.
+ */
 export const itemSelector =
-  (entity: string | null, type: string | null) =>
-  (
-    state: RootState,
-    { form, editField }: { form: string; editField: string },
-  ) => {
-    const item = formValueSelector(form)(state, editField) as
-      | Record<string, unknown>
-      | undefined;
-
-    if (!item || !entity) {
+  (entity: string | null, type: string | null): DialogArrayItemSelector =>
+  (state: RootState, { item }) => {
+    if (!entity) {
       return null;
     }
 
-    const variable = item?.variable as string | undefined;
+    const variable = item.variable as string | undefined;
 
     const codebookVariables = getVariablesForSubject(state, {
       entity: entity as 'node' | 'edge' | 'ego',

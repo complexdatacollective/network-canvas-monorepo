@@ -22,8 +22,12 @@ export const COMPOSER_CODEBOOK_PROPERTIES = [
 
 export const composerNormalizeField = (field: Record<string, unknown>) => {
   // Keep `id` so the list item retains a stable, unique React key.
+  // `_contradiction` is the editor's error-only field (see
+  // ComposerAttributeFields): it is registered so a form-level message has
+  // somewhere to land, and so it reports a value the row must never keep.
   const normalized = omit(field, [
     '_createNewVariable',
+    '_contradiction',
     ...COMPOSER_CODEBOOK_PROPERTIES,
   ]);
   // An empty label saves as '' and defeats the variable-name caption fallback,
@@ -34,6 +38,12 @@ export const composerNormalizeField = (field: Record<string, unknown>) => {
   return normalized;
 };
 
+/**
+ * LEGACY, awaiting stage-E deletion: the only consumer left is the redux-form
+ * `EditableAttributesList`, which goes when its last two call sites move to
+ * `~/components/Form/arrayFields/EditableAttributesList` (which carries its
+ * own `(state, {item})` selector). Nothing new should use this.
+ */
 export const composerItemSelector =
   (entity: string | null, type: string | null) =>
   (

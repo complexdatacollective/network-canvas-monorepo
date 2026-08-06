@@ -14,7 +14,7 @@ import useAppUpdate, {
   type UseAppUpdateResult,
 } from '@codaco/fresco-ui/appUpdate/useAppUpdate';
 import { useAppSelector } from '~/ducks/hooks';
-import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
+import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { appVersion } from '~/utils/appVersion';
 import {
   isCriticalOperationInProgress,
@@ -67,7 +67,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
 
   // A reload discards an unsaved stage-editor draft, any open dialog, and any
   // in-flight import/export; gate auto-apply on these being clear.
-  const draftDirty = useAppSelector(getStageDraftDirty);
+  const draftDirty = useAppSelector(getLiveStageDraftDirty);
   const dialogOpen = useSyncExternalStore(
     subscribeOpenDialogPresence,
     hasOpenDialog,

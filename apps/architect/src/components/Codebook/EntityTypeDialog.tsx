@@ -1,12 +1,15 @@
 import { get } from 'es-toolkit/compat';
-import { useCallback, useMemo } from 'react';
-import { isDirty, isInvalid } from 'redux-form';
+import { useCallback, useMemo, useRef } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import InlineEditScreen from '~/components/InlineEditScreen/InlineEditScreen';
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import DialogForm from '~/components/DialogForm/DialogForm';
+import DirtyProbe from '~/components/DialogForm/DirtyProbe';
 import { format, parse } from '~/components/TypeEditor/convert';
 import getNewTypeTemplate from '~/components/TypeEditor/getNewTypeTemplate';
-import TypeEditor from '~/components/TypeEditor/TypeEditor';
+import TypeEditor, {
+  type EntityTypeValues,
+} from '~/components/TypeEditor/TypeEditor';
 import validateEntityType from '~/components/TypeEditor/validateEntityType';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
@@ -17,7 +20,7 @@ import type { RootState } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
 import { reportError } from '~/utils/reportError';
 
-const formName = 'ENTITY_TYPE_DIALOG';
+const FORM_ID = 'entity-type-dialog';
 
 type EntityTypeDialogProps = {
   show: boolean;
@@ -35,16 +38,11 @@ const EntityTypeDialog = ({
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const protocol = useAppSelector((state: RootState) => getProtocol(state));
-  const hasUnsavedChanges = useAppSelector((state: RootState) =>
-    isDirty(formName)(state),
-  );
-  const invalid = useAppSelector((state: RootState) =>
-    isInvalid(formName)(state),
-  );
+  const dirtyRef = useRef(false);
 
   const isNew = !type;
 
-  const initialValues = useMemo(() => {
+  const initialValues = useMemo<EntityTypeValues>(() => {
     if (!entity || !protocol) {
       return {};
     }
@@ -55,7 +53,7 @@ const EntityTypeDialog = ({
     const value = type
       ? get(protocol, ['codebook', entity, type]) || defaultValue
       : defaultValue;
-    return format(value);
+    return format(value) as EntityTypeValues;
   }, [protocol, entity, type]);
 
   const title = useMemo(() => {
@@ -66,52 +64,34 @@ const EntityTypeDialog = ({
     return isNew ? `Create ${entityLabel} Type` : `Edit ${entityLabel} Type`;
   }, [entity, isNew]);
 
-  const updateType = useCallback(
-    async (
-      entityType: string,
-      typeKey: string,
-      form: Record<string, unknown>,
-    ) => {
-      await dispatch(
-        updateTypeAsync({
-          entity: entityType as 'node' | 'edge' | 'ego',
-          type: typeKey,
-          configuration: parse(form),
-        }),
-      ).unwrap();
-    },
-    [dispatch],
-  );
-
-  const createType = useCallback(
-    async (entityType: string, form: Record<string, unknown>) => {
-      const result = await dispatch(
-        createTypeAsync({
-          entity: entityType as 'node' | 'edge' | 'ego',
-          configuration: parse(form),
-        }),
-      ).unwrap();
-      return result;
-    },
-    [dispatch],
-  );
-
   const handleSubmit = useCallback(
-    async (values: Record<string, unknown>) => {
-      if (invalid) {
-        return;
-      }
+    async (values: Record<string, FieldValue>) => {
+      if (!entity) return;
 
-      if (!entity) {
-        return;
-      }
+      // `updateType` replaces the whole definition, and `getFormValues()`
+      // reports registered fields only — so the properties this editor does
+      // not render (`variables` above all) are carried over from the committed
+      // definition. redux-form got this for free by seeding the whole form
+      // from `initialValues`.
+      const configuration = parse({ ...initialValues, ...values });
 
       try {
         if (isNew) {
-          const result = await createType(entity, values);
+          const result = await dispatch(
+            createTypeAsync({
+              entity: entity as 'node' | 'edge' | 'ego',
+              configuration,
+            }),
+          ).unwrap();
           onClose(result.type);
         } else if (type) {
-          await updateType(entity, type, values);
+          await dispatch(
+            updateTypeAsync({
+              entity: entity as 'node' | 'edge' | 'ego',
+              type,
+              configuration,
+            }),
+          ).unwrap();
           onClose();
         }
       } catch (error) {
@@ -127,7 +107,7 @@ const EntityTypeDialog = ({
         });
       }
     },
-    [createType, updateType, onClose, entity, type, isNew, invalid, openDialog],
+    [dispatch, initialValues, onClose, entity, type, isNew, openDialog],
   );
 
   const handleCancel = useCallback(async () => {
@@ -135,7 +115,7 @@ const EntityTypeDialog = ({
     // started filling it in, confirm before discarding — including brand-new
     // types, so an accidental backdrop/outside click can't drop a
     // partially-authored variable or type.
-    if (!hasUnsavedChanges) {
+    if (!dirtyRef.current) {
       onClose();
       return;
     }
@@ -155,24 +135,33 @@ const EntityTypeDialog = ({
     if (confirmed) {
       onClose();
     }
-  }, [hasUnsavedChanges, onClose, openDialog]);
+  }, [onClose, openDialog]);
 
   if (!entity) {
     return null;
   }
 
   return (
-    <InlineEditScreen
-      show={show}
-      form={formName}
+    <DialogForm
+      // A fresh field store per edited type: the form store has no whole-form
+      // reinitialize, so switching what is being edited must remount it.
+      key={type ?? `new-${entity}`}
+      open={show}
+      onClose={() => void handleCancel()}
       title={title}
-      onSubmit={handleSubmit as (values: unknown) => void}
-      onCancel={handleCancel}
-      initialValues={initialValues}
+      formId={FORM_ID}
+      submitLabel="Save and Close"
+      onSubmit={handleSubmit}
       validate={validateEntityType}
     >
-      <TypeEditor form={formName} entity={entity} type={type} isNew={isNew} />
-    </InlineEditScreen>
+      <DirtyProbe dirtyRef={dirtyRef} />
+      <TypeEditor
+        entity={entity}
+        type={type}
+        isNew={isNew}
+        initialValues={initialValues}
+      />
+    </DialogForm>
   );
 };
 

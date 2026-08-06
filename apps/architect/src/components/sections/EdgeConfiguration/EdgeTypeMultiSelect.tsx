@@ -1,15 +1,14 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import { connect } from 'react-redux';
-import { Field } from 'redux-form';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import NewTypeDialog from '~/components/Dialog/NewTypeDialog';
-import type { RootState } from '~/ducks/store';
+import { useAppSelector } from '~/ducks/hooks';
 import { getEdgeTypes } from '~/selectors/codebook/index';
 import { asOptions } from '~/selectors/utils';
 type EdgeEntrySubject = {
@@ -95,41 +94,31 @@ export const EdgeTypeMultiSelectInner = ({
 const getEdgeOptions = createSelector([getEdgeTypes], (edgeTypes) =>
   asOptions(edgeTypes),
 );
-type OwnProps = {
-  form: string;
+
+type EdgeTypeMultiSelectFieldProps = CreateFormFieldProps<
+  EdgeEntry[],
+  'div',
+  Record<never, never>
+>;
+
+/**
+ * Field-component wrapper for `EdgeTypeMultiSelectInner`: sources the
+ * codebook's edge types and adapts a fresco-ui `Field`'s `value`/`onChange`
+ * contract, replacing the redux-form `Field`/`connect` pairing this used to
+ * be built from.
+ */
+const EdgeTypeMultiSelectField = ({
+  value,
+  onChange,
+}: EdgeTypeMultiSelectFieldProps) => {
+  const edgeTypes = useAppSelector(getEdgeOptions);
+  return (
+    <EdgeTypeMultiSelectInner
+      edgeTypes={edgeTypes}
+      value={Array.isArray(value) ? value : []}
+      onChange={(edges) => onChange?.(edges)}
+    />
+  );
 };
-const withEdgeTypes = connect((state: RootState) => ({
-  edgeTypes: getEdgeOptions(state),
-}));
-type ConnectedProps = {
-  edgeTypes: EdgeTypeOption[];
-};
-type EdgeTypeMultiSelectControlProps = {
-  // redux-form types a field value loosely and initialises an unset field to ''
-  // (not an array), so value can arrive as a string — the render guards for it.
-  input: {
-    value: EdgeEntry[] | string;
-    onChange: (edges: EdgeEntry[]) => void;
-  };
-  edgeTypes: EdgeTypeOption[];
-};
-export const EdgeTypeMultiSelectControl = ({
-  input,
-  edgeTypes,
-}: EdgeTypeMultiSelectControlProps) => (
-  <EdgeTypeMultiSelectInner
-    edgeTypes={edgeTypes}
-    // redux-form initialises an unset field's value to '' (not undefined), so a
-    // nullish guard isn't enough — coerce any non-array to an empty selection.
-    value={Array.isArray(input.value) ? input.value : []}
-    onChange={input.onChange}
-  />
-);
-const EdgeTypeMultiSelectField = ({ edgeTypes }: ConnectedProps & OwnProps) => (
-  <Field
-    name="edges"
-    component={EdgeTypeMultiSelectControl}
-    edgeTypes={edgeTypes}
-  />
-);
-export default withEdgeTypes(EdgeTypeMultiSelectField);
+
+export default EdgeTypeMultiSelectField;

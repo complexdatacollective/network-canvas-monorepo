@@ -1,16 +1,19 @@
-import { compose } from 'react-recompose';
 import { useSelector } from 'react-redux';
-import { formValueSelector } from 'redux-form';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import EditableAttributesList from '~/components/EditableAttributesList/EditableAttributesList';
 import { Section, Subsection } from '~/components/EditorLayout';
+import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import type { RootState } from '~/ducks/modules/root';
+import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
+import {
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 import { getCodebook } from '~/selectors/protocol';
 
-import withComposerFormHandlers from '../Form/withComposerFormHandlers';
-import EdgeTypeMultiSelect from './EdgeTypeMultiSelect';
+import { useComposerFieldCommit } from '../Form/fieldCommit';
+import EdgeTypeMultiSelectField from './EdgeTypeMultiSelect';
 type EdgeEntry = {
   id: string;
   subject: {
@@ -38,67 +41,52 @@ const isEdgeEntry = (value: unknown): value is EdgeEntry => {
 };
 const toEdgeEntries = (value: unknown): EdgeEntry[] =>
   Array.isArray(value) ? value.filter(isEdgeEntry) : [];
-type EdgeAttributeBlockInnerProps = {
+type EdgeAttributeBlockProps = {
   entity: 'edge';
   type: string;
-  form: string;
   fieldName: string;
   editFormName: string;
   title: string;
-  handleChangeFields: (field: Record<string, unknown>) => unknown;
 };
-const EdgeAttributeBlockInner = ({
+// `useComposerFieldCommit({entity, type})` is called here, with THIS block's
+// own edge type — not the stage's own subject — so each edge type's
+// attribute list commits into the right codebook entry rather than a shared
+// (and wrong) one.
+const EdgeAttributeBlock = ({
   entity,
   type,
-  form,
   fieldName,
   editFormName,
   title,
-  handleChangeFields,
-}: EdgeAttributeBlockInnerProps) => (
-  <Section title={title} layout="horizontal" required={false}>
-    <Subsection
-      title="Editable attributes"
-      summary="The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute pairs a variable with the input control used to collect it."
-    >
-      <EditableAttributesList
-        fieldName={fieldName}
-        entity={entity}
-        type={type}
-        form={form}
-        editFormName={editFormName}
-        handleChangeFields={handleChangeFields}
-      />
-    </Subsection>
-  </Section>
-);
-type EdgeAttributeBlockOwnProps = {
-  entity: 'edge';
-  type: string;
-  form: string;
-  fieldName: string;
-  editFormName: string;
-  title: string;
+}: EdgeAttributeBlockProps) => {
+  const handleChangeFields = useComposerFieldCommit({ entity, type });
+
+  return (
+    <Section title={title} layout="horizontal" required={false}>
+      <Subsection
+        title="Editable attributes"
+        summary="The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute pairs a variable with the input control used to collect it."
+      >
+        <EditableAttributesList
+          fieldName={fieldName}
+          entity={entity}
+          type={type}
+          form={STAGE_FORM_ID}
+          editFormName={editFormName}
+          handleChangeFields={handleChangeFields}
+        />
+      </Subsection>
+    </Section>
+  );
 };
-// `withComposerFormHandlers` reads props.entity/props.type/props.form to build a
-// handler scoped to THAT edge type's codebook entry. Composing it here — with
-// entity="edge" and type=<edge type> — yields a correctly edge-scoped
-// handleChangeFields per block, so an attribute edit writes into the right edge
-// codebook entity rather than a shared (and wrong) one.
-const EdgeAttributeBlock = compose<
-  EdgeAttributeBlockInnerProps,
-  EdgeAttributeBlockOwnProps
->(withComposerFormHandlers)(EdgeAttributeBlockInner);
-type EdgeConfigurationProps = StageEditorSectionProps;
 const resolveEdgeLabel = (
   codebook: ReturnType<typeof getCodebook>,
   type: string,
 ) => codebook?.edge?.[type]?.name ?? type;
-const EdgeConfigurationInner = ({ form }: EdgeConfigurationProps) => {
+const EdgeConfiguration = (_props: StageEditorSectionProps) => {
   const codebook = useSelector(getCodebook);
-  const edges = useSelector((state: RootState) =>
-    toEdgeEntries(formValueSelector(form)(state, 'edges')),
-  );
+  const edges = toEdgeEntries(useStageFormValue<unknown>('edges'));
+  const initialEdges = useStageInitialValue<EdgeEntry[]>('edges');
   return (
     <>
       <Section
@@ -116,7 +104,13 @@ const EdgeConfigurationInner = ({ form }: EdgeConfigurationProps) => {
           title="Edge types"
           summary="Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below."
         >
-          <EdgeTypeMultiSelect form={form} />
+          <ArchitectField
+            name="edges"
+            label="Edge types"
+            labelHidden
+            component={EdgeTypeMultiSelectField}
+            initialValue={initialEdges}
+          />
         </Subsection>
       </Section>
       {edges.map((edge, index) => (
@@ -124,7 +118,6 @@ const EdgeConfigurationInner = ({ form }: EdgeConfigurationProps) => {
           key={edge.id}
           entity="edge"
           type={edge.subject.type}
-          form={form}
           fieldName={`edges[${index}].form.fields`}
           editFormName={`edge-attr-edit-${edge.subject.type}`}
           title={`Edge Attributes — ${resolveEdgeLabel(codebook, edge.subject.type)}`}
@@ -133,6 +126,4 @@ const EdgeConfigurationInner = ({ form }: EdgeConfigurationProps) => {
     </>
   );
 };
-export default compose<EdgeConfigurationProps, StageEditorSectionProps>()(
-  EdgeConfigurationInner,
-);
+export default EdgeConfiguration;

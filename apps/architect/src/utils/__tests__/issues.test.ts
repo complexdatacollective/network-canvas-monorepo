@@ -2,49 +2,36 @@ import { describe, expect, it } from 'vitest';
 
 import * as issues from '../issues';
 
-const issueObject = {
-  foo: 'bar',
-  baz: [
-    {
-      buzz: 'foo',
-      deeper: [{ fizz: 'pop' }, { buzz: 'pow' }],
-      beep: {
-        boop: 'bop',
-      },
-    },
-  ],
-};
-
 describe('utils/issues', () => {
   describe('flattenIssues()', () => {
-    it('Converts a nested object into a flattened version with paths', () => {
-      expect(issues.flattenIssues(issueObject)).toEqual([
-        { issue: 'bar', field: 'foo' },
-        { issue: 'foo', field: 'baz[0].buzz' },
-        { issue: 'pop', field: 'baz[0].deeper[0].fizz' },
-        { issue: 'pow', field: 'baz[0].deeper[1].buzz' },
-        { issue: 'bop', field: 'baz[0].beep.boop' },
+    it('pairs every message with its field', () => {
+      expect(
+        issues.flattenIssues({
+          'label': ['Required'],
+          'form.fields': ['You must create at least one field'],
+        }),
+      ).toEqual([
+        { issue: 'Required', field: 'label' },
+        {
+          issue: 'You must create at least one field',
+          field: 'form.fields',
+        },
       ]);
     });
 
-    it('captures array-level _error (redux-form stores it on the array)', () => {
-      const items: unknown[] = [];
-      (items as { _error?: string })._error =
-        'You must create at least one item';
-
-      expect(issues.flattenIssues({ items })).toEqual([
-        { issue: 'You must create at least one item', field: 'items._error' },
+    it('emits one entry per message when a field has several', () => {
+      expect(
+        issues.flattenIssues({ name: ['Required', 'Must be unique'] }),
+      ).toEqual([
+        { issue: 'Required', field: 'name' },
+        { issue: 'Must be unique', field: 'name' },
       ]);
     });
 
-    it('captures both per-item and array-level errors', () => {
-      const items: unknown[] = [{ content: 'Required' }];
-      (items as { _error?: string })._error = 'Array level error';
-
-      expect(issues.flattenIssues({ items })).toEqual([
-        { issue: 'Required', field: 'items[0].content' },
-        { issue: 'Array level error', field: 'items._error' },
-      ]);
+    it('ignores fields with no messages', () => {
+      expect(
+        issues.flattenIssues({ label: [], interviewScript: undefined }),
+      ).toEqual([]);
     });
   });
 

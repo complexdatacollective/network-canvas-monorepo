@@ -1,18 +1,27 @@
-import type { ComponentType } from 'react';
-import { compose } from 'react-recompose';
+import { useEffect, useRef } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import ArchitectField from '~/components/Form/ArchitectField';
+import Options from '~/components/Form/arrayFields/Options';
 import RichTextField from '~/components/Form/Fields/RichText/Field';
-import ValidatedField from '~/components/Form/ValidatedField';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import Options from '~/components/Options';
+import { useClearValue } from '~/components/sections/Form/withFieldsHandlers';
 import PromptText from '~/components/sections/PromptText';
+import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
+import { useAppSelector } from '~/ducks/hooks';
+import {
+  getVariableOptionsForSubject,
+  getVariablesForSubject,
+} from '~/selectors/codebook';
 import { getFieldId } from '~/utils/issues';
 
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -20,58 +29,122 @@ import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import { getSortOrderOptionGetter } from './optionGetters';
-import withVariableHandlers from './withVariableHandlers';
-import withVariableOptions from './withVariableOptions';
+
 type VariableOption = {
   label: string;
   value: string;
   type: string;
 };
+
 type PromptFieldsProps = {
-  changeForm: (form: string, field: string, value: unknown) => void;
-  entity: string;
-  form: string;
-  onCreateOtherVariable: (value: string, field: string) => void;
-  optionsForVariableDraft?: Array<Record<string, unknown>>;
-  otherVariable?: string;
-  otherVariableOptions?: VariableOption[];
-  sortVariableOptions?: VariableOption[];
-  type: string;
+  entity: 'node' | 'edge' | 'ego';
+  type: string | null;
+  text?: string;
   variable?: string;
+  otherVariable?: string;
+  otherOptionLabel?: string;
+  otherVariablePrompt?: string;
   variableOptions?: VariableOption[];
+  binSortOrder?: Record<string, unknown>[];
+  bucketSortOrder?: Record<string, unknown>[];
 };
+
 const PromptFields = ({
-  changeForm,
   entity,
-  form,
-  onCreateOtherVariable,
-  optionsForVariableDraft = [],
-  otherVariable,
-  otherVariableOptions = [],
-  sortVariableOptions = [],
   type,
+  text,
   variable,
+  otherVariable,
+  otherOptionLabel,
+  otherVariablePrompt,
   variableOptions = [],
+  binSortOrder,
+  bucketSortOrder,
 }: PromptFieldsProps) => {
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const registerField = useFormStore((state) => state.registerField);
+  const unregisterField = useFormStore((state) => state.unregisterField);
+  const clearValue = useClearValue();
+  const {
+    variable: liveVariable,
+    otherVariable: liveOtherVariable,
+    variableOptions: liveVariableOptions,
+  } = useFormValue(['variable', 'otherVariable', 'variableOptions'] as const);
+
+  // `hasOtherVariable` is a real, ALWAYS-registered field (never gated by the
+  // toggleable Section's isOpen, unlike `otherVariable` itself) — the save
+  // path (`DialogArrayField`'s handleSave) merges this session's submitted
+  // values OVER the row's pre-edit ones to preserve properties the editor
+  // never renders, so an unregistered (collapsed) `otherVariable` would let
+  // its stale pre-edit value silently survive a toggle-off. This field is
+  // `useOnBeforeSavePrompt`'s only reliable signal that the toggle is off.
+  useEffect(() => {
+    registerField({ name: 'hasOtherVariable', initialValue: !!otherVariable });
+    return () => unregisterField('hasOtherVariable');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const currentVariable =
+    typeof liveVariable === 'string' ? liveVariable : variable;
+  const currentOtherVariable =
+    typeof liveOtherVariable === 'string' ? liveOtherVariable : otherVariable;
+  const currentVariableOptions = Array.isArray(liveVariableOptions)
+    ? (liveVariableOptions as VariableOption[])
+    : variableOptions;
+  const { createVariable } = useCreateVariable();
+
+  const subject = { entity, type: type ?? undefined };
+  // The main `variable` picker is an UNVALIDATED writer: drop options a form
+  // elsewhere already validates. CategoricalBin's "other" picker is a
+  // VALIDATED writer (its input now honours the referenced variable's
+  // codebook validation): drop options an unvalidated writer elsewhere
+  // already claims.
+  const rawVariableOptions = useAppSelector((state) =>
+    getVariableOptionsForSubject(state, subject),
+  );
+  const optionsForCurrentVariable = useAppSelector((state) => {
+    const variables = getVariablesForSubject(state, subject);
+    const found = currentVariable ? variables[currentVariable] : undefined;
+    return found && 'options' in found ? (found.options ?? []) : [];
+  });
+
+  // Picking a different variable replaces the draft options with that
+  // variable's already-committed ones (redux-form's `withVariableOptions`
+  // lifecycle this replaces) — but only on an actual change, so opening the
+  // dialog on an already-configured prompt doesn't clobber its live draft.
+  const previousVariableRef = useRef(currentVariable);
+  useEffect(() => {
+    if (previousVariableRef.current === currentVariable) return;
+    previousVariableRef.current = currentVariable;
+    setFieldValue('variableOptions', optionsForCurrentVariable);
+  }, [currentVariable, optionsForCurrentVariable, setFieldValue]);
+
+  const categoricalVariableOptions = rawVariableOptions.filter(
+    ({ type: variableType }) => variableType === 'categorical',
+  );
+  const otherVariableTextOptions = rawVariableOptions.filter(
+    ({ type: variableType }) => variableType === 'text',
+  );
+  const getOptions = getSortOrderOptionGetter(rawVariableOptions);
+  const sortMaxItems = getOptions('property', undefined, []).length;
+  const totalOptionsLength =
+    currentVariableOptions.length + (currentOtherVariable ? 1 : 0);
+  const showVariableOptionsTip = totalOptionsLength > 8;
+
   const newVariableWindowInitialProps = {
     entity: entity as Entity,
-    type,
+    type: type ?? '',
     initialValues: { name: '', type: '' },
   };
   const handleCreatedNewVariable = (...args: unknown[]) => {
-    const [id, params] = args as [
-      string,
-      {
-        field: string;
-      },
-    ];
-    changeForm(form, params.field, id);
+    const [id, params] = args as [string, { field: string }];
+    setFieldValue(params.field, id);
   };
   const handleToggleOtherVariable = (nextState: boolean) => {
+    setFieldValue('hasOtherVariable', nextState);
     if (!nextState) {
-      changeForm(form, 'otherVariable', null);
-      changeForm(form, 'otherVariablePrompt', null);
-      changeForm(form, 'otherOptionLabel', null);
+      clearValue('otherVariable');
+      clearValue('otherVariablePrompt');
+      clearValue('otherOptionLabel');
     }
     return true;
   };
@@ -85,47 +158,34 @@ const PromptFields = ({
       { initialValues: { name, type: 'categorical' } },
       { field: 'variable' },
     );
-  const categoricalVariableOptions = variableOptions.filter(
-    ({ type: variableType }) => variableType === 'categorical',
-  );
-  // otherVariable is a VALIDATED writer, so it draws from the HOC's
-  // otherVariable-role-filtered pool rather than the (unvalidated-role-
-  // filtered) variableOptions pool used above.
-  const otherVariableTextOptions = otherVariableOptions.filter(
-    ({ type: variableType }) => variableType === 'text',
-  );
-  // Sort keys are read-only references outside the writer-exclusivity rule:
-  // they draw from the HOC's RAW pool so a bin can still be bucket/bin-sorted
-  // by a form-collected variable the (role-filtered) writer pool above drops.
-  const getOptions = getSortOrderOptionGetter(sortVariableOptions);
-  const sortMaxItems = getOptions('property', undefined, []).length;
-  const totalOptionsLength =
-    optionsForVariableDraft &&
-    optionsForVariableDraft.length + (otherVariable ? 1 : 0);
-  const showVariableOptionsTip = totalOptionsLength > 8;
+  const handleCreateOtherVariable = async (name: string) => {
+    const id = await createVariable(name, 'text');
+    if (id) setFieldValue('otherVariable', id);
+  };
+
   return (
     <>
-      <PromptText />
+      <PromptText initialValue={text} />
       <Section
         title="Categorical Variable"
         id={getFieldId('variable')}
         layout="vertical"
       >
         <Row>
-          <ValidatedField
+          <ArchitectField
             name="variable"
+            label="Categorical variable"
+            labelHidden
             component={VariablePicker}
             validation={{ required: true }}
-            componentProps={{
-              type,
-              entity,
-              options: categoricalVariableOptions,
-              onCreateOption: handleNewVariable,
-              variable,
-            }}
+            initialValue={variable}
+            type={type}
+            entity={entity}
+            options={categoricalVariableOptions}
+            onCreateOption={handleNewVariable}
           />
         </Row>
-        {variable && (
+        {currentVariable && (
           <Row>
             <Heading level="h4" id={getFieldId('options')}>
               Variable Options
@@ -146,12 +206,18 @@ const PromptFields = ({
                 </AlertDescription>
               </Alert>
             )}
-            <Options name="variableOptions" label="Options" />
+            <ArchitectArrayField
+              name="variableOptions"
+              label="Options"
+              labelHidden
+              component={Options}
+              initialValue={variableOptions}
+            />
           </Row>
         )}
       </Section>
       <Section
-        disabled={!variable}
+        disabled={!currentVariable}
         title='Follow-up "Other" Option'
         summary={
           <Paragraph>
@@ -163,72 +229,66 @@ const PromptFields = ({
           </Paragraph>
         }
         toggleable
-        startExpanded={!!otherVariable}
+        startExpanded={!!currentOtherVariable}
         handleToggleChange={handleToggleOtherVariable}
         layout="vertical"
       >
         <Row>
-          <ValidatedField
+          <ArchitectField
             name="otherVariable"
+            label="Other variable"
+            labelHidden
             component={VariablePicker}
             validation={{ required: true }}
-            componentProps={{
-              entity,
-              type,
-              options: otherVariableTextOptions,
-              onCreateOption: (value: string) =>
-                onCreateOtherVariable(value, 'otherVariable'),
-              variable: otherVariable,
-            }}
+            initialValue={otherVariable}
+            entity={entity}
+            type={type}
+            options={otherVariableTextOptions}
+            onCreateOption={handleCreateOtherVariable}
           />
         </Row>
-        {otherVariable && (
+        {currentOtherVariable && (
           <CodebookVariableValidationSection
-            form={form}
             fieldName="otherVariable"
             entity={entity}
             type={type}
-            variableId={otherVariable}
+            variableId={currentOtherVariable}
           />
         )}
         <Row>
-          <ValidatedField
+          <ArchitectField
             name="otherOptionLabel"
-            component={RichTextField as ComponentType<Record<string, unknown>>}
+            label="Label for Bin"
+            component={RichTextField}
             validation={{ required: true }}
-            componentProps={{
-              inline: true,
-              placeholder:
-                'Enter a label (such as &quot;other&quot;) for this bin...',
-              label: 'Label for Bin',
-            }}
+            initialValue={otherOptionLabel}
+            singleLine
+            placeholder='Enter a label (such as "other") for this bin...'
           />
         </Row>
         <Row>
-          <ValidatedField
+          <ArchitectField
             name="otherVariablePrompt"
-            component={RichTextField as ComponentType<Record<string, unknown>>}
+            label="Question Prompt for Dialog"
+            component={RichTextField}
             validation={{ required: true }}
-            componentProps={{
-              inline: true,
-              placeholder:
-                'Enter a question prompt to show when the other option is triggered...',
-              label: 'Question Prompt for Dialog',
-            }}
+            initialValue={otherVariablePrompt}
+            singleLine
+            placeholder="Enter a question prompt to show when the other option is triggered..."
           />
         </Row>
       </Section>
       <BucketSortOrderSection
-        form={form}
-        disabled={!variable}
+        disabled={!currentVariable}
         maxItems={sortMaxItems}
         optionGetter={getOptions}
+        initialValue={bucketSortOrder}
       />
       <BinSortOrderSection
-        form={form}
-        disabled={!variable}
+        disabled={!currentVariable}
         maxItems={sortMaxItems}
         optionGetter={getOptions}
+        initialValue={binSortOrder}
       />
       <NewVariableWindow
         // eslint-disable-next-line react/jsx-props-no-spreading
@@ -237,7 +297,5 @@ const PromptFields = ({
     </>
   );
 };
-export default compose<PromptFieldsProps, Record<string, never>>(
-  withVariableOptions,
-  withVariableHandlers,
-)(PromptFields);
+
+export default PromptFields;

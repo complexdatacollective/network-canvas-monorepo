@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useDispatch, useSelector, useStore } from 'react-redux';
-import type { Action, Dispatch } from 'redux';
-import { change, getFormValues } from 'redux-form';
+import { useSelector } from 'react-redux';
 
 import type {
   Item,
@@ -10,8 +8,8 @@ import type {
   StageSubject,
   StageType,
 } from '@codaco/protocol-validation';
+import { useAppDispatch } from '~/ducks/hooks';
 import { draftTimelineActions } from '~/ducks/modules/stageEditorDraft';
-import type { RootState } from '~/ducks/store';
 import {
   getAllVariablesByUUID,
   getEdgeTypes,
@@ -23,7 +21,8 @@ import {
   getStageList,
 } from '~/selectors/protocol';
 
-import { formName } from '../configuration';
+import { useStageFormContext } from '../stageFormContext';
+import { useSetStageValue, useStageFormValue } from '../stageFormHooks';
 import { computeAutoNameUpdate } from './computeAutoNameUpdate';
 import { generateStageLabel, STAGE_TYPE_NAMES } from './generateStageLabel';
 import {
@@ -31,51 +30,43 @@ import {
   resolveStageSubjectName,
 } from './resolveStageNameParts';
 
-type StageFormValues = {
-  type?: StageType;
-  label?: string;
-  subject?: StageSubject;
-  panels?: Panel[];
-  items?: Item[];
-  nominationPrompts?: { variable: string }[];
-};
-
 export function useAutoStageName(isNewStage: boolean): {
   onLabelBlur: () => void;
 } {
-  const dispatch = useDispatch<Dispatch<Action>>();
-  const store = useStore<RootState>();
-  const formValues = useSelector(getFormValues(formName)) as
-    | StageFormValues
-    | undefined;
+  const dispatch = useAppDispatch();
+  const { storeApi, draft } = useStageFormContext();
+  const setStageValue = useSetStageValue();
+
+  const type = useStageFormValue<StageType>('type');
+  const label = useStageFormValue<string>('label');
+  const subject = useStageFormValue<StageSubject>('subject');
+  const panels = useStageFormValue<Panel[]>('panels');
+  const items = useStageFormValue<Item[]>('items');
+  const nominationPrompts =
+    useStageFormValue<{ variable: string }[]>('nominationPrompts');
+
   const nodeTypes = useSelector(getNodeTypes);
   const edgeTypes = useSelector(getEdgeTypes);
   const codebook = useSelector(getCodebook);
   const assetManifest = useSelector(getAssetManifest);
   const stageList = useSelector(getStageList);
 
-  const liveLabel = formValues?.label ?? '';
+  const liveLabel = label ?? '';
 
   const generatedLabel = useMemo(() => {
-    const type = formValues?.type;
     if (!type) {
       return '';
     }
     const variablesByUuid = codebook ? getAllVariablesByUUID(codebook) : {};
     const subjectName = resolveStageSubjectName(
-      formValues?.subject,
+      subject,
       (entity, entityType) => {
         const types = entity === 'node' ? nodeTypes : edgeTypes;
         return types[entityType]?.name ?? null;
       },
     );
     const qualifier = resolveStageQualifier(
-      {
-        type,
-        panels: formValues?.panels,
-        items: formValues?.items,
-        nominationPrompts: formValues?.nominationPrompts,
-      },
+      { type, panels, items, nominationPrompts },
       {
         resolveAssetType: (assetId) => assetManifest[assetId]?.type ?? null,
         resolveVariableName: (variableId) =>
@@ -84,14 +75,25 @@ export function useAutoStageName(isNewStage: boolean): {
     );
     const existingLabels = stageList
       .map((stage) => stage.label)
-      .filter((label): label is string => Boolean(label));
+      .filter((stageLabel): stageLabel is string => Boolean(stageLabel));
     return generateStageLabel({
       typeName: STAGE_TYPE_NAMES[type],
       subjectName,
       qualifier,
       existingLabels,
     });
-  }, [formValues, nodeTypes, edgeTypes, codebook, assetManifest, stageList]);
+  }, [
+    type,
+    subject,
+    panels,
+    items,
+    nominationPrompts,
+    nodeTypes,
+    edgeTypes,
+    codebook,
+    assetManifest,
+    stageList,
+  ]);
 
   const isCustomRef = useRef(false);
   const lastGeneratedRef = useRef<string | undefined>(undefined);
@@ -104,25 +106,23 @@ export function useAutoStageName(isNewStage: boolean): {
   generatedLabelRef.current = generatedLabel;
 
   const applyLabel = useCallback(
-    (label: string) => {
+    (nextLabel: string) => {
       const isInitialFill = !hasFilledRef.current;
       hasFilledRef.current = true;
-      lastGeneratedRef.current = label;
-      dispatch(change(formName, 'label', label));
+      lastGeneratedRef.current = nextLabel;
+      setStageValue('label', nextLabel);
       // Fold the very first auto-name into the draft baseline so a brand-new
       // stage isn't reported dirty (no "Finished Editing" flash) and gains no
-      // undo step before the researcher has done anything. The reset also clears
-      // the listener's pending snapshot for this change.
+      // undo step before the researcher has done anything. Cancelling the
+      // bridge's armed debounce drops the snapshot this write would otherwise
+      // have produced.
       if (isInitialFill) {
-        const fresh = getFormValues(formName)(store.getState()) as
-          | Stage
-          | undefined;
-        if (fresh) {
-          dispatch(draftTimelineActions.reset(fresh));
-        }
+        draft.cancelPendingSnapshot();
+        const fresh = storeApi.getState().getFormValues() as unknown as Stage;
+        dispatch(draftTimelineActions.reset(fresh));
       }
     },
-    [dispatch, store],
+    [dispatch, draft, setStageValue, storeApi],
   );
 
   useEffect(() => {

@@ -1,109 +1,36 @@
+import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor } from '@testing-library/react';
-import { createElement, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// connect() becomes a pass-through HOC that injects controlled dispatch/state
-// props so the composed handler runs without a live store.
-const stubProps: Record<string, unknown> = {};
-const noop = () => undefined;
-vi.mock('react-redux', () => {
-  const useDispatch = Object.assign(() => noop, {
-    withTypes: () => () => noop,
-  });
-  return {
-    useDispatch,
-    useSelector: (selector: (state: unknown) => unknown) => selector({}),
-    connect:
-      () =>
-      (Component: React.ComponentType<Record<string, unknown>>) =>
-      (ownProps: Record<string, unknown>) =>
-        createElement(Component, { ...stubProps, ...ownProps }),
-  };
-});
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type { Stage } from '@codaco/protocol-validation';
+import StageFormBridge from '~/components/StageEditor/StageFormBridge';
+import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
-// redux-form selectors report a node type so the Form Fields DialogArrayField
-// and its onBeforeSave -> handleChangeFields wiring render.
-vi.mock('redux-form', () => ({
-  formValueSelector: () => () => 'person',
-  getFormValues: () => () => ({}),
-  getFormInitialValues: () => () => ({}),
-  change: (form: string, field: string, value: unknown) => ({
-    type: 'CHANGE',
-    form,
-    field,
-    value,
-  }),
-  SubmissionError: class SubmissionError extends Error {
-    errors: Record<string, unknown>;
-    constructor(errors: Record<string, unknown>) {
-      super('SubmissionError');
-      this.errors = errors;
-    }
-  },
-}));
-
-vi.mock('~/ducks/hooks', () => ({ useAppDispatch: () => noop }));
-
-vi.mock('~/selectors/codebook', () => ({
-  getVariableOptionsForSubject: () => [],
-  getVariablesForSubjectSelector: () => ({}),
-  makeGetVariable: () => () => undefined,
-}));
-
-vi.mock('~/selectors/protocol', () => ({
-  getProtocol: () => undefined,
-}));
-
+// Isolates `handleChangeFields` (NodeConfiguration's replacement for the
+// `withHandlers`/`connect` composition): ArchitectField/FieldFields/
+// NewVariableWindow are stubbed so only the array field's `onBeforeSave` is
+// exercised; `updateVariableAsync`/`createVariableAsync` are faked thunks so
+// the codebook write itself is a plain spy, matching the isolation level of
+// the redux-form-era test.
 vi.mock('~/components/EditorLayout', () => ({
   Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
-vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: () => null,
-}));
-vi.mock('~/components/Form/ValidatedField', () => ({
-  default: ({
-    name,
-    component,
-    componentProps,
-  }: {
-    name: string;
-    component: React.ComponentType<Record<string, unknown>>;
-    componentProps?: Record<string, unknown>;
-  }) =>
-    name === 'nodeConfig.form'
-      ? createElement(component, componentProps)
-      : null,
-}));
-vi.mock('~/components/Form/ValidatedFieldArray', () => ({
-  default: ({
-    component,
-    componentProps,
-  }: {
-    component: React.ComponentType<Record<string, unknown>>;
-    componentProps?: Record<string, unknown>;
-  }) => createElement(component, componentProps),
 }));
 vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
 vi.mock('~/components/NewVariableWindow', () => ({
   default: () => null,
   useNewVariableWindowState: (initial: unknown) => [initial, () => undefined],
 }));
-vi.mock(
-  '~/components/sections/fields/EntitySelectField/EntitySelectField',
-  () => ({
-    default: () => null,
-  }),
-);
+vi.mock('~/components/Form/ArchitectField', () => ({ default: () => null }));
 vi.mock('~/components/sections/Form/FieldFields', () => ({
   default: () => null,
 }));
-vi.mock('./NodeFormFieldPreview', () => ({ default: () => null }));
 
-// Capture the pre-save handler so the test can invoke it with a synthetic
-// field-edit payload.
 let capturedOnBeforeSave: ((value: unknown) => unknown) | undefined;
-vi.mock('~/components/Form/DialogArrayField', () => ({
+vi.mock('~/components/Form/ArchitectArrayField', () => ({
   default: ({
     onBeforeSave,
   }: {
@@ -114,66 +41,102 @@ vi.mock('~/components/Form/DialogArrayField', () => ({
   },
 }));
 
+const updateVariable = vi.fn((_arg: unknown) => Promise.resolve());
+const createVariable = vi.fn((_arg: unknown): Promise<{ variable: string }> =>
+  Promise.resolve({ variable: 'created' }),
+);
+vi.mock('~/ducks/modules/protocol/codebook', () => ({
+  updateVariableAsync: (arg: unknown) => () => updateVariable(arg),
+  createVariableAsync: (arg: unknown) => () => ({
+    unwrap: () => createVariable(arg),
+  }),
+}));
+
+// eslint-disable-next-line import/first -- must follow the vi.mock calls above
 import NodeConfiguration from '../NodeConfiguration';
 
-type UpdateVariableArg = {
-  replaceProperties: readonly string[];
-  configuration: Record<string, unknown>;
+const CODEBOOK = {
+  node: {
+    person: {
+      name: 'Person',
+      color: 'c',
+      variables: {
+        v1: {
+          component: 'Text',
+          type: 'text',
+          name: 'secret',
+          encrypted: true,
+          readOnly: true,
+        },
+      },
+    },
+  },
 };
-const updateVariable = vi.fn((_arg: UpdateVariableArg) => ({
-  unwrap: () => Promise.resolve({}),
-}));
-const createVariable = vi.fn();
-const getVariable = vi.fn();
-const getNodeType = vi.fn(() => 'person');
-const changeForm = vi.fn();
 
-beforeEach(() => {
-  updateVariable.mockReset();
-  updateVariable.mockReturnValue({ unwrap: () => Promise.resolve({}) });
-  createVariable.mockReset();
-  getVariable.mockReset();
-  changeForm.mockReset();
+const renderSection = (): ((value: unknown) => unknown) => {
   capturedOnBeforeSave = undefined;
-  Object.assign(stubProps, {
-    updateVariable,
-    createVariable,
-    getVariable,
-    getNodeType,
-    changeForm,
-  });
-});
+  updateVariable.mockClear();
+  createVariable.mockClear();
 
-const renderSection = () =>
+  const store = configureStore({
+    reducer: {
+      activeProtocol: (
+        state = { present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] } },
+      ) => state,
+      stageEditorDraft,
+    },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({ serializableCheck: false, immutableCheck: false }),
+  });
+
   render(
-    <NodeConfiguration
-      form="edit-stage"
-      stagePath="stages[0]"
-      stagePosition={0}
-      interfaceType={'FamilyPedigreeCensus' as never}
-    />,
+    <Provider store={store}>
+      <FormStoreProvider>
+        <StageFormBridge
+          committedStage={
+            {
+              id: 's1',
+              type: 'FamilyPedigree',
+              nodeConfig: { type: 'person' },
+            } as unknown as Stage
+          }
+          stageId="s1"
+          formId="edit-stage"
+        >
+          <NodeConfiguration
+            stagePath="stages[0]"
+            stagePosition={0}
+            interfaceType="FamilyPedigree"
+          />
+        </StageFormBridge>
+      </FormStoreProvider>
+    </Provider>,
   );
 
-describe('FamilyPedigree NodeConfiguration handleChangeFields', () => {
-  it('does not claim readOnly, so a pedigree-owned option set survives a field edit', async () => {
-    getVariable.mockReturnValue({
-      component: 'Text',
-      type: 'text',
-      name: 'secret',
-      encrypted: true,
-      readOnly: true,
-    });
-    renderSection();
-    expect(screen.getByTestId('dialog-array-field')).toBeInTheDocument();
+  expect(screen.getByTestId('dialog-array-field')).toBeInTheDocument();
+  const onBeforeSave = capturedOnBeforeSave;
+  if (!onBeforeSave) {
+    throw new Error('onBeforeSave was not captured');
+  }
+  return onBeforeSave;
+};
 
-    await capturedOnBeforeSave!({
-      variable: 'v1',
-      component: 'Text',
-      label: 'x',
-    });
+describe('FamilyPedigree NodeConfiguration handleChangeFields', () => {
+  beforeEach(() => {
+    updateVariable.mockReset();
+    updateVariable.mockReturnValue(Promise.resolve());
+    createVariable.mockReset();
+  });
+
+  it('does not claim readOnly, so a pedigree-owned option set survives a field edit', async () => {
+    const onBeforeSave = renderSection();
+
+    await onBeforeSave({ variable: 'v1', component: 'Text', label: 'x' });
 
     expect(updateVariable).toHaveBeenCalledTimes(1);
-    const arg = updateVariable.mock.calls[0]![0];
+    const arg = updateVariable.mock.calls[0]![0] as {
+      replaceProperties: readonly string[];
+    };
     expect(arg.replaceProperties).toEqual([
       'options',
       'parameters',
@@ -184,28 +147,40 @@ describe('FamilyPedigree NodeConfiguration handleChangeFields', () => {
     expect(arg.replaceProperties).not.toContain('encrypted');
   });
 
+  it('reports "Variable not found" instead of writing, for an unknown variable', async () => {
+    const onBeforeSave = renderSection();
+
+    const result = await onBeforeSave({
+      variable: 'missing',
+      component: 'Text',
+    });
+
+    expect(updateVariable).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      success: false,
+      formErrors: ['Variable not found'],
+    });
+  });
+
   it('surfaces a friendly error (not a TypeError) when variable creation rejects', async () => {
-    createVariable.mockReturnValue({
-      unwrap: () =>
-        Promise.reject(new Error('Variable name contains no valid characters')),
-    });
-    renderSection();
+    createVariable.mockReturnValue(
+      Promise.reject(new Error('Variable name contains no valid characters')),
+    );
+    const onBeforeSave = renderSection();
 
-    let thrown: unknown;
+    let result: unknown;
     await waitFor(async () => {
-      try {
-        await capturedOnBeforeSave!({
-          _createNewVariable: '...',
-          component: 'Text',
-        });
-      } catch (e) {
-        thrown = e;
-      }
-      expect(thrown).toBeDefined();
+      result = await onBeforeSave({
+        _createNewVariable: '...',
+        component: 'Text',
+      });
     });
 
-    const errors = (thrown as { errors: { variable: string } }).errors;
-    expect(errors.variable).toBe('Variable name contains no valid characters');
-    expect(errors.variable).not.toContain('TypeError');
+    expect(result).toEqual({
+      success: false,
+      fieldErrors: {
+        variable: ['Variable name contains no valid characters'],
+      },
+    });
   });
 });

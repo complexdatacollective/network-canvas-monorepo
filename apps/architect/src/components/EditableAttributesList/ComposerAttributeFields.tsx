@@ -1,19 +1,23 @@
-import type { ComponentType } from 'react';
-import type { WrappedFieldProps } from 'redux-form';
-
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import { useField } from '@codaco/fresco-ui/form/hooks/useField';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import { getReduxFieldErrorState } from '~/components/Form/reduxFieldMeta';
-import ValidatedField from '~/components/Form/ValidatedField';
-import Options from '~/components/Options';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import ArchitectField from '~/components/Form/ArchitectField';
+import Options, {
+  completeOptions,
+  minTwoOptions,
+  type OptionValue,
+} from '~/components/Form/arrayFields/Options';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';
 import LockedOptions from '~/components/Options/LockedOptions';
 import Parameters from '~/components/Parameters';
+import { asParameterValues } from '~/components/Parameters/parameterValues';
 import {
   isBooleanWithOptions,
   isOrdinalOrCategoricalType,
@@ -24,40 +28,58 @@ import { getFieldId } from '~/utils/issues';
 import BooleanChoice from '../BooleanChoice';
 import ExternalLink from '../ExternalLink';
 import InputPreview from '../Form/Fields/InputPreview';
-import VariablePicker from '../Form/Fields/VariablePicker/VariablePicker';
-import { useFieldHandlers } from '../sections/Form/withFieldsHandlers';
+import { asValidationMap, toSelectOptions } from '../sections/Form/helpers';
+import {
+  CREATE_NEW_VARIABLE_FIELD,
+  HiddenFieldValue,
+  useFieldHandlers,
+} from '../sections/Form/withFieldsHandlers';
 
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoNativeSelectField = NativeSelectField as ComponentType<
-  Record<string, unknown>
->;
+/** Stable empty list: `initialValue` is a register-effect dependency. */
+const NO_OPTIONS: OptionValue[] = [];
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+const asOptions = (value: unknown): OptionValue[] =>
+  Array.isArray(value) ? (value as OptionValue[]) : NO_OPTIONS;
 
 /**
- * Eighteenth-wave Finding 2: the contradiction check for this editor is a
- * form-level validate (`makeFieldEditorValidate`, wired in
- * EditableAttributesList) whose message belongs to no single control — it can
- * follow from the input control, its options, or its parameters together with
- * the codebook rules and the stage's sibling attributes. redux-form only
- * fails a submit over errors on REGISTERED fields, so the message needs a
- * field of its own: without one the error was inert and the contradictory
- * edit saved straight back to the codebook. This field holds no value; it
- * exists to register the error and render it.
+ * The contradiction check for this editor is a form-level validate
+ * (`makeFieldEditorValidate`, wired in EditableAttributesList) whose message
+ * belongs to no single control — it can follow from the input control, its
+ * options, or its parameters together with the codebook rules and the stage's
+ * sibling attributes. A form-level result is reported per FIELD NAME, so the
+ * message needs a field of its own: without one it would be invisible and the
+ * contradictory edit would save straight back to the codebook. This field
+ * holds no value; it exists to carry the error and render it.
  */
 export const COMPOSER_CONTRADICTION_FIELD = '_contradiction';
 
-const ContradictionAlert = ({ meta }: WrappedFieldProps) => {
-  const { errors, showErrors } = getReduxFieldErrorState(meta);
-  if (!showErrors) return null;
+/**
+ * Registers the contradiction field and renders its message as a whole-editor
+ * alert rather than as a control's error text — there is no control it belongs
+ * to. `data-field-name` is what `focusFirstError` scrolls to.
+ */
+const ContradictionAlert = () => {
+  useField({ name: COMPOSER_CONTRADICTION_FIELD });
+  const errors = useFormStore((state) =>
+    state.getFieldErrors(COMPOSER_CONTRADICTION_FIELD),
+  );
+
   return (
-    <Alert variant="destructive" className="my-7">
-      <AlertTitle>This attribute cannot be saved</AlertTitle>
-      <AlertDescription>{errors.join(' ')}</AlertDescription>
-    </Alert>
+    <div data-field-name={COMPOSER_CONTRADICTION_FIELD}>
+      {errors && errors.length > 0 && (
+        <Alert variant="destructive" className="my-7">
+          <AlertTitle>This attribute cannot be saved</AlertTitle>
+          <AlertDescription>{errors.join(' ')}</AlertDescription>
+        </Alert>
+      )}
+    </div>
   );
 };
 
 type ComposerAttributeFieldsProps = {
-  form: string;
   entity?: string | null;
   type?: string | null;
   // The stage's committed composer fields and this row's index within them,
@@ -65,13 +87,20 @@ type ComposerAttributeFieldsProps = {
   // can drop what a sibling attribute already collects.
   composerFields?: unknown;
   editIndex?: number;
+  /**
+   * The row being edited, merged with its codebook variable's options and
+   * validation. Every control seeds its `initialValue` from here — a field
+   * that registers empty would blank the property it owns on save.
+   */
+  item?: Record<string, unknown>;
 };
+
 const ComposerAttributeFields = ({
-  form,
   entity = null,
   type = null,
   composerFields,
   editIndex,
+  item = {},
 }: ComposerAttributeFieldsProps) => {
   const {
     variable,
@@ -83,56 +112,42 @@ const ComposerAttributeFields = ({
     metaForType,
     existingVariables,
     handleNewVariable,
-    handleChangeVariable,
-    handleChangeComponent,
   } = useFieldHandlers({
-    form,
     entity: entity ?? '',
     type: type ?? '',
     siblingFields: composerFields,
     editIndex,
   });
   const lockedOptions = getLockedOptions(existingVariables, variable);
+
   return (
     <>
-      <ValidatedField
-        name={COMPOSER_CONTRADICTION_FIELD}
-        component={ContradictionAlert}
-        validation={{}}
+      <HiddenFieldValue
+        name={CREATE_NEW_VARIABLE_FIELD}
+        initialValue={asString(item._createNewVariable)}
       />
-      <Section
-        layout="vertical"
-        id={getFieldId('variable')}
-        title="Variable"
-        summary={
-          <Paragraph>
-            Create or select a variable to collect this attribute. If you select
-            an existing variable, any changes you make to the input control or
-            validation options will also change other uses of this variable.
-          </Paragraph>
-        }
-      >
-        {/* {variable && !isNewVariable && (
-          <Alert variant="info" className="my-7">
-            <AlertDescription>
-              When selecting an existing variable, changes you make to the input
-              control or validation options will also change other uses of this
-              variable.
-            </AlertDescription>
-          </Alert>
-        )} */}
-        <ValidatedField
+      {/* This editor has no validation controls, but the contradiction check
+          judges the draft against the variable's committed rules — and it can
+          only see values the form actually reports. Carrying them through
+          also means the save writes them back unchanged. */}
+      <HiddenFieldValue
+        name="validation"
+        initialValue={asValidationMap(item.validation) ?? undefined}
+      />
+      <ContradictionAlert />
+      <Section layout="vertical" id={getFieldId('variable')} title="Variable">
+        <ArchitectField
           name="variable"
+          label="Variable"
           labelHidden
-          component={VariablePicker as ComponentType<Record<string, unknown>>}
+          hint="Create or select a variable to collect this attribute. If you select an existing variable, any changes you make to the input control or validation options will also change other uses of this variable."
+          component={VariablePickerControl}
+          initialValue={asString(item.variable)}
           validation={{ required: true }}
-          componentProps={{
-            entity: entity ?? undefined,
-            type: type ?? undefined,
-            options: variableOptions,
-            onCreateOption: handleNewVariable,
-            onChange: handleChangeVariable,
-          }}
+          entity={entity ?? undefined}
+          type={type ?? undefined}
+          options={variableOptions}
+          onCreateOption={handleNewVariable}
         />
       </Section>
 
@@ -141,23 +156,16 @@ const ComposerAttributeFields = ({
         id={getFieldId('label')}
         title="Label"
         disabled={!variable}
-        summary={
-          <Paragraph>
-            Optionally caption this attribute in the side panel. When left
-            empty, the variable&apos;s name is shown instead.
-          </Paragraph>
-        }
       >
-        <ValidatedField
+        <ArchitectField
           name="label"
           label="Label"
           labelHidden
-          component={FrescoReduxField}
+          hint="Optionally caption this attribute in the side panel. When left empty, the variable's name is shown instead."
+          component={InputField}
+          initialValue={asString(item.label)}
           validation={{}}
-          componentProps={{
-            fieldComponent: FrescoInputField,
-            placeholder: 'Defaults to the variable name',
-          }}
+          placeholder="Defaults to the variable name"
         />
       </Section>
 
@@ -166,33 +174,32 @@ const ComposerAttributeFields = ({
         id={getFieldId('component')}
         title="Input Control"
         disabled={!variable}
-        summary={
-          <Paragraph>
-            Choose an input control that should be used to collect the answer.
-            For detailed information about these options, see our{' '}
-            <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/input-controls/">
-              documentation
-            </ExternalLink>
-            .
-          </Paragraph>
-        }
       >
-        <ValidatedField
+        <ArchitectField
           name="component"
           label="Input control"
           labelHidden
-          component={FrescoReduxField}
+          hint={
+            <>
+              How the answer is collected. For detailed information about these
+              options, see our{' '}
+              <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/input-controls/">
+                documentation
+              </ExternalLink>
+              .
+            </>
+          }
+          component={NativeSelectField}
+          initialValue={asString(item.component)}
           validation={{ required: true }}
-          componentProps={{
-            fieldComponent: FrescoNativeSelectField,
-            placeholder: 'Select an input control',
-            options: isNewVariable
-              ? componentOptions
-              : [...componentOptions].toSorted((a, b) =>
+          placeholder="Select an input control"
+          options={
+            isNewVariable
+              ? toSelectOptions(componentOptions)
+              : toSelectOptions(componentOptions).toSorted((a, b) =>
                   a.label.localeCompare(b.label),
-                ),
-            onChange: handleChangeComponent,
-          }}
+                )
+          }
         />
         {isNewVariable && variableType && (
           <Alert variant="info" className="my-7">
@@ -235,38 +242,38 @@ const ComposerAttributeFields = ({
           layout="vertical"
           id={getFieldId('options')}
           title="Categorical/Ordinal options"
-          summary={
-            lockedOptions ? (
+        >
+          {lockedOptions ? (
+            <>
               <Paragraph>
                 These options are automatically configured by the interface and
                 cannot be modified.
               </Paragraph>
-            ) : (
-              <Paragraph>
-                The input type you selected indicates that this is a categorical
-                or ordinal variable. Next, please create a minimum of two
-                possible values for the participant to choose between.
-              </Paragraph>
-            )
-          }
-        >
-          {lockedOptions ? (
-            <LockedOptions options={lockedOptions} />
+              <LockedOptions options={lockedOptions} />
+            </>
           ) : (
-            <Options name="options" label="Options" />
+            <ArchitectArrayField
+              name="options"
+              label="Options"
+              labelHidden
+              hint="The input type you selected indicates that this is a categorical or ordinal variable. Create a minimum of two possible values for the participant to choose between."
+              component={Options}
+              initialValue={asOptions(item.options)}
+              validation={{ minTwoOptions, completeOptions }}
+            />
           )}
         </Section>
       )}
       {isBooleanWithOptions(component) && (
         // BooleanChoice writes to the `options` field, so anchor it there (it is
-        // mutually exclusive with the Categorical/Ordinal options subsection
+        // mutually exclusive with the Categorical/Ordinal options section
         // above, so the shared id never collides at runtime).
         <Section
           layout="vertical"
           id={getFieldId('options')}
           title="BooleanChoice Options"
         >
-          <BooleanChoice form={form} />
+          <BooleanChoice initialValue={asOptions(item.options)} />
         </Section>
       )}
       {isVariableTypeWithParameters(variableType) && (
@@ -279,11 +286,12 @@ const ComposerAttributeFields = ({
             type={variableType}
             component={component ?? ''}
             name="parameters"
-            form={form}
+            initialParameters={asParameterValues(item.parameters)}
           />
         </Section>
       )}
     </>
   );
 };
+
 export default ComposerAttributeFields;

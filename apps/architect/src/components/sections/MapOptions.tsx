@@ -1,73 +1,67 @@
 import type { ComponentType } from 'react';
-import { compose } from 'react-recompose';
 
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import Heading from '@codaco/fresco-ui/typography/Heading';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import withDisabledAPIKeyRequired from '~/components/enhancers/withDisabledAPIKeyRequired';
-import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { mapboxStyleOptions } from '~/config/mapboxConstants';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 import useVariablesFromExternalData from '../../hooks/useVariablesFromExternalData';
 import { Row, Section } from '../EditorLayout';
 import ExternalLink from '../ExternalLink';
+import ArchitectField from '../Form/ArchitectField';
 import ColorPicker from '../Form/Fields/ColorPicker';
 import GeoAPIKey from '../Form/Fields/Geospatial/GeoAPIKey';
 import GeoDataSource from '../Form/Fields/Geospatial/GeoDataSource';
 import MapSelection, {
   requiredMapView,
+  type MapValue,
 } from '../Form/Fields/Geospatial/MapSelection';
-import Toggle from '../Form/Fields/Toggle';
-import ValidatedField from '../Form/ValidatedField';
+import {
+  useStageFormValue,
+  useStageInitialValue,
+} from '../StageEditor/stageFormHooks';
 
 const FrescoNativeSelectField = NativeSelectField as ComponentType<
   Record<string, unknown>
 >;
 
-type MapOptionsProps = StageEditorSectionProps & {
-  mapOptions?: {
-    center?: number[];
-    tokenAssetId?: string;
-    initialZoom?: number;
-    dataSourceAssetId?: string;
-    color?: string;
-    targetFeatureProperty?: string;
-    style?: string;
-    showTransit?: boolean;
-    allowSearch?: boolean;
-  };
-  disabled: boolean;
+type MapOptionsValue = MapValue & {
+  showTransit?: boolean;
+  allowSearch?: boolean;
 };
+
 const NO_SELECTABLE_PROPERTIES_MESSAGE =
   'The selected GeoJSON has no feature properties available for map selection. Choose a GeoJSON file whose features include properties.';
 
 const noSelectablePropertiesGuard = () => NO_SELECTABLE_PROPERTIES_MESSAGE;
 
-const defaultMapOptions = {
-  center: [0, 0],
-  tokenAssetId: '',
-  initialZoom: 0,
-  dataSourceAssetId: '',
-  color: '',
-  targetFeatureProperty: '',
-  style: '',
-  showTransit: false,
-  allowSearch: false,
-};
-const MapOptions = ({
-  mapOptions = defaultMapOptions,
-  disabled,
-}: MapOptionsProps) => {
+const MapOptions = () => {
+  // Read the two gating values from their OWN leaf paths, not the parent
+  // `mapOptions` path: `mapOptions` is itself a separately registered field
+  // (bound whole-object to `MapSelection` below) — once it registers,
+  // `useStageFormValue('mapOptions')` would return only that field's own
+  // tracked value rather than the live assembled object, so it would miss
+  // edits made through these sibling leaf fields.
+  const dataSourceAssetId = useStageFormValue<string | undefined>(
+    'mapOptions.dataSourceAssetId',
+  );
+  const tokenAssetId = useStageFormValue<string | undefined>(
+    'mapOptions.tokenAssetId',
+  );
+  const initialMapOptions = useStageInitialValue<MapOptionsValue>('mapOptions');
+  const initialTargetFeatureProperty = useStageInitialValue<string>(
+    'mapOptions.targetFeatureProperty',
+  );
+  const initialShowTransit = useStageInitialValue<boolean>(
+    'mapOptions.showTransit',
+  );
+  const initialAllowSearch = useStageInitialValue<boolean>(
+    'mapOptions.allowSearch',
+  );
+  const disabled = !tokenAssetId;
   const { variables: variableOptions, isVariablesLoading } =
-    useVariablesFromExternalData(
-      mapOptions?.dataSourceAssetId,
-      true,
-      'geojson',
-    );
-  const dataSourceAssetId = mapOptions?.dataSourceAssetId;
+    useVariablesFromExternalData(dataSourceAssetId, true, 'geojson');
   const noSelectableProperties =
     Boolean(dataSourceAssetId) &&
     !isVariablesLoading &&
@@ -92,13 +86,12 @@ const MapOptions = ({
         }
       >
         <div data-name="Map Options Mapbox Key" />
-        <ValidatedField
+        <ArchitectField
           name="mapOptions.tokenAssetId"
-          component={GeoAPIKey as React.ComponentType}
+          component={GeoAPIKey}
+          initialValue={initialMapOptions?.tokenAssetId}
           validation={{ required: true }}
-          componentProps={{
-            label: 'Mapbox API Key',
-          }}
+          label="Mapbox API Key"
         />
       </Section>
       <Section
@@ -112,31 +105,33 @@ const MapOptions = ({
       >
         <Row>
           <div data-name="Layer data-source" />
-          <ValidatedField
-            component={GeoDataSource as React.ComponentType}
+          <ArchitectField
+            component={GeoDataSource}
             name="mapOptions.dataSourceAssetId"
+            initialValue={initialMapOptions?.dataSourceAssetId}
             validation={{ required: true }}
+            label="Layer data source"
           />
         </Row>
         {Boolean(dataSourceAssetId) && !isVariablesLoading && (
           <Row>
-            <ValidatedField
+            <ArchitectField
               name="mapOptions.targetFeatureProperty"
               label="Which property should be used for map selection?"
-              component={FrescoReduxField}
+              component={FrescoNativeSelectField}
+              initialValue={initialTargetFeatureProperty}
               validation={{
                 required: noSelectableProperties
                   ? noSelectablePropertiesGuard
                   : true,
               }}
-              componentProps={{
-                fieldComponent: FrescoNativeSelectField,
-                options: variableOptions,
-                disabled: noSelectableProperties,
-                hint: noSelectableProperties
+              options={variableOptions}
+              disabled={noSelectableProperties}
+              hint={
+                noSelectableProperties
                   ? NO_SELECTABLE_PROPERTIES_MESSAGE
-                  : undefined,
-              }}
+                  : undefined
+              }
             />
           </Row>
         )}
@@ -150,47 +145,40 @@ const MapOptions = ({
         }
         disabled={disabled}
       >
-        <ValidatedField
-          component={ColorPicker as React.ComponentType}
+        <ArchitectField
+          component={ColorPicker}
           name="mapOptions.color"
+          initialValue={initialMapOptions?.color}
           validation={{ required: true }}
-          componentProps={{
-            palette: paletteName,
-            paletteRange: paletteSize,
-            label:
-              "Which color would you like to use for this stage's map outlines and selections?",
-          }}
+          palette={paletteName}
+          paletteRange={paletteSize}
+          label="Which color would you like to use for this stage's map outlines and selections?"
         />
-        <ValidatedField
+        <ArchitectField
           label="Which mapbox style would you like to use for the map itself?"
-          component={FrescoReduxField}
+          component={FrescoNativeSelectField}
           name="mapOptions.style"
+          initialValue={initialMapOptions?.style}
           validation={{ required: true }}
-          componentProps={{
-            fieldComponent: FrescoNativeSelectField,
-            options: mapboxStyleOptions,
-          }}
+          options={mapboxStyleOptions}
         />
 
-        <Heading level="h4">Show Public Transit</Heading>
-        <ValidatedField
+        <ArchitectField
           name="mapOptions.showTransit"
-          component={Toggle as React.ComponentType}
-          validation={{}}
-          componentProps={{
-            label: 'Show public transit routes and stations on the map.',
-          }}
+          label="Show Public Transit"
+          hint="Show public transit routes and stations on the map."
+          component={ToggleField}
+          inline
+          initialValue={initialShowTransit ?? false}
         />
 
-        <Heading level="h4">Allow Location Search</Heading>
-        <ValidatedField
+        <ArchitectField
           name="mapOptions.allowSearch"
-          component={Toggle as React.ComponentType}
-          validation={{}}
-          componentProps={{
-            label:
-              'Allow participants to search the map for addresses, neighborhoods, and points of interest.',
-          }}
+          label="Allow Location Search"
+          hint="Allow participants to search the map for addresses, neighborhoods, and points of interest."
+          component={ToggleField}
+          inline
+          initialValue={initialAllowSearch ?? false}
         />
       </Section>
       <Section
@@ -203,19 +191,27 @@ const MapOptions = ({
         }
         disabled={disabled}
       >
-        <ValidatedField
+        {/*
+          NOTE: this registers a SEPARATE field at the parent `mapOptions`
+          path, alongside the `mapOptions.*` leaf fields above — inherited
+          from the pre-migration field layout. `getFormValues()` sets each
+          registered field's value at its own path with no partial-merge
+          across overlapping paths, so on save whichever of this field or the
+          leaves happens to be processed last in field-registration order
+          wins the `mapOptions` object's shape in the assembled output.
+          `MapSelection`/`MapView` currently round-trips `value` verbatim
+          (preserving whatever extra keys it was seeded with), so this only
+          matters if that round-trip ever narrows the object.
+        */}
+        <ArchitectField
           name="mapOptions"
-          component={MapSelection as React.ComponentType}
+          component={MapSelection}
+          initialValue={initialMapOptions}
           validation={{ required: requiredMapView }}
-          componentProps={{
-            label: 'Map center and zoom',
-          }}
+          label="Map center and zoom"
         />
       </Section>
     </>
   );
 };
-export default compose<MapOptionsProps, StageEditorSectionProps>(
-  withMapFormToProps(['mapOptions']),
-  withDisabledAPIKeyRequired,
-)(MapOptions);
+export default MapOptions;

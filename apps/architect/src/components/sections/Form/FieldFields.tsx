@@ -1,56 +1,71 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
 import { omit } from 'es-toolkit/compat';
-import type { ComponentType } from 'react';
-import { useSelector } from 'react-redux';
-import { change, Field, formValueSelector } from 'redux-form';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section, Subsection } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import ArchitectField from '~/components/Form/ArchitectField';
+import Options, {
+  completeOptions,
+  minTwoOptions,
+  type OptionValue,
+} from '~/components/Form/arrayFields/Options';
 import RichText from '~/components/Form/Fields/RichText/Field';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
-import Options from '~/components/Options';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';
 import LockedOptions from '~/components/Options/LockedOptions';
 import Parameters from '~/components/Parameters';
+import { asParameterValues } from '~/components/Parameters/parameterValues';
 import {
   isBooleanWithOptions,
   isOrdinalOrCategoricalType,
   isVariableTypeWithParameters,
 } from '~/config/variables';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
 import { documentationLinks } from '~/utils/documentationLinks';
 import { getFieldId } from '~/utils/issues';
 
 import BooleanChoice from '../../BooleanChoice';
 import ExternalLink from '../../ExternalLink';
 import InputPreview from '../../Form/Fields/InputPreview';
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import ValidationSection from '../ValidationSection';
-import { useFieldHandlers } from './withFieldsHandlers';
+import { asValidationMap, toSelectOptions } from './helpers';
+import {
+  CREATE_NEW_VARIABLE_FIELD,
+  HiddenFieldValue,
+  useFieldHandlers,
+} from './withFieldsHandlers';
 
-const FrescoNativeSelectField = NativeSelectField as ComponentType<
-  Record<string, unknown>
->;
+/** Stable empty list: `initialValue` is a register-effect dependency. */
+const NO_OPTIONS: OptionValue[] = [];
 
-type PromptFieldsProps = {
-  form: string;
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+const asOptions = (value: unknown): OptionValue[] =>
+  Array.isArray(value) ? (value as OptionValue[]) : NO_OPTIONS;
+
+type FieldFieldsProps = {
   entity?: string | null;
   type?: string | null;
   currentStageIndex?: number;
+  /**
+   * The row being edited, already merged with its codebook variable. Every
+   * control seeds its `initialValue` from here — `getFormValues()` reports
+   * registered fields only, so a field that registers empty would blank the
+   * property it owns when the dialog saves.
+   */
+  item?: Record<string, unknown>;
 };
-const PromptFields = ({
-  form,
+
+const FieldFields = ({
   entity = null,
   type = null,
   currentStageIndex,
-}: PromptFieldsProps) => {
-  const dispatch = useAppDispatch();
+  item = {},
+}: FieldFieldsProps) => {
   const {
     variable,
     variableType,
@@ -61,23 +76,19 @@ const PromptFields = ({
     metaForType,
     existingVariables,
     handleNewVariable,
-    handleChangeVariable,
-    handleChangeComponent,
   } = useFieldHandlers({
-    form,
     entity: entity ?? '',
     type: type ?? '',
     currentStageIndex,
   });
-  const showValidationHints = useSelector(
-    (state: RootState) =>
-      formValueSelector(form)(state, 'showValidationHints') as
-        | boolean
-        | undefined,
-  );
   const lockedOptions = getLockedOptions(existingVariables, variable);
+
   return (
     <>
+      <HiddenFieldValue
+        name={CREATE_NEW_VARIABLE_FIELD}
+        initialValue={asString(item._createNewVariable)}
+      />
       <Section layout="vertical" id={getFieldId('variable')} title="Variable">
         {variable && !isNewVariable && (
           <Alert variant="info" className="my-7">
@@ -88,82 +99,52 @@ const PromptFields = ({
             </AlertDescription>
           </Alert>
         )}
-        <ValidatedField
+        <ArchitectField
           name="variable"
-          component={VariablePicker as ComponentType<Record<string, unknown>>}
+          label="Variable"
+          labelHidden
+          component={VariablePickerControl}
+          initialValue={asString(item.variable)}
           validation={{ required: true }}
-          componentProps={{
-            entity: entity ?? undefined,
-            type: type ?? undefined,
-            options: variableOptions,
-            onCreateOption: handleNewVariable,
-            onChange: handleChangeVariable,
-          }}
+          entity={entity ?? undefined}
+          type={type ?? undefined}
+          options={variableOptions}
+          onCreateOption={handleNewVariable}
         />
       </Section>
 
-      <Section
-        layout="vertical"
-        id={getFieldId('prompt')}
-        title="Prompt Text"
-        summary={
-          <Paragraph className="mb-2.5 text-sm text-current/70">
-            Enter the question to display to the participant. Supports markdown
-            formatting.
-          </Paragraph>
-        }
-      >
-        <ValidatedField
+      <Section layout="vertical" id={getFieldId('prompt')} title="Prompt Text">
+        <ArchitectField
           name="prompt"
-          component={RichText as ComponentType<Record<string, unknown>>}
+          label="Prompt text"
+          labelHidden
+          hint="The question to display to the participant. Supports markdown formatting."
+          component={RichText}
+          initialValue={asString(item.prompt)}
           validation={{ required: true }}
-          componentProps={{
-            inline: true,
-            label: 'Prompt text',
-            labelHidden: true,
-            placeholder: "What is this person's name?",
-          }}
+          singleLine
+          placeholder="What is this person's name?"
         />
       </Section>
       <Section layout="vertical">
-        <Subsection
-          id={getFieldId('hint')}
-          title="Hint Text"
-          summary={
-            <Paragraph className="mb-2.5 text-sm text-current/70">
-              Optionally display a markdown-formatted hint below the question to
-              help participants understand how to answer.
-            </Paragraph>
-          }
-        >
-          <Field
-            name="hint"
-            component={RichText as ComponentType<Record<string, unknown>>}
-            inline
-            label="Hint text"
-            labelHidden
-            placeholder="e.g. Select all that apply..."
-          />
-        </Subsection>
-        <Subsection
-          id={getFieldId('showValidationHints')}
-          title="Show validation hints"
-          summary={
-            <Paragraph className="mb-2.5 text-sm text-current/70">
-              Automatically display hints derived from this field's validation
-              rules, helping participants understand input requirements.
-            </Paragraph>
-          }
-          action={
-            <ToggleField
-              value={!!showValidationHints}
-              onChange={(checked) =>
-                dispatch(
-                  change(form, 'showValidationHints', checked) as UnknownAction,
-                )
-              }
-            />
-          }
+        <ArchitectField
+          name="hint"
+          label="Hint text"
+          hint="Optionally display a markdown-formatted hint below the question, to help participants understand how to answer."
+          component={RichText}
+          initialValue={asString(item.hint)}
+          validation={{}}
+          singleLine
+          placeholder="e.g. Select all that apply..."
+        />
+        <ArchitectField
+          name="showValidationHints"
+          label="Show validation hints"
+          hint="Automatically display hints derived from this field's validation rules, helping participants understand input requirements."
+          component={ToggleField}
+          inline
+          initialValue={item.showValidationHints === true}
+          validation={{}}
         />
       </Section>
 
@@ -172,33 +153,32 @@ const PromptFields = ({
         id={getFieldId('component')}
         title="Input Control"
         disabled={!variable}
-        summary={
-          <Paragraph>
-            Choose an input control that should be used to collect the answer.
-            For detailed information about these options, see our{' '}
-            <ExternalLink href={documentationLinks.inputControls}>
-              documentation
-            </ExternalLink>
-            .
-          </Paragraph>
-        }
       >
-        <ValidatedField
+        <ArchitectField
           name="component"
           label="Input control"
           labelHidden
-          component={FrescoReduxField}
+          hint={
+            <>
+              How the answer is collected. For detailed information about these
+              options, see our{' '}
+              <ExternalLink href={documentationLinks.inputControls}>
+                documentation
+              </ExternalLink>
+              .
+            </>
+          }
+          component={NativeSelectField}
+          initialValue={asString(item.component)}
           validation={{ required: true }}
-          componentProps={{
-            fieldComponent: FrescoNativeSelectField,
-            placeholder: 'Select an input control',
-            options: isNewVariable
-              ? componentOptions
-              : [...componentOptions].toSorted((a, b) =>
+          placeholder="Select an input control"
+          options={
+            isNewVariable
+              ? toSelectOptions(componentOptions)
+              : toSelectOptions(componentOptions).toSorted((a, b) =>
                   a.label.localeCompare(b.label),
-                ),
-            onChange: handleChangeComponent,
-          }}
+                )
+          }
         />
         {isNewVariable && variableType && (
           <Alert variant="info" className="my-7">
@@ -241,25 +221,25 @@ const PromptFields = ({
           layout="vertical"
           id={getFieldId('options')}
           title="Categorical/Ordinal options"
-          summary={
-            lockedOptions ? (
+        >
+          {lockedOptions ? (
+            <>
               <Paragraph>
                 These options are automatically configured by the interface and
                 cannot be modified.
               </Paragraph>
-            ) : (
-              <Paragraph>
-                The input type you selected indicates that this is a categorical
-                or ordinal variable. Next, please create a minimum of two
-                possible values for the participant to choose between.
-              </Paragraph>
-            )
-          }
-        >
-          {lockedOptions ? (
-            <LockedOptions options={lockedOptions} />
+              <LockedOptions options={lockedOptions} />
+            </>
           ) : (
-            <Options name="options" label="Options" />
+            <ArchitectArrayField
+              name="options"
+              label="Options"
+              labelHidden
+              hint="The input type you selected indicates that this is a categorical or ordinal variable. Create a minimum of two possible values for the participant to choose between."
+              component={Options}
+              initialValue={asOptions(item.options)}
+              validation={{ minTwoOptions, completeOptions }}
+            />
           )}
         </Section>
       )}
@@ -272,7 +252,7 @@ const PromptFields = ({
           id={getFieldId('options')}
           title="BooleanChoice Options"
         >
-          <BooleanChoice form={form} />
+          <BooleanChoice initialValue={asOptions(item.options)} />
         </Section>
       )}
       {isVariableTypeWithParameters(variableType) && (
@@ -285,19 +265,19 @@ const PromptFields = ({
             type={variableType}
             component={component ?? ''}
             name="parameters"
-            form={form}
+            initialParameters={asParameterValues(item.parameters)}
           />
         </Section>
       )}
 
       <ValidationSection
-        form={form}
         disabled={!variableType}
         entity={entity ?? ''}
+        initialValue={asValidationMap(item.validation)}
         variableType={
           typeof variableType === 'string' ? variableType : undefined
         }
-        existingVariables={omit(existingVariables, variable)}
+        existingVariables={omit(existingVariables, variable ?? '')}
         allVariables={existingVariables}
         // Audit sweep: `handleNewVariable` writes the typed DISPLAY NAME into
         // `variable` as well as `_createNewVariable`, so a non-empty
@@ -306,11 +286,10 @@ const PromptFields = ({
         // row-level check kept the conflation, so a typed name colliding with
         // a real codebook id let the row offer a reference rule the dialog
         // then rejected on save.
-        currentVariableId={
-          !isNewVariable && typeof variable === 'string' ? variable : ''
-        }
+        currentVariableId={!isNewVariable && variable ? variable : ''}
       />
     </>
   );
 };
-export default PromptFields;
+
+export default FieldFields;

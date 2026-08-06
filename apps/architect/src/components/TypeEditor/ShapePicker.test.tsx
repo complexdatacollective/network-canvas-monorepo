@@ -1,29 +1,37 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { Field, reducer as formReducer, reduxForm } from 'redux-form';
+import { useContext, type ContextType } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import ShapePicker from './ShapePicker';
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
-const Harness = reduxForm<{ shape?: string }>({ form: 'shape-picker-test' })(
-  () => (
-    <Field name="shape" component={ShapePicker} label="Node shape" required />
-  ),
-);
+import { ShapePickerControl } from './ShapePicker';
+
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
 describe('ShapePicker', () => {
   it('uses radio semantics and persists the selected shape', () => {
-    const store = configureStore({
-      reducer: { form: formReducer },
-      middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware({ serializableCheck: false }),
-    });
+    let storeApi: StoreApi | null = null;
+    const CaptureStore = () => {
+      storeApi = useContext(FormStoreContext) ?? null;
+      return null;
+    };
+    // Read through a call so control-flow analysis keeps the declared type:
+    // the only write happens inside CaptureStore, which CFA cannot see.
+    const getStoreApi = () => storeApi;
 
     render(
-      <Provider store={store}>
-        <Harness initialValues={{ shape: 'circle' }} />
-      </Provider>,
+      <Form onSubmit={() => ({ success: true })}>
+        <CaptureStore />
+        <Field
+          name="shape"
+          label="Node shape"
+          component={ShapePickerControl}
+          initialValue="circle"
+          required
+        />
+      </Form>,
     );
 
     expect(
@@ -36,12 +44,8 @@ describe('ShapePicker', () => {
       screen.getByRole('radio', { name: 'Select shape Circle' }),
     ).toHaveAttribute('aria-checked', 'true');
 
-    fireEvent.click(
-      screen.getByRole('radio', { name: 'Select shape Diamond' }),
-    );
+    fireEvent.click(screen.getByRole('radio', { name: 'Select shape Diamond' }));
 
-    expect(store.getState().form['shape-picker-test']?.values?.shape).toBe(
-      'diamond',
-    );
+    expect(getStoreApi()?.getState().getFormValues().shape).toBe('diamond');
   });
 });

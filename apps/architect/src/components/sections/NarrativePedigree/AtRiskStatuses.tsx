@@ -1,27 +1,25 @@
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import Toggle from '~/components/Form/Fields/Toggle';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+
 const AtRiskStatuses = (_props: StageEditorSectionProps) => (
-  <Section
-    title="At-Risk Statuses"
-    summary={
-      <Paragraph>
-        Optionally show <strong>possible</strong> (at-risk) statuses alongside
-        the certain ones, inferred from family structure and inheritance
-        patterns.
-      </Paragraph>
-    }
-  >
+  <Section title="At-Risk Statuses">
     <Row>
-      <ValidatedField
+      <ArchitectField
         name="showAtRiskStatuses"
-        component={Toggle as React.ComponentType}
-        validation={{}}
-        componentProps={{
-          label: 'Show possible (at-risk) statuses',
-        }}
+        component={ToggleField}
+        inline
+        initialValue={false}
+        label="Show possible (at-risk) statuses"
+        hint={
+          <Paragraph>
+            Optionally show <strong>possible</strong> (at-risk) statuses
+            alongside the certain ones, inferred from family structure and
+            inheritance patterns.
+          </Paragraph>
+        }
       />
     </Row>
     <div className="[&_h5]:mt-5 [&_h5]:mb-1 [&_h5]:font-semibold [&_li]:mb-1 [&_p]:mb-2.5 [&_ul]:mb-2.5 [&_ul]:list-disc [&_ul]:pl-7">

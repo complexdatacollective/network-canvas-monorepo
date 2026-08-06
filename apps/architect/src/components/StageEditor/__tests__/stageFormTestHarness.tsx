@@ -1,4 +1,8 @@
-import { configureStore, type Middleware } from '@reduxjs/toolkit';
+import {
+  configureStore,
+  type Middleware,
+  type Reducer,
+} from '@reduxjs/toolkit';
 import { render } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
@@ -72,6 +76,11 @@ export const PromptListControl = ({
 type RenderStageFormOptions = {
   committedStage?: Stage | null;
   children: ReactNode;
+  /**
+   * Slices beyond `stageEditorDraft` that the component under test reads —
+   * most often a stub `activeProtocol` supplying a codebook.
+   */
+  extraReducers?: Record<string, Reducer>;
 };
 
 /**
@@ -82,6 +91,7 @@ type RenderStageFormOptions = {
 export const renderStageForm = ({
   committedStage = null,
   children,
+  extraReducers,
 }: RenderStageFormOptions) => {
   // A dispatched `draftSnapshot` is the only unambiguous signal that a
   // snapshot was taken, so record the payloads as they pass through.
@@ -94,7 +104,7 @@ export const renderStageForm = ({
   };
 
   const store = configureStore({
-    reducer: { stageEditorDraft },
+    reducer: { stageEditorDraft, ...extraReducers },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         serializableCheck: false,

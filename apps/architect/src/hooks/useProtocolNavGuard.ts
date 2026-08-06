@@ -8,7 +8,7 @@ import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import type { AppDispatch } from '~/ducks/store';
 import { store } from '~/ducks/store';
-import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
+import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 
 // Shared mutable state read by this hook and the Router's aroundNav.
@@ -359,7 +359,7 @@ export const useProtocolNavGuard = () => {
         !leavingProtocol &&
         isStageEditorPath(oldPath) &&
         !isStageEditorPath(newPath) &&
-        getStageDraftDirty(store.getState());
+        getLiveStageDraftDirty(store.getState());
 
       if (!leavingProtocol && !leavingDirtyStageEditor) {
         syncProtocolHistoryMarker(newPath, destinationMarker);
@@ -383,7 +383,7 @@ export const useProtocolNavGuard = () => {
         // takes this branch, but the uncommitted (unpersisted) draft would still
         // be lost — so surface it and reset the draft on confirm.
         const draftDirty =
-          isStageEditorPath(oldPath) && getStageDraftDirty(store.getState());
+          isStageEditorPath(oldPath) && getLiveStageDraftDirty(store.getState());
         void promptLeaveEditor(
           dispatch,
           openDialog,

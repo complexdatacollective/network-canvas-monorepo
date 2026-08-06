@@ -1,49 +1,84 @@
-import { keys as getKeys, isNull, toPairs } from 'es-toolkit/compat';
+import { isNull, keys as getKeys, omit, toPairs } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
-import {
-  useId,
-  useMemo,
-  useState,
-  type ReactNode,
-  type ComponentProps,
-} from 'react';
-import { Field } from 'redux-form';
+import { useMemo, useState, type ComponentProps, type ReactNode } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
-import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import type { Variable } from '@codaco/protocol-validation';
 
+import ArchitectField from '../Form/ArchitectField';
 import {
   findDraftContradictions,
   findLegalReferenceTargets,
   floorIssue,
 } from './contradictions';
-import { isValidationWithListValue } from './options';
+import { getValidationOptionsForVariableType, isValidationWithListValue } from './options';
 import Validation from './Validation';
 
-// redux-form calls a field validator with the field's raw value, which is null
-// or undefined until the field holds one.
-type ValidationsValue = Record<string, unknown> | null | undefined;
+type ValidationValue = boolean | number | string | null;
+type ValidationMap = Record<string, ValidationValue>;
 
-const validate = (validations: ValidationsValue): string | undefined => {
-  const values = toPairs(validations ?? {});
+// `initialValue` is a register-effect dependency (`useField`'s registration
+// effect): an absent committed value must fall back to a REFERENTIALLY STABLE
+// empty object, not a fresh `{}` literal recreated every render — the latter
+// re-registers the field on every render of a parent that also happens to
+// re-render for an unrelated reason (e.g. a sibling `errors` update), which
+// silently drops any error the store had just attached to this field name.
+const EMPTY_VALIDATION: ValidationMap = {};
 
-  const check = values.reduce((acc: string[], [key, value]) => {
-    if (!isNull(value)) {
-      return acc;
-    }
-    acc.push(key);
-    return acc;
-  }, []);
+/**
+ * Guards against a corrupted `null`-valued rule making it into the saved
+ * protocol (a value-bearing rule type whose value was never actually
+ * chosen). Runs through `ArchitectField`'s `custom` validation, so it now
+ * shows through the same `BaseField` error slot every other field uses —
+ * previously a hand-rolled `meta.submitFailed`-gated message, shown only
+ * after a whole-form submit attempt; this shows after the field is blurred,
+ * which is fresco-ui's normal timing.
+ */
+const validateNoNullValues = (value: unknown): string | undefined => {
+  // Custom validators receive the field's value as `unknown`; this field's
+  // own component always writes a `ValidationMap`.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const pairs = toPairs((value ?? {}) as ValidationMap);
+  const nullKeys = pairs
+    .filter(([, itemValue]) => isNull(itemValue))
+    .map(([key]) => key);
 
-  if (check.length === 0) {
-    return undefined;
-  }
+  if (nullKeys.length === 0) return undefined;
 
-  return `Validations (${check.join(', ')}) must have values`;
+  return `Validations (${nullKeys.join(', ')}) must have values`;
 };
 
-const format = (value: Record<string, unknown> = {}) => toPairs(value);
+/**
+ * Applies a committed (key, value) pair to the validation map, renaming the
+ * row from `oldKey` if given. `Validation.tsx` owns deciding whether a value
+ * survives a rule-type change (and forces `true` for value-less rule types)
+ * before this is ever called, via its own draft state and `isDraftComplete`
+ * gate — so the value handed in here is already final and is stored as-is,
+ * with no further "does this look stale" heuristic re-applied.
+ */
+export const getUpdatedValue = (
+  previousValue: ValidationMap,
+  key: string,
+  value: ValidationValue,
+  oldKey: string | null = null,
+): ValidationMap => {
+  // A disabled option should make this unreachable in the UI, but keep the
+  // update lossless if a stale/programmatic event still requests a key that
+  // belongs to another row. The old behavior overwrote the existing rule and
+  // then removed the edited one.
+  if (oldKey && key !== oldKey && Object.hasOwn(previousValue, key)) {
+    return previousValue;
+  }
+
+  if (!oldKey) {
+    return { ...previousValue, [key]: value };
+  }
+
+  return {
+    ...omit(previousValue, oldKey),
+    [key]: value,
+  };
+};
 
 const getOptionsWithUsedDisabled = (
   options: ValidationOption[],
@@ -75,70 +110,11 @@ type ValidationOption = {
 };
 
 type ValidationsFieldProps = {
-  input: {
-    value: Array<[string, string | number | boolean | null]>;
-  };
-  options?: ValidationOption[];
+  value?: ValidationMap;
+  onChange?: (value: ValidationMap) => void;
   existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
-  meta: {
-    submitFailed: boolean;
-    error?: string;
-  };
-  children?: ReactNode;
-  editingKey: string | null;
-  onEditKey: (key: string | null) => void;
-  onUpdate?: (key: string, value: unknown, itemKey: string) => void;
-  onDelete?: (itemKey: string) => void;
-};
-
-const ValidationsField = ({
-  input,
-  options = [],
-  existingVariables,
-  meta: { submitFailed, error },
-  children = null,
-  editingKey,
-  onEditKey,
-  ...rest
-}: ValidationsFieldProps) => {
-  const hasError = !!(submitFailed && error);
-  const errorId = useId();
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-5">
-        {input.value.map(([key, value]) => (
-          <Validation
-            key={key}
-            itemKey={key}
-            itemValue={value}
-            options={options}
-            existingVariables={existingVariables}
-            isBeingEdited={key === editingKey}
-            onEdit={() => onEditKey(key)}
-            onCancel={() => onEditKey(null)}
-            // eslint-disable-next-line react/jsx-props-no-spreading
-            {...rest}
-          />
-        ))}
-        {children}
-      </div>
-      <FieldErrors id={errorId} errors={error ? [error] : []} show={hasError} />
-    </div>
-  );
-};
-
-type ValidationsProps = {
-  name: string;
-  validationOptions?: ValidationOption[];
-  value?: Record<string, unknown>;
-  addNew: boolean;
-  setAddNew: (value: boolean) => void;
-  handleChange: (key: string, value: unknown, itemKey: string) => void;
-  handleDelete: (itemKey: string) => void;
-  handleAddNew: (key: string, value: unknown, itemKey: string) => void;
-  existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
   variableType?: string;
+  entity?: string;
   allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
   currentVariableId?: string;
   draftOptions?: unknown;
@@ -147,27 +123,35 @@ type ValidationsProps = {
   draftVariableName?: unknown;
 };
 
-const Validations = ({
-  name,
-  validationOptions = [],
-  existingVariables = {},
+/**
+ * The `withStoreState`/`withAddNew`/`withUpdateHandlers` HOC stack collapsed
+ * into the field component itself: `value`/`onChange` (from `ArchitectField`)
+ * replace the old `formValueSelector`/`change` reads and writes, and
+ * `editingKey`/`addNew` — previously `useState` injected by `withState` —
+ * are now local state here directly.
+ */
+const ValidationsField = ({
   value = {},
-  addNew,
-  setAddNew,
-  handleChange,
-  handleDelete,
-  handleAddNew,
+  onChange,
+  existingVariables,
   variableType,
+  entity,
   allVariables,
   currentVariableId,
   draftOptions,
   draftComponent,
   draftParameters,
   draftVariableName,
-}: ValidationsProps) => {
+}: ValidationsFieldProps) => {
+  const validationOptions = useMemo(
+    () => getValidationOptionsForVariableType(variableType ?? '', entity ?? ''),
+    [variableType, entity],
+  );
+
   // Only one row (existing or the "add new" draft) is ever open for editing
   // at a time.
   const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [addNew, setAddNew] = useState(false);
   const usedOptions = getKeys(value);
 
   const uniqueValueCount = useMemo(() => {
@@ -327,15 +311,15 @@ const Validations = ({
 
   const handleSaveExisting = (
     key: string,
-    itemValue: unknown,
+    itemValue: ValidationValue,
     itemKey: string,
   ) => {
-    handleChange(key, itemValue, itemKey);
+    onChange?.(getUpdatedValue(value, key, itemValue, itemKey));
     setEditingKey(null);
   };
 
   const handleDeleteExisting = (itemKey: string) => {
-    handleDelete(itemKey);
+    onChange?.(omit(value, itemKey));
     setEditingKey((current) => (current === itemKey ? null : current));
   };
 
@@ -344,23 +328,31 @@ const Validations = ({
     setAddNew(true);
   };
 
+  const handleAddNew = (key: string, itemValue: ValidationValue) => {
+    onChange?.(getUpdatedValue(value, key, itemValue));
+    setAddNew(false);
+  };
+
   return (
     <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
-      <Field
-        name={name}
-        component={ValidationsField}
-        format={format}
-        options={availableOptions}
-        existingVariables={existingVariables}
-        onUpdate={handleSaveExisting}
-        onDelete={handleDeleteExisting}
-        editingKey={editingKey}
-        onEditKey={setEditingKey}
-        validate={validate}
-        checkDraft={checkDraft}
-        findLegalTargets={findLegalTargets}
-        uniqueValueCount={uniqueValueCount}
-      >
+      <div className="flex flex-col gap-5">
+        {toPairs(value).map(([key, itemValue]) => (
+          <Validation
+            key={key}
+            itemKey={key}
+            itemValue={itemValue}
+            options={availableOptions}
+            existingVariables={existingVariables}
+            isBeingEdited={key === editingKey}
+            onEdit={() => setEditingKey(key)}
+            onCancel={() => setEditingKey(null)}
+            onUpdate={handleSaveExisting}
+            onDelete={handleDeleteExisting}
+            checkDraft={checkDraft}
+            findLegalTargets={findLegalTargets}
+            uniqueValueCount={uniqueValueCount}
+          />
+        ))}
         {addNew && (
           <Validation
             isBeingEdited
@@ -373,7 +365,7 @@ const Validations = ({
             uniqueValueCount={uniqueValueCount}
           />
         )}
-      </Field>
+      </div>
 
       {!isFull && (
         <AddItem onClick={handleStartAddNew} disabled={isEditingSomething} />
@@ -381,5 +373,66 @@ const Validations = ({
     </div>
   );
 };
+
+export type ValidationsProps = {
+  name: string;
+  /** The committed validation record, for the field's `initialValue`. */
+  initialValue?: ValidationMap;
+  existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  variableType?: string;
+  entity?: string;
+  allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  currentVariableId?: string;
+  /**
+   * Sibling draft values from whatever form surrounds this field — read (and
+   * kept reactive) by the caller, since this component may be nested inside
+   * the field-editor dialog (where they are live sibling fields) or inside
+   * `CodebookVariableValidationSection`'s isolated form (where they are not
+   * fields at all, just the committed variable's own values).
+   */
+  draftOptions?: unknown;
+  draftComponent?: unknown;
+  draftParameters?: unknown;
+  draftVariableName?: unknown;
+};
+
+/**
+ * A validation-rule editor bound to one stage or codebook-variable form
+ * field. Renders the whole `Record<ruleName, value>` as ONE opaque field
+ * value (the same governing rule every array/record field follows in this
+ * migration) — individual rows are rendered from that value locally, never
+ * registered as their own form fields.
+ */
+const Validations = ({
+  name,
+  initialValue,
+  existingVariables = {},
+  variableType,
+  entity,
+  allVariables,
+  currentVariableId,
+  draftOptions,
+  draftComponent,
+  draftParameters,
+  draftVariableName,
+}: ValidationsProps): ReactNode => (
+  <ArchitectField
+    name={name}
+    component={ValidationsField}
+    label="Validation rules"
+    labelHidden
+    initialValue={initialValue ?? EMPTY_VALIDATION}
+    validation={{ noNullValues: validateNoNullValues }}
+    existingVariables={existingVariables}
+    variableType={variableType}
+    entity={entity}
+    allVariables={allVariables}
+    currentVariableId={currentVariableId}
+    draftOptions={draftOptions}
+    draftComponent={draftComponent}
+    draftParameters={draftParameters}
+    draftVariableName={draftVariableName}
+  />
+);
 
 export default Validations;

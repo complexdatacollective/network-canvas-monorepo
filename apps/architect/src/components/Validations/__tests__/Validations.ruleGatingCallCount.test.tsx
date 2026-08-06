@@ -1,12 +1,7 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { render } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import {
-  reducer as formReducer,
-  reduxForm,
-  type InjectedFormProps,
-} from 'redux-form';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import Form from '@codaco/fresco-ui/form/Form';
 
 /**
  * Twenty-seventh-wave Finding 1: the unused-reference-rule gating in
@@ -41,7 +36,11 @@ vi.mock('@codaco/protocol-validation', async (importOriginal) => {
 // this import regardless of source order) so every analyser call the
 // component's render makes, directly or via `findLegalReferenceTargets`, is
 // counted.
-const { default: Validations } = await import('../index');
+const { default: Validations } = await import('../Validations');
+
+beforeAll(() => {
+  Element.prototype.scrollTo ??= () => undefined;
+});
 
 type TestVariable = {
   name: string;
@@ -57,46 +56,12 @@ type OwnProps = {
   currentVariableId: string;
 };
 
-type HarnessProps = InjectedFormProps<Record<string, unknown>, OwnProps> &
-  OwnProps;
-
-const FORM_NAME = 'validations-rule-gating-call-count-test';
-
-const Harness = ({
-  variableType,
-  entity,
-  existingVariables,
-  allVariables,
-  currentVariableId,
-}: HarnessProps) => (
-  <Validations
-    form={FORM_NAME}
-    name="validation"
-    variableType={variableType}
-    entity={entity}
-    existingVariables={existingVariables}
-    allVariables={allVariables}
-    currentVariableId={currentVariableId}
-  />
-);
-
-const ReduxHarness = reduxForm<Record<string, unknown>, OwnProps>({
-  form: FORM_NAME,
-})(Harness);
-
-const setup = (ownProps: OwnProps) => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-
-  return render(
-    <Provider store={store}>
-      <ReduxHarness initialValues={{ validation: {} }} {...ownProps} />
-    </Provider>,
+const setup = (ownProps: OwnProps) =>
+  render(
+    <Form onSubmit={() => ({ success: true })}>
+      <Validations name="validation" initialValue={{}} {...ownProps} />
+    </Form>,
   );
-};
 
 // Six reference-type rules (sameAs, differentFrom, and the four numeric
 // comparators) are unused on `b` and so are all candidates for gating.

@@ -1,100 +1,139 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { render } from '@testing-library/react';
-import { Provider } from 'react-redux';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import type { ComponentType } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-const changeForm = vi.fn();
+import ArchitectField from '~/components/Form/ArchitectField';
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
-// Capture the onChange handler that ExternalDataSource wires onto its
-// data-source field so we can drive handleChangeDataSource directly.
-const captured: { onChange?: () => void } = {};
-
-vi.mock('redux-form', () => ({
-  change: (form: string, field: string, value: unknown) => ({
-    type: 'redux-form/CHANGE',
-    form,
-    field,
+vi.mock('~/components/Form/Fields/DataSource', () => ({
+  default: ({
     value,
-  }),
-}));
-
-vi.mock('react-redux', async () => {
-  const actual =
-    await vi.importActual<typeof import('react-redux')>('react-redux');
-  return {
-    ...actual,
-    // Inject our spy as the bound `changeForm` prop instead of the real
-    // redux-form `change` dispatcher.
-    connect:
-      () =>
-      (Component: React.ComponentType<Record<string, unknown>>) =>
-      (props: Record<string, unknown>) => (
-        <Component {...props} changeForm={changeForm} />
-      ),
-  };
-});
-
-vi.mock('../../enhancers/withDisabledSubjectRequired', () => ({
-  default: (Component: React.ComponentType) => Component,
-}));
-
-vi.mock('../../enhancers/withSubject', () => ({
-  default: (Component: React.ComponentType) => Component,
-}));
-
-vi.mock('../../Form/Fields/DataSource', () => ({
-  default: () => <div data-testid="data-source" />,
-}));
-
-vi.mock('../../Form/ValidatedField', () => ({
-  default: ({ onChange }: { onChange?: () => void }) => {
-    captured.onChange = onChange;
-    return <div data-testid="validated-field" />;
-  },
-}));
-
-vi.mock('../../IssueAnchor', () => ({
-  default: () => <div data-testid="issue-anchor" />,
-}));
-
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Section: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
+    onChange,
+  }: {
+    value?: string;
+    onChange?: (value: string) => void;
+  }) => (
+    <input
+      aria-label="Roster data source"
+      value={value ?? ''}
+      onChange={(event) => onChange?.(event.target.value)}
+    />
   ),
 }));
 
 import ExternalDataSource from '../ExternalDataSource';
 
-const renderSection = () => {
-  const store = configureStore({ reducer: { noop: () => ({}) } });
-  return render(
-    <Provider store={store}>
-      {/* @ts-expect-error -- StageEditorSectionProps are not needed for this handler-focused test */}
-      <ExternalDataSource />
-    </Provider>,
-  );
+// Minimal registered fields standing in for the actual leaf fields
+// CardDisplayOptions/SortOptionsForExternalData/SearchOptionsForExternalData
+// register (`cardOptions`/`sortOptions`/`searchOptions` themselves are never
+// registered as fields) — this test mounts those exact leaf paths so
+// `setFieldValue` writes into `fields` directly instead of parking an
+// unregistered write in `dormantValues`.
+const ValueProbe = (({ value }: { value?: unknown }) => (
+  <span data-testid="value">{JSON.stringify(value)}</span>
+)) as ComponentType<Record<string, unknown>>;
+
+const DependentFields = () => (
+  <>
+    <ArchitectField
+      name="cardOptions.additionalProperties"
+      label="cardOptions.additionalProperties"
+      component={ValueProbe}
+      initialValue={[{ variable: 'x' }]}
+    />
+    <ArchitectField
+      name="sortOptions.sortOrder"
+      label="sortOptions.sortOrder"
+      component={ValueProbe}
+      initialValue={[{ property: 'x', direction: 'asc' }]}
+    />
+    <ArchitectField
+      name="sortOptions.sortableProperties"
+      label="sortOptions.sortableProperties"
+      component={ValueProbe}
+      initialValue={[{ variable: 'x' }]}
+    />
+    <ArchitectField
+      name="searchOptions.matchProperties"
+      label="searchOptions.matchProperties"
+      component={ValueProbe}
+      initialValue={['x']}
+    />
+    <ArchitectField
+      name="searchOptions.fuzziness"
+      label="searchOptions.fuzziness"
+      component={ValueProbe}
+      initialValue={0.5}
+    />
+  </>
+);
+
+const DEPENDENT_LEAF_PATHS = [
+  'cardOptions.additionalProperties',
+  'sortOptions.sortOrder',
+  'sortOptions.sortableProperties',
+  'searchOptions.matchProperties',
+  'searchOptions.fuzziness',
+];
+
+const STAGE_PROPS = {
+  stagePath: 'stages[0]',
+  stagePosition: 0,
+  interfaceType: 'NameGeneratorRoster' as const,
 };
 
-describe('ExternalDataSource handleChangeDataSource', () => {
-  it('resets cardOptions, sortOptions, and searchOptions when the data source changes', () => {
-    changeForm.mockClear();
+describe('ExternalDataSource', () => {
+  it('does not reset dependent sections when an existing stage is simply loaded', () => {
+    const { getFieldState } = renderStageForm({
+      // `subject.type` set so `withDisabledSubjectRequired` leaves the
+      // section enabled (it hides its fields entirely while disabled).
+      committedStage: asStage({
+        dataSource: 'asset-1',
+        subject: { entity: 'node', type: 'person' },
+      }),
+      children: (
+        <>
+          <ExternalDataSource {...STAGE_PROPS} />
+          <DependentFields />
+        </>
+      ),
+    });
 
-    renderSection();
+    for (const path of DEPENDENT_LEAF_PATHS) {
+      expect(getFieldState(path)?.value).not.toBeUndefined();
+    }
+  });
 
-    const { onChange } = captured;
-    expect(onChange).toBeTypeOf('function');
-    onChange?.();
+  it('resets every dependent leaf field when the data source changes', async () => {
+    const { getFieldState } = renderStageForm({
+      // `subject.type` set so `withDisabledSubjectRequired` leaves the
+      // section enabled (it hides its fields entirely while disabled).
+      committedStage: asStage({
+        dataSource: 'asset-1',
+        subject: { entity: 'node', type: 'person' },
+      }),
+      children: (
+        <>
+          <ExternalDataSource {...STAGE_PROPS} />
+          <DependentFields />
+        </>
+      ),
+    });
 
-    // Exact call list: cardOptions/sortOptions reset to {} so stale
-    // matchProperties referencing the previous source's columns are dropped;
-    // searchOptions resets to null (not {}) because a truthy {} would
-    // auto-expand the optional Search Options section and block save with
-    // its now-mounted required fields (see handleChangeDataSource).
-    expect(changeForm.mock.calls).toEqual([
-      ['edit-stage', 'cardOptions', {}],
-      ['edit-stage', 'sortOptions', {}],
-      ['edit-stage', 'searchOptions', null],
-    ]);
+    fireEvent.change(screen.getByLabelText('Roster data source'), {
+      target: { value: 'asset-2' },
+    });
+
+    await waitFor(() => {
+      expect(
+        getFieldState('cardOptions.additionalProperties')?.value,
+      ).toBeUndefined();
+    });
+    for (const path of DEPENDENT_LEAF_PATHS) {
+      expect(getFieldState(path)?.value).toBeUndefined();
+    }
   });
 });
