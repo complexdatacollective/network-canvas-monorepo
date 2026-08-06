@@ -38,6 +38,15 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 // siblings; arrays and primitives REPLACE, so a revisited step whose
 // repeated-entry answer shrank (e.g. a count-driven list) doesn't leave
 // orphaned entries behind.
+//
+// Deliberately NOT pruned: a key whose field no longer renders (a FieldGroup
+// condition flipped, or its whole step is now skipped) keeps its accumulated
+// answer in the wizard payload. That preserves the wizard's long-standing
+// contract — consumers gate on the controlling flag (e.g. reading
+// `partner.*` only when `hasPartner` is true) — and pruning here could not
+// be done reliably anyway: a dynamically skipped step never refolds, so
+// tracking per-step contributed paths would only ever catch the
+// revisited-step case while silently keeping the skipped-step one.
 const mergeStepValues = (
   base: Record<string, unknown>,
   incoming: Record<string, unknown>,
