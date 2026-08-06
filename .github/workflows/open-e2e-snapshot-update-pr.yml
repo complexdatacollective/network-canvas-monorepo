@@ -125,6 +125,7 @@ jobs:
       - name: Restore already-proposed central baseline changes
         if: steps.release_base.outputs.current == 'true'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SNAPSHOT_BRANCH: ${{ inputs.snapshot_branch }}
         run: |
           architect='^apps/architect/e2e/visual-snapshots/chromium/[A-Za-z0-9._-]+\.png$'
@@ -132,8 +133,15 @@ jobs:
           interviewer='^apps/interviewer/e2e/visual-snapshots/chromium/[A-Za-z0-9._-]+\.png$'
           snapshot_ref="refs/remotes/origin/$SNAPSHOT_BRANCH"
 
-          if ! git ls-remote --exit-code --heads origin "refs/heads/$SNAPSHOT_BRANCH" >/dev/null 2>&1; then
-            echo 'No central snapshot branch exists yet.'
+          open_pr_count=$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --base main \
+            --head "$SNAPSHOT_BRANCH" \
+            --json number \
+            --jq 'length')
+          if [[ "$open_pr_count" == '0' ]]; then
+            echo 'No open central snapshot PR exists yet.'
             exit 0
           fi
 

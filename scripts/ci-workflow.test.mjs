@@ -407,6 +407,30 @@ test('snapshot update workflow accepts only current release branches', () => {
   assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/interviewer'/);
 });
 
+test('closed snapshot PRs cannot leave permanent pending state', () => {
+  assert.match(
+    snapshotWorkflow,
+    /open_pr_count=\$\(gh pr list[\s\S]*?--state open[\s\S]*?--head "\$SNAPSHOT_BRANCH"[\s\S]*?--jq 'length'\)/,
+  );
+  assert.match(
+    snapshotWorkflow,
+    /if \[\[ "\$open_pr_count" == '0' \]\]; then\n\s+echo 'No open central snapshot PR exists yet\.'/,
+  );
+  assert.doesNotMatch(
+    snapshotWorkflow,
+    /git ls-remote --exit-code --heads origin/,
+  );
+});
+
+test('the informational Pages deploy has a bounded failure window', () => {
+  const reportJob = job('interview-e2e-report');
+  assert.ok(reportJob, 'interview-e2e-report job exists');
+  assert.match(
+    reportJob,
+    /- name: Deploy report to Pages\n\s+uses: actions\/deploy-pages@[^\n]+\n\s+timeout-minutes: 3\n\s+continue-on-error: true/,
+  );
+});
+
 test('e2e-policy receives the equivalence-reuse inputs', () => {
   const policyJob = job('e2e-policy');
   assert.ok(policyJob, 'e2e-policy job exists');
