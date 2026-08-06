@@ -1,5 +1,6 @@
 import { type Locator, type Page } from '@playwright/test';
 
+import { typeInlineRun } from '../stage-editor.js';
 import {
   createVariableViaSpotlight,
   fillOptionRows,
@@ -59,7 +60,7 @@ async function replaceRichTextContent(
   await editorBox.click();
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.press('Delete');
-  await page.keyboard.type(text);
+  await typeInlineRun(page, text);
 }
 
 async function setBooleanOption(
