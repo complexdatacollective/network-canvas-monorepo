@@ -1,5 +1,7 @@
 {
   "label": "Family Health History",
+  "id": "id-1",
+  "type": "NarrativePedigree",
   "sourceStageId": "family-pedigree-1",
   "diseases": [
     {
@@ -7,10 +9,8 @@
       "color": "node-color-seq-1",
       "variable": "hasConditionX",
       "inheritancePattern": "autosomalDominant",
-      "id": "id-1"
+      "id": "id-2"
     }
   ],
-  "showAtRiskStatuses": false,
-  "type": "NarrativePedigree",
-  "id": "id-2"
+  "showAtRiskStatuses": false
 }

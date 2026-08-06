@@ -1,19 +1,19 @@
 {
   "label": "Who Knows This Person?",
+  "id": "id-1",
+  "type": "OneToManyDyadCensus",
+  "subject": {
+    "entity": "node",
+    "type": "id-2"
+  },
   "behaviours": {
     "removeAfterConsideration": true
   },
-  "type": "OneToManyDyadCensus",
-  "subject": {
-    "type": "id-1",
-    "entity": "node"
-  },
   "prompts": [
     {
-      "id": "id-2",
+      "id": "id-3",
       "text": "Who does this person know?",
-      "createEdge": "id-3"
+      "createEdge": "id-4"
     }
-  ],
-  "id": "id-4"
+  ]
 }

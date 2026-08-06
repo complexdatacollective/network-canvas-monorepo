@@ -103,10 +103,22 @@ export const toSelectOptions = (
     disabled,
   }));
 
-export const normalizeField = (field: Record<string, unknown>) =>
+export const normalizeField = (field: Record<string, unknown>) => {
   // Keep `id` so DialogArrayField can retain the item's stable identity across
   // edits, reorders, and deletes.
-  omit(field, ['_createNewVariable', ...CODEBOOK_PROPERTIES]);
+  const normalized = omit(field, [
+    '_createNewVariable',
+    ...CODEBOOK_PROPERTIES,
+  ]);
+
+  // The toggle always registers, so an untouched field would persist an
+  // explicit `false` the protocol never carried. Off is the absent state.
+  if (normalized.showValidationHints !== true) {
+    delete normalized.showValidationHints;
+  }
+
+  return normalized;
+};
 
 /**
  * Opens the row editor on the field merged with its codebook variable's
