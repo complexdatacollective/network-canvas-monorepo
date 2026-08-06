@@ -14,10 +14,17 @@ export const E2E_SUITE_SUBJECTS = {
   architect: '@codaco/architect',
 };
 
-const E2E_JOB_NAMES = {
-  interview: 'interview-e2e',
-  interviewer: 'interviewer-e2e',
-  architect: 'architect-e2e',
+// Each suite runs as two CI jobs: the Dockerized half that compares the
+// committed pixel baselines, and the native half that runs everything else.
+// A suite's verdict is the AND of both — reusing a green pixel verdict while
+// the functional half was red would skip exactly the coverage that failed.
+// Exported so scripts/ci-workflow.test.mjs can assert every name here is a
+// real job that the quality gate requires: an exact-string mismatch here does
+// not fail loudly, it silently disables verdict reuse.
+export const E2E_JOB_NAMES = {
+  interview: ['interview-e2e', 'interview-e2e-native'],
+  interviewer: ['interviewer-e2e', 'interviewer-e2e-native'],
+  architect: ['architect-e2e', 'architect-e2e-native'],
 };
 
 const WORKSPACE_GROUPS = ['packages', 'apps', 'tooling', 'workers'];
@@ -257,14 +264,30 @@ export async function equivalentValidatedSuites({
             jobsListingDoubt = true;
             break;
           }
-          const job = jobs.find(
-            (candidate) => candidate.name === E2E_JOB_NAMES[key],
+          const halves = E2E_JOB_NAMES[key].map((name) =>
+            jobs.find((candidate) => candidate.name === name),
           );
-          if (!job || !CONCLUSIVE.has(job.conclusion)) continue;
-          if (completedAt(job) === null) {
+          // Only judge a run where EVERY half reported conclusively. A missing
+          // half — a run predating the lane split, say — is not a verdict, so
+          // the suite re-runs rather than inheriting a partial one.
+          if (halves.some((half) => !half || !CONCLUSIVE.has(half.conclusion)))
+            continue;
+          if (halves.some((half) => completedAt(half) === null)) {
             jobsListingDoubt = true;
             break;
           }
+          // Represent the suite by its newest-completed half so the existing
+          // recency ranking is unchanged, but carry the AND of the halves'
+          // conclusions: one red half fails the whole suite.
+          const newestHalf = halves.toSorted(
+            (a, b) => completedAt(b) - completedAt(a),
+          )[0];
+          const job = {
+            ...newestHalf,
+            conclusion: halves.every((half) => half.conclusion === 'success')
+              ? 'success'
+              : 'failure',
+          };
           conclusiveVerdicts.push({ job, releaseBranch, run });
         }
         if (jobsListingDoubt) break;

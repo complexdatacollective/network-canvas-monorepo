@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import { E2E_JOB_NAMES } from './release-e2e-policy.mjs';
+
 const workflow = readFileSync(
   new URL('../.github/workflows/ci-and-release.yml', import.meta.url),
   'utf8',
@@ -123,8 +125,11 @@ test('website dead-link crawl waits for the documentation preview it links to', 
 test('each release E2E suite gates on its own policy flag', () => {
   for (const [jobName, flag] of [
     ['interview-e2e', 'interview'],
+    ['interview-e2e-native', 'interview'],
     ['interviewer-e2e', 'interviewer'],
+    ['interviewer-e2e-native', 'interviewer'],
     ['architect-e2e', 'architect'],
+    ['architect-e2e-native', 'architect'],
     ['pick-e2e-runner', 'interview'],
     ['e2e-queue-watchdog', 'interview'],
   ]) {
@@ -415,4 +420,64 @@ test('e2e-policy receives the equivalence-reuse inputs', () => {
     /HEAD_REPO: \$\{\{ github\.event\.pull_request\.head\.repo\.full_name \}\}/,
     'policy step receives the head repo for the fork guard',
   );
+});
+
+// The policy looks its verdict jobs up by exact name, and a miss is silent:
+// `validated[key]` just becomes false, disabling reuse without failing
+// anything. Bind the map to the workflow so a rename cannot merge half-done.
+test('every job the E2E policy names is a real, gated workflow job', () => {
+  for (const [suite, names] of Object.entries(E2E_JOB_NAMES)) {
+    assert.ok(names.length > 0, `${suite} names at least one job`);
+    for (const name of names) {
+      assert.ok(job(name), `${name} exists as a workflow job`);
+      assert.match(
+        workflow,
+        new RegExp(`^ {6}- ${name}$`, 'm'),
+        `${name} is in the quality gate's needs list`,
+      );
+      assert.match(
+        workflow,
+        new RegExp(`verify_required_e2e ${name} `),
+        `${name} is verified by the quality gate`,
+      );
+    }
+  }
+});
+
+// The two lanes are only safe while each stays on its own side of the pixel
+// boundary: the native lane must never reach a capture (its baselines were
+// rasterised in the pinned image), and must never author one.
+test('the native E2E lane cannot touch pixel baselines', () => {
+  for (const name of Object.values(E2E_JOB_NAMES).flat()) {
+    const body = job(name);
+    if (!name.endsWith('-native')) {
+      assert.match(
+        body,
+        /--grep @visual|--project=chromium-visual/,
+        `${name} runs only the visual half`,
+      );
+      continue;
+    }
+    assert.match(
+      body,
+      /E2E_PIXEL_LANE: native/,
+      `${name} arms the capture guard`,
+    );
+    // Comments in these jobs legitimately cite run.sh to explain themselves,
+    // so judge the executable lines only.
+    const commands = body
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .join('\n');
+    assert.doesNotMatch(
+      commands,
+      /run\.sh/,
+      `${name} does not shell out to the Docker runner`,
+    );
+    assert.doesNotMatch(
+      commands,
+      /--update-snapshots/,
+      `${name} cannot author baselines`,
+    );
+  }
 });

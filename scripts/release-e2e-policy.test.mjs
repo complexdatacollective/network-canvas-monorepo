@@ -428,9 +428,13 @@ function releaseLaneQueueCall(cwd, fetcher) {
   });
 }
 
+// Each suite reports two halves (Dockerized pixel + native functional), and
+// reuse requires both — see E2E_JOB_NAMES in release-e2e-policy.mjs.
 const RELEASE_LANE_ARCHITECT_SUCCESS_JOBS = [
   { name: 'architect-e2e', conclusion: 'success' },
+  { name: 'architect-e2e-native', conclusion: 'success' },
   { name: 'interview-e2e', conclusion: 'success' },
+  { name: 'interview-e2e-native', conclusion: 'success' },
   { name: 'quality', conclusion: 'success' },
 ];
 
@@ -758,7 +762,9 @@ function interviewerLaneCall(cwd, headSha, fetcher) {
 
 const INTERVIEWER_LANE_SUCCESS_JOBS = [
   { name: 'interview-e2e', conclusion: 'success' },
+  { name: 'interview-e2e-native', conclusion: 'success' },
   { name: 'interviewer-e2e', conclusion: 'success' },
+  { name: 'interviewer-e2e-native', conclusion: 'success' },
   { name: 'quality', conclusion: 'success' },
 ];
 
@@ -855,6 +861,57 @@ test('equivalence reuse fails closed on relevant or unrecognised deltas', async 
   );
 });
 
+test('a suite needs BOTH of its halves green to be reusable', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'refresh',
+  );
+
+  // Each suite runs as a Dockerized pixel half and a native functional half.
+  // A green pixel half must never carry a red functional half: that would
+  // reuse a verdict for precisely the coverage that failed.
+  const functionalHalfRed = fakeActionsApi({
+    runs: [fakeRun(1, validatedSha)],
+    jobsByRun: {
+      1: [
+        { name: 'interview-e2e', conclusion: 'success' },
+        { name: 'interview-e2e-native', conclusion: 'failure' },
+        { name: 'interviewer-e2e', conclusion: 'success' },
+        { name: 'interviewer-e2e-native', conclusion: 'success' },
+      ],
+    },
+  });
+  // interview loses its verdict; interviewer, both halves green, keeps its
+  // own — a red half is scoped to its own suite.
+  assert.deepEqual(await interviewerLaneCall(cwd, headSha, functionalHalfRed), {
+    interview: false,
+    interviewer: true,
+    architect: false,
+  });
+
+  // A half that never reported is not a verdict either — this is what a run
+  // predating the lane split looks like, and it must re-run rather than
+  // inherit half a result.
+  const halfMissing = fakeActionsApi({
+    runs: [fakeRun(1, validatedSha)],
+    jobsByRun: {
+      1: [
+        { name: 'interview-e2e', conclusion: 'success' },
+        { name: 'interviewer-e2e', conclusion: 'success' },
+        { name: 'interviewer-e2e-native', conclusion: 'success' },
+      ],
+    },
+  });
+  assert.deepEqual(await interviewerLaneCall(cwd, headSha, halfMissing), {
+    interview: false,
+    interviewer: true,
+    architect: false,
+  });
+});
+
 test('the newest conclusive verdict is authoritative', async () => {
   const { cwd, validatedSha } = initReleaseBranchRepo();
   const headSha = commitManifest(
@@ -871,7 +928,9 @@ test('the newest conclusive verdict is authoritative', async () => {
     jobsByRun: {
       2: [
         { name: 'interview-e2e', conclusion: 'success' },
+        { name: 'interview-e2e-native', conclusion: 'success' },
         { name: 'interviewer-e2e', conclusion: 'failure' },
+        { name: 'interviewer-e2e-native', conclusion: 'success' },
       ],
       1: INTERVIEWER_LANE_SUCCESS_JOBS,
     },
@@ -889,7 +948,9 @@ test('the newest conclusive verdict is authoritative', async () => {
     jobsByRun: {
       2: [
         { name: 'interview-e2e', conclusion: 'cancelled' },
+        { name: 'interview-e2e-native', conclusion: 'cancelled' },
         { name: 'interviewer-e2e', conclusion: 'skipped' },
+        { name: 'interviewer-e2e-native', conclusion: 'skipped' },
       ],
       1: INTERVIEWER_LANE_SUCCESS_JOBS,
     },
@@ -1117,7 +1178,12 @@ test('equivalence reuse rejects a suite whose subject package is missing from th
       },
       fetcher: fakeActionsApi({
         runs: [fakeRun(1, validatedSha)],
-        jobsByRun: { 1: [{ name: 'interview-e2e', conclusion: 'success' }] },
+        jobsByRun: {
+          1: [
+            { name: 'interview-e2e', conclusion: 'success' },
+            { name: 'interview-e2e-native', conclusion: 'success' },
+          ],
+        },
       }),
     }),
     { interview: false, interviewer: false, architect: false },

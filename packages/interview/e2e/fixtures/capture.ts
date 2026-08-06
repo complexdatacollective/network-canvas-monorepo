@@ -33,6 +33,23 @@ const VISUAL_STYLES = `
   }
 `;
 
+// CI runs this suite as two jobs: the pinned Playwright container runs the
+// `*-visual` projects that compare the committed PNGs, and a plain runner runs
+// the `*-matrix` projects, whose ARIA baselines are OS-independent text. The
+// `enabled` gate below keys on `CI`, NOT on Docker — a native runner sets
+// `CI=true` too, so a capture reached outside the visual projects would compare
+// container-rasterised baselines against the runner's own font stack. That
+// fails as a confusing pixel diff. Turn it into an actionable one instead.
+function assertNotNativeLane(name: string): void {
+  if (process.env.E2E_PIXEL_LANE === 'native') {
+    throw new Error(
+      `[visual] "${name}" tried to capture in the native e2e lane. Pixel ` +
+        'baselines are only valid from the pinned Playwright image, so this ' +
+        'capture must run in a *-visual project to reach the Docker job.',
+    );
+  }
+}
+
 /**
  * Shared pixel-capture pipeline used by both the legacy interview-test
  * fixture and the matrix fixture. Captures are CI-only (`enabled`).
@@ -45,6 +62,7 @@ export function createCaptureInterview(
 
   return async (name: string, options: CaptureInterviewOptions = {}) => {
     if (!opts.enabled) return;
+    assertNotNativeLane(name);
     if (!stylesInjected) {
       await page.addStyleTag({ content: VISUAL_STYLES });
       stylesInjected = true;

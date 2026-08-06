@@ -357,6 +357,22 @@ mapping lives in
 `scripts/release-e2e-policy.mjs`, and its test derives the expected lanes from
 the real package.json dependency graph so the table cannot silently drift.
 The required `quality` check requires exactly the suites the policy selects.
+
+Each suite runs as **two jobs**. `<suite>-e2e` runs inside the pinned
+Playwright image and compares the committed PNG baselines; `<suite>-e2e-native`
+runs everything else on a plain runner, where it gets the Turbo remote cache
+the container is structurally denied. The pinned image is required for
+rasterising pixels and nothing else — Architect's JSON stage snapshots come
+from IndexedDB protocol JSON rather than the DOM, and Interview's ARIA
+snapshots are accessibility-tree text that is already regenerated on developer
+macOS hosts and compared in Linux CI. The split key is the selector each
+suite's `test:e2e:update-snapshots` script already uses (`--grep @visual`, or
+`--project=*-visual` for Interview), so the lanes cannot drift from the
+regeneration workflow. Both halves are required by `quality`, and
+`E2E_JOB_NAMES` in `scripts/release-e2e-policy.mjs` requires both to be green
+before a verdict can be reused. The capture helpers throw when
+`E2E_PIXEL_LANE=native` is set, so a mis-tagged visual test fails loudly
+instead of silently comparing container baselines against a runner's fonts.
 Ordinary PRs skip E2E and never inherit an E2E verdict from an earlier
 commit.
 
