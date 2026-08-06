@@ -50,6 +50,12 @@ export type DialogFormProps = {
    * see DialogArrayField's `editorValidate`.
    */
   editIndex?: number;
+  /**
+   * Shared-layout id, for a dialog that animates out of the element that
+   * opened it (an array row's Edit button — see arrayFields/DialogArrayField).
+   */
+  layoutId?: string;
+  style?: React.CSSProperties;
   children?: React.ReactNode;
 };
 
@@ -63,6 +69,8 @@ const DialogFormBody = ({
   onSubmit,
   validate,
   editIndex,
+  layoutId,
+  style,
   children,
 }: DialogFormProps) => {
   const { isSubmitting } = useFormMeta();
@@ -82,6 +90,8 @@ const DialogFormBody = ({
       dismissible={!isSubmitting}
       title={title}
       size="editor"
+      layoutId={layoutId}
+      style={style}
       footer={
         <>
           <Button color="default" onClick={handleClose} disabled={isSubmitting}>

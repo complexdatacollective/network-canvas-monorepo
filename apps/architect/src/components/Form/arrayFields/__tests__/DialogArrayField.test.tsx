@@ -1,0 +1,397 @@
+import { configureStore } from '@reduxjs/toolkit';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useContext, type ContextType, type ReactNode } from 'react';
+import { Provider } from 'react-redux';
+import { describe, expect, it, vi } from 'vitest';
+
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { renderStageForm } from '~/components/StageEditor/__tests__/stageFormTestHarness';
+
+import ArchitectArrayField from '../../ArchitectArrayField';
+import ArchitectField from '../../ArchitectField';
+import DialogArrayField, {
+  type DialogArrayEditorValidate,
+} from '../DialogArrayField';
+
+type Item = { id: string; label: string };
+
+/** `initialValue` is a register-effect dependency, so keep it stable. */
+const NO_ITEMS: Item[] = [];
+
+type TextInputProps = {
+  value?: string;
+  onChange?: (value: string) => void;
+} & React.InputHTMLAttributes<HTMLInputElement>;
+
+const TextInput = ({ value, onChange, ...rest }: TextInputProps) => (
+  <input
+    {...rest}
+    value={value ?? ''}
+    onChange={(event) => onChange?.(event.target.value)}
+  />
+);
+
+const Preview = ({ label }: Record<string, unknown>) => (
+  <span>{typeof label === 'string' ? label : ''}</span>
+);
+
+let capturedEditorProps: Record<string, unknown> | undefined;
+// Read through a call so control-flow analysis keeps the declared type: the
+// only writes happen inside EditorFields, which CFA cannot see.
+const editorProps = () => capturedEditorProps;
+
+const EditorFields = (props: Record<string, unknown>) => {
+  capturedEditorProps = props;
+  return (
+    <ArchitectField
+      name="label"
+      label="Item label"
+      component={TextInput}
+      initialValue={typeof props.label === 'string' ? props.label : ''}
+    />
+  );
+};
+
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
+
+let storeApi: StoreApi | null = null;
+const CaptureStore = () => {
+  storeApi = useContext(FormStoreContext) ?? null;
+  return null;
+};
+
+const getItems = (): Item[] => {
+  if (!storeApi) throw new Error('form store was not captured');
+  return (storeApi.getState().getFormValues().items ?? []) as Item[];
+};
+
+type FieldOverrides = {
+  editorValidate?: DialogArrayEditorValidate;
+  normalizeItem?: (value: unknown) => unknown;
+  onBeforeSave?: (value: unknown) => unknown;
+  sortable?: boolean;
+};
+
+const arrayField = (
+  initialItems: Item[],
+  { editorValidate, normalizeItem, onBeforeSave, sortable }: FieldOverrides,
+) => (
+  <ArchitectArrayField
+    name="items"
+    label="Items"
+    component={DialogArrayField}
+    initialValue={initialItems}
+    previewComponent={Preview}
+    editorFieldsComponent={EditorFields}
+    editorTitle="Edit item"
+    addTitle="Add item"
+    itemLabel="item"
+    itemTemplate={() => ({ label: '' })}
+    editorValidate={editorValidate}
+    normalizeItem={normalizeItem}
+    onBeforeSave={onBeforeSave}
+    sortable={sortable}
+  />
+);
+
+const setup = ({
+  initialItems = NO_ITEMS,
+  ...overrides
+}: FieldOverrides & { initialItems?: Item[] } = {}) => {
+  capturedEditorProps = undefined;
+  storeApi = null;
+
+  // The row editor reads `itemSelector` through `useSelector`, so a Redux
+  // store is a precondition of the field even when no selector is configured.
+  const store = configureStore({ reducer: (state = {}) => state });
+
+  const view = render(
+    <Provider store={store}>
+      <Form onSubmit={() => ({ success: true })}>
+        <CaptureStore />
+        {arrayField(initialItems, overrides)}
+      </Form>
+    </Provider>,
+  );
+
+  return { getItems, unmount: view.unmount };
+};
+
+const editorInput = () => screen.getByRole('textbox', { name: 'Item label' });
+
+describe('DialogArrayField', () => {
+  it('adds a UUID-backed item only after the editor is saved', async () => {
+    setup();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    expect(getItems()).toEqual([]);
+
+    fireEvent.change(editorInput(), { target: { value: 'First item' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => {
+      expect(getItems()).toEqual([
+        expect.objectContaining({
+          id: expect.any(String),
+          label: 'First item',
+        }),
+      ]);
+    });
+  });
+
+  it('edits an existing item and preserves properties the editor never renders', async () => {
+    setup({ initialItems: [{ id: 'item-1', label: 'Before' }] });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+    fireEvent.change(editorInput(), { target: { value: 'After' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(getItems()).toEqual([{ id: 'item-1', label: 'After' }]);
+    });
+  });
+
+  it('discards a cancelled draft', async () => {
+    setup();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.change(editorInput(), { target: { value: 'Discard me' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(getItems()).toEqual([]);
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('textbox', { name: 'Item label' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('gives every editing session a fresh field store', async () => {
+    setup({ initialItems: [{ id: 'item-1', label: 'Before' }] });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+    fireEvent.change(editorInput(), { target: { value: 'Abandoned' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // Re-opening the SAME row must start from its committed values, not from
+    // the store the cancelled session left behind.
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+    await waitFor(() => expect(editorInput()).toHaveValue('Before'));
+  });
+
+  it('awaits pre-save work before normalization and persistence', async () => {
+    const onBeforeSave = vi.fn(async (value: unknown) => ({
+      ...(value as Item),
+      label: `${(value as Item).label} transformed`,
+    }));
+    const normalizeItem = vi.fn((value: unknown) => ({
+      ...(value as Item),
+      normalized: true,
+    }));
+    setup({ onBeforeSave, normalizeItem });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.change(editorInput(), { target: { value: 'Async' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => {
+      expect(getItems()[0]).toEqual(
+        expect.objectContaining({
+          label: 'Async transformed',
+          normalized: true,
+        }),
+      );
+    });
+    expect(onBeforeSave).toHaveBeenCalledOnce();
+    expect(normalizeItem).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the editor open when pre-save work reports field errors', async () => {
+    const onBeforeSave = vi.fn(() => ({
+      success: false as const,
+      fieldErrors: { label: ['Unable to save this item.'] },
+    }));
+    setup({ onBeforeSave });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await screen.findByText('Unable to save this item.'),
+    ).toBeInTheDocument();
+    expect(getItems()).toEqual([]);
+    expect(editorInput()).toBeInTheDocument();
+  });
+
+  it('keeps the editor open when editorValidate rejects the item', async () => {
+    const editorValidate = vi.fn(() => ({ label: 'Blocked by validate' }));
+    const onBeforeSave = vi.fn((value: unknown) => value);
+    setup({ editorValidate, onBeforeSave });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(await screen.findByText('Blocked by validate')).toBeInTheDocument();
+    expect(onBeforeSave).not.toHaveBeenCalled();
+    expect(getItems()).toEqual([]);
+  });
+
+  it('surfaces the edited row’s index and committed values to editorValidate', async () => {
+    const editorValidate = vi.fn<DialogArrayEditorValidate>(() => ({}));
+    setup({
+      initialItems: [
+        { id: 'item-1', label: 'First' },
+        { id: 'item-2', label: 'Second' },
+      ],
+      editorValidate,
+    });
+
+    const secondEditButton = screen.getAllByRole('button', {
+      name: 'Edit item',
+    })[1];
+    if (!secondEditButton) throw new Error('Expected two edit buttons');
+    fireEvent.click(secondEditButton);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(editorValidate).toHaveBeenCalled());
+    expect(editorValidate.mock.calls.at(-1)?.[1]).toMatchObject({
+      editIndex: 1,
+      initialValues: { id: 'item-2', label: 'Second' },
+    });
+
+    // A new item is not in the committed array, so it reports no index.
+    editorValidate.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => expect(editorValidate).toHaveBeenCalled());
+    expect(editorValidate.mock.calls.at(-1)?.[1]?.editIndex).toBeUndefined();
+  });
+
+  it('gives the fields component the same edited-row index as editorValidate', async () => {
+    const editorValidate = vi.fn<DialogArrayEditorValidate>(() => ({}));
+    setup({
+      initialItems: [
+        { id: 'item-1', label: 'First' },
+        { id: 'item-2', label: 'Second' },
+      ],
+      editorValidate,
+    });
+
+    const secondEditButton = screen.getAllByRole('button', {
+      name: 'Edit item',
+    })[1];
+    if (!secondEditButton) throw new Error('Expected two edit buttons');
+    fireEvent.click(secondEditButton);
+    await waitFor(() => expect(editorProps()).toBeDefined());
+    expect(editorProps()?.editIndex).toBe(1);
+    expect(editorProps()?.form).toBe('edit-stage-items-item-editor');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(editorValidate).toHaveBeenCalled());
+    expect(editorValidate.mock.calls.at(-1)?.[1]?.editIndex).toBe(1);
+  });
+
+  it('removes a row through its own confirm dialog', async () => {
+    setup({ initialItems: [{ id: 'item-1', label: 'Only' }] });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove item' }));
+
+    await waitFor(() => expect(getItems()).toEqual([]));
+    expect(globalThis.__architectDialogMocks.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmLabel: 'Remove item' }),
+    );
+  });
+
+  it('emits the whole array when a row is reordered', async () => {
+    setup({
+      initialItems: [
+        { id: 'item-1', label: 'First' },
+        { id: 'item-2', label: 'Second' },
+      ],
+      sortable: true,
+    });
+
+    fireEvent.keyDown(
+      screen.getByRole('button', { name: 'Reorder item 1 of 2' }),
+      { key: 'ArrowDown' },
+    );
+
+    await waitFor(() => {
+      expect(getItems()).toEqual([
+        { id: 'item-2', label: 'Second' },
+        { id: 'item-1', label: 'First' },
+      ]);
+    });
+  });
+
+  it('never registers a per-row field in the parent form', async () => {
+    setup({ initialItems: [{ id: 'item-1', label: 'Only' }] });
+
+    await waitFor(() => expect(getItems()).toHaveLength(1));
+    if (!storeApi) throw new Error('form store was not captured');
+    expect([...storeApi.getState().fields.keys()]).toEqual(['items']);
+  });
+
+  it('ignores an async completion after the array editor unmounts', async () => {
+    let resolvePreSave: ((value: undefined) => void) | undefined;
+    const pendingSave = new Promise<undefined>((resolve) => {
+      resolvePreSave = resolve;
+    });
+    const onBeforeSave = vi.fn(() => pendingSave);
+    const { unmount } = setup({ onBeforeSave });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.change(editorInput(), { target: { value: 'Stale completion' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(onBeforeSave).toHaveBeenCalledOnce());
+
+    const captured = storeApi;
+    unmount();
+    await act(async () => {
+      resolvePreSave?.(undefined);
+      await pendingSave;
+    });
+
+    if (!captured) throw new Error('form store was not captured');
+    expect(captured.getState().getFormValues().items ?? []).toEqual([]);
+  });
+});
+
+describe('DialogArrayField in the stage form', () => {
+  const renderInStageForm = (children: ReactNode) =>
+    renderStageForm({
+      committedStage: null,
+      children,
+    });
+
+  it('round-trips an added row through the draft timeline', async () => {
+    const { snapshots, getHistory, getFormValues } = renderInStageForm(
+      arrayField(NO_ITEMS, {}),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.change(editorInput(), { target: { value: 'Undo me' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() =>
+      expect(getFormValues().items as Item[]).toHaveLength(1),
+    );
+    // Adding a row is one logical change: it snapshots immediately rather than
+    // waiting out the leaf-edit debounce.
+    expect(snapshots.at(-1)).toMatchObject({
+      items: [expect.objectContaining({ label: 'Undo me' })],
+    });
+
+    act(() => getHistory().undo());
+
+    expect(getFormValues().items as Item[]).toHaveLength(0);
+  });
+});

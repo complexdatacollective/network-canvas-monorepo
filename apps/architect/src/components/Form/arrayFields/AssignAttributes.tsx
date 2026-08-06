@@ -1,0 +1,138 @@
+import { useCallback, useMemo } from 'react';
+
+import ArrayField, {
+  type ArrayFieldProps,
+} from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+
+import Attribute, {
+  AssignAttributesContext,
+  type AttributeValue,
+  type VariableOption,
+} from './Attribute';
+
+export type { AttributeValue, VariableOption } from './Attribute';
+
+const ALLOWED_TYPES = ['boolean'];
+
+/**
+ * Narrows the shared pool to variables this control can stamp, and disables
+ * the ones another row in the same list already claims.
+ *
+ * Duplicated from the redux-form `AssignAttributes` until stage E deletes it.
+ */
+export const getAssignableVariableOptions = (
+  variableOptions: VariableOption[],
+  usedVariables: Array<string | null | undefined>,
+) =>
+  variableOptions
+    .filter(
+      ({ type: optionType }) =>
+        optionType && ALLOWED_TYPES.includes(optionType),
+    )
+    .map(({ value, ...rest }) => ({
+      ...rest,
+      value,
+      disabled: usedVariables.includes(value),
+    }));
+
+const EMPTY_ATTRIBUTES: AttributeValue[] = [];
+
+export type AssignAttributesProps = Omit<
+  ArrayFieldProps<AttributeValue>,
+  | 'addButtonLabel'
+  | 'confirmDelete'
+  | 'editorComponent'
+  | 'emptyStateMessage'
+  | 'immediateAdd'
+  | 'itemClasses'
+  | 'itemComponent'
+  | 'itemTemplate'
+  | 'onOperation'
+> & {
+  entity: 'node' | 'edge' | 'ego';
+  type: string;
+  /**
+   * The codebook pool for this subject, already filtered for uses this control
+   * must not offer (see the caller's `getAdditionalAttributesOptionsForSubject`
+   * and the draft-writer exclusions). Rows this list already uses are disabled
+   * here, from the live value.
+   */
+  variableOptions: VariableOption[];
+  draftValidatedVariables: ReadonlySet<string>;
+  currentStageIndex?: number;
+  /** Committed value of this array, for the cross-class gate's escape. */
+  committedValue?: AttributeValue[];
+};
+
+/**
+ * The fresco-ui-native successor to
+ * `~/components/AssignAttributes/AssignAttributes.tsx`: rows of
+ * variable-picker plus boolean value, added straight into the list.
+ *
+ * Rendered as `<ArchitectArrayField component={AssignAttributes} … />`, so the
+ * whole list is ONE field value and no row registers `additionalAttributes[0]
+ * .variable` in the form store — a deleted stamp must not be able to reappear
+ * through a dormant value.
+ */
+const AssignAttributes = ({
+  value = EMPTY_ATTRIBUTES,
+  onChange,
+  name = '',
+  entity,
+  type,
+  variableOptions,
+  draftValidatedVariables,
+  currentStageIndex,
+  committedValue = EMPTY_ATTRIBUTES,
+  ...arrayFieldProps
+}: AssignAttributesProps) => {
+  const context = useMemo(
+    () => ({
+      arrayName: name,
+      entity,
+      type,
+      variableOptions: getAssignableVariableOptions(
+        variableOptions,
+        value.map(({ variable }) => variable),
+      ),
+      draftValidatedVariables,
+      currentStageIndex,
+      committedValue,
+    }),
+    [
+      committedValue,
+      currentStageIndex,
+      draftValidatedVariables,
+      entity,
+      name,
+      type,
+      value,
+      variableOptions,
+    ],
+  );
+
+  const itemTemplate = useCallback(
+    () => ({}) satisfies Partial<AttributeValue>,
+    [],
+  );
+
+  return (
+    <AssignAttributesContext.Provider value={context}>
+      <ArrayField<AttributeValue>
+        {...arrayFieldProps}
+        name={name}
+        value={value}
+        onChange={onChange}
+        itemComponent={Attribute}
+        itemTemplate={itemTemplate}
+        itemClasses="p-0! shadow-none"
+        addButtonLabel="Add new variable to assign"
+        emptyStateMessage="No additional variables assigned."
+        immediateAdd
+        confirmDelete={false}
+      />
+    </AssignAttributesContext.Provider>
+  );
+};
+
+export default AssignAttributes;
