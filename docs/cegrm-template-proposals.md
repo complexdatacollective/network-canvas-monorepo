@@ -74,12 +74,13 @@ Colored Eco-Genetic Relationship Map actually belongs.
 | CEGRM moment                         | Network Canvas interface                                                                         |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------ |
 | Genetic pedigree                     | `FamilyPedigree` — wizard-built, finalised, then read-only                                       |
-| Who is affected / tested / deceased  | `FamilyPedigree.nominationPrompts` — tap people on the finished pedigree, one boolean per prompt |
+| Living status and birth year         | `FamilyPedigree.nodeConfig.form` — collect detail while each person is added                     |
+| Who is affected / tested             | `FamilyPedigree.nominationPrompts` — tap people on the finished pedigree, one boolean per prompt |
 | Add the non-kin social universe      | `NameGeneratorQuickAdd` (participant-paced) or `NetworkComposer` (interviewer-driven)            |
 | Coloured dots — resource exchanges   | `Sociogram` prompts with `highlight.variable`, one boolean per domain                            |
 | Coloured stars — communication roles | Further `Sociogram` highlight prompts                                                            |
 | Ties among network members           | A `Sociogram` prompt with `edges.create`, or a dyad census                                       |
-| **Reading the finished map**         | **`Narrative` with one preset per domain** — the coloured map proper                             |
+| **Reading the finished map**         | **`Narrative` with overview, support and communication presets** — the coloured map proper       |
 | The genetic pathway                  | `NarrativePedigree` — inheritance overlay with focal-person tracing and PNG snapshot             |
 
 ### Six facts that constrain every design here
@@ -100,9 +101,10 @@ These came out of reading the schemas and runtime, and each one changed a design
    a mostly empty closing stage.
 4. **`Narrative` shows one highlight variable at a time.** The legend renders them as a radio
    group. A single view with all four domain colours at once is not achievable — the interviewer
-   steps through them. Convex hulls (`groupVariable`) and edges _can_ co-display with one highlight,
-   which is what makes "friends-vs-family hulls + emotional support highlighted" the closest
-   analogue to a paper CEGRM.
+   steps through them. The implemented template groups the four support overlays in one preset and
+   the three communication overlays in another, and keeps the social ties visible throughout.
+   It deliberately omits `groupVariable`: `tie_type` is collected only for people added beyond the
+   pedigree, so using it for hulls would leave the family ungrouped.
 5. **Three categorical option sets are locked** — `biologicalSex`, `relationshipType`, `gameteRole`
    must match `@codaco/shared-consts` exactly, values _and_ labels (including the U+2019 apostrophe
    in "Don't know"). Hand-authored JSON that drifts fails validation.
@@ -145,7 +147,7 @@ measurement, not merely in length.
 
 | #   | Template                                      | The object of measurement                        | Signature technique                                                   | Stages |
 | --- | --------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------- | ------ |
-| A   | **Eco-Genetic Relationship Maps**             | Ego's resource exchanges, laid over the pedigree | Pedigree → colour-map pipeline closing on a per-domain `Narrative`    | 12     |
+| A   | **Eco-Genetic Relationship Maps**             | Ego's resource exchanges, laid over the pedigree | Pedigree → colour-map pipeline closing on a grouped-overlay Narrative | 12     |
 | B   | **Family Health Communication Networks**      | The communication network _among kin_            | `OneToManyDyadCensus` over the pedigree → at-risk vs. told comparison | 12     |
 | C   | **Support Ecologies in Inherited Conditions** | Breadth, types and depth of support              | `NetworkComposer` co-construction with convex-hull social circles     | 10     |
 
@@ -170,29 +172,32 @@ switch overlays live, trace an inheritance pathway for one person, and export a 
 **Codebook.** _Node `person`:_ `name` (text), `is_ego` (boolean), `relationship_to_ego` (text,
 written automatically at finalize), `biologicalSex` (locked categorical), `layout`, `tie_type`
 (categorical: close friend / friend / colleague or classmate / neighbour / faith community /
-health professional / other) + `tie_type_other` (text), condition booleans `has_condition`,
-`had_testing`, `is_deceased`; four domain booleans `exch_information`, `exch_tangible`,
+health professional / other) + `tie_type_other` (text), condition booleans `has_condition` and
+`had_testing`, categorical `living_status`, numeric `birth_year`; four domain booleans
+`exch_information`, `exch_tangible`,
 `exch_emotional`, `exch_spiritual`; three role booleans `role_gatherer`, `role_disseminator`,
 `role_blocker`. Node shape: `{ default: 'circle', dynamic: { type: 'discrete', variable:
 'biologicalSex', map: [male→square, female→circle, intersex→diamond] } }`.
 _Edge `family_relationship`:_ the four locked pedigree variables. _Edge `knows`:_ member-to-member
-ties. _Ego:_ age, education, partnered status, personal condition history, testing/mutation status
-(mirrors the studies' Individual Information Questionnaire).
+ties. _Ego:_ consent, age, education and partnered status.
 
 **Stage sketch.**
 
 1. `Information` — **template notes (delete before fielding)**: what CEGRM is, the citations, and
    the caveat that colour counts are a discussion aid, not a validated support scale.
 2. `Information` — participant welcome and consent framing.
-3. `EgoForm` — demographics, condition and testing history.
-4. `FamilyPedigree` — build the pedigree, then nominate on it.
+3. `EgoForm` — brief demographics.
+4. `FamilyPedigree` — build the inclusive pedigree, collect living status and birth year, then
+   nominate affected and tested family members.
 5. `Information` — "now the people beyond your family".
 6. `NameGeneratorQuickAdd` — four prompts adding non-kin.
 7. `CategoricalBin` — sort the people you added into relationship types.
 8. `Sociogram` — ties, then the four exchange domains.
-9. `Sociogram` — the three communication roles.
-10. `Narrative` — **the coloured map**: step through the overlays and talk about them.
-11. `NarrativePedigree` — the inheritance pathway.
+9. `Sociogram` — the three communication roles, filtered to family members.
+10. `Narrative` — **the coloured map**: overview, support overlays and communication overlays,
+    with social ties visible throughout.
+11. `NarrativePedigree` — the inheritance pathway, conservatively configured with inferred risk
+    off and an unknown inheritance pattern.
 12. `Information` — closing and debrief.
 
 **Worked configuration for the distinctive stages.**
@@ -210,7 +215,11 @@ Stage 4 — the pedigree carries the affection nominations, which are exactly th
     "nodeLabelVariable": "name",
     "egoVariable": "is_ego",
     "relationshipVariable": "relationship_to_ego",
-    "biologicalSexVariable": "biologicalSex"
+    "biologicalSexVariable": "biologicalSex",
+    "form": [
+      { "variable": "living_status", "prompt": "Is this person living or deceased?" },
+      { "variable": "birth_year", "prompt": "What year was this person born?", "hint": "Leave this blank if you do not know." }
+    ]
   },
   "edgeConfig": {
     "type": "family_relationship",
@@ -222,13 +231,12 @@ Stage 4 — the pedigree carries the affection nominations, which are exactly th
   "framing": { "mode": "participantChoice" },
   "boundaries": {
     "requireGrandparents": "recommended",
-    "requireChildrenContributors": "off"
+    "requireChildrenContributors": "recommended"
   },
   "censusPrompt": "Let's map out your family. Who is in it?",
   "nominationPrompts": [
     { "id": "nom-condition", "text": "Who in your family has had **this condition**?", "variable": "has_condition" },
-    { "id": "nom-testing",   "text": "Who has had **genetic testing**?",                "variable": "had_testing" },
-    { "id": "nom-deceased",  "text": "Who has **died**?",                               "variable": "is_deceased" }
+    { "id": "nom-testing",   "text": "Who has had **genetic testing**?",                "variable": "had_testing" }
   ]
 }
 ```
@@ -248,19 +256,20 @@ that the tie prompt is separate because edge creation and highlighting cannot sh
     { "id": "p-ties",        "text": "Connect any of these people who **know one another**.",
       "layout": { "layoutVariable": "layout" }, "edges": { "create": "knows", "display": ["knows"] } },
     { "id": "p-information", "text": "Who do you **share health or genetic information** with?",
-      "layout": { "layoutVariable": "layout" }, "highlight": { "allowHighlighting": true, "variable": "exch_information" } },
+      "layout": { "layoutVariable": "layout" }, "highlight": { "allowHighlighting": true, "variable": "exch_information" }, "edges": { "display": ["knows"] } },
     { "id": "p-tangible",    "text": "Who gives you **practical help** — a lift to an appointment, a meal, minding the children?",
-      "layout": { "layoutVariable": "layout" }, "highlight": { "allowHighlighting": true, "variable": "exch_tangible" } },
+      "layout": { "layoutVariable": "layout" }, "highlight": { "allowHighlighting": true, "variable": "exch_tangible" }, "edges": { "display": ["knows"] } },
     { "id": "p-emotional",   "text": "Who do you **share your feelings** with about all this?",
-      "layout": { "layoutVariable": "layout" }, "highlight": { "allowHighlighting": true, "variable": "exch_emotional" } },
+      "layout": { "layoutVariable": "layout" }, "highlight": { "allowHighlighting": true, "variable": "exch_emotional" }, "edges": { "display": ["knows"] } },
     { "id": "p-spiritual",   "text": "Who do you share a **spiritual or religious connection** with?",
-      "layout": { "layoutVariable": "layout" }, "highlight": { "allowHighlighting": true, "variable": "exch_spiritual" } }
+      "layout": { "layoutVariable": "layout" }, "highlight": { "allowHighlighting": true, "variable": "exch_spiritual" }, "edges": { "display": ["knows"] } }
   ]
 }
 ```
 
-Stage 10 — the payoff. One preset per domain, hulls by relationship type so family and friends are
-visually separable, plus a "deeper ties" preset showing the `knows` structure:
+Stage 10 — the payoff. The compact presets group related overlays while the `knows` structure
+remains visible. Relationship hulls are intentionally omitted because `tie_type` applies only to
+people added beyond the pedigree and would leave the family ungrouped:
 
 ```json
 {
@@ -270,14 +279,13 @@ visually separable, plus a "deeper ties" preset showing the `knows` structure:
   "interviewScript": "Operate this stage yourself and use it to prompt narration. Step through the overlays and ask what the participant notices — where the colours cluster, and where they are absent. Absence is as informative as presence. This stage saves nothing, so capture the conversation using your approved study procedure.",
   "subject": { "entity": "node", "type": "person" },
   "background": { "concentricCircles": 3, "skewedTowardCenter": true },
-  "behaviours": { "automaticLayout": false, "allowRepositioning": true, "freeDraw": true },
+  "behaviours": { "automaticLayout": false, "allowRepositioning": false, "freeDraw": true },
   "presets": [
-    { "id": "preset-everyone",    "label": "Everyone in your map",   "layoutVariable": "layout", "groupVariable": "tie_type", "edges": { "display": ["knows"] } },
-    { "id": "preset-information", "label": "Information",            "layoutVariable": "layout", "groupVariable": "tie_type", "highlight": ["exch_information"] },
-    { "id": "preset-tangible",    "label": "Practical help",         "layoutVariable": "layout", "groupVariable": "tie_type", "highlight": ["exch_tangible"] },
-    { "id": "preset-emotional",   "label": "Feelings",               "layoutVariable": "layout", "groupVariable": "tie_type", "highlight": ["exch_emotional"] },
-    { "id": "preset-spiritual",   "label": "Spiritual connection",   "layoutVariable": "layout", "groupVariable": "tie_type", "highlight": ["exch_spiritual"] },
-    { "id": "preset-roles",       "label": "Talking about risk",     "layoutVariable": "layout", "highlight": ["role_gatherer", "role_disseminator", "role_blocker"] }
+    { "id": "preset-everyone", "label": "Everyone on your map", "layoutVariable": "layout", "edges": { "display": ["knows"] } },
+    { "id": "preset-support", "label": "Forms of support", "layoutVariable": "layout", "edges": { "display": ["knows"] },
+      "highlight": ["exch_information", "exch_tangible", "exch_emotional", "exch_spiritual"] },
+    { "id": "preset-roles", "label": "Family health communication", "layoutVariable": "layout", "edges": { "display": ["knows"] },
+      "highlight": ["role_gatherer", "role_disseminator", "role_blocker"] }
   ]
 }
 ```
@@ -290,10 +298,10 @@ Stage 11:
   "type": "NarrativePedigree",
   "label": "How the condition runs in your family",
   "sourceStageId": "family-pedigree",
-  "showAtRiskStatuses": true,
+  "showAtRiskStatuses": false,
   "diseases": [
     { "id": "condition", "label": "This condition", "color": "#e53e3e",
-      "variable": "has_condition", "inheritancePattern": "autosomalDominant" }
+      "variable": "has_condition", "inheritancePattern": "unknown" }
   ]
 }
 ```
@@ -462,8 +470,8 @@ end-to-end by the existing Storybook walkthrough, and it exercises the FamilyPed
 NarrativePedigree pairing that no shipped template currently demonstrates. It is also the only one
 of the three that needs no new interface capability and no design compromise.
 
-Three things changed between this sketch and the shipped template, all in response to how
-sensitive the subject matter is:
+The implemented template was refined further after comparison with the alternative Family Health
+& Support Networks design and review in Architect:
 
 - **A consent gate was added**, following the pattern Mental Health Networks and Transnational
   Networks use: an `EgoForm` carrying a required `participant_consent` boolean, with the next
@@ -472,9 +480,24 @@ sensitive the subject matter is:
 - **Per-stage `interviewScript` guidance was written** for the pedigree, the two Sociograms, the
   Narrative and the NarrativePedigree. The instrument is interviewer-led, and the closing Narrative
   in particular is useless without guidance on how to run it.
-- **The researcher-notes screen carries pre-fielding instructions**, because two things genuinely
-  must be changed before use: the literal string "this condition" throughout the prompts, and the
-  `inheritancePattern`, which defaults to `autosomalDominant` and is wrong for most conditions.
+- **The pedigree was made more inclusive and complete.** It explicitly includes partners,
+  adoptive and social parents, donors and surrogates; recommends grandparents and contributors to
+  children; and captures living status and birth year while each person is added.
+- **Clinical inference is conservative by default.** The inheritance pattern is `unknown` and
+  possible at-risk statuses are off until a researcher deliberately configures a clinically
+  supported pattern and disclosure process.
+- **Non-kin reuse is filtered.** The QuickAdd panel excludes ego and pedigree members, while still
+  allowing contacts added under an earlier prompt to accumulate multiple nominations.
+- **The social map stays coherent.** Automatic layout gives every person a saved position, all
+  Sociogram and Narrative overlays retain the `knows` ties, and the compact Narrative presets
+  compare support and communication overlays against fixed positions. Relationship hulls are
+  omitted because the relationship category is collected only for non-kin contacts.
+- **Communication roles follow their published family scope.** Gatherer, disseminator and blocker
+  are filtered to non-ego pedigree members; the researcher notes explain how to widen that scope
+  when non-family information brokerage is part of the study.
+- **The researcher-notes screen carries pre-fielding instructions** for condition wording,
+  inheritance configuration, consent, safeguarding, referral and distress procedures, spiritual
+  support, optional closeness/contact measures, and capture of the qualitative reflection.
 
 **Proposal B is the strongest second**, and is the more novel research instrument — it produces a
 directed kin communication network that the paper method structurally cannot capture. Its open

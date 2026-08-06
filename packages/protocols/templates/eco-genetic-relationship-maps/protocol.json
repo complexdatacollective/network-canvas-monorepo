@@ -2,7 +2,7 @@
   "name": "Eco-Genetic Relationship Maps",
   "description": "An example template for families living with an inherited condition. It builds a family pedigree, adds the friends and others who matter to the participant, records the information, practical help, feelings and spiritual connection they exchange with each person, and closes on a colour-coded map and an inheritance view.",
   "schemaVersion": 8,
-  "lastModified": "2026-08-04T00:00:00.000Z",
+  "lastModified": "2026-08-06T00:00:00.000Z",
   "codebook": {
     "ego": {
       "variables": {
@@ -196,10 +196,29 @@
             "type": "boolean",
             "component": "Toggle"
           },
-          "is_deceased": {
-            "name": "is_deceased",
-            "type": "boolean",
-            "component": "Toggle"
+          "living_status": {
+            "name": "living_status",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              {
+                "label": "Living",
+                "value": "living"
+              },
+              {
+                "label": "Deceased",
+                "value": "deceased"
+              },
+              {
+                "label": "Don’t know",
+                "value": "unknown"
+              }
+            ]
+          },
+          "birth_year": {
+            "name": "birth_year",
+            "type": "number",
+            "component": "Number"
           },
           "exch_information": {
             "name": "exch_information",
@@ -314,7 +333,7 @@
         {
           "id": "researcher-notes",
           "type": "text",
-          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view is configured as `autosomalDominant`. Change it to match your condition — the options are autosomal dominant/recessive, X-linked dominant/recessive, Y-linked, mitochondrial, multifactorial, and unknown. Multifactorial and unknown deliberately infer nothing beyond who was named as affected.\n- **Decide about at-risk statuses.** They are switched on so the inheritance view shows who may be affected or carrying. This is a teaching aid, not a diagnosis, and it can surface information a participant has not been told. Switch it off if that is not appropriate for your study.\n\n### Why there are two name variables\n\nFamily members are named on the pedigree and stored in `name`; everyone added afterwards is stored in `contact_name`. This is deliberate. A variable cannot be written both by a form and outside a form — Architect warns when that happens, because values written outside a form skip the validation rules the form would apply. The pedigree writes names outside a form, and the quick-add screen writes them through one, so they need separate variables. Each person still displays under whichever of the two is filled in, and you can merge the two columns when you analyse the data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) and three family communication roles (gatherer, disseminator, blocker), each recorded as a yes/no per person. From these you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4).\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://pubmed.ncbi.nlm.nih.gov/26141156/) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view deliberately defaults to `unknown`, and possible at-risk statuses are switched off. Only select a clinically supported inheritance pattern, and only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure. The display is not a diagnosis and assumes full penetrance.\n- **Adapt the consent and support plan.** Replace the example consent language, participant information, confidentiality statement, referral pathways, safeguarding process and distress procedure with those approved for your setting.\n- **Review the scope.** The four support domains are asked about family and non-family contacts. Gatherer, disseminator and blocker are configured as family health-communication roles. Widen that stage only when non-family information brokerage is part of the research question.\n- **Review spiritual support.** Retain, adapt or remove the spiritual/religious prompt according to the population and study purpose.\n- **Decide whether closeness and contact are needed.** They are not part of this core template. Add an Ordinal Bin after relationship classification if the study requires those measures.\n- **Plan how to capture reflection.** Narrative drawings and conversation are not exported. Arrange approved audio, notes or screen capture when the qualitative account is research data.\n\n### Why there are two name variables\n\nFamily members are named on the pedigree and stored in `name`; everyone added afterwards is stored in `contact_name`. This is deliberate. A variable cannot be written both by a form and outside a form — Architect warns when that happens, because values written outside a form skip the validation rules the form would apply. The pedigree writes names outside a form, and the quick-add screen writes them through one, so they need separate variables. Each person still displays under whichever of the two is filled in, and you can merge the two columns when you analyse the data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) are recorded for family and non-family contacts. Three communication roles (gatherer, disseminator, blocker) are recorded for family members. From the exchange variables you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4). Relationship categories are collected only for people added beyond the pedigree; use `relationship_to_ego` for family relationships and `tie_type` for non-family contacts in analysis.\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://doi.org/10.1023/A:1016627426430) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
         }
       ]
     },
@@ -383,13 +402,24 @@
       "id": "family-pedigree",
       "type": "FamilyPedigree",
       "label": "Family pedigree",
-      "interviewScript": "Build the pedigree with the participant rather than handing them the device. Published CEGRM sessions are co-constructed, and recent studies pre-populate the pedigree before the session and review it with the participant instead of drawing it from scratch — do that if your study design allows, since it substantially reduces burden.\n\nThe three questions after the pedigree is finalised are asked by tapping people on the finished tree. Take them slowly. Asking who has died, in a family living with an inherited condition, will often prompt a story; let it run, and capture it using your approved study procedure.",
+      "interviewScript": "Build the pedigree with the participant rather than handing them the device. Published CEGRM sessions are co-constructed, and recent studies pre-populate the pedigree before the session and review it with the participant instead of drawing it from scratch — do that if your study design allows, since it substantially reduces burden.\n\nLiving status and birth year are collected while each person is added. The two questions after the pedigree is finalised are asked by tapping people on the finished tree. Take them slowly. Illness, testing and bereavement will often prompt a story; let it run, and capture it using your approved study procedure.",
       "nodeConfig": {
         "type": "person",
         "nodeLabelVariable": "name",
         "egoVariable": "is_ego",
         "relationshipVariable": "relationship_to_ego",
-        "biologicalSexVariable": "biologicalSex"
+        "biologicalSexVariable": "biologicalSex",
+        "form": [
+          {
+            "variable": "living_status",
+            "prompt": "Is this person living or deceased?"
+          },
+          {
+            "variable": "birth_year",
+            "prompt": "What year was this person born?",
+            "hint": "Leave this blank if you do not know."
+          }
+        ]
       },
       "edgeConfig": {
         "type": "family_relationship",
@@ -403,14 +433,14 @@
       },
       "boundaries": {
         "requireGrandparents": "recommended",
-        "requireChildrenContributors": "off"
+        "requireChildrenContributors": "recommended"
       },
       "introScreen": {
         "items": [
           {
             "id": "pedigree-intro",
             "type": "text",
-            "content": "A family tree records everyone in your family — partners, step-parents, adoptive parents, and anyone who helped you come into the world.\n\nIt also keeps track of who you are **biologically** related to, because that is what lets us follow how a condition passes down a family. You will be asked about both, so please include everyone."
+            "content": "A family tree records everyone in your family — including partners, step-parents, adoptive and social parents, donors, surrogates, and anyone else who helped you come into the world.\n\nIt also keeps track of which relationships are **biological**, because that is what lets us follow how a condition may pass down a family. You will be asked about both, so please include everyone who belongs in your family story."
           }
         ]
       },
@@ -425,11 +455,6 @@
           "id": "nom-testing",
           "text": "Who has had **genetic testing** for it?",
           "variable": "had_testing"
-        },
-        {
-          "id": "nom-deceased",
-          "text": "Who has **died**?",
-          "variable": "is_deceased"
         }
       ]
     },
@@ -442,7 +467,7 @@
         {
           "id": "beyond-text",
           "type": "text",
-          "content": "A family tree only shows the people you are related to. The next few screens add everyone else who matters — friends, colleagues, neighbours, people from groups you belong to, and the people who look after your health.\n\nThey will sit alongside your family on the same map."
+          "content": "You have mapped the people who belong in your family story. The next few screens add everyone else who matters — friends, colleagues, neighbours, people from groups you belong to, and the people who look after your health.\n\nThey will sit alongside your family on the same map."
         }
       ]
     },
@@ -459,8 +484,32 @@
       "panels": [
         {
           "id": "already-mentioned",
-          "title": "People you already named",
-          "dataSource": "existing"
+          "title": "People you added earlier",
+          "dataSource": "existing",
+          "filter": {
+            "join": "AND",
+            "rules": [
+              {
+                "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d46",
+                "type": "node",
+                "options": {
+                  "type": "person",
+                  "attribute": "is_ego",
+                  "operator": "NOT",
+                  "value": true
+                }
+              },
+              {
+                "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d47",
+                "type": "node",
+                "options": {
+                  "type": "person",
+                  "attribute": "relationship_to_ego",
+                  "operator": "NOT_EXISTS"
+                }
+              }
+            ]
+          }
         }
       ],
       "prompts": [
@@ -629,7 +678,7 @@
       "id": "socio-roles",
       "type": "Sociogram",
       "label": "Talking about the condition",
-      "interviewScript": "These three questions are the coloured stars of the paper instrument — the gatherer, disseminator and blocker roles described by Koehly and colleagues. The third one names someone as a barrier to family communication, so frame it gently and without judgement: people usually have reasons, and those reasons are often the most useful thing the participant tells you.",
+      "interviewScript": "These three questions are the coloured stars of the paper instrument — the gatherer, disseminator and blocker roles described by Koehly and colleagues. They are configured for family members because the published roles describe communication within families at hereditary risk. Widen the filter only when non-family information brokerage is part of the research question.\n\nThe third question names someone as a barrier to family communication, so frame it gently and without judgement: people usually have reasons, and those reasons are often the most useful thing the participant tells you.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -644,7 +693,7 @@
       "prompts": [
         {
           "id": "p-gatherer",
-          "text": "Who **looks for information** about this condition — reads about it, asks questions, keeps track of what is known?",
+          "text": "Who in your family **looks for information** about this condition — reads about it, asks questions, or keeps track of what is known?",
           "layout": {
             "layoutVariable": "layout"
           },
@@ -658,7 +707,7 @@
         },
         {
           "id": "p-disseminator",
-          "text": "Who **helps the family talk** about it and passes news on?",
+          "text": "Who in your family **helps people talk** about it and passes news on?",
           "layout": {
             "layoutVariable": "layout"
           },
@@ -672,7 +721,7 @@
         },
         {
           "id": "p-blocker",
-          "text": "Who finds it **hard to talk** about it, or would rather not know?",
+          "text": "Who in your family finds it **hard to talk** about it, or would rather not know?",
           "layout": {
             "layoutVariable": "layout"
           },
@@ -686,6 +735,7 @@
         }
       ],
       "filter": {
+        "join": "AND",
         "rules": [
           {
             "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d42",
@@ -696,6 +746,15 @@
               "operator": "NOT",
               "value": true
             }
+          },
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d45",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "relationship_to_ego",
+              "operator": "EXISTS"
+            }
           }
         ]
       }
@@ -704,7 +763,7 @@
       "id": "narrative-cegrm",
       "type": "Narrative",
       "label": "The completed map",
-      "interviewScript": "This is the payoff of the whole session, and the point at which the CEGRM stops being a questionnaire and becomes an elicitation device. Operate it yourself and use it to prompt the participant.\n\nStep through the overlays and ask what they notice. Where do the colours cluster? Where are they absent? Absence is as informative as presence — a person with no one in the feelings overlay, or a family where practical help comes entirely from outside it, is the finding. Participants in the published studies consistently reported insight from seeing the pattern rather than from being asked about it.\n\nOne overlay shows at a time. Move between them at the participant's pace, and let them ask to go back. Nothing on this screen is saved, including any drawing, so capture the conversation using your approved study procedure.",
+      "interviewScript": "This is the payoff of the whole session, and the point at which the CEGRM stops being a questionnaire and becomes an elicitation device. Operate it yourself and use it to prompt the participant.\n\nBegin with everyone and their connections. Then use Forms of support to move through information, practical help, feelings and spiritual connection, followed by Family health communication for the gatherer, disseminator and blocker roles. Ask what the participant notices. Where do the colours cluster? Where are they absent? Absence is as informative as presence — a person with no one in the feelings overlay, or a family where practical help comes entirely from outside it, is the finding.\n\nMove between overlays at the participant's pace and let them ask to go back. The positions are kept fixed so comparisons remain meaningful. Nothing drawn on this screen is saved, so capture the conversation using your approved study procedure.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -715,7 +774,7 @@
       },
       "behaviours": {
         "automaticLayout": false,
-        "allowRepositioning": true,
+        "allowRepositioning": false,
         "freeDraw": true
       },
       "presets": [
@@ -723,43 +782,31 @@
           "id": "preset-everyone",
           "label": "Everyone on your map",
           "layoutVariable": "layout",
-          "groupVariable": "tie_type",
           "edges": {
             "display": ["knows"]
           }
         },
         {
-          "id": "preset-information",
-          "label": "Information",
+          "id": "preset-support",
+          "label": "Forms of support",
           "layoutVariable": "layout",
-          "groupVariable": "tie_type",
-          "highlight": ["exch_information"]
-        },
-        {
-          "id": "preset-tangible",
-          "label": "Practical help",
-          "layoutVariable": "layout",
-          "groupVariable": "tie_type",
-          "highlight": ["exch_tangible"]
-        },
-        {
-          "id": "preset-emotional",
-          "label": "Feelings",
-          "layoutVariable": "layout",
-          "groupVariable": "tie_type",
-          "highlight": ["exch_emotional"]
-        },
-        {
-          "id": "preset-spiritual",
-          "label": "Spiritual connection",
-          "layoutVariable": "layout",
-          "groupVariable": "tie_type",
-          "highlight": ["exch_spiritual"]
+          "edges": {
+            "display": ["knows"]
+          },
+          "highlight": [
+            "exch_information",
+            "exch_tangible",
+            "exch_emotional",
+            "exch_spiritual"
+          ]
         },
         {
           "id": "preset-roles",
-          "label": "Talking about the condition",
+          "label": "Family health communication",
           "layoutVariable": "layout",
+          "edges": {
+            "display": ["knows"]
+          },
           "highlight": ["role_gatherer", "role_disseminator", "role_blocker"]
         }
       ],
@@ -782,16 +829,16 @@
       "id": "narrative-pedigree",
       "type": "NarrativePedigree",
       "label": "How the condition runs in the family",
-      "interviewScript": "Set the inheritance pattern to match your study's condition before fielding — it is currently autosomal dominant.\n\nSelecting one person shows only the relatives who bear on how they would inherit, which is usually easier to follow than the whole tree at once. At-risk statuses are shown: these are inferred from the pattern and from who was named as affected, and they are neither a diagnosis nor a test result. Say so plainly if the participant reads them as one, and be ready for the possibility that this view shows a participant something about their family they had not put together before.",
+      "interviewScript": "This view reports the family structure and the people the participant identified as having the condition. It does not establish a diagnosis.\n\nThe inheritance pattern deliberately defaults to unknown and possible at-risk statuses are switched off. Before fielding, select a clinically supported pattern if one applies. Only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure; the inference assumes full penetrance and may surface information a participant has not previously been told.",
       "sourceStageId": "family-pedigree",
-      "showAtRiskStatuses": true,
+      "showAtRiskStatuses": false,
       "diseases": [
         {
           "id": "condition",
           "label": "This condition",
           "color": "#e53e3e",
           "variable": "has_condition",
-          "inheritancePattern": "autosomalDominant"
+          "inheritancePattern": "unknown"
         }
       ]
     },
