@@ -159,6 +159,15 @@ const V_OVERALL_REVIEW = 'd91ca102-954d-4da1-b8b8-d9490c7bca44';
 const V_VISITED = '95c5bb4d-5ac2-4ddd-8dd9-fca518f15748';
 
 test.describe.serial('sample protocol built from scratch', () => {
+  // Each build test drives between one and nine editor dialogs, several of
+  // them carrying rich-text fields, so these run long by construction: the
+  // heaviest (the nine-field ego form) takes ~60s on an idle machine. The
+  // suite's 60s default left no room for a loaded CI runner — measured
+  // there: tests that take 30s standalone take 60s under parallel load, and
+  // two of them timed out on the first pass. 120s keeps a 4x margin over
+  // observed worst cases without masking a genuine hang.
+  test.describe.configure({ timeout: 120_000 });
+
   let context: BrowserContext;
   let page: Page;
   let editor: StageEditor;

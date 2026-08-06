@@ -28,6 +28,14 @@ import { expect, type Locator, type Page } from '@playwright/test';
 //   navigates to `/protocol` only once redux-form's sync validators all pass
 //   and the commit actually runs — so `waitForURL` after the click is a
 //   genuine round-trip assertion, not just a click-and-hope.
+// Inline emphasis spans, longest-delimiter first so `**bold**` is never read
+// as two adjacent `*italic*` markers. Kept as a split pattern (capturing, so
+// `String.split` returns the delimiters as their own segments) and a matching
+// anchored test — deliberately NOT one global regex, whose `lastIndex` would
+// carry between calls.
+const EMPHASIS_SPLIT = /(\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)/;
+const EMPHASIS_TEST = /^(?:\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)$/;
+
 type MarkdownBlock =
   | { kind: 'paragraph'; text: string }
   | { kind: 'bullet' | 'ordered'; items: string[] };
@@ -142,7 +150,7 @@ export class StageEditor {
         await this.page.keyboard.press('Enter');
       }
       if (block.kind === 'paragraph') {
-        await this.page.keyboard.type(block.text);
+        await this.typeInlineRun(block.text);
         needsBlockBreak = true;
         continue;
       }
@@ -152,13 +160,37 @@ export class StageEditor {
         } else {
           await this.page.keyboard.press('Enter');
         }
-        await this.page.keyboard.type(item);
+        await this.typeInlineRun(item);
       }
       // Exit the list: the first Enter opens an empty item, the second lifts
       // it out into a fresh paragraph — so the next block needs no break.
       await this.page.keyboard.press('Enter');
       await this.page.keyboard.press('Enter');
       needsBlockBreak = false;
+    }
+  }
+
+  // One line of inline markdown. Only the emphasis markers need to arrive as
+  // real keystrokes — Tiptap converts `**bold**` / `_italic_` / `*italic*`
+  // through ProseMirror input rules, which fire on the closing character and
+  // are invisible to bulk insertion. Everything between them is plain prose
+  // that `insertText` places in one call.
+  //
+  // This is the difference between ~15,000 keystroke round trips across the
+  // spec and a few hundred: the whole-protocol build types 15kB of canonical
+  // copy, of which under 5% carries emphasis. It is also SAFER than typing
+  // everything, because bulk-inserted prose cannot trip an input rule it was
+  // never meant to (a sentence that happens to start `1. `, say). Correctness
+  // is not assumed — the final comparison re-parses every string, so a
+  // mis-typed mark fails the run loudly.
+  private async typeInlineRun(text: string): Promise<void> {
+    for (const segment of text.split(EMPHASIS_SPLIT)) {
+      if (!segment) continue;
+      if (EMPHASIS_TEST.test(segment)) {
+        await this.page.keyboard.type(segment);
+      } else {
+        await this.page.keyboard.insertText(segment);
+      }
     }
   }
 
