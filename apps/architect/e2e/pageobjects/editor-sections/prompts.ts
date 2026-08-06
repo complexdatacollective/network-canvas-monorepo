@@ -1,4 +1,4 @@
-import { type Locator } from '@playwright/test';
+import { type Locator, type Page } from '@playwright/test';
 
 // Every interface's `prompts` array is backed by the same DialogArrayField
 // (Form/DialogArrayField.tsx) pattern — verified against
@@ -22,13 +22,50 @@ import { type Locator } from '@playwright/test';
 export async function addPrompt(
   section: Locator,
   fill: () => Promise<void>,
+  opts: {
+    // A locator that is VISIBLE only in a genuinely fresh dialog (e.g. an
+    // unset picker's 'Select variable' button). The item dialogs share one
+    // never-reinitializing redux-form ('editable-list-form'); if the next
+    // dialog opens before the previous unmount completed, it resurrects the
+    // PREVIOUS item's values and id (observed live). When the sign doesn't
+    // show, cancel — a full close cycle forces the unmount — and reopen.
+    freshSign?: (page: Page) => Locator;
+  } = {},
 ): Promise<void> {
-  await section
-    .getByRole('button', { name: 'Create new', exact: true })
-    .click();
+  const create = section.getByRole('button', {
+    name: 'Create new',
+    exact: true,
+  });
+  await create.click();
+  if (opts.freshSign) {
+    const sign = opts.freshSign(section.page());
+    try {
+      await sign.waitFor({ state: 'visible', timeout: 3_000 });
+    } catch {
+      // Scoped to the dialog: the stage editor's own toolbar also has a
+      // 'Cancel' button.
+      const cancel = section
+        .page()
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Cancel', exact: true });
+      await cancel.click();
+      await cancel.waitFor({ state: 'detached' });
+      await create.click();
+      await sign.waitFor({ state: 'visible' });
+    }
+  }
   await fill();
-  await section
+  const submit = section
     .page()
-    .getByRole('button', { name: 'Add', exact: true })
-    .click();
+    .getByRole('button', { name: 'Add', exact: true });
+  await submit.click();
+  // Wait for the dialog subtree to actually LEAVE the DOM, not just hide:
+  // the dialog form (InlineEditScreen/Form) has `enableReinitialize: false`
+  // and every item dialog shares the 'editable-list-form' name, so opening
+  // the next dialog while this one is still mounted mid-exit-animation
+  // reuses the PREVIOUS item's form state (stale values and — worse — a
+  // duplicate item id that the app then rejects at commit). Unmount destroys
+  // the form state (redux-form destroyOnUnmount), guaranteeing a fresh
+  // initialize on the next open. Observed live before this guard existed.
+  await submit.waitFor({ state: 'detached' });
 }
