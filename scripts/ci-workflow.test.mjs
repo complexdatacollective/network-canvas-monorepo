@@ -410,11 +410,15 @@ test('snapshot update workflow accepts only current release branches', () => {
 test('closed snapshot PRs cannot leave permanent pending state', () => {
   assert.match(
     snapshotWorkflow,
-    /open_pr_count=\$\(gh pr list[\s\S]*?--state open[\s\S]*?--head "\$SNAPSHOT_BRANCH"[\s\S]*?--jq 'length'\)/,
+    /id: snapshot_source[\s\S]*?state: 'open'[\s\S]*?base: 'main'[\s\S]*?head,/,
   );
   assert.match(
     snapshotWorkflow,
-    /if \[\[ "\$open_pr_count" == '0' \]\]; then\n\s+echo 'No open central snapshot PR exists yet\.'/,
+    /pull\.head\.repo\?\.full_name === `\$\{context\.repo\.owner\}\/\$\{context\.repo\.repo\}` &&\n\s+pull\.head\.ref === snapshotBranch/,
+  );
+  assert.match(
+    snapshotWorkflow,
+    /steps\.snapshot_source\.outputs\.open == 'true'/,
   );
   assert.doesNotMatch(
     snapshotWorkflow,
