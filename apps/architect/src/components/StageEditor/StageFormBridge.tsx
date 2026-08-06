@@ -1,0 +1,297 @@
+import { isEqual } from 'es-toolkit/compat';
+import {
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useStore } from 'react-redux';
+
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type { FieldState } from '@codaco/fresco-ui/form/store/types';
+import type { Stage } from '@codaco/protocol-validation';
+import { useAppDispatch } from '~/ducks/hooks';
+import {
+  draftSnapshot,
+  resetDraft,
+  setLiveValues,
+  setRestoring,
+} from '~/ducks/modules/stageEditorDraft';
+import type { RootState } from '~/ducks/store';
+
+import {
+  StageFormContext,
+  type StageFormContextValue,
+  type StageFormStoreApi,
+} from './stageFormContext';
+
+// Debounce window (ms) for leaf-field edits before they snapshot.
+const SNAPSHOT_DEBOUNCE_MS = 400;
+
+// Coalescing window (ms) for the Redux mirror of the form's values.
+const LIVE_VALUES_DEBOUNCE_MS = 100;
+
+type StageFormBridgeProps = {
+  committedStage: Stage | null;
+  stageId: string | null;
+  formId: string;
+  children: ReactNode;
+};
+
+type FieldsMap = ReadonlyMap<string, FieldState>;
+
+type FieldsDiff = {
+  /** Any field transitioned from never-blurred to blurred. */
+  blurred: boolean;
+  /** Fields registered in both states whose value changed. */
+  changed: { previous: unknown; next: unknown }[];
+};
+
+const diffFields = (previous: FieldsMap, next: FieldsMap): FieldsDiff => {
+  const diff: FieldsDiff = { blurred: false, changed: [] };
+
+  next.forEach((nextField, name) => {
+    const previousField = previous.get(name);
+
+    // Fields appearing or disappearing are mount churn (a section expanding,
+    // an interface swapping its fields), never a user edit. Ignoring them is
+    // what keeps the burst of registrations on open — and every collapse of a
+    // section — out of the undo timeline.
+    if (!previousField) return;
+
+    if (!previousField.meta.isBlurred && nextField.meta.isBlurred) {
+      diff.blurred = true;
+    }
+
+    if (!Object.is(previousField.value, nextField.value)) {
+      diff.changed.push({
+        previous: previousField.value,
+        next: nextField.value,
+      });
+    }
+  });
+
+  return diff;
+};
+
+const useFormStoreApi = (): StageFormStoreApi => {
+  const storeApi = useContext(FormStoreContext);
+
+  if (!storeApi) {
+    throw new Error(
+      'StageFormBridge must be rendered inside a FormStoreProvider',
+    );
+  }
+
+  return storeApi;
+};
+
+/**
+ * Replaces the redux-form draft listener middleware: watches the stage form's
+ * zustand store and drives the `stageEditorDraft` timeline from it, and
+ * provides the stage form context (identity, store api, submit state, and the
+ * restore handle `useStageDraftHistory` drives undo/redo through).
+ */
+const StageFormBridge = ({
+  committedStage,
+  stageId,
+  formId,
+  children,
+}: StageFormBridgeProps) => {
+  const storeApi = useFormStoreApi();
+  const dispatch = useAppDispatch();
+  const reduxStore = useStore<RootState>();
+
+  const [submitFailed, setSubmitFailed] = useState(false);
+  const markSubmitFailed = useCallback(() => setSubmitFailed(true), []);
+  const clearSubmitFailed = useCallback(() => setSubmitFailed(false), []);
+
+  const snapshotTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveValuesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Synchronous companion to `ui.restoring`: the store subscriber runs inside
+  // the `setFieldValue` call that a restore makes, so it needs an answer that
+  // does not depend on a Redux round trip.
+  const restoring = useRef(false);
+
+  const cancelPendingSnapshot = useCallback(() => {
+    if (snapshotTimer.current === null) return;
+    clearTimeout(snapshotTimer.current);
+    snapshotTimer.current = null;
+  }, []);
+
+  const takeSnapshot = useCallback(() => {
+    if (restoring.current) return;
+
+    const formState = storeApi.getState();
+    // A form with no registered fields has no values to snapshot — only an
+    // empty object that would wipe the timeline entry it replaced.
+    if (formState.fields.size === 0) return;
+
+    const values = formState.getFormValues() as unknown as Stage;
+
+    // Dedup against the current `present` so one undo step stays one logical
+    // change (and a stale debounce that fires after a restore is a no-op).
+    if (isEqual(values, reduxStore.getState().stageEditorDraft.history.present))
+      return;
+
+    dispatch(draftSnapshot(values));
+  }, [dispatch, reduxStore, storeApi]);
+
+  const refreshLiveValues = useCallback(() => {
+    if (liveValuesTimer.current !== null) {
+      clearTimeout(liveValuesTimer.current);
+      liveValuesTimer.current = null;
+    }
+    dispatch(
+      setLiveValues(storeApi.getState().getFormValues() as unknown as Stage),
+    );
+  }, [dispatch, storeApi]);
+
+  const scheduleLiveValues = useCallback(() => {
+    if (liveValuesTimer.current !== null) return;
+    liveValuesTimer.current = setTimeout(() => {
+      liveValuesTimer.current = null;
+      dispatch(
+        setLiveValues(storeApi.getState().getFormValues() as unknown as Stage),
+      );
+    }, LIVE_VALUES_DEBOUNCE_MS);
+  }, [dispatch, storeApi]);
+
+  const runRestore = useCallback(
+    (apply: () => void) => {
+      restoring.current = true;
+      // Mirrored into Redux so anything reading `getDraftRestoring` agrees
+      // with the ref for the duration of the restore.
+      dispatch(setRestoring(true));
+      try {
+        apply();
+      } finally {
+        restoring.current = false;
+        dispatch(setRestoring(false));
+        refreshLiveValues();
+      }
+    },
+    [dispatch, refreshLiveValues],
+  );
+
+  const handleStoreChange = useCallback(
+    (next: { fields: FieldsMap }, previous: { fields: FieldsMap }) => {
+      // Restores write through `setFieldValue`; they must not snapshot, and
+      // `runRestore` refreshes the mirror once at the end.
+      if (restoring.current) return;
+
+      if (next.fields === previous.fields) return;
+
+      scheduleLiveValues();
+
+      const { blurred, changed } = diffFields(previous.fields, next.fields);
+
+      // Blur commits whatever the user has typed so far (replaces the BLUR
+      // action the redux-form listener flushed on).
+      if (blurred && snapshotTimer.current !== null) {
+        cancelPendingSnapshot();
+        takeSnapshot();
+      }
+
+      if (changed.length === 0) return;
+
+      // Every array in the stage form is one opaque field value, so an array
+      // write is an add/remove/reorder/whole-item edit: one logical change,
+      // snapshotted immediately (replaces redux-form's ARRAY_* actions and
+      // its `field.endsWith(']')` whole-element rule).
+      const isArrayChange = changed.some(
+        ({ previous: before, next: after }) =>
+          Array.isArray(before) || Array.isArray(after),
+      );
+
+      cancelPendingSnapshot();
+
+      if (isArrayChange) {
+        takeSnapshot();
+        return;
+      }
+
+      snapshotTimer.current = setTimeout(() => {
+        snapshotTimer.current = null;
+        takeSnapshot();
+      }, SNAPSHOT_DEBOUNCE_MS);
+    },
+    [cancelPendingSnapshot, scheduleLiveValues, takeSnapshot],
+  );
+
+  // The provider is remounted (keyed) whenever the edited stage changes, so
+  // the baseline is seeded exactly once per stage. `committedStage` is read
+  // through a ref so an unstable prop identity cannot re-seed and wipe the
+  // history mid-edit.
+  const committedStageRef = useRef(committedStage);
+  committedStageRef.current = committedStage;
+
+  useEffect(() => {
+    // Seed the draft baseline (replaces redux-form's INITIALIZE). Field
+    // registration happens in child effects, which have all run by now, so the
+    // form's own values are the stage's opening state — and the space every
+    // later snapshot is expressed in. Seeding with the committed stage instead
+    // would put keys the form never registers (`id`, `type`, a section that
+    // opens collapsed) on the baseline, where they read as deletions the
+    // moment the first snapshot lands. The committed stage is the fallback for
+    // a form that has no fields yet.
+    const formState = storeApi.getState();
+    const seed =
+      formState.fields.size > 0
+        ? (formState.getFormValues() as unknown as Stage)
+        : committedStageRef.current;
+    dispatch(resetDraft(seed));
+
+    const unsubscribe = storeApi.subscribe(handleStoreChange);
+
+    return () => {
+      unsubscribe();
+      cancelPendingSnapshot();
+      if (liveValuesTimer.current !== null) {
+        clearTimeout(liveValuesTimer.current);
+        liveValuesTimer.current = null;
+      }
+      // The mirror only describes a mounted stage form.
+      dispatch(setLiveValues(null));
+    };
+  }, [cancelPendingSnapshot, dispatch, handleStoreChange, storeApi]);
+
+  const draft = useMemo(
+    () => ({ cancelPendingSnapshot, runRestore, refreshLiveValues }),
+    [cancelPendingSnapshot, refreshLiveValues, runRestore],
+  );
+
+  const value = useMemo<StageFormContextValue>(
+    () => ({
+      formId,
+      storeApi,
+      committedStage,
+      stageId,
+      submitFailed,
+      markSubmitFailed,
+      clearSubmitFailed,
+      draft,
+    }),
+    [
+      clearSubmitFailed,
+      committedStage,
+      draft,
+      formId,
+      markSubmitFailed,
+      stageId,
+      storeApi,
+      submitFailed,
+    ],
+  );
+
+  return (
+    <StageFormContext.Provider value={value}>
+      {children}
+    </StageFormContext.Provider>
+  );
+};
+
+export default StageFormBridge;

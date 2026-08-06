@@ -54,11 +54,23 @@ const historyReducer = createTimelineReducer<Stage | null>(
 type UiState = {
   restoring: boolean;
   initialValues: Stage | null;
+  // Debounced mirror of the stage form's current values, written by
+  // `StageFormBridge` while the fresco-ui stage form is mounted. It is the one
+  // Redux-side view of form state for readers that cannot use a React hook
+  // (dirty tracking, `isUsed`, the preview payload). Null whenever no stage
+  // form is mounted.
+  liveValues: Stage | null;
+  // Edits that happen outside the stage form but still make the draft dirty
+  // (codebook writes triggered from a section). Replaces the `_modified`
+  // sentinel field that used to be written into the form itself.
+  externalEditCount: number;
 };
 
 const uiInitialState: UiState = {
   restoring: false,
   initialValues: null,
+  liveValues: null,
+  externalEditCount: 0,
 };
 
 const uiSlice = createSlice({
@@ -68,16 +80,29 @@ const uiSlice = createSlice({
     setRestoring: (state, action: PayloadAction<boolean>) => {
       state.restoring = action.payload;
     },
+    setLiveValues: (state, action: PayloadAction<Stage | null>) => {
+      state.liveValues = action.payload;
+    },
+    markExternalEdit: (state) => {
+      state.externalEditCount += 1;
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(draftTimelineActions.reset, (state, action) => {
       state.initialValues = (action.payload as Stage) ?? null;
       state.restoring = false;
+      // Seeding the baseline also seeds the mirror, so the draft cannot read
+      // as dirty in the window between mounting a stage form and its first
+      // debounced mirror write.
+      state.liveValues = (action.payload as Stage) ?? null;
+      state.externalEditCount = 0;
     });
   },
 });
 
 export const setRestoring = uiSlice.actions.setRestoring;
+export const setLiveValues = uiSlice.actions.setLiveValues;
+export const markExternalEdit = uiSlice.actions.markExternalEdit;
 
 const uiReducer = uiSlice.reducer;
 
