@@ -4,7 +4,7 @@ import { type Dispatch, type SetStateAction, useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
-import { deleteInterviews } from '~/actions/interviews';
+import { useInterviewActions } from '~/components/interviews/InterviewActions';
 
 type DeleteInterviewsDialog = {
   open: boolean;
@@ -17,6 +17,7 @@ export const DeleteInterviewsDialog = ({
   setOpen,
   interviewsToDelete,
 }: DeleteInterviewsDialog) => {
+  const { deleteInterviews, refresh } = useInterviewActions();
   const [hasUnexported, setHasUnexported] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -28,6 +29,7 @@ export const DeleteInterviewsDialog = ({
 
   const handleConfirm = async () => {
     await deleteInterviews(interviewsToDelete.map((d) => ({ id: d.id })));
+    await refresh();
     setHasUnexported(false);
 
     setOpen(false);

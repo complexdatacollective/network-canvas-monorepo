@@ -1,7 +1,7 @@
 'use client';
 
 import { Download } from 'lucide-react';
-import { unparse } from 'papaparse';
+import Papa from 'papaparse';
 import { useState } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
@@ -34,7 +34,7 @@ function ExportCSVInterviewURLs({
         interview_url: `${window.location.origin}/interview/${interview.id}`,
       }));
 
-      const csv = unparse(csvData, { header: true });
+      const csv = Papa.unparse(csvData, { header: true });
 
       // Create a download link
       const blob = new Blob([csv], { type: 'text/csv' });

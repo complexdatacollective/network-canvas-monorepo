@@ -90,3 +90,10 @@ export const createUploadThingTokenSchema = zm.pipe(
 export const createUploadThingTokenFormSchema = zm.object({
   uploadThingToken: createUploadThingTokenSchema,
 });
+
+/**
+ * The parsed shape of every app setting. Exported here so consumers do not
+ * each need to import `zod` to write `z.infer<typeof ...>` — which matters for
+ * client-reachable trees, where the lint boundary requires `zod/mini`.
+ */
+export type AppSettingValues = z.infer<typeof appSettingPreprocessedSchema>;

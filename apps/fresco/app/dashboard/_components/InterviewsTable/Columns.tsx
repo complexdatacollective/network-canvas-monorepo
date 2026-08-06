@@ -1,7 +1,5 @@
 'use client';
 
-import Image from 'next/image';
-
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
 import {
@@ -16,6 +14,7 @@ import { type StrictColumnDef } from '@codaco/fresco-ui/DataTable/types';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
+import { Image } from '~/components/ui/nav';
 import type {
   GetInterviewsQuery,
   InterviewFilterOptions,

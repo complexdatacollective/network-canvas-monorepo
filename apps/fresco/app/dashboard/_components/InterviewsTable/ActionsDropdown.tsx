@@ -7,7 +7,6 @@ import {
   FileIcon,
   MoreHorizontal,
 } from 'lucide-react';
-import Link from 'next/link';
 import { hash as objectHash } from 'ohash';
 import { useState } from 'react';
 
@@ -22,6 +21,7 @@ import {
 } from '@codaco/fresco-ui/DropdownMenu';
 import { DeleteInterviewsDialog } from '~/app/dashboard/interviews/_components/DeleteInterviewsDialog';
 import { ExportInterviewsDialog } from '~/app/dashboard/interviews/_components/ExportInterviewsDialog';
+import { Link } from '~/components/ui/nav';
 import type { GetInterviewsQuery } from '~/queries/interviews';
 
 type InterviewRow = GetInterviewsQuery[number];

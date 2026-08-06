@@ -18,6 +18,12 @@
 
 # next.js
 /.next/
+
+# tanstack start (vite + nitro)
+/.output/
+/dist/
+/.tanstack/
+/.nitro/
 /out/
 next-env.d.ts
 

@@ -1,5 +1,6 @@
 import { type Metadata, type Viewport } from 'next';
 import { connection } from 'next/server';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Suspense } from 'react';
 
 import Providers from '~/components/Providers';
@@ -50,7 +51,10 @@ function RootLayout({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <body className="bg-background publish-colors antialiased">
         <div className="root min-h-dvh">
-          <Providers disableAnimations={env.CI ?? false}>
+          <Providers
+            disableAnimations={env.CI ?? false}
+            nuqsAdapter={NuqsAdapter}
+          >
             <Suspense>
               <AnalyticsLoader />
             </Suspense>

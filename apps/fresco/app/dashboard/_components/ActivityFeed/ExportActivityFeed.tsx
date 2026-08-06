@@ -1,7 +1,7 @@
 'use client';
 
 import { FileUp } from 'lucide-react';
-import { unparse } from 'papaparse';
+import Papa from 'papaparse';
 import { useTransition } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
@@ -25,7 +25,7 @@ export default function ExportActivityFeed() {
           details: activity.message,
         }));
 
-        const csv = unparse(csvData, { header: true });
+        const csv = Papa.unparse(csvData, { header: true });
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         download(url, 'activity-feed.csv');

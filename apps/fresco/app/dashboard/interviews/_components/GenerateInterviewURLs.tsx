@@ -14,10 +14,8 @@ import {
 import { Skeleton } from '@codaco/fresco-ui/Skeleton';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import {
-  getIncompleteInterviewUrlData,
-  type IncompleteInterviewUrlData,
-} from '~/actions/interviews';
+import type { IncompleteInterviewUrlData } from '~/actions/interviews';
+import { useInterviewActions } from '~/components/interviews/InterviewActions';
 import type {
   GetProtocolsQuery,
   GetProtocolsReturnType,
@@ -43,6 +41,7 @@ export const GenerateInterviewURLs = ({
   const [selectedProtocol, setSelectedProtocol] =
     useState<(typeof protocols)[number]>();
 
+  const { getIncompleteInterviewUrlData } = useInterviewActions();
   const [isLoading, startLoading] = useTransition();
 
   const handleSelectProtocol = (protocolId: string | number) => {

@@ -12,7 +12,9 @@ const unparse = vi.hoisted(() =>
 const download = vi.hoisted(() => vi.fn());
 const addToast = vi.hoisted(() => vi.fn());
 
-vi.mock('papaparse', () => ({ unparse }));
+// papaparse is CommonJS, so the source imports it as a default and calls
+// `Papa.unparse`. The mock has to provide the same shape.
+vi.mock('papaparse', () => ({ default: { unparse }, unparse }));
 vi.mock('~/hooks/useDownload', () => ({ useDownload: () => download }));
 vi.mock('@codaco/fresco-ui/Toast', () => ({
   useToast: () => ({ add: addToast }),

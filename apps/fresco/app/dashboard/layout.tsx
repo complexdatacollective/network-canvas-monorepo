@@ -2,6 +2,7 @@ import { type Metadata } from 'next';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
 
+import { NextInterviewActions } from '~/app/dashboard/interviews/_components/NextInterviewActions';
 import { ExportProgressProvider } from '~/components/ExportProgressProvider';
 import NetlifyBadge from '~/components/NetlifyBadge';
 import { env } from '~/env';
@@ -26,7 +27,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       <Suspense fallback={null}>
         <UploadThingTokenGate />
       </Suspense>
-      <ExportProgressProvider>{children}</ExportProgressProvider>
+      <NextInterviewActions>
+        <ExportProgressProvider>{children}</ExportProgressProvider>
+      </NextInterviewActions>
       <NetlifyBadge />
     </div>
   );

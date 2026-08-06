@@ -17,10 +17,6 @@ import {
 } from '@codaco/fresco-ui/DropdownMenu';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import {
-  getInterviewDeletionInfo,
-  resolveInterviewIds,
-} from '~/actions/interviews';
 import { ActionsDropdown } from '~/app/dashboard/_components/InterviewsTable/ActionsDropdown';
 import { InterviewColumns } from '~/app/dashboard/_components/InterviewsTable/Columns';
 import { DeleteInterviewsDialog } from '~/app/dashboard/interviews/_components/DeleteInterviewsDialog';
@@ -32,6 +28,7 @@ import {
   NuqsTableProvider,
   useNuqsTable,
 } from '~/components/DataTable/nuqs/NuqsTableProvider';
+import { useInterviewActions } from '~/components/interviews/InterviewActions';
 import type {
   GetInterviewsQuery,
   GetInterviewsReturnType,
@@ -79,6 +76,8 @@ const InterviewsTableInner = ({
   'use no memo';
   const { isPending } = useNuqsTable();
   const { add } = useToast();
+  const { getInterviewDeletionInfo, resolveInterviewIds } =
+    useInterviewActions();
   const filterOptions = use(filterOptionsPromise);
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});

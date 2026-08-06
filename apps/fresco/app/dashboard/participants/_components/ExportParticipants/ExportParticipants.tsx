@@ -1,6 +1,6 @@
 'use client';
 
-import { unparse } from 'papaparse';
+import Papa from 'papaparse';
 import { useCallback } from 'react';
 
 import { useToast } from '@codaco/fresco-ui/Toast';
@@ -35,7 +35,7 @@ export function useExportParticipants(protocols: ProtocolWithInterviews[]) {
           return row;
         });
 
-        const csv = unparse(csvData, { header: true });
+        const csv = Papa.unparse(csvData, { header: true });
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         download(url, 'participants.csv');

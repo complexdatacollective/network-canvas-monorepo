@@ -1,0 +1,140 @@
+import { createFileRoute } from '@tanstack/react-router';
+
+import { env } from '~/env';
+
+/**
+ * `app/api/health/route.ts`, at the same URL and with the same response body,
+ * status codes and headers. `NextResponse.json` becomes `Response.json`; there
+ * is no other change.
+ */
+
+type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';
+
+type HealthCheck = {
+  name: string;
+  status: HealthStatus;
+  duration: number;
+  error?: string;
+  details?: Record<string, unknown>;
+};
+
+type HealthResponse = {
+  status: HealthStatus;
+  timestamp: string;
+  uptime: number;
+  version?: string;
+  checks: HealthCheck[];
+};
+
+const HEALTH_HEADERS = {
+  'Content-Type': 'application/json',
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+  'X-Health-Check': 'true',
+};
+
+function checkBasicHealth(): HealthCheck {
+  const start = performance.now();
+
+  try {
+    // Basic health check - just verify the service is running. Deliberately
+    // does NOT expose Node.js version or NODE_ENV to unauthenticated callers
+    // (information disclosure that aids CVE targeting).
+    const duration = performance.now() - start;
+
+    return {
+      name: 'basic',
+      status: 'healthy',
+      duration: Math.round(duration),
+      details: {
+        uptime: Math.round(process.uptime()),
+      },
+    };
+  } catch (error) {
+    const duration = performance.now() - start;
+
+    return {
+      name: 'basic',
+      status: 'unhealthy',
+      duration: Math.round(duration),
+      error:
+        error instanceof Error ? error.message : 'Basic health check failed',
+    };
+  }
+}
+
+function getOverallStatus(checks: HealthCheck[]): HealthStatus {
+  const hasUnhealthy = checks.some((check) => check.status === 'unhealthy');
+  const hasDegraded = checks.some((check) => check.status === 'degraded');
+
+  if (hasUnhealthy) return 'unhealthy';
+  if (hasDegraded) return 'degraded';
+  return 'healthy';
+}
+
+function getStatusCode(status: HealthStatus): number {
+  switch (status) {
+    case 'healthy':
+      return 200;
+    case 'degraded':
+      return 200; // Still operational
+    case 'unhealthy':
+      return 503; // Service Unavailable
+  }
+}
+
+export const Route = createFileRoute('/api/health')({
+  server: {
+    handlers: {
+      GET: () => {
+        const startTime = performance.now();
+
+        try {
+          const checks = [checkBasicHealth()];
+
+          const overallStatus = getOverallStatus(checks);
+
+          const response: HealthResponse = {
+            status: overallStatus,
+            timestamp: new Date().toISOString(),
+            uptime: Math.round(process.uptime()),
+            version: env.APP_VERSION ?? 'unknown',
+            checks,
+          };
+
+          return Response.json(
+            {
+              ...response,
+              duration: Math.round(performance.now() - startTime),
+            },
+            {
+              status: getStatusCode(overallStatus),
+              headers: HEALTH_HEADERS,
+            },
+          );
+        } catch (error) {
+          const response: HealthResponse = {
+            status: 'unhealthy',
+            timestamp: new Date().toISOString(),
+            uptime: Math.round(process.uptime()),
+            checks: [
+              {
+                name: 'health_check',
+                status: 'unhealthy',
+                duration: Math.round(performance.now() - startTime),
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : 'Health check failed',
+              },
+            ],
+          };
+
+          return Response.json(response, {
+            status: 503,
+            headers: HEALTH_HEADERS,
+          });
+        }
+      },
+    },
+  },
+});

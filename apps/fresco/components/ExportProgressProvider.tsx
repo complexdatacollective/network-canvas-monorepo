@@ -11,8 +11,8 @@ import {
 
 import { useToast } from '@codaco/fresco-ui/Toast';
 import type { ExportOptions } from '@codaco/network-exporters/options';
-import { commitInterviewExport } from '~/actions/interviews';
 import ExportToastContent from '~/components/ExportProgress/ExportToastContent';
+import { useInterviewActions } from '~/components/interviews/InterviewActions';
 import { useDownload } from '~/hooks/useDownload';
 import { runBatchedExport } from '~/lib/export/runBatchedExport';
 import { ensureError } from '~/utils/ensureError';
@@ -40,6 +40,7 @@ export function ExportProgressProvider({
 }) {
   const { add, update, close } = useToast();
   const download = useDownload();
+  const { commitInterviewExport } = useInterviewActions();
 
   // Tracks whether an export is in flight, so the beforeunload warning can
   // reflect it without re-registering the listener per render.
@@ -144,7 +145,7 @@ export function ExportProgressProvider({
         }
       })();
     },
-    [add, update, close, download],
+    [add, update, close, download, commitInterviewExport],
   );
 
   return (

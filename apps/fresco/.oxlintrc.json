@@ -41,7 +41,10 @@
       // Server-only trees (actions/, queries/, schemas/) use standard zod
       // behind `import 'server-only'` guards instead; route handlers are
       // exempted by the override below, which re-applies the narrower rule.
-      "files": ["app/**", "components/**", "hooks/**", "lib/**"],
+      // `src/**` is the TanStack Start tree and is client-reachable in exactly
+      // the same way `app/**` is, so the boundary has to cover it too —
+      // otherwise adding a second framework silently drops the rule.
+      "files": ["app/**", "components/**", "hooks/**", "lib/**", "src/**"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -63,6 +66,21 @@
             ]
           }
         ]
+      }
+    },
+    {
+      // The `nextjs` plugin asserts Next.js invariants. `src/**` is the
+      // TanStack Start tree, where `<head>` in the root document is the
+      // framework's documented shape and `next/head` does not exist.
+      //
+      // FINDING, not housekeeping: this is the one place the Phase B slice
+      // turns a lint rule off, and it exists only because two frameworks share
+      // one lint config. A completed migration deletes `app/**` and this
+      // override with it; a *stalled* migration leaves the repo permanently
+      // unable to state one set of framework rules for one app.
+      "files": ["src/**"],
+      "rules": {
+        "nextjs/no-head-element": "off"
       }
     },
     {
