@@ -22,6 +22,7 @@ import { SyntheticDataConstraintError } from '../constraints/error';
 import type { EntityScopeRef } from '../constraints/generateEntityAttributes';
 import {
   pedigreeDrawnNodeVariables,
+  pedigreeEgoNodeVariables,
   withRuleTiedVariables,
 } from '../constraints/stageWrites';
 import type { GenerationContext, NetworkDraft, StageOfType } from '../context';
@@ -577,10 +578,17 @@ export function materializeFamilyPedigree(
     // merely sharing this node type is left unset. Semantic variables absent
     // from `fixed` stay absent too — for example relationship-to-ego on ego —
     // because the interface owns them and has no value to derive there.
-    const only = withRuleTiedVariables(
-      codebookNodeVariables,
-      new Set([...drawnVariables, ...Object.keys(fixed)]),
-    );
+    const isPlannedEgo = person.key === plan.egoKey;
+    // The live setup asks ego only for biological sex. Its iconic pedigree
+    // node needs no label, and the additional family-member form is not shown
+    // for ego either. The shared helper applies the same write set to this draw
+    // and to the feasibility tally.
+    const only = isPlannedEgo
+      ? pedigreeEgoNodeVariables(stage, stages, codebookNodeVariables)
+      : withRuleTiedVariables(
+          codebookNodeVariables,
+          new Set([...drawnVariables, ...Object.keys(fixed)]),
+        );
     for (const id of Object.keys(fixed)) only.delete(id);
     const attributes = generateAttributesForEntity(
       familyCtx,
@@ -589,9 +597,10 @@ export function materializeFamilyPedigree(
       {
         existing: fixed,
         only,
-        preferRealisticNameVariables: nodeConfig.nodeLabelVariable
-          ? new Set([nodeConfig.nodeLabelVariable])
-          : undefined,
+        preferRealisticNameVariables:
+          !isPlannedEgo && nodeConfig.nodeLabelVariable
+            ? new Set([nodeConfig.nodeLabelVariable])
+            : undefined,
       },
     );
     Object.assign(attributes, fixed);

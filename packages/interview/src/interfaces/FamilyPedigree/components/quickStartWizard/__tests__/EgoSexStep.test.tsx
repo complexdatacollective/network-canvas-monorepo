@@ -1,15 +1,8 @@
 import { render } from '@testing-library/react';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
-
-const { personNameFieldSpy } = vi.hoisted(() => ({
-  personNameFieldSpy: vi.fn(),
-}));
+import { describe, expect, test, vi } from 'vitest';
 
 vi.mock('../../PersonNameField', () => ({
-  default: (props: unknown) => {
-    personNameFieldSpy(props);
-    return <div data-testid="person-name-field" />;
-  },
+  default: () => <div data-testid="person-name-field" />,
 }));
 
 vi.mock('../../BiologicalSexField', () => ({
@@ -19,19 +12,10 @@ vi.mock('../../BiologicalSexField', () => ({
 import EgoSexStep from '../EgoSexStep';
 
 describe('EgoSexStep', () => {
-  beforeEach(() => {
-    personNameFieldSpy.mockClear();
-  });
+  test('does not ask the pedigree node-label question about ego', () => {
+    const { getByTestId, queryByTestId } = render(<EgoSexStep />);
 
-  test('preserves the existing ego identity when validating its name', () => {
-    render(<EgoSexStep currentEntityId="ego-1" initialValue="Alex" />);
-
-    expect(personNameFieldSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        currentEntityId: 'ego-1',
-        initialValue: 'Alex',
-        label: 'What is your name?',
-      }),
-    );
+    expect(getByTestId('biological-sex-field')).toBeInTheDocument();
+    expect(queryByTestId('person-name-field')).not.toBeInTheDocument();
   });
 });

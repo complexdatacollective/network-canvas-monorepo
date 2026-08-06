@@ -203,18 +203,19 @@ describe('FamilyPedigree materialization', () => {
     );
     expect(egos).toHaveLength(1);
     expect(network.nodes[0]).toBe(egos[0]);
-    expect(
-      new Set(network.nodes.map((node) => node[entityAttributesProperty].name))
-        .size,
-    ).toBe(network.nodes.length);
+    const nonEgoNames = network.nodes
+      .filter((node) => node[entityAttributesProperty].isEgo !== true)
+      .map((node) => node[entityAttributesProperty].name);
+    expect(new Set(nonEgoNames).size).toBe(nonEgoNames.length);
 
     for (const node of network.nodes) {
       const attributes = node[entityAttributesProperty];
-      expect(typeof attributes.name).toBe('string');
       expect(typeof attributes.isEgo).toBe('boolean');
       if (attributes.isEgo === true) {
+        expect(attributes).not.toHaveProperty('name');
         expect(attributes.relationship).toBeUndefined();
       } else if (attributes.relationship !== undefined) {
+        expect(typeof attributes.name).toBe('string');
         expect(PEDIGREE_RELATIONSHIP_TO_EGO_VALUES).toContain(
           attributes.relationship,
         );
@@ -236,6 +237,34 @@ describe('FamilyPedigree materialization', () => {
     expect(metadata?.edges?.map(({ id }) => id).toSorted()).toEqual(
       network.edges.map((edge) => edge[entityPrimaryKeyProperty]).toSorted(),
     );
+  });
+
+  it('does not invent family-member form answers for ego', () => {
+    const stage = collectingFamilyStage(familyStage, 'generationMarker');
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [stage, narrativeStage],
+      familyPedigree: { scenario: 'none' },
+    });
+    const ego = network.nodes.find(
+      (node) => node[entityAttributesProperty].isEgo === true,
+    );
+    const familyMembers = network.nodes.filter(
+      (node) => node[entityAttributesProperty].isEgo === false,
+    );
+
+    expect(ego?.[entityAttributesProperty]).not.toHaveProperty('name');
+    expect(ego?.[entityAttributesProperty]).not.toHaveProperty(
+      'generationMarker',
+    );
+    expect(
+      familyMembers.every(
+        (node) =>
+          typeof node[entityAttributesProperty].name === 'string' &&
+          node[entityAttributesProperty].generationMarker !== undefined,
+      ),
+    ).toBe(true);
   });
 
   it('uses interface-valid relationship, gamete, activity, and carrier semantics', () => {

@@ -99,6 +99,32 @@ export function pedigreeNodeVariables(
   ]);
 }
 
+/** Variables written on FamilyPedigree's one iconic ego node. */
+export function pedigreeEgoNodeVariables(
+  stage: Stage,
+  stages: readonly Stage[] = [stage],
+  variables?: Record<string, VariableLike>,
+): Set<string> {
+  if (stage.type !== 'FamilyPedigree') return new Set();
+
+  const directlyWritten = setOf([
+    stage.nodeConfig?.egoVariable,
+    stage.nodeConfig?.biologicalSexVariable,
+    ...pedigreeDiseaseVariables(stage, stages),
+  ]);
+  const connected = withRuleTiedVariables(variables, directlyWritten);
+
+  // Name and additional node-form controls are rendered only for relatives.
+  // Do not let a cross-variable rule turn an unrendered ego control into a
+  // synthetic write. A variable that is also written semantically (for
+  // example, an imported conflicting biological-sex form field) remains fixed.
+  for (const variable of pedigreeDrawnNodeVariables(stage)) {
+    if (!directlyWritten.has(variable)) connected.delete(variable);
+  }
+
+  return connected;
+}
+
 /**
  * `seeds` plus every variable tied to one of them by a cross-variable rule,
  * transitively and in both directions.

@@ -341,7 +341,8 @@ const NodeConfigurationInner = ({
         message: validatedElsewhereMessage,
       });
     };
-  // The label is a validated Field in every pedigree wizard. It therefore
+  // The label is a validated Field whenever the pedigree collects a family
+  // member (ego is rendered iconically and has no label value). It therefore
   // follows the same cross-class rule as QuickAdd: sharing with another
   // validated writer is safe, while sharing with a bin/highlight/structural
   // writer would bypass the codebook rules on one path.
@@ -508,7 +509,7 @@ const NodeConfigurationInner = ({
               <VariableRow
                 name="nodeConfig.nodeLabelVariable"
                 label="Node Label"
-                description="A text variable used to store the display label for each node in the pedigree."
+                description="A text variable used to store the display label for each family member other than the participant."
                 entityType={nodeType}
                 options={nodeLabelVariableOptions}
                 onCreateOption={handleNewNodeLabelVariable}

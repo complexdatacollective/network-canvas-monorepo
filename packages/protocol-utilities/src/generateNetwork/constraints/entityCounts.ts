@@ -30,6 +30,7 @@ import {
   declaresNodeCollection,
   lastExistingWriterByType,
   nodeVariablesWrittenOnCreation,
+  pedigreeEgoNodeVariables,
   pedigreeNodeVariables,
   stageWritesExistingNodeVariable,
   withRuleTiedVariables,
@@ -1404,17 +1405,32 @@ export function worstCaseEntityCounts(
           pedigreeNodeCeiling(config, pedigreeContext) - (reusesEgo ? 1 : 0),
           0,
         ) + inheritedContributorCeiling.nodes;
+      const variables = nodeVariables?.(nodeType);
+      const egoCount = !reusesEgo && created > 0 ? 1 : 0;
+      const relativeCount = created - egoCount;
       tally.fabricated.push({
         count: created,
         stageIndex,
         writes: [
-          {
-            count: created,
-            variables: withRuleTiedVariables(
-              nodeVariables?.(nodeType),
-              pedigreeNodeVariables(stage, stages),
-            ),
-          },
+          ...(egoCount > 0
+            ? [
+                {
+                  count: egoCount,
+                  variables: pedigreeEgoNodeVariables(stage, stages, variables),
+                },
+              ]
+            : []),
+          ...(relativeCount > 0
+            ? [
+                {
+                  count: relativeCount,
+                  variables: withRuleTiedVariables(
+                    variables,
+                    pedigreeNodeVariables(stage, stages),
+                  ),
+                },
+              ]
+            : []),
         ],
       });
 

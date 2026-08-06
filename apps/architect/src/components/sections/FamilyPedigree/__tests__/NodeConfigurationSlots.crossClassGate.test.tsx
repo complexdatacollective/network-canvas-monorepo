@@ -31,8 +31,12 @@ vi.mock(
 vi.mock('~/components/sections/Form/FieldFields', () => ({
   default: () => null,
 }));
+let capturedValidationSectionProps: Record<string, unknown> | undefined;
 vi.mock('~/components/sections/CodebookVariableValidationSection', () => ({
-  default: () => null,
+  default: (props: Record<string, unknown>) => {
+    capturedValidationSectionProps = props;
+    return null;
+  },
 }));
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   default: () => null,
@@ -185,6 +189,7 @@ const renderComponent = ({
   for (const key of Object.keys(capturedFields)) {
     delete capturedFields[key];
   }
+  capturedValidationSectionProps = undefined;
   capturedEditorValidate = undefined;
   const store = configureStore({
     reducer: {
@@ -214,6 +219,19 @@ const renderComponent = ({
 };
 
 describe('FamilyPedigree NodeConfiguration slot picker exclusions', () => {
+  it('edits the label as a node variable, preserving every text validation rule', () => {
+    renderComponent({
+      protocol: protocolWith([]),
+      draftNodeConfig: { nodeLabelVariable: 'freeLabel' },
+    });
+
+    expect(capturedValidationSectionProps).toMatchObject({
+      entity: 'node',
+      type: 'person',
+      variableId: 'freeLabel',
+    });
+  });
+
   it('keeps variables validated elsewhere for the label and drops them from structural slots', () => {
     renderComponent({ protocol: protocolWith([FORM_STAGE]) });
     expect(slotOptionValuesFor('nodeConfig.nodeLabelVariable')).toContain(

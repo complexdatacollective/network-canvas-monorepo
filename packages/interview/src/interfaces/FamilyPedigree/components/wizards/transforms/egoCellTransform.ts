@@ -202,8 +202,6 @@ export function egoCellTransform(
   }
 
   const egoAttributes: Record<string, VariableValue> = {
-    [variableConfig.nodeLabelVariable]:
-      typeof values.name === 'string' ? values.name : '',
     [variableConfig.egoVariable]: true,
     ...egoCustomAttrs,
   };

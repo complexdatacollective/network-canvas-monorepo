@@ -43,9 +43,11 @@ export function excludeNodeLabelVariable<T extends { variable: string }>(
   return form?.filter((field) => field.variable !== nodeLabelVariable);
 }
 
-// The pedigree always renders its configured label through PersonNameField.
-// If an author also places that variable in the additional node form, suppress
-// the duplicate control rather than registering two writers for one value.
+// The pedigree renders its configured label through PersonNameField whenever
+// it collects a family member. Ego is the deliberate exception: it is rendered
+// iconically and its setup step has neither this field nor the additional node
+// form. If an author also places the label variable in the additional node
+// form, suppress the duplicate control for the family-member flows.
 export const getNodeForm: (
   state: RootState,
   currentStep: number,
