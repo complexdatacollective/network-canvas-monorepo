@@ -101,6 +101,20 @@ export default function useWizardState({
   const goToStep = useCallback(
     (target: number) => {
       if (target < 0 || target >= totalSteps) return;
+
+      // The current step's fields are about to unmount (the FormStoreProvider
+      // is shared across all steps, but only the active step's fields are
+      // registered). Fold their values into the accumulator before that
+      // happens — otherwise they'd only live on in dormant storage, which no
+      // longer feeds getFormValues(). A top-level key from this fold REPLACES
+      // whatever was previously folded for that key (not a deep merge): if
+      // the same step is revisited and an array-shaped answer shrinks (e.g. a
+      // repeated-entry step driven by a count), the shorter array wholly
+      // replaces the stale longer one instead of leaving orphaned entries.
+      const folded = { ...dataRef.current, ...getFormValues() };
+      dataRef.current = folded;
+      setData(folded);
+
       prevStepRef.current = stepIndex;
       resetStepOverrides();
       setStepIndex(target);
@@ -110,7 +124,7 @@ export default function useWizardState({
           ?.scrollTo(0, 0);
       });
     },
-    [stepIndex, totalSteps, resetStepOverrides],
+    [stepIndex, totalSteps, resetStepOverrides, getFormValues],
   );
 
   const handleNext = useCallback(async () => {
