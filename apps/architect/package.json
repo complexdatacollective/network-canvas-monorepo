@@ -15,6 +15,7 @@
     "typecheck": "tsc --build --noEmit && tsc -p e2e/tsconfig.json --noEmit",
     "test:e2e": "./e2e/scripts/run.sh",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --grep @visual --update-snapshots",
+    "test:e2e:native": "playwright test --config e2e/playwright.config.ts --grep-invert @visual",
     "test:e2e:headed": "VITE_DISABLE_ANALYTICS=true pnpm turbo run build --filter=@codaco/architect && playwright test --config e2e/playwright.config.ts --headed"
   },
   "dependencies": {
@@ -23,7 +24,6 @@
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/interface-images": "workspace:^",
     "@codaco/interview": "workspace:^",
-    "@codaco/network-query": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/protocols": "workspace:^",

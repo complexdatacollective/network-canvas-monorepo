@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import {
@@ -343,8 +344,12 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
           />
         </Row>
         {edgeType && (
-          // `[&_.variable-pill]:bg-white` lifts the pills off the surface-2 panel
-          <div className="bg-surface-2 text-surface-2-contrast mt-7 flex flex-col gap-7 rounded p-5 [&_.variable-pill]:bg-white">
+          <Surface
+            noContainer
+            spacing="sm"
+            shadow="none"
+            className="mt-7 flex flex-col gap-7 overflow-visible!"
+          >
             <VariableRow
               name="edgeConfig.relationshipTypeVariable"
               label="Relationship Type"
@@ -381,7 +386,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
               onCreateOption={handleNewGameteRoleVariable}
               crossClassPick={makeSlotValidator('gameteRoleVariable')}
             />
-          </div>
+          </Surface>
         )}
       </Section>
       <NewVariableWindow {...variableWindowProps} />

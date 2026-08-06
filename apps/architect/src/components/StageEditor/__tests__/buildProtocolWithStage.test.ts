@@ -5,12 +5,8 @@ import {
   type Stage,
   validateProtocol,
 } from '@codaco/protocol-validation';
-import { BUNDLED_TEMPLATES } from '~/templates';
 
-import {
-  buildProtocolWithStage,
-  shouldOverridePreviewStage,
-} from '../buildProtocolWithStage';
+import { buildProtocolWithStage } from '../buildProtocolWithStage';
 
 // A minimal, valid v8 protocol containing a single name generator stage whose
 // codebook subject ("person") exists. Tests insert/replace panels onto this
@@ -140,125 +136,5 @@ describe('buildProtocolWithStage', () => {
     expect(built.stages).toHaveLength(2);
     expect(built.stages[0]?.id).toBeTruthy();
     expect(built.stages[1]?.id).toBe(STAGE_ID);
-  });
-});
-
-describe('shouldOverridePreviewStage', () => {
-  const informationStage = (id: string, skipLogic?: Stage['skipLogic']) =>
-    ({
-      id,
-      type: 'Information',
-      label: id,
-      ...(skipLogic ? { skipLogic } : {}),
-    }) as Stage;
-
-  const protocolWithStages = (stages: Stage[]) => ({
-    ...makeProtocol(),
-    stages,
-  });
-
-  const skipToFinish = {
-    action: 'SKIP',
-    filter: { join: 'AND', rules: [] },
-    destination: { type: 'finish' },
-  } as Stage['skipLogic'];
-
-  it('does not override a stage with no possible skip route', () => {
-    const protocol = protocolWithStages([
-      informationStage('notes'),
-      informationStage('consent'),
-    ]);
-
-    expect(shouldOverridePreviewStage(protocol, 0, true)).toBe(false);
-    expect(shouldOverridePreviewStage(protocol, 1, true)).toBe(false);
-  });
-
-  it('never overrides when the preview preference is off', () => {
-    const protocol = protocolWithStages([
-      informationStage('conditional', skipToFinish),
-      informationStage('bypassed'),
-    ]);
-
-    expect(shouldOverridePreviewStage(protocol, 0, false)).toBe(false);
-    expect(shouldOverridePreviewStage(protocol, 1, false)).toBe(false);
-  });
-
-  it.each(['SHOW', 'SKIP'] as const)(
-    'detects a stage with its own %s logic',
-    (action) => {
-      const protocol = protocolWithStages([
-        informationStage('intro'),
-        informationStage('conditional', {
-          ...skipToFinish,
-          action,
-        } as Stage['skipLogic']),
-      ]);
-
-      expect(shouldOverridePreviewStage(protocol, 1, true)).toBe(true);
-    },
-  );
-
-  it('matches the bundled Mental Health Networks preview route', () => {
-    const protocol = BUNDLED_TEMPLATES.find(
-      (template) => template.id === 'mental-health-networks',
-    )?.protocol;
-
-    expect(protocol).toBeDefined();
-    if (!protocol) return;
-
-    expect(protocol.stages.slice(0, 3).map((stage) => stage.label)).toEqual([
-      'Template notes (delete before fielding)',
-      'Welcome and consent',
-      'About you',
-    ]);
-    expect(shouldOverridePreviewStage(protocol, 0, true)).toBe(false);
-    expect(shouldOverridePreviewStage(protocol, 1, true)).toBe(false);
-    expect(shouldOverridePreviewStage(protocol, 2, true)).toBe(true);
-  });
-
-  it('detects an earlier finish destination that can bypass the stage', () => {
-    const protocol = protocolWithStages([
-      informationStage('conditional', skipToFinish),
-      informationStage('bypassed'),
-    ]);
-
-    expect(shouldOverridePreviewStage(protocol, 1, true)).toBe(true);
-  });
-
-  it('detects an earlier stage destination that jumps past the stage', () => {
-    const protocol = protocolWithStages([
-      informationStage('conditional', {
-        action: 'SKIP',
-        filter: { join: 'AND', rules: [] },
-        destination: { type: 'stage', stageId: 'destination' },
-      } as Stage['skipLogic']),
-      informationStage('bypassed'),
-      informationStage('destination'),
-    ]);
-
-    expect(shouldOverridePreviewStage(protocol, 1, true)).toBe(true);
-  });
-
-  it('does not treat the destination itself as bypassed', () => {
-    const protocol = protocolWithStages([
-      informationStage('conditional', {
-        action: 'SKIP',
-        filter: { join: 'AND', rules: [] },
-        destination: { type: 'stage', stageId: 'destination' },
-      } as Stage['skipLogic']),
-      informationStage('destination'),
-    ]);
-
-    expect(shouldOverridePreviewStage(protocol, 1, true)).toBe(false);
-  });
-
-  it('rejects an out-of-range stage index', () => {
-    expect(
-      shouldOverridePreviewStage(
-        protocolWithStages([informationStage('intro')]),
-        1,
-        true,
-      ),
-    ).toBe(false);
   });
 });

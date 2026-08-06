@@ -76,7 +76,12 @@ const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> &
   rosterDrawRatio: 0.7,
   nodeCount: { min: 1, max: 8 },
   dropOutFactor: 0.15,
-  sociogramEdgeProbability: { min: 0.3, max: 0.5 },
+  // A per-pair probability compounds quadratically as a network grows. The
+  // former 0.3–0.5 range made medium-sized preview networks look almost
+  // complete and obscured the distinction between synthetic structure and the
+  // participant's own ties. Keep the default sparse while retaining the public
+  // override for deliberately dense protocols.
+  sociogramEdgeProbability: { min: 0.08, max: 0.15 },
   sociogramLayoutRange: { min: 0.1, max: 0.9 },
   sociogramHighlightProbability: 0.35,
   censusEdgeProbability: { min: 0.4, max: 0.6 },

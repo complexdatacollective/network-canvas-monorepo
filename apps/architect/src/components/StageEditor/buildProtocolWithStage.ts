@@ -1,41 +1,7 @@
 import { v1 as uuid } from 'uuid';
 
-import { resolveSkipLogicDestinationIndex } from '@codaco/network-query';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import prune from '~/utils/prune';
-
-/**
- * Whether skip routing could make a stage unavailable during an interview.
- *
- * A stage can be unavailable because of its own skip logic or because an
- * earlier targeted destination jumps past it. Merely enabling Architect's
- * "Always show" preview preference is not enough: applying an override to a
- * stage that cannot be skipped produces a misleading preview notice.
- */
-export function shouldOverridePreviewStage(
-  protocol: CurrentProtocol,
-  stageIndex: number,
-  ignoreSkipLogic: boolean,
-): boolean {
-  if (!ignoreSkipLogic) return false;
-
-  const stage = protocol.stages[stageIndex];
-  if (!stage) return false;
-
-  if (stage.skipLogic) return true;
-
-  return protocol.stages.slice(0, stageIndex).some((candidate, index) => {
-    const destination = candidate.skipLogic?.destination;
-    if (!destination) return false;
-
-    const destinationIndex = resolveSkipLogicDestinationIndex(
-      destination,
-      protocol.stages,
-      index,
-    );
-    return destinationIndex !== undefined && destinationIndex > stageIndex;
-  });
-}
 
 /**
  * Builds a protocol with the current wip stage inserted or updated.

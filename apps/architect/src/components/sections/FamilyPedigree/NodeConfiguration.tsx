@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
@@ -44,6 +45,7 @@ import {
 import {
   crossClassPickIssue,
   makeFieldEditorValidate,
+  unvalidatedElsewhereMessage,
   validatedElsewhereMessage,
   variableDisplayName,
 } from '~/components/Validations/contradictions';
@@ -63,10 +65,14 @@ import {
 } from '~/selectors/codebook';
 import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
+import {
+  excludeUnvalidatedUses,
+  excludeValidatedUses,
+} from '~/selectors/roleFilters';
 import { ensureError } from '~/utils/ensureError';
 import { optionsMatch } from '~/utils/variables';
 
+import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import NodeFormFieldPreview from './NodeFormFieldPreview';
 
 // `FieldFields`/`NodeFormFieldPreview` carry their own specific prop types
@@ -119,9 +125,11 @@ type VariableRowProps = {
   }[];
   onCreateOption: (name: string) => void;
   /**
-   * Save-time cross-class gate for this slot (an UNVALIDATED writer): a sync
-   * field validator, so an invalid pick blocks the stage editor's save — the
-   * same field-level `crossClassPick` shape NetworkComposer's quickAdd uses.
+   * Save-time cross-class gate for this slot, in whichever direction its
+   * writer class demands (the node label validates; the structural slots do
+   * not): a sync field validator, so an invalid pick blocks the stage
+   * editor's save — the same field-level `crossClassPick` shape
+   * NetworkComposer's quickAdd uses.
    */
   crossClassPick: (value: unknown, allValues?: unknown) => string | undefined;
 };
@@ -167,9 +175,8 @@ const VariableRow = ({
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** The four nodeConfig slots that write node attributes without validation. */
-const NODE_SLOT_FIELDS = [
-  'nodeLabelVariable',
+/** nodeConfig slots that write structural attributes without validation. */
+const UNVALIDATED_NODE_SLOT_FIELDS = [
   'egoVariable',
   'relationshipVariable',
   'biologicalSexVariable',
@@ -275,16 +282,16 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   const biologicalSexDraft = useStageFormValue<string>(
     'nodeConfig.biologicalSexVariable',
   );
-  // Memoized on the four scalar picks (NOT the whole assembled form values,
-  // whose identity changes on every keystroke) so `hasUnvalidatedUse` — and
-  // through it `editorValidate` and its per-dialog-session baseline cache —
-  // keeps a stable identity while unrelated fields are edited.
-  const draftSlotVariables = useMemo(
+  // Memoized on the structural scalar picks (NOT the whole assembled form
+  // values, whose identity changes on every keystroke) so `hasUnvalidatedUse`
+  // — and through it `editorValidate` and its per-dialog-session baseline
+  // cache — keeps a stable identity while unrelated fields are edited.
+  const draftUnvalidatedSlotVariables = useMemo(
     () =>
-      [nodeLabelDraft, egoDraft, relationshipDraft, biologicalSexDraft].filter(
+      [egoDraft, relationshipDraft, biologicalSexDraft].filter(
         (value): value is string => typeof value === 'string',
       ),
-    [nodeLabelDraft, egoDraft, relationshipDraft, biologicalSexDraft],
+    [egoDraft, relationshipDraft, biologicalSexDraft],
   );
   // Backs makeFieldEditorValidate's save-time gate: a form field may not pick
   // a variable some bin/highlight/census/etc. elsewhere already writes.
@@ -294,18 +301,19 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   // escape) lives in Form/__tests__/Form.crossClassGate.test.tsx rather than
   // being duplicated here; only the subject derivation differs (`nodeType`
   // from this stage's own form value vs. Form.tsx's `withSubject`).
-  // `draftSlotVariables` additionally closes the intra-draft case THIS stage
-  // type makes possible: its own nodeConfig slots (unvalidated writers) live
+  // `draftUnvalidatedSlotVariables` additionally closes the intra-draft case
+  // THIS stage type makes possible: its structural nodeConfig slots
+  // (unvalidated writers) live
   // on the same unsaved stage form as the form-field dialog, so a slot pick
   // that has not reached the saved document yet still rejects the same
   // variable here.
   const hasUnvalidatedUse = useCallback(
     (variableId: string) =>
       !!nodeVariablesSubject &&
-      (draftSlotVariables.includes(variableId) ||
+      (draftUnvalidatedSlotVariables.includes(variableId) ||
         (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.unvalidated ??
           0) > 0),
-    [roleMap, nodeVariablesSubject, draftSlotVariables],
+    [roleMap, nodeVariablesSubject, draftUnvalidatedSlotVariables],
   );
   const editorValidate = useMemo(
     () =>
@@ -327,7 +335,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   // protocol) stays saveable — the timeline alert handles it
   // non-destructively.
   const makeSlotValidator =
-    (slotField: (typeof NODE_SLOT_FIELDS)[number]) =>
+    (slotField: (typeof UNVALIDATED_NODE_SLOT_FIELDS)[number]) =>
     (value: unknown, allValues?: unknown): string | undefined => {
       if (!nodeVariablesSubject) return undefined;
       const variableId = typeof value === 'string' ? value : '';
@@ -357,6 +365,34 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
         message: validatedElsewhereMessage,
       });
     };
+  // The label is a validated Field whenever the pedigree collects a family
+  // member (ego is rendered iconically and has no label value). It therefore
+  // follows the same cross-class rule as QuickAdd: sharing with another
+  // validated writer is safe, while sharing with a bin/highlight/structural
+  // writer would bypass the codebook rules on one path.
+  const nodeLabelCrossClassValidate = (value: unknown): string | undefined => {
+    if (!nodeVariablesSubject) return undefined;
+    const variableId = typeof value === 'string' ? value : '';
+    if (!variableId) return undefined;
+    const committedRaw: unknown = isRecord(committedNodeConfig)
+      ? committedNodeConfig.nodeLabelVariable
+      : undefined;
+    const committed = typeof committedRaw === 'string' ? committedRaw : '';
+    if (variableId === committed) return undefined;
+    if (draftUnvalidatedSlotVariables.includes(variableId)) {
+      return unvalidatedElsewhereMessage(
+        variableDisplayName(allVariables, variableId),
+      );
+    }
+    return crossClassPickIssue({
+      variableId,
+      originalVariableId: committed,
+      hasConflictingUse: (id) =>
+        (roleMap[roleMapKey(nodeVariablesSubject, id)]?.unvalidated ?? 0) > 0,
+      allVariables,
+      message: unvalidatedElsewhereMessage,
+    });
+  };
   const textNodeVariables = nodeVariableOptions.filter(
     (v) => v.type === 'text',
   );
@@ -373,13 +409,12 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
       v.type === 'categorical' &&
       optionsMatch(v.options, BIOLOGICAL_SEX_OPTIONS),
   );
-  // Each slot is an UNVALIDATED writer: drop options a form elsewhere already
-  // validates, keeping the slot's own current pick offered (the usual
-  // currentValue escape). Per-slot pools because two slots share a type pool
-  // but each escapes only its own value.
+  // The label is a VALIDATED writer, so it excludes variables claimed by an
+  // unvalidated path. Structural slots do the opposite. Each picker keeps its
+  // own current value offered as the usual escape for imported protocols.
   const nodeLabelVariableOptions = useSelector((state: RootState) =>
     nodeVariablesSubject
-      ? excludeValidatedUses(
+      ? excludeUnvalidatedUses(
           state,
           nodeVariablesSubject,
           textNodeVariables,
@@ -557,17 +592,29 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
 
         {nodeType && (
           <>
-            {/* `[&_.variable-pill]:bg-white` lifts the pills off the surface-2 panel */}
-            <div className="bg-surface-2 text-surface-2-contrast my-7 flex flex-col gap-7 rounded p-5 [&_.variable-pill]:bg-white">
+            <Surface
+              noContainer
+              spacing="sm"
+              shadow="none"
+              className="my-7 flex flex-col gap-7 overflow-visible!"
+            >
               <VariableRow
                 name="nodeConfig.nodeLabelVariable"
                 label="Node Label"
-                description="A text variable used to store the display label for each node in the pedigree."
+                description="A text variable used to store the display label for each family member other than the participant."
                 entityType={nodeType}
                 options={nodeLabelVariableOptions}
                 onCreateOption={handleNewNodeLabelVariable}
-                crossClassPick={makeSlotValidator('nodeLabelVariable')}
+                crossClassPick={nodeLabelCrossClassValidate}
               />
+              {nodeLabelDraft && (
+                <CodebookVariableValidationSection
+                  fieldName="nodeConfig.nodeLabelVariable"
+                  entity="node"
+                  type={nodeType}
+                  variableId={nodeLabelDraft}
+                />
+              )}
               <VariableRow
                 name="nodeConfig.egoVariable"
                 label="Ego Identifier"
@@ -595,7 +642,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
                 onCreateOption={handleNewBiologicalSexVariable}
                 crossClassPick={makeSlotValidator('biologicalSexVariable')}
               />
-            </div>
+            </Surface>
 
             <Section
               title="Form Fields"
@@ -607,7 +654,6 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
                 </Paragraph>
               }
               layout="vertical"
-              className="bg-surface-2 text-surface-2-contrast p-5"
             >
               <ArchitectArrayField
                 name="nodeConfig.form"

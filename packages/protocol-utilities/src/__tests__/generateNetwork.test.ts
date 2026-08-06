@@ -466,7 +466,7 @@ describe('generateNetwork', () => {
       }
     });
 
-    it('should generate attributes from the codebook node type definition', () => {
+    it('should generate the configured label for family members but not ego', () => {
       const codebook = makeCodebook();
       const stages = [makeFamilyPedigreeStage()];
 
@@ -474,7 +474,11 @@ describe('generateNetwork', () => {
 
       for (const node of network.nodes) {
         const attrs = node[entityAttributesProperty];
-        expect(attrs).toHaveProperty('var-name');
+        if (attrs['var-ego'] === true) {
+          expect(attrs).not.toHaveProperty('var-name');
+        } else {
+          expect(attrs).toHaveProperty('var-name');
+        }
       }
     });
 

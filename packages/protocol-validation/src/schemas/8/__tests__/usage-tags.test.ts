@@ -98,6 +98,50 @@ describe('attribute-writer usage tags', () => {
     expect(hullHit?.usage).toBe('unvalidatedAttribute');
   });
 
+  it('tags the FamilyPedigree node label as validated and its structural slots as unvalidated', () => {
+    const protocol = {
+      ...createBaseProtocol(),
+      stages: [
+        {
+          id: 'family',
+          type: 'FamilyPedigree',
+          label: 'Family',
+          nodeConfig: {
+            type: 'person',
+            nodeLabelVariable: 'name',
+            egoVariable: 'isEgo',
+            relationshipVariable: 'relationship',
+            biologicalSexVariable: 'biologicalSex',
+          },
+          edgeConfig: {
+            type: 'family',
+            relationshipTypeVariable: 'relationshipType',
+            isActiveVariable: 'isActive',
+            isGestationalCarrierVariable: 'isGestationalCarrier',
+            gameteRoleVariable: 'gameteRole',
+          },
+          framing: { mode: 'fixed', value: 'gamete' },
+          boundaries: {
+            requireGrandparents: 'off',
+            requireChildrenContributors: 'off',
+          },
+          censusPrompt: 'Build your family',
+        },
+      ],
+    };
+
+    const hits = hitsFor(protocol);
+    const nodeLabel = hits.find(
+      (hit) => hit.path[hit.path.length - 1] === 'nodeLabelVariable',
+    );
+    const relationship = hits.find(
+      (hit) => hit.path[hit.path.length - 1] === 'relationshipVariable',
+    );
+
+    expect(nodeLabel?.usage).toBe('validatedAttribute');
+    expect(relationship?.usage).toBe('unvalidatedAttribute');
+  });
+
   it('leaves Narrative preset groupVariable and highlight references untagged (grouping/display slots never restrict a variable elsewhere)', () => {
     const protocol = {
       ...createBaseProtocol(),

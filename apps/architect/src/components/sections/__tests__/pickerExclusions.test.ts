@@ -23,12 +23,12 @@ const stateWith = (protocol: unknown): RootState =>
 // field (validated) and a CategoricalBin prompt (unvalidated), on the same
 // node-type subject. `qa` extends this for the two VALIDATED quickAdd sites
 // below: a text variable written both by a form field (validated, s1) and by
-// FamilyPedigree's nodeLabelVariable (unvalidated, s3), on the same subject.
+// FamilyPedigree's relationshipVariable (unvalidated, s3), on the same subject.
 //
 // Composer scope-change consequentials: NetworkComposer's OWN quickAdd used
 // to stand in for `qa`'s unvalidated hit here, but it is now a VALIDATED
 // writer (network-composer.ts), so it can no longer produce one — s3 is
-// FamilyPedigree's nodeLabelVariable instead, the same text-typed unvalidated
+// FamilyPedigree's relationshipVariable instead, the same text-typed unvalidated
 // writer NodeConfiguration.crossClassGate.test.tsx uses for the same reason.
 const protocol = {
   schemaVersion: 8,
@@ -79,7 +79,7 @@ const protocol = {
       id: 's3',
       type: 'FamilyPedigree',
       label: 'P',
-      nodeConfig: { type: 'person', nodeLabelVariable: 'qa' },
+      nodeConfig: { type: 'person', relationshipVariable: 'qa' },
     },
   ],
 };
@@ -218,7 +218,7 @@ describe('a conflict-free variable is never dropped in either direction', () => 
 // `excludeValidatedUses`/`excludeUnvalidatedUses` call fails.
 const validatedOnly = { ...protocol, stages: [protocol.stages[0]] }; // s1 only: cat + qa validated, neither unvalidated
 const catUnvalidatedOnly = { ...protocol, stages: [protocol.stages[1]] }; // s2 only: cat unvalidated, not validated; qa has no hits at all
-const qaUnvalidatedOnly = { ...protocol, stages: [protocol.stages[2]] }; // s3 only: qa unvalidated (FamilyPedigree nodeLabelVariable), not validated; cat has no hits at all
+const qaUnvalidatedOnly = { ...protocol, stages: [protocol.stages[2]] }; // s3 only: qa unvalidated (FamilyPedigree relationshipVariable), not validated; cat has no hits at all
 
 describe('getConvexHullOptionsForSubject (NodeConfiguration convexHull picker, UNVALIDATED writer)', () => {
   it('drops a categorical variable a form elsewhere already validates', () => {

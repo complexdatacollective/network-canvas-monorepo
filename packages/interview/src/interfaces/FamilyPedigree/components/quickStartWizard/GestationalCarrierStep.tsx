@@ -1,15 +1,12 @@
 'use client';
 
-import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { FramingId } from '@codaco/shared-consts';
 
-import useProtocolForm from '../../../../forms/useProtocolForm';
-import { useStageSelector } from '../../../../hooks/useStageSelector';
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
-import { getNodeForm, getNodeType } from '../../utils/nodeUtils';
+import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
+import PersonNameField from '../PersonNameField';
 
 // "Gestational Carrier" is framing-invariant, but the explanatory body must not
 // leak gamete wording under the gendered framing — mirror EggParentStep/
@@ -22,28 +19,18 @@ const INTRO_COPY: Record<FramingId, string> = {
 };
 
 export default function GestationalCarrierStep() {
-  const nodeType = useStageSelector(getNodeType);
-  const nodeForm = useStageSelector(getNodeForm);
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const framingKey = framing ?? 'gamete';
 
-  const { fieldComponents } = useProtocolForm({
-    subject: {
-      entity: 'node',
-      type: nodeType,
-    },
-    fields: nodeForm ?? [],
-  });
+  const { fieldComponents } = usePedigreeNodeForm();
 
   return (
     <>
       <Paragraph>{INTRO_COPY[framingKey]}</Paragraph>
       <hr />
       <FieldNamespace prefix="gestational-carrier">
-        <Field
-          name="name"
+        <PersonNameField
           label="What is their name?"
-          component={InputField}
           hint="Leave blank if the name is not known"
           autoFocus
         />

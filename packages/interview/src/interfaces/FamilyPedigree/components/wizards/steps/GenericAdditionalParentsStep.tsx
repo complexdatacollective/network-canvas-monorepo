@@ -2,16 +2,14 @@
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import useProtocolForm from '../../../../../forms/useProtocolForm';
-import { useStageSelector } from '../../../../../hooks/useStageSelector';
-import { getNodeForm, getNodeType } from '../../../utils/nodeUtils';
+import usePedigreeNodeForm from '../../../hooks/usePedigreeNodeForm';
+import PersonNameField from '../../PersonNameField';
 
 const PARENT_ROLE_OPTIONS = [
   { value: 'step-parent', label: 'Step-parent' },
@@ -20,16 +18,7 @@ const PARENT_ROLE_OPTIONS = [
 ];
 
 function AdditionalParentFields({ index }: { index: number }) {
-  const nodeType = useStageSelector(getNodeType);
-  const nodeForm = useStageSelector(getNodeForm);
-
-  const { fieldComponents } = useProtocolForm({
-    subject: {
-      entity: 'node',
-      type: nodeType,
-    },
-    fields: nodeForm ?? [],
-  });
+  const { fieldComponents } = usePedigreeNodeForm();
 
   return (
     <Surface spacing="sm" shadow="sm">
@@ -42,13 +31,7 @@ function AdditionalParentFields({ index }: { index: number }) {
           options={PARENT_ROLE_OPTIONS}
           required
         />
-        <Field
-          name="name"
-          label="What is their name?"
-          component={InputField}
-          autoFocus
-          required
-        />
+        <PersonNameField label="What is their name?" autoFocus />
         {fieldComponents}
       </FieldNamespace>
     </Surface>

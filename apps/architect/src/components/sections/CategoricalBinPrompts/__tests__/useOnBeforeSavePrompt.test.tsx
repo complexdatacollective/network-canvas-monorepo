@@ -238,11 +238,14 @@ const OTHER_VARIABLE_CODEBOOK = {
   },
 };
 
+// `relationshipVariable` is one of the pedigree's unvalidated node slots. The
+// node label is NOT: it writes through validation, so it would not trip this
+// gate.
 const OTHER_UNVALIDATED_STAGE = {
   id: 's2',
   type: 'FamilyPedigree',
   label: 'P',
-  nodeConfig: { type: 'person', nodeLabelVariable: 'other' },
+  nodeConfig: { type: 'person', relationshipVariable: 'other' },
 };
 
 const otherVariableProtocol = (stages: unknown[]) => ({

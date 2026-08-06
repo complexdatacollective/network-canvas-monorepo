@@ -15,9 +15,9 @@ import { launchPreview } from '~/components/PreviewHost/launchPreview';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
-  getPreviewIgnoreSkipLogic,
+  getPreviewRespectSkipLogic,
   getPreviewUseSyntheticData,
-  setPreviewIgnoreSkipLogic,
+  setPreviewRespectSkipLogic,
   setPreviewUseSyntheticData,
 } from '~/ducks/modules/app';
 import { actionCreators as stageActions } from '~/ducks/modules/protocol/stages';
@@ -29,10 +29,7 @@ import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { ensureError } from '~/utils/ensureError';
 import { reportError } from '~/utils/reportError';
 
-import {
-  buildProtocolWithStage,
-  shouldOverridePreviewStage,
-} from './buildProtocolWithStage';
+import { buildProtocolWithStage } from './buildProtocolWithStage';
 import { getStageEditorInitialValues } from './getStageEditorInitialValues';
 import type { SectionComponent } from './Interfaces';
 import { getInterface } from './Interfaces';
@@ -122,7 +119,7 @@ const StageEditor = (props: StageEditorProps) => {
   // Preview state
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
   const useSyntheticData = useSelector(getPreviewUseSyntheticData);
-  const ignoreSkipLogic = useSelector(getPreviewIgnoreSkipLogic);
+  const respectSkipLogic = useSelector(getPreviewRespectSkipLogic);
 
   // Whether the wip protocol (committed protocol + current stage edits) passes
   // full schema validation. We disable preview whenever it does not, so the
@@ -295,18 +292,13 @@ const StageEditor = (props: StageEditorProps) => {
       Math.max(desiredStartStage, 0),
       previewProtocol.stages.length - 1,
     );
-    const skipLogicBypassed = shouldOverridePreviewStage(
-      previewProtocol,
-      startStage,
-      ignoreSkipLogic,
-    );
     setIsOpeningPreview(true);
     try {
       const result = await launchPreview({
         protocol: previewProtocol,
         startStage,
         useSyntheticData,
-        skipLogicBypassed,
+        respectSkipLogic,
       });
       if (result.kind === 'popup-blocked') {
         void openDialog({
@@ -339,7 +331,7 @@ const StageEditor = (props: StageEditorProps) => {
     id,
     insertAtIndex,
     useSyntheticData,
-    ignoreSkipLogic,
+    respectSkipLogic,
   ]);
   const sections = useMemo(
     () => getInterface(interfaceType).sections,
@@ -386,13 +378,12 @@ const StageEditor = (props: StageEditorProps) => {
       </label>
       <label className="flex items-center gap-3">
         <ToggleField
-          value={ignoreSkipLogic}
-          onChange={(checked) => dispatch(setPreviewIgnoreSkipLogic(!!checked))}
+          value={respectSkipLogic}
+          onChange={(checked) =>
+            dispatch(setPreviewRespectSkipLogic(!!checked))
+          }
         />
-        <span className="text-sm">
-          Always show this stage in preview when skip logic would otherwise make
-          it unavailable
-        </span>
+        <span className="text-sm">Respect skip logic</span>
       </label>
     </div>
   );

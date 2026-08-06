@@ -6,6 +6,21 @@
       "permanent": true
     },
     {
+      "source": "/en/design-protocols/building-a-protocol",
+      "destination": "/en/design-protocols/tutorials/building-a-protocol",
+      "permanent": true
+    },
+    {
+      "source": "/en/design-protocols/working-with-rosters",
+      "destination": "/en/design-protocols/tutorials/working-with-rosters",
+      "permanent": true
+    },
+    {
+      "source": "/en/design-protocols/implementing-cegrm",
+      "destination": "/en/design-protocols/tutorials/implementing-cegrm",
+      "permanent": true
+    },
+    {
       "source": "/en/design-protocols/installing-architect-desktop",
       "destination": "/en/design-protocols/installing-architect-classic",
       "permanent": true
@@ -282,12 +297,12 @@
     },
     {
       "source": "/en/desktop/tutorials/working-with-rosters",
-      "destination": "/en/design-protocols/working-with-rosters",
+      "destination": "/en/design-protocols/tutorials/working-with-rosters",
       "permanent": true
     },
     {
       "source": "/en/desktop/tutorials/building-a-protocol",
-      "destination": "/en/design-protocols/building-a-protocol",
+      "destination": "/en/design-protocols/tutorials/building-a-protocol",
       "permanent": true
     },
     {

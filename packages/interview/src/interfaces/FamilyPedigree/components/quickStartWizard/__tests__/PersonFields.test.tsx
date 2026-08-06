@@ -11,6 +11,16 @@ vi.mock('../../../../../forms/useProtocolForm', () => ({
   default: () => ({ fieldComponents: null }),
 }));
 
+vi.mock('../../PersonNameField', () => ({
+  default: ({
+    initialValue,
+    label,
+  }: {
+    initialValue?: string;
+    label: string;
+  }) => <input aria-label={label} defaultValue={initialValue} />,
+}));
+
 import PersonFields from '../PersonFields';
 
 describe('PersonFields', () => {
