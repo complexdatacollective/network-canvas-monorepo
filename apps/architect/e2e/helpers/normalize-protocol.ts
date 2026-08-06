@@ -374,13 +374,19 @@ export function assertBuiltProtocolInvariants(built: unknown): void {
   const codebook = isRecord(built.codebook) ? built.codebook : {};
   for (const entity of ['node', 'edge'] as const) {
     const types = isRecord(codebook[entity]) ? codebook[entity] : {};
+    // Compared as sorted sets rather than per-type values: the assertion is
+    // about the palette being distinct and dense, not about which type drew
+    // which colour (creation order is an implementation detail).
+    const byText = (a: string, b: string) => a.localeCompare(b);
     const colors = Object.values(types).map((entry) =>
-      isRecord(entry) ? entry.color : undefined,
+      isRecord(entry) && typeof entry.color === 'string'
+        ? entry.color
+        : String(entry),
     );
     const expected = colors
       .map((_, index) => `${entity}-color-seq-${index + 1}`)
-      .toSorted();
-    const actual = [...colors].toSorted();
+      .toSorted(byText);
+    const actual = colors.toSorted(byText);
     if (JSON.stringify(actual) !== JSON.stringify(expected)) {
       problems.push(
         `codebook.${entity} colours ${JSON.stringify(actual)} are not the dense sequence ${JSON.stringify(expected)}`,
