@@ -13,17 +13,29 @@ type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 
 const SEEDS = 500;
 
-/** One pedigree node per stage, so a two-value domain covers the protocol. */
-const ONE_NODE_PEDIGREE = { familyPedigreeNodeCount: { min: 1, max: 1 } };
-
-function personCodebook(variables: Record<string, unknown>): Codebook {
+/**
+ * One pedigree node plus one node from the other stage: the planner apportions
+ * the type's declared population across its creating stages after honouring
+ * every stage minimum, and the pedigree's own minimum is the proband.
+ */
+function personCodebook(
+  count: number,
+  variables: Record<string, unknown>,
+): Codebook {
   return {
-    node: { person: { color: 'node-color-seq-1', variables } },
-    edge: { family: { color: 'edge-color-seq-1', variables: {} } },
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        synthetic: { count: { distribution: 'constant', value: count } },
+        variables,
+      },
+    },
+    edge: { family: { name: 'F', color: 'edge-color-seq-1', variables: {} } },
   } as unknown as Codebook;
 }
 
-function pedigree(egoVariable?: string): Stage {
+function pedigree(): Stage {
   return {
     id: 'stage-pedigree',
     type: 'FamilyPedigree',
@@ -31,22 +43,44 @@ function pedigree(egoVariable?: string): Stage {
     nodeConfig: {
       type: 'person',
       nodeLabelVariable: 'name',
-      ...(egoVariable === undefined ? {} : { egoVariable }),
+      egoVariable: 'isEgo',
+      relationshipVariable: 'relationship',
+      biologicalSexVariable: 'sex',
     },
-    edgeConfig: { type: 'family' },
+    edgeConfig: {
+      type: 'family',
+      relationshipTypeVariable: 'relType',
+      isActiveVariable: 'isActive',
+      isGestationalCarrierVariable: 'carrier',
+      gameteRoleVariable: 'gamete',
+    },
+    framing: { mode: 'fixed', value: 'gendered' },
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
+    censusPrompt: 'Add your family.',
   } as unknown as Stage;
 }
 
-function nameGenerator(nodes: number): Stage {
+/** A name generator whose form writes the flag onto the people it creates. */
+function flagWritingGenerator(nodes: number): Stage {
   return {
     id: 'stage-ng',
     type: 'NameGenerator',
     label: 'More people',
     subject: { entity: 'node', type: 'person' },
+    form: { title: 'About', fields: [{ variable: 'isEgo', prompt: 'Ego?' }] },
     prompts: [{ id: 'p1', text: 'Name people' }],
     behaviours: { minNodes: nodes, maxNodes: nodes },
   } as unknown as Stage;
 }
+
+const BASE_VARIABLES = {
+  name: { name: 'Name', type: 'text' },
+  relationship: { name: 'Relationship', type: 'text' },
+  sex: { name: 'Sex', type: 'text' },
+};
 
 function describeNodes(nodes: NcNode[]): string {
   return JSON.stringify(
@@ -61,72 +95,36 @@ function describeNodes(nodes: NcNode[]): string {
  * A FamilyPedigree stage writes its ego flag itself — the runtime's
  * `egoCellTransform` sets it true on the proband and explicitly false on
  * everybody else — so on a `unique` variable that flag is a value spoken for
- * before the run starts, alongside a roster row's and a prompt's
- * `additionalAttributes`.
+ * by the protocol rather than drawn from the registry. The planner claims it
+ * as the pedigree's nodes are planned, and every later draw and roster
+ * judgement of the same slot is measured against that claim.
  */
 describe('a pedigree ego flag on a unique variable', () => {
-  const uniqueFlagCodebook = personCodebook({
-    name: { name: 'Name', type: 'text' },
+  const uniqueFlagVariables = {
+    ...BASE_VARIABLES,
     isEgo: { name: 'Is ego', type: 'boolean', validation: { unique: true } },
-  });
+  };
 
-  it(`is held back from an earlier stage's draw, over ${SEEDS} seeds`, () => {
-    // The pedigree runs second, so nothing it does can reach the draw that has
-    // already happened: the flag has to be reserved before the first stage
-    // runs or the name generator is issued `true` from the first position of
-    // the slot's sequence and the pedigree writes `true` over its proband as
-    // well.
+  it(`is claimed against a later stage's draw, over ${SEEDS} seeds`, () => {
+    // The name generator's form draws the flag onto its own person, and the
+    // proband's `true` is already claimed by the time that draw happens — so
+    // the drawn flag is `false` on every seed, never a duplicate `true`.
     const failures: string[] = [];
 
     for (let seed = 1; seed <= SEEDS; seed++) {
       const { network } = generateNetwork({
         seed,
-        codebook: uniqueFlagCodebook,
-        stages: [nameGenerator(1), pedigree('isEgo')],
-        config: ONE_NODE_PEDIGREE,
+        codebook: personCodebook(1, uniqueFlagVariables),
+        stages: [pedigree(), flagWritingGenerator(1)],
       });
 
       const flags = network.nodes.map(
         (node) => node[entityAttributesProperty].isEgo,
       );
-      if (new Set(flags.map((flag) => JSON.stringify(flag))).size !== 2) {
-        failures.push(`seed ${seed}: ${describeNodes(network.nodes)}`);
-      }
-    }
-
-    expect(failures).toEqual([]);
-  });
-
-  it(`spends none of the slot's own values, over ${SEEDS} seeds`, () => {
-    // The flag is written rather than drawn, so it must cost the registry no
-    // sequence position. Drawing it and overwriting the result leaves the
-    // registry holding a value no node carries, and the three people here then
-    // reach only the top two of a three-value domain — with the bottom one
-    // spent on a draw that was thrown away.
-    const codebook = personCodebook({
-      name: { name: 'Name', type: 'text' },
-      isEgo: {
-        name: 'Is ego',
-        type: 'number',
-        validation: { unique: true, minValue: 1, maxValue: 3 },
-      },
-    });
-    const failures: string[] = [];
-
-    for (let seed = 1; seed <= SEEDS; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook,
-        stages: [pedigree('isEgo'), nameGenerator(2)],
-        config: ONE_NODE_PEDIGREE,
-      });
-
-      const drawn = network.nodes
-        .filter((node) => node.stageId === 'stage-ng')
-        .map((node) => node[entityAttributesProperty].isEgo)
-        .toSorted((a, b) => Number(a) - Number(b));
-
-      if (JSON.stringify(drawn) !== JSON.stringify([1, 2])) {
+      if (
+        flags.length !== 2 ||
+        new Set(flags.map((flag) => JSON.stringify(flag))).size !== 2
+      ) {
         failures.push(`seed ${seed}: ${describeNodes(network.nodes)}`);
       }
     }
@@ -138,9 +136,8 @@ describe('a pedigree ego flag on a unique variable', () => {
     // A roster row's value is the researcher's rather than the registry's, and
     // a row offering a value the network already holds is passed over — judged
     // by asking the registry whether that value is taken. So the proband's flag
-    // has to be claimed and not merely reserved: a reservation is a preference
-    // a row is never measured against, and the row carrying `true` would be
-    // drawn alongside the proband already holding it.
+    // has to be claimed and not merely noted: the row carrying `true` would
+    // otherwise be drawn alongside the proband already holding it.
     const rows = [true, false].map(
       (isEgo, index) =>
         ({
@@ -154,6 +151,7 @@ describe('a pedigree ego flag on a unique variable', () => {
       type: 'NameGeneratorRoster',
       label: 'Roster',
       subject: { entity: 'node', type: 'person' },
+      dataSource: 'people.csv',
       prompts: [{ id: 'p1', text: 'Pick people' }],
       behaviours: { minNodes: 1, maxNodes: 1 },
     } as unknown as Stage;
@@ -162,74 +160,87 @@ describe('a pedigree ego flag on a unique variable', () => {
     for (let seed = 1; seed <= SEEDS; seed++) {
       const { network } = generateNetwork({
         seed,
-        codebook: uniqueFlagCodebook,
-        stages: [pedigree('isEgo'), roster],
+        codebook: personCodebook(1, uniqueFlagVariables),
+        stages: [pedigree(), roster],
         externalData: { 'stage-roster': rows.map((row) => ({ ...row })) },
-        config: ONE_NODE_PEDIGREE,
       });
 
       const flags = network.nodes.map(
         (node) => node[entityAttributesProperty].isEgo,
       );
-      if (new Set(flags.map((flag) => JSON.stringify(flag))).size !== 2) {
+      if (
+        flags.length !== 2 ||
+        new Set(flags.map((flag) => JSON.stringify(flag))).size !== 2
+      ) {
         failures.push(`seed ${seed}: ${describeNodes(network.nodes)}`);
       }
     }
 
     expect(failures).toEqual([]);
   });
+
+  it('is refused up front where the family would pin `false` twice', () => {
+    // Three family members hold one `true` and two `false`s, and no seed can
+    // spread a written value over fewer holders — so the contradiction is
+    // reported before anything is drawn, naming the pedigree's own writer,
+    // rather than surfacing as a duplicate in the finished network.
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook: personCodebook(3, uniqueFlagVariables),
+        stages: [pedigree()],
+      }),
+    ).toThrow(
+      /a family pedigree fixes this to false on up to 2 nodes, but unique allows one node to hold a value/,
+    );
+  });
 });
 
 describe('a pedigree ego flag nothing reads', () => {
-  it('draws exactly as it did when the type carries a unique variable', () => {
-    // Settling the flag before the draw takes the variable out of the draw and
-    // moves every random number after it, so it is done only where the flag's
-    // own value is read: by a rule resolving against it, or by the registry
-    // issuing it. A `unique` variable elsewhere on the same type is neither —
-    // the flag is not a member of that slot — and this pedigree must keep the
-    // values it had. Held against the same protocol naming no ego variable at
-    // all, where only the flag itself may differ.
-    const codebook = personCodebook({
-      name: { name: 'Name', type: 'text' },
+  it('perturbs nothing an unrelated variable draws', () => {
+    // The flag is written rather than drawn, and every free draw runs on its
+    // own per-variable substream — so a `unique` variable elsewhere on the
+    // same type changes nothing about the people the pedigree builds. Held
+    // against the same protocol without that variable, where everything but
+    // the extra attribute itself must be identical.
+    const variables = {
+      ...BASE_VARIABLES,
       isEgo: { name: 'Is ego', type: 'boolean' },
       age: {
         name: 'Age',
         type: 'number',
         validation: { minValue: 0, maxValue: 100 },
       },
+    };
+    const withRef = {
+      ...variables,
       ref: { name: 'Ref', type: 'text', validation: { unique: true } },
-    });
-
-    const withoutFlag = (node: NcNode) => {
-      const { isEgo: _isEgo, ...rest } = node[entityAttributesProperty];
-      return rest;
     };
 
     for (let seed = 1; seed <= 25; seed++) {
-      // A later stage as well, so a shifted random stream shows up in what the
-      // rest of the protocol draws and not only inside the pedigree.
-      const stages = [nameGenerator(3)];
-      const pinned = generateNetwork({
+      const plain = generateNetwork({
         seed,
-        codebook,
-        stages: [pedigree('isEgo'), ...stages],
+        codebook: personCodebook(4, variables),
+        stages: [pedigree()],
       }).network.nodes;
 
-      expect(pinned.map(withoutFlag)).toEqual(
-        generateNetwork({
-          seed,
-          codebook,
-          stages: [pedigree(), ...stages],
-        }).network.nodes.map(withoutFlag),
-      );
+      const augmented = generateNetwork({
+        seed,
+        codebook: personCodebook(4, withRef),
+        stages: [pedigree()],
+      }).network.nodes;
 
-      const fromPedigree = pinned.filter(
-        (node) => node.stageId === 'stage-pedigree',
+      const shape = (node: NcNode) => {
+        const { ref: _ref, ...rest } = node[entityAttributesProperty];
+        return rest;
+      };
+      expect(augmented.map(shape)).toEqual(plain.map(shape));
+
+      // The interface's own invariant, alongside: exactly one proband, first.
+      expect(plain.length).toBe(4);
+      expect(plain.map((node) => node[entityAttributesProperty].isEgo)).toEqual(
+        plain.map((_node, index) => index === 0),
       );
-      expect(fromPedigree.length).toBeGreaterThan(1);
-      expect(
-        fromPedigree.map((node) => node[entityAttributesProperty].isEgo),
-      ).toEqual(fromPedigree.map((_node, index) => index === 0));
     }
   });
 });

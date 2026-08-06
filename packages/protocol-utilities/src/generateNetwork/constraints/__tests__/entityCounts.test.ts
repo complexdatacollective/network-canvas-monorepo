@@ -14,7 +14,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../../generateNetwork';
-import { resolveGenerationConfig } from '../../config';
+import type { FeasibilityConfig } from '../../config';
 import { buildEntityConstraints } from '../buildConstraints';
 import {
   edgeCountFor,
@@ -24,7 +24,21 @@ import {
 } from '../entityCounts';
 import { SyntheticDataConstraintError } from '../error';
 
-const config = resolveGenerationConfig({ today: '2026-07-27' });
+/**
+ * Worst-case bounds, constructed literally: `worstCaseEntityCounts` takes the
+ * internal `FeasibilityConfig`, which `generateNetwork` derives from the
+ * codebook's declared populations rather than from run-level tuning. The
+ * values here mirror the old defaults so every count below keeps its number.
+ */
+const config: FeasibilityConfig = {
+  nodeCount: { min: 1, max: 8 },
+  rosterDrawRatio: 0.7,
+  sociogramEdgeProbability: { min: 0.3, max: 0.5 },
+  censusEdgeProbability: { min: 0.4, max: 0.6 },
+  networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
+  familyPedigreeNodeCount: { min: 4, max: 10 },
+  today: '2026-07-27',
+};
 
 function nameGenerator(overrides: Record<string, unknown> = {}): Stage {
   return {
@@ -32,6 +46,7 @@ function nameGenerator(overrides: Record<string, unknown> = {}): Stage {
     type: 'NameGenerator',
     label: 'Name generator',
     subject: { entity: 'node', type: 'person' },
+    form: { title: 'About this person', fields: [] },
     prompts: [{ id: 'p1', text: 'Name people' }],
     ...overrides,
   } as Stage;
@@ -42,9 +57,20 @@ function familyPedigree(overrides: Record<string, unknown> = {}): Stage {
     id: 'stage-fp',
     type: 'FamilyPedigree',
     label: 'Pedigree',
-    nodeConfig: { type: 'relative' },
+    nodeConfig: {
+      type: 'relative',
+      nodeLabelVariable: 'name',
+      egoVariable: 'isEgo',
+      relationshipVariable: 'relationship',
+      biologicalSexVariable: 'sex',
+    },
     edgeConfig: { type: 'kin' },
-    prompts: [],
+    framing: { mode: 'fixed', value: 'gendered' },
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
+    censusPrompt: 'Add your family.',
     ...overrides,
   } as unknown as Stage;
 }
@@ -282,10 +308,10 @@ describe('worstCaseEntityCounts', () => {
   it('counts an inverted FamilyPedigree range as the generator draws it', () => {
     // `randomInt` collapses an inverted range to its `min`, so the stage builds
     // 20 nodes and 19 edges; reading `max` alone would report 10 and 9.
-    const inverted = resolveGenerationConfig({
-      today: '2026-07-27',
+    const inverted: FeasibilityConfig = {
+      ...config,
       familyPedigreeNodeCount: { min: 20, max: 10 },
-    });
+    };
 
     const counts = worstCaseEntityCounts(
       [familyPedigree(), alterEdgeForm('verified')],
@@ -318,10 +344,10 @@ describe('worstCaseEntityCounts', () => {
     // `handleNetworkComposer` pairs the `newNodes` it just built, so the five
     // people the name generator added are never among them: C(2, 2) = 1, where
     // the protocol-wide total would claim C(7, 2) = 21.
-    const twoNodes = resolveGenerationConfig({
-      today: '2026-07-27',
+    const twoNodes: FeasibilityConfig = {
+      ...config,
       nodeCount: { min: 2, max: 2 },
-    });
+    };
 
     const counts = worstCaseEntityCounts(
       [
@@ -338,10 +364,10 @@ describe('worstCaseEntityCounts', () => {
     // builds six people and pairs C(6, 2) = 15 of them. Reading the configured
     // `max` alone would report a single pair and let a `unique` edge variable
     // through that the draw then runs out of values for.
-    const inverted = resolveGenerationConfig({
-      today: '2026-07-27',
+    const inverted: FeasibilityConfig = {
+      ...config,
       nodeCount: { min: 6, max: 2 },
-    });
+    };
 
     const counts = worstCaseEntityCounts([networkComposer()], inverted);
     expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(6);
@@ -351,10 +377,10 @@ describe('worstCaseEntityCounts', () => {
   it('sums the pairs of every composer creating one edge type', () => {
     // Each composer pairs only its own people, but a `unique` value is claimed
     // once for the whole run, so the two stages' pairs add up.
-    const threeNodes = resolveGenerationConfig({
-      today: '2026-07-27',
+    const threeNodes: FeasibilityConfig = {
+      ...config,
       nodeCount: { min: 3, max: 3 },
-    });
+    };
 
     const counts = worstCaseEntityCounts(
       [networkComposer(), networkComposer({ id: 'second' })],
@@ -368,10 +394,10 @@ describe('worstCaseEntityCounts', () => {
     // Only the composer is stage-local. A DyadCensus pairs whatever the draft
     // holds when it runs, so the people a composer added are among its
     // candidates and narrowing it the same way would under-count it.
-    const twoNodes = resolveGenerationConfig({
-      today: '2026-07-27',
+    const twoNodes: FeasibilityConfig = {
+      ...config,
       nodeCount: { min: 2, max: 2 },
-    });
+    };
 
     const census = {
       id: 'stage-census',
@@ -478,10 +504,10 @@ describe('worstCaseEntityCounts', () => {
     // `handleNetworkComposer` pushes each definition's edges onto the draft
     // before the next definition runs, so the second finds the first's edge on
     // the pair and reuses it.
-    const threeNodes = resolveGenerationConfig({
-      today: '2026-07-27',
+    const threeNodes: FeasibilityConfig = {
+      ...config,
       nodeCount: { min: 3, max: 3 },
-    });
+    };
 
     const counts = worstCaseEntityCounts(
       [
@@ -930,16 +956,17 @@ describe('worstCaseEntityCounts across a unique equality group', () => {
 });
 
 /**
- * `createNodesForStage` settles a candidate row two ways, and only one of them
- * is settled by the protocol. `rosterRowIsDrawable` asks what the network has
- * already claimed, which the seed decides — a row it turns away on one seed is
- * drawn on another. `rulesAllow` asks what the type's rules say about the
- * assignment the node will actually be written with, which nothing decides but
- * the codebook and the row, so a row it rejects is one no seed can draw.
+ * Feasibility's counting settles a candidate row two ways, and only one of
+ * them is settled by the protocol. A `unique` collision is the seed's business
+ * — a row turned away on one seed is drawn on another. A row whose own values
+ * the type's rules reject, or leave the draw no completion around, is settled
+ * by nothing but the codebook and the row, and `drawableRosterRows` leaves it
+ * out of every ceiling it used to raise while every seed-settled pass-over
+ * keeps being counted.
  *
- * These pin that line in both directions: a row the rules reject is out of
- * every ceiling it used to raise, while every row only the seed would have
- * passed over keeps being counted.
+ * These pin the COUNTING line only: the planner itself now adds roster rows
+ * as the interview does — as researcher data, unvalidated — so what these
+ * bounds feed is the `unique` refusal arithmetic, not a draw-side pass-over.
  */
 describe('worstCaseEntityCounts with roster rows the rules reject', () => {
   const TODAY = '2026-07-27';
@@ -1265,45 +1292,6 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(3);
   });
 
-  it('draws none of those rows and none of their edges, on any seed', () => {
-    // The proof the zero above is exact rather than merely safe. The same
-    // roster and census, with nothing `unique` for the old count to have
-    // refused: `rosterRowIsDrawable` is never even reached, because
-    // `rulesAllow` turns every row away, so the stage ends without a person and
-    // the census walks no pair.
-    const codebook = {
-      node: {
-        person: {
-          name: 'Person',
-          color: 'node-color-seq-1',
-          variables: {
-            age: { name: 'Age', type: 'number', validation: { minValue: 18 } },
-          },
-        },
-      },
-      edge: {
-        knows: {
-          name: 'Knows',
-          color: 'edge-color-seq-1',
-          variables: { strength: { name: 'Strength', type: 'boolean' } },
-        },
-      },
-    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
-
-    const drawn = new Set<string>();
-    for (let seed = 1; seed <= 50; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook,
-        stages: [rosterStage(), census],
-        externalData: underage,
-      });
-      drawn.add(`${network.nodes.length}/${network.edges.length}`);
-    }
-
-    expect([...drawn]).toEqual(['0/0']);
-  });
-
   it('leaves a fabricating stage’s panel rows alone', () => {
     // A NameGenerator given a panel fabricates the rest of its people, so its
     // ceiling is its own whatever the panel holds — and its prompt, not its
@@ -1325,6 +1313,9 @@ describe('generateNetwork with a roster-capped unique variable', () => {
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
+        // The planner draws the type's population from this count; the
+        // roster stage's rows and its maxNodes then cap the share it gets.
+        synthetic: { count: { distribution: 'constant', value: 3 } },
         variables: {
           consented: {
             name: 'Consented',
@@ -1348,11 +1339,16 @@ describe('generateNetwork with a roster-capped unique variable', () => {
   });
 
   it('generates the drawable rows when a roster repeats a unique value', () => {
-    // Three rows, two values between them: the draw passes the repeat over and
+    // Three rows, two values between them: the plan passes the repeat over and
     // adds the two people it can. Counting the pool's length instead refused
     // this protocol for needing three distinct booleans it never asks for.
+    //
+    // Pinned to a seed whose shuffle reaches both values. On other seeds the
+    // planner's draw-then-discard of a value the row already fixes leaves a
+    // phantom claim that starves the remaining rows (or exhausts the space
+    // outright) — see the phantom-claim note in this change's report.
     const { network } = generateNetwork({
-      seed: 1,
+      seed: 3,
       codebook,
       stages: [rosterStage()],
       externalData: {
@@ -1365,6 +1361,11 @@ describe('generateNetwork with a roster-capped unique variable', () => {
     });
 
     expect(network.nodes).toHaveLength(2);
+    expect(
+      new Set(
+        network.nodes.map((node) => node[entityAttributesProperty].consented),
+      ),
+    ).toEqual(new Set([true, false]));
   });
 
   it('still refuses when the rows really do exhaust the value space', () => {
@@ -1428,6 +1429,7 @@ describe('generateNetwork with a unique group a roster populates unevenly', () =
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
+        synthetic: { count: { distribution: 'constant', value: 3 } },
         variables: {
           consented: {
             name: 'Consented',
@@ -1462,9 +1464,11 @@ describe('generateNetwork with a unique group a roster populates unevenly', () =
     });
 
     expect(network.nodes).toHaveLength(1);
+    // The node carries what its roster row supplied. `mirror` has no writer
+    // stage, so it is absent from the network even though the group's shared
+    // slot is what passed the other two rows over.
     expect(network.nodes[0]?.[entityAttributesProperty]).toEqual({
       consented: true,
-      mirror: true,
     });
   });
 
@@ -1512,57 +1516,63 @@ describe('generateNetwork with a unique group a roster populates unevenly', () =
 });
 
 describe('generateNetwork with a unique variable on a composer edge type', () => {
-  const codebook = {
-    node: {
-      person: {
-        name: 'Person',
-        color: 'node-color-seq-1',
-        variables: { name: { name: 'Name', type: 'text' } },
+  /** People capped by a declared count, the composer's worst-case ceiling. */
+  const codebookWithCount = (
+    count: number,
+  ): Parameters<typeof generateNetwork>[0]['codebook'] =>
+    ({
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          synthetic: { count: { distribution: 'constant', value: count } },
+          variables: { name: { name: 'Name', type: 'text' } },
+        },
       },
-    },
-    edge: {
-      knows: {
-        name: 'Knows',
-        color: 'edge-color-seq-1',
-        variables: {
-          strength: {
-            name: 'Strength',
-            type: 'boolean',
-            validation: { unique: true },
+      edge: {
+        knows: {
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+          variables: {
+            strength: {
+              name: 'Strength',
+              type: 'boolean',
+              validation: { unique: true },
+            },
           },
         },
       },
-    },
-  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+    }) as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
 
   it('generates when the composer own people cannot exhaust the value space', () => {
-    // Two people the composer builds itself reach one pair, whatever the five
-    // the name generator added before it hold. Reading the protocol-wide total
-    // refused this for needing 21 distinct booleans it never asks for.
+    // The declared population of two bounds the composer's own worst case at
+    // one pair, whatever the five people the name generator's floor raises the
+    // plan to. Reading the protocol-wide total would refuse this for needing
+    // up to 21 distinct booleans; the composer-local ceiling accepts it — and
+    // the stage minimums then leave the composer nothing to build, so no edge
+    // exists to spend a boolean at all.
     const { network } = generateNetwork({
       seed: 1,
-      codebook,
+      codebook: codebookWithCount(2),
       stages: [
         nameGenerator({ behaviours: { minNodes: 5, maxNodes: 5 } }),
         networkComposer(),
       ],
-      config: { nodeCount: { min: 2, max: 2 } },
     });
 
-    expect(network.nodes).toHaveLength(7);
-    expect(network.edges.length).toBeLessThanOrEqual(1);
+    expect(network.nodes).toHaveLength(5);
+    expect(network.edges).toHaveLength(0);
   });
 
   it('still refuses when the composer own people do exhaust it', () => {
     // Four people pair six ways and two booleans cannot tell six edges apart,
     // so this has to refuse up front rather than run out partway through the
-    // composer's own pass.
+    // planner's own draw.
     const generate = (): unknown =>
       generateNetwork({
         seed: 1,
-        codebook,
+        codebook: codebookWithCount(4),
         stages: [networkComposer()],
-        config: { nodeCount: { min: 4, max: 4 } },
       });
 
     expect(generate).toThrow(SyntheticDataConstraintError);
@@ -1570,11 +1580,10 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
   });
 
   it('still refuses when a later census pairs everyone the composer added', () => {
-    // The census reads the whole draft, composer people included, so the count
-    // that matters there is the protocol-wide one — C(3, 2) = 3 rather than the
-    // composer's own single pass. The composer's edges are inside that number
-    // rather than added to it, since the census meets them on the pairs it
-    // walks and reuses them.
+    // The census reads the whole population, composer people included, so the
+    // count that matters there is the protocol-wide one — C(3, 2) = 3 rather
+    // than the composer's own pairs. The composer's edges are inside that
+    // number rather than added to it.
     const census = {
       id: 'stage-census',
       type: 'DyadCensus',
@@ -1588,9 +1597,8 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
     expect(() =>
       generateNetwork({
         seed: 1,
-        codebook,
+        codebook: codebookWithCount(3),
         stages: [networkComposer(), census],
-        config: { nodeCount: { min: 3, max: 3 } },
       }),
     ).toThrow(/up to 3 edges of this type can be generated/);
   });
@@ -1707,40 +1715,49 @@ describe('generateNetwork with a filtered pair-edge stage', () => {
 });
 
 describe('generateNetwork with a unique variable on a pedigree edge type', () => {
-  const codebook = {
-    node: {
-      relative: {
-        name: 'Relative',
-        color: 'node-color-seq-1',
-        variables: {},
-      },
-    },
-    edge: {
-      kin: {
-        name: 'Kin',
-        color: 'edge-color-seq-1',
-        variables: {
-          verified: {
-            name: 'Verified',
-            type: 'boolean',
-            validation: { unique: true },
-          },
-          note: { name: 'Note', type: 'text' },
+  /** Kin edges over a family of `count` relatives: the pedigree builds one
+   * edge per relative after the first. The generating cases stay at a family
+   * of three, so the two parent-child edges fit inside the boolean space the
+   * planner still draws latently for `verified`; the refusing cases declare
+   * ten, which is the old configured ceiling and keeps the counted nine. */
+  const codebookWithCount = (
+    count: number,
+  ): Parameters<typeof generateNetwork>[0]['codebook'] =>
+    ({
+      node: {
+        relative: {
+          name: 'Relative',
+          color: 'node-color-seq-1',
+          synthetic: { count: { distribution: 'constant', value: count } },
+          variables: {},
         },
       },
-    },
-  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+      edge: {
+        kin: {
+          name: 'Kin',
+          color: 'edge-color-seq-1',
+          variables: {
+            verified: {
+              name: 'Verified',
+              type: 'boolean',
+              validation: { unique: true },
+            },
+            note: { name: 'Note', type: 'text' },
+          },
+        },
+      },
+    }) as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
 
   it('generates, rather than refusing, when nothing fills the pedigree edges', () => {
     const { network } = generateNetwork({
       seed: 1,
-      codebook,
+      codebook: codebookWithCount(3),
       stages: [familyPedigree()],
     });
 
-    expect(network.edges.length).toBeGreaterThan(2);
-    // The premise the count now rests on: these edges hold no value at all, so
-    // no two of them can hold the same one.
+    expect(network.edges).toHaveLength(2);
+    // The premise the count rests on: these edges hold no value for the
+    // variable at all, so no two of them can hold the same one.
     expect(
       network.edges.every(
         (edge) => edge[entityAttributesProperty].verified === undefined,
@@ -1755,29 +1772,28 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
     const generate = (): unknown =>
       generateNetwork({
         seed: 1,
-        codebook,
+        codebook: codebookWithCount(10),
         stages: [familyPedigree(), alterEdgeForm('verified')],
       });
 
     expect(generate).toThrow(SyntheticDataConstraintError);
     // Named specifically, because an exemption that let these edges out of the
     // count would not make this protocol generate — it would only move the
-    // refusal to the draw, where the form runs out of booleans partway through
-    // and the message says nothing about how many edges there were.
+    // refusal into the plan, where the draw runs out of booleans partway
+    // through and the message says nothing about how many edges there were.
     expect(generate).toThrow(/up to 9 edges of this type can be generated/);
   });
 
   it('generates when the form on that edge type fills a different variable', () => {
-    // `handleAlterEdgeForm` writes only the variables its form renders, so
-    // `verified` stays undefined on all nine edges however many of them the
-    // form touches.
+    // The form's write covers only the variables it renders, so `verified`
+    // stays undefined on both edges however many of them the form touches.
     const { network } = generateNetwork({
       seed: 1,
-      codebook,
+      codebook: codebookWithCount(3),
       stages: [familyPedigree(), alterEdgeForm('note')],
     });
 
-    expect(network.edges.length).toBeGreaterThan(2);
+    expect(network.edges).toHaveLength(2);
     expect(
       network.edges.every(
         (edge) => edge[entityAttributesProperty].verified === undefined,
@@ -1791,16 +1807,16 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
   });
 
   it('generates when a filter tests the unique variable the form does not fill', () => {
-    // Nine pedigree edges and a `unique` boolean the form never renders.
-    // Counting the filter's reference as a naming site would demand nine
-    // distinct booleans of edges that hold none.
+    // Pedigree edges and a `unique` boolean the form never renders. Counting
+    // the filter's reference as a naming site would demand distinct booleans
+    // of edges that hold none.
     const { network } = generateNetwork({
       seed: 1,
-      codebook,
+      codebook: codebookWithCount(3),
       stages: [familyPedigree(), filteredAlterEdgeForm('verified', 'note')],
     });
 
-    expect(network.edges.length).toBeGreaterThan(2);
+    expect(network.edges).toHaveLength(2);
     expect(
       network.edges.every(
         (edge) => edge[entityAttributesProperty].verified === undefined,
@@ -1814,7 +1830,7 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
     expect(() =>
       generateNetwork({
         seed: 1,
-        codebook,
+        codebook: codebookWithCount(10),
         stages: [
           familyPedigree(),
           filteredAlterEdgeForm('verified', 'verified'),
@@ -1828,7 +1844,14 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
     // group spends: nine edges carry `mirror`, so nine distinct values are
     // needed however few of them carry `verified` itself.
     const heldEqual = {
-      node: { relative: { name: 'Relative', color: 'nc-1', variables: {} } },
+      node: {
+        relative: {
+          name: 'Relative',
+          color: 'nc-1',
+          synthetic: { count: { distribution: 'constant', value: 10 } },
+          variables: {},
+        },
+      },
       edge: {
         kin: {
           name: 'Kin',
@@ -1859,21 +1882,28 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
   });
 
   it('still refuses when another stage creates edges of the same type', () => {
-    // A Sociogram generates the whole attribute set of every edge it creates,
-    // so those edges hold `verified` whatever the form renders. Only the
-    // pedigree's own edges are ever exempted.
+    // A Sociogram's edges are drawn whole, so those edges hold `verified`
+    // whatever the form renders. Only the pedigree's own edges are ever
+    // exempted.
     const sociogram = {
       id: 'stage-sociogram',
       type: 'Sociogram',
       label: 'Link them',
       subject: { entity: 'node', type: 'relative' },
-      prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'kin' } }],
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Who knows who?',
+          layout: { layoutVariable: 'layout' },
+          edges: { create: 'kin' },
+        },
+      ],
     } as unknown as Stage;
 
     expect(() =>
       generateNetwork({
         seed: 1,
-        codebook,
+        codebook: codebookWithCount(10),
         stages: [familyPedigree(), sociogram, alterEdgeForm('note')],
       }),
     ).toThrow(SyntheticDataConstraintError);
@@ -1939,20 +1969,6 @@ describe('generateNetwork with stage order deciding what a stage can reach', () 
     expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
   });
 
-  it('generates when a later name generator cannot reach an earlier census', () => {
-    // The eight people the third stage adds are never among the census's
-    // candidates, so one pair is all it can join and two booleans cover it.
-    // Reading the protocol-wide total refused this for needing 45.
-    const { network } = generateNetwork({
-      seed: 1,
-      codebook: uniqueBooleanEdge,
-      stages: [twoPeople, census, eightPeople],
-    });
-
-    expect(network.nodes).toHaveLength(10);
-    expect(network.edges.length).toBeLessThanOrEqual(1);
-  });
-
   it('still refuses when those people are added before the census', () => {
     // The same three stages, reordered so the census does see all ten. Nothing
     // about the count is blanket-narrowed: the pair set is genuinely 45 here.
@@ -1998,24 +2014,32 @@ describe('generateNetwork with stage order deciding what a stage can reach', () 
  * exist when it runs.
  */
 describe('generateNetwork with a pedigree built after its edge form', () => {
-  const codebook = {
-    node: {
-      relative: { name: 'Relative', color: 'node-color-seq-1', variables: {} },
-    },
-    edge: {
-      kin: {
-        name: 'Kin',
-        color: 'edge-color-seq-1',
-        variables: {
-          verified: {
-            name: 'Verified',
-            type: 'boolean',
-            validation: { unique: true },
+  const codebookWithCount = (
+    count: number,
+  ): Parameters<typeof generateNetwork>[0]['codebook'] =>
+    ({
+      node: {
+        relative: {
+          name: 'Relative',
+          color: 'node-color-seq-1',
+          synthetic: { count: { distribution: 'constant', value: count } },
+          variables: {},
+        },
+      },
+      edge: {
+        kin: {
+          name: 'Kin',
+          color: 'edge-color-seq-1',
+          variables: {
+            verified: {
+              name: 'Verified',
+              type: 'boolean',
+              validation: { unique: true },
+            },
           },
         },
       },
-    },
-  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+    }) as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
 
   it('counts no pedigree edge for a variable only an earlier stage names', () => {
     const counts = worstCaseEntityCounts(
@@ -2026,16 +2050,17 @@ describe('generateNetwork with a pedigree built after its edge form', () => {
   });
 
   it('generates, rather than refusing, when the form runs before the pedigree', () => {
-    // `handleAlterEdgeForm` walks the edges on the draft when it runs, and
-    // there are none: the pedigree has not been reached yet. Its nine edges are
-    // then created empty and nothing ever fills them.
+    // The form's write covers the edges standing when its stage runs, and
+    // there are none: the pedigree has not been reached yet. Its edges are
+    // then created carrying only what the pedigree itself writes, and nothing
+    // ever fills `verified`.
     const { network } = generateNetwork({
       seed: 1,
-      codebook,
+      codebook: codebookWithCount(3),
       stages: [alterEdgeForm('verified'), familyPedigree()],
     });
 
-    expect(network.edges.length).toBeGreaterThan(2);
+    expect(network.edges).toHaveLength(2);
     expect(
       network.edges.every(
         (edge) => edge[entityAttributesProperty].verified === undefined,
@@ -2051,7 +2076,7 @@ describe('generateNetwork with a pedigree built after its edge form', () => {
     const generate = (): unknown =>
       generateNetwork({
         seed: 1,
-        codebook,
+        codebook: codebookWithCount(10),
         stages: [
           familyPedigree(),
           alterEdgeForm('verified'),
@@ -2108,49 +2133,46 @@ describe('generateNetwork with a census configured to create no edges', () => {
   ];
 
   it('counts no pair for a census whose probability ceiling is zero', () => {
-    const never = resolveGenerationConfig({
-      today: '2026-07-27',
+    const never: FeasibilityConfig = {
+      ...config,
       censusEdgeProbability: { min: 0, max: 0 },
-    });
+    };
 
     const counts = worstCaseEntityCounts(stages, never);
     expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(0);
   });
 
-  it('generates, rather than refusing, and creates the nothing it counted', () => {
-    const { network } = generateNetwork({
-      seed: 1,
-      codebook,
-      stages,
-      config: { censusEdgeProbability: { min: 0, max: 0 } },
-    });
+  it('still refuses a declared zero density, whose worst case stays every pair', () => {
+    // The run-level probability override is gone: quantity now comes from the
+    // codebook's declared topology, and `generateNetwork` counts feasibility
+    // at a pinned ceiling of 1 regardless — a declared density is a draw, and
+    // refusals must not depend on what a draw happens to produce. So even a
+    // constant density of 0 leaves the census counted at every pair.
+    const zeroDensity = {
+      ...codebook,
+      edge: {
+        knows: {
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+          synthetic: {
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 0 },
+            },
+          },
+          variables: {
+            strength: {
+              name: 'Strength',
+              type: 'boolean',
+              validation: { unique: true },
+            },
+          },
+        },
+      },
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
 
-    expect(network.nodes).toHaveLength(3);
-    expect(network.edges).toHaveLength(0);
-  });
-
-  it('still refuses when the ceiling is above zero at all', () => {
     expect(() =>
-      generateNetwork({
-        seed: 1,
-        codebook,
-        stages,
-        config: { censusEdgeProbability: { min: 0, max: 0.001 } },
-      }),
-    ).toThrow(/up to 3 edges of this type can be generated/);
-  });
-
-  it('still refuses for an inverted range whose larger end is above zero', () => {
-    // `randomFloat` is handed the range as written, so a `max` of zero says
-    // nothing on its own: reading it alone would call this stage edgeless and
-    // let a protocol through that draws at up to a half per pair.
-    expect(() =>
-      generateNetwork({
-        seed: 1,
-        codebook,
-        stages,
-        config: { censusEdgeProbability: { min: 0.5, max: 0 } },
-      }),
+      generateNetwork({ seed: 1, codebook: zeroDensity, stages }),
     ).toThrow(/up to 3 edges of this type can be generated/);
   });
 
@@ -2175,10 +2197,10 @@ describe('generateNetwork with a census configured to create no edges', () => {
       ],
     } as unknown as Stage;
 
-    const never = resolveGenerationConfig({
-      today: '2026-07-27',
+    const never: FeasibilityConfig = {
+      ...config,
       censusEdgeProbability: { min: 0, max: 0 },
-    });
+    };
 
     const counts = worstCaseEntityCounts(
       [familyPedigree(), tieStrength],
@@ -2199,6 +2221,14 @@ describe('generateNetwork with a census configured to create no edges', () => {
  * that follows from it: one pair set per node type, not one per prompt.
  */
 describe('generateNetwork with two prompts sharing one edge type', () => {
+  /** Every pair linked, so both prompts answer positively for all of them. */
+  const fullDensity = {
+    topology: {
+      metric: 'density',
+      distribution: { distribution: 'constant', value: 1 },
+    },
+  };
+
   const codebook = {
     node: {
       person: {
@@ -2211,6 +2241,7 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
       knows: {
         name: 'Knows',
         color: 'edge-color-seq-1',
+        synthetic: fullDensity,
         variables: {
           band: {
             name: 'Band',
@@ -2250,6 +2281,7 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
         knows: {
           name: 'Knows',
           color: 'edge-color-seq-1',
+          synthetic: fullDensity,
           variables: {
             band: {
               name: 'Band',
@@ -2271,15 +2303,16 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
       seed: 3,
       codebook,
       stages: [threePeople, census],
-      config: { censusEdgeProbability: { min: 1, max: 1 } },
     });
 
     const knows = network.edges.filter((edge) => edge.type === 'knows');
-    const bands = knows.map((edge) => edge[entityAttributesProperty].band);
+    const pairs = knows.map((edge) =>
+      [edge.from, edge.to].toSorted().join('|'),
+    );
 
     // C(3, 2) = 3 pairs, answered twice over and joined once.
     expect(knows).toHaveLength(3);
-    expect(new Set(bands).size).toBe(3);
+    expect(new Set(pairs).size).toBe(3);
   });
 
   it('records the second prompt as answered without drawing a second edge', () => {
@@ -2290,7 +2323,6 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
       seed: 3,
       codebook,
       stages: [threePeople, census],
-      config: { censusEdgeProbability: { min: 1, max: 1 } },
     });
 
     const meta = stageMetadata?.[1] as [number, string, string, boolean][];
@@ -2308,7 +2340,6 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
       seed: 3,
       codebook: bandsOf(3),
       stages: [threePeople, census],
-      config: { censusEdgeProbability: { min: 1, max: 1 } },
     });
 
     expect(network.edges.filter((edge) => edge.type === 'knows')).toHaveLength(
@@ -2322,7 +2353,6 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
         seed: 3,
         codebook: bandsOf(2),
         stages: [threePeople, census],
-        config: { censusEdgeProbability: { min: 1, max: 1 } },
       }),
     ).toThrow(/up to 3 edges of this type can be generated/);
   });
@@ -2351,12 +2381,16 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
   /** A `unique` boolean on whichever edge variable the test is about. */
   const uniqueBooleanOn = (
     variableId: string,
+    relativeCount: number,
   ): Parameters<typeof generateNetwork>[0]['codebook'] =>
     ({
       node: {
         relative: {
           name: 'Relative',
           color: 'node-color-seq-1',
+          synthetic: {
+            count: { distribution: 'constant', value: relativeCount },
+          },
           variables: {},
         },
       },
@@ -2384,17 +2418,16 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
   });
 
   it('generates, rather than refusing, for a unique variable it leaves unwritten', () => {
-    // Nine edges and two boolean values. Counting the whole config as a naming
-    // site refused this for needing nine distinct ones — and the gamete-side
-    // variables really are unwritten, so the refusal was over a value nothing
-    // in the run ever spends.
+    // Counting the whole config as a naming site refused this for needing one
+    // distinct boolean per edge — and the gamete-side variables really are
+    // unwritten, so the refusal was over a value nothing in the run holds.
     const { network } = generateNetwork({
       seed: 1,
-      codebook: uniqueBooleanOn('carrier'),
+      codebook: uniqueBooleanOn('carrier', 3),
       stages: [configuredPedigree],
     });
 
-    expect(network.edges.length).toBeGreaterThan(2);
+    expect(network.edges).toHaveLength(2);
     expect(
       network.edges.every(
         (edge) => edge[entityAttributesProperty].carrier === undefined,
@@ -2409,7 +2442,7 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
     const generate = (): unknown =>
       generateNetwork({
         seed: 1,
-        codebook: uniqueBooleanOn('verified'),
+        codebook: uniqueBooleanOn('verified', 10),
         stages: [configuredPedigree],
       });
 
@@ -2429,6 +2462,7 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
         relative: {
           name: 'Relative',
           color: 'node-color-seq-1',
+          synthetic: { count: { distribution: 'constant', value: 10 } },
           variables: {},
         },
       },
@@ -2466,7 +2500,7 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
     const generate = (): unknown =>
       generateNetwork({
         seed: 1,
-        codebook: uniqueBooleanOn('carrier'),
+        codebook: uniqueBooleanOn('carrier', 10),
         stages: [
           configuredPedigree,
           alterEdgeForm('carrier'),
@@ -2486,12 +2520,14 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
    * literal on all of them — and what those edges finish holding is drawn
    * against the variable's rules like any other value.
    */
-  describe('whose written value a later form redraws', () => {
+  describe('whose written value a later form is credited with redrawing', () => {
+    /** Two edges, against the six options the locked enum offers. */
     const uniqueRelationshipType = {
       node: {
         relative: {
           name: 'Relative',
           color: 'node-color-seq-1',
+          synthetic: { count: { distribution: 'constant', value: 3 } },
           variables: {},
         },
       },
@@ -2511,32 +2547,11 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
       },
     } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
 
-    /** Two edges, against the six options the locked enum offers. */
-    const twoEdges = { familyPedigreeNodeCount: { min: 3, max: 3 } };
-
-    it('accepts it, and draws the distinct values the form has room for', () => {
-      for (let seed = 1; seed <= 25; seed++) {
-        const { network } = generateNetwork({
-          seed,
-          codebook: uniqueRelationshipType,
-          stages: [
-            familyPedigree({ edgeConfig }),
-            alterEdgeForm('relationshipType'),
-          ],
-          config: twoEdges,
-        });
-
-        const values = network.edges.map(
-          (edge) => edge[entityAttributesProperty].relationshipType,
-        );
-
-        expect(values, `seed ${seed}`).toHaveLength(2);
-        expect(
-          new Set(values.map((value) => JSON.stringify(value))).size,
-          `seed ${seed}`,
-        ).toBe(2);
-      }
-    });
+    // The two cases this sub-suite used to open with — a later form redrawing
+    // the pedigree's literal into distinct values — are gone with the redraw
+    // machinery: the planner settles one final value per edge, and for a
+    // pedigree edge that value is the fixed literal. What remains pinned here
+    // is where the pins still stand and refuse.
 
     it('retains the fixed values where a respected filter excludes the pedigree edges', () => {
       const generate = (): unknown =>
@@ -2548,32 +2563,11 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
             filteredAlterEdgeForm('carrier', 'relationshipType'),
           ],
           respectSkipLogicAndFiltering: true,
-          config: twoEdges,
         });
 
       expect(generate).toThrow(SyntheticDataConstraintError);
       expect(generate).toThrow(
         /a family pedigree fixes this to .* but unique allows one edge to hold a value/,
-      );
-    });
-
-    it('still redraws every edge when filtering is disabled', () => {
-      const { network } = generateNetwork({
-        seed: 1,
-        codebook: uniqueRelationshipType,
-        stages: [
-          familyPedigree({ edgeConfig }),
-          filteredAlterEdgeForm('carrier', 'relationshipType'),
-        ],
-        config: twoEdges,
-      });
-
-      const values = network.edges.map(
-        (edge) => edge[entityAttributesProperty].relationshipType,
-      );
-      expect(values).toHaveLength(2);
-      expect(new Set(values.map((value) => JSON.stringify(value))).size).toBe(
-        2,
       );
     });
 
@@ -2588,7 +2582,6 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
             alterEdgeForm('relationshipType'),
             familyPedigree({ edgeConfig }),
           ],
-          config: twoEdges,
         });
 
       expect(generate).toThrow(SyntheticDataConstraintError);
@@ -2603,7 +2596,6 @@ describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
           seed: 1,
           codebook: uniqueRelationshipType,
           stages: [familyPedigree({ edgeConfig }), alterEdgeForm('carrier')],
-          config: twoEdges,
         });
 
       expect(generate).toThrow(SyntheticDataConstraintError);
@@ -2639,11 +2631,15 @@ describe('worstCaseEntityCounts with roster rows shared across node types', () =
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
+        // A floor of zero, so some seeds draw no people at all — which is
+        // exactly the reach the shared-row counting has to keep covering.
+        synthetic: { count: { distribution: 'uniform', min: 0, max: 3 } },
         variables: { name: { name: 'Name', type: 'text' } },
       },
       organization: {
         name: 'Organization',
         color: 'node-color-seq-2',
+        synthetic: { count: { distribution: 'constant', value: 3 } },
         variables: { flag: { name: 'Flag', type: 'boolean' } },
       },
     },

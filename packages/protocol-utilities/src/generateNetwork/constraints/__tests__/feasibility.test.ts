@@ -13,7 +13,7 @@ import {
 
 import { generateNetwork } from '../../../generateNetwork';
 import { ValueGenerator } from '../../../ValueGenerator';
-import { resolveGenerationConfig } from '../../config';
+import { type FeasibilityConfig, resolveGenerationConfig } from '../../config';
 import { CONTENT_STAGE_TYPES } from '../../contentStages';
 import type { GenerationContext } from '../../context';
 import { buildEntityConstraints } from '../buildConstraints';
@@ -23,7 +23,24 @@ import { generateEntityAttributes } from '../generateEntityAttributes';
 import { UniqueRegistry } from '../uniqueRegistry';
 import { MAX_TEXT_DRAW_LENGTH } from '../valueSpace';
 
-const config = resolveGenerationConfig({ today: '2026-07-27' });
+/**
+ * Worst-case bounds, constructed literally: `analyseFeasibility` takes the
+ * internal `FeasibilityConfig`, which `generateNetwork` derives from the
+ * codebook's declared populations rather than from run-level tuning. The
+ * values here mirror the old defaults so every count below keeps its number.
+ */
+const config: FeasibilityConfig = {
+  nodeCount: { min: 1, max: 8 },
+  rosterDrawRatio: 0.7,
+  sociogramEdgeProbability: { min: 0.3, max: 0.5 },
+  censusEdgeProbability: { min: 0.4, max: 0.6 },
+  networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
+  familyPedigreeNodeCount: { min: 4, max: 10 },
+  today: '2026-07-27',
+};
+
+/** The run-facing config the direct-draw guards below hand a context. */
+const drawConfig = resolveGenerationConfig({ today: '2026-07-27' });
 
 /**
  * Enough context to run one draw directly, for the guards that assert what the
@@ -33,8 +50,8 @@ const config = resolveGenerationConfig({ today: '2026-07-27' });
 function makeDrawContext(seed = 1): GenerationContext {
   return {
     codebook: {},
-    valueGen: new ValueGenerator(seed, config.today),
-    config,
+    valueGen: new ValueGenerator(seed, drawConfig.today),
+    config: drawConfig,
     usedRosterUids: new Set(),
     externalData: undefined,
     respectSkipLogicAndFiltering: false,
@@ -48,6 +65,7 @@ const nameGenerator = {
   type: 'NameGenerator',
   label: 'Name generator',
   subject: { entity: 'node', type: 'person' },
+  form: { title: 'About this person', fields: [] },
   prompts: [{ id: 'p1', text: 'Name people' }],
   behaviours: { maxNodes: 8 },
 } as unknown as Stage;
@@ -1131,6 +1149,7 @@ describe('values a prompt fixes', () => {
       type: 'NameGenerator',
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [
         {
           id: `${id}-p1`,
@@ -1347,6 +1366,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
       type: 'NameGenerator',
       label: 'Panel',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [
         {
           id: 'p-p1',
@@ -1457,6 +1477,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
       type: 'NameGenerator',
       label: 'Carrying panel',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [{ id: 'c-p1', text: 'Name people' }],
       behaviours: { minNodes: 1, maxNodes: 1 },
     } as unknown as Stage;
@@ -1681,6 +1702,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
         type: 'NameGenerator',
         label: 'Carrying panel',
         subject: { entity: 'node', type: 'person' },
+        form: { title: 'About this person', fields: [] },
         prompts: [{ id: 'c-p1', text: 'Name people' }],
         behaviours: { minNodes: 1, maxNodes: 1 },
       } as unknown as Stage;
@@ -1727,10 +1749,7 @@ describe('the ego flag a pedigree stage pins', () => {
   }
 
   function sizedConfig(nodes: number): typeof config {
-    return resolveGenerationConfig({
-      today: '2026-07-27',
-      familyPedigreeNodeCount: { min: nodes, max: nodes },
-    });
+    return { ...config, familyPedigreeNodeCount: { min: nodes, max: nodes } };
   }
 
   const uniqueFlag = codebookWith({
@@ -1809,6 +1828,7 @@ describe('the ego flag a pedigree stage pins', () => {
       type: 'NameGenerator',
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [
         {
           id: 'p1',
@@ -2315,6 +2335,7 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
         type: 'NameGenerator',
         label: 'Name generator',
         subject: { entity: 'node', type: 'person' },
+        form: { title: 'About this person', fields: [] },
         prompts: [
           {
             id: 'p1',
@@ -2743,9 +2764,20 @@ describe('a pedigree edge variable no stage writes', () => {
     id: 'stage-fp',
     type: 'FamilyPedigree',
     label: 'Pedigree',
-    nodeConfig: { type: 'person' },
+    nodeConfig: {
+      type: 'person',
+      nodeLabelVariable: 'name',
+      egoVariable: 'isEgo',
+      relationshipVariable: 'relationship',
+      biologicalSexVariable: 'sex',
+    },
     edgeConfig: { type: 'kin' },
-    prompts: [],
+    framing: { mode: 'fixed', value: 'gendered' },
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
+    censusPrompt: 'Add your family.',
   } as unknown as Stage;
 
   function edgeForm(...variables: string[]): Stage {

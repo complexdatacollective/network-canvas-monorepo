@@ -19,9 +19,6 @@ type Codebook = GenerateParams['codebook'];
 
 const SEEDS = 50;
 
-/** Two nodes, so a pedigree builds exactly one edge. */
-const ONE_EDGE_PEDIGREE = { familyPedigreeNodeCount: { min: 2, max: 2 } };
-
 const EDGE_CONFIG = {
   type: 'kin',
   relationshipTypeVariable: 'relationshipType',
@@ -56,15 +53,34 @@ const KIN_VARIABLES: Variables = {
 
 function codebookWith(
   kinVariables: Record<string, unknown>,
-  personVariables: Record<string, unknown> = {},
+  options: {
+    personVariables?: Record<string, unknown>;
+    /** Declared family size; the pedigree builds one edge per node after the first. */
+    relativeCount?: number;
+  } = {},
 ): Codebook {
   return {
     node: {
-      relative: { name: 'Relative', color: 'node-color-seq-1', variables: {} },
+      relative: {
+        name: 'Relative',
+        color: 'node-color-seq-1',
+        synthetic: {
+          count: {
+            distribution: 'constant',
+            value: options.relativeCount ?? 4,
+          },
+        },
+        variables: {
+          name: { name: 'Name', type: 'text' },
+          isEgo: { name: 'Is ego', type: 'boolean' },
+          relationship: { name: 'Relationship', type: 'text' },
+          sex: { name: 'Sex', type: 'text' },
+        },
+      },
       person: {
         name: 'Person',
         color: 'node-color-seq-2',
-        variables: personVariables,
+        variables: options.personVariables ?? {},
       },
     },
     edge: {
@@ -77,40 +93,42 @@ function codebookWith(
   } as unknown as Codebook;
 }
 
-function pedigree(edgeConfig: Record<string, string>): Stage {
+function pedigree(): Stage {
   return {
     id: 'stage-pedigree',
     type: 'FamilyPedigree',
     label: 'Family',
-    nodeConfig: { type: 'relative', nodeLabelVariable: 'name' },
-    edgeConfig,
+    nodeConfig: {
+      type: 'relative',
+      nodeLabelVariable: 'name',
+      egoVariable: 'isEgo',
+      relationshipVariable: 'relationship',
+      biologicalSexVariable: 'sex',
+    },
+    edgeConfig: EDGE_CONFIG,
+    framing: { mode: 'fixed', value: 'gendered' },
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
+    censusPrompt: 'Add your family.',
   } as unknown as Stage;
 }
 
-function nameGenerator(nodes: number): Stage {
+function nameGenerator(nodes: number, ...fields: string[]): Stage {
   return {
     id: 'stage-ng',
     type: 'NameGenerator',
     label: 'People',
     subject: { entity: 'node', type: 'person' },
+    form: {
+      title: 'About this person',
+      fields: fields.map((variable) => ({ variable, prompt: variable })),
+    },
     prompts: [{ id: 'p1', text: 'Name people' }],
     behaviours: { minNodes: nodes, maxNodes: nodes },
   } as unknown as Stage;
 }
-
-/** Pairs `person` nodes only, so it never reaches a pedigree's own people. */
-const personCensus = {
-  id: 'stage-census',
-  type: 'DyadCensus',
-  label: 'Ties',
-  subject: { entity: 'node', type: 'person' },
-  prompts: [{ id: 'p1', text: 'Do they know each other?', createEdge: 'kin' }],
-} as unknown as Stage;
-
-const CERTAIN_EDGES = {
-  ...ONE_EDGE_PEDIGREE,
-  censusEdgeProbability: { min: 1, max: 1 },
-};
 
 function kinEdges(edges: NcEdge[]): Record<string, VariableValue>[] {
   return edges
@@ -118,32 +136,13 @@ function kinEdges(edges: NcEdge[]): Record<string, VariableValue>[] {
     .map((edge) => edge[entityAttributesProperty]);
 }
 
-/** Everything about a node except the unseeded uid it was given. */
-function nodeShape(node: NcNode): Record<string, unknown> {
-  const { [entityPrimaryKeyProperty]: _uid, ...rest } = node;
-  return rest;
-}
-
-/** The same for an edge, with its endpoints read as positions in the node list. */
-function edgeShape(nodes: NcNode[]): (edge: NcEdge) => Record<string, unknown> {
-  const positions = new Map(
-    nodes.map((node, index) => [node[entityPrimaryKeyProperty], index]),
-  );
-  return (edge) => ({
-    type: edge.type,
-    from: positions.get(edge.from),
-    to: positions.get(edge.to),
-  });
-}
-
 /**
- * Every edge `handleFamilyPedigree` creates is a parent-child link, and the
- * interview writes a relationship type and an active flag onto every
- * parent-child edge it commits — `buildChildParentage`, `egoCellTransform`,
+ * Every edge the pedigree plans is a parent-child link, and the interview
+ * writes a relationship type and an active flag onto every parent-child edge
+ * it commits — `buildChildParentage`, `egoCellTransform`,
  * `siblingCellTransform`, `buildParentageBatch`, `AddParentWizard` and
- * `PedigreeView` all do. Synthetic pedigree edges used to carry neither, so
- * anything reading pedigree data saw a relationship the protocol had no value
- * for.
+ * `PedigreeView` all do. The analyser's `pedigreeEdgeFixedValues` is that
+ * write, and a materialised pedigree edge carries exactly it.
  */
 describe('the values a pedigree writes onto its edges', () => {
   it(`records a biological, active parentage on every edge, over ${SEEDS} seeds`, () => {
@@ -153,7 +152,7 @@ describe('the values a pedigree writes onto its edges', () => {
       const { network } = generateNetwork({
         seed,
         codebook: codebookWith(KIN_VARIABLES),
-        stages: [pedigree(EDGE_CONFIG)],
+        stages: [pedigree()],
       });
 
       const written = kinEdges(network.edges);
@@ -182,7 +181,7 @@ describe('the values a pedigree writes onto its edges', () => {
     const { network } = generateNetwork({
       seed: 7,
       codebook: codebookWith(KIN_VARIABLES),
-      stages: [pedigree(EDGE_CONFIG)],
+      stages: [pedigree()],
     });
 
     expect(kinEdges(network.edges).length).toBeGreaterThan(0);
@@ -204,7 +203,7 @@ describe('the values a pedigree writes onto its edges', () => {
     const { network } = generateNetwork({
       seed: 11,
       codebook: codebookWith(KIN_VARIABLES),
-      stages: [pedigree(EDGE_CONFIG)],
+      stages: [pedigree()],
     });
 
     expect(kinEdges(network.edges).length).toBeGreaterThan(0);
@@ -227,7 +226,7 @@ describe('the values a pedigree writes onto its edges', () => {
     const { network } = generateNetwork({
       seed: 3,
       codebook: codebookWith(KIN_VARIABLES),
-      stages: [pedigree(EDGE_CONFIG)],
+      stages: [pedigree()],
     });
 
     const edges = network.edges.filter((edge) => edge.type === 'kin');
@@ -238,132 +237,69 @@ describe('the values a pedigree writes onto its edges', () => {
 });
 
 describe('what the pedigree edge values cost the run', () => {
-  it('leaves the stage’s own random stream exactly where it was', () => {
-    // The pedigree's only draws are its node count and one parent index per
-    // child, so the people it builds and who each of them descends from is a
-    // fingerprint of that stream and of nothing else — no attribute is drawn
-    // on either type here. These are the numbers the stage produced before it
-    // wrote anything onto its edges, so a write that cost a draw (or a value
-    // routed through `generateEntityAttributes` rather than written) moves
-    // every parent after it and fails here.
-    const codebook = codebookWith({});
-    const shapeOf = (seed: number): { nodes: number; parents: number[][] } => {
-      const { network } = generateNetwork({
-        seed,
-        codebook,
-        stages: [pedigree(EDGE_CONFIG)],
-      });
+  /** Everything about a node except the unseeded uid it was given. */
+  const nodeShape = (node: NcNode): Record<string, unknown> => {
+    const { [entityPrimaryKeyProperty]: _uid, ...rest } = node;
+    return rest;
+  };
+
+  /** An edge read as endpoint positions in the node list, type included. */
+  const edgeShape =
+    (nodes: NcNode[]) =>
+    (edge: NcEdge): Record<string, unknown> => {
       const positions = new Map(
-        network.nodes.map((node, index) => [
-          node[entityPrimaryKeyProperty],
-          index,
-        ]),
+        nodes.map((node, index) => [node[entityPrimaryKeyProperty], index]),
       );
       return {
-        nodes: network.nodes.length,
-        parents: network.edges.map((edge) => [
-          positions.get(edge.from) ?? -1,
-          positions.get(edge.to) ?? -1,
-        ]),
+        type: edge.type,
+        from: positions.get(edge.from),
+        to: positions.get(edge.to),
       };
     };
 
-    expect([1, 2, 3, 4, 5].map(shapeOf)).toEqual([
-      {
-        nodes: 6,
-        parents: [
-          [0, 1],
-          [1, 2],
-          [0, 3],
-          [1, 4],
-          [0, 5],
-        ],
-      },
-      {
-        nodes: 7,
-        parents: [
-          [0, 1],
-          [0, 2],
-          [1, 3],
-          [1, 4],
-          [2, 5],
-          [1, 6],
-        ],
-      },
-      {
-        nodes: 7,
-        parents: [
-          [0, 1],
-          [1, 2],
-          [0, 3],
-          [2, 4],
-          [4, 5],
-          [5, 6],
-        ],
-      },
-      {
-        nodes: 10,
-        parents: [
-          [0, 1],
-          [1, 2],
-          [2, 3],
-          [2, 4],
-          [3, 5],
-          [1, 6],
-          [6, 7],
-          [0, 8],
-          [2, 9],
-        ],
-      },
-      {
-        nodes: 5,
-        parents: [
-          [0, 1],
-          [1, 2],
-          [0, 3],
-          [3, 4],
-        ],
-      },
-    ]);
-  });
-
   it('changes nothing else a seeded run produces', () => {
-    // The values are written after the parent index is drawn and never through
-    // the draw, so a protocol whose edgeConfig names them must produce exactly
-    // the network of one whose edgeConfig names none — same people, same
-    // values, same parent for every child. Held against a later stage as well,
-    // so a shifted stream shows up outside the pedigree too.
-    const codebook = codebookWith(KIN_VARIABLES, {
+    // The values are written rather than drawn, and every free draw runs on
+    // its own per-variable substream — so declaring the kin variables the
+    // pedigree writes must leave every node, every parent choice, and every
+    // draw of a later stage exactly where the same seed put them without
+    // those declarations. Only the edges' own written attributes may differ.
+    const personVariables = {
       name: { name: 'Name', type: 'text' },
       age: {
         name: 'Age',
         type: 'number',
         validation: { minValue: 0, maxValue: 100 },
       },
-    });
+    };
 
     for (let seed = 1; seed <= 25; seed++) {
-      const run = (edgeConfig: Record<string, string>): GenerateParams =>
+      const run = (kinVariables: Record<string, unknown>): GenerateParams =>
         ({
           seed,
-          codebook,
-          stages: [pedigree(edgeConfig), nameGenerator(3)],
+          codebook: codebookWith(kinVariables, { personVariables }),
+          stages: [pedigree(), nameGenerator(3, 'name', 'age')],
         }) as GenerateParams;
 
-      const written = generateNetwork(run(EDGE_CONFIG)).network;
-      const bare = generateNetwork(run({ type: 'kin' })).network;
+      const written = generateNetwork(run(KIN_VARIABLES)).network;
+      const bare = generateNetwork(run({})).network;
 
-      // Compared by position rather than by uid: `uuid()` is not seeded, so
+      // Compared by position rather than by uid: entity ids are not seeded, so
       // identity differs run to run while everything the generator draws does
       // not.
       expect(written.nodes.map(nodeShape)).toEqual(bare.nodes.map(nodeShape));
       expect(written.edges.map(edgeShape(written.nodes))).toEqual(
         bare.edges.map(edgeShape(bare.nodes)),
       );
-      // The bare run is the "before" this change is measured against: it holds
-      // the empty attributes every pedigree edge used to carry.
+      // The write comes from the stage's own edgeConfig rather than from the
+      // codebook declarations, so the bare run's edges carry exactly the same
+      // two values — which is why declaring the variables can cost nothing.
       expect(
-        kinEdges(bare.edges).every((a) => Object.keys(a).length === 0),
+        kinEdges(bare.edges).every(
+          (attributes) =>
+            JSON.stringify(attributes.relationshipType) === '["biological"]' &&
+            attributes.isActive === true &&
+            Object.keys(attributes).length === 2,
+        ),
       ).toBe(true);
     }
   });
@@ -371,60 +307,55 @@ describe('what the pedigree edge values cost the run', () => {
 
 /**
  * A written value is in the network without the `unique` registry having issued
- * it, so the registry has to be told, exactly as it is told about the ego flag
- * a pedigree pins on its own nodes. The hold is taken before the first stage
- * runs and never given back, so it covers the draws on both sides of the
- * pedigree — which is why nothing claims these values as well.
+ * it, so it is either claimed (a single pedigree edge) or refused up front
+ * (a family whose tree would pin one value on two edges) — never left for a
+ * draw to duplicate.
  */
 describe('a pedigree edge value on a unique variable', () => {
-  const uniqueActive = codebookWith({
-    isActive: {
-      name: 'isActive',
-      type: 'boolean',
-      validation: { unique: true },
-    },
+  const uniqueActive = (relativeCount: number): Codebook =>
+    codebookWith(
+      {
+        isActive: {
+          name: 'isActive',
+          type: 'boolean',
+          validation: { unique: true },
+        },
+      },
+      { relativeCount },
+    );
+
+  it('is refused up front where the family would pin it twice', () => {
+    // Three family members build two parent-child edges, and the pedigree
+    // writes `isActive: true` onto both — a duplicate no seed can avoid, so
+    // the refusal names the pedigree's own writer before anything is drawn.
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook: uniqueActive(3),
+        stages: [pedigree()],
+      }),
+    ).toThrow(
+      /a family pedigree fixes this to true on up to 2 edges, but unique allows one edge to hold a value/,
+    );
   });
 
-  it(`is held back from an earlier stage's draw, over ${SEEDS} seeds`, () => {
-    // The census runs first, so nothing the pedigree does can reach a draw that
-    // has already happened: the flag has to be reserved before the first stage
-    // runs, or the census edge is issued `true` from the first position of the
-    // slot's sequence and the pedigree writes `true` on its own edge as well.
+  it(`is claimed for the one edge a two-person family builds, over ${SEEDS} seeds`, () => {
+    // One parent-child edge is inside what `unique` allows, so the protocol
+    // generates — and the flag is written as the claim the registry holds for
+    // the rest of the run, exactly as the proband's ego flag is.
     const failures: string[] = [];
 
     for (let seed = 1; seed <= SEEDS; seed++) {
       const { network } = generateNetwork({
         seed,
-        codebook: uniqueActive,
-        stages: [nameGenerator(2), personCensus, pedigree(EDGE_CONFIG)],
-        config: CERTAIN_EDGES,
+        codebook: uniqueActive(2),
+        stages: [pedigree()],
       });
 
-      const flags = kinEdges(network.edges).map((a) => a.isActive);
-      if (flags.length !== 2 || new Set(flags).size !== 2) {
-        failures.push(`seed ${seed}: ${JSON.stringify(flags)}`);
-      }
-    }
-
-    expect(failures).toEqual([]);
-  });
-
-  it(`is held back from a later stage's draw too, over ${SEEDS} seeds`, () => {
-    // And the other direction: the pedigree runs first, and the hold is still
-    // standing when the census draws, because nothing ever gives it back. That
-    // is what makes claiming these values as well unnecessary.
-    const failures: string[] = [];
-
-    for (let seed = 1; seed <= SEEDS; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: uniqueActive,
-        stages: [pedigree(EDGE_CONFIG), nameGenerator(2), personCensus],
-        config: CERTAIN_EDGES,
-      });
-
-      const flags = kinEdges(network.edges).map((a) => a.isActive);
-      if (flags.length !== 2 || new Set(flags).size !== 2) {
+      const flags = kinEdges(network.edges).map(
+        (attributes) => attributes.isActive,
+      );
+      if (flags.length !== 1 || flags[0] !== true) {
         failures.push(`seed ${seed}: ${JSON.stringify(flags)}`);
       }
     }

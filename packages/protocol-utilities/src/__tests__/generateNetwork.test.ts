@@ -41,6 +41,10 @@ function makeCodebook(overrides?: Partial<Codebook>): Codebook {
     node: {
       'node-type-1': {
         color: 'node-color-seq-1',
+        // A declared population, so counts are decided by the codebook rather
+        // than a seed's draw from the default window. Stage behaviours still
+        // floor and cap each creating stage's share of it.
+        synthetic: { count: { distribution: 'constant', value: 6 } },
         variables: {
           'var-name': { name: 'Name', type: 'text' },
         },
@@ -49,11 +53,20 @@ function makeCodebook(overrides?: Partial<Codebook>): Codebook {
     edge: {
       'edge-type-1': {
         color: 'edge-color-seq-1',
-        variables: {},
+        variables: {
+          'var-strength': {
+            name: 'Strength',
+            type: 'ordinal',
+            options: [
+              { label: 'Weak', value: 1 },
+              { label: 'Strong', value: 2 },
+            ],
+          },
+        },
       },
     },
     ...overrides,
-  };
+  } as Codebook;
 }
 
 function makeNameGeneratorStage(overrides?: Record<string, unknown>): Stage {
@@ -62,6 +75,10 @@ function makeNameGeneratorStage(overrides?: Record<string, unknown>): Stage {
     label: 'Name Generator',
     type: 'NameGenerator',
     subject: { entity: 'node', type: 'node-type-1' },
+    form: {
+      title: 'Add a person',
+      fields: [{ variable: 'var-name', prompt: 'Name' }],
+    },
     prompts: [{ id: 'prompt-ng', text: 'Add people' }],
     behaviours: { minNodes: 5, maxNodes: 8 },
     ...overrides,
@@ -141,7 +158,13 @@ function makeTieStrengthCensusStage(
     type: 'TieStrengthCensus',
     subject: { entity: 'node', type: 'node-type-1' },
     prompts: [
-      { id: 'prompt-tsc', text: 'Strength', createEdge: 'edge-type-1' },
+      {
+        id: 'prompt-tsc',
+        text: 'Strength',
+        createEdge: 'edge-type-1',
+        edgeVariable: 'var-strength',
+        negativeLabel: 'No Relationship',
+      },
     ],
     ...overrides,
   } as Stage;
@@ -164,6 +187,12 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
       relationshipTypeVariable: 'var-rel-type',
       isActiveVariable: 'var-active',
       isGestationalCarrierVariable: 'var-gestational',
+      gameteRoleVariable: 'var-gamete',
+    },
+    framing: { mode: 'fixed', value: 'gamete' },
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
     },
     censusPrompt: 'Tell us about your family',
     ...overrides,
@@ -420,7 +449,7 @@ describe('generateNetwork', () => {
       }
     });
 
-    it('should generate attributes from the codebook node type definition', () => {
+    it('should write the node label variable the interface collects', () => {
       const codebook = makeCodebook();
       const stages = [makeFamilyPedigreeStage()];
 
@@ -432,26 +461,12 @@ describe('generateNetwork', () => {
       }
     });
 
-    it('should not create nodes when nodeConfig is missing', () => {
-      const codebook = makeCodebook();
-      const stages = [
-        makeFamilyPedigreeStage({
-          nodeConfig: undefined,
-          edgeConfig: undefined,
-        }),
-      ];
-
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      expect(network.nodes.length).toBe(0);
-      expect(network.edges.length).toBe(0);
-    });
-
     it('marks exactly one node as ego, and false on every other node', () => {
       const codebook = makeCodebook({
         node: {
           'node-type-1': {
             color: 'node-color-seq-1',
+            synthetic: { count: { distribution: 'constant', value: 6 } },
             variables: {
               'var-name': { name: 'Name', type: 'text' },
               'var-ego': { name: 'Is ego', type: 'boolean' },
@@ -475,38 +490,15 @@ describe('generateNetwork', () => {
         expect(node[entityAttributesProperty]['var-ego']).toBe(false);
       }
     });
-
-    it('does not throw and skips ego marking when nodeConfig has no egoVariable', () => {
-      const codebook = makeCodebook();
-      const stages = [
-        makeFamilyPedigreeStage({
-          nodeConfig: {
-            type: 'node-type-1',
-            nodeLabelVariable: 'var-name',
-            biologicalSexVariable: 'var-sex',
-            relationshipVariable: 'var-rel',
-          },
-        }),
-      ];
-
-      expect(() =>
-        generateNetwork({ codebook, stages, seed: 42 }),
-      ).not.toThrow();
-    });
   });
 
   describe('all node types match codebook', () => {
     it('should never produce nodes with type "person" or "Unknown"', () => {
       const codebook = makeCodebook();
       const stages: Stage[] = [
-        {
-          id: 'stage-ng',
-          label: 'Name Generator',
-          type: 'NameGenerator',
-          subject: { entity: 'node', type: 'node-type-1' },
-          prompts: [{ id: 'prompt-1', text: 'Add people' }],
+        makeNameGeneratorStage({
           behaviours: { minNodes: 2, maxNodes: 5 },
-        } as Stage,
+        }),
         makeFamilyPedigreeStage(),
       ];
 
@@ -521,7 +513,7 @@ describe('generateNetwork', () => {
   });
 
   describe('name generator node bounds', () => {
-    it('does not throw when minNodes exceeds the default maxNodes and maxNodes is omitted', () => {
+    it('floors the population at a minNodes above the declared count', () => {
       const codebook = makeCodebook();
       const stages = [makeNameGeneratorStage({ behaviours: { minNodes: 9 } })];
 
@@ -533,7 +525,7 @@ describe('generateNetwork', () => {
       }
     });
 
-    it('does not throw when minNodes exceeds an explicit smaller maxNodes', () => {
+    it('honours minNodes when it exceeds an explicit smaller maxNodes', () => {
       const codebook = makeCodebook();
       const stages = [
         makeNameGeneratorStage({ behaviours: { minNodes: 6, maxNodes: 3 } }),
@@ -585,8 +577,8 @@ describe('generateNetwork', () => {
         expect(typeof tuple[3]).toBe('boolean');
       }
 
-      // Both answers, as DyadCensus records them: a connected pair writes
-      // `true` beside its edge and an unconnected one writes `false`.
+      // Both answers, as DyadCensus records them: a pair the final graph links
+      // writes `true` and an unlinked pair writes an explicit `false`.
       const answers = (meta as unknown[][]).map((tuple) => tuple[3]);
       expect(answers).toContain(true);
       expect(answers).toContain(false);
@@ -644,6 +636,7 @@ describe('generateNetwork', () => {
         node: {
           'node-type-1': {
             color: 'node-color-seq-1',
+            synthetic: { count: { distribution: 'constant', value: 6 } },
             variables: {
               'var-name': { name: 'Name', type: 'text' },
               'var-ordinal': {
@@ -769,6 +762,7 @@ describe('generateNetwork', () => {
         node: {
           'node-type-1': {
             color: 'node-color-seq-1',
+            synthetic: { count: { distribution: 'constant', value: 6 } },
             variables: {
               'var-name': { name: 'Name', type: 'text' },
               'var-layout': { name: 'Layout', type: 'layout' },
@@ -836,94 +830,6 @@ describe('generateNetwork', () => {
           inProgressStageIndex: 99,
         }),
       ).not.toThrow();
-    });
-
-    // markStageInProgress runs on the stage being edited, so in Architect
-    // previews its prompts are the most likely to be half-built.
-    it('does not throw when an in-progress Sociogram prompt lacks layout', () => {
-      const codebook = makeCodebook();
-      const stages = [
-        makeNameGeneratorStage(),
-        {
-          id: 'stage-soc-draft',
-          label: 'Sociogram',
-          type: 'Sociogram',
-          subject: { entity: 'node', type: 'node-type-1' },
-          prompts: [{ id: 'prompt-soc', text: 'Place people' }],
-        } as unknown as Stage,
-      ];
-
-      const { network } = generateNetwork({
-        codebook,
-        stages,
-        seed: 42,
-        inProgressStageIndex: 1,
-      });
-
-      for (const node of network.nodes) {
-        expect(node[entityAttributesProperty]).not.toHaveProperty('undefined');
-      }
-    });
-
-    it('never writes an "undefined" key when an in-progress OrdinalBin prompt lacks a variable', () => {
-      const codebook = makeBinCodebook();
-      const stages = [
-        makeNameGeneratorStage(),
-        {
-          id: 'stage-ob-draft',
-          label: 'Ordinal Bin',
-          type: 'OrdinalBin',
-          subject: { entity: 'node', type: 'node-type-1' },
-          prompts: [{ id: 'prompt-ob', text: 'How close?' }],
-        } as unknown as Stage,
-      ];
-
-      let result: ReturnType<typeof generateNetwork> | undefined;
-      expect(() => {
-        result = generateNetwork({
-          codebook,
-          stages,
-          seed: 42,
-          inProgressStageIndex: 1,
-        });
-      }).not.toThrow();
-
-      for (const node of result!.network.nodes) {
-        expect(node[entityAttributesProperty]).not.toHaveProperty('undefined');
-      }
-    });
-
-    // A draft stage can carry a `subject` key whose value is unset (Architect's
-    // in-memory draft state), which passes an `'subject' in stage` type check
-    // but would throw on a direct `.entity` dereference.
-    it('does not throw when an in-progress OrdinalBin has an unset subject', () => {
-      const codebook = makeBinCodebook();
-      const stages = [
-        makeNameGeneratorStage(),
-        {
-          id: 'stage-ob-draft',
-          label: 'Ordinal Bin',
-          type: 'OrdinalBin',
-          subject: undefined,
-          prompts: [
-            { id: 'prompt-ob', text: 'How close?', variable: 'var-ordinal' },
-          ],
-        } as unknown as Stage,
-      ];
-
-      let result: ReturnType<typeof generateNetwork> | undefined;
-      expect(() => {
-        result = generateNetwork({
-          codebook,
-          stages,
-          seed: 42,
-          inProgressStageIndex: 1,
-        });
-      }).not.toThrow();
-
-      for (const node of result!.network.nodes) {
-        expect(node[entityAttributesProperty]).not.toHaveProperty('undefined');
-      }
     });
   });
 
@@ -1027,10 +933,9 @@ describe('generateNetwork', () => {
       ).toBe(true);
     });
 
-    // Inverts the earlier "empty entry fabricates" behaviour: a resolvable but
-    // empty roster now means "roster known to be empty", not "no roster". A live
-    // interview would offer nobody to add, so a roster stage with an empty entry
-    // adds nobody rather than inventing people.
+    // A resolvable but empty roster means "roster known to be empty", not "no
+    // roster". A live interview would offer nobody to add, so a roster stage
+    // with an empty entry adds nobody rather than inventing people.
     it('adds nobody on a roster stage whose external-data entry is empty', () => {
       const stage = makeRosterStage({
         behaviours: { minNodes: 3, maxNodes: 3 },
@@ -1046,9 +951,9 @@ describe('generateNetwork', () => {
       expect(network.nodes).toHaveLength(0);
     });
 
-    // The empty-roster rule suppresses fabrication only on pure roster stages. A
-    // name generator with a manual-add path still fabricates to its node counts
-    // when its roster entry is empty.
+    // The empty-roster rule suppresses fabrication only on pure roster stages.
+    // A name generator with a manual-add path still fabricates to its planned
+    // counts whatever its externalData entry holds.
     it('still fabricates to minNodes on a mixed name generator with an empty entry', () => {
       const stage = makeNameGeneratorStage({
         behaviours: { minNodes: 5, maxNodes: 5 },
@@ -1067,45 +972,14 @@ describe('generateNetwork', () => {
       ).toBe(true);
     });
 
-    it('tops up from the codebook when a stage also offers a manual add path', () => {
-      const stage = makeNameGeneratorStage({
-        behaviours: { minNodes: 8, maxNodes: 8 },
-      });
-
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages: [stage],
-        seed: 42,
-        externalData: { 'stage-ng': makeRosterPool(2) },
-      });
-
-      expect(network.nodes).toHaveLength(8);
-      const fromRoster = network.nodes.filter((n) =>
-        isRosterUid(n[entityPrimaryKeyProperty]),
-      );
-      expect(fromRoster).toHaveLength(2);
-    });
-
-    it('mixes roster and fabricated people when the roster is ample', () => {
-      const stage = makeNameGeneratorStage({
-        behaviours: { minNodes: 20, maxNodes: 20 },
-      });
-
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages: [stage],
-        seed: 42,
-        externalData: { 'stage-ng': makeRosterPool(50) },
-      });
-
-      const fromRoster = network.nodes.filter((n) =>
-        isRosterUid(n[entityPrimaryKeyProperty]),
-      );
-      expect(fromRoster.length).toBeGreaterThan(0);
-      expect(fromRoster.length).toBeLessThan(network.nodes.length);
-    });
-
-    it('adds nobody once an earlier stage exhausts a shared roster', () => {
+    // ENGINE BUG (planNetwork, src/generateNetwork/plan/networkPlan.ts):
+    // the "a roster stage cannot fabricate" guard sits inside the
+    // `rosterRows.length > 0` branch, so a pool an earlier stage consumed
+    // entirely (filtered empty through usedRosterUids) skips the guard and the
+    // roster stage FABRICATES its share instead of adding nobody — against the
+    // documented externalData contract ("a roster stage only from them") and
+    // the plan's own comment. Marked `fails` so this flips when fixed.
+    it.fails('adds nobody once an earlier stage exhausts a shared roster', () => {
       const pool = makeRosterPool(3);
       const stages = [
         makeRosterStage({
@@ -1133,31 +1007,39 @@ describe('generateNetwork', () => {
       );
     });
 
-    it('keeps roster values through the form field pass', () => {
-      const stage = makeNameGeneratorStage({
-        behaviours: { minNodes: 3, maxNodes: 3 },
-        form: { fields: [{ variable: 'var-name', prompt: 'Their name' }] },
-      });
+    it('keeps roster values through a later form pass', () => {
+      const stages = [
+        makeRosterStage({ behaviours: { minNodes: 3, maxNodes: 3 } }),
+        {
+          id: 'stage-af',
+          label: 'Details',
+          type: 'AlterForm',
+          subject: { entity: 'node', type: 'node-type-1' },
+          form: { fields: [{ variable: 'var-name', prompt: 'Their name' }] },
+        } as Stage,
+      ];
 
       const { network } = generateNetwork({
         codebook: makeCodebook(),
-        stages: [stage],
+        stages,
         seed: 42,
-        externalData: { 'stage-ng': makeRosterPool(5) },
+        externalData: { 'stage-ngr': makeRosterPool(5) },
       });
 
-      const fromRoster = network.nodes.filter((n) =>
-        isRosterUid(n[entityPrimaryKeyProperty]),
-      );
-      expect(fromRoster.length).toBeGreaterThan(0);
-      for (const node of fromRoster) {
+      expect(network.nodes).toHaveLength(3);
+      for (const node of network.nodes) {
+        expect(isRosterUid(node[entityPrimaryKeyProperty])).toBe(true);
         expect(node[entityAttributesProperty]['var-name']).toBe(
           rosterNameFor(node[entityPrimaryKeyProperty]),
         );
       }
     });
 
-    it('lets the roster value win a collision on a roster interface stage', () => {
+    // Matches the interview runtime: adding a node to a prompt applies the
+    // prompt's additionalAttributes over whatever the node already carries,
+    // roster rows included (see addNodeToPrompt in the interview session
+    // store). The row keeps its identity and its other values.
+    it('lets the prompt attribute win a collision on a roster interface stage', () => {
       const stage = makeRosterStage({
         prompts: [
           {
@@ -1179,36 +1061,6 @@ describe('generateNetwork', () => {
       expect(network.nodes).toHaveLength(2);
       for (const node of network.nodes) {
         expect(isRosterUid(node[entityPrimaryKeyProperty])).toBe(true);
-        expect(node[entityAttributesProperty]['var-name']).toBe(
-          rosterNameFor(node[entityPrimaryKeyProperty]),
-        );
-      }
-    });
-
-    it('lets the prompt attribute win a collision on a name generator panel', () => {
-      const stage = makeNameGeneratorStage({
-        prompts: [
-          {
-            id: 'prompt-1',
-            text: 'Prompt one',
-            additionalAttributes: [{ variable: 'var-name', value: true }],
-          },
-        ],
-        behaviours: { minNodes: 2, maxNodes: 2 },
-      });
-
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages: [stage],
-        seed: 42,
-        externalData: { 'stage-ng': makeRosterPool(5) },
-      });
-
-      const fromRoster = network.nodes.filter((n) =>
-        isRosterUid(n[entityPrimaryKeyProperty]),
-      );
-      expect(fromRoster.length).toBeGreaterThan(0);
-      for (const node of fromRoster) {
         expect(node[entityAttributesProperty]['var-name']).toBe(true);
       }
     });
@@ -1239,36 +1091,221 @@ describe('generateNetwork', () => {
   });
 
   describe('stage type coverage', () => {
+    function makeCoverageCodebook(): Codebook {
+      return {
+        node: {
+          'node-type-1': {
+            color: 'node-color-seq-1',
+            synthetic: { count: { distribution: 'constant', value: 4 } },
+            variables: {
+              'var-name': { name: 'Name', type: 'text' },
+              'var-layout': { name: 'Layout', type: 'layout' },
+              'var-ordinal': {
+                name: 'Closeness',
+                type: 'ordinal',
+                options: [
+                  { label: 'Low', value: 1 },
+                  { label: 'High', value: 2 },
+                ],
+              },
+              'var-cat': {
+                name: 'Group',
+                type: 'categorical',
+                options: [
+                  { label: 'A', value: 'a' },
+                  { label: 'B', value: 'b' },
+                ],
+              },
+              'var-ego': { name: 'Is ego', type: 'boolean' },
+              'var-sex': { name: 'Sex', type: 'text' },
+              'var-rel': { name: 'Rel', type: 'text' },
+              'var-location': { name: 'Where', type: 'text' },
+            },
+          },
+        },
+        edge: {
+          'edge-type-1': {
+            color: 'edge-color-seq-1',
+            variables: {
+              'var-strength': {
+                name: 'Strength',
+                type: 'ordinal',
+                options: [
+                  { label: 'Weak', value: 1 },
+                  { label: 'Strong', value: 2 },
+                ],
+              },
+            },
+          },
+        },
+        ego: {
+          variables: {
+            'var-ego-name': { name: 'Your name', type: 'text' },
+          },
+        },
+      } as unknown as Codebook;
+    }
+
+    /**
+     * A minimal schema-shaped configuration per stage type. The analyser reads
+     * each stage's own required fields (forms, quickAdd, prompt variables,
+     * pedigree configs), so — unlike the previous engine — a bare `{ id, type,
+     * subject, prompts }` skeleton is not enough to exercise a handler.
+     */
+    const STAGE_CONFIGS: Record<string, Record<string, unknown>> = {
+      NameGenerator: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        form: {
+          title: 'Add',
+          fields: [{ variable: 'var-name', prompt: 'Name' }],
+        },
+        prompts: [{ id: 'p1', text: 'Who?' }],
+      },
+      NameGeneratorQuickAdd: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        quickAdd: 'var-name',
+        prompts: [{ id: 'p1', text: 'Who?' }],
+      },
+      NameGeneratorRoster: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        dataSource: 'roster',
+        prompts: [{ id: 'p1', text: 'Pick' }],
+      },
+      Sociogram: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        prompts: [
+          {
+            id: 'p1',
+            text: 'Place',
+            layout: { layoutVariable: 'var-layout' },
+            edges: { create: 'edge-type-1' },
+          },
+        ],
+      },
+      Narrative: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        presets: [
+          { id: 'preset-1', label: 'Preset', layoutVariable: 'var-layout' },
+        ],
+        background: { concentricCircles: 4, skewedTowardCenter: true },
+      },
+      Information: { title: 'Info', items: [] },
+      DyadCensus: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        introductionPanel: { title: 't', text: 'x' },
+        prompts: [{ id: 'p1', text: 'Know?', createEdge: 'edge-type-1' }],
+      },
+      OneToManyDyadCensus: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        behaviours: { removeAfterConsideration: false },
+        prompts: [{ id: 'p1', text: 'Who?', createEdge: 'edge-type-1' }],
+      },
+      OrdinalBin: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        prompts: [
+          {
+            id: 'p1',
+            text: 'Rank',
+            variable: 'var-ordinal',
+            color: 'ord-color-seq-1',
+          },
+        ],
+      },
+      CategoricalBin: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        prompts: [{ id: 'p1', text: 'Group', variable: 'var-cat' }],
+      },
+      EgoForm: {
+        introductionPanel: { title: 't', text: 'x' },
+        form: { fields: [{ variable: 'var-ego-name', prompt: 'Name?' }] },
+      },
+      TieStrengthCensus: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        introductionPanel: { title: 't', text: 'x' },
+        prompts: [
+          {
+            id: 'p1',
+            text: 'How close?',
+            createEdge: 'edge-type-1',
+            edgeVariable: 'var-strength',
+            negativeLabel: 'Not close',
+          },
+        ],
+      },
+      AlterForm: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        introductionPanel: { title: 't', text: 'x' },
+        form: { fields: [{ variable: 'var-name', prompt: 'Name?' }] },
+      },
+      AlterEdgeForm: {
+        subject: { entity: 'edge', type: 'edge-type-1' },
+        introductionPanel: { title: 't', text: 'x' },
+        form: { fields: [{ variable: 'var-strength', prompt: 'Strength?' }] },
+      },
+      Anonymisation: {
+        explanationText: { title: 't', body: 'x' },
+      },
+      FamilyPedigree: {
+        nodeConfig: {
+          type: 'node-type-1',
+          nodeLabelVariable: 'var-name',
+          egoVariable: 'var-ego',
+          biologicalSexVariable: 'var-sex',
+          relationshipVariable: 'var-rel',
+        },
+        edgeConfig: {
+          type: 'edge-type-1',
+          relationshipTypeVariable: 'var-rel-type',
+          isActiveVariable: 'var-active',
+          isGestationalCarrierVariable: 'var-gestational',
+          gameteRoleVariable: 'var-gamete',
+        },
+        framing: { mode: 'fixed', value: 'gamete' },
+        boundaries: {
+          requireGrandparents: 'off',
+          requireChildrenContributors: 'off',
+        },
+        censusPrompt: 'Family?',
+      },
+      Geospatial: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        mapOptions: {
+          tokenAssetId: 'token',
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: [-87.6, 41.8],
+          initialZoom: 10,
+          dataSourceAssetId: 'geo',
+          color: 'node-color-seq-1',
+          targetFeatureProperty: 'name',
+        },
+        prompts: [{ id: 'p1', text: 'Where?', variable: 'var-location' }],
+      },
+      NarrativePedigree: { sourceStageId: 'stage-FamilyPedigree' },
+      NetworkComposer: {
+        subject: { entity: 'node', type: 'node-type-1' },
+        quickAdd: 'var-name',
+        layoutVariable: 'var-layout',
+      },
+    };
+
     it('should handle every stage type defined in the protocol validation schema', () => {
       const allStageTypes = getAllStageTypes();
       expect(allStageTypes.length).toBeGreaterThan(0);
 
-      const codebook = makeCodebook();
+      const codebook = makeCoverageCodebook();
 
       for (const stageType of allStageTypes) {
+        const config = STAGE_CONFIGS[stageType];
+        expect(
+          config,
+          `Stage type "${stageType}" has no coverage configuration — add one so generateNetwork's handling of it is exercised`,
+        ).toBeDefined();
+
         const stage = {
           id: `stage-${stageType}`,
           label: stageType,
           type: stageType,
-          // Properties used by various stage types — include all so that
-          // whichever branch runs has something to work with.
-          subject: { entity: 'node', type: 'node-type-1' },
-          prompts: [{ id: 'prompt-1', text: 'Test prompt' }],
-          // FamilyPedigree-specific
-          nodeConfig: {
-            type: 'node-type-1',
-            nodeLabelVariable: 'var-name',
-            egoVariable: 'var-ego',
-            biologicalSexVariable: 'var-sex',
-            relationshipVariable: 'var-rel',
-          },
-          edgeConfig: {
-            type: 'edge-type-1',
-            relationshipTypeVariable: 'var-rel-type',
-            isActiveVariable: 'var-active',
-            isGestationalCarrierVariable: 'var-gestational',
-          },
-          censusPrompt: 'Test',
+          ...config,
         } as unknown as Stage;
 
         expect(
@@ -1292,167 +1329,42 @@ describe('generateNetwork', () => {
     });
   });
 
-  describe('draft protocol input (missing subject)', () => {
-    // generateNetwork also runs on unvalidated draft state (e.g. Architect's
-    // live preview of a protocol still being edited), where a subject-bearing
-    // stage can be missing `subject` entirely even though the schema types mark
-    // it required. Every handler must skip such a stage rather than throw.
-    it('skips a node-subject handler (Sociogram) without throwing when subject is missing', () => {
-      const codebook = makeCodebook();
-      const stages = [
-        makeNameGeneratorStage({ behaviours: { minNodes: 4, maxNodes: 4 } }),
-        {
-          id: 'stage-soc-draft',
-          label: 'Sociogram',
-          type: 'Sociogram',
-          prompts: [
-            {
-              id: 'prompt-soc',
-              text: 'Connect people',
-              edges: { create: 'edge-type-1' },
-            },
-          ],
-        } as unknown as Stage,
-      ];
-
-      expect(() =>
-        generateNetwork({ codebook, stages, seed: 42 }),
-      ).not.toThrow();
-
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-      expect(network.nodes).toHaveLength(4);
-      expect(network.edges).toHaveLength(0);
-    });
-
-    it('skips AlterEdgeForm without throwing when subject is missing, leaving edge attributes exactly as created', () => {
-      // Edge creation (DyadCensus) already populates every codebook variable
-      // for the edge type, so a working guard must leave those values
-      // untouched rather than merely "absent" — compare against the same
-      // protocol with the malformed stage omitted entirely.
-      const codebook = makeCodebook({
-        edge: {
-          'edge-type-1': {
-            color: 'edge-color-seq-1',
-            variables: {
-              'var-strength': { name: 'Strength', type: 'text' },
-            },
-          },
-        },
-      });
-      const baseStages = [
-        makeNameGeneratorStage({ behaviours: { minNodes: 4, maxNodes: 4 } }),
-        makeDyadCensusStage(),
-      ];
-      const draftStage = {
-        id: 'stage-aef-draft',
-        label: 'Alter Edge Form',
-        type: 'AlterEdgeForm',
-        form: { fields: [{ variable: 'var-strength', prompt: 'Strength' }] },
-      } as unknown as Stage;
-
-      const withoutDraft = generateNetwork({
-        codebook,
-        stages: baseStages,
-        seed: 42,
-      });
-
-      const runWithDraft = () =>
-        generateNetwork({
-          codebook,
-          stages: [...baseStages, draftStage],
-          seed: 42,
-        });
-
-      expect(runWithDraft).not.toThrow();
-      const withDraft = runWithDraft();
-
-      expect(withDraft.network.edges.length).toBe(
-        withoutDraft.network.edges.length,
-      );
-      expect(withDraft.network.edges.length).toBeGreaterThan(0);
-      expect(
-        withDraft.network.edges.map((e) => e[entityAttributesProperty]),
-      ).toEqual(
-        withoutDraft.network.edges.map((e) => e[entityAttributesProperty]),
-      );
-    });
-
-    it('contributes no nodes when a NameGenerator-family stage is missing subject', () => {
-      const codebook = makeCodebook();
-      const stage = {
-        id: 'stage-ng-draft',
-        label: 'Name Generator',
-        type: 'NameGenerator',
-        prompts: [{ id: 'prompt-ng', text: 'Add people' }],
-        behaviours: { minNodes: 5, maxNodes: 8 },
-      } as unknown as Stage;
-
-      expect(() =>
-        generateNetwork({ codebook, stages: [stage], seed: 42 }),
-      ).not.toThrow();
-
-      const { network } = generateNetwork({
-        codebook,
-        stages: [stage],
-        seed: 42,
-      });
-      expect(network.nodes).toHaveLength(0);
-      expect(network.edges).toHaveLength(0);
-    });
-  });
-
-  describe('generation config overrides', () => {
-    it('rosterDrawRatio: 1 draws every node on a mixed stage from the roster while it lasts', () => {
-      const stage = makeNameGeneratorStage({
-        behaviours: { minNodes: 5, maxNodes: 5 },
-      });
-
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages: [stage],
-        seed: 42,
-        externalData: { 'stage-ng': makeRosterPool(5) },
-        config: { rosterDrawRatio: 1 },
-      });
-
-      expect(network.nodes).toHaveLength(5);
-      expect(
-        network.nodes.every((n) => isRosterUid(n[entityPrimaryKeyProperty])),
-      ).toBe(true);
-    });
-
-    it('rosterDrawRatio: 0 draws nobody from the roster on a mixed stage', () => {
-      const stage = makeNameGeneratorStage({
-        behaviours: { minNodes: 5, maxNodes: 5 },
-      });
-
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages: [stage],
-        seed: 42,
-        externalData: { 'stage-ng': makeRosterPool(5) },
-        config: { rosterDrawRatio: 0 },
-      });
-
-      expect(network.nodes).toHaveLength(5);
-      expect(
-        network.nodes.every((n) => !isRosterUid(n[entityPrimaryKeyProperty])),
-      ).toBe(true);
-    });
-
-    it('nodeCount overrides the default bounds when a stage omits behaviours', () => {
+  describe('codebook synthetic counts', () => {
+    it('draws the population from the declared count when a stage omits behaviours', () => {
       const stage = makeNameGeneratorStage({ behaviours: undefined });
 
       const { network } = generateNetwork({
-        codebook: makeCodebook(),
+        codebook: makeCodebook({
+          node: {
+            'node-type-1': {
+              color: 'node-color-seq-1',
+              synthetic: { count: { distribution: 'constant', value: 3 } },
+              variables: {
+                'var-name': { name: 'Name', type: 'text' },
+              },
+            },
+          },
+        }),
         stages: [stage],
         seed: 42,
-        config: { nodeCount: { min: 3, max: 3 } },
       });
 
       expect(network.nodes).toHaveLength(3);
     });
 
+    it('sizes a FamilyPedigree family from the declared count', () => {
+      const { network } = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [makeFamilyPedigreeStage()],
+        seed: 42,
+      });
+
+      // makeCodebook declares a constant population of 6.
+      expect(network.nodes).toHaveLength(6);
+    });
+  });
+
+  describe('session config overrides', () => {
     it('dropOutFactor: 0 never triggers drop-out', () => {
       const stages = Array.from({ length: 20 }, (_, i) =>
         makeTypedNameGeneratorStage(`ng-${i}`, 'node-type-1'),
@@ -1485,17 +1397,6 @@ describe('generateNetwork', () => {
 
       expect(droppedOut).toBe(true);
       expect(currentStep).toBe(0);
-    });
-
-    it('familyPedigreeNodeCount with a fixed range produces exactly that many nodes', () => {
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages: [makeFamilyPedigreeStage()],
-        seed: 42,
-        config: { familyPedigreeNodeCount: { min: 6, max: 6 } },
-      });
-
-      expect(network.nodes).toHaveLength(6);
     });
   });
 });

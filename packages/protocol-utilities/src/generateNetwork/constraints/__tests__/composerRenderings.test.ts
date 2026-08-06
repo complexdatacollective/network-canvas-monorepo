@@ -34,6 +34,8 @@ function codebookWith(options: {
   booleanComponent?: 'Boolean' | 'Toggle';
   booleanOptions?: { label: string; value: boolean }[];
   booleanValidation?: { unique?: boolean };
+  /** Declared density for the `knows` edge type (edges default sparse). */
+  edgeDensity?: number;
 }): StructuralCodebook {
   return {
     node: {
@@ -72,6 +74,19 @@ function codebookWith(options: {
       knows: {
         name: 'Knows',
         color: 'edge-color-seq-1',
+        ...(options.edgeDensity !== undefined
+          ? {
+              synthetic: {
+                topology: {
+                  metric: 'density',
+                  distribution: {
+                    distribution: 'constant',
+                    value: options.edgeDensity,
+                  },
+                },
+              },
+            }
+          : {}),
         variables: {
           since: { name: 'Since', type: 'datetime', component: 'DatePicker' },
         },
@@ -229,7 +244,10 @@ describe('NetworkComposer field renderings', () => {
   // against the stage subject.
   it('draws an edge attribute inside the window its edge form validates', () => {
     const { network } = generateNetwork({
-      codebook: codebookWith({}),
+      // A composer's edges are sparse by default, so the codebook declares a
+      // density of 1 and every pair is drawn here rather than hunting for a
+      // seed that produces one.
+      codebook: codebookWith({ edgeDensity: 1 }),
       stages: [
         composerStage({
           edgeFields: [
@@ -242,12 +260,7 @@ describe('NetworkComposer field renderings', () => {
         }),
       ],
       seed: 3,
-      // A composer's edges are sparse by default, so every pair is drawn here
-      // rather than hunting for a seed that produces one.
-      config: {
-        today: TODAY,
-        networkComposerEdgeProbability: { min: 1, max: 1 },
-      },
+      config: { today: TODAY },
     });
 
     expect(network.edges.length).toBeGreaterThan(0);
@@ -567,11 +580,19 @@ describe('NetworkComposer field renderings', () => {
   });
 
   it('draws only the values offered by a Boolean choice control', () => {
+    // The composer renders the codebook's own Boolean control, whose options
+    // offer only `true`. Rendered explicitly, because a created node carries
+    // only what the creating interaction writes: a variable no composer field
+    // renders would simply be absent.
     const { network } = generateNetwork({
       codebook: codebookWith({
         booleanOptions: [{ label: 'Yes', value: true }],
       }),
-      stages: [composerStage({})],
+      stages: [
+        composerStage({
+          nodeFields: [{ variable: 'flag', component: 'Boolean' }],
+        }),
+      ],
       seed: 7,
       config: { today: TODAY },
     });

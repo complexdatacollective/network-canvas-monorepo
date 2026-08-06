@@ -28,9 +28,45 @@ const isThreshold = (value: unknown): value is Pick<ShapeThreshold, 'value'> =>
 const isShapeMappingType = (value: unknown): value is ShapeMappingType =>
   value === 'discrete' || value === 'breakpoints';
 
+const SYNTHETIC_INCOMPLETE_MESSAGE =
+  'Finish the synthetic data settings, or turn the section off, before saving.';
+
+// The population/topology controls are unconnected, like the shape mapping,
+// so a numeric parameter cleared mid-edit must block the save through the
+// form-level error rather than a registered-field error.
+const syntheticIsIncomplete = (synthetic: unknown): boolean => {
+  if (!isRecord(synthetic)) return false;
+  const descriptor = isRecord(synthetic.count)
+    ? synthetic.count
+    : isRecord(synthetic.topology) && isRecord(synthetic.topology.distribution)
+      ? synthetic.topology.distribution
+      : undefined;
+  if (!descriptor) return false;
+  switch (descriptor.distribution) {
+    case 'constant':
+      return typeof descriptor.value !== 'number';
+    case 'uniform':
+      return (
+        typeof descriptor.min !== 'number' || typeof descriptor.max !== 'number'
+      );
+    case 'poisson':
+      return typeof descriptor.mean !== 'number';
+    case 'normal':
+      return (
+        typeof descriptor.mean !== 'number' || typeof descriptor.sd !== 'number'
+      );
+    default:
+      return true;
+  }
+};
+
 const validateEntityType = (
   values: Record<string, unknown>,
 ): EntityTypeFormErrors => {
+  if (syntheticIsIncomplete(values.synthetic)) {
+    return { _error: SYNTHETIC_INCOMPLETE_MESSAGE };
+  }
+
   const shape = values.shape;
   if (!isRecord(shape) || !isRecord(shape.dynamic)) {
     return {};

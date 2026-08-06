@@ -1961,10 +1961,11 @@ describe('validation rules on generated nodes', () => {
   it('draws a codebook carrying no cross-variable rule to the values it always has', () => {
     // Every Storybook story's fixture is a codebook of this shape, so a drift
     // in what it draws rewrites every visual baseline at once. These values are
-    // the ones the builder produces with personal names drawn from their own
-    // deterministic stream, pinned so that moving them has to be a deliberate
-    // act rather than a side effect of a change to the constraint machinery.
-    // Date variables are left out: an open date window ends at today, which no
+    // the ones the distribution-aware value layer produces from per-variable
+    // substreams — name-like variables draw person names, other text draws
+    // neutral words — pinned so that moving them has to be a deliberate act
+    // rather than a side effect of a change to the draw machinery. Date
+    // variables are left out: an open date window ends at today, which no
     // fixed expectation survives.
     const si = new SyntheticInterview(42);
     const nt = si.addNodeType();
@@ -2013,47 +2014,47 @@ describe('validation rules on generated nodes', () => {
 
     expect(byName).toEqual([
       {
-        name: 'Mohammad',
-        label: 'Mohammad',
-        age: 61,
-        small: -44,
-        active: true,
-        rating: 1,
-        interests: ['family'],
-        closeness: 0.06,
+        name: 'Lena',
+        label: 'seldom',
+        age: 69,
+        small: -0,
+        active: false,
+        rating: 4,
+        interests: ['neighborhood', 'school'],
+        closeness: 0.03,
         position: { x: 0.1, y: 0.1 },
       },
       {
-        name: 'Charlie',
-        label: 'Maybelle',
-        age: 19,
-        small: 8,
-        active: false,
-        rating: 2,
-        interests: ['work', 'school'],
-        closeness: 0.21,
-        position: { x: 0.27, y: 0.33 },
-      },
-      {
-        name: 'Laury',
-        label: 'Esther',
-        age: 56,
-        small: -26,
+        name: 'Nash',
+        label: 'who whose dandelion',
+        age: 88,
+        small: -17,
         active: true,
         rating: 3,
         interests: ['school'],
-        closeness: 0.61,
+        closeness: 0.91,
+        position: { x: 0.27, y: 0.33 },
+      },
+      {
+        name: 'Immanuel',
+        label: 'geez',
+        age: 65,
+        small: -31,
+        active: true,
+        rating: 4,
+        interests: ['family'],
+        closeness: 0.89,
         position: { x: 0.44000000000000006, y: 0.56 },
       },
       {
-        name: 'Warren',
-        label: 'Hannah',
-        age: 51,
-        small: -4,
+        name: 'Wendell',
+        label: 'fine gleefully step-mother',
+        age: 40,
+        small: -12,
         active: true,
-        rating: 4,
-        interests: ['neighborhood', 'family'],
-        closeness: 0.51,
+        rating: 2,
+        interests: ['family', 'work'],
+        closeness: 0.35,
         position: { x: 0.61, y: 0.79 },
       },
     ]);
@@ -2546,15 +2547,15 @@ describe('validation rules on the generated ego', () => {
   });
 
   it('draws without disturbing the values its nodes and edges were given', () => {
-    // Ego is drawn after the entities precisely so that adding an ego variable
-    // to a fixture cannot move the node and edge values a story or a snapshot
-    // was built around.
+    // Every variable draws from its own substream keyed by variable id, so
+    // appending ego variables to a fixture cannot move the node and edge
+    // values a story or a snapshot was built around: the existing variables
+    // keep their ids, and ego's draws consume no numbers from their streams.
+    // (Declared last — the builder's id counter is shared, so declaring ego
+    // first would renumber the node and edge variables and with them the
+    // substreams their values come from.)
     const build = (withEgo: boolean) => {
       const si = new SyntheticInterview(42);
-      if (withEgo) {
-        si.addEgoVariable({ type: 'text', name: 'nickname' });
-        si.addEgoVariable({ type: 'number', name: 'age' });
-      }
       const nt = si.addNodeType();
       nt.addVariable({ type: 'number', name: 'closeness' });
       const et = si.addEdgeType();
@@ -2571,12 +2572,13 @@ describe('validation rules on the generated ego', () => {
         ],
         et.id,
       );
+      if (withEgo) {
+        si.addEgoVariable({ type: 'text', name: 'nickname' });
+        si.addEgoVariable({ type: 'number', name: 'age' });
+      }
       return si.getNetwork();
     };
 
-    // Compared as values rather than whole entities: declaring an ego variable
-    // advances the builder's own id counter, so the variable ids the two
-    // networks key their attributes by differ while the drawn values do not.
     const drawnValues = (network: NcNetwork) => [
       ...network.nodes.map((node) =>
         Object.values(node[entityAttributesProperty]),

@@ -8,7 +8,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { ValueGenerator } from '../../../ValueGenerator';
-import { resolveGenerationConfig } from '../../config';
+import { type FeasibilityConfig, resolveGenerationConfig } from '../../config';
 import type { GenerationContext } from '../../context';
 import { buildEntityConstraints } from '../buildConstraints';
 import { analyseFeasibility } from '../feasibility';
@@ -25,6 +25,17 @@ vi.mock(import('../solverLimits'), async (importOriginal) => ({
 
 const TODAY = '2026-07-27';
 const config = resolveGenerationConfig({ today: TODAY });
+
+/** Worst-case bounds for `analyseFeasibility`, constructed literally. */
+const feasibilityConfig: FeasibilityConfig = {
+  nodeCount: { min: 1, max: 8 },
+  rosterDrawRatio: 0.7,
+  sociogramEdgeProbability: { min: 0.3, max: 0.5 },
+  censusEdgeProbability: { min: 0.4, max: 0.6 },
+  networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
+  familyPedigreeNodeCount: { min: 4, max: 10 },
+  today: TODAY,
+};
 
 const nameGenerator = {
   id: 'stage-1',
@@ -59,7 +70,9 @@ describe('solver search budget exhaustion', () => {
       },
     } as unknown as StructuralCodebook;
 
-    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([
+    expect(
+      analyseFeasibility(codebook, [nameGenerator], feasibilityConfig),
+    ).toEqual([
       expect.objectContaining({
         rules: ['differentFrom'],
         variableNames: ['V0', 'V1', 'V2', 'V3', 'V4'],

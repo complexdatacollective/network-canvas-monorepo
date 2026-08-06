@@ -7,7 +7,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { ValueGenerator } from '../../../ValueGenerator';
-import { resolveGenerationConfig } from '../../config';
+import type { FeasibilityConfig } from '../../config';
 import {
   buildEntityConstraints,
   buildVariableConstraints,
@@ -932,7 +932,18 @@ describe('a date field whose floor is later than today, through feasibility', ()
     max?: string;
   };
 
-  const config = resolveGenerationConfig({ today: TODAY });
+  // Worst-case feasibility bounds, constructed literally: `analyseFeasibility`
+  // takes the internal `FeasibilityConfig`, which `generateNetwork` derives
+  // from the codebook's declared counts rather than from run-level tuning.
+  const config: FeasibilityConfig = {
+    nodeCount: { min: 1, max: 8 },
+    rosterDrawRatio: 0.7,
+    sociogramEdgeProbability: { min: 0.3, max: 0.5 },
+    censusEdgeProbability: { min: 0.4, max: 0.6 },
+    networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
+    familyPedigreeNodeCount: { min: 4, max: 10 },
+    today: TODAY,
+  };
 
   const nameGenerator: Stage = {
     id: 'stage-1',

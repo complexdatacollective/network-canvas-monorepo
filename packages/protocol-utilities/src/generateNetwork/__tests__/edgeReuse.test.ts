@@ -6,45 +6,66 @@ import { entityAttributesProperty, type NcEdge } from '@codaco/shared-consts';
 import { generateNetwork } from '../../generateNetwork';
 
 /**
- * The generator draws at most one edge of a type between one pair, because the
+ * The generator leaves at most one edge of a type between one pair, because the
  * interview does: every interface that creates an edge for a pair asks
  * `edgeExists({ from, to, type })` first, and that lookup runs over the whole
- * session edge list. Edges carry no stage or prompt provenance, so reuse spans
- * stages rather than prompts within one.
+ * session edge list. The planner expresses that as one topology target per edge
+ * TYPE over the union of every creating stage's eligible pairs, so two stages
+ * sharing a type share one set of planned edges rather than drawing twice.
  *
  * FamilyPedigree is the deliberate exception and is covered at the bottom: its
- * edges all share one type and are told apart by a `relationshipType`
- * attribute, so several of them between one pair is meaningful data rather than
- * a duplicate.
+ * parent-child edges are structural and exist below the topology target, and
+ * are told apart by the `relationshipType` attribute the stage writes.
  */
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 
-const codebook = {
-  node: {
-    person: {
-      name: 'Person',
-      color: 'node-color-seq-1',
-      variables: { name: { name: 'Name', type: 'text' } },
-    },
-  },
-  edge: {
-    knows: {
-      name: 'Knows',
-      color: 'edge-color-seq-1',
-      variables: {
-        strength: {
-          name: 'Strength',
-          type: 'ordinal',
-          options: [1, 2, 3, 4, 5].map((value) => ({
-            label: `Strength ${value}`,
-            value,
-          })),
+/** Density 1 links every eligible pair; 0 links none. */
+function codebook(density: number, personCount?: number): Codebook {
+  return {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        ...(personCount !== undefined
+          ? {
+              synthetic: {
+                count: { distribution: 'constant', value: personCount },
+              },
+            }
+          : {}),
+        variables: {
+          name: { name: 'Name', type: 'text' },
+          isEgo: { name: 'Is ego', type: 'boolean' },
+          relationship: { name: 'Relationship', type: 'text' },
+          sex: { name: 'Sex', type: 'text' },
         },
       },
     },
-  },
-} as unknown as Codebook;
+    edge: {
+      knows: {
+        name: 'Knows',
+        color: 'edge-color-seq-1',
+        synthetic: {
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: density },
+          },
+        },
+        variables: {
+          strength: {
+            name: 'Strength',
+            type: 'ordinal',
+            options: [1, 2, 3, 4, 5].map((value) => ({
+              label: `Strength ${value}`,
+              value,
+            })),
+          },
+        },
+      },
+    },
+  } as unknown as Codebook;
+}
 
 function threePeople(): Stage {
   return {
@@ -52,6 +73,7 @@ function threePeople(): Stage {
     type: 'NameGenerator',
     label: 'Name generator',
     subject: { entity: 'node', type: 'person' },
+    form: { title: 'About this person', fields: [] },
     prompts: [{ id: 'p1', text: 'Name people' }],
     behaviours: { minNodes: 3, maxNodes: 3 },
   } as unknown as Stage;
@@ -75,7 +97,14 @@ function sociogram(id: string): Stage {
     type: 'Sociogram',
     label: 'Link them',
     subject: { entity: 'node', type: 'person' },
-    prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'knows' } }],
+    prompts: [
+      {
+        id: 'p1',
+        text: 'Who knows who?',
+        layout: { layoutVariable: 'layout' },
+        edges: { create: 'knows' },
+      },
+    ],
   } as unknown as Stage;
 }
 
@@ -90,9 +119,8 @@ describe('edge reuse across stages', () => {
   it('leaves one edge per pair when two census stages share an edge type', () => {
     const { network } = generateNetwork({
       seed: 3,
-      codebook,
+      codebook: codebook(1),
       stages: [threePeople(), dyadCensus('census-a'), dyadCensus('census-b')],
-      config: { censusEdgeProbability: { min: 1, max: 1 } },
     });
 
     const keys = pairKeys(network.edges);
@@ -102,26 +130,16 @@ describe('edge reuse across stages', () => {
   });
 
   it('reuses a census edge from a Sociogram, and the other way round', () => {
-    const both = { min: 1, max: 1 };
-
     const censusFirst = generateNetwork({
       seed: 3,
-      codebook,
+      codebook: codebook(1),
       stages: [threePeople(), dyadCensus('census'), sociogram('sociogram')],
-      config: {
-        censusEdgeProbability: both,
-        sociogramEdgeProbability: both,
-      },
     });
 
     const sociogramFirst = generateNetwork({
       seed: 3,
-      codebook,
+      codebook: codebook(1),
       stages: [threePeople(), sociogram('sociogram'), dyadCensus('census')],
-      config: {
-        censusEdgeProbability: both,
-        sociogramEdgeProbability: both,
-      },
     });
 
     expect(new Set(pairKeys(censusFirst.network.edges)).size).toBe(3);
@@ -131,19 +149,15 @@ describe('edge reuse across stages', () => {
   });
 
   it('records a reused pair as answered rather than as a negative', () => {
-    // The Sociogram connects every pair, then the census meets those edges with
-    // a zero probability of drawing any of its own. The runtime pre-selects
-    // 'Yes' for a pair that already has an edge of the type, so every pair is a
-    // positive answer — and the edge stays put, which is where the generator
-    // deliberately parts company with the interface's delete-on-'No'.
+    // Every planned edge materialises at the earliest stage that could create
+    // it — the Sociogram here — and the census's answers derive from final
+    // membership. The runtime pre-selects 'Yes' for a pair that already has an
+    // edge of the type, so every pair is a positive answer, and the edge stays
+    // where the Sociogram left it.
     const { network, stageMetadata } = generateNetwork({
       seed: 3,
-      codebook,
+      codebook: codebook(1),
       stages: [threePeople(), sociogram('sociogram'), dyadCensus('census')],
-      config: {
-        sociogramEdgeProbability: { min: 1, max: 1 },
-        censusEdgeProbability: { min: 0, max: 0 },
-      },
     });
 
     expect(network.edges).toHaveLength(3);
@@ -170,12 +184,8 @@ describe('edge reuse across stages', () => {
 
     const { network } = generateNetwork({
       seed: 3,
-      codebook,
+      codebook: codebook(1, 3),
       stages: [composer],
-      config: {
-        nodeCount: { min: 3, max: 3 },
-        networkComposerEdgeProbability: { min: 1, max: 1 },
-      },
     });
 
     expect(new Set(pairKeys(network.edges)).size).toBe(3);
@@ -188,9 +198,26 @@ describe('TieStrengthCensus over an edge it did not create', () => {
     id: 'stage-pedigree',
     type: 'FamilyPedigree',
     label: 'Family',
-    nodeConfig: { type: 'person' },
-    edgeConfig: { type: 'knows' },
-    prompts: [],
+    nodeConfig: {
+      type: 'person',
+      nodeLabelVariable: 'name',
+      egoVariable: 'isEgo',
+      relationshipVariable: 'relationship',
+      biologicalSexVariable: 'sex',
+    },
+    edgeConfig: {
+      type: 'knows',
+      relationshipTypeVariable: 'relType',
+      isActiveVariable: 'isActive',
+      isGestationalCarrierVariable: 'carrier',
+      gameteRoleVariable: 'gamete',
+    },
+    framing: { mode: 'fixed', value: 'gendered' },
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
+    censusPrompt: 'Add your family.',
   } as unknown as Stage;
 
   const tieStrength = {
@@ -210,21 +237,16 @@ describe('TieStrengthCensus over an edge it did not create', () => {
   } as unknown as Stage;
 
   it('writes its edge variable onto the reused edge instead of drawing another', () => {
-    // A pedigree edge is born with no attributes at all, and the census is
-    // given no chance of drawing one of its own, so every edge here is a
-    // pedigree edge the census answered — the generator's stand-in for
-    // `updateEdge`, which merges the ordinal value into whatever the edge held.
+    // The topology target is zero, so every edge here is a structural pedigree
+    // edge the census answered — the generator's stand-in for `updateEdge`,
+    // which merges the ordinal value into whatever the edge held.
     const { network } = generateNetwork({
       seed: 3,
-      codebook,
+      codebook: codebook(0, 4),
       stages: [pedigree, tieStrength],
-      config: {
-        familyPedigreeNodeCount: { min: 4, max: 4 },
-        censusEdgeProbability: { min: 0, max: 0 },
-      },
     });
 
-    // `handleFamilyPedigree` creates exactly one edge per node after the first.
+    // The pedigree plans exactly one edge per family member after the first.
     expect(network.edges).toHaveLength(3);
     for (const edge of network.edges) {
       expect(edge[entityAttributesProperty].strength).toBeDefined();
@@ -232,16 +254,13 @@ describe('TieStrengthCensus over an edge it did not create', () => {
   });
 
   it('leaves the pedigree own edges in place when a census pairs the same people', () => {
-    // Reuse never removes anything: the pedigree's parent-child edges are still
-    // there, and the census adds only the pairs the pedigree left unjoined.
+    // Reuse never removes anything: the pedigree's parent-child edges are
+    // still there, and the plan links only the pairs the pedigree left
+    // unjoined to reach its density.
     const { network } = generateNetwork({
       seed: 3,
-      codebook,
+      codebook: codebook(1, 4),
       stages: [pedigree, tieStrength],
-      config: {
-        familyPedigreeNodeCount: { min: 4, max: 4 },
-        censusEdgeProbability: { min: 1, max: 1 },
-      },
     });
 
     const keys = pairKeys(network.edges);
