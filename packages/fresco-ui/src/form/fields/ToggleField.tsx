@@ -1,7 +1,7 @@
 'use client';
 
 import { Switch } from '@base-ui/react/switch';
-import { motion } from 'motion/react';
+import { LayoutGroup, motion } from 'motion/react';
 
 import {
   controlVariants,
@@ -174,20 +174,22 @@ export default function ToggleField(props: ToggleFieldProps) {
         />
       }
     >
-      <Switch.Thumb
-        render={
-          <motion.span
-            className={toggleThumbVariants({ state })}
-            layout
-            layoutDependency={value}
-            transition={{
-              type: 'spring',
-              stiffness: 500,
-              damping: 30,
-            }}
-          />
-        }
-      />
+      <LayoutGroup inherit={false}>
+        <Switch.Thumb
+          render={
+            <motion.span
+              className={toggleThumbVariants({ state })}
+              layout
+              layoutDependency={value}
+              transition={{
+                type: 'spring',
+                stiffness: 500,
+                damping: 30,
+              }}
+            />
+          }
+        />
+      </LayoutGroup>
     </Switch.Root>
   );
 }
