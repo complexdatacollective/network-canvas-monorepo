@@ -1,4 +1,4 @@
-import type { Stage } from '@codaco/protocol-validation';
+import type { AdditionalAttributes, Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   type NcNode,
