@@ -28,6 +28,35 @@ import { expect, type Locator, type Page } from '@playwright/test';
 //   navigates to `/protocol` only once redux-form's sync validators all pass
 //   and the commit actually runs — so `waitForURL` after the click is a
 //   genuine round-trip assertion, not just a click-and-hope.
+type MarkdownBlock =
+  | { kind: 'paragraph'; text: string }
+  | { kind: 'bullet' | 'ordered'; items: string[] };
+
+// Split source markdown into typeable blocks: blank-line-separated
+// paragraphs, plus bullet (`* `/`- `) and ordered (`1. `) list runs whose
+// single-newline-separated lines all carry a marker.
+function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
+  return markdown
+    .trim()
+    .split(/\n{2,}/)
+    .map((block): MarkdownBlock => {
+      const lines = block.split('\n');
+      if (lines.every((line) => /^[*-] /.test(line))) {
+        return {
+          kind: 'bullet',
+          items: lines.map((line) => line.replace(/^[*-] /, '')),
+        };
+      }
+      if (lines.every((line) => /^\d+\. /.test(line))) {
+        return {
+          kind: 'ordered',
+          items: lines.map((line) => line.replace(/^\d+\. /, '')),
+        };
+      }
+      return { kind: 'paragraph', text: block };
+    });
+}
+
 export class StageEditor {
   private readonly page: Page;
 
@@ -47,6 +76,15 @@ export class StageEditor {
 
   async setStageName(name: string): Promise<void> {
     const input = this.page.getByRole('textbox', { name: 'Stage name' });
+    // Two-step fill: the auto-stage-name hook (StageEditor/autoStageName)
+    // treats a label equal to its last GENERATED value as not-yet-owned — a
+    // documented accepted limitation — and rewrites it when the subject or
+    // content later changes (observed live: 'Quick Add Name Generator'
+    // became 'Person Quick Add Name Generator' after the node type was
+    // picked). Filling a differing sentinel first flips the hook's isCustom
+    // latch, so the real name then sticks verbatim even when it matches a
+    // generated label.
+    await input.fill(`${name} (naming)`);
     await input.fill(name);
   }
 
@@ -74,6 +112,53 @@ export class StageEditor {
       // `input` event — if `.fill()`'s synthetic event doesn't take, fall
       // back to genuine keystrokes.
       await this.page.keyboard.type(text);
+    }
+  }
+
+  // Type canonical markdown into a Tiptap RichText editor the way a user
+  // would: paragraphs separated by Enter, `* `/`- `/`1. ` prefixes triggering
+  // the list input rules, Enter continuing list items, Enter-Enter exiting a
+  // list. Inline `**bold**`/`_italic_`/`*italic*` markers convert through
+  // Tiptap's mark input rules as typed. The SAVED string is the current
+  // serializer's canonical form (`- ` bullets, renumbered ordered lists,
+  // escaped punctuation), NOT the typed bytes — compare round-tripped
+  // documents, not raw strings (see helpers/normalize-protocol.ts).
+  async fillRichTextMarkdown(
+    ariaLabel: string,
+    markdown: string,
+  ): Promise<void> {
+    const box = this.page.getByRole('textbox', { name: ariaLabel });
+    await box.click();
+    let needsBlockBreak = false;
+    // Type the TEXT a user would type, not the serialized escape: the one
+    // backslash escape the canonical sample protocol contains (`\-`, an
+    // escaped hyphen from its own serializer era) must be typed as a plain
+    // hyphen — typing the backslash literally makes the serializer escape it
+    // again (`\\\-`), which no longer parses to the same text. HTML entities
+    // (`&quot;`, `&lt;`…) are typed literally on purpose: both sides parse
+    // them to the same characters (verified by the build spike).
+    for (const block of parseMarkdownBlocks(markdown.replaceAll('\\-', '-'))) {
+      if (needsBlockBreak) {
+        await this.page.keyboard.press('Enter');
+      }
+      if (block.kind === 'paragraph') {
+        await this.page.keyboard.type(block.text);
+        needsBlockBreak = true;
+        continue;
+      }
+      for (const [index, item] of block.items.entries()) {
+        if (index === 0) {
+          await this.page.keyboard.type(block.kind === 'bullet' ? '* ' : '1. ');
+        } else {
+          await this.page.keyboard.press('Enter');
+        }
+        await this.page.keyboard.type(item);
+      }
+      // Exit the list: the first Enter opens an empty item, the second lifts
+      // it out into a fresh paragraph — so the next block needs no break.
+      await this.page.keyboard.press('Enter');
+      await this.page.keyboard.press('Enter');
+      needsBlockBreak = false;
     }
   }
 
