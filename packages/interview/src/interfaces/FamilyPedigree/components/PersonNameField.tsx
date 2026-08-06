@@ -1,7 +1,8 @@
-import { useMemo, type ReactNode } from 'react';
+import { useContext, useMemo, type ReactNode } from 'react';
 import { useSelector } from 'react-redux';
 import { z } from 'zod/mini';
 
+import { WizardContext } from '@codaco/fresco-ui/dialogs/useWizard';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -66,6 +67,7 @@ export default function PersonNameField({
   const getActiveFormValues = useFormStore(
     (state) => state.getActiveFormValues,
   );
+  const wizardContext = useContext(WizardContext);
 
   const nodeVariables = codebook.node?.[nodeType]?.variables ?? {};
   const validationMetadata = selectValidationMetadataForVariable(
@@ -85,7 +87,15 @@ export default function PersonNameField({
                 if (
                   typeof value === 'string' &&
                   value.trim().length > 0 &&
-                  countPendingNames(getActiveFormValues(), value) > 1
+                  countPendingNames(
+                    [
+                      ...Object.values(
+                        wizardContext?.completedStepValues ?? {},
+                      ),
+                      getActiveFormValues(),
+                    ],
+                    value,
+                  ) > 1
                 ) {
                   ctx.addIssue({
                     code: 'custom',

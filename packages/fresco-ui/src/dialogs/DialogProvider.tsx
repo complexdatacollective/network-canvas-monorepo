@@ -203,6 +203,11 @@ function WizardDialogContent({
     [formStoreApi],
   );
 
+  const getActiveFormValues = useCallback(
+    () => formStoreApi.getState().getActiveFormValues(),
+    [formStoreApi],
+  );
+
   const wizardProps = useWizardState({
     dialog,
     dialogId,
@@ -211,6 +216,7 @@ function WizardDialogContent({
     validateForm,
     getFieldErrors,
     getFormValues,
+    getActiveFormValues,
   });
 
   if (!wizardProps) return null;

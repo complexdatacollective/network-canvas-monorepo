@@ -20,6 +20,7 @@ type UseWizardStateArgs = {
   validateForm: () => Promise<boolean>;
   getFieldErrors: () => Record<string, string[] | undefined>;
   getFormValues: () => Record<string, unknown>;
+  getActiveFormValues: () => Record<string, unknown>;
 };
 
 type WizardDialogProps = {
@@ -37,9 +38,13 @@ export default function useWizardState({
   validateForm,
   getFieldErrors,
   getFormValues,
+  getActiveFormValues,
 }: UseWizardStateArgs): WizardDialogProps | null {
   const [stepIndex, setStepIndex] = useState(0);
   const [data, setData] = useState<Record<string, unknown>>({});
+  const [completedStepValues, setCompletedStepValues] = useState<
+    Record<number, Record<string, unknown>>
+  >({});
   const [nextEnabled, setNextEnabled] = useState(true);
   const [backEnabled, setBackEnabled] = useState(true);
   const [nextLabelOverride, setNextLabelOverride] = useState<string | null>(
@@ -101,6 +106,15 @@ export default function useWizardState({
   const goToStep = useCallback(
     (target: number) => {
       if (target < 0 || target >= totalSteps) return;
+      if (target <= stepIndex) {
+        setCompletedStepValues((previous) =>
+          Object.fromEntries(
+            Object.entries(previous).filter(
+              ([completedIndex]) => Number(completedIndex) < target,
+            ),
+          ),
+        );
+      }
       prevStepRef.current = stepIndex;
       resetStepOverrides();
       setStepIndex(target);
@@ -150,6 +164,10 @@ export default function useWizardState({
       return;
     }
 
+    setCompletedStepValues((previous) => ({
+      ...previous,
+      [stepIndex]: getActiveFormValues(),
+    }));
     goToStep(next);
   }, [
     dialog,
@@ -161,6 +179,7 @@ export default function useWizardState({
     validateForm,
     getFieldErrors,
     getFormValues,
+    getActiveFormValues,
   ]);
 
   const handleBack = useCallback(() => {
@@ -185,6 +204,7 @@ export default function useWizardState({
       currentStep: stepIndex,
       totalSteps,
       data,
+      completedStepValues,
       setStepData,
       setNextEnabled,
       setBackEnabled: (enabled: boolean) => setBackEnabled(enabled),
@@ -192,7 +212,15 @@ export default function useWizardState({
       setBeforeNext,
       goToStep,
     }),
-    [stepIndex, totalSteps, data, setStepData, setBeforeNext, goToStep],
+    [
+      stepIndex,
+      totalSteps,
+      data,
+      completedStepValues,
+      setStepData,
+      setBeforeNext,
+      goToStep,
+    ],
   );
 
   if (!currentStep) return null;

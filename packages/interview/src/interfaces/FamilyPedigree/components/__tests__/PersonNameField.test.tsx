@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { WizardContext } from '@codaco/fresco-ui/dialogs/useWizard';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
@@ -226,6 +227,40 @@ describe('PersonNameField', () => {
     for (const error of errors) {
       expect(error).toHaveTextContent(/must be unique/i);
     }
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('rejects a name already entered on a completed wizard step', async () => {
+    const user = userEvent.setup();
+    const onSubmit = renderForm(
+      <WizardContext.Provider
+        value={{
+          currentStep: 1,
+          totalSteps: 2,
+          data: {},
+          completedStepValues: {
+            0: { 'egg-parent': { name: 'Alice' } },
+          },
+          setStepData: vi.fn(),
+          setNextEnabled: vi.fn(),
+          setBackEnabled: vi.fn(),
+          setNextLabel: vi.fn(),
+          setBeforeNext: vi.fn(),
+          goToStep: vi.fn(),
+        }}
+      >
+        <FieldNamespace prefix="sperm-parent">
+          <PersonNameField label="Name" />
+        </FieldNamespace>
+      </WizardContext.Provider>,
+    );
+
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Alice');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByTestId('name-field-error')).toHaveTextContent(
+      /must be unique/i,
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
