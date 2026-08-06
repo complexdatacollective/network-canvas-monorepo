@@ -6,11 +6,11 @@ navOrder: 6
 <SummaryCard duration="60 minutes">
 <SummarySection>
 
-This tutorial explains how to implement the **Colored Eco-Genetic Relationship
-Map (CEGRM)** method in Network Canvas. It uses the bundled CEGRM template to
-show how a genetic pedigree, a personal support network, family health
-communication roles, and a qualitative mapping interview can be represented in
-one protocol without collapsing their distinct meanings.
+This tutorial shows how to implement the **Colored Eco-Genetic Relationship Map
+(CEGRM)** method in Network Canvas. The bundled CEGRM template combines a
+genetic pedigree, a personal support network, family health communication roles,
+and a qualitative mapping interview in one protocol. Each remains a distinct
+construct in the resulting data.
 
 </SummarySection>
 <PrerequisitesSection>
@@ -42,28 +42,26 @@ non-kin on a common visual field, then marks the people involved in different
 forms of social exchange
 ([Kenen and Peters, 2001](https://doi.org/10.1023/A:1016627426430)).
 
-That hybrid matters. A pedigree can show plausible routes of biological
-inheritance, but cannot by itself show who shares information, gives practical
-help, or provides emotional support. A conventional personal network can show
-those relationships, but usually does not preserve the reproductive and
-multi-generational structure needed to reason about an inherited condition. A
-CEGRM brings the two representations together.
+The two source traditions answer different questions. A pedigree shows
+plausible routes of biological inheritance. It does not show who shares
+information, gives practical help, or provides emotional support. Personal
+network methods can record those relationships, but usually omit the
+reproductive and multi-generational structure needed to study an inherited
+condition. CEGRM retains both structures in the same map.
 
-The method is also more than its final diagram. Published CEGRMs were
-**co-constructed by an investigator and participant** through a semi-structured
-interview. Later work describes the map and the accompanying interview as
-interconnected sources of data, and reports average interview durations of
-30–45 minutes in one Li-Fraumeni syndrome study
+Published CEGRMs were **co-constructed by an investigator and participant**
+during a semi-structured interview. Later work treats the map and the interview
+as interconnected data sources. One Li-Fraumeni syndrome study reports average
+interview durations of 30–45 minutes
 ([Peters et al., 2016](https://doi.org/10.1007/s10897-015-9905-x)). The
-participant's explanation of an apparent gap, cluster, or difficult relationship
-is therefore not ancillary to the method. It is often the substantive finding.
+participant's account of an apparent gap, cluster, or difficult relationship can
+be as informative as the diagram itself.
 
 <TipBox>
 
-Treat the Network Canvas implementation as an **interviewer-assisted visual
-elicitation protocol**, not as a self-administered questionnaire that happens to
-contain a pedigree. The interface can structure the task and preserve the data,
-but it cannot replace the interviewer's pacing, probing, and ethical judgement.
+Use Network Canvas as an **interviewer-assisted visual elicitation protocol**.
+The interface structures the task and preserves the network data; the
+interviewer remains responsible for pacing, probing, and ethical judgement.
 
 </TipBox>
 
@@ -80,18 +78,17 @@ lists the decisions that must be made before fieldwork, and links to the core
 literature. Delete that stage before deployment, but only after transferring its
 instructions into your study documentation and interviewer training materials.
 
-The template is deliberately a **methodological starting point**, not a
-ready-to-field clinical instrument. Its consent text is illustrative, every
-reference to "this condition" must be replaced, and the inheritance display is
-configured conservatively. You remain responsible for the validity of the
-condition-specific content and for review by the appropriate ethics and clinical
-teams.
+The template is a **methodological starting point**. It is not a clinical
+instrument that can be fielded unchanged. Its consent text is illustrative,
+every reference to "this condition" must be replaced, and the inheritance
+display uses conservative defaults. The research team remains responsible for
+condition-specific validity and for the required ethical and clinical review.
 
 ## The protocol as a methodological translation
 
-Network Canvas represents a CEGRM as one interview with 14 stages. The sequence
-is intentional: each stage writes a bounded part of the record, and later stages
-interpret or extend what earlier stages established.
+Network Canvas represents a CEGRM as one interview with 14 stages. The order
+follows the data dependencies in the protocol. Each stage writes a bounded part
+of the record; later stages interpret or extend what is already present.
 
 | Stage                                    | Interface                  | Methodological purpose                                                                         |
 | ---------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -112,25 +109,24 @@ interpret or extend what earlier stages established.
 
 ![The CEGRM sequence moving from the family pedigree to people beyond the family.](/assets/img/cegrm-tutorial/interview-sequence.jpg 'The Family pedigree, Beyond the family, and People in your life stages on the protocol timeline')
 
-The stages can be adapted, but changing their order can change the meaning of
-the data. For example, the non-kin relationship stage assumes that pedigree
-relationships have already been derived, and the Narrative stage assumes that a
-Sociogram has already established a stable layout. When you reorder the
-protocol, re-evaluate every stage filter, layout variable, and interviewer
-instruction rather than treating the timeline as presentational.
+Changing the order can change the meaning of the data. The non-kin relationship
+stage assumes that pedigree relationships have already been derived. The
+Narrative stage expects a Sociogram to have established a stable layout. After
+reordering the protocol, review every stage filter, layout variable, and
+interviewer instruction. The timeline records these dependencies alongside the
+presentation order.
 
 ## Use one person node type for the whole social world
 
-The template defines a single node type, `person`, for the participant, family
-members, and non-family contacts. This is the central data-model decision in the
-implementation.
+The template defines one node type, `person`, for the participant, family
+members, and non-family contacts. A shared type allows everyone to appear in the
+same Sociogram and Narrative.
 
-Using separate node types for "family" and "network member" would make the
-initial elicitation look tidy, but would fragment the completed CEGRM. A spouse,
-adoptive parent, cousin who is also a close friend, or clinician who is part of a
-family's social world would have to be forced into one ontology or duplicated.
-One shared type lets every person appear in the same Sociogram and Narrative
-while retaining their different attributes.
+Separate node types for "family" and "network member" would fragment the
+completed CEGRM. A spouse, adoptive parent, cousin who is also a close friend, or
+clinician who participates in a family's social world would have to be assigned
+to one category or duplicated. The shared `person` type preserves these
+overlapping roles through variables and relationships.
 
 The distinction between family and non-family is stored through variables and
 relationships:
@@ -142,12 +138,11 @@ relationships:
 - `biologicalSex` supports pedigree symbols and sex-linked inheritance logic; it
   is not a measure of gender identity.
 
-The same `name` variable labels people in both the Family Pedigree and the Quick
-Add Name Generator. It is configured as **required** and **unique**. This is more
-than a convenience: a pedigree label is data collected by the protocol, so it
-must obey the same codebook validation rules as a name entered in any other
-interface. Do not create a separate pedigree-name variable unless your analysis
-genuinely requires two different concepts.
+The same `name` variable labels people in the Family Pedigree and the Quick Add
+Name Generator. It is configured as **required** and **unique**. Pedigree labels
+are protocol data and follow the same codebook validation rules as names entered
+elsewhere. Create a separate pedigree-name variable only when the analysis
+requires two different concepts.
 
 ## Construct the family pedigree inclusively
 
@@ -168,12 +163,11 @@ preserving the information needed by the pedigree data model.
 
 ![The Family Pedigree stage configured to let the participant choose its framing.](/assets/img/cegrm-tutorial/family-pedigree-configuration.jpg 'Participant-choice framing in the CEGRM Family Pedigree stage')
 
-The template makes grandparents and the families of a participant's children's
-other genetic contributors **recommended**, rather than required. This creates a
-visible reminder without forcing participants to invent information or blocking
-completion when family history is unavailable. Change these boundaries only in
-relation to your sampling frame, condition, analytic plan, and the burden of the
-interview.
+The template marks grandparents and the families of a participant's children's
+other genetic contributors as **recommended**. Participants receive a visible
+reminder, but missing family history does not block completion or invite
+guessing. Set stricter boundaries only when the sampling frame, condition, and
+analysis require them and the added interview burden is acceptable.
 
 Two nomination prompts follow construction of the pedigree:
 
@@ -269,12 +263,11 @@ This mirrors the original act of placing a colored symbol beside a person. In
 analytic terms it records the participant's report of an ego-to-person support
 relationship, not a directed exchange between every pair of people on the map.
 
-That choice is appropriate for the bundled template, but it is not universal.
-If your research question distinguishes **giving from receiving**, measures
-reciprocity, or asks about support between two network members, model those
-constructs as directed edge types or edge variables. Do not infer direction from
-the word "exchange" when the protocol has only recorded a boolean node
-attribute.
+This implementation follows the bundled template's ego-to-person nominations.
+Research questions about **giving versus receiving**, reciprocity, or support
+between two network members need directed edge types or edge variables. A
+boolean node attribute does not encode direction, regardless of the word
+"exchange" in the prompt.
 
 The Sociogram lays people out automatically during the `knows` prompt and stores
 their positions in the `layout` variable. The four support prompts reuse those
@@ -331,20 +324,19 @@ offering an interpretation. Useful probes include:
 Free drawing is enabled so the interviewer can annotate the display during the
 conversation. Those marks are **not exported**. The spoken narrative and
 interviewer interpretation are also not automatically part of the network data.
-If they are research data, add an approved capture process—such as audio
-recording and transcription, structured field notes, or a separate form—and
-state how it will be linked to the interview without compromising
+If they are research data, add an approved capture process such as audio
+recording and transcription, structured field notes, or a separate form. State
+how the material will be linked to the interview without compromising
 confidentiality.
 
 The following Narrative Pedigree returns to the multi-generational family view
 and colors people identified as having the condition. Its inheritance pattern
-defaults to `unknown`, and inferred at-risk statuses are disabled. This is a
-safety decision. Only select an inheritance pattern supported for the condition,
-and only enable inferred statuses when qualified personnel will interpret the
-display under an approved disclosure procedure. The visualization is not a
-diagnosis, and its inference model cannot represent incomplete penetrance,
-phenocopies, uncertain variants, mosaicism, or every clinically relevant
-complexity.
+defaults to `unknown`, and inferred at-risk statuses are disabled for safety.
+Select an inheritance pattern only when the condition supports it. Enable
+inferred statuses only when qualified personnel will interpret the display under
+an approved disclosure procedure. The visualization is not a diagnosis, and its
+inference model cannot represent incomplete penetrance, phenocopies, uncertain
+variants, mosaicism, or every clinically relevant complexity.
 
 ## Plan the quantitative analysis before fieldwork
 
@@ -399,7 +391,7 @@ than erasing them
 
 ## Adapt the template before deployment
 
-At minimum, complete the following decisions.
+Before deployment, settle the following design decisions.
 
 ### Name the condition and define each construct
 
@@ -473,10 +465,10 @@ role that will administer it. Observe:
 - Whether the exported data can reproduce every planned measure without relying
   on information that exists only in the interviewer's memory.
 
-This reflexive step is consistent with both traditions being combined. CEGRM
-research treats the interaction around the map as consequential, while Network
-Canvas was designed around participant-aided visual elicitation and the idea
-that software choices enable and constrain what can be reported
+The pilot should examine the interaction around the map as closely as the
+exported network. CEGRM research treats that interaction as consequential.
+Network Canvas likewise uses participant-aided visual elicitation, with software
+choices that enable and constrain what can be reported
 ([Birkett et al., 2021](https://doi.org/10.1016/j.socnet.2021.02.003)).
 
 ## References
