@@ -45,6 +45,10 @@ test('opens an existing Sociogram without reporting unsaved changes', async ({
   await gotoProtocol(architectPage);
   await architectPage.goto(`/protocol/stage/${sociogram.id}`);
 
+  const editor = new StageEditor(architectPage);
+  await expect(
+    editor.field('background.concentricCircles').getByRole('spinbutton'),
+  ).toBeVisible();
   await expect(
     architectPage.getByRole('button', { name: 'Finished Editing' }),
   ).toHaveCount(0);

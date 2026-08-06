@@ -20,15 +20,9 @@ import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
 
 import Background, { allowsBackgroundImage } from '../Background';
 
-type FormValues = {
-  type: 'Sociogram';
-  background: {
-    concentricCircles: number;
-    skewedTowardCenter?: boolean;
-  };
-};
-
-const BackgroundHarness = (_props: InjectedFormProps<FormValues>) => (
+const BackgroundHarness = (
+  _props: InjectedFormProps<Record<string, unknown>>,
+) => (
   <Background
     form="edit-stage"
     stagePath="stages[0]"
@@ -37,9 +31,9 @@ const BackgroundHarness = (_props: InjectedFormProps<FormValues>) => (
   />
 );
 
-const BackgroundForm = reduxForm<FormValues>({ form: 'edit-stage' })(
-  BackgroundHarness,
-);
+const BackgroundForm = reduxForm<Record<string, unknown>>({
+  form: 'edit-stage',
+})(BackgroundHarness);
 
 const renderExistingSociogram = (stage: Stage) => {
   const reducer = combineReducers({ form: formReducer, stageEditorDraft });
@@ -54,7 +48,7 @@ const renderExistingSociogram = (stage: Stage) => {
     interfaceType: 'Sociogram',
     stage,
     template: {},
-  }) as FormValues;
+  });
 
   render(
     <Provider store={store}>
