@@ -38,6 +38,29 @@ describe('app slice — preview preferences', () => {
     expect(getPreviewRespectSkipLogic(store.getState())).toBe(false);
   });
 
+  it.each([
+    { previewIgnoreSkipLogic: true, expected: false },
+    { previewIgnoreSkipLogic: false, expected: true },
+  ])(
+    'preserves the inverse legacy preview preference %#',
+    ({ previewIgnoreSkipLogic, expected }) => {
+      expect(
+        getPreviewRespectSkipLogic({ app: { previewIgnoreSkipLogic } }),
+      ).toBe(expected);
+    },
+  );
+
+  it('prefers the new preview preference over legacy state', () => {
+    expect(
+      getPreviewRespectSkipLogic({
+        app: {
+          previewRespectSkipLogic: false,
+          previewIgnoreSkipLogic: false,
+        },
+      }),
+    ).toBe(false);
+  });
+
   it('persists the respect skip logic preference', () => {
     const store = createStore();
     store.dispatch(setPreviewRespectSkipLogic(true));
