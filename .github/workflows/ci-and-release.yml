@@ -600,8 +600,11 @@ jobs:
       - detect
       - e2e-policy
       - interview-e2e
+      - interview-e2e-native
       - interviewer-e2e
+      - interviewer-e2e-native
       - architect-e2e
+      - architect-e2e-native
     if: >-
       ${{ !cancelled()
       && github.event_name != 'push'
@@ -621,8 +624,11 @@ jobs:
           SUPPORT_RESULT: ${{ needs.quality-support.result }}
           TEST_RESULT: ${{ needs.test.result }}
           INTERVIEW_E2E_RESULT: ${{ needs.interview-e2e.result }}
+          INTERVIEW_E2E_NATIVE_RESULT: ${{ needs.interview-e2e-native.result }}
           INTERVIEWER_E2E_RESULT: ${{ needs.interviewer-e2e.result }}
+          INTERVIEWER_E2E_NATIVE_RESULT: ${{ needs.interviewer-e2e-native.result }}
           ARCHITECT_E2E_RESULT: ${{ needs.architect-e2e.result }}
+          ARCHITECT_E2E_NATIVE_RESULT: ${{ needs.architect-e2e-native.result }}
         run: |
           verify_successes() {
             local gate=$1
@@ -664,9 +670,15 @@ jobs:
             echo "$suite passed"
           }
 
+          # Each suite runs as two jobs — the Dockerized pixel half and the
+          # native functional half. BOTH are required, so a red functional
+          # half cannot be hidden by a green pixel half.
           verify_required_e2e interview-e2e "$E2E_INTERVIEW_REQUIRED" "$INTERVIEW_E2E_RESULT"
+          verify_required_e2e interview-e2e-native "$E2E_INTERVIEW_REQUIRED" "$INTERVIEW_E2E_NATIVE_RESULT"
           verify_required_e2e interviewer-e2e "$E2E_INTERVIEWER_REQUIRED" "$INTERVIEWER_E2E_RESULT"
+          verify_required_e2e interviewer-e2e-native "$E2E_INTERVIEWER_REQUIRED" "$INTERVIEWER_E2E_NATIVE_RESULT"
           verify_required_e2e architect-e2e "$E2E_ARCHITECT_REQUIRED" "$ARCHITECT_E2E_RESULT"
+          verify_required_e2e architect-e2e-native "$E2E_ARCHITECT_REQUIRED" "$ARCHITECT_E2E_NATIVE_RESULT"
           echo "quality gate passed"
 
   docs-preview-checks:
@@ -1008,7 +1020,10 @@ jobs:
           docker info --format '{{json .DriverStatus}}'
       - name: Run E2E tests
         run: |
-          args=()
+          # Pixel half only — the *-matrix projects run natively in
+          # interview-e2e-native. Same project selector as
+          # test:e2e:update-snapshots and the regeneration workflow.
+          args=(--project=chromium-visual --project=firefox-visual --project=webkit-visual)
           if [[ -n "$E2E_SHARD" ]]; then
             if [[ ! "$E2E_SHARD" =~ ^[1-9][0-9]*/[1-9][0-9]*$ ]]; then
               echo "::error::Invalid Playwright shard '$E2E_SHARD' (expected N/M)"
@@ -1115,6 +1130,72 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  interview-e2e-native:
+    # The functional half of the Interview suite: the three *-matrix projects,
+    # whose only baselines are ARIA accessibility-tree text. Those are
+    # OS-independent by design, and are already regenerated on developer macOS
+    # hosts and compared inside Linux CI today — so running them outside the
+    # container changes nothing about what they assert. The three *-visual
+    # projects own all 318 committed PNGs and stay in interview-e2e.
+    # Deliberately hosted-only: this half does not need the self-hosted
+    # runner's warm Docker volumes, and `playwright install --with-deps` needs
+    # an apt sudo that runner does not grant.
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.interview == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Matches the Dockerized job's cap for GitHub's 4-core runners: the
+      # config default ('50%') lets the crypto-heavy Anonymisation scenarios
+      # contend, which surfaces as spurious timeout flakes.
+      PW_WORKERS: '4'
+      # Makes a stray pixel capture throw here rather than silently
+      # comparing container-rasterised baselines against this runner's fonts
+      # (see the suite's capture helper).
+      E2E_PIXEL_LANE: native
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Resolve the pinned Playwright version
+        id: pw
+        # The same lockfile-derived pin the Docker image tag is built from:
+        # the browser build is fixed by the resolved @playwright/test version
+        # either way, so this lane is no less deterministic about the browsers.
+        run: |
+          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
+          if [ -z "$version" ]; then
+            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-firefox-webkit
+      - name: Install the pinned browsers
+        # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
+        # postinstall browser download never runs.
+        run: pnpm --filter @codaco/interview exec playwright install --with-deps chromium firefox webkit
+      - name: Build the app under test
+        # The Playwright config serves an already-built app; it does not build
+        # one for us.
+        run: pnpm exec turbo run build --filter=@codaco/interview
+      - name: Build the e2e host
+        run: pnpm --filter @codaco/interview exec vite build --config e2e/host/vite.config.ts
+      - name: Run functional E2E tests
+        run: pnpm --filter @codaco/interview run test:e2e:native
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: interview-playwright-report-native
+          path: packages/interview/e2e/playwright-report/
+          if-no-files-found: warn
+          retention-days: 14
+
   interviewer-e2e:
     # See interview-e2e: this Dockerized suite owns its build too.
     needs: e2e-policy
@@ -1129,8 +1210,11 @@ jobs:
           # The Dockerized test run mounts the workspace; don't leave the
           # checkout token in .git/config for test/build code to read.
           persist-credentials: false
-      - name: Run E2E tests
-        run: ./apps/interviewer/e2e/scripts/run.sh
+      - name: Run visual E2E tests
+        # Pixel half only — the functional tests run natively in
+        # interviewer-e2e-native. Same selector as
+        # test:e2e:update-snapshots and the regeneration workflow.
+        run: ./apps/interviewer/e2e/scripts/run.sh --grep @visual
       - name: Classify snapshot-only failure
         id: snapshot_failure
         if: failure()
@@ -1151,6 +1235,67 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  interviewer-e2e-native:
+    # The functional half of the Interviewer suite: the tests that read no
+    # baseline of any kind — no PNG, no ARIA, no JSON. The 5 @visual tests stay
+    # in interviewer-e2e's container. webkit is installed for the
+    # webkit-visual-viewport project, which asserts live geometry rather than
+    # pixels and so is safe outside the image.
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.interviewer == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Build-time PostHog kill switch. Not a Docker artifact: without it the
+      # CSP-blocked analytics script load interleaves non-deterministically
+      # with a spec's own page.evaluate/addStyleTag calls and surfaces as a
+      # spurious action failure (the suite's run.sh explains this at length).
+      VITE_DISABLE_ANALYTICS: 'true'
+      # Makes a stray pixel capture throw here rather than silently
+      # comparing container-rasterised baselines against this runner's fonts
+      # (see the suite's capture helper).
+      E2E_PIXEL_LANE: native
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Resolve the pinned Playwright version
+        id: pw
+        # The same lockfile-derived pin the Docker image tag is built from:
+        # the browser build is fixed by the resolved @playwright/test version
+        # either way, so this lane is no less deterministic about the browsers.
+        run: |
+          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
+          if [ -z "$version" ]; then
+            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
+      - name: Install the pinned browsers
+        # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
+        # postinstall browser download never runs.
+        run: pnpm --filter @codaco/interviewer exec playwright install --with-deps chromium webkit
+      - name: Build the app under test
+        # The Playwright config serves an already-built app; it does not build
+        # one for us.
+        run: pnpm exec turbo run build --filter=@codaco/interviewer
+      - name: Run functional E2E tests
+        run: pnpm --filter @codaco/interviewer run test:e2e:native
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: interviewer-playwright-report-native
+          path: apps/interviewer/e2e/playwright-report/
+          if-no-files-found: warn
+          retention-days: 14
+
   architect-e2e:
     # See interview-e2e: this Dockerized suite owns its build too.
     needs: e2e-policy
@@ -1165,8 +1310,12 @@ jobs:
           # The Dockerized test run mounts the workspace; don't leave the
           # checkout token in .git/config for test/build code to read.
           persist-credentials: false
-      - name: Run E2E tests
-        run: ./apps/architect/e2e/scripts/run.sh
+      - name: Run visual E2E tests
+        # Pixel half only — the functional tests run natively in
+        # architect-e2e-native. This is the same selector
+        # test:e2e:update-snapshots and the regeneration workflow already use,
+        # so the two lanes cannot drift apart.
+        run: ./apps/architect/e2e/scripts/run.sh --grep @visual
       - name: Classify snapshot-only failure
         id: snapshot_failure
         if: failure()
@@ -1183,6 +1332,69 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-report-architect
+          path: apps/architect/e2e/playwright-report/
+          if-no-files-found: warn
+          retention-days: 14
+
+  architect-e2e-native:
+    # The functional half of the Architect suite. Its JSON stage snapshots are
+    # read back out of IndexedDB protocol JSON rather than from rendered
+    # geometry, so they are byte-stable across fonts, arch and OS: the pinned
+    # Playwright image buys this half nothing but a ~1 GB pull and a build that
+    # cannot reach the Turbo remote cache. The @visual tests stay in
+    # architect-e2e's container, the only place a pixel comparison means
+    # anything.
+    needs: e2e-policy
+    if: ${{ !cancelled() && needs.e2e-policy.outputs.architect == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Build-time PostHog kill switch. Not a Docker artifact: without it the
+      # CSP-blocked analytics script load interleaves non-deterministically
+      # with a spec's own page.evaluate/addStyleTag calls and surfaces as a
+      # spurious action failure (the suite's run.sh explains this at length).
+      VITE_DISABLE_ANALYTICS: 'true'
+      # Makes a stray pixel capture throw here rather than silently
+      # comparing container-rasterised baselines against this runner's fonts
+      # (see the suite's capture helper).
+      E2E_PIXEL_LANE: native
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Resolve the pinned Playwright version
+        id: pw
+        # The same lockfile-derived pin the Docker image tag is built from:
+        # the browser build is fixed by the resolved @playwright/test version
+        # either way, so this lane is no less deterministic about Chromium.
+        run: |
+          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
+          if [ -z "$version" ]; then
+            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+      - name: Install the pinned browsers
+        # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
+        # postinstall browser download never runs.
+        run: pnpm --filter @codaco/architect exec playwright install --with-deps chromium
+      - name: Build the app under test
+        # The Playwright config serves an already-built app; it does not build
+        # one for us.
+        run: pnpm exec turbo run build --filter=@codaco/architect
+      - name: Run functional E2E tests
+        run: pnpm --filter @codaco/architect run test:e2e:native
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report-architect-native
           path: apps/architect/e2e/playwright-report/
           if-no-files-found: warn
           retention-days: 14
@@ -1257,7 +1469,7 @@ jobs:
   # excluded from the carry-forward job so its verdict is never republished onto
   # an unrelated push (see carry-forward-statuses).
   interview-e2e-report:
-    needs: interview-e2e
+    needs: [interview-e2e, interview-e2e-native]
     if: >-
       ${{ !cancelled()
       && needs.interview-e2e.result != 'skipped'
@@ -1333,16 +1545,20 @@ jobs:
         env:
           SLUG: ${{ needs.interview-e2e.outputs.slug }}
           OUTCOME: ${{ needs.interview-e2e.result }}
+          NATIVE_OUTCOME: ${{ needs.interview-e2e-native.result }}
         with:
           script: |
-            const { SLUG, OUTCOME } = process.env;
+            const { SLUG, OUTCOME, NATIVE_OUTCOME } = process.env;
             const url = `https://complexdatacollective.github.io/network-canvas-monorepo/interview-e2e/${SLUG}/`;
-            const emoji = OUTCOME === 'success' ? '✅' : '❌';
+            // The suite runs as two jobs; report both, so a green pixel half
+            // can never read as a green suite while the functional half is red.
+            const ok = OUTCOME === 'success' && NATIVE_OUTCOME === 'success';
+            const emoji = ok ? '✅' : '❌';
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `${emoji} Interview E2E — **${OUTCOME}**\n\n📊 [View report](${url})`,
+              body: `${emoji} Interview E2E — pixel **${OUTCOME}** · functional **${NATIVE_OUTCOME}**\n\n📊 [View report](${url})`,
             });
 
   release:

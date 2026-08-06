@@ -124,7 +124,7 @@
         "tsconfig*.json",
         "package.json"
       ],
-      "env": ["NODE_ENV"],
+      "env": ["NODE_ENV", "VITE_DISABLE_ANALYTICS"],
       "outputs": ["dist/**"]
     },
     "networkcanvas.com#build": {

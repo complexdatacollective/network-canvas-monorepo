@@ -66,6 +66,14 @@ Docker image (`mcr.microsoft.com/playwright:v<version>-noble`, version
 derived from the lockfile by `scripts/run.sh`) so the baseline matches what
 CI will compare against.
 
+CI splits the suite along the same `@visual` tag: `interviewer-e2e` runs the
+tagged tests in the container, and `interviewer-e2e-native` runs the rest on a
+plain runner (`pnpm test:e2e:native`). Both are required by the `quality`
+gate. `capture()` throws when `E2E_PIXEL_LANE=native` is set, so an untagged
+test that captures fails loudly rather than comparing container-rasterised
+baselines against the runner's own fonts — if you add a capture to a test,
+tag it `@visual`.
+
 For a manual CI regeneration, use the
 `regenerating-e2e-visual-snapshots` skill and dispatch `Regenerate E2E Visual
 Snapshots` with `suite=interviewer`. It runs only the tagged visual capture
