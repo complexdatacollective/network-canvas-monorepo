@@ -28,6 +28,12 @@ for (const suite of ALL_SUITES) {
         const ctx: ScenarioContext = { page, interview, stage, protocol };
         await installScenario(scenario, ctx);
         const mask = scenario.captureMask?.(page);
+        if (
+          suite.interfaceType === 'Geospatial' &&
+          scenario.id === 'core-click-select-and-prompt-panel'
+        ) {
+          await stage.geospatial.waitForMapIdle();
+        }
         await interview.captureInitial(mask);
         await scenario.run(ctx);
         await interview.captureFinal(mask);

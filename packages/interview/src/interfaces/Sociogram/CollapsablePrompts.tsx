@@ -1,8 +1,9 @@
 import { ChevronUp, GripHorizontal } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, MotionConfigContext, type BoundingBox } from 'motion/react';
 import {
   type ReactNode,
   type RefObject,
+  useContext,
   useEffect,
   useId,
   useState,
@@ -16,6 +17,18 @@ import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 
 const MotionChevron = motion.create(ChevronUp);
+
+const roundDragConstraints = ({
+  top,
+  right,
+  bottom,
+  left,
+}: BoundingBox): BoundingBox => ({
+  top: Math.round(top),
+  right: Math.round(right),
+  bottom: Math.round(bottom),
+  left: Math.round(left),
+});
 
 /**
  * Floating, draggable panel showing the current prompt. Collapsible via the
@@ -35,6 +48,7 @@ const CollapsablePrompts = (props: {
   const { prompt } = usePrompts();
   const [collapsed, setCollapsed] = useState(false);
   const contentId = useId();
+  const { skipAnimations } = useContext(MotionConfigContext);
 
   const isCollapsed = collapsible && collapsed;
 
@@ -52,9 +66,14 @@ const CollapsablePrompts = (props: {
         'bg-surface/80 absolute top-4 right-4 z-10 flex w-fit max-w-sm cursor-move flex-col items-center overflow-hidden border-b-2 shadow-2xl backdrop-blur-md',
         className,
       )}
-      layout
+      layout={!skipAnimations}
       drag
       dragConstraints={dragConstraints}
+      // Constraint resizes can otherwise leave a fractional drag transform even
+      // when Motion's test mode has disabled every animation.
+      onMeasureDragConstraints={
+        skipAnimations ? roundDragConstraints : undefined
+      }
       noContainer
       spacing="sm"
       shadow="sm"
