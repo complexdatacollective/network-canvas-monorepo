@@ -74,6 +74,8 @@ type ArcPath = {
 export type ParentGroupConnector = {
   type: 'parent-group';
   segment: LineSegment;
+  /** Vertical endpoint leads for a routed, non-adjacent partnership. */
+  endpointSegments?: [LineSegment, LineSegment];
   double: boolean;
   isActive: boolean;
   doubleSegment?: LineSegment;

@@ -269,8 +269,12 @@ function main() {
 
     // Read and parse vercel.json
     const vercelContent = readFileSync(join(docsDir, 'vercel.json'), 'utf-8');
-    const vercelConfig = JSON.parse(vercelContent);
-    const vercelRedirects: VercelRedirect[] = vercelConfig.redirects || [];
+    // `JSON.parse` is typed `unknown` by @total-typescript/ts-reset, so the
+    // shape this script reads is stated here.
+    const vercelConfig = JSON.parse(vercelContent) as {
+      redirects?: VercelRedirect[];
+    };
+    const vercelRedirects: VercelRedirect[] = vercelConfig.redirects ?? [];
     console.log(`✓ Found ${vercelRedirects.length} redirects in vercel.json\n`);
 
     // Run validations

@@ -25,6 +25,23 @@ const cssCopyPlugin = (): Plugin => ({
   },
 });
 
+// Source constructs workers the portable way (`new Worker(new URL(...))`) so
+// non-Vite bundlers can consume this package's source. That form is wrong for
+// the published dist, where a library-mode worker chunk emits an absolute
+// `/assets/<hash>.js` URL consumers cannot resolve — so for the library build
+// only, redirect the factory module to its `?worker&inline` twin, which bakes
+// the workers into blob URLs. Storybook, Vitest and the e2e host load this
+// config too and resolve source directly, so the swap is scoped to `vite build`.
+const inlineWorkerPlugin = (): Plugin => ({
+  name: 'interview-inline-worker',
+  apply: 'build',
+  enforce: 'pre',
+  resolveId(source, importer) {
+    if (!importer || !source.endsWith('createAutoLayoutWorker.ts')) return null;
+    return resolve(__dirname, 'src/canvas/createAutoLayoutWorker.inline.ts');
+  },
+});
+
 // Posix-normalized absolute path of this package, used by the rollup `external`
 // predicate to recognise the package's own files regardless of OS separator.
 const pkgRoot = __dirname.replace(/\\/g, '/');
@@ -118,6 +135,7 @@ const addJsExtensionsToDeclarationSpecifiers = (content: string) =>
 export default defineConfig({
   plugins: [
     interfaceImagesNoInlinePlugin(),
+    inlineWorkerPlugin(),
     react(),
     isLibraryBuild &&
       dts({

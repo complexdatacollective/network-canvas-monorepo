@@ -87,11 +87,13 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
   };
 
   const headingId = useId();
-  // The first column flexes to fill available width; the radio columns are a
-  // fixed, equal size so the controls line up in static columns.
-  const gridTemplateColumns = `minmax(0, 1fr) repeat(${String(
+  // Preserve useful space for row labels while letting the response columns
+  // share the rest of a wide container. Each response column has enough room
+  // for a short phrase before wrapping; below that combined minimum the field
+  // uses its stacked layout instead.
+  const gridTemplateColumns = `minmax(12rem, 1fr) repeat(${String(
     options.length,
-  )}, 7.5rem)`;
+  )}, minmax(10rem, 0.5fr))`;
 
   return (
     <div
@@ -110,31 +112,31 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
         className={cx(
           'm-0 min-w-0 border-0 p-0',
           'flex w-full flex-col gap-5',
-          '@md:grid @md:items-center @md:gap-x-4 @md:gap-y-3',
+          '@3xl:grid @3xl:items-center @3xl:gap-x-4 @3xl:gap-y-3',
           className,
         )}
         style={{ gridTemplateColumns }}
       >
         {/* Column headers — visible only in the wide grid layout. Each radio
             also names itself, so the headers are decorative for assistive tech. */}
-        <div aria-hidden className="hidden @md:block">
+        <div aria-hidden className="hidden @3xl:block">
           {rowHeader}
         </div>
         {options.map((option) => (
           <div
             key={option.value}
             aria-hidden
-            className="hidden text-center text-sm font-semibold @md:block"
+            className="hidden text-center text-sm font-semibold @3xl:block"
           >
             {option.label}
           </div>
         ))}
 
         {rows.map((row) => (
-          <div key={row.id} className="@md:contents">
+          <div key={row.id} className="@3xl:contents">
             <div
               id={`${headingId}-${row.id}`}
-              className="font-semibold @max-md:mb-2 @md:mb-0 @md:font-normal"
+              className="font-semibold @max-3xl:mb-2 @3xl:mb-0 @3xl:font-normal"
             >
               {row.label}
             </div>
@@ -145,7 +147,7 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
               readOnly={readOnly}
               name={name ? `${name}.${row.id}` : undefined}
               aria-labelledby={`${headingId}-${row.id}`}
-              className="flex flex-wrap items-center gap-x-6 gap-y-2 @md:contents"
+              className="flex flex-wrap items-center gap-x-6 gap-y-2 @3xl:contents"
             >
               {options.map((option) => (
                 <RadioItem
@@ -154,8 +156,8 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
                   label={option.label}
                   disabled={disabled}
                   readOnly={readOnly}
-                  className="@md:justify-center @md:gap-0"
-                  labelClassName="@md:sr-only"
+                  className="@3xl:justify-center @3xl:gap-0"
+                  labelClassName="@3xl:sr-only"
                 />
               ))}
             </RadioGroup>

@@ -75,7 +75,9 @@ function hasVisibleContent(children: React.ReactNode): boolean {
   }
 
   if (Array.isArray(children)) {
-    return children.some(hasVisibleContent);
+    // `Array.isArray` narrows to `unknown[]` under ts-reset, so re-assert the
+    // element type the recursive call expects.
+    return (children as React.ReactNode[]).some(hasVisibleContent);
   }
 
   return true;

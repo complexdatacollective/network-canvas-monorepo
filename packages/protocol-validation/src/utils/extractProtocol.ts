@@ -131,7 +131,11 @@ const getProtocolJsonAsObject = async (
 
   const protocolString = await inflateEntryToString(entry, budget);
 
-  return JSON.parse(protocolString);
+  // Asserted, not validated — callers run the parsed object through this
+  // package's schema validation. Written as an explicit cast because consumers
+  // using `@total-typescript/ts-reset` (Fresco) type `JSON.parse` as `unknown`
+  // rather than `any`, so an implicit widening does not compile there.
+  return JSON.parse(protocolString) as VersionedProtocol;
 };
 
 export type ExtractedAsset = {

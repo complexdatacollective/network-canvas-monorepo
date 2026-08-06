@@ -34,13 +34,10 @@ import {
 import { useContractFlags } from '../contract/context';
 import type { AppDispatch } from '../store/store';
 import type { AutoLayoutForceOptions } from './autoLayout.worker';
-// Workers are imported with `?worker&inline` so Vite emits a self-contained
-// Worker constructor backed by an inlined blob URL. This sidesteps the
-// absolute `/assets/<hash>.js` URLs that library-mode worker chunks emit
-// (which non-Vite consumer bundlers like Turbopack can't resolve), at the
-// cost of bundling the worker source into the main chunk.
-import AutoLayoutWorker from './autoLayout.worker?worker&inline';
-import AutoLayoutMockWorker from './autoLayout.worker.mock?worker&inline';
+import {
+  createAutoLayoutMockWorker,
+  createAutoLayoutWorker,
+} from './createAutoLayoutWorker.ts';
 import { getGroupKeys } from './groupMembership';
 import {
   type CanvasDimensions,
@@ -216,6 +213,17 @@ export function useAutoLayout({
     );
   }, [store]);
 
+  // Push the measured radius into the store so its boundary clamp insets by
+  // the SAME radius the worker's bounds force uses (the seeding effect below
+  // resolves <= 0 to the fallback exactly as the store does). Runs even when
+  // the layout is disabled (e.g. manual-mode Sociogram) so plain drags clamp
+  // against the real rendered radius too. Declared before the seeding effect
+  // so a radius change re-clamps stored positions before the worker re-seeds
+  // from them.
+  useEffect(() => {
+    store.getState().setNodeRadius(nodeRadius);
+  }, [store, nodeRadius]);
+
   useEffect(() => {
     if (!enabled) return;
     // Defer until the canvas has been measured: seeding against a 0-size canvas
@@ -239,14 +247,17 @@ export function useAutoLayout({
     // connected nodes onto the floor — the closest spacing in the layout — while
     // charge spreads unconnected nodes beyond it. Tune visually.
     const linkDistance = 1.9 * collideRadius;
-    // Bounds inset is keyed to FALLBACK_NODE_RADIUS (px) so it EXACTLY matches the
-    // store clamp's fixed inset, then divided by height into sim units — that
-    // equality is what makes the store clamp a no-op on settled positions.
-    const boundsInset = edgeInsetForNode(FALLBACK_NODE_RADIUS) / dims.height;
+    // Bounds inset is keyed to the SAME resolved radius the setNodeRadius
+    // effect above pushed into the store's clamp, then divided by height into
+    // sim units — that equality is what makes the store clamp a no-op on
+    // settled positions.
+    const boundsInset = edgeInsetForNode(resolvedRadius) / dims.height;
 
     // In e2e tests, swap in a deterministic worker so visual snapshots aren't
     // sensitive to simulation randomness.
-    const worker = isE2E ? new AutoLayoutMockWorker() : new AutoLayoutWorker();
+    const worker = isE2E
+      ? createAutoLayoutMockWorker()
+      : createAutoLayoutWorker();
     workerRef.current = worker;
 
     worker.onmessage = (event: MessageEvent) => {

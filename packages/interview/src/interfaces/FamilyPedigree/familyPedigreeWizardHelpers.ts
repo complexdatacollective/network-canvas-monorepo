@@ -69,7 +69,14 @@ export async function setFieldInput(
     `[data-field-name="${CSS.escape(fieldName)}"]`,
   );
   if (!(container instanceof HTMLElement))
-    throw new Error(`No field found with data-field-name="${fieldName}"`);
+    throw new Error(
+      `No field found with data-field-name="${fieldName}". Fields on the ` +
+        `current step: ${Array.from(
+          dialog.querySelectorAll('[data-field-name]'),
+        )
+          .map((el) => el.getAttribute('data-field-name'))
+          .join(', ')}`,
+    );
 
   if (typeof value === 'boolean') {
     const toggle = container.querySelector('[role="switch"]');

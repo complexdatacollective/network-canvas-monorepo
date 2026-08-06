@@ -10,17 +10,19 @@ import {
 import { getCurrentStage } from '../../../selectors/session';
 
 /**
- * Reads the relationship type from an edge. `relationshipType` is a categorical
- * edge variable, so it is stored as a single-element array of the selected
- * option value; this returns that value (or `undefined` when unset).
+ * Reads the relationship type from an edge. Categorical variables store the
+ * selected option in a single-element array, while ordinal variables store the
+ * selected value directly. FamilyPedigree accepts either variable type, so its
+ * readers must accept both storage shapes.
  */
 export function getEdgeRelationshipType(
   edge: NcEdge,
   relationshipTypeVariable: string,
 ): RelationshipType | undefined {
   const value = edge[entityAttributesProperty][relationshipTypeVariable];
-  return Array.isArray(value)
-    ? (value[0] as RelationshipType | undefined)
+  const relationshipType = Array.isArray(value) ? value[0] : value;
+  return typeof relationshipType === 'string'
+    ? (relationshipType as RelationshipType)
     : undefined;
 }
 

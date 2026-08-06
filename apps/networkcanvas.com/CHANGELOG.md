@@ -1,5 +1,11 @@
 # networkcanvas.com
 
+## 0.2.4
+
+### Patch Changes
+
+- Add newly identified Network Canvas publications.
+
 ## 0.2.3
 
 ### Patch Changes

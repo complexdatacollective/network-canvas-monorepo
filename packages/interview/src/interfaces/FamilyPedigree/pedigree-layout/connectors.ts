@@ -13,6 +13,7 @@ import type {
   ScalingParams,
   TwinIndicator,
 } from './types';
+import { ancestor } from './utils';
 
 const AUXILIARY_EDGE_TYPES = new Set<RelationshipType>(['donor', 'surrogate']);
 
@@ -33,6 +34,8 @@ function isPrimaryEdge(edgeType: RelationshipType): boolean {
  *   group lines are treated as active (backwards-compatible default).
  * @param branch - branch style for parent-child links (0=diagonal, >0=right-angle). Default 0.6
  * @param pconnect - where parent link meets sibling bar (0-1). Default 0.5
+ * @param partnerPairs - all recorded partner pairs. Used to route recorded
+ *   partnerships that the adjacent-node layout cannot encode directly.
  */
 export function computeConnectors(
   layout: PedigreeLayout,
@@ -43,6 +46,7 @@ export function computeConnectors(
   pconnect = 0.5,
   nodeNames?: string[],
   id?: string[],
+  partnerPairs?: Set<string>,
 ): PedigreeConnectors {
   const { boxHeight: boxh, legHeight: legh } = scaling;
   const maxlev = layout.nid.length;
@@ -56,17 +60,35 @@ export function computeConnectors(
   const duplicateArcs: DuplicateArc[] = [];
   // Maps "childLevel,famId" → sibling bar segment (populated during parent-child computation)
   const familySiblingBar = new Map<string, LineSegment>();
+  const renderedPartnerPairs = new Set<string>();
+  const nodeLocation = new Map<
+    number,
+    { layer: number; x: number; y: number }
+  >();
+
+  for (let layer = 0; layer < maxlev; layer++) {
+    for (let col = 0; col < (layout.n[layer] ?? 0); col++) {
+      const personIndex = layout.nid[layer]![col]!;
+      if (nodeLocation.has(personIndex)) continue;
+      nodeLocation.set(personIndex, {
+        layer,
+        x: layout.pos[layer]![col]!,
+        y: layer + boxh / 2,
+      });
+    }
+  }
 
   // --- Parent group lines (all partner pairs, marked active/inactive) ---
   for (let i = 0; i < maxlev; i++) {
     const tempy = i + boxh / 2;
     for (let j = 0; j < maxcol; j++) {
       if (layout.group[i]?.[j] && layout.group[i]![j]! > 0) {
+        const leftId = layout.nid[i]![j]!;
+        const rightId = layout.nid[i]![j + 1]!;
+        const pairKey = `${Math.min(leftId, rightId)},${Math.max(leftId, rightId)}`;
+
         let isActive = true;
         if (activePartnerPairs) {
-          const leftId = layout.nid[i]![j]!;
-          const rightId = layout.nid[i]![j + 1]!;
-          const pairKey = `${Math.min(leftId, rightId)},${Math.max(leftId, rightId)}`;
           isActive = activePartnerPairs.has(pairKey);
         }
 
@@ -98,7 +120,6 @@ export function computeConnectors(
         // For inactive lines, determine which side to place the slash:
         if (!isActive) {
           if (nodeNames) {
-            const rightId = layout.nid[i]![j + 1]!;
             const rightName = nodeNames[rightId] ?? '';
             connector.slashSide = rightName.length === 0 ? 'right' : 'left';
           } else {
@@ -118,7 +139,96 @@ export function computeConnectors(
 
         groupLineIndex.set(`${i},${j}`, groupLines.length);
         groupLines.push(connector);
+        renderedPartnerPairs.add(pairKey);
       }
+    }
+  }
+
+  // A node can be horizontally adjacent to at most two partners. Preserve any
+  // additional recorded partnerships with a routed connector above the row,
+  // rather than silently dropping the edge or connecting the two neighbouring
+  // partners to one another.
+  if (partnerPairs) {
+    const routedCountByLayer = new Map<number, number>();
+
+    for (const pairKey of partnerPairs) {
+      if (renderedPartnerPairs.has(pairKey)) continue;
+
+      const [first, second] = pairKey.split(',').map(Number);
+      if (first === undefined || second === undefined) continue;
+      const firstLocation = nodeLocation.get(first);
+      const secondLocation = nodeLocation.get(second);
+      if (!firstLocation || !secondLocation) continue;
+      if (firstLocation.layer !== secondLocation.layer) continue;
+
+      const [leftIndex, left, rightIndex, right] =
+        firstLocation.x <= secondLocation.x
+          ? [first, firstLocation, second, secondLocation]
+          : [second, secondLocation, first, firstLocation];
+      const layer = left.layer;
+      const routeIndex = routedCountByLayer.get(layer) ?? 0;
+      routedCountByLayer.set(layer, routeIndex + 1);
+      const routeY = layer - legh * (1 + routeIndex * 0.5);
+
+      const ancestorsLeft = ancestor(leftIndex, parents);
+      const ancestorsRight = new Set(ancestor(rightIndex, parents));
+      const isDouble = ancestorsLeft.some((value) => ancestorsRight.has(value));
+      const connector: ParentGroupConnector = {
+        type: 'parent-group',
+        segment: {
+          type: 'line',
+          x1: left.x,
+          y1: routeY,
+          x2: right.x,
+          y2: routeY,
+        },
+        endpointSegments: [
+          {
+            type: 'line',
+            x1: left.x,
+            y1: left.y,
+            x2: left.x,
+            y2: routeY,
+          },
+          {
+            type: 'line',
+            x1: right.x,
+            y1: right.y,
+            x2: right.x,
+            y2: routeY,
+          },
+        ],
+        double: isDouble,
+        isActive:
+          activePartnerPairs === undefined || activePartnerPairs.has(pairKey),
+        ...(isDouble
+          ? {
+              doubleSegment: {
+                type: 'line',
+                x1: left.x,
+                y1: routeY + boxh / 10,
+                x2: right.x,
+                y2: routeY + boxh / 10,
+              } satisfies LineSegment,
+            }
+          : {}),
+        ...(id
+          ? {
+              partnerIds: [id[leftIndex] ?? '', id[rightIndex] ?? ''] as [
+                string,
+                string,
+              ],
+            }
+          : {}),
+      };
+
+      if (!connector.isActive && nodeNames) {
+        connector.slashSide =
+          (nodeNames[rightIndex] ?? '').length === 0 ? 'right' : 'left';
+      }
+
+      groupLines.push(connector);
+      renderedPartnerPairs.add(pairKey);
     }
   }
 
@@ -584,20 +694,18 @@ export function computeConnectors(
   }
 
   // --- Auxiliary lines for unpartnered parents ---
-  let partnerPairSet: Set<string>;
-  if (activePartnerPairs) {
-    partnerPairSet = activePartnerPairs;
-  } else {
-    partnerPairSet = new Set<string>();
-    for (let i = 0; i < maxlev; i++) {
-      for (let j = 0; j < maxcol; j++) {
-        if ((layout.group[i]?.[j] ?? 0) > 0) {
-          const leftId = layout.nid[i]![j]!;
-          const rightId = layout.nid[i]![j + 1]!;
-          partnerPairSet.add(
-            `${Math.min(leftId, rightId)},${Math.max(leftId, rightId)}`,
-          );
-        }
+  const partnerPairSet = new Set(partnerPairs ?? activePartnerPairs ?? []);
+  // Include valid implicit co-parent unions from the layout. The explicit
+  // partner set supplements these groups with non-adjacent partnerships; it
+  // does not replace the established co-parent fallback.
+  for (let i = 0; i < maxlev; i++) {
+    for (let j = 0; j < maxcol; j++) {
+      if ((layout.group[i]?.[j] ?? 0) > 0) {
+        const leftId = layout.nid[i]![j]!;
+        const rightId = layout.nid[i]![j + 1]!;
+        partnerPairSet.add(
+          `${Math.min(leftId, rightId)},${Math.max(leftId, rightId)}`,
+        );
       }
     }
   }

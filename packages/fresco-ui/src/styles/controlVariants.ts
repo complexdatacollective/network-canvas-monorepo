@@ -59,6 +59,9 @@ export const sliderTrackVariants = cva({
   },
 });
 
+// Keeps its own fill and state colours so a thumb styled with this alone still
+// looks like a thumb — `./styles/controlVariants` is a published entry point and
+// consumers may use it without the surface variant below.
 export const sliderThumbVariants = compose(
   smallSizeVariants,
   cva({
@@ -88,6 +91,39 @@ export const sliderThumbVariants = compose(
     },
   }),
 );
+
+// The thumb's animated surface, rendered as a child of the thumb rather than on
+// the thumb itself. base-ui registers the thumb element in the slider's
+// internal thumb list, and handing it a `motion` component breaks that
+// registration — which silently disables every track press, since base-ui can
+// no longer resolve which thumb a press belongs to. Keeping the animated
+// element nested leaves the thumb a plain element that base-ui can register.
+//
+// It repeats the thumb's fill (it covers the thumb exactly, so the two never
+// disagree) because the press animation scales *this* element: without a fill
+// of its own there would be nothing visible to scale. Opacity deliberately
+// stays on the thumb, where it applies to this subtree once rather than
+// compounding with itself.
+export const sliderThumbSurfaceVariants = cva({
+  base: cx(
+    'block h-full w-full rounded-full',
+    'transition-colors duration-200',
+  ),
+  variants: {
+    state: {
+      normal: 'bg-primary',
+      pristine: 'bg-primary',
+      disabled:
+        'bg-[color-mix(in_oklch,var(--input-contrast)_30%,currentColor)]',
+      readOnly:
+        'bg-[color-mix(in_oklch,var(--input-contrast)_50%,currentColor)]',
+      invalid: 'bg-destructive',
+    },
+  },
+  defaultVariants: {
+    state: 'normal',
+  },
+});
 
 export const sliderTickContainerStyles = cx('absolute inset-0 w-full');
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Generate E2E Tests'
+  short_description: 'Generate Fresco Playwright e2e tests from a protocol'
+  default_prompt: 'Use $generate-e2e-tests to build Playwright coverage for a .netcanvas protocol.'

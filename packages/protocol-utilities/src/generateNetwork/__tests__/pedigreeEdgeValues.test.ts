@@ -1,434 +1,1319 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Stage, Variables } from '@codaco/protocol-validation';
 import {
+  asEntityAttributeReference,
+  type Stage,
+  type StructuralCodebook,
+} from '@codaco/protocol-validation';
+import {
+  BIOLOGICAL_SEX_OPTIONS,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
   type NcEdge,
   type NcNode,
-  RELATIONSHIP_TYPE_OPTIONS,
-  type VariableValue,
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../generateNetwork';
-import { buildEntityConstraints } from '../constraints/buildConstraints';
-import { ruleBrokenByFixedValues } from '../nodes';
+import { US_FAMILY_PEDIGREE_POPULATION } from '../familyPedigree/referencePopulation';
+import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from '../familyPedigree/types';
 
-type GenerateParams = Parameters<typeof generateNetwork>[0];
-type Codebook = GenerateParams['codebook'];
-
-const SEEDS = 50;
-
-/** Two nodes, so a pedigree builds exactly one edge. */
-const ONE_EDGE_PEDIGREE = { familyPedigreeNodeCount: { min: 2, max: 2 } };
-
-const EDGE_CONFIG = {
-  type: 'kin',
-  relationshipTypeVariable: 'relationshipType',
-  isActiveVariable: 'isActive',
-  isGestationalCarrierVariable: 'isGestationalCarrier',
-  gameteRoleVariable: 'gameteRole',
-};
-
-/**
- * The `family_edge` definition the development protocol carries, built from the
- * enum Architect locks onto the categorical variable rather than from a copy of
- * the option list, so a written value that stopped being one of the locked
- * options fails here rather than in a protocol nobody runs in this package.
- */
-const KIN_VARIABLES: Variables = {
-  relationshipType: {
-    name: 'relationshipType',
-    type: 'categorical',
-    options: RELATIONSHIP_TYPE_OPTIONS,
+const familyStage = {
+  id: 'family-stage',
+  type: 'FamilyPedigree',
+  label: 'Family',
+  nodeConfig: {
+    type: 'family-member',
+    nodeLabelVariable: 'name',
+    egoVariable: 'isEgo',
+    relationshipVariable: 'relationship',
+    biologicalSexVariable: 'biologicalSex',
   },
-  isActive: { name: 'isActive', type: 'boolean' },
-  isGestationalCarrier: { name: 'isGestationalCarrier', type: 'boolean' },
-  gameteRole: {
-    name: 'gameteRole',
-    type: 'categorical',
-    options: [
-      { value: 'egg', label: 'Egg' },
-      { value: 'sperm', label: 'Sperm' },
-    ],
+  edgeConfig: {
+    type: 'family-edge',
+    relationshipTypeVariable: 'relationshipType',
+    isActiveVariable: 'isActive',
+    isGestationalCarrierVariable: 'isGestationalCarrier',
+    gameteRoleVariable: 'gameteRole',
   },
-};
-
-function codebookWith(
-  kinVariables: Record<string, unknown>,
-  personVariables: Record<string, unknown> = {},
-): Codebook {
-  return {
-    node: {
-      relative: { name: 'Relative', color: 'node-color-seq-1', variables: {} },
-      person: {
-        name: 'Person',
-        color: 'node-color-seq-2',
-        variables: personVariables,
-      },
-    },
-    edge: {
-      kin: {
-        name: 'Kin',
-        color: 'edge-color-seq-1',
-        variables: kinVariables,
-      },
-    },
-  } as unknown as Codebook;
-}
-
-function pedigree(edgeConfig: Record<string, string>): Stage {
-  return {
-    id: 'stage-pedigree',
-    type: 'FamilyPedigree',
-    label: 'Family',
-    nodeConfig: { type: 'relative', nodeLabelVariable: 'name' },
-    edgeConfig,
-  } as unknown as Stage;
-}
-
-function nameGenerator(nodes: number): Stage {
-  return {
-    id: 'stage-ng',
-    type: 'NameGenerator',
-    label: 'People',
-    subject: { entity: 'node', type: 'person' },
-    prompts: [{ id: 'p1', text: 'Name people' }],
-    behaviours: { minNodes: nodes, maxNodes: nodes },
-  } as unknown as Stage;
-}
-
-/** Pairs `person` nodes only, so it never reaches a pedigree's own people. */
-const personCensus = {
-  id: 'stage-census',
-  type: 'DyadCensus',
-  label: 'Ties',
-  subject: { entity: 'node', type: 'person' },
-  prompts: [{ id: 'p1', text: 'Do they know each other?', createEdge: 'kin' }],
+  framing: { mode: 'fixed', value: 'gamete' },
+  boundaries: {
+    requireGrandparents: 'required',
+    requireChildrenContributors: 'off',
+  },
+  censusPrompt: 'Build your family.',
+  nominationPrompts: [
+    { id: 'condition', text: 'Who has this condition?', variable: 'condition' },
+  ],
 } as unknown as Stage;
 
-const CERTAIN_EDGES = {
-  ...ONE_EDGE_PEDIGREE,
-  censusEdgeProbability: { min: 1, max: 1 },
-};
+function collectingFamilyStage(stage: Stage, variable: string): Stage {
+  if (stage.type !== 'FamilyPedigree') {
+    throw new Error('expected a FamilyPedigree stage');
+  }
 
-function kinEdges(edges: NcEdge[]): Record<string, VariableValue>[] {
-  return edges
-    .filter((edge) => edge.type === 'kin')
-    .map((edge) => edge[entityAttributesProperty]);
+  return {
+    ...stage,
+    nodeConfig: {
+      ...stage.nodeConfig,
+      form: [
+        ...(stage.nodeConfig?.form ?? []),
+        {
+          variable: asEntityAttributeReference(variable),
+          prompt: 'Record this value.',
+        },
+      ],
+    },
+  };
 }
 
-/** Everything about a node except the unseeded uid it was given. */
-function nodeShape(node: NcNode): Record<string, unknown> {
-  const { [entityPrimaryKeyProperty]: _uid, ...rest } = node;
-  return rest;
+const narrativeDisease = {
+  id: 'condition',
+  label: 'Condition',
+  color: '#cc0000',
+  variable: 'condition',
+  inheritancePattern: 'autosomalDominant',
+} as const;
+
+const narrativeStage = {
+  id: 'narrative-stage',
+  type: 'NarrativePedigree',
+  label: 'Disease',
+  sourceStageId: familyStage.id,
+  showAtRiskStatuses: true,
+  diseases: [narrativeDisease],
+} as unknown as Stage;
+
+const codebook = {
+  node: {
+    'family-member': {
+      name: 'Family member',
+      color: 'node-color-seq-1',
+      variables: {
+        name: {
+          name: 'Name',
+          type: 'text',
+          validation: { unique: true },
+        },
+        isEgo: { name: 'Is ego', type: 'boolean' },
+        relationship: { name: 'Relationship', type: 'text' },
+        biologicalSex: {
+          name: 'Biological sex',
+          type: 'categorical',
+          options: BIOLOGICAL_SEX_OPTIONS,
+        },
+        condition: { name: 'Condition', type: 'boolean' },
+        generationMarker: {
+          name: 'Generation marker',
+          type: 'ordinal',
+          options: [
+            { label: 'Earlier', value: 1 },
+            { label: 'Same', value: 2 },
+            { label: 'Later', value: 3 },
+          ],
+        },
+      },
+    },
+    'person': {
+      name: 'Person',
+      color: 'node-color-seq-2',
+      variables: {
+        ordinaryName: { name: 'Name', type: 'text' },
+        age: { name: 'Age', type: 'number' },
+      },
+    },
+  },
+  edge: {
+    'family-edge': {
+      name: 'Family edge',
+      color: 'edge-color-seq-1',
+      variables: {
+        relationshipType: {
+          name: 'Relationship type',
+          type: 'categorical',
+          options: RELATIONSHIP_TYPE_OPTIONS,
+        },
+        isActive: { name: 'Is active', type: 'boolean' },
+        isGestationalCarrier: {
+          name: 'Is gestational carrier',
+          type: 'boolean',
+        },
+        gameteRole: {
+          name: 'Gamete role',
+          type: 'categorical',
+          options: GAMETE_ROLE_OPTIONS,
+        },
+      },
+    },
+  },
+} as unknown as StructuralCodebook;
+
+function family(
+  seed = 42,
+  scenario: 'none' | 'adoption' | 'donorConception' | 'surrogacy' = 'none',
+) {
+  return generateNetwork({
+    seed,
+    codebook,
+    stages: [familyStage, narrativeStage],
+    familyPedigree: { scenario },
+  });
 }
 
-/** The same for an edge, with its endpoints read as positions in the node list. */
-function edgeShape(nodes: NcNode[]): (edge: NcEdge) => Record<string, unknown> {
+function relation(edge: NcEdge): string | undefined {
+  const value = edge[entityAttributesProperty].relationshipType;
+  return Array.isArray(value) ? String(value[0]) : undefined;
+}
+
+function geneticParentIds(networkEdges: NcEdge[], nodeId: string): string[] {
+  return networkEdges
+    .filter(
+      (edge) =>
+        edge.to === nodeId &&
+        (relation(edge) === 'biological' || relation(edge) === 'donor'),
+    )
+    .map((edge) => edge.from);
+}
+
+function withoutUids(nodes: NcNode[], edges: NcEdge[]) {
   const positions = new Map(
     nodes.map((node, index) => [node[entityPrimaryKeyProperty], index]),
   );
-  return (edge) => ({
-    type: edge.type,
-    from: positions.get(edge.from),
-    to: positions.get(edge.to),
-  });
+  return {
+    nodes: nodes.map((node) => ({
+      type: node.type,
+      attributes: node[entityAttributesProperty],
+      stageId: node.stageId,
+    })),
+    edges: edges.map((edge) => ({
+      type: edge.type,
+      from: positions.get(edge.from),
+      to: positions.get(edge.to),
+      attributes: edge[entityAttributesProperty],
+    })),
+  };
 }
 
-/**
- * Every edge `handleFamilyPedigree` creates is a parent-child link, and the
- * interview writes a relationship type and an active flag onto every
- * parent-child edge it commits — `buildChildParentage`, `egoCellTransform`,
- * `siblingCellTransform`, `buildParentageBatch`, `AddParentWizard` and
- * `PedigreeView` all do. Synthetic pedigree edges used to carry neither, so
- * anything reading pedigree data saw a relationship the protocol had no value
- * for.
- */
-describe('the values a pedigree writes onto its edges', () => {
-  it(`records a biological, active parentage on every edge, over ${SEEDS} seeds`, () => {
-    const failures: string[] = [];
+describe('FamilyPedigree materialization', () => {
+  it('writes every required node semantic and a committed membership snapshot', () => {
+    const { network, stageMetadata } = family();
+    const egos = network.nodes.filter(
+      (node) => node[entityAttributesProperty].isEgo === true,
+    );
+    expect(egos).toHaveLength(1);
+    expect(network.nodes[0]).toBe(egos[0]);
+    expect(
+      new Set(network.nodes.map((node) => node[entityAttributesProperty].name))
+        .size,
+    ).toBe(network.nodes.length);
 
-    for (let seed = 1; seed <= SEEDS; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: codebookWith(KIN_VARIABLES),
-        stages: [pedigree(EDGE_CONFIG)],
-      });
-
-      const written = kinEdges(network.edges);
-      if (written.length === 0) {
-        failures.push(`seed ${seed}: no edges`);
-        continue;
+    for (const node of network.nodes) {
+      const attributes = node[entityAttributesProperty];
+      expect(typeof attributes.name).toBe('string');
+      expect(typeof attributes.isEgo).toBe('boolean');
+      if (attributes.isEgo === true) {
+        expect(attributes.relationship).toBeUndefined();
+      } else if (attributes.relationship !== undefined) {
+        expect(PEDIGREE_RELATIONSHIP_TO_EGO_VALUES).toContain(
+          attributes.relationship,
+        );
       }
-      const wrong = written.filter(
-        (attributes) =>
-          JSON.stringify(attributes.relationshipType) !== '["biological"]' ||
-          attributes.isActive !== true,
+      expect(BIOLOGICAL_SEX_OPTIONS.map(({ value }) => value)).toContain(
+        Array.isArray(attributes.biologicalSex)
+          ? attributes.biologicalSex[0]
+          : undefined,
       );
-      if (wrong.length > 0)
-        failures.push(`seed ${seed}: ${JSON.stringify(wrong)}`);
+      expect(typeof attributes.condition).toBe('boolean');
     }
 
-    expect(failures).toEqual([]);
+    const metadata = stageMetadata?.[0] as
+      | { nodes?: { id: string }[]; edges?: { id: string }[] }
+      | undefined;
+    expect(metadata?.nodes?.map(({ id }) => id).toSorted()).toEqual(
+      network.nodes.map((node) => node[entityPrimaryKeyProperty]).toSorted(),
+    );
+    expect(metadata?.edges?.map(({ id }) => id).toSorted()).toEqual(
+      network.edges.map((edge) => edge[entityPrimaryKeyProperty]).toSorted(),
+    );
   });
 
-  it('leaves the two gamete-side variables unwritten', () => {
-    // `isGestationalCarrier` and `gameteRole` are written only where gamete
-    // semantics apply — who supplied the egg, who carried the pregnancy — and
-    // the generator's random parent-index draw models none of that. A real
-    // pedigree without those features carries no such write either, so writing
-    // neither is what the runtime does; writing either would invent a fact.
-    const { network } = generateNetwork({
-      seed: 7,
-      codebook: codebookWith(KIN_VARIABLES),
-      stages: [pedigree(EDGE_CONFIG)],
+  it('uses interface-valid relationship, gamete, activity, and carrier semantics', () => {
+    for (let seed = 1; seed <= 50; seed++) {
+      const { network } = family(seed);
+      for (const edge of network.edges) {
+        const attributes = edge[entityAttributesProperty];
+        expect(RELATIONSHIP_TYPE_OPTIONS.map(({ value }) => value)).toContain(
+          relation(edge),
+        );
+        expect(typeof attributes.isActive).toBe('boolean');
+
+        if (relation(edge) === 'biological' || relation(edge) === 'donor') {
+          expect(GAMETE_ROLE_OPTIONS.map(({ value }) => value)).toContain(
+            Array.isArray(attributes.gameteRole)
+              ? attributes.gameteRole[0]
+              : undefined,
+          );
+        } else {
+          expect(attributes.gameteRole).toBeUndefined();
+        }
+
+        if (relation(edge) === 'partner') {
+          expect(attributes.isGestationalCarrier).toBeUndefined();
+        }
+      }
+    }
+  });
+
+  it('includes eligible nodes from earlier stages in committed membership', () => {
+    const earlierStage = {
+      id: 'earlier-family-members',
+      type: 'NameGenerator',
+      label: 'Earlier family members',
+      subject: { entity: 'node', type: 'family-member' },
+      prompts: [{ id: 'people', text: 'Name people' }],
+      behaviours: { minNodes: 2, maxNodes: 2 },
+    } as unknown as Stage;
+    const { network, stageMetadata } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [earlierStage, familyStage, narrativeStage],
     });
+    const earlierNodeIds = network.nodes
+      .filter((node) => node.stageId === earlierStage.id)
+      .map((node) => node[entityPrimaryKeyProperty]);
+    const metadata = stageMetadata?.[1] as
+      | { nodes?: { id: string }[] }
+      | undefined;
+    const metadataNodeIds = metadata?.nodes?.map(({ id }) => id) ?? [];
 
-    expect(kinEdges(network.edges).length).toBeGreaterThan(0);
-    for (const attributes of kinEdges(network.edges)) {
-      expect(attributes.isGestationalCarrier).toBeUndefined();
-      expect(attributes.gameteRole).toBeUndefined();
-    }
+    expect(earlierNodeIds).toHaveLength(2);
+    expect(
+      network.nodes
+        .filter((node) => node.stageId === earlierStage.id)
+        .every((node) => node[entityAttributesProperty].isEgo === false),
+    ).toBe(true);
+    expect(
+      network.nodes.filter(
+        (node) => node[entityAttributesProperty].isEgo === true,
+      ),
+    ).toHaveLength(1);
+    expect(metadataNodeIds).toEqual(expect.arrayContaining(earlierNodeIds));
+    expect(metadataNodeIds.toSorted()).toEqual(
+      network.nodes
+        .filter((node) => node.type === 'family-member')
+        .map((node) => node[entityPrimaryKeyProperty])
+        .toSorted(),
+    );
   });
 
-  it('writes values the edge type’s own codebook accepts', () => {
-    // The written values are judged by the map the draw would have been judged
-    // against, so a value the variable's declared rules reject fails here
-    // rather than reaching an export.
-    const constraints = buildEntityConstraints(KIN_VARIABLES, '2026-07-27');
-    const declared = new Set<string>(
-      RELATIONSHIP_TYPE_OPTIONS.map((option) => option.value),
+  it('includes eligible edges from earlier stages in committed membership', () => {
+    const earlierStage = {
+      id: 'earlier-family-members',
+      type: 'NameGenerator',
+      label: 'Earlier family members',
+      subject: { entity: 'node', type: 'family-member' },
+      prompts: [{ id: 'people', text: 'Name people' }],
+      behaviours: { minNodes: 2, maxNodes: 2 },
+    } as unknown as Stage;
+    const earlierEdges = {
+      id: 'earlier-family-links',
+      type: 'Sociogram',
+      label: 'Earlier family links',
+      subject: { entity: 'node', type: 'family-member' },
+      prompts: [
+        {
+          id: 'links',
+          text: 'Connect them',
+          edges: { create: 'family-edge' },
+        },
+      ],
+    } as unknown as Stage;
+    const { network, stageMetadata } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [earlierStage, earlierEdges, familyStage, narrativeStage],
+      config: { sociogramEdgeProbability: { min: 1, max: 1 } },
+    });
+    const earlierNodeIds = new Set(
+      network.nodes
+        .filter((node) => node.stageId === earlierStage.id)
+        .map((node) => node[entityPrimaryKeyProperty]),
+    );
+    const inheritedEdgeIds = network.edges
+      .filter(
+        (edge) => earlierNodeIds.has(edge.from) && earlierNodeIds.has(edge.to),
+      )
+      .map((edge) => edge[entityPrimaryKeyProperty]);
+    const metadata = stageMetadata?.[2] as
+      | { edges?: { id: string }[] }
+      | undefined;
+    const metadataEdgeIds = metadata?.edges?.map(({ id }) => id) ?? [];
+
+    expect(inheritedEdgeIds).toHaveLength(1);
+    expect(metadataEdgeIds).toEqual(expect.arrayContaining(inheritedEdgeIds));
+  });
+
+  it('normalizes inherited ego and disease flags through their constraint component', () => {
+    const constrainedCodebook = structuredClone(codebook);
+    const variables = constrainedCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.egoMirror = {
+      name: 'Ego mirror',
+      type: 'boolean',
+      validation: { sameAs: asEntityAttributeReference('isEgo') },
+    };
+    const earlierStage = {
+      id: 'earlier-family-member',
+      type: 'NameGenerator',
+      label: 'Earlier family member',
+      subject: { entity: 'node', type: 'family-member' },
+      prompts: [
+        {
+          id: 'person',
+          text: 'Name a person',
+          additionalAttributes: [
+            { variable: 'isEgo', value: true },
+            { variable: 'egoMirror', value: true },
+            { variable: 'condition', value: true },
+            { variable: 'generationMarker', value: 2 },
+          ],
+        },
+      ],
+      behaviours: { minNodes: 1, maxNodes: 1 },
+    } as unknown as Stage;
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: constrainedCodebook,
+      stages: [earlierStage, familyStage, narrativeStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
+    });
+    const inherited = network.nodes.find(
+      (node) => node.stageId === earlierStage.id,
     );
 
-    const { network } = generateNetwork({
-      seed: 11,
-      codebook: codebookWith(KIN_VARIABLES),
-      stages: [pedigree(EDGE_CONFIG)],
-    });
-
-    expect(kinEdges(network.edges).length).toBeGreaterThan(0);
-    for (const attributes of kinEdges(network.edges)) {
-      expect(ruleBrokenByFixedValues(constraints, attributes)).toBeUndefined();
-      // Categorical values are always arrays, and every member has to be one
-      // of the options Architect locks onto the variable.
-      const value = attributes.relationshipType;
-      expect(Array.isArray(value)).toBe(true);
-      for (const member of Array.isArray(value) ? value : []) {
-        expect(declared.has(String(member))).toBe(true);
-      }
-      expect(typeof attributes.isActive).toBe('boolean');
-    }
+    expect(inherited?.[entityAttributesProperty]).toEqual(
+      expect.objectContaining({
+        isEgo: false,
+        egoMirror: false,
+        condition: false,
+        generationMarker: 2,
+      }),
+    );
   });
 
-  it('gives every edge its own attribute object', () => {
-    // A later AlterEdgeForm fills each edge's attributes in place, so a shared
-    // object would have it write through every edge of the stage at once.
-    const { network } = generateNetwork({
-      seed: 3,
-      codebook: codebookWith(KIN_VARIABLES),
-      stages: [pedigree(EDGE_CONFIG)],
+  it('reuses an earlier pedigree ego without changing its identity', () => {
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+    } as unknown as Stage;
+    const { network, stageMetadata } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [familyStage, laterFamilyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
     });
+    const firstMetadata = stageMetadata?.[0] as
+      | { nodes?: { id: string; isEgo: boolean }[] }
+      | undefined;
+    const laterMetadata = stageMetadata?.[1] as
+      | { nodes?: { id: string; isEgo: boolean }[] }
+      | undefined;
+    const firstEgo = firstMetadata?.nodes?.find(({ isEgo }) => isEgo);
+    const laterEgos = laterMetadata?.nodes?.filter(({ isEgo }) => isEgo) ?? [];
 
-    const edges = network.edges.filter((edge) => edge.type === 'kin');
-    expect(edges.length).toBeGreaterThan(1);
-    edges[0]![entityAttributesProperty].isActive = false;
-    expect(edges[1]![entityAttributesProperty].isActive).toBe(true);
+    if (!firstEgo) throw new Error('missing first pedigree ego');
+    expect(laterEgos).toEqual([{ id: firstEgo.id, label: 'You', isEgo: true }]);
+    expect(
+      network.nodes.filter(
+        (node) => node[entityAttributesProperty].isEgo === true,
+      ),
+    ).toHaveLength(1);
+    expect(
+      network.nodes.find(
+        (node) => node[entityPrimaryKeyProperty] === firstEgo.id,
+      )?.[entityAttributesProperty].isEgo,
+    ).toBe(true);
   });
-});
 
-describe('what the pedigree edge values cost the run', () => {
-  it('leaves the stage’s own random stream exactly where it was', () => {
-    // The pedigree's only draws are its node count and one parent index per
-    // child, so the people it builds and who each of them descends from is a
-    // fingerprint of that stream and of nothing else — no attribute is drawn
-    // on either type here. These are the numbers the stage produced before it
-    // wrote anything onto its edges, so a write that cost a draw (or a value
-    // routed through `generateEntityAttributes` rather than written) moves
-    // every parent after it and fails here.
-    const codebook = codebookWith({});
-    const shapeOf = (seed: number): { nodes: number; parents: number[][] } => {
-      const { network } = generateNetwork({
-        seed,
-        codebook,
-        stages: [pedigree(EDGE_CONFIG)],
-      });
-      const positions = new Map(
-        network.nodes.map((node, index) => [
-          node[entityPrimaryKeyProperty],
-          index,
-        ]),
-      );
-      return {
-        nodes: network.nodes.length,
-        parents: network.edges.map((edge) => [
-          positions.get(edge.from) ?? -1,
-          positions.get(edge.to) ?? -1,
-        ]),
-      };
+  it('uses the reused ego biological sex for later pedigree parentage', () => {
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+    } as unknown as Stage;
+    const population = {
+      ...US_FAMILY_PEDIGREE_POPULATION,
+      completedFamilySize: [{ value: 2, weight: 1 }],
+      childlessPartnerProbability: 0,
+      scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
     };
+    // The two stage-local streams draw opposite ego sexes for this seed unless
+    // the second plan is explicitly anchored to the already-committed ego.
+    const { network } = generateNetwork({
+      seed: 2,
+      codebook,
+      stages: [familyStage, laterFamilyStage],
+      familyPedigree: {
+        population,
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 20,
+      },
+    });
+    const ego = network.nodes.find(
+      (node) => node[entityAttributesProperty].isEgo === true,
+    );
+    const laterChild = network.nodes.find(
+      (node) =>
+        node.stageId === laterFamilyStage.id &&
+        node[entityAttributesProperty].relationship === 'Child',
+    );
+    if (!ego || !laterChild) throw new Error('missing later child branch');
 
-    expect([1, 2, 3, 4, 5].map(shapeOf)).toEqual([
-      {
-        nodes: 6,
-        parents: [
-          [0, 1],
-          [1, 2],
-          [0, 3],
-          [1, 4],
-          [0, 5],
-        ],
-      },
-      {
-        nodes: 7,
-        parents: [
-          [0, 1],
-          [0, 2],
-          [1, 3],
-          [1, 4],
-          [2, 5],
-          [1, 6],
-        ],
-      },
-      {
-        nodes: 7,
-        parents: [
-          [0, 1],
-          [1, 2],
-          [0, 3],
-          [2, 4],
-          [4, 5],
-          [5, 6],
-        ],
-      },
-      {
-        nodes: 10,
-        parents: [
-          [0, 1],
-          [1, 2],
-          [2, 3],
-          [2, 4],
-          [3, 5],
-          [1, 6],
-          [6, 7],
-          [0, 8],
-          [2, 9],
-        ],
-      },
-      {
-        nodes: 5,
-        parents: [
-          [0, 1],
-          [1, 2],
-          [0, 3],
-          [3, 4],
-        ],
-      },
+    const egoParentage = network.edges.find(
+      (edge) =>
+        edge.from === ego[entityPrimaryKeyProperty] &&
+        edge.to === laterChild[entityPrimaryKeyProperty],
+    );
+    const biologicalSex = ego[entityAttributesProperty].biologicalSex;
+    const expectedRole =
+      Array.isArray(biologicalSex) && biologicalSex[0] === 'female'
+        ? 'egg'
+        : 'sperm';
+
+    expect(egoParentage?.[entityAttributesProperty].gameteRole).toEqual([
+      expectedRole,
     ]);
   });
 
-  it('changes nothing else a seeded run produces', () => {
-    // The values are written after the parent index is drawn and never through
-    // the draw, so a protocol whose edgeConfig names them must produce exactly
-    // the network of one whose edgeConfig names none — same people, same
-    // values, same parent for every child. Held against a later stage as well,
-    // so a shifted stream shows up outside the pedigree too.
-    const codebook = codebookWith(KIN_VARIABLES, {
-      name: { name: 'Name', type: 'text' },
-      age: {
-        name: 'Age',
-        type: 'number',
-        validation: { minValue: 0, maxValue: 100 },
+  it('copies a reused ego sex into a later pedigree sex variable', () => {
+    const differentSexCodebook = structuredClone(codebook);
+    const variables = differentSexCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.laterBiologicalSex = {
+      name: 'Later biological sex',
+      type: 'categorical',
+      options: BIOLOGICAL_SEX_OPTIONS,
+    };
+    if (familyStage.type !== 'FamilyPedigree') {
+      throw new Error('expected family stage');
+    }
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+      nodeConfig: {
+        ...familyStage.nodeConfig,
+        biologicalSexVariable: 'laterBiologicalSex',
+      },
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: differentSexCodebook,
+      stages: [familyStage, laterFamilyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
+    });
+    const ego = network.nodes.find(
+      (node) => node[entityAttributesProperty].isEgo === true,
+    );
+    if (!ego) throw new Error('missing reused ego');
+
+    expect(ego[entityAttributesProperty].laterBiologicalSex).toEqual(
+      ego[entityAttributesProperty].biologicalSex,
+    );
+  });
+
+  it('stores pedigree option values as scalars for ordinal variables', () => {
+    const ordinalSexCodebook = structuredClone(codebook);
+    const variables = ordinalSexCodebook.node?.['family-member']?.variables;
+    const edgeVariables = ordinalSexCodebook.edge?.['family-edge']?.variables;
+    if (!variables || !edgeVariables) {
+      throw new Error('missing family variables');
+    }
+    variables.biologicalSex = {
+      name: 'Biological sex',
+      type: 'ordinal',
+      options: BIOLOGICAL_SEX_OPTIONS,
+    };
+    edgeVariables.relationshipType = {
+      name: 'Relationship type',
+      type: 'ordinal',
+      options: RELATIONSHIP_TYPE_OPTIONS,
+    };
+    edgeVariables.gameteRole = {
+      name: 'Gamete role',
+      type: 'ordinal',
+      options: GAMETE_ROLE_OPTIONS,
+    };
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: ordinalSexCodebook,
+      stages: [familyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
       },
     });
 
-    for (let seed = 1; seed <= 25; seed++) {
-      const run = (edgeConfig: Record<string, string>): GenerateParams =>
-        ({
-          seed,
-          codebook,
-          stages: [pedigree(edgeConfig), nameGenerator(3)],
-        }) as GenerateParams;
-
-      const written = generateNetwork(run(EDGE_CONFIG)).network;
-      const bare = generateNetwork(run({ type: 'kin' })).network;
-
-      // Compared by position rather than by uid: `uuid()` is not seeded, so
-      // identity differs run to run while everything the generator draws does
-      // not.
-      expect(written.nodes.map(nodeShape)).toEqual(bare.nodes.map(nodeShape));
-      expect(written.edges.map(edgeShape(written.nodes))).toEqual(
-        bare.edges.map(edgeShape(bare.nodes)),
+    for (const node of network.nodes) {
+      const sex = node[entityAttributesProperty].biologicalSex;
+      expect(Array.isArray(sex)).toBe(false);
+      expect(BIOLOGICAL_SEX_OPTIONS.map(({ value }) => value)).toContain(sex);
+    }
+    for (const edge of network.edges) {
+      const attributes = edge[entityAttributesProperty];
+      expect(Array.isArray(attributes.relationshipType)).toBe(false);
+      expect(RELATIONSHIP_TYPE_OPTIONS.map(({ value }) => value)).toContain(
+        attributes.relationshipType,
       );
-      // The bare run is the "before" this change is measured against: it holds
-      // the empty attributes every pedigree edge used to carry.
+      if (attributes.gameteRole !== undefined) {
+        expect(Array.isArray(attributes.gameteRole)).toBe(false);
+        expect(GAMETE_ROLE_OPTIONS.map(({ value }) => value)).toContain(
+          attributes.gameteRole,
+        );
+      }
+    }
+  });
+
+  it('preserves disease assignments owned by an earlier pedigree', () => {
+    const recessiveNarrative = {
+      ...narrativeStage,
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'autosomalRecessive',
+        },
+      ],
+    } as unknown as Stage;
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+    } as unknown as Stage;
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [familyStage, recessiveNarrative, laterFamilyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'visualization',
+        maxNodes: 7,
+      },
+    });
+    const affectedEarlierMembers = network.nodes.filter(
+      (node) =>
+        node.stageId === familyStage.id &&
+        node[entityAttributesProperty].condition === true,
+    );
+
+    expect(affectedEarlierMembers).toHaveLength(2);
+  });
+
+  it('protects earlier pedigree semantics on nodes created by another stage', () => {
+    const constrainedCodebook = structuredClone(codebook);
+    const variables = constrainedCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.earlierCondition = {
+      name: 'Earlier condition',
+      type: 'boolean',
+    };
+    variables.laterCondition = {
+      name: 'Later condition',
+      type: 'boolean',
+      validation: {
+        differentFrom: asEntityAttributeReference('earlierCondition'),
+      },
+    };
+    const ordinaryStage = {
+      id: 'ordinary-family-member',
+      type: 'NameGenerator',
+      label: 'Earlier family member',
+      subject: { entity: 'node', type: 'family-member' },
+      prompts: [{ id: 'person', text: 'Name a person' }],
+      behaviours: { minNodes: 1, maxNodes: 1 },
+    } as unknown as Stage;
+    const earlierFamily = {
+      ...familyStage,
+      nominationPrompts: [
+        {
+          id: 'earlier-condition',
+          text: 'Who has the earlier condition?',
+          variable: 'earlierCondition',
+        },
+      ],
+    } as unknown as Stage;
+    const laterFamily = {
+      ...familyStage,
+      id: 'later-family-stage',
+      nominationPrompts: [
+        {
+          id: 'later-condition',
+          text: 'Who has the later condition?',
+          variable: 'laterCondition',
+        },
+      ],
+    } as unknown as Stage;
+
+    expect(() =>
+      generateNetwork({
+        seed: 42,
+        codebook: constrainedCodebook,
+        stages: [ordinaryStage, earlierFamily, laterFamily],
+        familyPedigree: {
+          scenario: 'none',
+          diseaseMode: 'none',
+          maxNodes: 7,
+        },
+      }),
+    ).toThrow(
+      'the FamilyPedigree configuration rejects a value required by its data model',
+    );
+  });
+
+  it('preserves earlier disease assignments when the later pedigree uses a different ego variable', () => {
+    const distinctEgoCodebook = structuredClone(codebook);
+    const variables = distinctEgoCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.isLaterEgo = { name: 'Is later ego', type: 'boolean' };
+
+    const recessiveNarrative = {
+      ...narrativeStage,
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'autosomalRecessive',
+        },
+      ],
+    } as unknown as Stage;
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+      nodeConfig: {
+        type: 'family-member',
+        nodeLabelVariable: 'name',
+        egoVariable: 'isLaterEgo',
+        relationshipVariable: 'relationship',
+        biologicalSexVariable: 'biologicalSex',
+      },
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: distinctEgoCodebook,
+      stages: [familyStage, recessiveNarrative, laterFamilyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'visualization',
+        maxNodes: 7,
+      },
+    });
+    const affectedEarlierMembers = network.nodes.filter(
+      (node) =>
+        node.stageId === familyStage.id &&
+        node[entityAttributesProperty].condition === true,
+    );
+
+    expect(affectedEarlierMembers).toHaveLength(2);
+  });
+
+  it('rejects a later disease assignment that conflicts with protected earlier semantics', () => {
+    const constrainedCodebook = structuredClone(codebook);
+    const variables = constrainedCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.earlierCondition = {
+      name: 'Earlier condition',
+      type: 'boolean',
+    };
+    variables.laterCondition = {
+      name: 'Later condition',
+      type: 'boolean',
+      validation: {
+        sameAs: asEntityAttributeReference('earlierCondition'),
+      },
+    };
+    const earlierFamily = {
+      ...familyStage,
+      nominationPrompts: [
+        {
+          id: 'earlier-condition',
+          text: 'Who has the earlier condition?',
+          variable: 'earlierCondition',
+        },
+      ],
+    } as unknown as Stage;
+    const earlierNarrative = {
+      ...narrativeStage,
+      sourceStageId: earlierFamily.id,
+      diseases: [
+        {
+          ...narrativeDisease,
+          variable: 'earlierCondition',
+          inheritancePattern: 'autosomalRecessive',
+        },
+      ],
+    } as unknown as Stage;
+    const laterFamily = {
+      ...familyStage,
+      id: 'later-family-stage',
+      nominationPrompts: [
+        {
+          id: 'later-condition',
+          text: 'Who has the later condition?',
+          variable: 'laterCondition',
+        },
+      ],
+    } as unknown as Stage;
+    const laterNarrative = {
+      ...narrativeStage,
+      id: 'later-narrative-stage',
+      sourceStageId: laterFamily.id,
+      diseases: [
+        {
+          ...narrativeDisease,
+          variable: 'laterCondition',
+          inheritancePattern: 'autosomalDominant',
+        },
+      ],
+    } as unknown as Stage;
+
+    expect(() =>
+      generateNetwork({
+        seed: 42,
+        codebook: constrainedCodebook,
+        stages: [earlierFamily, earlierNarrative, laterFamily, laterNarrative],
+        familyPedigree: {
+          scenario: 'none',
+          diseaseMode: 'visualization',
+          maxNodes: 7,
+        },
+      }),
+    ).toThrow(
+      'the FamilyPedigree configuration rejects a value required by its data model',
+    );
+  });
+
+  it('rejects conflicting inheritance patterns that reuse one disease variable', () => {
+    const secondNarrative = {
+      ...narrativeStage,
+      id: 'second-narrative-stage',
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'autosomalRecessive',
+        },
+      ],
+    } as unknown as Stage;
+
+    const generate = (): unknown =>
+      generateNetwork({
+        seed: 42,
+        codebook,
+        stages: [familyStage, narrativeStage, secondNarrative],
+        familyPedigree: {
+          scenario: 'none',
+          diseaseMode: 'visualization',
+          maxNodes: 7,
+        },
+      });
+
+    expect(generate).toThrow(
+      'one disease variable cannot represent conflicting inheritance patterns',
+    );
+    expect(generate).toThrow(
+      /assign both autosomalDominant and autosomalRecessive to the same disease variable/,
+    );
+  });
+
+  it('completes ancestry for co-parents inherited by a later required boundary', () => {
+    const laterFamily = {
+      ...familyStage,
+      id: 'later-family-stage',
+      boundaries: {
+        requireGrandparents: 'required',
+        requireChildrenContributors: 'required',
+      },
+    } as unknown as Stage;
+    const population = {
+      ...US_FAMILY_PEDIGREE_POPULATION,
+      completedFamilySize: [{ value: 2, weight: 1 }],
+      childlessPartnerProbability: 0,
+      scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+    };
+    const { network, stageMetadata } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [familyStage, laterFamily],
+      familyPedigree: {
+        population,
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 20,
+      },
+    });
+    const ego = network.nodes.find(
+      (node) => node[entityAttributesProperty].isEgo === true,
+    );
+    if (!ego) throw new Error('missing ego');
+    const egoId = ego[entityPrimaryKeyProperty];
+    const inheritedChildren = network.nodes.filter(
+      (node) =>
+        node.stageId === familyStage.id &&
+        geneticParentIds(
+          network.edges,
+          node[entityPrimaryKeyProperty],
+        ).includes(egoId),
+    );
+
+    expect(inheritedChildren.length).toBeGreaterThan(0);
+    for (const child of inheritedChildren) {
+      const coParents = geneticParentIds(
+        network.edges,
+        child[entityPrimaryKeyProperty],
+      ).filter((id) => id !== egoId);
+      expect(coParents).toHaveLength(1);
+      for (const coParentId of coParents) {
+        const parents = geneticParentIds(network.edges, coParentId);
+        expect(parents).toHaveLength(2);
+        for (const parentId of parents) {
+          expect(geneticParentIds(network.edges, parentId)).toHaveLength(2);
+        }
+      }
+    }
+    expect(stageMetadata?.[1]).toEqual(
+      expect.objectContaining({ noChildrenAffirmed: false }),
+    );
+  });
+
+  it('records inherited children when a later boundary does not require ancestry', () => {
+    const earlierFamily = {
+      ...familyStage,
+      nominationPrompts: [],
+    } as unknown as Stage;
+    const laterFamily = {
+      ...familyStage,
+      id: 'later-family-stage',
+      boundaries: {
+        requireGrandparents: 'required',
+        requireChildrenContributors: 'off',
+      },
+    } as unknown as Stage;
+    const laterNarrative = {
+      ...narrativeStage,
+      sourceStageId: laterFamily.id,
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'xLinkedRecessive',
+        },
+      ],
+    } as unknown as Stage;
+    const population = {
+      ...US_FAMILY_PEDIGREE_POPULATION,
+      completedFamilySize: [{ value: 1, weight: 1 }],
+      femaleAtBirthProbability: 1,
+      childlessPartnerProbability: 0,
+      scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+    };
+    const { network, stageMetadata } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [earlierFamily, laterFamily, laterNarrative],
+      familyPedigree: {
+        population,
+        scenario: 'none',
+        diseaseMode: 'visualization',
+        maxNodes: 9,
+      },
+    });
+    const laterChildren = network.nodes.filter(
+      (node) =>
+        node.stageId === laterFamily.id &&
+        node[entityAttributesProperty].relationship === 'Child',
+    );
+
+    expect(laterChildren).toHaveLength(0);
+    expect(stageMetadata?.[1]).toEqual(
+      expect.objectContaining({ noChildrenAffirmed: false }),
+    );
+  });
+
+  it('accepts the exact value space for two tight compatible pedigrees', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 13 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
+      validation: { unique: true },
+    };
+    const laterFamily = collectingFamilyStage(
+      {
+        ...familyStage,
+        id: 'later-family-stage',
+        boundaries: {
+          requireGrandparents: 'required',
+          requireChildrenContributors: 'required',
+        },
+      } as unknown as Stage,
+      'generationMarker',
+    );
+    const earlierFamily = collectingFamilyStage(
+      familyStage,
+      'generationMarker',
+    );
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages: [earlierFamily, laterFamily],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
+    });
+    const values = network.nodes.map(
+      (node) => node[entityAttributesProperty].generationMarker,
+    );
+
+    expect(values).toHaveLength(13);
+    expect(new Set(values).size).toBe(13);
+  });
+
+  it('normalizes a disease introduced only by a later pedigree', () => {
+    const laterDiseaseCodebook = structuredClone(codebook);
+    const variables = laterDiseaseCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.laterCondition = { name: 'Later condition', type: 'boolean' };
+    const laterFamilyStage = {
+      ...familyStage,
+      id: 'later-family-stage',
+      label: 'Later family',
+      nominationPrompts: [
+        {
+          id: 'later-condition',
+          text: 'Who has the later condition?',
+          variable: 'laterCondition',
+        },
+      ],
+    } as unknown as Stage;
+
+    for (let seed = 1; seed <= 20; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: laterDiseaseCodebook,
+        stages: [familyStage, laterFamilyStage],
+        familyPedigree: {
+          scenario: 'none',
+          diseaseMode: 'none',
+          maxNodes: 7,
+        },
+      });
+
       expect(
-        kinEdges(bare.edges).every((a) => Object.keys(a).length === 0),
+        network.nodes.every(
+          (node) => node[entityAttributesProperty].laterCondition === false,
+        ),
       ).toBe(true);
     }
   });
-});
 
-/**
- * A written value is in the network without the `unique` registry having issued
- * it, so the registry has to be told, exactly as it is told about the ego flag
- * a pedigree pins on its own nodes. The hold is taken before the first stage
- * runs and never given back, so it covers the draws on both sides of the
- * pedigree — which is why nothing claims these values as well.
- */
-describe('a pedigree edge value on a unique variable', () => {
-  const uniqueActive = codebookWith({
-    isActive: {
-      name: 'isActive',
-      type: 'boolean',
+  it('accepts a unique value space matching two pedigrees with one reused ego', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 13 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
       validation: { unique: true },
-    },
+    };
+    const laterFamilyStage = collectingFamilyStage(
+      {
+        ...familyStage,
+        id: 'later-family-stage',
+        label: 'Later family',
+      } as unknown as Stage,
+      'generationMarker',
+    );
+    const earlierFamilyStage = collectingFamilyStage(
+      familyStage,
+      'generationMarker',
+    );
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages: [earlierFamilyStage, laterFamilyStage],
+      familyPedigree: {
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
+    });
+    const values = network.nodes.map(
+      (node) => node[entityAttributesProperty].generationMarker,
+    );
+
+    expect(values).toHaveLength(13);
+    expect(new Set(values).size).toBe(13);
   });
 
-  it(`is held back from an earlier stage's draw, over ${SEEDS} seeds`, () => {
-    // The census runs first, so nothing the pedigree does can reach a draw that
-    // has already happened: the flag has to be reserved before the first stage
-    // runs, or the census edge is issued `true` from the first position of the
-    // slot's sequence and the pedigree writes `true` on its own edge as well.
-    const failures: string[] = [];
+  it('accepts a unique value space covering the population-attainable family size', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 16 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
+      validation: { unique: true },
+    };
+    const stages = [
+      collectingFamilyStage(familyStage, 'generationMarker'),
+      collectingFamilyStage(
+        {
+          ...familyStage,
+          id: 'later-family-stage',
+          label: 'Later family',
+        } as unknown as Stage,
+        'generationMarker',
+      ),
+    ];
 
-    for (let seed = 1; seed <= SEEDS; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: uniqueActive,
-        stages: [nameGenerator(2), personCensus, pedigree(EDGE_CONFIG)],
-        config: CERTAIN_EDGES,
-      });
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages,
+      familyPedigree: {
+        population: {
+          ...US_FAMILY_PEDIGREE_POPULATION,
+          completedFamilySize: [{ value: 0, weight: 1 }],
+          childlessPartnerProbability: 1,
+          scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
+        },
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 9,
+      },
+    });
+    const values = network.nodes.map(
+      (node) => node[entityAttributesProperty].generationMarker,
+    );
 
-      const flags = kinEdges(network.edges).map((a) => a.isActive);
-      if (flags.length !== 2 || new Set(flags).size !== 2) {
-        failures.push(`seed ${seed}: ${JSON.stringify(flags)}`);
-      }
-    }
-
-    expect(failures).toEqual([]);
+    expect(values).toHaveLength(15);
+    expect(new Set(values).size).toBe(15);
   });
 
-  it(`is held back from a later stage's draw too, over ${SEEDS} seeds`, () => {
-    // And the other direction: the pedigree runs first, and the hold is still
-    // standing when the census draws, because nothing ever gives it back. That
-    // is what makes claiming these values as well unnecessary.
-    const failures: string[] = [];
+  it('uses the attainable forced-scenario ceiling during feasibility', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 7 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
+      validation: { unique: true },
+    };
 
-    for (let seed = 1; seed <= SEEDS; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: uniqueActive,
-        stages: [pedigree(EDGE_CONFIG), nameGenerator(2), personCensus],
-        config: CERTAIN_EDGES,
-      });
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages: [
+        collectingFamilyStage(familyStage, 'generationMarker'),
+        narrativeStage,
+      ],
+      familyPedigree: { scenario: 'none', maxNodes: 7 },
+    });
+    const values = network.nodes.map(
+      (node) => node[entityAttributesProperty].generationMarker,
+    );
 
-      const flags = kinEdges(network.edges).map((a) => a.isActive);
-      if (flags.length !== 2 || new Set(flags).size !== 2) {
-        failures.push(`seed ${seed}: ${JSON.stringify(flags)}`);
-      }
-    }
+    expect(values).toHaveLength(7);
+    expect(new Set(values).size).toBe(7);
+  });
 
-    expect(failures).toEqual([]);
+  it('ignores unreachable Narrative diseases during materialization', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 7 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
+      validation: { unique: true },
+    };
+    const unreachableNarrative = {
+      ...narrativeStage,
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'xLinkedRecessive',
+        },
+      ],
+      skipLogic: {
+        action: 'SKIP',
+        filter: {
+          rules: [
+            {
+              id: 'missing-consent',
+              type: 'ego',
+              options: {
+                attribute: asEntityAttributeReference('consent'),
+                operator: 'NOT_EXISTS',
+              },
+            },
+          ],
+        },
+      },
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages: [familyStage, unreachableNarrative],
+      respectSkipLogicAndFiltering: true,
+      familyPedigree: {
+        population: {
+          ...US_FAMILY_PEDIGREE_POPULATION,
+          femaleAtBirthProbability: 1,
+        },
+        scenario: 'none',
+        maxNodes: 7,
+      },
+    });
+
+    expect(network.nodes).toHaveLength(7);
+  });
+
+  it('does not add disease-only relatives when disease planting is disabled', () => {
+    const exactCodebook = structuredClone(codebook);
+    const variables = exactCodebook.node?.['family-member']?.variables;
+    if (!variables) throw new Error('missing family-member variables');
+    variables.generationMarker = {
+      name: 'Generation marker',
+      type: 'ordinal',
+      options: Array.from({ length: 7 }, (_, index) => ({
+        label: `Generation ${String(index + 1)}`,
+        value: index + 1,
+      })),
+      validation: { unique: true },
+    };
+    const xLinkedNarrative = {
+      ...narrativeStage,
+      diseases: [
+        {
+          ...narrativeDisease,
+          inheritancePattern: 'xLinkedRecessive',
+        },
+      ],
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook: exactCodebook,
+      stages: [familyStage, xLinkedNarrative],
+      familyPedigree: {
+        population: {
+          ...US_FAMILY_PEDIGREE_POPULATION,
+          femaleAtBirthProbability: 1,
+        },
+        scenario: 'none',
+        diseaseMode: 'none',
+        maxNodes: 7,
+      },
+    });
+
+    expect(network.nodes).toHaveLength(7);
+  });
+
+  it.each([
+    ['adoption', 'adoptive'],
+    ['donorConception', 'donor'],
+    ['surrogacy', 'surrogate'],
+  ] as const)('materializes the forced %s scenario', (scenario, edgeType) => {
+    const { network } = family(17, scenario);
+    expect(network.edges.some((edge) => relation(edge) === edgeType)).toBe(
+      true,
+    );
+  });
+
+  it('is reproducible without sharing the ordinary stage random stream', () => {
+    const ordinaryStage = {
+      id: 'ordinary',
+      type: 'NameGenerator',
+      label: 'People',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'people', text: 'Name people' }],
+      behaviours: { minNodes: 4, maxNodes: 4 },
+    } as unknown as Stage;
+
+    const onlyOrdinary = generateNetwork({
+      seed: 91,
+      codebook,
+      stages: [ordinaryStage],
+    }).network.nodes.map((node) => node[entityAttributesProperty]);
+    const afterFamily = generateNetwork({
+      seed: 91,
+      codebook,
+      stages: [familyStage, ordinaryStage],
+      familyPedigree: { scenario: 'surrogacy' },
+    })
+      .network.nodes.filter((node) => node.type === 'person')
+      .map((node) => node[entityAttributesProperty]);
+    expect(afterFamily).toEqual(onlyOrdinary);
+
+    const first = family(91, 'adoption').network;
+    const second = family(91, 'adoption').network;
+    expect(withoutUids(first.nodes, first.edges)).toEqual(
+      withoutUids(second.nodes, second.edges),
+    );
+
+    const afterOrdinary = generateNetwork({
+      seed: 91,
+      codebook,
+      stages: [ordinaryStage, familyStage, narrativeStage],
+      familyPedigree: { scenario: 'adoption' },
+    }).network;
+    expect(
+      withoutUids(
+        afterOrdinary.nodes.filter((node) => node.type === 'family-member'),
+        afterOrdinary.edges.filter((edge) => edge.type === 'family-edge'),
+      ),
+    ).toEqual(withoutUids(first.nodes, first.edges));
   });
 });

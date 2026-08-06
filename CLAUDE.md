@@ -33,6 +33,8 @@ pnpm --filter @codaco/architect dev
 pnpm --filter @codaco/interviewer dev
 pnpm --filter @codaco/documentation dev
 pnpm --filter networkcanvas.com dev
+# Fresco also starts PostgreSQL and MinIO in Docker
+pnpm --filter fresco dev
 ```
 
 ### Building & Testing
@@ -137,17 +139,35 @@ pnpm publish-packages
 #### Changeset lanes: normal vs separately gated products
 
 - **The normal Changesets lane** contains publishable libraries under
-  `packages/*` plus the private Architect and Interviewer apps. All use normal
-  semver and are versioned by `changesets/action` in the **Version Packages** PR
-  (`changeset-release/main`). Libraries publish to npm; changed apps deploy to
-  Netlify production and receive a GitHub release after that PR merges.
+  `packages/*` plus the private Architect, Interviewer, and Fresco apps. All use
+  normal semver and are versioned by `changesets/action` in the **Version
+  Packages** PR (`changeset-release/main`). Libraries publish to npm; changed
+  apps deploy and receive a GitHub release after that PR merges — Architect and
+  Interviewer to Netlify, Fresco via the mirror described below.
 - **Separately gated products** are Documentation and networkcanvas.com. They
   keep independent stable-semver release PRs, production deploys, and Git tags.
 - **One release lane per changeset.** A normal-lane changeset may combine
-  libraries, Architect, and Interviewer. Never mix Documentation or Website
-  with the normal lane or with each other; `pnpm check:changesets` rejects it.
+  libraries, Architect, Interviewer, and Fresco. Never mix Documentation or
+  Website with the normal lane or with each other; `pnpm check:changesets`
+  rejects it.
 - See the `creating-a-changeset` skill and
   `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
+
+#### Apps that release by mirroring
+
+Fresco and the two classic apps are developed here but ship from their own
+GitHub repositories. `scripts/mirror-app.mjs` replaces the external repo's
+default branch with the app's source as a single linear-append commit, resolving
+every `workspace:`/`catalog:` specifier to a registry version
+(`scripts/resolve-manifest.mjs`) so the mirrored tree installs standalone. The
+external repository is a mirror, never a source of truth — changes made there
+are overwritten by the next release.
+
+Fresco additionally gets a generated single-package `pnpm-workspace.yaml` and a
+pnpm lockfile, because its `Dockerfile` builds the mirrored tree directly. The
+push to the Fresco repo's `main` is what triggers its container image build and
+push to GHCR; see `apps-release-fresco` in `.github/workflows/ci-and-release.yml`
+and `apps/fresco/CLAUDE.md`.
 
 ## Architecture Overview
 
@@ -160,6 +180,7 @@ consistency:
   - `architect` - Offline-capable Vite/React PWA for designing, validating, and previewing protocols
   - `architect-classic` - Maintenance-mode Electron version of the original Architect
   - `documentation` - Localized Next.js documentation site built from Markdown/MDX
+  - `fresco` - Self-hosted Next.js server that runs Network Canvas interviews in the browser, backed by PostgreSQL and object storage
   - `interviewer` - Offline-first Vite/React PWA for protocol management, local interviews, and data export
   - `interviewer-classic` - Maintenance-mode Interviewer for Electron desktop and Capacitor mobile
   - `networkcanvas.com` - Localized Next.js project website
@@ -188,8 +209,9 @@ consistency:
 ### Key Technologies
 
 - **Workspace orchestration**: pnpm workspaces and Turborepo
-- **Builds**: Vite for current web apps and libraries, Next.js for websites,
-  Electron Vite for classic desktop apps, and Wrangler for Cloudflare Workers
+- **Builds**: Vite for current web apps and libraries, Next.js for the websites
+  and Fresco, Electron Vite for classic desktop apps, and Wrangler for
+  Cloudflare Workers
 - **Validation**: Zod with complex cross-reference validation patterns
 - **Frontend**: React, with Redux or Zustand where application state requires it
 - **Styling**: Tailwind CSS, Base UI, and the shared Fresco design system
@@ -222,7 +244,7 @@ Synthetic network generation and interview-payload builder for Network Canvas pr
 Embeddable React interview engine containing the participant-facing interfaces,
 stage navigation, state management, analytics hooks, and the contract a host
 uses to synchronize and finish sessions. It is hosted by the current Interviewer
-app, Architect previews, and external consumers such as Fresco.
+app, Architect previews, and Fresco.
 
 #### @codaco/fresco-ui
 

@@ -37,7 +37,11 @@ import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/Pedi
 import { computeNodeDisplayLabels } from '../../FamilyPedigree/pedigree-layout/components/PedigreeNode';
 import { dimColor } from '../../FamilyPedigree/pedigree-layout/dimColor';
 import type { VariableConfig } from '../../FamilyPedigree/store';
-import { pedigreeMemberIds } from '../../FamilyPedigree/utils/pedigreeMembership';
+import {
+  edgesWithinPedigreeMembership,
+  pedigreeEdgeMembership,
+  pedigreeMemberIds,
+} from '../../FamilyPedigree/utils/pedigreeMembership';
 import { PedigreeSnapshotDocument } from '../export/PedigreeSnapshotDocument';
 import { exportSnapshot } from '../export/snapshot';
 import { computeStatuses } from '../genetics/computeStatuses';
@@ -101,15 +105,17 @@ function makeSourceConfigSelector(sourceStageId: string) {
   });
 }
 
-// The set of node ids the source FamilyPedigree committed to its private
-// network, or null when it has no committed membership (a synthetic/seeded
-// network, or a pedigree not yet built). Stage metadata is keyed by stage index,
-// so resolve the source stage's position first.
-function makeSourceMembersSelector(sourceStageId: string) {
+// The node and edge ids the source FamilyPedigree committed to its private
+// network, or null when the relevant membership is unknown. Stage metadata is
+// keyed by stage index, so resolve the source stage's position first.
+function makeSourceMembershipSelector(sourceStageId: string) {
   return createSelector(getStages, getActiveSession, (stages, session) => {
     const index = stages.findIndex((s) => s.id === sourceStageId);
-    if (index < 0) return null;
-    return pedigreeMemberIds(session?.stageMetadata?.[index]);
+    const metadata = index < 0 ? undefined : session?.stageMetadata?.[index];
+    return {
+      nodeIds: pedigreeMemberIds(metadata),
+      edgeMembership: pedigreeEdgeMembership(metadata),
+    };
   });
 }
 
@@ -130,11 +136,11 @@ export default function NarrativePedigreeView({
   );
   const sourceConfig = useStageSelector(sourceConfigSelector);
 
-  const sourceMembersSelector = useMemo(
-    () => makeSourceMembersSelector(stage.sourceStageId),
+  const sourceMembershipSelector = useMemo(
+    () => makeSourceMembershipSelector(stage.sourceStageId),
     [stage.sourceStageId],
   );
-  const sourceMemberIds = useStageSelector(sourceMembersSelector);
+  const sourceMembership = useStageSelector(sourceMembershipSelector);
 
   const allNodes = useStageSelector(getNetworkNodes);
   const allEdges = useStageSelector(getNetworkEdges);
@@ -162,16 +168,20 @@ export default function NarrativePedigreeView({
     return allNodes.filter(
       (node) =>
         node.type === sourceConfig.config.nodeType &&
-        (sourceMemberIds === null || sourceMemberIds.has(node._uid)),
+        (sourceMembership.nodeIds === null ||
+          sourceMembership.nodeIds.has(node._uid)),
     );
-  }, [allNodes, sourceConfig, sourceMemberIds]);
+  }, [allNodes, sourceConfig, sourceMembership.nodeIds]);
 
   const pedigreeEdges = useMemo<NcEdge[]>(() => {
     if (!sourceConfig) return [];
-    return allEdges.filter(
-      (edge) => edge.type === sourceConfig.config.edgeType,
+    return edgesWithinPedigreeMembership(
+      allEdges,
+      sourceConfig.config.edgeType,
+      new Set(pedigreeNodes.map((node) => node._uid)),
+      sourceMembership.edgeMembership,
     );
-  }, [allEdges, sourceConfig]);
+  }, [allEdges, pedigreeNodes, sourceConfig, sourceMembership.edgeMembership]);
 
   const resolveSexFn = useMemo(() => {
     if (!sourceConfig) return () => 'unknown' as const;

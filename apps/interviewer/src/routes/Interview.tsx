@@ -36,16 +36,16 @@ import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 
-// Inset the interview navigation past the device safe areas so, on an installed
-// PWA, its buttons stay clear of the status bar / iPadOS window controls / home
-// indicator while the rail's background still meets the screen edges. `calc`
+// Inset the vertical navigation rail past the top device safe area so, on an
+// installed PWA, its buttons stay clear of the status bar / iPadOS window
+// controls while the rail's background still meets the screen edge. `calc`
 // keeps the navigation surface's own py-3 (0.75rem); env() insets are 0 off a
-// safe-area device, so browser/desktop are unchanged. The vertical rail meets
-// the top and bottom edges; the horizontal bar only meets the bottom.
+// safe-area device, so browser/desktop are unchanged. The bottom inset is
+// deliberately not added (in either orientation): the home indicator floating
+// over the navigation's base padding reads better than the enlarged bottom
+// band the extra inset produced (#1186).
 const NAVIGATION_SAFE_AREA_CLASSNAMES = {
-  vertical:
-    'pt-[calc(0.75rem_+_env(safe-area-inset-top))] pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]',
-  horizontal: 'pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]',
+  vertical: 'pt-[calc(0.75rem_+_env(safe-area-inset-top))]',
 } as const;
 
 type LoadState =
@@ -89,6 +89,35 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const goHome = useCallback(
     () => exitToHome(() => navigate('/', { replace: true })),
     [exitToHome, navigate],
+  );
+
+  // Participant text-size choice, persisted per session in sessionStorage so
+  // an idle-lock/unlock cycle — which unmounts and remounts this route —
+  // restores it. A UI preference, not participant data, so it stays outside
+  // the encrypted store; sessionStorage scopes it to the tab and clears when
+  // the tab closes. Persistence is best-effort: storage access can throw
+  // under strict privacy policies (cf. InstallBanner's guard), in which case
+  // the Shell's in-memory selection still works — it just won't survive a
+  // remount.
+  const textScaleStorageKey = `interview-text-scale:${sessionId}`;
+  const initialTextScale = useMemo(() => {
+    try {
+      const stored = sessionStorage.getItem(textScaleStorageKey);
+      const parsed = stored === null ? Number.NaN : Number(stored);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [textScaleStorageKey]);
+  const handleTextScaleChange = useCallback(
+    (scale: number) => {
+      try {
+        sessionStorage.setItem(textScaleStorageKey, String(scale));
+      } catch {
+        // Best-effort persistence only.
+      }
+    },
+    [textScaleStorageKey],
   );
 
   // Gated exit shared by the Shell exit button and the completion screen.
@@ -323,6 +352,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         finishConfirmationDescription="Finishing ends this interview. A researcher can mark it unfinished later if changes are needed."
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
+        allowUserScaling
+        initialTextScale={initialTextScale}
+        onTextScaleChange={handleTextScaleChange}
         navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
       />
     </div>

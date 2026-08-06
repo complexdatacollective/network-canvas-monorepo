@@ -1,5 +1,81 @@
 # @codaco/interview
 
+## 7.1.1
+
+### Patch Changes
+
+- 3c8fe35: Generate realistic, source-backed family pedigrees with reproductive scenarios and multi-generational disease lineages, while respecting each stage's collected variables, keeping pedigree membership isolated from other interview stages, correctly rendering shared and multiple unions, widening partnership response columns, and warning participants before discarding onboarding progress.
+
+  Improve pedigree editing and parentage capture by confirming destructive deletions, preserving biological-sex values, allowing current/ex-partner status changes, and recording reproductive roles independently from sex recorded at birth.
+
+- 2325d34: Answers given in the final moments of an interview are no longer lost when a
+  participant finishes. Responses are saved on a short delay, so the very last
+  answer could still be waiting to be written when the interview was marked as
+  complete — and any study that locks an interview once it is finished then
+  rejected that late save without warning. The interview now waits for every
+  outstanding answer to be saved before it is finished. If that final save fails,
+  the participant can still finish rather than being stranded on the interview.
+
+## 7.1.0
+
+### Minor Changes
+
+- 8ff0e2d: Participants can now adjust the interview's text size.
+
+  The Shell accepts a new `allowUserScaling` prop. When a host enables it (as
+  Interviewer now does), the interview Navigation shows a settings menu with a
+  "Text size" control offering 90%–130% of the default size. The chosen size
+  scales the whole interview — text, spacing, and touch targets together, with
+  every step of the fluid type scale changing by exactly the chosen percentage —
+  takes effect immediately with the menu open for live preview, and lasts for
+  the current session. The control is fully keyboard operable and announces its
+  state to screen readers. Hosts can persist the choice across remounts with the
+  optional `initialTextScale`/`onTextScaleChange` props; Interviewer uses them so
+  an idle-lock/unlock cycle no longer resets a participant's chosen size.
+
+  The standalone exit button has moved into the same settings menu as an
+  "Exit interview" action. Hosts that provide neither an exit handler nor
+  `allowUserScaling` render no settings menu.
+
+### Patch Changes
+
+- ea589ec: Keep a scrolled roster near the dragged item after it is added instead of resetting the source list to the top.
+- 48572ed: Keep canvas nodes fully visible at the canvas edge on every screen size. The
+  boundary that stops a dragged or auto-laid-out node at the edge of the
+  Sociogram, Narrative, and Network Composer canvases now uses the node's real
+  rendered size instead of a fixed estimate, so larger nodes on wide displays are
+  no longer partially cut off when moved to the edge of the canvas.
+- c5f30fd: Restore the full-size interview type scale on tablets.
+
+  The interview's viewport ramp for `--theme-root-size` rendered below the full
+  `1rem` base for every viewport narrower than 1280px — sitting at its `0.9rem`
+  floor (14.4px) up to tablet-portrait width and only climbing to 15.7px by iPad
+  Pro landscape width — so tablets rendered the participant interview at the
+  smallest text sizes in the product, with spacing and touch targets
+  (checkboxes, radios) shrinking in lockstep below recommended minimum sizes.
+  The ramp is now piecewise: phones keep the dense `0.9rem`-floored curve in
+  both orientations, tablets (768–1280px) get the full `1rem` base — matching
+  the interview's pre-July size and returning default form controls to the 24px
+  WCAG 2.5.8 minimum — and displays at 1280px and above are unchanged.
+
+  The interview theme also gains a 16px font-size floor for text-entry elements
+  (text inputs, textareas, selects, and rich-text editors), expressed as
+  `max(16px, 1em)` so explicitly larger sizes pass through. iOS Safari zooms the
+  page when a focused editable element renders below 16px; with the phone-width
+  type scale this made every form field a zoom trigger in browser hosts. Editable
+  text in the interview now never renders below 16px at any viewport size. To
+  support this, `SegmentedCodeField` now carries its text-size class on the
+  segment group wrapper (segment inputs inherit), so the floor preserves its
+  `lg`/`xl` sizes; computed sizes are unchanged.
+
+- 66da138: Keep content clear of the device status bar in the installed app. On iPads and
+  other devices with a status bar, the home screen's brand mark, view switcher,
+  and settings button — and interview stage content — now start below the system
+  status bar instead of sliding underneath the clock and battery indicators,
+  while the background still fills the entire screen. The interview navigation
+  bar also sits evenly against the bottom edge of the screen in both
+  orientations, rather than reserving extra space below its buttons.
+
 ## 7.0.2
 
 ### Patch Changes

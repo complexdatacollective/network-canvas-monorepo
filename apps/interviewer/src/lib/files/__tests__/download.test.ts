@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { saveBlob } from '../download';
+import { saveAction, saveBlob } from '../download';
 
 function makeBlob() {
   return new Blob(['export-bytes'], { type: 'application/zip' });
@@ -24,7 +24,15 @@ function stubSavePicker() {
   const write = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn().mockResolvedValue(undefined);
   const createWritable = vi.fn().mockResolvedValue({ write, close });
-  const showSaveFilePicker = vi.fn().mockResolvedValue({ createWritable });
+  // Enforces the Window receiver like the real Web-IDL method: browsers
+  // throw "Illegal invocation" for a detached call, which would silently
+  // degrade the picker rung to the anchor download.
+  const showSaveFilePicker = vi.fn(function (this: unknown) {
+    if (this !== window && this !== globalThis) {
+      throw new TypeError('Illegal invocation');
+    }
+    return Promise.resolve({ createWritable });
+  });
   vi.stubGlobal('showSaveFilePicker', showSaveFilePicker);
   return { showSaveFilePicker, createWritable, write, close };
 }
@@ -155,6 +163,46 @@ describe('saveBlob (rung 2: Web Share, no picker available)', () => {
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(click).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ saved: true });
+  });
+});
+
+// saveAction predicts the rung saveBlob takes, so UI can label the action
+// that triggers it. Each case runs saveBlob under the same stubs to prove the
+// prediction and the ladder agree.
+describe('saveAction agrees with the rung saveBlob takes', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('predicts save-as when the Save-As picker exists', async () => {
+    const picker = stubSavePicker();
+    vi.stubGlobal('navigator', { share: vi.fn(), canShare: () => true });
+
+    expect(saveAction(makeBlob(), 'export.zip')).toBe('save-as');
+
+    await saveBlob(makeBlob(), 'export.zip');
+    expect(picker.showSaveFilePicker).toHaveBeenCalledTimes(1);
+  });
+
+  it('predicts share when only Web Share can take the file', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { share, canShare: () => true });
+
+    expect(saveAction(makeBlob(), 'export.zip')).toBe('share');
+
+    await saveBlob(makeBlob(), 'export.zip');
+    expect(share).toHaveBeenCalledTimes(1);
+  });
+
+  it('predicts download when neither capability exists', async () => {
+    vi.stubGlobal('navigator', {});
+    const { click } = stubAnchorDownload();
+
+    expect(saveAction(makeBlob(), 'export.zip')).toBe('download');
+
+    await saveBlob(makeBlob(), 'export.zip');
+    expect(click).toHaveBeenCalledTimes(1);
   });
 });
 

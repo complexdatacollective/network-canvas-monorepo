@@ -1,6 +1,7 @@
 import type { AcknowledgeDialog } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+import { imageUrl } from '../../utils/imageUrl.ts';
 import contextMenuHintUrl from './pedigree-context-menu-hint.png';
 
 export const buildPedigreeDialog: AcknowledgeDialog = {
@@ -28,7 +29,7 @@ export const buildPedigreeDialog: AcknowledgeDialog = {
       </div>
       <figure className="phone-landscape:flex hidden shrink-0 flex-col items-center gap-2">
         <img
-          src={contextMenuHintUrl}
+          src={imageUrl(contextMenuHintUrl)}
           alt="Example of the context menu showing options to add parent, child, partner, sibling, edit, or delete"
           className="w-40 rounded-lg shadow-lg"
         />

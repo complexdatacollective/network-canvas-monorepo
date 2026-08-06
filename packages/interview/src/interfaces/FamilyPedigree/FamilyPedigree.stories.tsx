@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -267,6 +267,48 @@ export const Default: Story = {
     };
 
     return <FamilyPedigreeStoryWrapper buildFn={buildFn} />;
+  },
+};
+
+export const OnboardingCloseConfirmation: Story = {
+  ...Default,
+  play: async () => {
+    await clickGetStarted();
+
+    const wizard = await getDialog();
+    await userEvent.click(
+      within(wizard).getByRole('button', { name: 'Close' }),
+    );
+
+    await expect(
+      await screen.findByText('Close family pedigree setup?'),
+    ).toBeVisible();
+    await expect(
+      screen.getByText(
+        'If you continue, all information you have entered in this family pedigree will be lost. You will need to start again.',
+      ),
+    ).toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Continue setup' }),
+    );
+    await expect(
+      screen.getByRole('heading', { name: 'Introduction' }),
+    ).toBeVisible();
+
+    await userEvent.click(
+      within(wizard).getByRole('button', { name: 'Close' }),
+    );
+    await userEvent.click(
+      await screen.findByRole('button', {
+        name: 'Close and lose progress',
+      }),
+    );
+
+    await waitFor(async () => {
+      await expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      await expect(screen.getByTestId('pedigree-get-started')).toBeVisible();
+    });
   },
 };
 
@@ -881,9 +923,9 @@ export const WithPartnerAndChildren: ScenarioStory = {
 
     // Partner and children
     await setFieldInput('hasPartner', true);
-    await setFieldInput('partner.name', 'Jennifer');
-    await setFieldInput('partner.biologicalSex', 'female');
-    await setFieldInput('partner.gender_identity', 'woman');
+    await setFieldInput('partner.name', 'James');
+    await setFieldInput('partner.biologicalSex', 'male');
+    await setFieldInput('partner.gender_identity', 'man');
     await setFieldInput('childrenWithPartnerCount', 2);
     await clickNext();
 
@@ -895,8 +937,8 @@ export const WithPartnerAndChildren: ScenarioStory = {
     await setFieldInput('childWithPartner[1].biologicalSex', 'female');
     await setFieldInput('childWithPartner[1].gender_identity', 'woman');
 
-    // Both children should show the egg/sperm parent selectors; nuclear-family
-    // defaults (You → egg, Jennifer → sperm) are already valid.
+    // Both children show the egg/sperm parent selectors, pre-selected from the
+    // parents' sex (You → egg, James → sperm), so no changes are needed.
     const childrenDialog = await getDialog();
     expect(within(childrenDialog).getAllByText('Egg Parent')).toHaveLength(2);
     expect(within(childrenDialog).getAllByText('Sperm Parent')).toHaveLength(2);

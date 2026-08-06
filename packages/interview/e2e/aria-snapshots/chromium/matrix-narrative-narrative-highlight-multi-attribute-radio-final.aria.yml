@@ -10,9 +10,8 @@
     - button "Next preset" [disabled]
   - status
   - dialog:
-    - region:
-      - heading "Attributes" [level=3]:
-        - button "Attributes"
+    - heading "Attributes" [level=3]:
+      - button "Attributes"
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

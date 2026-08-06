@@ -83,11 +83,6 @@ type ParentSectionProps = {
   carriedLabel?: string;
   carriedHint?: string;
   carriedInitialValue?: boolean;
-  /**
-   * Whether to ask for biological sex when creating a new person in this role.
-   * False for egg/sperm sources — their sex derives from gameteRole.
-   */
-  askBiologicalSex?: boolean;
 };
 
 function ParentSection({
@@ -104,7 +99,6 @@ function ParentSection({
   carriedLabel,
   carriedHint,
   carriedInitialValue = true,
-  askBiologicalSex = false,
 }: ParentSectionProps) {
   const ownValue = useFormValue([roleKey])[roleKey];
   const otherValue = useFormValue([excludeSelectionFrom])[excludeSelectionFrom];
@@ -161,10 +155,7 @@ function ParentSection({
         watch={[roleKey]}
         condition={(values) => values[roleKey] === 'new'}
       >
-        <PersonFields
-          namespace={`new-${roleKey}`}
-          askBiologicalSex={askBiologicalSex}
-        />
+        <PersonFields namespace={`new-${roleKey}`} />
       </FieldGroup>
       {/* The donor and carrier questions stay visible regardless of the
           current selection, so resetting a colliding parent never hides them. */}
@@ -189,13 +180,75 @@ function ParentSection({
   );
 }
 
+type GestationalCarrierSectionProps = {
+  options: NodeOption[];
+  initialValue?: string;
+  roleLabel: string;
+};
+
+function GestationalCarrierSection({
+  options,
+  initialValue,
+  roleLabel,
+}: GestationalCarrierSectionProps) {
+  const eggSource = useFormValue(['egg-source'])['egg-source'];
+  const carrierOptions = useMemo(
+    () => [
+      ...options.filter((option) => option.value !== eggSource),
+      { value: 'new', label: 'Create a new person' },
+    ],
+    [options, eggSource],
+  );
+  const onlyNewOption =
+    carrierOptions.length === 1 && carrierOptions[0]?.value === 'new';
+  const validInitialValue = carrierOptions.some(
+    ({ value }) => value === initialValue,
+  )
+    ? initialValue
+    : undefined;
+
+  return (
+    <Surface spacing="sm" shadow="sm" noContainer>
+      <Heading level="h4">{roleLabel}</Heading>
+      {onlyNewOption ? (
+        <div className="hidden">
+          <Field
+            name="carrier-source"
+            label={roleLabel}
+            component={RadioGroupField}
+            options={[{ value: 'new', label: 'new' }]}
+            initialValue="new"
+          />
+        </div>
+      ) : (
+        <Field
+          name="carrier-source"
+          label="Who carried the pregnancy?"
+          hint="Select the person who carried the pregnancy, or create a new person."
+          component={RadioGroupField}
+          options={carrierOptions}
+          initialValue={validInitialValue}
+          required
+        />
+      )}
+      <FieldGroup
+        watch={['carrier-source']}
+        condition={(values) => values['carrier-source'] === 'new'}
+      >
+        <PersonFields namespace="new-carrier" />
+      </FieldGroup>
+    </Surface>
+  );
+}
+
 export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
   const { existingNodes, preselection, gameteRoles } = useBioTriadConfig();
   const nodeOptions = useMemo(() => existingNodes ?? [], [existingNodes]);
   const terms = useFramedTerms() ?? FRAMING_TERMS.gamete;
 
-  // A node already nominated as an egg parent elsewhere can't be a sperm parent
-  // here, and vice versa. The carrier can be anyone, so it stays unfiltered.
+  // Reproductive role and sex recorded at birth are independent pedigree
+  // facts. Candidate eligibility is based on existing gamete roles, never on
+  // biological sex. See ../../../REPRODUCTIVE_ROLE_AND_SEX.md.
   const eggOptions = useMemo(
     () => [
       ...nodeOptions.filter((o) => gameteRoles?.get(o.value) !== 'sperm'),
@@ -211,14 +264,6 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
     ],
     [nodeOptions, gameteRoles],
   );
-
-  const carrierOptions = useMemo(
-    () => [...nodeOptions, { value: 'new', label: 'Create a new person' }],
-    [nodeOptions],
-  );
-
-  const carrierOnlyNewOption =
-    carrierOptions.length === 1 && carrierOptions[0]?.value === 'new';
 
   const content = (
     <div className="flex flex-col gap-6">
@@ -236,43 +281,17 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         carriedFieldName="egg-parent-carried"
         carriedLabel="Did this person carry the pregnancy?"
         carriedHint="If someone else carried the pregnancy (e.g. a gestational carrier or surrogate), select 'No'."
-        askBiologicalSex={false}
       />
 
       <FieldGroup
         watch={['egg-parent-carried']}
         condition={(values) => values['egg-parent-carried'] === false}
       >
-        <Surface spacing="sm" shadow="sm" noContainer>
-          <Heading level="h4">{terms.gestationalCarrier}</Heading>
-          {carrierOnlyNewOption ? (
-            <div className="hidden">
-              <Field
-                name="carrier-source"
-                label={terms.gestationalCarrier}
-                component={RadioGroupField}
-                options={[{ value: 'new', label: 'new' }]}
-                initialValue="new"
-              />
-            </div>
-          ) : (
-            <Field
-              name="carrier-source"
-              label="Who carried the pregnancy?"
-              hint="Select the person who carried the pregnancy, or create a new person."
-              component={RadioGroupField}
-              options={carrierOptions}
-              initialValue={preselection?.carrier}
-              required
-            />
-          )}
-          <FieldGroup
-            watch={['carrier-source']}
-            condition={(values) => values['carrier-source'] === 'new'}
-          >
-            <PersonFields namespace="new-carrier" />
-          </FieldGroup>
-        </Surface>
+        <GestationalCarrierSection
+          options={nodeOptions}
+          initialValue={preselection?.carrier}
+          roleLabel={terms.gestationalCarrier}
+        />
       </FieldGroup>
 
       <ParentSection
@@ -285,7 +304,6 @@ export default function BioTriadStep({ prefix }: { prefix?: string } = {}) {
         options={spermOptions}
         excludeSelectionFrom="egg-source"
         initialValue={preselection?.spermSource}
-        askBiologicalSex={false}
       />
     </div>
   );

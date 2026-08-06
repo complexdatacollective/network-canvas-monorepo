@@ -77,11 +77,14 @@ export default function App() {
                   initial="hidden"
                   animate="visible"
                   exit="exit"
-                  // Fill the inset #root so the route's full-screen surfaces can
-                  // size to the available space with `h-full` rather than the raw
-                  // viewport (`h-dvh`). The body is padded by the top safe-area
-                  // inset; a viewport-tall child would overflow that inset and
-                  // make the whole page scroll (the iPad-portrait overflow bug).
+                  // Fill #root so the route's full-screen surfaces can size to
+                  // the available space with `h-full` rather than the raw
+                  // viewport (`h-dvh`). #root can be inset by the
+                  // visual-viewport initializer (see globals.css); a
+                  // viewport-tall child would overflow that inset and make the
+                  // whole page scroll (the iPad-portrait overflow bug).
+                  // Safe-area insets are owned per-surface: the Home header and
+                  // the interview shell each pad themselves past the top inset.
                   className="h-full"
                 >
                   <Switch location={location}>

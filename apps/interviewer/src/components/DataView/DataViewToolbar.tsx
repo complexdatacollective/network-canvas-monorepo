@@ -78,10 +78,8 @@ export function DataViewToolbar({
   selectedCount,
   exporting,
   deleting,
-  pendingShare,
   onExport,
   onDelete,
-  onShareReady,
 }: {
   table: Table<StoredSessionLite>;
   // Passed explicitly rather than read from table.getState(): Tanstack
@@ -93,10 +91,8 @@ export function DataViewToolbar({
   selectedCount: number;
   exporting: boolean;
   deleting: boolean;
-  pendingShare: boolean;
   onExport: () => void;
   onDelete: () => void;
-  onShareReady: () => void;
 }) {
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
 
@@ -321,19 +317,6 @@ export function DataViewToolbar({
             </Button>
           </motion.div>
         </>
-      ) : null}
-      {pendingShare ? (
-        <motion.div variants={toolbarItemVariants}>
-          <Button
-            color="primary"
-            size="md"
-            icon={<Download aria-hidden />}
-            onClick={onShareReady}
-            data-testid="data-save-export"
-          >
-            Save export
-          </Button>
-        </motion.div>
       ) : null}
     </motion.div>
   );

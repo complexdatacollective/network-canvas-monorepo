@@ -229,7 +229,11 @@ export class ValueGenerator {
   generateConstrained(
     variable: ConstrainedVariable,
     index: number,
-    opts?: { distinctSeq?: number; preferRealisticName?: boolean },
+    opts?: {
+      distinctSeq?: number;
+      preferRealisticName?: boolean;
+      forceRealisticName?: boolean;
+    },
   ): VariableValue {
     const { entry, constraints } = variable;
     const seq = opts?.distinctSeq;
@@ -253,7 +257,7 @@ export class ValueGenerator {
           );
         }
 
-        const nameVariable = isNameVariable(entry);
+        const nameVariable = isNameVariable(entry) || opts?.forceRealisticName;
         let attemptedRealisticName = false;
         if (nameVariable && opts?.preferRealisticName === true) {
           attemptedRealisticName = true;

@@ -46,9 +46,12 @@ export function arrayBufferAssetPlugin(): Plugin {
 // (rather than imported as JSON) so the renderer bundle gets a single
 // inlined string and TypeScript doesn't need package.json on its include
 // path. Consumed via the ambient `__APP_VERSION__` declared in global.d.ts.
-const appVersion = JSON.parse(
-  readFileSync(resolve(here, 'package.json'), 'utf8'),
-).version as string;
+// Typed at the parse site: `@total-typescript/ts-reset` types `JSON.parse` as
+// `unknown` rather than `any`, so the shape has to be stated before use.
+const pkg = JSON.parse(readFileSync(resolve(here, 'package.json'), 'utf8')) as {
+  version: string;
+};
+const appVersion = pkg.version;
 
 // Production CSP injected into index.html as a meta tag. Vite HMR needs
 // 'unsafe-eval' / inline scripts in dev, so this is build-only.
