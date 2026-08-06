@@ -27,6 +27,11 @@ const redirectTests: RedirectTest[] = [
     description: 'Root redirects to /en',
   },
   {
+    from: '/en/design-protocols/building-a-protocol',
+    expectedDestination: '/en/design-protocols/tutorials/building-a-protocol',
+    description: 'Building a protocol moved into the Tutorials group',
+  },
+  {
     from: '/en/design-protocols/installing-architect-desktop',
     expectedDestination: '/en/design-protocols/installing-architect-classic',
     description: 'Installing Architect page renamed to Architect Classic',
@@ -95,7 +100,7 @@ const redirectTests: RedirectTest[] = [
   // Two-section layout: /en/desktop/*
   {
     from: '/en/desktop/tutorials/building-a-protocol',
-    expectedDestination: '/en/design-protocols/building-a-protocol',
+    expectedDestination: '/en/design-protocols/tutorials/building-a-protocol',
     description: 'desktop tutorial remapped into design-protocols',
   },
   {
