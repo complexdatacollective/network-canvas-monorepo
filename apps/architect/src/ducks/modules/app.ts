@@ -84,17 +84,23 @@ export function getProtocolOpenElsewhere(
   return Boolean(get(state, ['app', PROTOCOL_OPEN_ELSEWHERE_KEY]));
 }
 
-const PREVIEW_IGNORE_SKIP_LOGIC_KEY = 'previewIgnoreSkipLogic';
+const PREVIEW_RESPECT_SKIP_LOGIC_KEY = 'previewRespectSkipLogic';
+const LEGACY_PREVIEW_IGNORE_SKIP_LOGIC_KEY = 'previewIgnoreSkipLogic';
 
-export function setPreviewIgnoreSkipLogic(value: boolean) {
-  return setProperty({ key: PREVIEW_IGNORE_SKIP_LOGIC_KEY, value });
+export function setPreviewRespectSkipLogic(value: boolean) {
+  return setProperty({ key: PREVIEW_RESPECT_SKIP_LOGIC_KEY, value });
 }
 
-export function getPreviewIgnoreSkipLogic(
+export function getPreviewRespectSkipLogic(
   state: Pick<RootState, 'app'>,
 ): boolean {
-  const raw = get(state, ['app', PREVIEW_IGNORE_SKIP_LOGIC_KEY]);
-  return raw === undefined ? true : Boolean(raw);
+  const raw = get(state, ['app', PREVIEW_RESPECT_SKIP_LOGIC_KEY]);
+  if (raw !== undefined) return Boolean(raw);
+
+  // Preserve an explicitly selected preference from the inverse legacy
+  // setting when rehydrating state written by an earlier Architect version.
+  const legacyRaw = get(state, ['app', LEGACY_PREVIEW_IGNORE_SKIP_LOGIC_KEY]);
+  return legacyRaw === undefined ? false : !legacyRaw;
 }
 
 export default appSlice.reducer;

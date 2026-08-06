@@ -316,9 +316,6 @@ importers:
       '@codaco/interview':
         specifier: workspace:^
         version: link:../../packages/interview
-      '@codaco/network-query':
-        specifier: workspace:^
-        version: link:../../packages/network-query
       '@codaco/protocol-utilities':
         specifier: workspace:^
         version: link:../../packages/protocol-utilities
