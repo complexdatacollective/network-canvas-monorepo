@@ -36,6 +36,7 @@ import {
   shouldOverridePreviewStage,
 } from './buildProtocolWithStage';
 import { formName } from './configuration';
+import { getStageEditorInitialValues } from './getStageEditorInitialValues';
 import type { SectionComponent } from './Interfaces';
 import { getInterface } from './Interfaces';
 import StageHeading from './StageHeading';
@@ -89,7 +90,11 @@ const StageEditor = (props: StageEditorProps) => {
   const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
   const interfaceType = (stage?.type || type || 'Information') as StageType;
   const template = getInterface(interfaceType).template;
-  const initialValues = stage || { ...template, type: interfaceType };
+  const initialValues = getStageEditorInitialValues({
+    interfaceType,
+    stage,
+    template,
+  });
 
   // Get form state
   const hasUnsavedChanges = useSelector(getStageDraftDirty);
