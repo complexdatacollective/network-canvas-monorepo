@@ -12,11 +12,9 @@ import type { VariableEntry } from '../types';
 import {
   claimFixedValues,
   generateAttributesForEntity,
-  releaseRosterValues,
-  reserveRosterValues,
   rosterRowIsDrawable,
 } from './attributes';
-import type { GenerationConfig } from './config';
+import type { FeasibilityConfig } from './config';
 import { dateValueResolution, stepsBetween } from './constraints/dateWindow';
 import {
   completionCheckFor,
@@ -201,7 +199,7 @@ function promptCanDraw(
  */
 export function countPromptFixedValues(
   stages: Stage[],
-  config: GenerationConfig,
+  config: FeasibilityConfig,
   externalData: Record<string, NcNode[]> | undefined,
 ): Map<string, PromptFixedValues> {
   const byType = new Map<string, PromptFixedValues>();
@@ -428,7 +426,7 @@ function rowCanBeDrawn(
  */
 export function countRosterCarriedValues(
   stages: Stage[],
-  config: GenerationConfig,
+  config: FeasibilityConfig,
   externalData: Record<string, NcNode[]> | undefined,
   nodeConstraints?: (nodeType: string) => EntityConstraints | undefined,
 ): Map<string, RosterCarriedValues> {
@@ -518,7 +516,7 @@ export function countRosterCarriedValues(
  */
 export function collectPromptFixedAssignments(
   stages: Stage[],
-  config: GenerationConfig,
+  config: FeasibilityConfig,
   externalData: Record<string, NcNode[]> | undefined,
 ): Map<string, Record<string, VariableValue>[]> {
   const byType = new Map<string, Record<string, VariableValue>[]>();
@@ -848,117 +846,9 @@ export function crossRuleBrokenByFixedValues(
   return undefined;
 }
 
-/**
- * Applies one hold to every `unique` value the rows of a stage's external data
- * carry, if the stage draws people from external data at all.
- */
-function applyStageRosterHold(
-  ctx: GenerationContext,
-  stage: Stage,
-  apply: (
-    ctx: GenerationContext,
-    ref: EntityScopeRef,
-    rows: readonly NcNode[],
-  ) => void,
-): void {
-  if (!isPromptedNodeStage(stage)) return;
-
-  const rows = ctx.externalData?.[stage.id];
-  if (rows === undefined || rows.length === 0) return;
-
-  const nodeType = getSubjectType(stage.subject, 'node');
-  if (nodeType === undefined) return;
-
-  apply(ctx, { entity: 'node', type: nodeType }, rows);
-}
-
-/**
- * Holds back every `unique` value a roster row carries, for every stage that
- * draws people from external data and before any stage draws.
- *
- * A row is a real person the run may still add, carrying values the researcher
- * supplied rather than ones the registry issued. Held only while the row's own
- * stage was drawing, that guards nothing against the stages before it: a
- * fabricated node takes the value first, the row is then a duplicate of what
- * the network already holds, and `rosterRowIsDrawable` passes it over for good
- * — so the roster the protocol was written around loses a person that a
- * different draw would have left room for. The rows are data the run is given
- * up front, exactly as a prompt's `additionalAttributes` are protocol given up
- * front, so they are kept out of the earlier draws' way the same way.
- *
- * Reserved rather than claimed for the reason `reservePromptFixedValues` gives:
- * a row the draw never reaches holds nothing, and a draw left with nowhere else
- * to go takes a reserved value anyway.
- */
-export function reserveExternalRosterValues(
-  ctx: GenerationContext,
-  stages: Stage[],
-): void {
-  for (const stage of stages) {
-    applyStageRosterHold(ctx, stage, reserveRosterValues);
-  }
-}
-
-/**
- * Gives a stage's roster hold back, once the stage has had its chance to draw.
- *
- * Rows are drawn per stage — `externalData` is keyed by stage id — so once a
- * stage is behind the run its undrawn rows are people nobody is waiting for,
- * and holding their values any longer would narrow every draw that follows for
- * nothing. A row that was drawn keeps its value through the claim made when it
- * arrived, so it needs no hold either. Each stage holds separately, so a stage
- * still to come that lists the same row keeps its own.
- *
- * A stage the run never reaches — skipped over by a skip-logic destination, or
- * past the point a simulated drop-out ended the interview — keeps its hold, as
- * a prompt whose stage is never reached keeps the one `reservePromptFixedValues`
- * took. Neither refuses a draw anything: a reservation only redirects.
- */
-export function releaseExternalRosterValues(
-  ctx: GenerationContext,
-  stage: Stage,
-): void {
-  applyStageRosterHold(ctx, stage, releaseRosterValues);
-}
-
-/**
- * Takes a roster row the run can use from the drawable window `pool[from..]`,
- * swapping it into `pool[from]` so drawn rows stay behind the window.
- *
- * The starting point is random, as an undrawn pool is drawn in random order,
- * and the search walks on from there — so a pool with nothing to pass over
- * consumes exactly the one random number it always did, and picks exactly the
- * row it always did. `undefined` means the window holds no row the network can
- * still take, which is a roster whose remaining values are all spoken for or
- * whose remaining rows all break a rule between values nothing draws.
- */
-function takeDrawableRosterRow(
-  ctx: GenerationContext,
-  pool: NcNode[],
-  from: number,
-  isDrawable: (row: NcNode) => boolean,
-): NcNode | undefined {
-  const window = pool.length - from;
-  if (window <= 0) return undefined;
-
-  const start = ctx.valueGen.randomInt(from, pool.length - 1);
-
-  for (let step = 0; step < window; step++) {
-    const index = from + ((start - from + step) % window);
-    const candidate = pool[index]!;
-    if (!isDrawable(candidate)) continue;
-
-    pool[index] = pool[from]!;
-    pool[from] = candidate;
-    return candidate;
-  }
-
-  return undefined;
-}
-
 export function getNodeCountBounds(
   stage: NodeCreationStage,
-  config: GenerationConfig,
+  config: FeasibilityConfig,
 ): { minNodes: number; maxNodes: number } {
   const behaviours = 'behaviours' in stage ? stage.behaviours : undefined;
   const minNodes =
@@ -975,205 +865,3 @@ export function getNodeCountBounds(
   return { minNodes, maxNodes: Math.max(maxNodes, minNodes) };
 }
 
-export function createNodesForStage(
-  ctx: GenerationContext,
-  stage: NodeCreationStage,
-  prompt: NodeDrawPrompt,
-  existingNodeCount: number,
-  stageNodeCount: number,
-  roster: RosterDraw,
-): NcNode[] {
-  const nodeType = getSubjectType(stage.subject, 'node');
-  if (nodeType === undefined) return [];
-
-  const nodeTypeDef = ctx.codebook.node?.[nodeType];
-  if (!nodeTypeDef) return [];
-
-  const { minNodes, maxNodes } = getNodeCountBounds(stage, ctx.config);
-  const remaining = maxNodes - stageNodeCount;
-  if (remaining <= 0) return [];
-
-  // "Has a roster" means the stage was given a roster entry at all — the key is
-  // present — regardless of how many rows it holds. This three-way distinction
-  // drives NameGeneratorRoster fallback: no entry (`pool` undefined) fabricates;
-  // an entry that is empty (roster known empty) or exhausted by an earlier stage
-  // (drawable pool empty) produces zero nodes. The drawable pool below excludes
-  // rows already used.
-  const hasRoster = roster.pool !== undefined;
-
-  const pool = roster.pool
-    ? roster.pool.filter((n) => !roster.used.has(n[entityPrimaryKeyProperty]))
-    : [];
-
-  const requested = Math.min(
-    ctx.valueGen.randomInt(minNodes, maxNodes),
-    remaining,
-  );
-  const count =
-    hasRoster && !roster.allowFabrication
-      ? Math.min(requested, pool.length)
-      : requested;
-
-  const promptId = prompt.id ?? uuid();
-  const additionalAttrs = getPromptAdditionalAttributes(
-    prompt.additionalAttributes,
-  );
-  const newNodes: NcNode[] = [];
-  let drawn = 0;
-
-  const scope = { entity: 'node', type: nodeType } as const;
-  const variableIds = Object.keys(nodeTypeDef.variables ?? {});
-  const constraints: EntityConstraints =
-    ctx.entityConstraints.node.get(nodeType) ?? new Map();
-
-  /** Every value the node is given rather than drawn, settled before the draw. */
-  const fixedValuesFor = (
-    row: NcNode | undefined,
-  ): Record<string, VariableValue> => {
-    if (row === undefined) return { ...additionalAttrs };
-
-    const rosterValues = row[entityAttributesProperty];
-    // The roster interface lets the roster value win a collision with a
-    // prompt attribute, while a name generator panel lets the prompt win.
-    return roster.allowFabrication
-      ? { ...rosterValues, ...additionalAttrs }
-      : { ...additionalAttrs, ...rosterValues };
-  };
-
-  const canComplete = completionCheckFor(constraints);
-
-  /**
-   * Whether the rules accept the assignment a row would be built from,
-   * memoised by the row itself.
-   *
-   * The verdict is a function of the row and the prompt's own attributes, both
-   * of which stand still for the whole draw, while `takeDrawableRosterRow`
-   * walks the window afresh for every node it is asked for — so a pool of
-   * hundreds is judged once per row here rather than once per row per node.
-   *
-   * Keyed by the row rather than by its primary key. Rows are data a caller
-   * hands in, and hand-built data can carry one key on two rows holding
-   * different values; a memo keyed that way would settle the second of them by
-   * the first one's values, copying a row the rules reject into the network or
-   * passing over one they accept, depending which of the two the walk reached
-   * first. The row is what the assignment is read from, so it is what the
-   * verdict belongs to.
-   *
-   * Only what the protocol settles is memoised. Whether the network can still
-   * take the assignment's `unique` values is not: that changes as nodes are
-   * built, and {@link rowIsDrawable} asks it afresh for every candidate.
-   */
-  const rowVerdicts = new WeakMap<NcNode, boolean>();
-  const rulesAllow = (
-    row: NcNode,
-    fixed: Record<string, VariableValue>,
-  ): boolean => {
-    const memoised = rowVerdicts.get(row);
-    if (memoised !== undefined) return memoised;
-
-    // A row whose value its own rules reject, or whose values break a rule
-    // between two of them or between one of them and a value the prompt fixes,
-    // is passed over exactly as one repeating a `unique` value is: no draw
-    // stands between those values and the finished node, so the row is simply
-    // not one this protocol can use. A row that breaks nothing itself but
-    // leaves the draw no value to satisfy a rule with is passed over for the
-    // same reason — the node it would build is one whose drawn half cannot be
-    // made to fit. Refusing instead would fail a roster of hundreds over rows
-    // the draw might never have reached.
-    const verdict =
-      ruleBrokenByFixedValues(constraints, fixed) === undefined &&
-      canComplete(fixed);
-    rowVerdicts.set(row, verdict);
-    return verdict;
-  };
-
-  /**
-   * Whether the run can build a node from this row.
-   *
-   * Every judgement a row is put to reads one assignment: the values the node
-   * will actually be written with, which `fixedValuesFor` settles by merging
-   * the row with the prompt's `additionalAttributes` in whichever order the
-   * stage's interface gives them. Judging the row as it arrived instead asks
-   * about values the node may never hold — a variable the prompt overrides is
-   * one the row never writes — and answers both ways round: a row the network
-   * could take is passed over, and a row whose finished node repeats a value
-   * the registry has already issued is drawn.
-   *
-   * A key the run has already spent is turned away before any of that. Rows are
-   * data a caller hands in, and hand-built data can put one key on two rows, but
-   * a key names one person: the roster interface drops every entry sharing a key
-   * as soon as one of them is added, and the session reducer refuses a second
-   * node arriving under a key the network holds. Read live rather than folded
-   * into `pool`, so the copy drawn is the one this walk reaches first and is
-   * judged by its own values — the reading the verdict memo above already gives
-   * a repeated key, where a copy the rules reject must not answer for a copy
-   * they accept.
-   */
-  const rowIsDrawable = (row: NcNode): boolean => {
-    if (roster.used.has(row[entityPrimaryKeyProperty])) return false;
-
-    const fixed = fixedValuesFor(row);
-    return rosterRowIsDrawable(ctx, scope, fixed) && rulesAllow(row, fixed);
-  };
-
-  for (let i = 0; i < count; i++) {
-    const nodeIndex = existingNodeCount + i;
-
-    const wantsRosterRow =
-      drawn < pool.length &&
-      (!roster.allowFabrication ||
-        ctx.valueGen.randomFloat(0, 1) < ctx.config.rosterDrawRatio);
-    const picked = wantsRosterRow
-      ? takeDrawableRosterRow(ctx, pool, drawn, rowIsDrawable)
-      : undefined;
-
-    // A roster stage builds nodes only from rows, so a pool holding none the
-    // network can still take ends the stage — the alternative would be
-    // fabricating a person for a stage whose people all come from the roster.
-    if (wantsRosterRow && picked === undefined && !roster.allowFabrication) {
-      break;
-    }
-
-    let primaryKey = uuid();
-    const fixed = fixedValuesFor(picked);
-
-    if (picked) {
-      drawn += 1;
-
-      primaryKey = picked[entityPrimaryKeyProperty];
-      roster.used.add(primaryKey);
-    }
-
-    // A roster row and a prompt's `additionalAttributes` settle their variables
-    // before anything is drawn, so the rest of the node is generated around the
-    // values it actually ends up holding. Generating first and overwriting
-    // after would leave a `sameAs`, `differentFrom` or comparator spanning a
-    // fixed and a drawn variable broken on the finished node.
-    const hasFixed = Object.keys(fixed).length > 0;
-    const generated = generateAttributesForEntity(
-      ctx,
-      scope,
-      nodeIndex,
-      hasFixed
-        ? {
-            existing: fixed,
-            only: new Set(variableIds.filter((id) => !(id in fixed))),
-          }
-        : undefined,
-    );
-
-    const attrs = { ...generated, ...fixed };
-    if (hasFixed) claimFixedValues(ctx, scope, fixed);
-
-    const node: NcNode = {
-      [entityPrimaryKeyProperty]: primaryKey,
-      type: nodeType,
-      [entityAttributesProperty]: attrs,
-      stageId: stage.id,
-      promptIDs: [promptId],
-    };
-    newNodes.push(node);
-  }
-
-  return newNodes;
-}

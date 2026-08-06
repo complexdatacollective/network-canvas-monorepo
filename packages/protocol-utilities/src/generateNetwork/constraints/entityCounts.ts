@@ -10,7 +10,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import type { GenerationConfig } from '../config';
+import type { FeasibilityConfig } from '../config';
 import type { StageOfType } from '../context';
 import {
   getNodeCountBounds,
@@ -569,7 +569,7 @@ export function nodeCountFor(
  * and an under-count lets a `unique` variable pass feasibility and then run out
  * of values partway through the run.
  */
-export function pedigreeNodeCeiling(config: GenerationConfig): number {
+export function pedigreeNodeCeiling(config: FeasibilityConfig): number {
   const { min, max } = config.familyPedigreeNodeCount;
   return Math.max(max, min);
 }
@@ -839,7 +839,7 @@ function createsEdges(probability: { min: number; max: number }): boolean {
  */
 export function worstCaseEntityCounts(
   stages: Stage[],
-  config: GenerationConfig,
+  config: FeasibilityConfig,
   externalData?: Record<string, NcNode[]>,
   nodeConstraints?: NodeConstraintsFor,
 ): WorstCaseCounts {

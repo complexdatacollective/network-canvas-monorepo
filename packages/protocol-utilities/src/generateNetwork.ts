@@ -1,14 +1,13 @@
-import { v4 as uuid } from 'uuid';
-
-import {
-  isStageSkipped,
-  resolveSkipLogicDestinationIndex,
-} from '@codaco/network-query';
-import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import type {
+  Stage,
+  StructuralCodebook,
+  SyntheticCount,
+} from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
-import { reservePromptFixedValues } from './generateNetwork/attributes';
+import { analyseStageEffects } from './generateNetwork/analyse/stageEffects';
 import {
+  type FeasibilityConfig,
   type GenerationConfig,
   resolveGenerationConfig,
 } from './generateNetwork/config';
@@ -23,33 +22,10 @@ import { analyseFeasibility } from './generateNetwork/constraints/feasibility';
 import { reachableStagesForFeasibility } from './generateNetwork/constraints/reachableStages';
 import type { EntityConstraints } from './generateNetwork/constraints/types';
 import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
-import { isContentStage } from './generateNetwork/contentStages';
-import type {
-  GenerationContext,
-  NetworkDraft,
-} from './generateNetwork/context';
-import { buildCurrentNetwork } from './generateNetwork/filtering';
-import { markStageInProgress } from './generateNetwork/inProgress';
-import {
-  countPromptFixedValues,
-  releaseExternalRosterValues,
-  reserveExternalRosterValues,
-} from './generateNetwork/nodes';
-import {
-  handleAlterEdgeForm,
-  handleAlterForm,
-  handleCategoricalBin,
-  handleDyadCensus,
-  handleEgoForm,
-  handleFamilyPedigree,
-  handleGeospatial,
-  handleNameGenerators,
-  handleNetworkComposer,
-  handleOrdinalBin,
-  handleSociogram,
-  handleTieStrengthCensus,
-  reserveFamilyPedigreeFixedValues,
-} from './generateNetwork/stageHandlers';
+import type { GenerationContext } from './generateNetwork/context';
+import { materialiseSession } from './generateNetwork/materialise/materialiseSession';
+import { planNetwork } from './generateNetwork/plan/networkPlan';
+import { resolveNodeCount } from './generateNetwork/plan/resolveSynthetic';
 import { ValueGenerator } from './ValueGenerator';
 
 export type GenerateNetworkParams = {
@@ -66,9 +42,8 @@ export type GenerateNetworkParams = {
    * a roster stage fabricates people, a name generator fabricates as usual. An
    * **empty array** means "roster known to be empty" (the asset resolved but had
    * no rows, or a panel filtered them all out): a roster stage adds nobody,
-   * while a name generator still fabricates to its node counts via its manual
-   * add path. A **non-empty** array draws from those rows (a roster stage only
-   * from them; a name generator mixes them with fabricated people).
+   * while a name generator still fabricates to its planned counts. A
+   * **non-empty** array draws from those rows (a roster stage only from them).
    */
   externalData?: Record<string, NcNode[]>;
   /** Seed for deterministic output. A random seed is used when omitted. */
@@ -83,7 +58,7 @@ export type GenerateNetworkParams = {
    * types where complete data is preferable (e.g. forms).
    */
   inProgressStageIndex?: number;
-  /** Overrides for generation tuning constants. See {@link GenerationConfig}. */
+  /** Overrides for run-level session controls. See {@link GenerationConfig}. */
   config?: Partial<GenerationConfig>;
 };
 
@@ -94,6 +69,58 @@ export type GenerateNetworkResult = {
   droppedOut: boolean;
 };
 
+/** A ceiling no draw from the descriptor can exceed (six sigma for the open
+ * families), for seed-independent worst-case feasibility counting. */
+function countCeiling(count: SyntheticCount): number {
+  switch (count.distribution) {
+    case 'constant':
+      return count.value;
+    case 'uniform':
+      return count.max;
+    case 'poisson':
+      return count.max ?? Math.ceil(count.mean + 6 * Math.sqrt(count.mean) + 1);
+    case 'normal':
+      return count.max ?? Math.max(0, Math.ceil(count.mean + 6 * count.sd));
+  }
+}
+
+/**
+ * Worst-case bounds feasibility counts against, derived from the codebook's
+ * declared populations. Edge probabilities pin at 1: a declared density may
+ * reach every eligible pair, and refusals must stay conservative.
+ */
+function deriveFeasibilityConfig(
+  codebook: StructuralCodebook,
+  creatableNodeTypes: ReadonlySet<string>,
+  today: string,
+): FeasibilityConfig {
+  let nodeCap = 1;
+  for (const [type, definition] of Object.entries(codebook.node ?? {})) {
+    const ceiling = countCeiling(
+      resolveNodeCount(definition, {
+        creatable: creatableNodeTypes.has(type),
+      }),
+    );
+    nodeCap = Math.max(nodeCap, ceiling);
+  }
+  return {
+    nodeCount: { min: 0, max: nodeCap },
+    rosterDrawRatio: 0.7,
+    sociogramEdgeProbability: { min: 0, max: 1 },
+    censusEdgeProbability: { min: 0, max: 1 },
+    networkComposerEdgeProbability: { min: 0, max: 1 },
+    familyPedigreeNodeCount: { min: 0, max: nodeCap },
+    today,
+  };
+}
+
+/**
+ * Generates a complete synthetic session: analyse the stages, plan the final
+ * network from the codebook's `synthetic` metadata (or its documented
+ * defaults), then materialise the plan back through the stage sequence so
+ * entities appear where the interview would create them and stage metadata
+ * matches the final graph.
+ */
 export function generateNetwork(
   params: GenerateNetworkParams,
 ): GenerateNetworkResult {
@@ -119,12 +146,8 @@ export function generateNetwork(
   // A reachable NetworkComposer field carries the control it renders its
   // variable with. Where an ordinary form also renders that variable through
   // the codebook control, the generated value must satisfy both. Fold their
-  // common domain into the codebook before anything reads it, so the count and
-  // the draw are given the same one; see `applyComposerRenderings`.
-  //
-  // Its own refusal comes first and alone: where reachable controls have no
-  // common window at one resolution there is nothing for feasibility to say
-  // about the variable yet.
+  // common domain into the codebook before anything reads it; see
+  // `applyComposerRenderings`.
   const composed = applyComposerRenderings(
     codebook,
     feasibilityStages,
@@ -138,15 +161,20 @@ export function generateNetwork(
   }
   const renderedCodebook = composed.codebook;
 
+  const effects = analyseStageEffects(stages);
+
   // Refused before anything is drawn, and before the seed is consulted: a
   // protocol whose declared rules no value can satisfy fails the same way on
   // every seed rather than only on the ones that happen to reach the
-  // contradiction. The roster rows go in because they bound how many people a
-  // roster stage can add, and a stage that adds none needs no values at all.
+  // contradiction.
   const conflicts = analyseFeasibility(
     renderedCodebook,
     feasibilityStages,
-    resolvedConfig,
+    deriveFeasibilityConfig(
+      renderedCodebook,
+      effects.creatableNodeTypes,
+      resolvedConfig.today,
+    ),
     externalData,
     respectSkipLogicAndFiltering,
   );
@@ -159,11 +187,9 @@ export function generateNetwork(
     resolvedConfig.today,
   );
 
-  // Read once and applied to both the node and the edge codebook: the same
-  // variable ids that feasibility declined to analyse must also be drawn
-  // without their rules, or the draw exhausts a value space no rule was ever
-  // going to be enforced against. No edge type can hold one (both binning
-  // stages take a node subject), so the edge map simply never matches.
+  // The same variable ids that feasibility declined to analyse must also be
+  // drawn without their rules, or the draw exhausts a value space no rule was
+  // ever going to be enforced against.
   const binOnly = collectBinOnlyVariables(feasibilityStages);
 
   const constraintsByType = (
@@ -201,152 +227,14 @@ export function generateNetwork(
     },
   };
 
-  // Before the first stage runs, so a value a later prompt fixes is out of the
-  // way of the draws that come before it. Feasibility has already refused the
-  // protocols where no assignment works, so what is left here is the ones where
-  // a different draw is all that was needed.
-  reservePromptFixedValues(
+  const plan = planNetwork(ctx, effects);
+
+  return materialiseSession({
     ctx,
-    countPromptFixedValues(stages, resolvedConfig, externalData),
-  );
-  // A pedigree's ego flag and its edges' relationship values are fixed by its
-  // stage rather than by a prompt, and are held back here for the same reason.
-  reserveFamilyPedigreeFixedValues(ctx, stages);
-  // Roster rows are values the run is handed rather than ones it issues, so the
-  // draws that come before their stage are steered off them here too. Each
-  // stage's hold is given back once the stage has run.
-  reserveExternalRosterValues(ctx, stages);
-
-  const draft: NetworkDraft = {
-    egoUid: uuid(),
-    egoAttributes: {},
-    nodes: [],
-    edges: [],
-    stageMetadata: {},
-  };
-
-  const totalStages = stages.length;
-  let currentStep = 0;
-  let droppedOut = false;
-
-  for (let i = 0; i < stages.length; i++) {
-    const stage = stages[i]!;
-    // Captured before the switch narrows `stage`, so the exhaustive-default
-    // branch can still name an unsupported runtime type.
-    const stageType = stage.type;
-
-    if (respectSkipLogicAndFiltering && stage.skipLogic) {
-      const { skipLogic } = stage;
-      if (isStageSkipped(skipLogic, buildCurrentNetwork(draft))) {
-        // A stage that is skipped draws nobody, so the people its roster held
-        // back are people nobody is waiting for.
-        releaseExternalRosterValues(ctx, stage);
-        const { destination } = skipLogic;
-        if (destination) {
-          const destinationIndex = resolveSkipLogicDestinationIndex(
-            destination,
-            stages,
-            i,
-          );
-          if (destinationIndex !== undefined) {
-            i = destinationIndex - 1;
-          }
-        }
-        continue;
-      }
-    }
-
-    if (simulateDropOut) {
-      const dropOutChance = ((i + 1) / totalStages) * ctx.config.dropOutFactor;
-      if (valueGen.randomFloat(0, 1) < dropOutChance) {
-        droppedOut = true;
-        currentStep = i;
-        break;
-      }
-    }
-
-    // Content stages run no handler at all: they add no node or edge and write
-    // onto none. NarrativePedigree is one of them because it reads the shared
-    // network its source FamilyPedigree stage already wrote.
-    //
-    // Narrowed away here rather than cased below, so that `CONTENT_STAGE_TYPES`
-    // and this dispatch cannot come to disagree about what a stage does — which
-    // matters because `analyseFeasibility` reads that list to tell a type only
-    // such a stage names from one carrying generated values. Teaching one of
-    // them to write would stop type-checking as a `case`, and dropping one from
-    // the list sends it into the switch, where it is refused as unsupported.
-    if (!isContentStage(stage)) {
-      switch (stage.type) {
-        case 'NameGenerator':
-        case 'NameGeneratorQuickAdd':
-        case 'NameGeneratorRoster':
-          handleNameGenerators(ctx, draft, stage);
-          break;
-        case 'Sociogram':
-          handleSociogram(ctx, draft, stage);
-          break;
-        case 'DyadCensus':
-        case 'OneToManyDyadCensus':
-          handleDyadCensus(ctx, draft, stage, i);
-          break;
-        case 'TieStrengthCensus':
-          handleTieStrengthCensus(ctx, draft, stage, i);
-          break;
-        case 'OrdinalBin':
-          handleOrdinalBin(ctx, draft, stage);
-          break;
-        case 'CategoricalBin':
-          handleCategoricalBin(ctx, draft, stage);
-          break;
-        case 'EgoForm':
-          handleEgoForm(ctx, draft);
-          break;
-        case 'AlterForm':
-          handleAlterForm(ctx, draft, stage);
-          break;
-        case 'AlterEdgeForm':
-          handleAlterEdgeForm(ctx, draft, stage);
-          break;
-        case 'FamilyPedigree':
-          handleFamilyPedigree(ctx, draft, stage, i);
-          break;
-        case 'Geospatial':
-          handleGeospatial(ctx, draft, stage);
-          break;
-        case 'NetworkComposer':
-          handleNetworkComposer(ctx, draft, stage);
-          break;
-        default:
-          throw new Error(
-            `Unsupported stage type "${stageType}". ` +
-              'Synthetic data generation does not yet support this stage type.',
-          );
-      }
-    }
-
-    releaseExternalRosterValues(ctx, stage);
-  }
-
-  // Applied as a post-pass: node creation populates every codebook variable, and
-  // later stages may rewrite the same variable, so values must be cleared after
-  // all stages have run.
-  const inProgressStage =
-    inProgressStageIndex !== undefined
-      ? stages[inProgressStageIndex]
-      : undefined;
-  if (inProgressStage) {
-    markStageInProgress(ctx, draft, inProgressStage);
-  }
-
-  if (!droppedOut) {
-    currentStep = totalStages;
-  }
-
-  return {
-    network: buildCurrentNetwork(draft),
-    stageMetadata:
-      Object.keys(draft.stageMetadata).length > 0 ? draft.stageMetadata : null,
-    currentStep,
-    droppedOut,
-  };
+    effects,
+    plan,
+    stages,
+    simulateDropOut,
+    inProgressStageIndex,
+  });
 }

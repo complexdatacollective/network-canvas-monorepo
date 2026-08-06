@@ -9,7 +9,7 @@ import {
 } from '@codaco/protocol-validation';
 import type { NcNode, VariableValue } from '@codaco/shared-consts';
 
-import type { ResolvedGenerationConfig } from '../config';
+import type { FeasibilityConfig } from '../config';
 import { isContentStage } from '../contentStages';
 import {
   collectPromptFixedAssignments,
@@ -290,7 +290,7 @@ function regeneratedEdgeAttributes(
  */
 function countPedigreeFixedValues(
   stages: Stage[],
-  config: ResolvedGenerationConfig,
+  config: FeasibilityConfig,
   respectSkipLogicAndFiltering: boolean,
 ): {
   node: Map<string, PromptFixedValues>;
@@ -756,7 +756,7 @@ function adaptDelegatedContradiction(
 
 function analyseEntity(
   scope: EntityScope,
-  config: ResolvedGenerationConfig,
+  config: FeasibilityConfig,
 ): ConstraintConflict[] {
   const entity = buildEntityConstraints(
     scope.variables,
@@ -1343,7 +1343,7 @@ function solvedComponentRules(
 export function analyseFeasibility(
   codebook: StructuralCodebook,
   stages: Stage[],
-  config: ResolvedGenerationConfig,
+  config: FeasibilityConfig,
   externalData?: Record<string, NcNode[]>,
   respectSkipLogicAndFiltering = false,
 ): ConstraintConflict[] {

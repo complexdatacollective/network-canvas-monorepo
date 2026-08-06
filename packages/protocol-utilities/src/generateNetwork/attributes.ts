@@ -14,7 +14,6 @@ import {
 } from './constraints/generateEntityAttributes';
 import type { EntityConstraints } from './constraints/types';
 import type { GenerationContext } from './context';
-import type { PromptFixedValues } from './nodes';
 
 export function toVariableEntry(id: string, variable: Variable): VariableEntry {
   const options =
@@ -76,55 +75,6 @@ export function generateAttributesForEntity(
   );
 }
 
-function applyRosterReservations(
-  ctx: GenerationContext,
-  ref: EntityScopeRef,
-  rows: readonly NcNode[],
-  hold: boolean,
-): void {
-  if (rows.length === 0) return;
-  const registry = scopeKey(ref);
-
-  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
-    for (const row of rows) {
-      for (const id of memberIds) {
-        const value = row[entityAttributesProperty][id];
-        if (value === undefined) continue;
-        if (hold) ctx.uniqueRegistry.reserve(registry, slot, value);
-        else ctx.uniqueRegistry.unreserve(registry, slot, value);
-      }
-    }
-  }
-}
-
-/**
- * Holds every `unique` value a drawable roster row carries back from generated
- * draws. A row is a real person the run may still add, carrying values the
- * researcher supplied rather than ones the registry issued, so a fabricated
- * entity must not be issued a value a row is about to arrive holding.
- */
-export function reserveRosterValues(
-  ctx: GenerationContext,
-  ref: EntityScopeRef,
-  rows: readonly NcNode[],
-): void {
-  applyRosterReservations(ctx, ref, rows, true);
-}
-
-/**
- * Gives those reservations back, once the rows are no longer drawable. A row
- * that was never drawn holds nothing, and a value reserved for it would
- * otherwise stay unavailable to entities the rest of the run creates. A row
- * that was drawn keeps its value through the claim made when it arrived.
- */
-export function releaseRosterValues(
-  ctx: GenerationContext,
-  ref: EntityScopeRef,
-  rows: readonly NcNode[],
-): void {
-  applyRosterReservations(ctx, ref, rows, false);
-}
-
 /**
  * Whether the network can still take every `unique` value the node built from a
  * roster row would hold.
@@ -166,47 +116,6 @@ export function rosterRowIsDrawable(
   return true;
 }
 
-/**
- * Holds back every `unique` value a prompt's `additionalAttributes` will fix,
- * for the whole run and before any stage draws.
- *
- * A fixed value only reaches the registry when the node carrying it is built,
- * which is too late for the stages that ran first: a boolean `unique` variable
- * drawn on an earlier stage takes the first value of its sequence, a later
- * prompt fixes that same value, and the finished network holds it twice — the
- * duplicate `unique` forbids, on every seed. The prompt's value is protocol
- * rather than draw, so it is known before the run starts and can be kept out of
- * the earlier draw's way.
- *
- * Reserved rather than claimed, because a claim is a refusal: a prompt whose
- * stage the run never reaches, or that creates no node, would take a value out
- * of circulation for people who really needed it, and a value space sized to
- * the entity count would then run out. A reservation only redirects a draw that
- * has somewhere else to go.
- *
- * `fixedByType` is the same tally feasibility counts against the node ceiling,
- * so a value it found could never land — every row of a roster stage already
- * supplying the variable — is absent here too and reserves nothing.
- */
-export function reservePromptFixedValues(
-  ctx: GenerationContext,
-  fixedByType: Map<string, PromptFixedValues>,
-): void {
-  for (const [type, byVariable] of fixedByType) {
-    const ref: EntityScopeRef = { entity: 'node', type };
-    const registry = scopeKey(ref);
-
-    for (const [slot, memberIds] of uniqueSlotMembers(
-      constraintsFor(ctx, ref),
-    )) {
-      for (const id of memberIds) {
-        for (const { value } of byVariable.get(id)?.values() ?? []) {
-          ctx.uniqueRegistry.reserve(registry, slot, value);
-        }
-      }
-    }
-  }
-}
 
 /**
  * Records the `unique` values an entity was given from outside the registry — a
