@@ -111,10 +111,11 @@ describe('solver search budget exhaustion', () => {
       expect(value).toBeLessThanOrEqual(4);
     }
 
-    // One draw seeded the abandoned solve and one first-attempt draw fell to
-    // each of the six greedy values: the stream moves the same distance
-    // whether the search succeeded, failed, or ran out of budget.
-    expect(spy).toHaveBeenCalledTimes(7);
+    // Only the abandoned solve's shuffle seed reads the shared stream; the
+    // six greedy value draws each consume their own variable's semantic
+    // substream, so however the search ends — success, failure, or budget
+    // exhaustion — no other consumer's sequence moves at all.
+    expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
 });

@@ -1,5 +1,6 @@
-import { en, Faker } from '@faker-js/faker';
+import type { Faker } from '@faker-js/faker';
 
+import type { Variable } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
 
 import {
@@ -28,6 +29,20 @@ import {
   TEXT_ALPHABET_SIZE,
   textDrawLength,
 } from './generateNetwork/constraints/valueSpace';
+import {
+  sampleContinuous,
+  sampleWeightedIndex,
+  sampleWithoutReplacement,
+} from './generateNetwork/plan/distributions';
+import {
+  createRandomSource,
+  type RandomSource,
+  type RandomStream,
+} from './generateNetwork/plan/random';
+import {
+  type ResolvedVariableSynthetic,
+  resolveVariableSynthetic,
+} from './generateNetwork/plan/resolveSynthetic';
 import type { VariableEntry } from './types';
 
 const DISTINCT_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -38,6 +53,13 @@ const DISTINCT_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
  * where `addSteps` emits a malformed bound that reparses as year 0.
  */
 const UNIQUE_DATE_REACH_YEARS = 1000;
+
+/** Days per step at each date resolution, for sdDays → step conversion. */
+const DAYS_PER_STEP: Record<DateResolution, number> = {
+  full: 1,
+  month: 30.44,
+  year: 365.25,
+};
 
 // valueSpaceSize's unique-text feasibility maths assumes distinctText draws
 // from exactly TEXT_ALPHABET_SIZE symbols. If this literal ever drifted from
@@ -89,10 +111,6 @@ function fitsLength(value: string, constraints: VariableConstraints): boolean {
   );
 }
 
-function isNameVariable(entry: VariableEntry): boolean {
-  return entry.name.trim().toLocaleLowerCase() === 'name';
-}
-
 function clamp(value: number, min?: number, max?: number): number {
   let result = value;
   if (max !== undefined) result = Math.min(result, max);
@@ -100,17 +118,57 @@ function clamp(value: number, min?: number, max?: number): number {
   return result;
 }
 
+/**
+ * Draws values that are both rule-satisfying and distribution-shaped.
+ *
+ * Free draws sample the variable's resolved `synthetic` descriptor (declared
+ * metadata or documented defaults) from a semantic substream owned by that
+ * variable, so an unrelated variable or entity can never perturb another's
+ * sequence. Sequence draws (`distinctSeq`) keep the exhaustive value-space
+ * walks the `unique` machinery depends on — realism yields to satisfiability
+ * exactly where it always has.
+ */
 export class ValueGenerator {
-  private faker: Faker;
-  private nameFaker: Faker;
+  private readonly source: RandomSource;
   private readonly today: string;
+  private readonly resolved = new Map<string, ResolvedVariableSynthetic>();
 
   constructor(seed: number, today: string = todayYmd()) {
-    this.faker = new Faker({ locale: [en] });
-    this.faker.seed(seed);
-    this.nameFaker = new Faker({ locale: [en] });
-    this.nameFaker.seed(seed);
+    this.source = createRandomSource(seed);
     this.today = today;
+  }
+
+  /**
+   * The run's semantic stream source, shared with the planner so every
+   * consumer draws from one memoised stream per path.
+   */
+  get randomSource(): RandomSource {
+    return this.source;
+  }
+
+  /** Stream for draws not owned by one variable (shuffles, legacy helpers). */
+  private general(): RandomStream {
+    return this.source.stream('general');
+  }
+
+  private streamFor(entry: VariableEntry): RandomStream {
+    return this.source.stream('variable', entry.id);
+  }
+
+  /**
+   * Resolution is memoised per variable id: one run resolves each variable
+   * once, and the Architect-facing resolver stays the single source of what
+   * defaults apply.
+   */
+  private resolvedFor(entry: VariableEntry): ResolvedVariableSynthetic {
+    const cached = this.resolved.get(entry.id);
+    if (cached) return cached;
+    // A VariableEntry mirrors the codebook variable's synthetic-relevant
+    // fields (type, name, options, validation, synthetic) structurally;
+    // resolution reads nothing else.
+    const resolved = resolveVariableSynthetic(entry as unknown as Variable);
+    this.resolved.set(entry.id, resolved);
+    return resolved;
   }
 
   /**
@@ -133,7 +191,7 @@ export class ValueGenerator {
   }
 
   generateName(): string {
-    return this.faker.person.firstName();
+    return this.source.stream('names').faker().person.firstName();
   }
 
   generatePromptText(stageType: string): string {
@@ -176,6 +234,18 @@ export class ValueGenerator {
     return stageType ?? 'Stage';
   }
 
+  generatePresetLabel(): string {
+    return this.source.stream('labels').faker().word.words(2);
+  }
+
+  randomInt(min: number, max: number): number {
+    return this.general().int(min, max);
+  }
+
+  randomFloat(min: number, max: number): number {
+    return this.general().float(min, max);
+  }
+
   /**
    * Builds the shortest conventional personal name that satisfies the field's
    * length rules. A sampled first name that is too short grows to first + last,
@@ -209,21 +279,45 @@ export class ValueGenerator {
     return fitsLength(fullName, constraints) ? fullName : undefined;
   }
 
-  generatePresetLabel(): string {
-    return this.faker.word.words(2);
-  }
-
-  randomInt(min: number, max: number): number {
-    // faker.number.int throws on an inverted range; a caller passing min > max
-    // (e.g. a name generator with minNodes above maxNodes) collapses to min.
-    if (min > max) {
-      return min;
+  /**
+   * One curated-generator draw, fitted to the field's length rules. Only
+   * `personName` can conclude that no fitting value exists (its compositions
+   * have a shortest form); every other recipe truncates or pads.
+   */
+  private generateText(
+    generator: ResolvedVariableSynthetic & { kind: 'text' },
+    constraints: VariableConstraints,
+    faker: Faker,
+  ): string | undefined {
+    switch (generator.generator) {
+      case 'personName':
+        return this.generateConstrainedName(constraints, faker);
+      case 'firstName':
+        return fitToLength(faker.person.firstName(), constraints);
+      case 'lastName':
+        return fitToLength(faker.person.lastName(), constraints);
+      case 'placeName':
+        return fitToLength(faker.location.city(), constraints);
+      case 'organisationName':
+        return fitToLength(faker.company.name(), constraints);
+      case 'occupation':
+        return fitToLength(faker.person.jobTitle(), constraints);
+      case 'email':
+        return fitToLength(faker.internet.email(), constraints);
+      case 'phoneNumber':
+        return fitToLength(faker.phone.number(), constraints);
+      case 'streetAddress':
+        return fitToLength(faker.location.streetAddress(), constraints);
+      case 'sentence':
+        return fitToLength(faker.lorem.sentence(), constraints);
+      case 'paragraph':
+        return fitToLength(faker.lorem.paragraph(), constraints);
+      case 'neutralWords':
+        return fitToLength(
+          faker.word.words({ count: { min: 1, max: 3 } }),
+          constraints,
+        );
     }
-    return this.faker.number.int({ min, max });
-  }
-
-  randomFloat(min: number, max: number): number {
-    return this.faker.number.float({ min, max });
   }
 
   generateConstrained(
@@ -233,17 +327,14 @@ export class ValueGenerator {
   ): VariableValue {
     const { entry, constraints } = variable;
     const seq = opts?.distinctSeq;
+    const stream = this.streamFor(entry);
 
     switch (entry.type) {
       case 'text': {
         // Belt to `analyseFeasibility`'s refusal, and the last point before a
         // string of the declared length is allocated. `fitToLength` pads to
-        // `minLength` on both paths below, so a floor past the cap is where the
-        // hundreds of megabytes — or the `RangeError` — would come from.
-        // Reaching it means the value was generated without the feasibility
-        // pass that turns such a protocol away, so it throws rather than
-        // allocating, naming the variable the way a researcher-facing refusal
-        // does.
+        // `minLength` on both paths below, so a floor past the cap is where
+        // the hundreds of megabytes — or the `RangeError` — would come from.
         if (
           constraints.minLength !== undefined &&
           constraints.minLength > MAX_TEXT_DRAW_LENGTH
@@ -253,37 +344,27 @@ export class ValueGenerator {
           );
         }
 
-        const nameVariable = isNameVariable(entry);
-        let attemptedRealisticName = false;
-        if (nameVariable && opts?.preferRealisticName === true) {
-          attemptedRealisticName = true;
-          const realisticName = this.generateConstrainedName(
+        // A first attempt tries the realistic recipe even when a distinct
+        // sequence number is supplied: the caller verifies uniqueness and
+        // retries, so realism only yields to the exhaustive walk once a
+        // recipe draw has actually collided.
+        const resolved = this.resolvedFor(entry);
+        if (
+          resolved.kind === 'text' &&
+          (seq === undefined || opts?.preferRealisticName === true)
+        ) {
+          const value = this.generateText(
+            resolved,
             constraints,
-            this.nameFaker,
+            stream.faker(),
           );
-          if (realisticName !== undefined) return realisticName;
+          if (value !== undefined) return value;
         }
 
-        if (seq !== undefined || (nameVariable && constraints.unique)) {
-          return fitToLength(
-            distinctText(seq ?? index, textDrawLength(constraints)),
-            constraints,
-          );
-        }
-
-        if (nameVariable) {
-          return (
-            (attemptedRealisticName
-              ? undefined
-              : this.generateConstrainedName(constraints, this.faker)) ??
-            fitToLength(
-              distinctText(index, textDrawLength(constraints)),
-              constraints,
-            )
-          );
-        }
-
-        return fitToLength(this.faker.person.firstName(), constraints);
+        return fitToLength(
+          distinctText(seq ?? index, textDrawLength(constraints)),
+          constraints,
+        );
       }
 
       case 'number': {
@@ -292,25 +373,33 @@ export class ValueGenerator {
         const min = Math.ceil(lowerBound);
         const max = Math.floor(upperBound);
 
+        const resolved = this.resolvedFor(entry);
+        const descriptor =
+          resolved.kind === 'number'
+            ? resolved.descriptor
+            : ({
+                distribution: 'uniform',
+                min: lowerBound,
+                max: upperBound,
+              } as const);
+
         // A range such as [10.5, 10.7] holds no integer. The schema does not
         // require number values to be whole, so draw inside the declared range
         // rather than emitting the nearest integer outside it.
         if (max < min) {
-          // A redraw has to land somewhere the earlier draws did not, and a
-          // fresh random float promises nothing of the kind: a `unique` number
-          // in a fractional range used to spend its whole redraw budget
-          // recolliding, and threw on a protocol `valueSpaceSize` had just
-          // called wide enough. The sequence walks exactly the values that
-          // count describes, in the order a `unique` slot consumes them.
+          // The sequence walks exactly the values `valueSpaceSize` counts, in
+          // the order a `unique` slot consumes them.
           const grid = decimalGrid(lowerBound, upperBound);
           if (seq !== undefined) return decimalGridValueAt(grid, seq);
 
           if (upperBound <= lowerBound) return lowerBound;
           return clamp(
             Number(
-              this.randomFloat(lowerBound, upperBound).toFixed(
-                SCALAR_DECIMAL_PLACES,
-              ),
+              sampleContinuous(
+                descriptor,
+                { min: lowerBound, max: upperBound },
+                stream,
+              ).toFixed(SCALAR_DECIMAL_PLACES),
             ),
             lowerBound,
             upperBound,
@@ -318,13 +407,26 @@ export class ValueGenerator {
         }
 
         if (seq !== undefined) return min + (seq % (max - min + 1));
-        return this.randomInt(min, max);
+        // Whole values wherever the window admits them, matching how real
+        // participants answer integer controls; the distribution shapes which
+        // whole value is likely.
+        return clamp(
+          Math.round(
+            sampleContinuous(
+              descriptor,
+              { min: lowerBound, max: upperBound },
+              stream,
+            ),
+          ),
+          min,
+          max,
+        );
       }
 
       case 'scalar': {
-        // These bounds are the normalised scale narrowed by whatever comparison
-        // rules reached this draw, so they are folded back into it: no scalar
-        // value the interview can collect, or its slider render, lies outside.
+        // These bounds are the normalised scale narrowed by whatever
+        // comparison rules reached this draw, so they are folded back into
+        // it: no scalar value the interview can collect lies outside.
         const min = clamp(
           constraints.minValue ?? SCALAR_DOMAIN.minValue,
           SCALAR_DOMAIN.minValue,
@@ -336,19 +438,24 @@ export class ValueGenerator {
           SCALAR_DOMAIN.maxValue,
         );
 
-        // The same sequence a fractional number walks, for the same reason: a
-        // scalar is drawn on the same grid with the same clamp, so a redraw
-        // that went back to the random stream could recollide until the budget
-        // ran out on a space `valueSpaceSize` had counted as wide enough.
         if (seq !== undefined) {
           return decimalGridValueAt(decimalGrid(min, max), seq);
         }
 
         if (max <= min) return min;
+        const resolved = this.resolvedFor(entry);
+        const descriptor =
+          resolved.kind === 'scalar'
+            ? resolved.descriptor
+            : ({ distribution: 'uniform' } as const);
         // Round first: rounding a clamped value can push it back outside the
         // bound it was just brought inside.
         return clamp(
-          Number(this.randomFloat(min, max).toFixed(SCALAR_DECIMAL_PLACES)),
+          Number(
+            sampleContinuous(descriptor, { min, max }, stream).toFixed(
+              SCALAR_DECIMAL_PLACES,
+            ),
+          ),
           min,
           max,
         );
@@ -360,77 +467,140 @@ export class ValueGenerator {
         const hasDefaultPair = values.includes(false) && values.includes(true);
         if (seq !== undefined && hasDefaultPair) return seq % 2 === 0;
 
-        const randomBoolean =
-          seq === undefined ? this.faker.datatype.boolean() : undefined;
-        if (randomBoolean !== undefined && hasDefaultPair) return randomBoolean;
+        if (seq === undefined && hasDefaultPair) {
+          const resolved = this.resolvedFor(entry);
+          const probabilityTrue =
+            resolved.kind === 'boolean' ? resolved.probabilityTrue : 0.5;
+          return stream.bool(probabilityTrue);
+        }
 
         const value = values[(seq ?? 0) % values.length];
         return value ?? null;
       }
 
       case 'ordinal': {
-        // Walked over the values the options offer rather than over the options
-        // themselves, the way the value-space count, the solver's domains and
-        // the categorical draw all read an option list. The schema requires two
-        // options, not two values, so an imported list can write one value under
-        // many labels; indexing entries then meets that value once per entry,
-        // and a `unique` variable spends its whole redraw budget on it before
-        // the sequence reaches the next value — refusing a protocol the count
-        // had just called satisfiable. A free draw walks the values for the
-        // milder version of the same reason: answering with whichever value is
-        // written most often samples the labels rather than the data.
-        //
-        // A list whose values are already distinct is unaffected, first
-        // occurrences being kept in order.
+        // Walked over the values the options offer rather than over the
+        // options themselves — an imported list can write one value under
+        // many labels, and a `unique` walk must meet each value once.
         const values = distinctOptionValues(entry);
         if (values.length === 0) return null;
-        const pick = seq ?? index;
-        return values[pick % values.length] ?? null;
+        if (seq !== undefined) return values[seq % values.length] ?? null;
+
+        const resolved = this.resolvedFor(entry);
+        if (resolved.kind === 'ordinal' && resolved.values.length > 0) {
+          return (
+            resolved.values[sampleWeightedIndex(resolved.weights, stream)] ??
+            null
+          );
+        }
+        return values[index % values.length] ?? null;
       }
 
       case 'categorical': {
-        // Drawn from the values the options offer rather than from the options
-        // themselves: a selection is a set, so two entries carrying one value
-        // are one thing to pick. Picking by position could take both and hand
-        // back a shorter answer than the size it selected, which `minSelected`
-        // then rejects.
         const values = distinctOptionValues(entry);
         if (values.length === 0) return null;
 
         // A distinct value has to be reachable for every selection the value
         // space counts, so a sequence number indexes the combination space
-        // itself. A free draw only has to be plausible, and takes a run of
-        // adjacent values.
+        // itself.
         if (seq !== undefined) {
           return [...new Set(categoricalSelectionAt(variable, seq))];
         }
 
         const { min, max } = selectionSizeRange(variable);
+        const resolved = this.resolvedFor(entry);
+        if (resolved.kind === 'categorical') {
+          // The resolved table already respects the variable's own
+          // validation; the constraint window can only be narrower (e.g. a
+          // composer rendering), so illegal counts are dropped here.
+          const legal = resolved.selectionCounts.filter(
+            (entry_) => entry_.count >= min && entry_.count <= max,
+          );
+          const count =
+            legal.length > 0
+              ? (legal[
+                  sampleWeightedIndex(
+                    legal.map((entry_) => entry_.probability),
+                    stream,
+                  )
+                ]?.count ?? min)
+              : min;
+          const picked = sampleWithoutReplacement(
+            resolved.values,
+            resolved.weights,
+            count,
+            stream,
+          );
+          // A count above the positively-weighted pool (possible only under a
+          // narrowed constraint window) pads from the remaining values —
+          // satisfying `minSelected` outranks weight fidelity.
+          for (const value of resolved.values) {
+            if (picked.length >= count) break;
+            if (!picked.includes(value)) picked.push(value);
+          }
+          return picked;
+        }
+
         const span = Math.max(1, max - min + 1);
         const count = Math.max(min, Math.min(max, min + (index % span)));
-        const picked: (number | string | boolean)[] = [];
-        for (let i = 0; i < count; i++) {
-          const value = values[(index + i) % values.length];
-          if (value !== undefined) picked.push(value);
-        }
-        return [...new Set(picked)];
+        return values.slice(0, count);
       }
 
       case 'datetime': {
         const window = constraints.dateWindow ?? {
           resolution: 'full' as const,
         };
-        const max =
-          window.max ?? truncateToResolution(this.today, window.resolution);
+        const resolution = window.resolution;
+        let max = window.max ?? truncateToResolution(this.today, resolution);
         const defaultSpan = constraints.unique
-          ? this.uniqueDateHeadroom(window.resolution)
-          : this.defaultDateSpan(window.resolution);
-        const min =
-          window.min ?? openDateFloor(max, defaultSpan, window.resolution);
-        const span = Math.max(0, stepsBetween(min, max, window.resolution));
-        const offset =
-          seq !== undefined ? seq % (span + 1) : this.randomInt(0, span);
-        return addSteps(min, offset, window.resolution);
+          ? this.uniqueDateHeadroom(resolution)
+          : this.defaultDateSpan(resolution);
+        let min = window.min ?? openDateFloor(max, defaultSpan, resolution);
+
+        const resolved = this.resolvedFor(entry);
+        const descriptor =
+          resolved.kind === 'datetime'
+            ? resolved.descriptor
+            : ({ distribution: 'uniform' } as const);
+
+        // Narrow the effective window by the descriptor's own bounds (same
+        // resolution, so lexicographic comparison is date order). A
+        // descriptor window disjoint from the effective one is ignored:
+        // validation stays authoritative and the metadata is target-only.
+        if ('min' in descriptor && descriptor.min !== undefined) {
+          const narrowed = descriptor.min > min ? descriptor.min : min;
+          if (narrowed <= max) min = narrowed;
+        }
+        if ('max' in descriptor && descriptor.max !== undefined) {
+          const narrowed = descriptor.max < max ? descriptor.max : max;
+          if (narrowed >= min) max = narrowed;
+        }
+
+        const span = Math.max(0, stepsBetween(min, max, resolution));
+        if (seq !== undefined) {
+          return addSteps(min, seq % (span + 1), resolution);
+        }
+
+        if (descriptor.distribution === 'normal') {
+          const meanStep = clamp(
+            stepsBetween(
+              min,
+              truncateToResolution(descriptor.mean, resolution),
+              resolution,
+            ),
+            0,
+            span,
+          );
+          const sdSteps = descriptor.sdDays / DAYS_PER_STEP[resolution];
+          const offset = clamp(
+            Math.round(stream.normal(meanStep, sdSteps)),
+            0,
+            span,
+          );
+          return addSteps(min, offset, resolution);
+        }
+
+        return addSteps(min, stream.int(0, span), resolution);
       }
 
       case 'layout':
@@ -439,11 +609,13 @@ export class ValueGenerator {
           y: 0.1 + ((index * 0.23) % 0.8),
         };
 
-      case 'location':
+      case 'location': {
+        const faker = stream.faker();
         return {
-          x: this.faker.location.longitude(),
-          y: this.faker.location.latitude(),
+          x: faker.location.longitude(),
+          y: faker.location.latitude(),
         };
+      }
 
       default:
         return null;

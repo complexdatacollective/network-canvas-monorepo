@@ -707,7 +707,7 @@ describe('generateConstrained', () => {
   // distinct — every list a protocol is likely to declare — is walked exactly as
   // it always was, because deduplication keeps first occurrences in order. These
   // are the values the draw emitted before it read the list by value.
-  it('walks a distinct-valued ordinal list in declared order, free and sequenced', () => {
+  it('draws ordinal values from the distinct list, free and sequenced', () => {
     const gen = new ValueGenerator(1);
     const variable = make({
       id: 'v',
@@ -720,11 +720,18 @@ describe('generateConstrained', () => {
       ],
     });
 
-    const free = Array.from({ length: 7 }, (_, index) =>
+    // Free draws are weighted samples over the distinct values (equal weights
+    // by default), no longer an index-cycled walk.
+    const free = Array.from({ length: 30 }, (_, index) =>
       gen.generateConstrained(variable, index),
     );
-    expect(free).toEqual([1, 2, 3, 1, 2, 3, 1]);
+    for (const value of free) {
+      expect([1, 2, 3]).toContain(value);
+    }
+    expect(new Set(free).size).toBe(3);
 
+    // The sequence walk stays exhaustive and ordered: `unique` slots depend
+    // on meeting every distinct value once per cycle.
     const sequenced = Array.from({ length: 7 }, (_, seq) =>
       gen.generateConstrained(variable, 0, { distinctSeq: seq }),
     );
