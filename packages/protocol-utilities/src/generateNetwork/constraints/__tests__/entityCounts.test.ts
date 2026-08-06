@@ -2342,7 +2342,7 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
     // refused this for needing 21 distinct booleans it never asks for.
     const { network } = generateNetwork({
       seed: 1,
-      codebook: withNodeCount(codebook, 2),
+      codebook: withNodeCount(codebook, 7),
       stages: [
         nameGenerator({ behaviours: { minNodes: 5, maxNodes: 5 } }),
         networkComposer(),
