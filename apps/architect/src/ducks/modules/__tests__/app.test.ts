@@ -2,8 +2,10 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
 import appReducer, {
+  getPreviewRespectSkipLogic,
   getPreviewUseSyntheticData,
   getProtocolOpenElsewhere,
+  setPreviewRespectSkipLogic,
   setPreviewUseSyntheticData,
   setProtocolOpenElsewhere,
 } from '../app';
@@ -29,6 +31,20 @@ describe('app slice — preview preferences', () => {
     store.dispatch(setPreviewUseSyntheticData(false));
     store.dispatch(setPreviewUseSyntheticData(true));
     expect(getPreviewUseSyntheticData(store.getState())).toBe(true);
+  });
+
+  it('defaults to not respecting skip logic', () => {
+    const store = createStore();
+    expect(getPreviewRespectSkipLogic(store.getState())).toBe(false);
+  });
+
+  it('persists the respect skip logic preference', () => {
+    const store = createStore();
+    store.dispatch(setPreviewRespectSkipLogic(true));
+    expect(getPreviewRespectSkipLogic(store.getState())).toBe(true);
+
+    store.dispatch(setPreviewRespectSkipLogic(false));
+    expect(getPreviewRespectSkipLogic(store.getState())).toBe(false);
   });
 });
 
