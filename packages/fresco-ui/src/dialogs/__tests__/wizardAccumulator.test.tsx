@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '../../form/Field/Field';
@@ -241,5 +242,101 @@ describe('Wizard accumulator', () => {
         people: [{ name: 'P0' }, { name: 'P1' }],
       }),
     );
+  });
+
+  it('keeps data staged by a beforeNext handler when advancing past the step', async () => {
+    const onResult = vi.fn();
+
+    // Mirrors the TwoFactorSetup pattern: a beforeNext handler stages data
+    // via setStepData in the same tick that goToStep folds the step's fields.
+    // The fold must not clobber the staged (not-yet-committed) update.
+    function VerifyStep() {
+      const { setBeforeNext, setStepData } = useWizard();
+      useEffect(() => {
+        setBeforeNext(() => {
+          setStepData({ recoveryCodes: ['alpha', 'beta'] });
+          return true;
+        });
+      }, [setBeforeNext, setStepData]);
+      return <Field name="code" label="Code" component={InputField} />;
+    }
+
+    render(
+      <DialogProvider>
+        <TestWizard
+          onResult={onResult}
+          steps={[
+            { title: 'Verify', content: VerifyStep },
+            { title: 'Done', content: PlainFinishStep },
+          ]}
+        />
+      </DialogProvider>,
+    );
+
+    await openWizard(user);
+
+    await user.type(screen.getByLabelText('Code'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Nothing to fill in here');
+
+    await user.click(screen.getByRole('button', { name: 'Finish' }));
+    await waitForClose();
+
+    expect(onResult).toHaveBeenCalledWith({
+      code: '123456',
+      recoveryCodes: ['alpha', 'beta'],
+    });
+  });
+
+  it('merges nested paths registered by different steps under one top-level key', async () => {
+    const onResult = vi.fn();
+
+    function NestedFirstNameStep() {
+      return (
+        <Field
+          name="user.firstName"
+          label="First name"
+          component={InputField}
+        />
+      );
+    }
+
+    function NestedLastNameStep() {
+      return (
+        <Field name="user.lastName" label="Last name" component={InputField} />
+      );
+    }
+
+    render(
+      <DialogProvider>
+        <TestWizard
+          onResult={onResult}
+          steps={[
+            { title: 'Step 1', content: NestedFirstNameStep },
+            { title: 'Step 2', content: NestedLastNameStep },
+            { title: 'Step 3', content: PlainFinishStep },
+          ]}
+        />
+      </DialogProvider>,
+    );
+
+    await openWizard(user);
+
+    await user.type(screen.getByLabelText('First name'), 'Alice');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByLabelText('Last name');
+
+    // Step 2's fold produces a partial `user` object; it must merge with the
+    // sibling from step 1 rather than replacing the whole object.
+    await user.type(screen.getByLabelText('Last name'), 'Smith');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Nothing to fill in here');
+
+    await user.click(screen.getByRole('button', { name: 'Finish' }));
+    await waitForClose();
+
+    expect(onResult).toHaveBeenCalledWith({
+      user: { firstName: 'Alice', lastName: 'Smith' },
+    });
   });
 });

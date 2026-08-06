@@ -29,6 +29,30 @@ type WizardDialogProps = {
   footer: ReactNode;
 };
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// Merge one step's field values over the accumulator. Plain objects merge
+// recursively so nested paths registered by DIFFERENT steps under one
+// top-level key (e.g. `user.firstName` then `user.lastName`) keep their
+// siblings; arrays and primitives REPLACE, so a revisited step whose
+// repeated-entry answer shrank (e.g. a count-driven list) doesn't leave
+// orphaned entries behind.
+const mergeStepValues = (
+  base: Record<string, unknown>,
+  incoming: Record<string, unknown>,
+): Record<string, unknown> => {
+  const result = { ...base };
+  for (const [key, value] of Object.entries(incoming)) {
+    const existing = result[key];
+    result[key] =
+      isPlainObject(existing) && isPlainObject(value)
+        ? mergeStepValues(existing, value)
+        : value;
+  }
+  return result;
+};
+
 export default function useWizardState({
   dialog,
   dialogId,
@@ -106,14 +130,15 @@ export default function useWizardState({
       // is shared across all steps, but only the active step's fields are
       // registered). Fold their values into the accumulator before that
       // happens — otherwise they'd only live on in dormant storage, which no
-      // longer feeds getFormValues(). A top-level key from this fold REPLACES
-      // whatever was previously folded for that key (not a deep merge): if
-      // the same step is revisited and an array-shaped answer shrinks (e.g. a
-      // repeated-entry step driven by a count), the shorter array wholly
-      // replaces the stale longer one instead of leaving orphaned entries.
-      const folded = { ...dataRef.current, ...getFormValues() };
-      dataRef.current = folded;
-      setData(folded);
+      // longer feeds getFormValues(). The setData update MUST be functional:
+      // a beforeNext handler may have staged data via setStepData in this
+      // same tick, and a non-functional replacement computed from the ref
+      // would clobber that queued update. The ref is merged eagerly too so
+      // same-tick readers stay consistent; the next render re-syncs it from
+      // the authoritative state.
+      const stepValues = getFormValues();
+      dataRef.current = mergeStepValues(dataRef.current, stepValues);
+      setData((prev) => mergeStepValues(prev, stepValues));
 
       prevStepRef.current = stepIndex;
       resetStepOverrides();
@@ -158,7 +183,9 @@ export default function useWizardState({
 
     const next = findNextUnskipped(stepIndex, 'forward');
     if (next === null) {
-      const formValues = { ...dataRef.current, ...getFormValues() };
+      // dataRef is kept fresh by setStepData's eager merge, so data staged by
+      // a beforeNext handler in this same tick is included here.
+      const formValues = mergeStepValues(dataRef.current, getFormValues());
       const result = dialog.onFinish ? dialog.onFinish(formValues) : formValues;
       await closeDialog(dialogId, result);
       return;
@@ -187,6 +214,11 @@ export default function useWizardState({
   }, [closeDialog, dialogId]);
 
   const setStepData = useCallback((stepData: Record<string, unknown>) => {
+    // Eagerly reflect the patch in the ref so same-tick readers see it — a
+    // beforeNext handler staging data immediately before goToStep folds or
+    // the finish path resolves must not lose it to the not-yet-committed
+    // state update. The next render re-syncs the ref from state.
+    dataRef.current = { ...dataRef.current, ...stepData };
     setData((prev) => ({ ...prev, ...stepData }));
   }, []);
 
