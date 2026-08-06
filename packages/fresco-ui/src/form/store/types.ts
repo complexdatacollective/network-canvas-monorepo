@@ -66,6 +66,11 @@ export type ValidationContext = {
   currentEntityAttributes?: NcNode[EntityAttributesProperty];
   /** Resolve form-to-form comparison rules within this FieldNamespace. */
   formValueNamespace?: string;
+  /**
+   * Map a codebook variable ID to the form key that currently represents it.
+   * The original ID remains authoritative for codebook and entity lookups.
+   */
+  formValueAliases?: Readonly<Record<string, string>>;
 };
 
 // ═══════════════════════════════════════════════════════════════

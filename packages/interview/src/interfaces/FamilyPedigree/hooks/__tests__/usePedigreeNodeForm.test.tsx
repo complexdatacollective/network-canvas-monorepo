@@ -47,7 +47,7 @@ describe('usePedigreeNodeForm', () => {
       fields: fixtures.nodeForm,
       initialValues,
       currentEntityId: 'person-1',
-      variableReferenceAliases: { displayName: 'name' },
+      formValueAliases: { displayName: 'name' },
     });
   });
 });

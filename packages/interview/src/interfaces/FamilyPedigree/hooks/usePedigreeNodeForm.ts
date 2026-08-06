@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 
 import useProtocolForm from '../../../forms/useProtocolForm';
@@ -29,6 +31,10 @@ export default function usePedigreeNodeForm({
   const nodeType = useStageSelector(getNodeType);
   const nodeForm = useStageSelector(getNodeForm);
   const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
+  const formValueAliases = useMemo(
+    () => ({ [nodeLabelVariable]: 'name' }),
+    [nodeLabelVariable],
+  );
 
   return useProtocolForm({
     subject: {
@@ -38,6 +44,6 @@ export default function usePedigreeNodeForm({
     fields: nodeForm ?? [],
     initialValues,
     currentEntityId,
-    variableReferenceAliases: { [nodeLabelVariable]: 'name' },
+    formValueAliases,
   });
 }

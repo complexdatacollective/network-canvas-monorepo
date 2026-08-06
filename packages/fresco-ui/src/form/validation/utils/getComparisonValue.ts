@@ -23,16 +23,17 @@ export function getComparisonValue(
   const namespacedValues = context?.formValueNamespace
     ? getValue(formValues, context.formValueNamespace)
     : formValues;
+  const formAttribute = context?.formValueAliases?.[attribute] ?? attribute;
 
   if (
     typeof namespacedValues === 'object' &&
     namespacedValues !== null &&
     !Array.isArray(namespacedValues) &&
-    attribute in namespacedValues
+    formAttribute in namespacedValues
   ) {
     return {
       present: true,
-      value: (namespacedValues as Record<string, FieldValue>)[attribute],
+      value: (namespacedValues as Record<string, FieldValue>)[formAttribute],
     };
   }
 

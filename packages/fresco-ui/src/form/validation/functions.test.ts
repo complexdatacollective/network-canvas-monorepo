@@ -824,6 +824,33 @@ describe('Validation Functions', () => {
       expect(validator.safeParse('differentValue').success).toBe(false);
     });
 
+    it('uses an aliased live form key without changing the codebook variable ID', () => {
+      const validator = validations.sameAs(
+        'displayName',
+        createMockContext({
+          formValueAliases: { displayName: 'name' },
+          codebook: {
+            node: {
+              person: {
+                name: 'Person',
+                color: 'node-color-seq-1',
+                shape: { default: 'circle' },
+                variables: {
+                  displayName: {
+                    name: 'Display name',
+                    type: 'text',
+                  },
+                },
+              },
+            },
+          },
+        }),
+      )({ name: 'live value' });
+
+      expect(validator.safeParse('live value').success).toBe(true);
+      expect(validator.safeParse('stale value').success).toBe(false);
+    });
+
     it('should throw error when attribute is not specified', () => {
       expect(() => {
         validations

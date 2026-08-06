@@ -66,54 +66,6 @@ function subjectToStageSubject(subject?: Subject): StageSubject | null {
   return { entity: subject.entity, type: subject.type };
 }
 
-type VariableReferenceAliases = Readonly<Record<string, string>>;
-
-/**
- * Some interface-owned controls submit under an internal form key while still
- * representing a codebook variable. Rewrite validation references to that
- * registered key so comparisons always prefer the live form value over a
- * persisted entity value.
- */
-function aliasVariableReferences(
-  props: Partial<ValidationPropsCatalogue>,
-  aliases?: VariableReferenceAliases,
-): Partial<ValidationPropsCatalogue> {
-  if (!aliases) return props;
-
-  const alias = (attribute: string) => aliases[attribute] ?? attribute;
-  return {
-    ...props,
-    ...(props.sameAs !== undefined && { sameAs: alias(props.sameAs) }),
-    ...(props.differentFrom !== undefined && {
-      differentFrom: alias(props.differentFrom),
-    }),
-    ...(props.greaterThanVariable !== undefined && {
-      greaterThanVariable: {
-        ...props.greaterThanVariable,
-        attribute: alias(props.greaterThanVariable.attribute),
-      },
-    }),
-    ...(props.lessThanVariable !== undefined && {
-      lessThanVariable: {
-        ...props.lessThanVariable,
-        attribute: alias(props.lessThanVariable.attribute),
-      },
-    }),
-    ...(props.greaterThanOrEqualToVariable !== undefined && {
-      greaterThanOrEqualToVariable: {
-        ...props.greaterThanOrEqualToVariable,
-        attribute: alias(props.greaterThanOrEqualToVariable.attribute),
-      },
-    }),
-    ...(props.lessThanOrEqualToVariable !== undefined && {
-      lessThanOrEqualToVariable: {
-        ...props.lessThanOrEqualToVariable,
-        attribute: alias(props.lessThanOrEqualToVariable.attribute),
-      },
-    }),
-  };
-}
-
 /**
  * Hook to automatically convert protocol form definitions into the new form
  * system by generating Field components with validation props.
@@ -126,8 +78,8 @@ function aliasVariableReferences(
  *                  Required for SlidesForm where subject comes from item props.
  * @param namespace - Optional prefix for field names (e.g. "partner-0") to
  *                    avoid collisions when multiple instances share a form store.
- * @param variableReferenceAliases - Maps codebook variable IDs to interface-
- *                    owned form keys for live comparison validation.
+ * @param formValueAliases - Maps codebook variable IDs to interface-owned form
+ *                    keys while preserving the original ID for metadata lookup.
  */
 export default function useProtocolForm({
   fields,
@@ -136,7 +88,7 @@ export default function useProtocolForm({
   subject,
   namespace,
   currentEntityId,
-  variableReferenceAliases,
+  formValueAliases,
 }: {
   fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
@@ -144,7 +96,7 @@ export default function useProtocolForm({
   subject?: Subject;
   namespace?: string;
   currentEntityId?: string;
-  variableReferenceAliases?: VariableReferenceAliases;
+  formValueAliases?: Readonly<Record<string, string>>;
 }) {
   const baseValidationContext = useStageSelector(
     getValidationContext,
@@ -184,8 +136,9 @@ export default function useProtocolForm({
       ...baseValidationContext,
       stageSubject,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
+      ...(formValueAliases !== undefined ? { formValueAliases } : {}),
     };
-  }, [baseValidationContext, currentEntityId, stableSubject]);
+  }, [baseValidationContext, currentEntityId, formValueAliases, stableSubject]);
 
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const subjectFieldsMetadata = useSelector((state) =>
@@ -279,14 +232,11 @@ export default function useProtocolForm({
     if ('validation' in field && field.validation) {
       Object.assign(
         props,
-        aliasVariableReferences(
-          buildFieldValidationProps({
-            type: field.type,
-            variable: fieldName,
-            validation: field.validation,
-          }),
-          variableReferenceAliases,
-        ),
+        buildFieldValidationProps({
+          type: field.type,
+          variable: fieldName,
+          validation: field.validation,
+        }),
       );
     }
 

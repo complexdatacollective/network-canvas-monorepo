@@ -107,6 +107,10 @@ function firstFieldProp(node: ReactNode, prop: string): unknown {
   return element.props[prop];
 }
 
+function firstFieldValidationContext(node: ReactNode): unknown {
+  return firstFieldProp(node, 'validationContext');
+}
+
 describe('useProtocolForm stageSubject', () => {
   it('uses the provided subject as the validation stageSubject on a subjectless stage', () => {
     const { result } = renderHook(
@@ -128,7 +132,7 @@ describe('useProtocolForm stageSubject', () => {
     });
   });
 
-  it('aliases validation references to a separately registered form field', () => {
+  it('aliases live form values without changing validation references', () => {
     const comparisonFields: FormField[] = [
       {
         variable: asEntityAttributeReference(ALIAS_VAR),
@@ -140,13 +144,18 @@ describe('useProtocolForm stageSubject', () => {
         useProtocolForm({
           fields: comparisonFields,
           subject: { entity: 'node', type: NODE_TYPE },
-          variableReferenceAliases: { [DISPLAY_NAME_VAR]: NAME_VAR },
+          formValueAliases: { [DISPLAY_NAME_VAR]: NAME_VAR },
         }),
       { wrapper: makeWrapper() },
     );
 
     expect(firstFieldProp(result.current.fieldComponents, 'sameAs')).toBe(
-      NAME_VAR,
+      DISPLAY_NAME_VAR,
+    );
+    expect(firstFieldValidationContext(result.current.fieldComponents)).toEqual(
+      expect.objectContaining({
+        formValueAliases: { [DISPLAY_NAME_VAR]: NAME_VAR },
+      }),
     );
   });
 });
