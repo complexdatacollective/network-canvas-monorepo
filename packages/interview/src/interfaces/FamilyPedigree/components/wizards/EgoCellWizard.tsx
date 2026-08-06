@@ -39,6 +39,7 @@ import {
 
 type EgoCellWizardProps = {
   egoId?: string;
+  egoName?: string;
   onSubmit: (result: EgoCellResult) => void;
   variableConfig: VariableConfig;
 };
@@ -62,6 +63,7 @@ function FramingStepTitle({
 
 export default function EgoCellWizard({
   egoId,
+  egoName,
   onSubmit,
   variableConfig,
 }: EgoCellWizardProps) {
@@ -81,6 +83,18 @@ export default function EgoCellWizard({
       return (
         <FamilyPedigreeStoreBridge store={store}>
           <Step />
+        </FamilyPedigreeStoreBridge>
+      );
+    };
+
+  const wrapWithProps = <Props extends object>(
+    Step: ComponentType<Props>,
+    stepProps: Props,
+  ) =>
+    function BridgedStep() {
+      return (
+        <FamilyPedigreeStoreBridge store={store}>
+          <Step {...stepProps} />
         </FamilyPedigreeStoreBridge>
       );
     };
@@ -124,7 +138,10 @@ export default function EgoCellWizard({
             ]),
         {
           title: 'About you',
-          content: wrap(EgoSexStep),
+          content: wrapWithProps(EgoSexStep, {
+            ...(egoId !== undefined ? { currentEntityId: egoId } : {}),
+            ...(egoName !== undefined ? { initialValue: egoName } : {}),
+          }),
         },
         {
           title: bridgedTitle(<FramingStepTitle termKey="eggParent" />),

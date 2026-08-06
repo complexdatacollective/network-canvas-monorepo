@@ -171,6 +171,10 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   const egoId = [...nodesMap.entries()].find(
     ([, n]) => n[entityAttributesProperty][egoVariable] === true,
   )?.[0];
+  const egoNameValue = egoId
+    ? nodesMap.get(egoId)?.[entityAttributesProperty][nodeLabelVariable]
+    : undefined;
+  const egoName = typeof egoNameValue === 'string' ? egoNameValue : undefined;
   const nonEgoNodeCount = [...nodesMap.values()].filter(
     (n) => n[entityAttributesProperty][egoVariable] !== true,
   ).length;
@@ -553,6 +557,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
         {showQuickStart && (
           <EgoCellWizard
             egoId={egoId}
+            egoName={egoName}
             onSubmit={(result) => {
               commitBatch(result.batch);
               if (egoId && result.egoAttributes) {
