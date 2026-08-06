@@ -1,13 +1,9 @@
 'use client';
 
 import { DirectionProvider } from '@base-ui/react/direction-provider';
-import { MotionConfig } from 'motion/react';
 import type { ReactNode } from 'react';
 
-declare global {
-  // eslint-disable-next-line no-var
-  var BASE_UI_ANIMATIONS_DISABLED: boolean | undefined;
-}
+import { AnimationProvider } from '../src/AnimationProvider';
 
 type ProvidersProps = {
   children: ReactNode;
@@ -18,13 +14,9 @@ export default function Providers({
   children,
   disableAnimations,
 }: ProvidersProps) {
-  if (disableAnimations) {
-    globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
-  }
-
   return (
-    <MotionConfig reducedMotion="user" skipAnimations={disableAnimations}>
+    <AnimationProvider disableAnimations={disableAnimations}>
       <DirectionProvider direction="ltr">{children}</DirectionProvider>
-    </MotionConfig>
+    </AnimationProvider>
   );
 }

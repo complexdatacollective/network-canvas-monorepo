@@ -136,15 +136,12 @@ export class StageEditor {
   // `ariaLabel` string, so a single role/name locator covers both cases.
   async fillRichText(ariaLabel: string, text: string): Promise<void> {
     const editor = this.page.getByRole('textbox', { name: ariaLabel });
-    await editor.click();
-    try {
-      await editor.fill(text);
-    } catch {
-      // Tiptap intercepts real keystrokes via ProseMirror, not just a generic
-      // `input` event — if `.fill()`'s synthetic event doesn't take, fall
-      // back to genuine keystrokes.
-      await this.page.keyboard.type(text);
-    }
+    // The surrounding field can render before Tiptap has attached its
+    // ProseMirror contenteditable. With animations disabled that gap is easy
+    // to hit; wait for the actual editor instead of swallowing fill failures
+    // and typing into whichever element happens to own focus.
+    await expect(editor).toBeEditable();
+    await editor.fill(text);
   }
 
   // Type canonical markdown into a Tiptap RichText editor the way a user
