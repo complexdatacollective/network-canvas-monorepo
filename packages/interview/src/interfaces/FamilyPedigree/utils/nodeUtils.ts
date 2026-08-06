@@ -1,7 +1,7 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, FormField } from '@codaco/protocol-validation';
 
 import { getCurrentStage } from '../../../selectors/session';
 import { getCodebook } from '../../../store/modules/protocol';
@@ -35,7 +35,33 @@ export const getRelationshipVariable = createSelector(
   getNodeConfig,
   (c) => c.relationshipVariable,
 );
-export const getNodeForm = createSelector(getNodeConfig, (c) => c.form);
+
+export function excludeNodeLabelVariable<T extends { variable: string }>(
+  form: readonly T[] | undefined,
+  nodeLabelVariable: string,
+): T[] | undefined {
+  return form?.filter(
+    (field) =>
+      field.variable !== nodeLabelVariable && field.variable !== 'name',
+  );
+}
+
+// The pedigree renders its configured label through PersonNameField whenever
+// it collects a family member. Ego is the deliberate exception: it is rendered
+// iconically and its setup step has neither this field nor the additional node
+// form. The wizard submits that label through its internal `name` path, so
+// suppress both the configured label variable and any separate variable whose
+// id is literally `name`; either would otherwise register a second writer on
+// the same form path.
+export const getNodeForm: (
+  state: RootState,
+  currentStep: number,
+) => FormField[] | undefined = createSelector(
+  getNodeConfig,
+  getNodeLabelVariable,
+  (config, nodeLabelVariable) =>
+    excludeNodeLabelVariable(config.form, nodeLabelVariable),
+);
 export const getBiologicalSexVariable = createSelector(
   getNodeConfig,
   (c) => c.biologicalSexVariable,

@@ -65,7 +65,7 @@ const crossClassValidatorFor = (fieldName: string): CrossClassValidator => {
 };
 
 // `label` is a text variable written by an AlterForm field elsewhere
-// (validated, stage s1) and by a FamilyPedigree nodeLabelVariable (unvalidated,
+// (validated, stage s1) and by a FamilyPedigree relationshipVariable (unvalidated,
 // stage s2). `cat` has only the validated form use, isolating the
 // convexHullVariable gate's direction.
 const PROTOCOL_WITH_FORM_CONFLICT = {
@@ -107,7 +107,7 @@ const PROTOCOL_WITH_FORM_CONFLICT = {
       id: 's2',
       type: 'FamilyPedigree',
       label: 'P',
-      nodeConfig: { type: 'person', nodeLabelVariable: 'label' },
+      nodeConfig: { type: 'person', relationshipVariable: 'label' },
     },
   ],
 };

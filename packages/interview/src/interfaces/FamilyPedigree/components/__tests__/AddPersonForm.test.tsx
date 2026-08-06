@@ -11,6 +11,10 @@ vi.mock('../../../../forms/useProtocolForm', () => ({
   default: () => ({ fieldComponents: null }),
 }));
 
+vi.mock('../PersonNameField', () => ({
+  default: ({ label }: { label: string }) => <input aria-label={label} />,
+}));
+
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
