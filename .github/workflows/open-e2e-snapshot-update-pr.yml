@@ -122,8 +122,38 @@ jobs:
             echo 'current=true' >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Restore already-proposed central baseline changes
+      - name: Find the open central snapshot PR
+        id: snapshot_source
         if: steps.release_base.outputs.current == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SNAPSHOT_BRANCH: ${{ inputs.snapshot_branch }}
+        with:
+          script: |
+            const snapshotBranch = process.env.SNAPSHOT_BRANCH;
+            const head = `${context.repo.owner}:${snapshotBranch}`;
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              base: 'main',
+              head,
+              per_page: 10,
+            });
+            const source = pulls.find(
+              (pull) =>
+                pull.head.repo?.full_name === `${context.repo.owner}/${context.repo.repo}` &&
+                pull.head.ref === snapshotBranch,
+            );
+            core.setOutput('open', source ? 'true' : 'false');
+            if (!source) {
+              core.notice('No open central snapshot PR exists yet.');
+            }
+
+      - name: Restore already-proposed central baseline changes
+        if: >-
+          ${{ steps.release_base.outputs.current == 'true'
+          && steps.snapshot_source.outputs.open == 'true' }}
         env:
           SNAPSHOT_BRANCH: ${{ inputs.snapshot_branch }}
         run: |
@@ -131,11 +161,6 @@ jobs:
           interview='^packages/interview/e2e/visual-snapshots/(chromium|firefox|webkit)-matrix/[A-Za-z0-9._-]+\.png$'
           interviewer='^apps/interviewer/e2e/visual-snapshots/chromium/[A-Za-z0-9._-]+\.png$'
           snapshot_ref="refs/remotes/origin/$SNAPSHOT_BRANCH"
-
-          if ! git ls-remote --exit-code --heads origin "refs/heads/$SNAPSHOT_BRANCH" >/dev/null 2>&1; then
-            echo 'No central snapshot branch exists yet.'
-            exit 0
-          fi
 
           git fetch --no-tags origin "+refs/heads/$SNAPSHOT_BRANCH:$snapshot_ref"
           merge_base=$(git merge-base origin/main "$snapshot_ref")
