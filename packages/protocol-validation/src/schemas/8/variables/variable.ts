@@ -7,6 +7,21 @@ import {
   getVariableNames,
 } from '../../../utils/validation-helpers.ts';
 import {
+  BooleanSyntheticSchema,
+  type CategoricalSynthetic,
+  CategoricalSyntheticSchema,
+  type DatetimeSynthetic,
+  DatetimeSyntheticSchema,
+  DEFAULT_OPTION_WEIGHT,
+  type NumberSynthetic,
+  NumberSyntheticSchema,
+  optionValueKey,
+  OrdinalSyntheticSchema,
+  ScalarSyntheticSchema,
+  type SyntheticOptionWeight,
+  TextSyntheticSchema,
+} from '../codebook/synthetic.ts';
+import {
   type ComponentType,
   ComponentTypes,
   VariableTypes,
@@ -174,23 +189,206 @@ const baseVariableSchema = z.strictObject({
   readOnly: z.boolean().optional(),
 });
 
-const numberVariableSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.number),
-  component: z.enum(numberComponents).optional(),
-  validation: z.strictObject(validations).pick(numberValidations).optional(),
-});
+// ---------------------------------------------------------------------------
+// Synthetic-metadata refinements. The `synthetic` shapes live in
+// ../codebook/synthetic.ts; the rules below need sibling context — validation,
+// option values, date resolution — that only exists on the variable itself.
+// ---------------------------------------------------------------------------
 
-const scalarVariableSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.scalar),
-  component: z.enum(scalarComponents).optional(),
-  parameters: z
-    .strictObject({
-      minLabel: z.string().optional(),
-      maxLabel: z.string().optional(),
-    })
-    .optional(),
-  validation: z.strictObject(validations).pick(scalarValidations).optional(),
-});
+// `missingProbability` promises unanswered values; `required` forbids them.
+const rejectMissingOnRequired = (
+  variable: {
+    validation?: { required?: boolean };
+    synthetic?: { missingProbability?: number };
+  },
+  ctx: z.RefinementCtx,
+) => {
+  if (
+    variable.validation?.required === true &&
+    variable.synthetic?.missingProbability !== undefined
+  ) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'missingProbability cannot be declared on a required variable',
+      path: ['synthetic', 'missingProbability'],
+    });
+  }
+};
+
+// Validation bounds stay authoritative over synthetic draws (generated values
+// are truncated into them), so a descriptor whose own range can never reach
+// the validation window could not produce a single value — reject it.
+const rejectDisjointNumberSynthetic = (
+  variable: {
+    validation?: { minValue?: number; maxValue?: number };
+    synthetic?: NumberSynthetic;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  const synthetic = variable.synthetic;
+  if (!synthetic || !('distribution' in synthetic)) return;
+  const lower = variable.validation?.minValue ?? Number.NEGATIVE_INFINITY;
+  const upper = variable.validation?.maxValue ?? Number.POSITIVE_INFINITY;
+  if (synthetic.distribution === 'constant') {
+    if (synthetic.value < lower || synthetic.value > upper) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Synthetic constant ${synthetic.value} lies outside the validation bounds`,
+        path: ['synthetic', 'value'],
+      });
+    }
+    return;
+  }
+  if (synthetic.min !== undefined && synthetic.min > upper) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'Synthetic "min" exceeds the validation maxValue',
+      path: ['synthetic', 'min'],
+    });
+  }
+  if (synthetic.max !== undefined && synthetic.max < lower) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'Synthetic "max" is below the validation minValue',
+      path: ['synthetic', 'max'],
+    });
+  }
+};
+
+// Weights operate on distinct typed option values (existing codebooks can
+// carry duplicate stored values): an entry naming a value the options do not
+// offer can never be drawn, and a table that zeroes every distinct value
+// leaves nothing to draw.
+const rejectInvalidOptionWeights = (
+  variable: {
+    options: { value: number | string }[];
+    synthetic?: { optionWeights?: SyntheticOptionWeight[] };
+  },
+  ctx: z.RefinementCtx,
+) => {
+  const weights = variable.synthetic?.optionWeights;
+  if (!weights) return;
+  const optionKeys = new Set(
+    variable.options.map((option) => optionValueKey(option.value)),
+  );
+  const explicit = new Map<string, number>();
+  weights.forEach((entry, index) => {
+    const key = optionValueKey(entry.value);
+    if (!optionKeys.has(key)) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Option weight value ${JSON.stringify(entry.value)} is not one of this variable's option values`,
+        path: ['synthetic', 'optionWeights', index, 'value'],
+      });
+    }
+    explicit.set(key, entry.weight);
+  });
+  const allZero = [...optionKeys].every(
+    (key) => (explicit.get(key) ?? DEFAULT_OPTION_WEIGHT) === 0,
+  );
+  if (allZero) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'At least one option value must have a positive weight',
+      path: ['synthetic', 'optionWeights'],
+    });
+  }
+};
+
+// A selection count is sampled first and then filled by drawing distinct
+// values without replacement, so every count in the table must be reachable
+// under the option list, the variable's validation, and the weights it will
+// draw from. At most one issue is raised per entry.
+const rejectIllegalSelectionCounts = (
+  variable: {
+    options: { value: number | string }[];
+    validation?: {
+      required?: boolean;
+      minSelected?: number;
+      maxSelected?: number;
+    };
+    synthetic?: CategoricalSynthetic;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  const table = variable.synthetic?.selectionCount?.probabilities;
+  if (!table) return;
+  const optionKeys = new Set(
+    variable.options.map((option) => optionValueKey(option.value)),
+  );
+  const distinctCount = optionKeys.size;
+  const weights = variable.synthetic?.optionWeights;
+  const selectableCount = weights
+    ? [...optionKeys].filter((key) => {
+        const entry = weights.find(
+          (candidate) => optionValueKey(candidate.value) === key,
+        );
+        return (entry?.weight ?? DEFAULT_OPTION_WEIGHT) > 0;
+      }).length
+    : distinctCount;
+  const { required, minSelected, maxSelected } = variable.validation ?? {};
+  table.forEach((entry, index) => {
+    const path = [
+      'synthetic',
+      'selectionCount',
+      'probabilities',
+      index,
+      'count',
+    ];
+    const issue = (message: string) =>
+      ctx.addIssue({ code: 'custom' as const, message, path });
+    if (entry.count === 0) {
+      if (required === true) {
+        issue(
+          'A selection count of 0 is only legal when the variable is not required',
+        );
+      }
+      return;
+    }
+    if (minSelected !== undefined && entry.count < minSelected) {
+      issue(
+        `Selection count ${entry.count} is below minSelected (${minSelected})`,
+      );
+    } else if (maxSelected !== undefined && entry.count > maxSelected) {
+      issue(
+        `Selection count ${entry.count} exceeds maxSelected (${maxSelected})`,
+      );
+    } else if (entry.count > distinctCount) {
+      issue(
+        `Selection count ${entry.count} exceeds the ${distinctCount} distinct option values`,
+      );
+    } else if (entry.count > selectableCount) {
+      issue(
+        `Selection count ${entry.count} exceeds the ${selectableCount} option values with positive weight`,
+      );
+    }
+  });
+};
+
+const numberVariableSchema = baseVariableSchema
+  .extend({
+    type: z.literal(VariableTypes.number),
+    component: z.enum(numberComponents).optional(),
+    validation: z.strictObject(validations).pick(numberValidations).optional(),
+    synthetic: NumberSyntheticSchema.optional(),
+  })
+  .superRefine(rejectMissingOnRequired)
+  .superRefine(rejectDisjointNumberSynthetic);
+
+const scalarVariableSchema = baseVariableSchema
+  .extend({
+    type: z.literal(VariableTypes.scalar),
+    component: z.enum(scalarComponents).optional(),
+    parameters: z
+      .strictObject({
+        minLabel: z.string().optional(),
+        maxLabel: z.string().optional(),
+      })
+      .optional(),
+    validation: z.strictObject(validations).pick(scalarValidations).optional(),
+    synthetic: ScalarSyntheticSchema.optional(),
+  })
+  .superRefine(rejectMissingOnRequired);
 
 export const isIsoDate = (value: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -231,6 +429,49 @@ export const isValidDateAtResolution = (
     return month >= 1 && month <= 12;
   }
   return isIsoDate(value);
+};
+
+// A synthetic date window is expressed at the variable's own resolution (its
+// bounds compare against stored values), while a normal descriptor's mean is
+// always a full YYYY-MM-DD date because its sdDays operates in days.
+const rejectInvalidDatetimeSynthetic = (
+  synthetic: DatetimeSynthetic | undefined,
+  resolution: keyof typeof DATE_RESOLUTION,
+  ctx: z.RefinementCtx,
+) => {
+  if (!synthetic || !('distribution' in synthetic)) return;
+  const { label } = DATE_RESOLUTION[resolution];
+  for (const bound of ['min', 'max'] as const) {
+    const value = synthetic[bound];
+    if (value === undefined) continue;
+    if (!isValidDateAtResolution(value, resolution)) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Synthetic "${bound}" must be a valid ${label} date at this variable's resolution`,
+        path: ['synthetic', bound],
+      });
+    }
+  }
+  if (
+    synthetic.min !== undefined &&
+    synthetic.max !== undefined &&
+    isValidDateAtResolution(synthetic.min, resolution) &&
+    isValidDateAtResolution(synthetic.max, resolution) &&
+    synthetic.min > synthetic.max
+  ) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'Synthetic "min" must not be after "max"',
+      path: ['synthetic', 'max'],
+    });
+  }
+  if (synthetic.distribution === 'normal' && !isIsoDate(synthetic.mean)) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'Synthetic "mean" must be a full ISO date (YYYY-MM-DD)',
+      path: ['synthetic', 'mean'],
+    });
+  }
 };
 
 // Shared with NetworkComposer's per-stage-field parameters (see
@@ -302,12 +543,25 @@ export const datePickerParametersSchema = z
     }
   });
 
-const dateTimeDatePickerSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.datetime),
-  component: z.enum(datePickerComponents).optional(),
-  parameters: datePickerParametersSchema.optional(),
-  validation: z.strictObject(validations).pick(datetimeValidations).optional(),
-});
+const dateTimeDatePickerSchema = baseVariableSchema
+  .extend({
+    type: z.literal(VariableTypes.datetime),
+    component: z.enum(datePickerComponents).optional(),
+    parameters: datePickerParametersSchema.optional(),
+    validation: z
+      .strictObject(validations)
+      .pick(datetimeValidations)
+      .optional(),
+    synthetic: DatetimeSyntheticSchema.optional(),
+  })
+  .superRefine(rejectMissingOnRequired)
+  .superRefine((variable, ctx) => {
+    rejectInvalidDatetimeSynthetic(
+      variable.synthetic,
+      variable.parameters?.type ?? 'full',
+      ctx,
+    );
+  });
 
 // Shared with NetworkComposer's per-stage-field parameters, mirroring
 // `datePickerParametersSchema` above.
@@ -355,18 +609,31 @@ export const relativeDatePickerParametersSchema = z
     // there is no `before < after` relationship to enforce.
   });
 
-const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.datetime),
-  component: z.enum(relativeDatePickerComponents).optional(),
-  parameters: relativeDatePickerParametersSchema.optional(),
-  validation: z.strictObject(validations).pick(datetimeValidations).optional(),
-});
+const dateTimeRelativeDatePickerSchema = baseVariableSchema
+  .extend({
+    type: z.literal(VariableTypes.datetime),
+    component: z.enum(relativeDatePickerComponents).optional(),
+    parameters: relativeDatePickerParametersSchema.optional(),
+    validation: z
+      .strictObject(validations)
+      .pick(datetimeValidations)
+      .optional(),
+    synthetic: DatetimeSyntheticSchema.optional(),
+  })
+  .superRefine(rejectMissingOnRequired)
+  .superRefine((variable, ctx) => {
+    // RelativeDatePicker stores full-resolution dates.
+    rejectInvalidDatetimeSynthetic(variable.synthetic, 'full', ctx);
+  });
 
-const textVariableSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.text),
-  component: z.enum(textComponents).optional(),
-  validation: z.strictObject(validations).pick(textValidations).optional(),
-});
+const textVariableSchema = baseVariableSchema
+  .extend({
+    type: z.literal(VariableTypes.text),
+    component: z.enum(textComponents).optional(),
+    validation: z.strictObject(validations).pick(textValidations).optional(),
+    synthetic: TextSyntheticSchema.optional(),
+  })
+  .superRefine(rejectMissingOnRequired);
 
 // Thirteenth-wave Finding 2: an explicitly empty array is not the same as no
 // `options` at all. fresco-ui's BooleanField defaults to Yes/No only when the
@@ -409,7 +676,9 @@ const booleanBooleanVariableSchema = baseVariableSchema
     component: z.enum(booleanChoiceComponents).optional(),
     validation: z.strictObject(validations).pick(booleanValidations).optional(),
     options: booleanOptionsSchema.optional(), // This is different from the categorical options!
+    synthetic: BooleanSyntheticSchema.optional(),
   })
+  .superRefine(rejectMissingOnRequired)
   .superRefine((variable, ctx) => {
     if (
       variable.component === ComponentTypes.Boolean &&
@@ -425,11 +694,14 @@ const booleanBooleanVariableSchema = baseVariableSchema
     }
   });
 
-const booleanToggleVariableSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.boolean),
-  component: z.enum(booleanToggleComponents).optional(),
-  validation: z.strictObject(validations).pick(booleanValidations).optional(),
-});
+const booleanToggleVariableSchema = baseVariableSchema
+  .extend({
+    type: z.literal(VariableTypes.boolean),
+    component: z.enum(booleanToggleComponents).optional(),
+    validation: z.strictObject(validations).pick(booleanValidations).optional(),
+    synthetic: BooleanSyntheticSchema.optional(),
+  })
+  .superRefine(rejectMissingOnRequired);
 
 // Options Schema for categorical and ordinal variables. Option values are
 // strings or integers — booleans are not selectable option values (a migration
@@ -444,22 +716,31 @@ const categoricalOptionsSchema = z
   )
   .min(2);
 
-const ordinalVariableSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.ordinal),
-  component: z.enum(ordinalComponents).optional(),
-  options: categoricalOptionsSchema,
-  validation: z.strictObject(validations).pick(ordinalValidations).optional(),
-});
+const ordinalVariableSchema = baseVariableSchema
+  .extend({
+    type: z.literal(VariableTypes.ordinal),
+    component: z.enum(ordinalComponents).optional(),
+    options: categoricalOptionsSchema,
+    validation: z.strictObject(validations).pick(ordinalValidations).optional(),
+    synthetic: OrdinalSyntheticSchema.optional(),
+  })
+  .superRefine(rejectMissingOnRequired)
+  .superRefine(rejectInvalidOptionWeights);
 
-const categoricalVariableSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.categorical),
-  component: z.enum(categoricalComponents).optional(),
-  options: categoricalOptionsSchema,
-  validation: z
-    .strictObject(validations)
-    .pick(categoricalValidations)
-    .optional(),
-});
+const categoricalVariableSchema = baseVariableSchema
+  .extend({
+    type: z.literal(VariableTypes.categorical),
+    component: z.enum(categoricalComponents).optional(),
+    options: categoricalOptionsSchema,
+    validation: z
+      .strictObject(validations)
+      .pick(categoricalValidations)
+      .optional(),
+    synthetic: CategoricalSyntheticSchema.optional(),
+  })
+  .superRefine(rejectMissingOnRequired)
+  .superRefine(rejectInvalidOptionWeights)
+  .superRefine(rejectIllegalSelectionCounts);
 
 const layoutVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.layout),
