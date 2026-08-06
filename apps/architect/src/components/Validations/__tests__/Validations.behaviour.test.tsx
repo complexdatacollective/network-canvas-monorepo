@@ -1,7 +1,8 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { configureStore, type UnknownAction } from '@reduxjs/toolkit';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import {
+  change,
   formValueSelector,
   reducer as formReducer,
   reduxForm,
@@ -101,6 +102,9 @@ const toggle = (label: string) =>
 
 const numberValue = (label: string) =>
   screen.getByRole('spinbutton', { name: label });
+
+const stepper = (label: string) =>
+  screen.getByRole('button', { name: label, hidden: true });
 
 const targetSelect = (label: string) =>
   screen.getByRole('combobox', { name: label });
@@ -767,6 +771,178 @@ describe('Validations behaviour', () => {
       });
 
       expect(screen.queryByText(/possible values/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('the numeric steppers', () => {
+    it('commits a stepped value without waiting for a blur', () => {
+      const { committedValidation } = setup({
+        variableType: 'text',
+        entity: 'node',
+        currentVariableId: 'text-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: {},
+      });
+
+      fireEvent.click(toggle('Maximum length'));
+      typeValue('Maximum length', '3');
+      fireEvent.click(stepper('Increase Maximum length'));
+
+      expect(numberValue('Maximum length')).toHaveValue(4);
+      expect(committedValidation()).toEqual({ maxLength: 4 });
+    });
+
+    it('gates a stepped value through the contradiction check', () => {
+      const { committedValidation } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { maxValue: 6 },
+      });
+
+      fireEvent.click(toggle('Minimum value'));
+      typeValue('Minimum value', '6');
+      fireEvent.click(stepper('Increase Minimum value'));
+
+      expect(
+        screen.getByText(/minValue \(7\) is greater than maxValue \(6\)/),
+      ).toBeInTheDocument();
+      expect(committedValidation()).toEqual({ maxValue: 6 });
+    });
+
+    it('names each rule’s steppers after that rule', () => {
+      setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { minValue: 1, maxValue: 6 },
+      });
+
+      for (const label of ['Minimum value', 'Maximum value']) {
+        expect(stepper(`Increase ${label}`)).toBeInTheDocument();
+        expect(stepper(`Decrease ${label}`)).toBeInTheDocument();
+      }
+
+      expect(
+        screen.queryByRole('button', { name: 'Increase value' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('rules held back by a contradiction', () => {
+    it('commits a held rule once another row resolves the contradiction', () => {
+      const { committedValidation } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { minValue: 5 },
+      });
+
+      fireEvent.click(toggle('Maximum value'));
+      fireEvent.blur(typeValue('Maximum value', '2'));
+      expect(committedValidation()).toEqual({ minValue: 5 });
+
+      fireEvent.blur(typeValue('Minimum value', '1'));
+
+      expect(committedValidation()).toEqual({ minValue: 1, maxValue: 2 });
+      expect(
+        screen.queryByText(/is greater than maxValue/),
+      ).not.toBeInTheDocument();
+    });
+
+    it('commits a held rule once the contradicting rule is switched off', () => {
+      const { committedValidation } = setup({
+        variableType: 'text',
+        entity: 'node',
+        currentVariableId: 'text-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { required: true },
+      });
+
+      fireEvent.click(toggle('Maximum length'));
+      fireEvent.blur(typeValue('Maximum length', '0'));
+      expect(committedValidation()).toEqual({ required: true });
+
+      fireEvent.click(toggle('Required'));
+
+      expect(committedValidation()).toEqual({ maxLength: 0 });
+    });
+
+    it('withholds a value-less rule that contradicts a committed bound', () => {
+      const { committedValidation } = setup({
+        variableType: 'text',
+        entity: 'node',
+        currentVariableId: 'text-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { maxLength: 0 },
+      });
+
+      fireEvent.click(toggle('Required'));
+
+      expect(
+        screen.getByText(/required answers cannot satisfy maxLength \(0\)/),
+      ).toBeInTheDocument();
+      expect(committedValidation()).toEqual({ maxLength: 0 });
+    });
+  });
+
+  describe('rolling the committed map back', () => {
+    it('switches a rule back off when its commit is undone', () => {
+      const { store, committedValidation } = setup({
+        variableType: 'text',
+        entity: 'node',
+        currentVariableId: 'text-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: {},
+      });
+
+      fireEvent.click(toggle('Maximum length'));
+      fireEvent.blur(typeValue('Maximum length', '4'));
+      expect(committedValidation()).toEqual({ maxLength: 4 });
+      expect(toggle('Maximum length')).toBeChecked();
+
+      act(() => {
+        store.dispatch(change(FORM_NAME, 'validation', {}) as UnknownAction);
+      });
+
+      expect(committedValidation()).toEqual({});
+      expect(toggle('Maximum length')).not.toBeChecked();
+      expect(
+        screen.queryByRole('spinbutton', { name: 'Maximum length' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not write a rolled-back value out again on the next commit', () => {
+      const { store, committedValidation } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: {},
+      });
+
+      fireEvent.click(toggle('Minimum value'));
+      fireEvent.blur(typeValue('Minimum value', '3'));
+
+      act(() => {
+        store.dispatch(change(FORM_NAME, 'validation', {}) as UnknownAction);
+      });
+
+      fireEvent.click(toggle('Maximum value'));
+      fireEvent.blur(typeValue('Maximum value', '9'));
+
+      expect(committedValidation()).toEqual({ maxValue: 9 });
     });
   });
 });

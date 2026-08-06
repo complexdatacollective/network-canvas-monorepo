@@ -51,7 +51,11 @@ const ValidationsField = ({
   );
 };
 
-type CheckDraft = (ruleKey: string, ruleValue: unknown) => string[];
+type CheckDraft = (
+  ruleKey: string,
+  ruleValue: unknown,
+  base?: Record<string, unknown>,
+) => string[];
 
 type RuleListProps = {
   groups: ValidationGroup[];
@@ -86,10 +90,49 @@ const RuleList = ({
       ? drafts[ruleKey]!
       : formatCommitted(committed[ruleKey]);
 
-  const commitRule = (ruleKey: string, ruleValue: unknown) =>
-    update({ ...committed, [ruleKey]: ruleValue });
+  const settle = (base: Record<string, unknown>, skip?: string) => {
+    const next = { ...base };
+    let settledAny = true;
 
-  const removeRule = (ruleKey: string) => update(omit(committed, ruleKey));
+    while (settledAny) {
+      settledAny = false;
+      for (const ruleKey of openKeys) {
+        if (ruleKey === skip || Object.hasOwn(next, ruleKey)) {
+          continue;
+        }
+        const parsed = parseForRule(ruleKey, textFor(ruleKey));
+        if (
+          !isDraftComplete(ruleKey, parsed) ||
+          checkDraft(ruleKey, parsed, next).length > 0
+        ) {
+          continue;
+        }
+        next[ruleKey] = parsed;
+        settledAny = true;
+      }
+    }
+
+    return next;
+  };
+
+  const applyCommit = (next: Record<string, unknown>) => {
+    const settled = Object.keys(next);
+
+    setOpenKeys((current) => {
+      const remaining = new Set(current);
+      settled.forEach((ruleKey) => remaining.delete(ruleKey));
+      return remaining.size === current.size ? current : remaining;
+    });
+    setDrafts((current) =>
+      settled.some((ruleKey) => Object.hasOwn(current, ruleKey))
+        ? omit(current, settled)
+        : current,
+    );
+
+    if (!isEqual(next, committed)) {
+      update(next);
+    }
+  };
 
   const handleToggle = (ruleKey: string, nextState: boolean) => {
     if (!nextState) {
@@ -100,16 +143,17 @@ const RuleList = ({
       });
       setDrafts((current) => omit(current, ruleKey));
       setFocusRequest((current) => (current === ruleKey ? null : current));
-      if (Object.hasOwn(committed, ruleKey)) {
-        removeRule(ruleKey);
-      }
+      applyCommit(settle(omit(committed, ruleKey), ruleKey));
       return;
     }
 
     setOpenKeys((current) => new Set(current).add(ruleKey));
 
     if (isValidationWithoutValue(ruleKey)) {
-      commitRule(ruleKey, true);
+      const parsed = parseForRule(ruleKey, '');
+      if (checkDraft(ruleKey, parsed).length === 0) {
+        applyCommit(settle({ ...committed, [ruleKey]: parsed }));
+      }
       return;
     }
 
@@ -125,21 +169,15 @@ const RuleList = ({
 
   const handleCommit = (ruleKey: string, text: string) => {
     const parsed = parseForRule(ruleKey, text);
-    const isCommitted = Object.hasOwn(committed, ruleKey);
-
-    if (
+    const rejected =
       !isDraftComplete(ruleKey, parsed) ||
-      checkDraft(ruleKey, parsed).length > 0
-    ) {
-      if (isCommitted) {
-        removeRule(ruleKey);
-      }
-      return;
-    }
+      checkDraft(ruleKey, parsed).length > 0;
 
-    if (!isEqual(committed[ruleKey], parsed)) {
-      commitRule(ruleKey, parsed);
-    }
+    applyCommit(
+      rejected
+        ? settle(omit(committed, ruleKey), ruleKey)
+        : settle({ ...committed, [ruleKey]: parsed }),
+    );
   };
 
   const issuesFor = (ruleKey: string): string[] => {
@@ -282,13 +320,17 @@ const Validations = ({
 
   const checkDraft = useMemo(
     (): CheckDraft =>
-      (ruleKey: string, ruleValue: unknown): string[] => {
+      (
+        ruleKey: string,
+        ruleValue: unknown,
+        base?: Record<string, unknown>,
+      ): string[] => {
         // R1 floor check runs ahead of the contradiction analyser: a
         // below-floor value is input the schema would reject outright, so
         // there is no point feeding it into findDraftContradictions.
         const floor = floorIssue(ruleKey, ruleValue);
         if (floor) return [floor];
-        const prospective: Record<string, unknown> = { ...committed };
+        const prospective: Record<string, unknown> = { ...(base ?? committed) };
         prospective[ruleKey] = ruleValue;
         // The Anonymisation passphrase is not a codebook variable; a text
         // surrogate lets the local length-pair check still apply.

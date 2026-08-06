@@ -104,6 +104,11 @@ const ValidationRule = ({
             onTextChange(ruleKey, typeof value === 'string' ? value : '')
           }
           onBlur={() => onCommit(ruleKey, text)}
+          onStep={(value: string) => onCommit(ruleKey, value)}
+          stepperLabels={{
+            increase: `Increase ${label}`,
+            decrease: `Decrease ${label}`,
+          }}
           onKeyDown={handleValueKeyDown}
           type="number"
           step={1}
