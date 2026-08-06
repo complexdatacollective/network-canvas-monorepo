@@ -23,6 +23,8 @@ import { reachableStagesForFeasibility } from './generateNetwork/constraints/rea
 import type { EntityConstraints } from './generateNetwork/constraints/types';
 import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
 import type { GenerationContext } from './generateNetwork/context';
+import { resolveFamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/referencePopulation';
+import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types';
 import { materialiseSession } from './generateNetwork/materialise/materialiseSession';
 import { planNetwork } from './generateNetwork/plan/networkPlan';
 import { resolveNodeCount } from './generateNetwork/plan/resolveSynthetic';
@@ -60,6 +62,8 @@ export type GenerateNetworkParams = {
   inProgressStageIndex?: number;
   /** Overrides for run-level session controls. See {@link GenerationConfig}. */
   config?: Partial<GenerationConfig>;
+  /** Family-specific demographic, scenario, and disease-generation settings. */
+  familyPedigree?: FamilyPedigreeGenerationOptions;
 };
 
 export type GenerateNetworkResult = {
@@ -82,6 +86,34 @@ function countCeiling(count: SyntheticCount): number {
     case 'normal':
       return count.max ?? Math.max(0, Math.ceil(count.mean + 6 * count.sd));
   }
+}
+
+/**
+ * The largest family a FamilyPedigree stage may build, taken from the
+ * declared count of the node type it builds one from.
+ *
+ * The pedigree generator needs a single ceiling for its optional branches.
+ * Where several pedigree stages name different node types, the largest wins:
+ * the value bounds what any of them could draw, and the generator's own
+ * seven-person core keeps a small declared count from making a family
+ * impossible.
+ */
+function familyPedigreeNodeCeiling(
+  codebook: StructuralCodebook,
+  stages: Stage[],
+): number {
+  let ceiling = 0;
+  for (const stage of stages) {
+    if (stage.type !== 'FamilyPedigree') continue;
+    const type = stage.nodeConfig?.type;
+    const definition = type === undefined ? undefined : codebook.node?.[type];
+    if (definition === undefined) continue;
+    ceiling = Math.max(
+      ceiling,
+      countCeiling(resolveNodeCount(definition, { creatable: true })),
+    );
+  }
+  return ceiling;
 }
 
 /**
@@ -133,9 +165,18 @@ export function generateNetwork(
     respectSkipLogicAndFiltering = false,
     inProgressStageIndex,
     config,
+    familyPedigree,
   } = params;
 
   const resolvedConfig = resolveGenerationConfig(config);
+  // How large a family may get is a property of the pedigree's node type, so
+  // it comes from that type's declared count rather than from a tuning knob.
+  // The family-specific generator treats it as a ceiling on optional
+  // branches; its seven-person core stands whatever the codebook says.
+  const resolvedFamilyPedigree = resolveFamilyPedigreeGenerationOptions(
+    familyPedigree,
+    familyPedigreeNodeCeiling(codebook, stages),
+  );
 
   const feasibilityStages = reachableStagesForFeasibility(
     codebook,
@@ -177,15 +218,14 @@ export function generateNetwork(
     ),
     externalData,
     respectSkipLogicAndFiltering,
+    resolvedFamilyPedigree,
   );
   if (conflicts.length > 0) {
     throw new SyntheticDataConstraintError(conflicts);
   }
 
-  const valueGen = new ValueGenerator(
-    seed ?? Math.floor(Math.random() * 100000),
-    resolvedConfig.today,
-  );
+  const runSeed = seed ?? Math.floor(Math.random() * 100000);
+  const valueGen = new ValueGenerator(runSeed, resolvedConfig.today);
 
   // The same variable ids that feasibility declined to analyse must also be
   // drawn without their rules, or the draw exhausts a value space no rule was
@@ -236,5 +276,8 @@ export function generateNetwork(
     stages,
     simulateDropOut,
     inProgressStageIndex,
+    reachableStages: feasibilityStages,
+    runSeed,
+    familyPedigree: resolvedFamilyPedigree,
   });
 }

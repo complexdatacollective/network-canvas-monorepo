@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { MouseEventHandler, ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import Form from '@codaco/fresco-ui/form/Form';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
@@ -70,9 +71,13 @@ beforeAll(() => {
 
 const mockOpenDialog =
   vi.fn<(args: unknown) => Promise<Record<string, unknown> | null>>();
+type ConfirmOptions = {
+  onConfirm: (signal: AbortSignal) => void | Promise<void>;
+};
+const mockConfirm = vi.fn<(args: ConfirmOptions) => Promise<boolean | null>>();
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
-  default: () => ({ openDialog: mockOpenDialog }),
+  default: () => ({ confirm: mockConfirm, openDialog: mockOpenDialog }),
 }));
 
 // nodeUtils and edgeUtils export RTK createSelector chains that depend on Redux
@@ -84,7 +89,7 @@ vi.mock('../../../utils/nodeUtils', () => ({
   getEgoVariable: () => 'isEgo',
   getRelationshipVariable: () => 'relationship',
   getBiologicalSexVariable: () => 'biologicalSex',
-  getResolvedNodeFormFields: () => [],
+  getResolvedNodeFormFields: () => [{ variableId: 'partnerships' }],
   getNodeShapeDefinition: () => null,
   getNodeForm: () => null,
   getNodeColorSelector: () => 'node-color-seq-1',
@@ -178,6 +183,7 @@ vi.mock('../../../../../store/modules/session', () => ({
   addNode: vi.fn(),
   addEdge: vi.fn(),
   deleteNode: vi.fn(),
+  updateEdge: vi.fn(),
   updateStageMetadata: vi.fn(),
   default: (state = {}) => state,
 }));
@@ -236,6 +242,24 @@ function makeNode(id: string, isEgo = false): NcNode {
   };
 }
 
+function makeEdge(
+  id: string,
+  from: string,
+  to: string,
+  isActive: boolean,
+): NcEdge {
+  return {
+    _uid: id,
+    type: 'family',
+    from,
+    to,
+    [entityAttributesProperty]: {
+      relationshipType: ['partner'],
+      isActive,
+    },
+  };
+}
+
 function makeStore(
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge> = new Map(),
@@ -269,6 +293,7 @@ function Wrapper({
 
 afterEach(() => {
   mockOpenDialog.mockReset();
+  mockConfirm.mockReset();
 });
 
 // -----------------------------------------------------------------------
@@ -353,5 +378,152 @@ describe('PedigreeView — handleAddPerson routing', () => {
 
     expect(addNodeSpy).toHaveBeenCalledTimes(1);
     expect(addEdgeSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('PedigreeView — person menu actions', () => {
+  it('asks for confirmation before deleting a person', async () => {
+    const nodes = new Map([
+      ['ego', makeNode('ego', true)],
+      ['person', makeNode('person')],
+    ]);
+    const store = makeStore(nodes);
+    const removeNodeSpy = vi.spyOn(store.getState(), 'removeNode');
+    mockConfirm.mockResolvedValueOnce(false);
+
+    render(
+      <Wrapper store={store}>
+        <PedigreeView overrideNodes={nodes} overrideEdges={new Map()} />
+      </Wrapper>,
+    );
+
+    await userEvent.click(await screen.findByText('person'));
+    await act(async () => {
+      await userEvent.click(await screen.findByText('Delete'));
+    });
+
+    expect(mockConfirm).toHaveBeenCalledTimes(1);
+    expect(removeNodeSpy).not.toHaveBeenCalled();
+    expect(store.getState().network.nodes.has('person')).toBe(true);
+  });
+
+  it('deletes the person only after the confirmation is accepted', async () => {
+    const nodes = new Map([
+      ['ego', makeNode('ego', true)],
+      ['person', makeNode('person')],
+    ]);
+    const store = makeStore(nodes);
+    mockConfirm.mockImplementationOnce(async ({ onConfirm }) => {
+      await onConfirm(new AbortController().signal);
+      return true;
+    });
+
+    render(
+      <Wrapper store={store}>
+        <PedigreeView overrideNodes={nodes} overrideEdges={new Map()} />
+      </Wrapper>,
+    );
+
+    await userEvent.click(await screen.findByText('person'));
+    await act(async () => {
+      await userEvent.click(await screen.findByText('Delete'));
+    });
+
+    expect(store.getState().network.nodes.has('person')).toBe(false);
+  });
+
+  it('updates biological sex and current/ex status from the edit dialog', async () => {
+    const person = makeNode('person');
+    person[entityAttributesProperty].biologicalSex = ['female'];
+    const nodes = new Map([
+      ['ego', makeNode('ego', true)],
+      ['person', person],
+    ]);
+    const edges = new Map([
+      ['partnership', makeEdge('partnership', 'ego', 'person', true)],
+    ]);
+    const store = makeStore(nodes, edges);
+    mockOpenDialog.mockResolvedValueOnce({
+      name: 'Edited Person',
+      biologicalSex: 'male',
+      partnerships: ['participant-answer'],
+      __familyPedigreeEdit: {
+        partnerships: [{ id: 'partnership', value: 'ex' }],
+      },
+    });
+
+    render(
+      <Wrapper store={store}>
+        <PedigreeView overrideNodes={nodes} overrideEdges={edges} />
+      </Wrapper>,
+    );
+
+    await userEvent.click(await screen.findByText('person'));
+    await act(async () => {
+      await userEvent.click(await screen.findByText('Edit'));
+    });
+
+    expect(
+      store.getState().network.nodes.get('person')?.[entityAttributesProperty]
+        .biologicalSex,
+    ).toEqual(['male']);
+    expect(
+      store.getState().network.nodes.get('person')?.[entityAttributesProperty]
+        .partnerships,
+    ).toEqual(['participant-answer']);
+    expect(
+      store.getState().network.edges.get('partnership')?.[
+        entityAttributesProperty
+      ].isActive,
+    ).toBe(false);
+  });
+
+  it('shows each partnership with its current status in the edit dialog', async () => {
+    const nodes = new Map([
+      ['ego', makeNode('ego', true)],
+      ['person', makeNode('person')],
+      ['current-partner', makeNode('current-partner')],
+      ['ex-partner', makeNode('ex-partner')],
+    ]);
+    const edges = new Map([
+      [
+        'current-partnership',
+        makeEdge('current-partnership', 'person', 'current-partner', true),
+      ],
+      [
+        'ex-partnership',
+        makeEdge('ex-partnership', 'ex-partner', 'person', false),
+      ],
+    ]);
+    const store = makeStore(nodes, edges);
+    let dialogChildren: ReactNode = null;
+    mockOpenDialog.mockImplementationOnce(async (args) => {
+      dialogChildren = (args as { children: ReactNode }).children;
+      return null;
+    });
+
+    render(
+      <Wrapper store={store}>
+        <PedigreeView overrideNodes={nodes} overrideEdges={edges} />
+      </Wrapper>,
+    );
+
+    await userEvent.click(await screen.findByText('person'));
+    await act(async () => {
+      await userEvent.click(await screen.findByText('Edit'));
+    });
+
+    render(<Form onSubmit={() => ({ success: true })}>{dialogChildren}</Form>);
+
+    const currentOptions = screen.getAllByRole('radio', {
+      name: 'Current partner',
+    });
+    const exOptions = screen.getAllByRole('radio', { name: 'Ex-partner' });
+    expect(currentOptions).toHaveLength(2);
+    expect(exOptions).toHaveLength(2);
+    expect(currentOptions[0]).toBeChecked();
+    expect(exOptions[0]).not.toBeChecked();
+    expect(currentOptions[1]).not.toBeChecked();
+    expect(exOptions[1]).toBeChecked();
   });
 });

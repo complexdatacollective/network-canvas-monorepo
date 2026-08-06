@@ -13,6 +13,7 @@ export type WizardContextType = {
   currentStep: number;
   totalSteps: number;
   data: Record<string, unknown>;
+  completedStepValues: Record<number, Record<string, unknown>>;
   setStepData: (data: Record<string, unknown>) => void;
   setNextEnabled: (enabled: boolean) => void;
   setBackEnabled: (enabled: boolean) => void;

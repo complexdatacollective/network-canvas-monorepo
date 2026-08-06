@@ -264,8 +264,8 @@ describe('TieStrengthCensus over an edge it did not create', () => {
     });
 
     const keys = pairKeys(network.edges);
-    // C(4, 2) = 6 pairs, three of them already joined by the pedigree.
-    expect(keys).toHaveLength(6);
-    expect(new Set(keys).size).toBe(6);
+    const pairCount = (network.nodes.length * (network.nodes.length - 1)) / 2;
+    expect(keys).toHaveLength(pairCount);
+    expect(new Set(keys).size).toBe(pairCount);
   });
 });

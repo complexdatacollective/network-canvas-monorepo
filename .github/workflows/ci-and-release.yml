@@ -456,7 +456,13 @@ jobs:
       - uses: ./.github/actions/turbo-ci-setup
       # oxlint-tsgolint's type-aware rules resolve workspace types directly from
       # each package's `src` (exports point at source), so no built `.d.ts` is
-      # needed and the job runs without a prior package build.
+      # needed and the job runs without a prior package build. Fresco is the one
+      # exception: its Prisma client and Next type declarations are generated
+      # and gitignored, and the install above runs with --ignore-scripts, so
+      # without this its queries lint as untyped. The PR path below calls oxlint directly rather than through
+      # turbo, so the task cannot be reached as a dependency.
+      - name: Generate Fresco's Prisma client and Next types
+        run: pnpm exec turbo run fresco#codegen
       - name: Lint and check formatting
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
@@ -730,7 +736,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
+      - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        with:
+          install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version-file: '.nvmrc'
@@ -1412,7 +1420,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        with:
+          install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version-file: '.nvmrc'
@@ -1449,6 +1459,8 @@ jobs:
       architect_version: ${{ steps.architect.outputs.version }}
       documentation_released: ${{ steps.documentation.outputs.released }}
       documentation_version: ${{ steps.documentation.outputs.version }}
+      fresco_released: ${{ steps.fresco.outputs.released }}
+      fresco_version: ${{ steps.fresco.outputs.version }}
       interviewer_released: ${{ steps.interviewer.outputs.released }}
       interviewer_version: ${{ steps.interviewer.outputs.version }}
       website_released: ${{ steps.website.outputs.released }}
@@ -1473,6 +1485,12 @@ jobs:
           PKG_JSON: apps/documentation/package.json
           PKG_NAME: '@codaco/documentation'
           RELEASE_CHANNEL: stable
+        run: bash .github/scripts/detect-app-release.sh
+      - id: fresco
+        env:
+          PKG_JSON: apps/fresco/package.json
+          PKG_NAME: 'fresco'
+          RELEASE_CHANNEL: stable-tagged
         run: bash .github/scripts/detect-app-release.sh
       - id: interviewer
         env:
@@ -1527,7 +1545,9 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        with:
+          install: false
       - if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
@@ -1597,7 +1617,9 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        with:
+          install: false
       - if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
@@ -1631,6 +1653,102 @@ jobs:
           body_path: ${{ runner.temp }}/interviewer-notes.md
           prerelease: false
           make_latest: 'true'
+
+  # Fresco is developed here but deployed from its own repository: the mirror
+  # replaces that repo's `main` with this app's source (every workspace:/catalog:
+  # specifier resolved, plus the single-package pnpm-workspace.yaml and lockfile
+  # its Dockerfile needs). Pushing `main` there is what triggers the container
+  # image build and push to GHCR — see apps/fresco/.github/workflows.
+  # The GitHub release is created on the Fresco repo, tagged v<version>, while
+  # the local `fresco@<version>` tag is what makes this job idempotent.
+  apps-release-fresco:
+    # Also needs `release`: the mirror resolves Fresco's workspace: dependencies
+    # to registry ranges and generates a lockfile against npm, so any @codaco/*
+    # version bumped in this same release must be published first. The Netlify
+    # app releases have no such ordering constraint because they build from the
+    # workspace itself.
+    needs: [apps-release-detect, release]
+    if: needs.apps-release-detect.outputs.fresco_released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # One release per version — see apps-release-architect for the rationale.
+    concurrency:
+      group: apps-release-fresco@${{ needs.apps-release-detect.outputs.fresco_version }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          fetch-tags: true
+          persist-credentials: false
+      - name: Skip if this version was already released
+        id: guard
+        env:
+          TAG: 'fresco@${{ needs.apps-release-detect.outputs.fresco_version }}'
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG already released — nothing to do"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        with:
+          install: false
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Mirror source to the Fresco repository
+        id: mirror
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          MONOREPO_SHA: ${{ github.sha }}
+          VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
+        run: >-
+          node scripts/mirror-app.mjs
+          --app apps/fresco
+          --repo complexdatacollective/Fresco
+          --branch main
+          --version "$VERSION"
+          --with-lockfile
+      - name: fresco release notes
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
+        run: >-
+          node scripts/release-notes.mjs
+          --app apps/fresco
+          --pkg fresco
+          --version "$VERSION"
+          --out "${RUNNER_TEMP}/fresco-notes.md"
+      - name: Create the release on the Fresco repository
+        if: steps.guard.outputs.skip != 'true'
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          repository: complexdatacollective/Fresco
+          token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
+          tag_name: v${{ needs.apps-release-detect.outputs.fresco_version }}
+          target_commitish: ${{ steps.mirror.outputs.mirror_sha }}
+          name: Fresco v${{ needs.apps-release-detect.outputs.fresco_version }}
+          body_path: ${{ runner.temp }}/fresco-notes.md
+          prerelease: false
+          make_latest: 'true'
+      # Tagged locally so detect-app-release.sh sees this version as released and
+      # the mirror is not repeated on the next push to main.
+      - name: Tag the released version in this repository
+        if: steps.guard.outputs.skip != 'true'
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: 'fresco@${{ needs.apps-release-detect.outputs.fresco_version }}'
+          name: Fresco ${{ needs.apps-release-detect.outputs.fresco_version }}
+          body_path: ${{ runner.temp }}/fresco-notes.md
+          prerelease: false
+          make_latest: 'false'
 
   # Documentation follows the same generated-release-PR gate as the PWA apps,
   # but uses normal semver and produces only a Netlify deployment + git tag.
@@ -1983,7 +2101,9 @@ jobs:
       mirror_sha: ${{ steps.mirror.outputs.mirror_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        with:
+          install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version-file: '.nvmrc'

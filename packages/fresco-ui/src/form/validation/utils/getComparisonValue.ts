@@ -1,6 +1,7 @@
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { FieldValue, ValidationContext } from '../../store/types';
+import { getValue } from '../../utils/objectPath';
 
 /**
  * Resolves the value of a comparison variable for the variable-comparison
@@ -19,8 +20,21 @@ export function getComparisonValue(
   attribute: string,
   context?: ValidationContext,
 ): { present: boolean; value: FieldValue | null } {
-  if (attribute in formValues) {
-    return { present: true, value: formValues[attribute] };
+  const namespacedValues = context?.formValueNamespace
+    ? getValue(formValues, context.formValueNamespace)
+    : formValues;
+  const formAttribute = context?.formValueAliases?.[attribute] ?? attribute;
+
+  if (
+    typeof namespacedValues === 'object' &&
+    namespacedValues !== null &&
+    !Array.isArray(namespacedValues) &&
+    formAttribute in namespacedValues
+  ) {
+    return {
+      present: true,
+      value: (namespacedValues as Record<string, FieldValue>)[formAttribute],
+    };
   }
 
   if (!context) {

@@ -1,4 +1,12 @@
 export type { GenerationConfig } from './generateNetwork/config';
+export { US_FAMILY_PEDIGREE_POPULATION } from './generateNetwork/familyPedigree/referencePopulation';
+export type {
+  FamilyPedigreeDiseaseMode,
+  FamilyPedigreeGenerationOptions,
+  FamilyPedigreePopulationProfile,
+  FamilyPedigreeScenario,
+  FamilyPedigreeWeightedCount,
+} from './generateNetwork/familyPedigree/types';
 export type {
   GenerateNetworkParams,
   GenerateNetworkResult,

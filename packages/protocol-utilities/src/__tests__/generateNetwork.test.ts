@@ -273,6 +273,57 @@ function makeSkipRoutingCodebook(): Codebook {
 }
 
 describe('generateNetwork', () => {
+  it('writes Sociogram highlights only when the prompt collects them', () => {
+    const codebook = makeCodebook({
+      node: {
+        'node-type-1': {
+          color: 'node-color-seq-1',
+          variables: {
+            'var-name': { name: 'Name', type: 'text' },
+            // Certain rather than tuned: how often a node is highlighted is
+            // now a property of the variable, like any other boolean.
+            'highlighted': {
+              name: 'Highlighted',
+              type: 'boolean',
+              synthetic: { probabilityTrue: 1 },
+            },
+          },
+        },
+      },
+    });
+    const generator = makeNameGeneratorStage({
+      form: {
+        fields: [{ variable: 'var-name', prompt: 'What is their name?' }],
+      },
+      behaviours: { minNodes: 3, maxNodes: 3 },
+    });
+    const sociogram = {
+      id: 'stage-sociogram',
+      type: 'Sociogram',
+      label: 'Support network',
+      subject: { entity: 'node', type: 'node-type-1' },
+      prompts: [
+        {
+          id: 'prompt-highlight',
+          text: 'Who supports you?',
+          highlight: { allowHighlighting: true, variable: 'highlighted' },
+        },
+      ],
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      codebook,
+      stages: [generator, sociogram],
+      seed: 42,
+    });
+
+    expect(network.nodes).toHaveLength(3);
+    for (const node of network.nodes) {
+      expect(node[entityAttributesProperty]['var-name']).toBeDefined();
+      expect(node[entityAttributesProperty].highlighted).toBe(true);
+    }
+  });
+
   describe('targeted skip destinations', () => {
     it('still analyses a hidden stage when skip logic is disabled', () => {
       const stages = [
@@ -457,7 +508,11 @@ describe('generateNetwork', () => {
 
       for (const node of network.nodes) {
         const attrs = node[entityAttributesProperty];
-        expect(attrs).toHaveProperty('var-name');
+        if (attrs['var-ego'] === true) {
+          expect(attrs).not.toHaveProperty('var-name');
+        } else {
+          expect(attrs).toHaveProperty('var-name');
+        }
       }
     });
 
@@ -544,7 +599,12 @@ describe('generateNetwork', () => {
 
       const { stageMetadata } = generateNetwork({ codebook, stages, seed: 42 });
 
-      expect(stageMetadata).toEqual({ 0: { isNetworkCommitted: true } });
+      expect(stageMetadata?.[0]).toEqual(
+        expect.objectContaining({
+          isNetworkCommitted: true,
+          edgeIdVersion: 1,
+        }),
+      );
       expect(StageMetadataSchema.safeParse(stageMetadata).success).toBe(true);
     });
 
@@ -626,7 +686,9 @@ describe('generateNetwork', () => {
 
       const result = StageMetadataSchema.safeParse(stageMetadata);
       expect(result.success).toBe(true);
-      expect(stageMetadata?.[2]).toEqual({ isNetworkCommitted: true });
+      expect(stageMetadata?.[2]).toEqual(
+        expect.objectContaining({ isNetworkCommitted: true }),
+      );
     });
   });
 

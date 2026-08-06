@@ -3,7 +3,11 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { CurrentProtocolSchema, validateProtocol } from '../index.ts';
+import {
+  CurrentProtocolSchema,
+  type VersionedProtocol,
+  validateProtocol,
+} from '../index.ts';
 
 // packages/protocols is a pure-data package with no test runner, so this test
 // is co-located here (which already runs vitest) and reads the e2e fixture by
@@ -18,7 +22,9 @@ const EXPECTED_STAGE_TYPE_COUNT = 19;
 describe('all-interfaces e2e fixture', () => {
   it('is a valid schema-8 protocol', async () => {
     const raw = readFileSync(fixturePath, 'utf8');
-    const result = await validateProtocol(JSON.parse(raw));
+    // `JSON.parse` is typed `unknown` by @total-typescript/ts-reset; the
+    // fixture is a protocol by construction, and validating it is the point.
+    const result = await validateProtocol(JSON.parse(raw) as VersionedProtocol);
     expect(result.success, JSON.stringify(result.error?.issues, null, 2)).toBe(
       true,
     );

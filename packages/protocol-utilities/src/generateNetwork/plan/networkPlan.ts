@@ -88,8 +88,6 @@ export type NetworkPlan = {
   };
   nodes: PlannedNode[];
   edges: PlannedEdge[];
-  /** Pedigree child uid → parent uid, for structure-aware materialisation. */
-  pedigreeParents: Map<string, string>;
 };
 
 type VariablesRecord = Record<string, Variable>;
@@ -368,10 +366,15 @@ export function planNetwork(
 
   // --- Node populations ----------------------------------------------------
   const nodes: PlannedNode[] = [];
-  const pedigreeParents = new Map<string, string>();
   const creationsByType = new Map<string, NodeCreation[]>();
   for (const summary of effects.stages) {
     for (const creation of summary.nodeCreations) {
+      // A family pedigree builds its own people and links through the
+      // specialist generator at materialisation, because a family has to hold
+      // together as a structure rather than be sized as a population. The
+      // plan leaves its entities alone; the node type's declared count still
+      // bounds how large a family may grow.
+      if (creation.source === 'pedigree') continue;
       const list = creationsByType.get(creation.nodeType) ?? [];
       list.push(creation);
       creationsByType.set(creation.nodeType, list);
@@ -489,12 +492,6 @@ export function planNetwork(
           if (creation.source === 'roster' && rosterRow === undefined) break;
         }
 
-        if (creation.source === 'pedigree') {
-          // The first family member is the participant; the rest are not.
-          const pedigree = effects.stages[creation.stageIndex]?.pedigree;
-          if (pedigree?.egoVariable) fixed[pedigree.egoVariable] = i === 0;
-        }
-
         const uid = rosterRow
           ? rosterRow[entityPrimaryKeyProperty]
           : deterministicUuid(source.stream('id', 'node', type));
@@ -602,35 +599,9 @@ export function planNetwork(
       };
     };
 
-    // Structural pedigree edges first: each family member after the first
-    // gets a parent among the members created before it.
+    // A pedigree's own parent/partner links come from the specialist
+    // generator alongside its people, so nothing structural is planned here.
     const mandatoryKeys = new Set<string>();
-    for (const creation of creations) {
-      if (creation.structured !== 'pedigree') continue;
-      const pedigree = effects.stages[creation.stageIndex]?.pedigree;
-      if (!pedigree) continue;
-      const familyNodes = nodes.filter(
-        (node) =>
-          node.creationStageIndex === creation.stageIndex &&
-          node.type === creation.subjectNodeType,
-      );
-      const treeStream = source.stream('pedigree', creation.stageIndex);
-      for (let i = 1; i < familyNodes.length; i++) {
-        const child = familyNodes[i]!;
-        const parent = familyNodes[treeStream.int(0, i - 1)]!;
-        pedigreeParents.set(child.uid, parent.uid);
-        mandatoryKeys.add(pairKey(parent.uid, child.uid));
-        edges.push(
-          buildEdge(
-            parent.uid,
-            child.uid,
-            creation.stageIndex,
-            pedigree.edgeFixedValues as Record<string, VariableValue>,
-            true,
-          ),
-        );
-      }
-    }
 
     // Topology target over the eligible pair domain.
     const topologyCreations = creations.filter(
@@ -677,6 +648,5 @@ export function planNetwork(
     },
     nodes,
     edges,
-    pedigreeParents,
   };
 }

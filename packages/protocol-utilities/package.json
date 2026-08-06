@@ -1,6 +1,6 @@
 {
   "name": "@codaco/protocol-utilities",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Synthetic network generation and interview-payload builder for Network Canvas protocols.",
   "license": "MIT",
   "repository": {

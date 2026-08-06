@@ -39,7 +39,9 @@ export type GenerationConfig = {
  * reproducible: reading the clock per draw made a fixed seed stop reproducing
  * across UTC midnight.
  */
-export type ResolvedGenerationConfig = GenerationConfig & { today: string };
+export type ResolvedGenerationConfig = GenerationConfig & {
+  today: string;
+};
 
 const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> = {
   dropOutFactor: 0.15,

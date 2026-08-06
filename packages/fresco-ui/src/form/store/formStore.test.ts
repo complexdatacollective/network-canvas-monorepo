@@ -219,10 +219,13 @@ describe('FormStore', () => {
       expect(field?.meta.isDirty).toBe(true);
     });
 
-    it('should not update value for non-existent field', () => {
-      expect(() => {
-        store.getState().setFieldValue('nonexistent', 'value');
-      }).not.toThrow();
+    it('should not add a value for a non-existent field to form values', () => {
+      store.getState().setFieldValue('nonexistent', 'value');
+
+      expect(store.getState().fields.has('nonexistent')).toBe(false);
+      expect(store.getState().getFormValues()).not.toHaveProperty(
+        'nonexistent',
+      );
     });
 
     it('should set field error and update validity through validation', async () => {
@@ -1441,7 +1444,8 @@ describe('FormStore', () => {
         store.getState().setFieldTouched(nonExistentField, true);
       }).not.toThrow();
 
-      expect(store.getState().getFieldState(nonExistentField)).toBeUndefined();
+      expect(store.getState().fields.has(nonExistentField)).toBe(false);
+      expect(store.getState().getFieldState('neverWritten')).toBeUndefined();
     });
 
     it('should handle Map operations correctly', () => {
@@ -1601,6 +1605,112 @@ describe('FormStore', () => {
       persistentStore.getState().reset();
 
       expect(persistentStore.getState().dormantValues.size).toBe(0);
+    });
+
+    it('should exclude a dormant value from form values', () => {
+      persistentStore.getState().registerField({
+        name: 'email',
+        initialValue: 'initial@example.com',
+      });
+
+      persistentStore.getState().setFieldValue('email', 'changed@example.com');
+
+      expect(persistentStore.getState().getFormValues()).toEqual({
+        email: 'changed@example.com',
+      });
+
+      persistentStore.getState().unregisterField('email');
+
+      expect(persistentStore.getState().getFormValues()).toEqual({});
+    });
+
+    it('should return a restored value in form values after re-registering', () => {
+      persistentStore.getState().registerField({
+        name: 'email',
+        initialValue: 'initial@example.com',
+      });
+
+      persistentStore.getState().setFieldValue('email', 'changed@example.com');
+      persistentStore.getState().unregisterField('email');
+
+      persistentStore.getState().registerField({
+        name: 'email',
+        initialValue: 'new-initial@example.com',
+      });
+
+      expect(persistentStore.getState().getFormValues()).toEqual({
+        email: 'changed@example.com',
+      });
+    });
+  });
+
+  describe('Pending writes to unregistered fields', () => {
+    it('should store a pending write outside of form values', () => {
+      store.getState().setFieldValue('email', 'pending@example.com');
+
+      expect(store.getState().fields.has('email')).toBe(false);
+      expect(store.getState().getFieldState('email')?.value).toBe(
+        'pending@example.com',
+      );
+      expect(store.getState().dormantValues.get('email')?.value).toBe(
+        'pending@example.com',
+      );
+      expect(store.getState().getFormValues()).toEqual({});
+    });
+
+    it('should prefer a pending write over initialValue when the field registers', () => {
+      store.getState().setFieldValue('email', 'pending@example.com');
+
+      store.getState().registerField({
+        name: 'email',
+        initialValue: 'initial@example.com',
+      });
+
+      const field = store.getState().getFieldState('email');
+      expect(field?.value).toBe('pending@example.com');
+      expect(field?.meta.isTouched).toBe(true);
+      expect(field?.meta.isDirty).toBe(true);
+      expect(store.getState().dormantValues.has('email')).toBe(false);
+      expect(store.getState().getFormValues()).toEqual({
+        email: 'pending@example.com',
+      });
+    });
+
+    it('should mark the form dirty after a pending write', () => {
+      expect(store.getState().isDirty).toBe(false);
+
+      store.getState().setFieldValue('email', 'pending@example.com');
+
+      expect(store.getState().isDirty).toBe(true);
+    });
+
+    it('should not validate or create errors for a pending write', () => {
+      store.getState().setFieldValue('email', 'pending@example.com');
+
+      expect(mockValidateFieldValue).not.toHaveBeenCalled();
+      expect(store.getState().errors).toEqual({
+        formErrors: [],
+        fieldErrors: {},
+      });
+      expect(store.getState().getFieldErrors('email')).toBeNull();
+      expect(store.getState().isValid).toBe(true);
+    });
+
+    it('should preserve an existing dormant entry when overwriting its value', () => {
+      const validation = z.optional(z.string());
+      store.getState().registerField({
+        name: 'email',
+        initialValue: 'initial@example.com',
+        validation,
+      });
+      store.getState().unregisterField('email');
+
+      store.getState().setFieldValue('email', 'pending@example.com');
+
+      const dormant = store.getState().dormantValues.get('email');
+      expect(dormant?.value).toBe('pending@example.com');
+      expect(dormant?.initialValue).toBe('initial@example.com');
+      expect(dormant?.validation).toBe(validation);
     });
   });
 });

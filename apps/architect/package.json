@@ -1,6 +1,6 @@
 {
   "name": "@codaco/architect",
-  "version": "8.0.0",
+  "version": "8.0.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -23,7 +23,6 @@
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/interface-images": "workspace:^",
     "@codaco/interview": "workspace:^",
-    "@codaco/network-query": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/protocols": "workspace:^",

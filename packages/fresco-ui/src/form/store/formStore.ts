@@ -287,8 +287,26 @@ export const createFormStore = (): FormStoreApi => {
 
       setFieldValue: (fieldName, value) => {
         if (!get().fields.has(fieldName)) {
-          // eslint-disable-next-line no-console
-          console.warn(`Field "${fieldName}" is not registered.`);
+          // A host may stage a value for a field that is not currently
+          // mounted (Architect's undo/redo). The write is parked in dormant
+          // storage for the field's next registration: it is not validated,
+          // owns no errors, and stays out of the form's output until then.
+          set((state) => {
+            const existing = state.dormantValues.get(fieldName);
+            state.dormantValues.set(fieldName, {
+              initialValue: existing?.initialValue,
+              validation: existing?.validation,
+              value,
+              meta: {
+                isValidating: false,
+                isTouched: true,
+                isBlurred: true,
+                isDirty: true,
+                isValid: existing?.meta.isValid ?? true,
+              },
+            });
+            state.isDirty = true;
+          });
           return;
         }
 
@@ -351,11 +369,10 @@ export const createFormStore = (): FormStoreApi => {
       getFormValues: () => {
         const state = get();
         const values = {};
-        // Dormant values first (lower priority)
-        state.dormantValues.forEach((fieldState, fieldName) => {
-          setValue(values, fieldName, fieldState.value);
-        });
-        // Active fields override
+        // Only registered fields contribute: an unmounted field's value is
+        // not part of the form's output. Dormant storage exists solely to
+        // restore a value when the field remounts and to back the
+        // getFieldState fallback for cross-step reads.
         state.fields.forEach((fieldState, fieldName) => {
           setValue(values, fieldName, fieldState.value);
         });

@@ -258,6 +258,18 @@ export const LongDescription: Story = {
     const close = await screen.findByLabelText('Close');
     const toastRoot = toastRootFor(close);
 
+    // Toast.Title and Toast.Description are given `render` elements with no
+    // children of their own, so Base UI supplies the title and description
+    // text. Assert it actually lands in the DOM: a Base UI change to how
+    // `render`-prop content is handled would otherwise silently produce an
+    // empty toast that still passes every layout assertion below.
+    await waitFor(() => {
+      expect(toastRoot).toHaveTextContent('Long description');
+      expect(toastRoot).toHaveTextContent(
+        'Line 1 of a description long enough to overflow the toast.',
+      );
+    });
+
     // The toast slides in from below over ~0.5s, so an in-flight frame can
     // transiently read as overflowing in either direction — check the root's
     // box and the Close control's box together in one `waitFor` so it only

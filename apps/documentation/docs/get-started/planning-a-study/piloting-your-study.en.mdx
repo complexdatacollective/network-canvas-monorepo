@@ -24,7 +24,7 @@ The rest of this page walks through a piloting journey, from previewing single s
 
 ## Preview stages as you design
 
-Your first line of defense is in Architect itself. As you build, you can [preview any stage](/en/design-protocols/preview-mode) to see how it will appear to participants, letting you check changes immediately rather than waiting until you deploy. Previews can start with automatically generated example data — so network-dependent interfaces like sociograms and bins have something to display — and can show stages that skip logic would normally hide, so you can check every screen in your protocol. Nothing you enter in a preview is saved.
+Your first line of defense is in Architect itself. As you build, you can [preview any stage](/en/design-protocols/preview-mode) to see how it will appear to participants, letting you check changes immediately rather than waiting until you deploy. Previews can start with automatically generated example data, so network-dependent interfaces like sociograms and bins have something to display. Skip logic is disabled by default so you can check every screen in your protocol; turn on **Respect skip logic** when you want to test the routes participants will follow. Nothing you enter in a preview is saved.
 
 Previewing catches problems with individual stages, but it is only the first part of a full dry run: it won't exercise your interview workflow on the device you'll use in the field, or your export pipeline. That's what the next steps are for.
 
@@ -54,7 +54,7 @@ The sandbox is a shared environment: protocols you upload are visible to all use
 
 Before your first real participant, work through this list:
 
-- **Preview every stage in Architect** — including stages that skip logic would hide, using the [preview settings](/en/design-protocols/preview-mode) to bypass it.
+- **Preview every stage in Architect** — first with skip logic disabled so you can inspect every screen, then with **Respect skip logic** turned on to test the routes participants will follow. See the [preview settings](/en/design-protocols/preview-mode) for details.
 - **Try to break your validation rules.** Test edge cases, and test with pilot participants; the [Field Validation guide](/en/design-protocols/key-concepts/field-validation) explains what to look for, such as required fields that can't be answered or ranges that exclude legitimate responses.
 - **Run a complete interview on the device you will use in the field.** Performance, text entry, and screen size all shape the participant experience — see [Choosing a Hardware Device](/en/collect-data/interviewer/choosing-hardware).
 - **Check connectivity requirements.** Protocols using internet-dependent interfaces such as [Geospatial](/en/design-protocols/interface-documentation/geospatial) show a **Requires internet** indicator on their protocol card, and need a reliable connection wherever interviews will happen.

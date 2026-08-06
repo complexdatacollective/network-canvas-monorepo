@@ -26,7 +26,9 @@ describe('resolveGenerationConfig', () => {
   });
 
   it('reads the clock when no date is supplied', () => {
-    expect(resolveGenerationConfig().today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const config = resolveGenerationConfig();
+
+    expect(config.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it('resolves a date rather than keeping an explicit undefined', () => {

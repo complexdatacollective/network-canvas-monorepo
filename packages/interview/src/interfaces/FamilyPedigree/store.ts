@@ -15,7 +15,9 @@ import type {
 import {
   addEdge as addEdgeToNetwork,
   addNode as addNodeToNetwork,
+  deleteEdge,
   deleteNode,
+  updateEdge as updateEdgeInNetwork,
   updateStageMetadata,
 } from '../../store/modules/session';
 import type { useAppDispatch } from '../../store/store';
@@ -40,7 +42,7 @@ export type VariableConfig = {
   isGestationalCarrierVariable: string;
   /** Edge variable storing the gamete role ('egg'|'sperm') of a biological/donor parent. */
   gameteRoleVariable: string;
-  /** Node variable storing the biological sex of non-gamete-parent people. */
+  /** Node variable storing each person's reported biological sex. */
   biologicalSexVariable: string;
 };
 
@@ -86,6 +88,7 @@ type FamilyPedigreeState = {
   };
   nodeMetadata: Map<string, NodeMetadata>;
   storeToReduxIdMap: Map<string, string>;
+  storeToReduxEdgeIdMap: Map<string, string>;
 };
 
 type NetworkActions = {
@@ -101,6 +104,10 @@ type NetworkActions = {
     attributes: Record<string, VariableValue>;
     id?: string;
   }) => string;
+  updateEdge: (
+    id: string,
+    attributes: Record<string, VariableValue>,
+  ) => Promise<void>;
   removeEdge: (id: string) => void;
   clearNetwork: () => void;
   setStep: (step: FamilyPedigreeState['step']) => void;
@@ -176,6 +183,7 @@ export const createFamilyPedigreeStore = (
         },
         nodeMetadata: initialNodeMetadata,
         storeToReduxIdMap: new Map<string, string>(),
+        storeToReduxEdgeIdMap: new Map<string, string>(),
 
         setStep: (step) =>
           set((state) => {
@@ -260,6 +268,27 @@ export const createFamilyPedigreeStore = (
           return edgeId;
         },
 
+        updateEdge: async (id, attributes) => {
+          set((state) => {
+            const edge = state.network.edges.get(id);
+            if (edge) {
+              Object.assign(edge[entityAttributesProperty], attributes);
+            }
+          });
+
+          const reduxEdgeId =
+            get().storeToReduxEdgeIdMap.get(id) ??
+            (preexistingReduxEdgeIds.has(id) ? id : undefined);
+          if (dispatch === undefined || reduxEdgeId === undefined) return;
+
+          await dispatch(
+            updateEdgeInNetwork({
+              edgeId: reduxEdgeId,
+              newAttributeData: attributes,
+            }),
+          ).unwrap();
+        },
+
         removeEdge: (id) => {
           set((state) => {
             state.network.edges.delete(id);
@@ -275,8 +304,9 @@ export const createFamilyPedigreeStore = (
         },
 
         commitBatch: (rawBatch) => {
-          // Every pedigree node must carry a biological-sex value: keep what was
-          // asked, otherwise infer it from the person's reproductive role.
+          // Every pedigree node must carry a biological-sex value. Current
+          // flows capture it directly; the helper supplies a defensive legacy
+          // fallback without ever replacing a captured answer.
           const batch = withInferredBiologicalSex(rawBatch, variableConfig);
           set((state) => {
             const tempIdToRealId = new Map<string, string>();
@@ -319,18 +349,17 @@ export const createFamilyPedigreeStore = (
 
         syncMetadata: () => {
           const { nodes, edges } = get().network;
-          const { storeToReduxIdMap } = get();
+          const { storeToReduxIdMap, storeToReduxEdgeIdMap } = get();
 
           // The persisted membership snapshot must be keyed by the ids the shared
-          // Redux graph uses, because every consumer (pedigreeMemberIds ->
-          // NarrativePedigree, and this stage's own revisit view) matches it
-          // against Redux `node._uid`. After finalize, nodes created here live in
-          // Redux under fresh ids recorded in storeToReduxIdMap; seeded/pre-finalize
-          // nodes are absent from the map and keep their id (which already equals
-          // their Redux id). So map every store id through it, falling back to
-          // itself.
+          // Redux graph uses, because NarrativePedigree and this stage's revisit
+          // view match it against Redux entities. Finalizing nodes and edges creates
+          // fresh Redux ids recorded in these maps; seeded entities already use
+          // their Redux ids, so missing map entries safely fall back to themselves.
           const toReduxId = (storeId: string): string =>
             storeToReduxIdMap.get(storeId) ?? storeId;
+          const toReduxEdgeId = (storeId: string): string =>
+            storeToReduxEdgeIdMap.get(storeId) ?? storeId;
 
           const egoEntry = [...nodes.entries()].find(
             ([, n]) =>
@@ -371,7 +400,7 @@ export const createFamilyPedigreeStore = (
           });
 
           const serializedEdges = [...edges.entries()].map(([id, edge]) => ({
-            id,
+            id: toReduxEdgeId(id),
             from: toReduxId(edge.from),
             to: toReduxId(edge.to),
             attributes: edge[entityAttributesProperty],
@@ -382,6 +411,7 @@ export const createFamilyPedigreeStore = (
               currentStep: currentStep ?? 0,
               metadata: {
                 isNetworkCommitted: true,
+                edgeIdVersion: 1,
                 nodes: serializedNodes,
                 edges: serializedEdges,
                 noChildrenAffirmed: get().noChildrenAffirmed,
@@ -425,6 +455,7 @@ export const createFamilyPedigreeStore = (
           // Only the nodes this finalize created. resetNetwork deletes these;
           // pre-existing shared-graph nodes must survive a pedigree reset.
           const createdReduxIds = new Map<string, string>();
+          const createdReduxEdgeIds = new Map<string, string>();
 
           for (const [storeId, node] of network.nodes) {
             // Pre-existing same-type nodes already live in Redux; re-committing
@@ -467,7 +498,7 @@ export const createFamilyPedigreeStore = (
             const mappedFrom = idMap.get(edge.from);
             const mappedTo = idMap.get(edge.to);
             if (mappedFrom && mappedTo) {
-              await dispatch(
+              const result = await dispatch(
                 addEdgeToNetwork({
                   type: variableConfig.edgeType,
                   from: mappedFrom,
@@ -476,11 +507,16 @@ export const createFamilyPedigreeStore = (
                   currentStep: currentStep ?? 0,
                 }),
               );
+
+              if (addEdgeToNetwork.fulfilled.match(result)) {
+                createdReduxEdgeIds.set(edgeId, result.payload.edgeId);
+              }
             }
           }
 
           set((state) => {
             state.storeToReduxIdMap = new Map(createdReduxIds);
+            state.storeToReduxEdgeIdMap = new Map(createdReduxEdgeIds);
             for (const key of state.nodeMetadata.keys()) {
               const meta = state.nodeMetadata.get(key);
               if (meta) {
@@ -493,7 +529,14 @@ export const createFamilyPedigreeStore = (
         },
 
         resetNetwork: () => {
-          const { storeToReduxIdMap } = get();
+          const { storeToReduxIdMap, storeToReduxEdgeIdMap } = get();
+
+          // Edges between two seeded nodes do not disappear through a created
+          // node's cascading deletion, so remove every edge this finalize
+          // committed explicitly before clearing its id map.
+          for (const reduxId of storeToReduxEdgeIdMap.values()) {
+            dispatch?.(deleteEdge(reduxId));
+          }
 
           for (const reduxId of storeToReduxIdMap.values()) {
             dispatch?.(deleteNode(reduxId));
@@ -504,6 +547,7 @@ export const createFamilyPedigreeStore = (
             state.network.edges.clear();
             state.nodeMetadata.clear();
             state.storeToReduxIdMap.clear();
+            state.storeToReduxEdgeIdMap.clear();
             state.step = 'scaffolding';
             state.activeNominationVariable = null;
           });

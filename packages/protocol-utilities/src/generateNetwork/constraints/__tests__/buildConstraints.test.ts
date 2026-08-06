@@ -217,6 +217,11 @@ describe('buildVariableConstraints', () => {
         horizon: { min: '1920-01', max: '2020-01' },
       },
     ];
+    const violations: Array<{
+      today: string;
+      horizon: { min: string; max: string };
+      window: { min?: string; max?: string } | undefined;
+    }> = [];
 
     for (let year = 2026; year <= 2120; year++) {
       for (let month = 1; month <= 12; month++) {
@@ -240,12 +245,22 @@ describe('buildVariableConstraints', () => {
               },
               today,
             ).dateWindow;
-            expect((window?.min ?? '') >= fixture.horizon.min).toBe(true);
-            expect((window?.max ?? '') <= fixture.horizon.max).toBe(true);
+            if (
+              (window?.min ?? '') < fixture.horizon.min ||
+              (window?.max ?? '') > fixture.horizon.max
+            ) {
+              violations.push({
+                today,
+                horizon: fixture.horizon,
+                window,
+              });
+            }
           }
         }
       }
     }
+
+    expect(violations).toEqual([]);
   });
 
   it('keeps every exact relative window through 2120 inside the symbolic model', () => {
@@ -253,6 +268,12 @@ describe('buildVariableConstraints', () => {
       { parameters: {}, model: { min: -180, max: 0 } },
       { parameters: { before: 30, after: 10 }, model: { min: -30, max: 10 } },
     ];
+    const violations: Array<{
+      today: string;
+      model: { min: number; max: number };
+      runtimeMin: number;
+      runtimeMax: number;
+    }> = [];
 
     for (let year = 2026; year <= 2120; year++) {
       for (let month = 1; month <= 12; month++) {
@@ -281,12 +302,23 @@ describe('buildVariableConstraints', () => {
               window?.max === undefined
                 ? Number.POSITIVE_INFINITY
                 : stepsBetween(today, window.max, 'full');
-            expect(runtimeMin >= fixture.model.min).toBe(true);
-            expect(runtimeMax <= fixture.model.max).toBe(true);
+            if (
+              runtimeMin < fixture.model.min ||
+              runtimeMax > fixture.model.max
+            ) {
+              violations.push({
+                today,
+                model: fixture.model,
+                runtimeMin,
+                runtimeMax,
+              });
+            }
           }
         }
       }
     }
+
+    expect(violations).toEqual([]);
   });
 
   // The full resolution is the one control that does not stop at today: a

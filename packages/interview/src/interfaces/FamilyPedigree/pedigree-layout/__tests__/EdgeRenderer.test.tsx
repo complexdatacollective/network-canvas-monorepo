@@ -506,6 +506,32 @@ describe('PedigreeEdgeSvg — couple bar per-segment dimming', () => {
     expect(wholeBar).toBeDefined();
     expect(wholeBar!.getAttribute('stroke')).toBe('black');
   });
+
+  test('renders endpoint leads for a routed non-adjacent partnership', () => {
+    const routedBar = makeCoupleBar({
+      segment: seg(20, 25, 180, 25),
+      endpointSegments: [seg(20, 100, 20, 25), seg(180, 100, 180, 25)],
+      isActive: false,
+      descentXPositions: undefined,
+    });
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeGroupConnectorData([routedBar])}
+        color="black"
+        width={200}
+        height={120}
+      />,
+    );
+
+    const verticalLeads = Array.from(container.querySelectorAll('line')).filter(
+      (line) =>
+        line.getAttribute('x1') === line.getAttribute('x2') &&
+        line.getAttribute('y1') === '100' &&
+        line.getAttribute('y2') === '25',
+    );
+    expect(verticalLeads).toHaveLength(2);
+  });
 });
 
 // ---------------------------------------------------------------------------

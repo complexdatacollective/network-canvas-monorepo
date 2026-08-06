@@ -267,7 +267,8 @@
         "!**/storybook-static/**",
         "!**/node_modules/**"
       ],
-      "outputs": []
+      "outputs": [],
+      "dependsOn": ["fresco#codegen"]
     },
     "//#knip": {
       "inputs": [
@@ -282,7 +283,8 @@
         "!**/.next/**",
         "!**/node_modules/**"
       ],
-      "outputs": []
+      "outputs": [],
+      "dependsOn": ["fresco#codegen"]
     },
     "dev": {
       "cache": false,
@@ -472,6 +474,105 @@
       ],
       "env": ["NODE_ENV"],
       "outputs": []
+    },
+    "fresco#build": {
+      "dependsOn": ["^topo", "fresco#codegen"],
+      "inputs": [
+        "app/**",
+        "actions/**",
+        "components/**",
+        "hooks/**",
+        "lib/**",
+        "queries/**",
+        "schemas/**",
+        "scripts/**",
+        "styles/**",
+        "types/**",
+        "utils/**",
+        "public/**",
+        "env.js",
+        "fresco.config.ts",
+        "instrumentation.ts",
+        "instrumentation-client.ts",
+        "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
+        "tsconfig*.json",
+        "package.json",
+        "next.config.ts",
+        ".env"
+      ],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "fresco#typecheck": {
+      "dependsOn": ["^topo", "fresco#codegen"],
+      "inputs": [
+        "app/**",
+        "actions/**",
+        "components/**",
+        "hooks/**",
+        "lib/**",
+        "queries/**",
+        "schemas/**",
+        "scripts/**",
+        "styles/**",
+        "types/**",
+        "utils/**",
+        "public/**",
+        "env.js",
+        "fresco.config.ts",
+        "instrumentation.ts",
+        "instrumentation-client.ts",
+        "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
+        "tsconfig*.json",
+        "package.json",
+        ".storybook/**"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
+    "fresco#test": {
+      "dependsOn": ["^topo", "fresco#codegen"],
+      "inputs": [
+        "app/**",
+        "actions/**",
+        "components/**",
+        "hooks/**",
+        "lib/**",
+        "queries/**",
+        "schemas/**",
+        "scripts/**",
+        "styles/**",
+        "types/**",
+        "utils/**",
+        "public/**",
+        "env.js",
+        "fresco.config.ts",
+        "instrumentation.ts",
+        "instrumentation-client.ts",
+        "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
+        "tsconfig*.json",
+        "package.json",
+        "vitest.config.*",
+        "vitest.setup.*",
+        ".env"
+      ],
+      "outputs": []
+    },
+    "fresco#codegen": {
+      "inputs": [
+        "lib/db/schema.prisma",
+        "prisma.config.ts",
+        "env.js",
+        "next.config.ts",
+        "app/**",
+        "package.json"
+      ],
+      "outputs": ["lib/db/generated/**", "next-env.d.ts", ".next/types/**"]
     }
   },
   "futureFlags": {

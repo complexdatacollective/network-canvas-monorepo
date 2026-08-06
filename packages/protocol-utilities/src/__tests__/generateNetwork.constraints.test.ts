@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Stage } from '@codaco/protocol-validation';
 import {
+  BIOLOGICAL_SEX_OPTIONS,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
@@ -2507,7 +2508,6 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
         type: 'number',
         validation: { minValue: 0, maxValue: 100 },
       },
-      alive: { name: 'Alive', type: 'boolean' },
     });
     const withRule = pedigreeCodebook({
       isEgo: { name: 'Is ego', type: 'boolean' },

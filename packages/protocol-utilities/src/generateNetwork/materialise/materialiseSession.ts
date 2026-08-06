@@ -17,6 +17,9 @@ import {
 
 import type { StageEffectSummary, StageEffects } from '../analyse/stageEffects';
 import type { GenerationContext, NetworkDraft } from '../context';
+import { materializeFamilyPedigree } from '../familyPedigree/materializeFamilyPedigree';
+import { familyPedigreeSeed } from '../familyPedigree/seed';
+import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/types';
 import { buildCurrentNetwork } from '../filtering';
 import { markStageInProgress } from '../inProgress';
 import type { NetworkPlan } from '../plan/networkPlan';
@@ -79,9 +82,22 @@ export function materialiseSession(params: {
   stages: Stage[];
   simulateDropOut: boolean;
   inProgressStageIndex?: number;
+  /** Stages feasibility judged reachable, which is where diseases are read. */
+  reachableStages: readonly Stage[];
+  runSeed: number;
+  familyPedigree: ResolvedFamilyPedigreeGenerationOptions;
 }): MaterialisedSession {
-  const { ctx, effects, plan, stages, simulateDropOut, inProgressStageIndex } =
-    params;
+  const {
+    ctx,
+    effects,
+    plan,
+    stages,
+    simulateDropOut,
+    inProgressStageIndex,
+    reachableStages,
+    runSeed,
+    familyPedigree,
+  } = params;
   const source = ctx.valueGen.randomSource;
 
   const draft: NetworkDraft = {
@@ -159,6 +175,25 @@ export function materialiseSession(params: {
     }
 
     if (summary.kind === 'content') continue;
+
+    // --- Family pedigree ------------------------------------------------
+    // A pedigree builds its own sub-network: a family is a structure, not a
+    // population, and its people and links have to satisfy each other
+    // (two genetic parents each, consistent sexes, an inheritance pattern the
+    // diseases actually follow). The specialist generator owns that, so the
+    // plan leaves this stage's entities to it and this walk hands over.
+    if (stage.type === 'FamilyPedigree') {
+      materializeFamilyPedigree(
+        ctx,
+        draft,
+        stage,
+        i,
+        stages,
+        reachableStages,
+        familyPedigreeSeed(runSeed, stage.id),
+        familyPedigree,
+      );
+    }
 
     // --- Entity introduction -------------------------------------------
     for (const creation of summary.nodeCreations) {
@@ -286,18 +321,9 @@ export function materialiseSession(params: {
         }
       });
       if (tuples.length > 0) draft.stageMetadata[i] = tuples;
-    } else if (stage.type === 'FamilyPedigree') {
-      draft.stageMetadata[i] = {
-        isNetworkCommitted: true,
-        ...(stage.framing?.mode === 'participantChoice'
-          ? {
-              selectedFraming:
-                FRAMING_IDS[
-                  source.stream('framing', i).int(0, FRAMING_IDS.length - 1)
-                ],
-            }
-          : {}),
-      };
+      // A FamilyPedigree's metadata — its committed membership snapshot and
+      // chosen framing — is written by the generator that built the family,
+      // which is the only thing that knows which entities are in it.
     } else if (stage.type === 'NetworkComposer') {
       // Generated sessions report automatic layout rather than fabricating
       // hand-placed positions.

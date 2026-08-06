@@ -1,7 +1,18 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { InterviewPayload } from '@codaco/interview';
+import {
+  getLastAvailableAuthoredStageIndex,
+  type InterviewPayload,
+} from '@codaco/interview';
+import {
+  DEFAULT_SYNTHETIC_SEED,
+  generateNetwork,
+} from '@codaco/protocol-utilities';
+import {
+  asEntityAttributeReference,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { PreviewPayload } from '../messages';
@@ -89,6 +100,122 @@ function makeUnbuildableProtocol() {
   };
 }
 
+function makeConsentRouteProtocol(): CurrentProtocol {
+  return {
+    name: 'Consent route',
+    description: '',
+    schemaVersion: 8,
+    stages: [
+      {
+        id: 'consent',
+        type: 'EgoForm',
+        label: 'Consent',
+        introductionPanel: {
+          title: 'Consent',
+          text: 'Review the study information.',
+        },
+        form: {
+          fields: [
+            {
+              variable: asEntityAttributeReference('screening'),
+              prompt: 'Are you eligible?',
+            },
+            {
+              variable: asEntityAttributeReference('consent'),
+              prompt: 'Do you consent?',
+            },
+          ],
+        },
+      },
+      {
+        id: 'background',
+        type: 'Information',
+        label: 'Background',
+        title: 'Background',
+        items: [],
+        skipLogic: {
+          action: 'SKIP',
+          filter: {
+            rules: [
+              {
+                id: 'consent-refused',
+                type: 'ego',
+                options: {
+                  attribute: asEntityAttributeReference('consent'),
+                  operator: 'EXACTLY',
+                  value: false,
+                },
+              },
+            ],
+          },
+          destination: { type: 'finish' },
+        },
+      },
+      {
+        id: 'people',
+        type: 'NameGenerator',
+        label: 'People',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'people-prompt', text: 'Name people' }],
+        behaviours: { minNodes: 4, maxNodes: 4 },
+        form: {
+          title: 'About this person',
+          fields: [
+            {
+              variable: asEntityAttributeReference('name'),
+              prompt: 'What is their name?',
+            },
+          ],
+        },
+      },
+      {
+        id: 'support',
+        type: 'Sociogram',
+        label: 'Exchanges of support',
+        subject: { entity: 'node', type: 'person' },
+        background: { concentricCircles: 3 },
+        prompts: [
+          {
+            id: 'support-prompt',
+            text: 'Place people',
+            layout: {
+              layoutVariable: asEntityAttributeReference('layout'),
+            },
+          },
+        ],
+      },
+      {
+        id: 'following',
+        type: 'Information',
+        label: 'Following stage',
+        title: 'Following stage',
+        items: [],
+      },
+    ],
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            name: { name: 'Name', type: 'text' },
+            layout: { name: 'Layout', type: 'layout' },
+          },
+        },
+      },
+      edge: {},
+      ego: {
+        variables: {
+          screening: { name: 'Screening', type: 'boolean' },
+          consent: { name: 'Consent', type: 'boolean' },
+        },
+      },
+    },
+    assetManifest: {},
+  };
+}
+
 type TestPreviewPayload = Omit<PreviewPayload, 'protocol'> & {
   protocol: unknown;
 };
@@ -102,7 +229,7 @@ function makePayload(
     protocolId: 'protocol-1',
     startStage: 0,
     useSyntheticData: false,
-    skipLogicBypassed: false,
+    respectSkipLogic: false,
     memoryAssets: [],
     ...overrides,
   };
@@ -181,6 +308,17 @@ describe('PreviewHost', () => {
     expect(call.allowStageNavigation).toBe(true);
   });
 
+  it('enables interview development tools in Architect preview', async () => {
+    render(<PreviewHost />);
+    postPayload(openerStub, makePayload());
+
+    await screen.findByTestId('shell-mounted');
+    const call = shellMock.mock.calls.at(-1)?.[0] as {
+      flags?: { isDevelopment?: boolean };
+    };
+    expect(call.flags?.isDevelopment).toBe(true);
+  });
+
   it('initialises currentStep from payload.startStage', async () => {
     render(<PreviewHost />);
     postPayload(openerStub, makePayload({ startStage: 3 }));
@@ -207,7 +345,7 @@ describe('PreviewHost', () => {
     };
     postPayload(
       openerStub,
-      makePayload({ protocol, startStage: 0, skipLogicBypassed: true }),
+      makePayload({ protocol, startStage: 0, respectSkipLogic: true }),
     );
 
     await screen.findByTestId('shell-mounted');
@@ -219,9 +357,9 @@ describe('PreviewHost', () => {
     expect(call.payload.protocol.stages[0]).toHaveProperty('skipLogic');
   });
 
-  it('omits the initial override when preview skip logic is active', async () => {
+  it('omits the initial override when skip logic is disabled', async () => {
     render(<PreviewHost />);
-    postPayload(openerStub, makePayload({ skipLogicBypassed: false }));
+    postPayload(openerStub, makePayload({ respectSkipLogic: false }));
 
     await screen.findByTestId('shell-mounted');
     const call = shellMock.mock.calls.at(-1)?.[0] as {
@@ -306,6 +444,99 @@ describe('PreviewHost', () => {
     expect(placed.length).toBeGreaterThan(0);
   });
 
+  it('disables skip routing across a synthetic preview when Respect skip logic is off', async () => {
+    const protocol = makeConsentRouteProtocol();
+    const initial = generateNetwork({
+      codebook: protocol.codebook,
+      stages: protocol.stages,
+      seed: DEFAULT_SYNTHETIC_SEED,
+      inProgressStageIndex: 3,
+    });
+    expect(initial.network.ego[entityAttributesProperty].consent).toBe(false);
+
+    const randomSpy = vi
+      .spyOn(Math, 'random')
+      .mockReturnValue(DEFAULT_SYNTHETIC_SEED / 100_000);
+    try {
+      render(<PreviewHost />);
+      postPayload(
+        openerStub,
+        makePayload({
+          protocol,
+          startStage: 3,
+          useSyntheticData: true,
+          respectSkipLogic: false,
+        }),
+      );
+
+      await screen.findByTestId('shell-mounted');
+      const call = shellMock.mock.calls.at(-1)?.[0] as {
+        payload: InterviewPayload;
+        currentStep?: number;
+        initialStageOverrideIndex?: number;
+      };
+
+      expect(call.currentStep).toBe(3);
+      expect(
+        call.payload.session.network.ego[entityAttributesProperty].consent,
+      ).toBe(false);
+      expect(
+        call.payload.protocol.stages.every(
+          (stage) => !Object.hasOwn(stage, 'skipLogic'),
+        ),
+      ).toBe(true);
+      expect(call.payload.protocol.stages[4]?.id).toBe('following');
+      expect(
+        getLastAvailableAuthoredStageIndex(
+          call.payload.protocol.stages,
+          call.payload.session.network,
+        ),
+      ).toBe(4);
+      expect(call.initialStageOverrideIndex).toBeUndefined();
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
+
+  it('preserves routing but force-shows the selected stage when Respect skip logic is on', async () => {
+    const protocol = makeConsentRouteProtocol();
+    const randomSpy = vi
+      .spyOn(Math, 'random')
+      .mockReturnValue(DEFAULT_SYNTHETIC_SEED / 100_000);
+    try {
+      render(<PreviewHost />);
+      postPayload(
+        openerStub,
+        makePayload({
+          protocol,
+          startStage: 3,
+          useSyntheticData: true,
+          respectSkipLogic: true,
+        }),
+      );
+
+      await screen.findByTestId('shell-mounted');
+      const call = shellMock.mock.calls.at(-1)?.[0] as {
+        payload: InterviewPayload;
+        initialStageOverrideIndex?: number;
+      };
+
+      expect(
+        call.payload.session.network.ego[entityAttributesProperty].consent,
+      ).toBe(false);
+      expect(call.payload.protocol.stages[1]).toHaveProperty('skipLogic');
+      expect(
+        getLastAvailableAuthoredStageIndex(
+          call.payload.protocol.stages,
+          call.payload.session.network,
+        ),
+      ).toBe(0);
+      expect(call.initialStageOverrideIndex).toBe(3);
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
+
   it('seeds finalized stageMetadata for a synthetic FamilyPedigree', async () => {
     render(<PreviewHost />);
     const protocol = {
@@ -337,9 +568,14 @@ describe('PreviewHost', () => {
     const call = shellMock.mock.calls.at(-1)?.[0] as {
       payload: InterviewPayload;
     };
-    expect(call.payload.session.stageMetadata).toEqual({
-      '0': { isNetworkCommitted: true },
-    });
+    const metadata = call.payload.session.stageMetadata?.['0'] as
+      | { isNetworkCommitted?: boolean; nodes?: unknown[]; edges?: unknown[] }
+      | undefined;
+    expect(metadata).toEqual(
+      expect.objectContaining({ isNetworkCommitted: true }),
+    );
+    expect(metadata?.nodes?.length).toBeGreaterThanOrEqual(7);
+    expect(metadata?.edges?.length).toBeGreaterThan(0);
   });
 
   it('shows an error fallback when payload processing throws', async () => {

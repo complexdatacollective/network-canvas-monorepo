@@ -6,6 +6,7 @@ import {
   BIOLOGICAL_SEX_HINT,
   BIOLOGICAL_SEX_OPTIONS,
   BIOLOGICAL_SEX_QUESTION,
+  type BiologicalSex,
 } from '@codaco/shared-consts';
 
 type BiologicalSexFieldProps = {
@@ -15,7 +16,7 @@ type BiologicalSexFieldProps = {
   // relative ('other'). Only the grammatical subject of the question changes;
   // the options, hint, and stored values are identical.
   subject?: 'self' | 'other';
-  initialValue?: string;
+  initialValue?: BiologicalSex;
 };
 
 /**

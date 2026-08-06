@@ -22,6 +22,7 @@ The pnpm workspace is organized into four main categories.
 | [`architect`](./apps/architect)                     | Offline-capable Vite/React PWA for designing, validating, and previewing Network Canvas interview protocols                                        |
 | [`architect-classic`](./apps/architect-classic)     | Maintenance-mode Electron version of the original Architect protocol designer                                                                      |
 | [`documentation`](./apps/documentation)             | Localized Next.js documentation site built from Markdown/MDX, with DocSearch and generated protocol downloads                                      |
+| [`fresco`](./apps/fresco)                           | Self-hosted Next.js server that runs Network Canvas interviews in the browser, backed by PostgreSQL and object storage                             |
 | [`interviewer`](./apps/interviewer)                 | Offline-first Vite/React PWA for managing protocols, conducting interviews, storing local sessions with optional encryption, and exporting data    |
 | [`interviewer-classic`](./apps/interviewer-classic) | Maintenance-mode Interviewer application for desktop (Electron) and native mobile (Capacitor)                                                      |
 | [`networkcanvas.com`](./apps/networkcanvas.com)     | Localized Next.js project website, including product information, research resources, publications, team information, and getting-started guidance |

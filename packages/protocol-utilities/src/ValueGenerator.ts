@@ -323,7 +323,11 @@ export class ValueGenerator {
   generateConstrained(
     variable: ConstrainedVariable,
     index: number,
-    opts?: { distinctSeq?: number; preferRealisticName?: boolean },
+    opts?: {
+      distinctSeq?: number;
+      preferRealisticName?: boolean;
+      forceRealisticName?: boolean;
+    },
   ): VariableValue {
     const { entry, constraints } = variable;
     const seq = opts?.distinctSeq;
@@ -342,6 +346,16 @@ export class ValueGenerator {
           throw new Error(
             `"${entry.name}" declares minLength ${constraints.minLength}, beyond the ${MAX_TEXT_DRAW_LENGTH} characters a generated value can hold.`,
           );
+        }
+
+        // A caller can insist on a person's name for a variable the codebook
+        // gives no generator and the name heuristic does not recognise — a
+        // family pedigree's name field is a person's name whatever it is
+        // called — so this overrides the resolved generator rather than
+        // deferring to it.
+        if (opts?.forceRealisticName === true) {
+          const name = this.generateConstrainedName(constraints, stream.faker());
+          if (name !== undefined) return name;
         }
 
         // A first attempt tries the realistic recipe even when a distinct

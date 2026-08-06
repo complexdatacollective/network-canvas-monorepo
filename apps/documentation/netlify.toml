@@ -9,6 +9,21 @@ force = true
 
 # Renamed page slugs (keep old URLs working — may be embedded in apps/documents)
 [[redirects]]
+from = "/en/design-protocols/building-a-protocol"
+to = "/en/design-protocols/tutorials/building-a-protocol"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/working-with-rosters"
+to = "/en/design-protocols/tutorials/working-with-rosters"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/implementing-cegrm"
+to = "/en/design-protocols/tutorials/implementing-cegrm"
+status = 301
+
+[[redirects]]
 from = "/en/design-protocols/installing-architect-desktop"
 to = "/en/design-protocols/installing-architect-classic"
 status = 301
@@ -292,12 +307,12 @@ status = 301
 
 [[redirects]]
 from = "/en/desktop/tutorials/working-with-rosters"
-to = "/en/design-protocols/working-with-rosters"
+to = "/en/design-protocols/tutorials/working-with-rosters"
 status = 301
 
 [[redirects]]
 from = "/en/desktop/tutorials/building-a-protocol"
-to = "/en/design-protocols/building-a-protocol"
+to = "/en/design-protocols/tutorials/building-a-protocol"
 status = 301
 
 [[redirects]]

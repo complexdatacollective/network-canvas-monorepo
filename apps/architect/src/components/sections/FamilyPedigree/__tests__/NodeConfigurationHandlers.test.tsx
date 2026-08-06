@@ -24,6 +24,8 @@ vi.mock('react-redux', () => {
 // redux-form selectors report a node type so the Form Fields DialogArrayField
 // and its onBeforeSave -> handleChangeFields wiring render.
 vi.mock('redux-form', () => ({
+  reduxForm: () => (Component: React.ComponentType<Record<string, unknown>>) =>
+    Component,
   formValueSelector: () => () => 'person',
   getFormValues: () => () => ({}),
   getFormInitialValues: () => () => ({}),

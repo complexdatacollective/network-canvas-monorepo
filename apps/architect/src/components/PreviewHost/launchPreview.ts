@@ -16,7 +16,7 @@ type LaunchOptions = {
   protocol: CurrentProtocol;
   startStage: number;
   useSyntheticData: boolean;
-  skipLogicBypassed: boolean;
+  respectSkipLogic: boolean;
 };
 
 type LaunchPreviewResult =
@@ -28,7 +28,7 @@ export function launchPreview({
   protocol,
   startStage,
   useSyntheticData,
-  skipLogicBypassed,
+  respectSkipLogic,
 }: LaunchOptions): Promise<LaunchPreviewResult> {
   const protocolId = getActiveProtocolScope();
   if (!protocolId) {
@@ -77,7 +77,7 @@ export function launchPreview({
     protocolId,
     startStage,
     useSyntheticData,
-    skipLogicBypassed,
+    respectSkipLogic,
     memoryAssets,
   };
 

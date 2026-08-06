@@ -429,22 +429,16 @@ describe('planNetwork pedigree structure', () => {
     ego: { variables: {} },
   } as unknown as StructuralCodebook;
 
-  it('builds a family tree: n−1 mandatory edges with fixed values', () => {
+  it('leaves a pedigree entirely to its own generator', () => {
+    // A family is a structure, not a population: its people have to satisfy
+    // each other — two genetic parents each, consistent sexes, an inheritance
+    // pattern the diseases follow — which the specialist generator settles as
+    // a whole at materialisation. Planning people for it here would produce a
+    // second, contradictory family.
     const result = plan(pedigreeCodebook, [pedigreeStage]);
-    expect(result.nodes).toHaveLength(5);
-    expect(result.edges).toHaveLength(4);
-    expect(result.pedigreeParents.size).toBe(4);
 
-    const egoFlags = result.nodes.map((node) => node.attributes.is_ego);
-    expect(egoFlags.filter(Boolean)).toHaveLength(1);
-    expect(result.nodes[0]?.attributes.is_ego).toBe(true);
-
-    for (const edge of result.edges) {
-      expect(edge.mandatory).toBe(true);
-      expect(edge.attributes.link_type).toEqual(['biological']);
-      expect(edge.attributes.active).toBe(true);
-      expect(result.pedigreeParents.get(edge.to)).toBe(edge.from);
-    }
+    expect(result.nodes).toHaveLength(0);
+    expect(result.edges).toHaveLength(0);
   });
 });
 

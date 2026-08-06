@@ -78,6 +78,8 @@ function subjectToStageSubject(subject?: Subject): StageSubject | null {
  *                  Required for SlidesForm where subject comes from item props.
  * @param namespace - Optional prefix for field names (e.g. "partner-0") to
  *                    avoid collisions when multiple instances share a form store.
+ * @param formValueAliases - Maps codebook variable IDs to interface-owned form
+ *                    keys while preserving the original ID for metadata lookup.
  */
 export default function useProtocolForm({
   fields,
@@ -86,6 +88,7 @@ export default function useProtocolForm({
   subject,
   namespace,
   currentEntityId,
+  formValueAliases,
 }: {
   fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
@@ -93,6 +96,7 @@ export default function useProtocolForm({
   subject?: Subject;
   namespace?: string;
   currentEntityId?: string;
+  formValueAliases?: Readonly<Record<string, string>>;
 }) {
   const baseValidationContext = useStageSelector(
     getValidationContext,
@@ -132,8 +136,9 @@ export default function useProtocolForm({
       ...baseValidationContext,
       stageSubject,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
+      ...(formValueAliases !== undefined ? { formValueAliases } : {}),
     };
-  }, [baseValidationContext, currentEntityId, stableSubject]);
+  }, [baseValidationContext, currentEntityId, formValueAliases, stableSubject]);
 
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const subjectFieldsMetadata = useSelector((state) =>

@@ -42,6 +42,7 @@ import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 import { store, type RootState } from './store/store';
+import { SyncFlushProvider } from './store/SyncFlushContext';
 import {
   InterviewToastProvider,
   InterviewToastViewport,
@@ -474,33 +475,37 @@ const Shell = ({
       onTrackerChange={onTrackerChange}
     >
       <Provider store={reduxStore}>
-        <ContractProvider
-          onFinish={onFinish}
-          onRequestAsset={onRequestAsset}
-          flags={flags}
-          finishConfirmationDescription={finishConfirmationDescription}
-        >
-          <CurrentStepProvider
-            currentStep={reviewEntry.currentStep}
-            onStepChange={onStepChange}
+        <SyncFlushProvider flush={reduxStore.flushSync}>
+          <ContractProvider
+            onFinish={onFinish}
+            onRequestAsset={onRequestAsset}
+            flags={flags}
+            finishConfirmationDescription={finishConfirmationDescription}
           >
-            <Interview
-              onExit={onExit}
-              hideNavigation={hideNavigation}
-              navigationOrientation={navigationOrientation}
-              navigationClassnames={navigationClassnames}
-              allowStageNavigation={
-                allowStageNavigation &&
-                (currentStep === undefined || onStepChange !== undefined)
-              }
-              allowUserScaling={allowUserScaling}
-              initialTextScale={initialTextScale}
-              onTextScaleChange={onTextScaleChange}
-              initialStageOverrideIndex={reviewEntry.initialStageOverrideIndex}
-              reviewMode={reviewMode}
-            />
-          </CurrentStepProvider>
-        </ContractProvider>
+            <CurrentStepProvider
+              currentStep={reviewEntry.currentStep}
+              onStepChange={onStepChange}
+            >
+              <Interview
+                onExit={onExit}
+                hideNavigation={hideNavigation}
+                navigationOrientation={navigationOrientation}
+                navigationClassnames={navigationClassnames}
+                allowStageNavigation={
+                  allowStageNavigation &&
+                  (currentStep === undefined || onStepChange !== undefined)
+                }
+                allowUserScaling={allowUserScaling}
+                initialTextScale={initialTextScale}
+                onTextScaleChange={onTextScaleChange}
+                initialStageOverrideIndex={
+                  reviewEntry.initialStageOverrideIndex
+                }
+                reviewMode={reviewMode}
+              />
+            </CurrentStepProvider>
+          </ContractProvider>
+        </SyncFlushProvider>
       </Provider>
     </AnalyticsProvider>
   );

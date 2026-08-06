@@ -7,10 +7,18 @@ import {
   type ValidationContradiction,
   type Variables,
 } from '@codaco/protocol-validation';
-import type { NcNode, VariableValue } from '@codaco/shared-consts';
+import {
+  BIOLOGICAL_SEX_VALUES,
+  type NcNode,
+  type VariableValue,
+} from '@codaco/shared-consts';
 
 import type { FeasibilityConfig } from '../config';
 import { isContentStage } from '../contentStages';
+import {
+  PEDIGREE_RELATIONSHIP_TO_EGO_VALUES,
+  type ResolvedFamilyPedigreeGenerationOptions,
+} from '../familyPedigree/types';
 import {
   collectPromptFixedAssignments,
   countPromptFixedValues,
@@ -25,10 +33,13 @@ import { buildEntityConstraints } from './buildConstraints';
 import { type ComparatorEdge, resolveGenerationOrder } from './dependencyOrder';
 import {
   edgeCountFor,
+  inheritedContributorAncestryCeiling,
   nodeCountFor,
-  pedigreeEdgeValues,
+  pedigreeEdgeCeiling,
   pedigreeNodeCeiling,
+  pedigreePossibleEdgeValues,
   unwrittenEdgeVariables,
+  unwrittenNodeVariables,
   worstCaseEntityCounts,
 } from './entityCounts';
 import type { ConstraintConflict } from './error';
@@ -193,7 +204,7 @@ function recordPinned(
  * counted, whether or not its stage would write them — because over-counting
  * holders only ever refuses more. Here the fail-safe runs the other way: a
  * naming site read as an overwriter DROPS a pin, and dropping one wrongly lets
- * a pedigree emit `n - 1` identical values for a `unique` variable. So this
+ * a pedigree emit repeated fixed values for a `unique` variable. So this
  * asks only after handlers proven to redraw, and a new one taught to would
  * leave a refusal standing until it is listed — the same direction every other
  * unrecognised shape is read in.
@@ -265,13 +276,11 @@ function regeneratedEdgeAttributes(
  * On its nodes: the interface marks exactly one node of a pedigree as ego and
  * every other node it builds as not-ego, whatever the flag's declared type, so
  * a stage of `n` nodes pins `true` once and `false` `n - 1` times. On its
- * edges: `pedigreeEdgeValues` is written onto every edge the stage builds, and
- * it builds one per node after the first. All written rather than drawn:
- * `handleFamilyPedigree` assigns them after generating the rest of the entity,
- * so no seed spreads a value over more holders or fewer. Counted at the
- * configured ceiling, for the same reason the rest of feasibility counts worst
- * cases, and summed across stages because a `unique` value is claimed once for
- * the whole run.
+ * edges: the relationship, activity, carrier, and gamete semantics are fixed
+ * by the semantic plan rather than drawn from the codebook. Their possible
+ * values are counted at the conservative edge ceiling, for the same reason the
+ * rest of feasibility counts worst cases, and summed across stages because a
+ * `unique` value is claimed once for the whole run.
  *
  * A pedigree writes without consulting the registry, so every pin is stamped
  * where its stage runs — the tally's `stampedAt`, which is what a roster row
@@ -292,6 +301,8 @@ function countPedigreeFixedValues(
   stages: Stage[],
   config: FeasibilityConfig,
   respectSkipLogicAndFiltering: boolean,
+  nodeBeforeStage: ReadonlyMap<number, ReadonlyMap<string, number>>,
+  familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
 ): {
   node: Map<string, PromptFixedValues>;
   edge: Map<string, PromptFixedValues>;
@@ -305,26 +316,86 @@ function countPedigreeFixedValues(
 
   for (const [stageIndex, stage] of stages.entries()) {
     if (stage.type !== 'FamilyPedigree') continue;
-    const ceiling = pedigreeNodeCeiling(config);
-
+    const pedigreeContext = familyPedigree
+      ? { options: familyPedigree, stage, stages }
+      : undefined;
     const nodeType = stage.nodeConfig?.type;
+    const inheritedContributorCeiling = inheritedContributorAncestryCeiling(
+      stageIndex,
+      stages,
+      nodeType === undefined
+        ? 0
+        : (nodeBeforeStage.get(stageIndex)?.get(nodeType) ?? 0),
+      familyPedigree,
+    );
+    const ceiling =
+      pedigreeNodeCeiling(config, pedigreeContext) +
+      inheritedContributorCeiling.nodes;
+
     const egoVariable = stage.nodeConfig?.egoVariable;
-    if (nodeType !== undefined && egoVariable !== undefined) {
-      recordPinned(node, nodeType, stageIndex, [
-        [egoVariable, true, Math.min(ceiling, 1)],
-        [egoVariable, false, Math.max(ceiling - 1, 0)],
-      ]);
+    if (nodeType !== undefined) {
+      const fixed: [string, VariableValue, number][] = [];
+      if (egoVariable !== undefined) {
+        fixed.push(
+          [egoVariable, true, Math.min(ceiling, 1)],
+          [egoVariable, false, Math.max(ceiling - 1, 0)],
+        );
+      }
+      const relationshipVariable = stage.nodeConfig?.relationshipVariable;
+      if (relationshipVariable !== undefined) {
+        fixed.push(
+          ...PEDIGREE_RELATIONSHIP_TO_EGO_VALUES.map(
+            (value): [string, VariableValue, number] => [
+              relationshipVariable,
+              value,
+              ceiling,
+            ],
+          ),
+        );
+      }
+      const biologicalSexVariable = stage.nodeConfig?.biologicalSexVariable;
+      if (biologicalSexVariable !== undefined) {
+        fixed.push(
+          ...BIOLOGICAL_SEX_VALUES.map(
+            (value): [string, VariableValue, number] => [
+              biologicalSexVariable,
+              [value],
+              ceiling,
+            ],
+          ),
+        );
+      }
+      const diseaseVariables = new Set(
+        (stage.nominationPrompts ?? []).map((prompt) => prompt.variable),
+      );
+      for (const candidate of stages) {
+        if (
+          candidate.type !== 'NarrativePedigree' ||
+          candidate.sourceStageId !== stage.id
+        ) {
+          continue;
+        }
+        for (const disease of candidate.diseases) {
+          diseaseVariables.add(disease.variable);
+        }
+      }
+      for (const variable of diseaseVariables) {
+        fixed.push([variable, true, ceiling], [variable, false, ceiling]);
+      }
+      recordPinned(node, nodeType, stageIndex, fixed);
     }
 
     const edgeType = stage.edgeConfig?.type;
     if (edgeType === undefined) continue;
-    const edges = Math.max(ceiling - 1, 0);
+    const edges =
+      pedigreeEdgeCeiling(config, pedigreeContext) +
+      inheritedContributorCeiling.edges;
     const redrawnAt = regenerated.get(edgeType);
     recordPinned(
       edge,
       edgeType,
       stageIndex,
-      Object.entries(pedigreeEdgeValues(stage.edgeConfig))
+      pedigreePossibleEdgeValues(stage.edgeConfig)
         .filter(
           ([variableId]) => (redrawnAt?.get(variableId) ?? -1) <= stageIndex,
         )
@@ -1346,6 +1417,7 @@ export function analyseFeasibility(
   config: FeasibilityConfig,
   externalData?: Record<string, NcNode[]>,
   respectSkipLogicAndFiltering = false,
+  familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
 ): ConstraintConflict[] {
   const binOnly = collectBinOnlyVariables(stages);
   // The map the draw judges a roster row against, so a row this pass counts is
@@ -1373,12 +1445,17 @@ export function analyseFeasibility(
     config,
     externalData,
     nodeConstraints,
+    familyPedigree,
+    (type) => codebook.node?.[type]?.variables,
+    respectSkipLogicAndFiltering,
   );
   const promptFixed = countPromptFixedValues(stages, config, externalData);
   const pedigreeFixed = countPedigreeFixedValues(
     stages,
     config,
     respectSkipLogicAndFiltering,
+    counts.nodeBeforeStage,
+    familyPedigree,
   );
   const rosterCarried = countRosterCarriedValues(
     stages,
@@ -1433,14 +1510,11 @@ export function analyseFeasibility(
 
   // A codebook type the stage list never names carries no entity: no stage
   // creates one, and nothing writes onto one. No value of its variables is ever
-  // drawn or submitted, so a rule declared on them is never applied, and
-  // analysing it refuses a protocol over a variable the run never reaches — a
-  // Person-only interview blocked by an unused type's `minLength` above its
-  // `maxLength`. Dropping the whole scope is right wherever a type's entities
-  // are born filled: every stage that creates one generates its type's whole
-  // attribute set, so a type with any carrier has no unpopulated variable to
-  // exempt. A pedigree edge is the one entity born empty, and its type is
-  // exempted per equality group instead — see `unwrittenEdgeVariables`.
+  // drawn or submitted, so a rule declared on them is never applied. For a type
+  // that is created, the same reasoning applies per equality group: a shared
+  // node type can carry variables collected by only one of several stages, and
+  // rules on a variable no stage writes must not refuse an otherwise feasible
+  // protocol. See `unwrittenNodeVariables`.
   //
   // Asked of the type rather than of the counts, because the zeroes reaching
   // this pass do not all mean the same thing. An edge type's per-variable count
@@ -1482,11 +1556,17 @@ export function analyseFeasibility(
         ? { entityTypeName: definition.name }
         : {}),
       variables: definition.variables,
-      unvalidated: binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES,
-      // Every stage creating a node generates its whole attribute set, so a
-      // fabricated node spends a value for each of the type's variables. Roster
-      // rows are the one place that differs, and only where the group's value
-      // is one they repeat between them — see `nodeCountFor`.
+      unvalidated: new Set([
+        ...(binOnly.get(type) ?? NO_UNVALIDATED_VARIABLES),
+        ...unwrittenNodeVariables(
+          counts.node,
+          type,
+          equalityGroupsOf(definition.variables, config.today),
+        ),
+      ]),
+      // Count only nodes that can actually carry this equality group: those
+      // whose creating stage writes it, plus earlier nodes reached by a later
+      // stage writer. Roster values remain row-driven.
       worstCaseCountFor: (variableIds) =>
         nodeCountFor(counts.node, type, variableIds),
       fixedValues: promptFixed.get(type) ?? NO_FIXED_VALUES,

@@ -15,9 +15,8 @@
     - button "Next preset" [disabled]
   - status
   - dialog:
-    - region:
-      - heading "Groups" [level=3]:
-        - button "Groups"
+    - heading "Groups" [level=3]:
+      - button "Groups"
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

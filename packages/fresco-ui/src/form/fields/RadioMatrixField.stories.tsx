@@ -24,7 +24,7 @@ type Story = StoryObj<typeof meta>;
 const partnershipOptions = [
   { value: 'current', label: 'Current partner' },
   { value: 'ex', label: 'Ex-partner' },
-  { value: 'none', label: 'Not a partner' },
+  { value: 'none', label: "Not a partner or Don't know" },
 ];
 
 const parentRows = [

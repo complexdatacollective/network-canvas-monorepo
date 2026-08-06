@@ -6,8 +6,10 @@ import {
   minimizeCrossings,
   sugiyamaLayout,
 } from '../sugiyamaLayout';
+import type { PedigreeInput } from '../types';
 import {
   consanguineousUnion,
+  crossSibshipPartnership,
   dualAuxiliary,
   multipleMarriages,
   nuclearFamily,
@@ -103,6 +105,36 @@ describe('buildPedigreeGraph', () => {
     expect(fu2!.children).toEqual([4]);
   });
 
+  it('does not infer a partnership between social parents who each partner the biological parent', () => {
+    const pedigree: PedigreeInput = {
+      id: ['margaret', 'biologicalParent', 'melville', 'white', 'robert'],
+      parents: [
+        [],
+        [],
+        [],
+        [],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'biological' },
+          { parentIndex: 2, edgeType: 'social' },
+          { parentIndex: 3, edgeType: 'social' },
+        ],
+      ],
+      partners: [
+        { partnerIndex1: 0, partnerIndex2: 1, isActive: false },
+        { partnerIndex1: 0, partnerIndex2: 2, isActive: false },
+        { partnerIndex1: 0, partnerIndex2: 3, isActive: false },
+      ],
+    };
+
+    const groupKeys = buildPedigreeGraph(pedigree)
+      .partnerGroups.map((group) => group.members.join(','))
+      .toSorted();
+
+    expect(groupKeys).toEqual(['0,1', '0,2', '0,3']);
+    expect(groupKeys).not.toContain('2,3');
+  });
+
   it('stores parents on the graph', () => {
     const graph = buildPedigreeGraph(nuclearFamily);
     expect(graph.parents).toBe(nuclearFamily.parents);
@@ -152,6 +184,25 @@ describe('minimizeCrossings', () => {
       for (let i = 1; i < positions.length; i++) {
         expect(positions[i]! - positions[i - 1]!).toBe(1);
       }
+    }
+  });
+
+  it('keeps partners adjacent when both belong to separate sibships', () => {
+    const graph = buildPedigreeGraph(crossSibshipPartnership);
+    const ordering = minimizeCrossings(graph);
+    const layer = graph.layers[4]!;
+    const row = ordering[layer]!;
+
+    expect(Math.abs(row.indexOf(4) - row.indexOf(7))).toBe(1);
+
+    for (const siblings of [
+      [4, 5, 6],
+      [7, 8, 9],
+    ]) {
+      const positions = siblings
+        .map((node) => row.indexOf(node))
+        .toSorted((a, b) => a - b);
+      expect(positions[2]! - positions[0]!).toBe(2);
     }
   });
 
@@ -340,6 +391,19 @@ describe('sugiyamaLayout (output encoding)', () => {
     const result = sugiyamaLayout(nuclearFamily);
     const hasGroup = result.group.some((row) => row.some((v) => v > 0));
     expect(hasGroup).toBe(true);
+  });
+
+  it('encodes a shared union and descent for cross-sibship partners', () => {
+    const result = sugiyamaLayout(crossSibshipPartnership);
+    const partnerGroup = partnerPairGroup(result, 4, 7);
+    const child1 = findNodeLocation(result, 10)!;
+    const child2 = findNodeLocation(result, 11)!;
+
+    expect(partnerGroup).toBe(1);
+    expect(result.fam[child1.layer]![child1.col]).toBeGreaterThan(0);
+    expect(result.fam[child2.layer]![child2.col]).toBe(
+      result.fam[child1.layer]![child1.col],
+    );
   });
 
   it('groupMember detects married-in founders', () => {
