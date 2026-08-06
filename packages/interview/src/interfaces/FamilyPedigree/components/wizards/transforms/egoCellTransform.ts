@@ -180,6 +180,7 @@ export function egoCellTransform(
   const batch: CommitBatch = { nodes: [], edges: [] };
 
   const egoKnownKeys = new Set([
+    'name',
     'biologicalSex',
     'egg-parent',
     'sperm-parent',
@@ -201,7 +202,6 @@ export function egoCellTransform(
   }
 
   const egoAttributes: Record<string, VariableValue> = {
-    [variableConfig.nodeLabelVariable]: '',
     [variableConfig.egoVariable]: true,
     ...egoCustomAttrs,
   };

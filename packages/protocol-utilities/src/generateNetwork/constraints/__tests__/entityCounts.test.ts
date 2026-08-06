@@ -283,6 +283,9 @@ describe('worstCaseEntityCounts', () => {
   it('counts FamilyPedigree nodes against its configured node type', () => {
     const counts = worstCaseEntityCounts([familyPedigree()], config);
     expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
+      config.familyPedigreeNodeCount.max - 1,
+    );
+    expect(nodeCountFor(counts.node, 'relative', ['isEgo'])).toBe(
       config.familyPedigreeNodeCount.max,
     );
   });
@@ -300,7 +303,7 @@ describe('worstCaseEntityCounts', () => {
     const counts = worstCaseEntityCounts([first, second], config);
 
     expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
-      pedigreeNodeCeiling(config) * 2 - 1,
+      pedigreeNodeCeiling(config) * 2 - 2,
     );
   });
 
@@ -337,7 +340,7 @@ describe('worstCaseEntityCounts', () => {
       options,
     );
 
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(15);
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(14);
   });
 
   it('retains the full ceiling after an intervening ego-flag rewrite', () => {
@@ -364,7 +367,7 @@ describe('worstCaseEntityCounts', () => {
       undefined,
       options,
     );
-    expect(nodeCountFor(afterFirst.node, 'relative', ['name'])).toBe(14);
+    expect(nodeCountFor(afterFirst.node, 'relative', ['name'])).toBe(12);
 
     const beforeFirst = worstCaseEntityCounts(
       [rewriteEgo, first, second],
@@ -373,7 +376,7 @@ describe('worstCaseEntityCounts', () => {
       undefined,
       options,
     );
-    expect(nodeCountFor(beforeFirst.node, 'relative', ['name'])).toBe(13);
+    expect(nodeCountFor(beforeFirst.node, 'relative', ['name'])).toBe(12);
 
     const restoredBySecond = worstCaseEntityCounts(
       [first, rewriteEgo, second, third],
@@ -382,7 +385,7 @@ describe('worstCaseEntityCounts', () => {
       undefined,
       options,
     );
-    expect(nodeCountFor(restoredBySecond.node, 'relative', ['name'])).toBe(20);
+    expect(nodeCountFor(restoredBySecond.node, 'relative', ['name'])).toBe(18);
   });
 
   it('counts ancestry required for inherited contributor branches', () => {
@@ -407,7 +410,7 @@ describe('worstCaseEntityCounts', () => {
     const counts = worstCaseEntityCounts([first, second], config);
 
     expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
-      pedigreeNodeCeiling(config) * 2 - 1 + 6,
+      pedigreeNodeCeiling(config) * 2 - 2 + 6,
     );
     expect(edgeCountFor(counts.edge, 'kin', ['relationshipType'])).toBe(
       pedigreeEdgeCeiling(config) * 2 + 9,
@@ -453,7 +456,7 @@ describe('worstCaseEntityCounts', () => {
       undefined,
       options,
     );
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(13);
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(12);
   });
 
   it('includes a forced disease sibling when deciding whether children fit', () => {
@@ -580,7 +583,7 @@ describe('worstCaseEntityCounts', () => {
       undefined,
       options,
     );
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(14);
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(13);
   });
 
   it('budgets X-linked siblings after an intervening sex-variable rewrite', () => {
@@ -654,7 +657,7 @@ describe('worstCaseEntityCounts', () => {
       undefined,
       options,
     );
-    expect(nodeCountFor(afterFirst.node, 'relative', ['name'])).toBe(14);
+    expect(nodeCountFor(afterFirst.node, 'relative', ['name'])).toBe(13);
 
     const beforeFirst = worstCaseEntityCounts(
       [rewriteSex, first, second, narrative],
@@ -663,7 +666,7 @@ describe('worstCaseEntityCounts', () => {
       undefined,
       options,
     );
-    expect(nodeCountFor(beforeFirst.node, 'relative', ['name'])).toBe(13);
+    expect(nodeCountFor(beforeFirst.node, 'relative', ['name'])).toBe(12);
   });
 
   it('bounds every contributor branch introduced by an intervening pairing stage', () => {
@@ -709,7 +712,7 @@ describe('worstCaseEntityCounts', () => {
 
     const counts = worstCaseEntityCounts(stages, config);
     expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
-      inheritedPopulation * 10 - 1,
+      inheritedPopulation * 10 - 2,
     );
   });
 
@@ -814,7 +817,7 @@ describe('worstCaseEntityCounts', () => {
     const counts = worstCaseEntityCounts([first, second], config);
 
     expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
-      pedigreeNodeCeiling(config) * 2,
+      pedigreeNodeCeiling(config) * 2 - 2,
     );
   });
 
@@ -968,7 +971,7 @@ describe('worstCaseEntityCounts', () => {
       [familyPedigree(), alterEdgeForm('verified')],
       inverted,
     );
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(20);
+    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(19);
     expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(
       pedigreeEdgeCeiling(inverted),
     );

@@ -354,7 +354,7 @@ describe('CategoricalBinPrompts withPromptChangeHandler cross-class gate', () =>
 // input honours the referenced variable's codebook validation), so it carries
 // the MIRROR gate: reject a pick a bin/highlight/census/etc. elsewhere
 // already writes without validation. `other` is a text variable written
-// without validation by a FamilyPedigree nodeLabelVariable (stage s2) — and,
+// without validation by a FamilyPedigree relationshipVariable (stage s2) — and,
 // in the same-class control, collected by an AlterForm field (stage s3)
 // instead.
 const OTHER_VARIABLE_CODEBOOK = {
@@ -381,7 +381,7 @@ const OTHER_UNVALIDATED_STAGE = {
   id: 's2',
   type: 'FamilyPedigree',
   label: 'P',
-  nodeConfig: { type: 'person', nodeLabelVariable: 'other' },
+  nodeConfig: { type: 'person', relationshipVariable: 'other' },
 };
 
 const OTHER_VALIDATED_STAGE = {

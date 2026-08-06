@@ -43,6 +43,20 @@ describe('egoCellTransform', () => {
       tempId: 'ego',
       data: { attributes: { isEgo: true, biologicalSex: ['female'] } },
     });
+    expect(batch.nodes[0]?.data.attributes).not.toHaveProperty(
+      variableConfig.nodeLabelVariable,
+    );
+  });
+
+  it('does not write the label attribute when updating an existing ego', () => {
+    const { egoAttributes } = egoCellTransform(
+      { name: 'Ignored label', biologicalSex: 'male' },
+      variableConfig,
+      'existing-ego',
+    );
+
+    expect(egoAttributes).toEqual({ isEgo: true, biologicalSex: ['male'] });
+    expect(egoAttributes).not.toHaveProperty(variableConfig.nodeLabelVariable);
   });
 
   it('transforms nuclear family (2 bio parents, current partners)', () => {

@@ -133,6 +133,13 @@ export function useField(config: UseFieldConfig): UseFieldResult {
 
   const namespace = useFieldNamespace();
   const resolvedName = namespace ? `${namespace}.${name}` : name;
+  const resolvedValidationContext = useMemo(
+    () =>
+      namespace && validationContext
+        ? { ...validationContext, formValueNamespace: namespace }
+        : validationContext,
+    [namespace, validationContext],
+  );
 
   const id = useId();
 
@@ -149,12 +156,15 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   const validationPropsJson = JSON.stringify(validationOnlyProps);
 
   // Include validationContext in the props passed to makeValidationFunction
-  const propsWithContext = { ...validationProps, validationContext };
+  const propsWithContext = {
+    ...validationProps,
+    validationContext: resolvedValidationContext,
+  };
 
   const validation = useMemo(
     () => makeValidationFunction(propsWithContext),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [validationPropsJson, validationContext],
+    [validationPropsJson, resolvedValidationContext],
   );
 
   // Memoize the validation summary (only compute if showValidationHints is true)
@@ -162,7 +172,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     () =>
       showValidationHints ? makeValidationHints(propsWithContext) : undefined,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [showValidationHints, validationPropsJson, validationContext],
+    [showValidationHints, validationPropsJson, resolvedValidationContext],
   );
 
   const fieldState = useFormStore((state) => state.getFieldState(resolvedName));

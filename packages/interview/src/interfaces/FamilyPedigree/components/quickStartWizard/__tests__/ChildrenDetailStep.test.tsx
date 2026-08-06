@@ -14,6 +14,10 @@ vi.mock('../../../../../forms/useProtocolForm', () => ({
   default: () => ({ fieldComponents: null }),
 }));
 
+vi.mock('../../PersonNameField', () => ({
+  default: ({ label }: { label: string }) => <input aria-label={label} />,
+}));
+
 import { FamilyPedigreeContext } from '../../../FamilyPedigreeContext';
 import { createFamilyPedigreeStore, type VariableConfig } from '../../../store';
 import ChildrenDetailStep from '../ChildrenDetailStep';
