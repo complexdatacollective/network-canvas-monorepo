@@ -155,6 +155,7 @@
     "**/.turbo/**",
     "**/public/**/*.*",
     "**/worker-configuration.d.ts",
+    "apps/fresco/src/routeTree.gen.ts",
     "packages/interface-images/src/generated/**"
   ]
 }

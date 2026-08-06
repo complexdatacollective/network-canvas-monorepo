@@ -413,6 +413,37 @@ affect serving, but the boot script's `prisma generate` would run on an
 unlisted target if the GHCR image is built for amd64. Untested, unchanged,
 flagged.
 
+### 9. `vite dev` was completely broken while `vite build` was green
+
+Found only by trying to run the app. **Every route 500s under `vite dev`**; the
+production `.output` server serves the same routes fine.
+
+`server-only`'s package `exports` map selects between a no-op `empty.js` and an
+`index.js` whose entire body is `throw new Error(...)`, using the `react-server`
+condition. Next sets that condition. **Vite sets it in no environment**, so the
+throwing entry is what resolves — and Fresco has 21 `import 'server-only'`
+guards.
+
+The two build paths then diverge:
+
+|              | Behaviour                                                                                           |
+| ------------ | --------------------------------------------------------------------------------------------------- |
+| `vite build` | Tree-shakes the side-effect-only import away. The throw is absent from `.output`. Production works. |
+| `vite dev`   | Externalises the package; Node's CJS loader executes the throw at module load. Every route 500s.    |
+
+**A green production build says nothing about whether the app can be developed**,
+and every check in this document up to this point was run against the production
+build. That is a gap in the verification strategy as much as a framework quirk:
+"it builds and serves" and "you can work on it" are separate claims needing
+separate evidence.
+
+Fixed in `vite.config.ts` by resolving `server-only` to the package's own
+`empty.js` — exactly what the `react-server` condition does, so no behaviour that
+was ever available here changes. It has to be resolved by path, because
+`empty.js` is not reachable through the `exports` map. The `server-only` guards
+are inert under Vite either way; the real boundary in the Start tree is
+`@tanstack/react-start/server-only` plus Import Protection.
+
 ### Smaller, but real
 
 - **Duplicate router copies break module augmentation.** `fresco` depended on

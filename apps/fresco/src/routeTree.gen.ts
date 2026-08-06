@@ -8,82 +8,82 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root';
-import { Route as ApiVersionInterviewRouteImport } from './routes/api.$version.interview';
-import { Route as ApiExportInterviewsBatchRouteImport } from './routes/api.export-interviews.batch';
-import { Route as ApiHealthRouteImport } from './routes/api.health';
-import { Route as DashboardRouteImport } from './routes/dashboard';
-import { Route as DashboardInterviewsRouteImport } from './routes/dashboard.interviews';
-import { Route as IndexRouteImport } from './routes/index';
-import { Route as SigninRouteImport } from './routes/signin';
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as SigninRouteImport } from './routes/signin'
+import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as DashboardInterviewsRouteImport } from './routes/dashboard.interviews'
+import { Route as ApiVersionInterviewRouteImport } from './routes/api.$version.interview'
+import { Route as ApiExportInterviewsBatchRouteImport } from './routes/api.export-interviews.batch'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const SigninRoute = SigninRouteImport.update({
   id: '/signin',
   path: '/signin',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const DashboardInterviewsRoute = DashboardInterviewsRouteImport.update({
   id: '/interviews',
   path: '/interviews',
   getParentRoute: () => DashboardRoute,
-} as any);
+} as any)
 const ApiVersionInterviewRoute = ApiVersionInterviewRouteImport.update({
   id: '/api/$version/interview',
   path: '/api/$version/interview',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiExportInterviewsBatchRoute =
   ApiExportInterviewsBatchRouteImport.update({
     id: '/api/export-interviews/batch',
     path: '/api/export-interviews/batch',
     getParentRoute: () => rootRouteImport,
-  } as any);
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute;
-  '/dashboard': typeof DashboardRouteWithChildren;
-  '/signin': typeof SigninRoute;
-  '/api/health': typeof ApiHealthRoute;
-  '/dashboard/interviews': typeof DashboardInterviewsRoute;
-  '/api/$version/interview': typeof ApiVersionInterviewRoute;
-  '/api/export-interviews/batch': typeof ApiExportInterviewsBatchRoute;
+  '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/signin': typeof SigninRoute
+  '/api/health': typeof ApiHealthRoute
+  '/dashboard/interviews': typeof DashboardInterviewsRoute
+  '/api/$version/interview': typeof ApiVersionInterviewRoute
+  '/api/export-interviews/batch': typeof ApiExportInterviewsBatchRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute;
-  '/dashboard': typeof DashboardRouteWithChildren;
-  '/signin': typeof SigninRoute;
-  '/api/health': typeof ApiHealthRoute;
-  '/dashboard/interviews': typeof DashboardInterviewsRoute;
-  '/api/$version/interview': typeof ApiVersionInterviewRoute;
-  '/api/export-interviews/batch': typeof ApiExportInterviewsBatchRoute;
+  '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/signin': typeof SigninRoute
+  '/api/health': typeof ApiHealthRoute
+  '/dashboard/interviews': typeof DashboardInterviewsRoute
+  '/api/$version/interview': typeof ApiVersionInterviewRoute
+  '/api/export-interviews/batch': typeof ApiExportInterviewsBatchRoute
 }
 export interface FileRoutesById {
-  '__root__': typeof rootRouteImport;
-  '/': typeof IndexRoute;
-  '/dashboard': typeof DashboardRouteWithChildren;
-  '/signin': typeof SigninRoute;
-  '/api/health': typeof ApiHealthRoute;
-  '/dashboard/interviews': typeof DashboardInterviewsRoute;
-  '/api/$version/interview': typeof ApiVersionInterviewRoute;
-  '/api/export-interviews/batch': typeof ApiExportInterviewsBatchRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/signin': typeof SigninRoute
+  '/api/health': typeof ApiHealthRoute
+  '/dashboard/interviews': typeof DashboardInterviewsRoute
+  '/api/$version/interview': typeof ApiVersionInterviewRoute
+  '/api/export-interviews/batch': typeof ApiExportInterviewsBatchRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
+  fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/dashboard'
@@ -91,8 +91,8 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/dashboard/interviews'
     | '/api/$version/interview'
-    | '/api/export-interviews/batch';
-  fileRoutesByTo: FileRoutesByTo;
+    | '/api/export-interviews/batch'
+  fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
@@ -100,7 +100,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/dashboard/interviews'
     | '/api/$version/interview'
-    | '/api/export-interviews/batch';
+    | '/api/export-interviews/batch'
   id:
     | '__root__'
     | '/'
@@ -109,83 +109,83 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/dashboard/interviews'
     | '/api/$version/interview'
-    | '/api/export-interviews/batch';
-  fileRoutesById: FileRoutesById;
+    | '/api/export-interviews/batch'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  DashboardRoute: typeof DashboardRouteWithChildren;
-  SigninRoute: typeof SigninRoute;
-  ApiHealthRoute: typeof ApiHealthRoute;
-  ApiVersionInterviewRoute: typeof ApiVersionInterviewRoute;
-  ApiExportInterviewsBatchRoute: typeof ApiExportInterviewsBatchRoute;
+  IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
+  SigninRoute: typeof SigninRoute
+  ApiHealthRoute: typeof ApiHealthRoute
+  ApiVersionInterviewRoute: typeof ApiVersionInterviewRoute
+  ApiExportInterviewsBatchRoute: typeof ApiExportInterviewsBatchRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
-      id: '/';
-      path: '/';
-      fullPath: '/';
-      preLoaderRoute: typeof IndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
-      id: '/dashboard';
-      path: '/dashboard';
-      fullPath: '/dashboard';
-      preLoaderRoute: typeof DashboardRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signin': {
-      id: '/signin';
-      path: '/signin';
-      fullPath: '/signin';
-      preLoaderRoute: typeof SigninRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
-      id: '/api/health';
-      path: '/api/health';
-      fullPath: '/api/health';
-      preLoaderRoute: typeof ApiHealthRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/interviews': {
-      id: '/dashboard/interviews';
-      path: '/interviews';
-      fullPath: '/dashboard/interviews';
-      preLoaderRoute: typeof DashboardInterviewsRouteImport;
-      parentRoute: typeof DashboardRoute;
-    };
+      id: '/dashboard/interviews'
+      path: '/interviews'
+      fullPath: '/dashboard/interviews'
+      preLoaderRoute: typeof DashboardInterviewsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/api/$version/interview': {
-      id: '/api/$version/interview';
-      path: '/api/$version/interview';
-      fullPath: '/api/$version/interview';
-      preLoaderRoute: typeof ApiVersionInterviewRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/api/$version/interview'
+      path: '/api/$version/interview'
+      fullPath: '/api/$version/interview'
+      preLoaderRoute: typeof ApiVersionInterviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/export-interviews/batch': {
-      id: '/api/export-interviews/batch';
-      path: '/api/export-interviews/batch';
-      fullPath: '/api/export-interviews/batch';
-      preLoaderRoute: typeof ApiExportInterviewsBatchRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/api/export-interviews/batch'
+      path: '/api/export-interviews/batch'
+      fullPath: '/api/export-interviews/batch'
+      preLoaderRoute: typeof ApiExportInterviewsBatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface DashboardRouteChildren {
-  DashboardInterviewsRoute: typeof DashboardInterviewsRoute;
+  DashboardInterviewsRoute: typeof DashboardInterviewsRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardInterviewsRoute: DashboardInterviewsRoute,
-};
+}
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
-);
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -194,17 +194,17 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   ApiVersionInterviewRoute: ApiVersionInterviewRoute,
   ApiExportInterviewsBatchRoute: ApiExportInterviewsBatchRoute,
-};
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from './router.tsx';
-import type { startInstance } from './start.ts';
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
-    ssr: true;
-    router: Awaited<ReturnType<typeof getRouter>>;
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>;
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

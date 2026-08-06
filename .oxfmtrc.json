@@ -43,6 +43,7 @@
     "**/.turbo/**",
     "**/public/**/*.*",
     "**/worker-configuration.d.ts",
+    "apps/fresco/src/routeTree.gen.ts",
     "**/*.xcassets/**/Contents.json",
     "packages/interface-images/src/generated/**",
     "packages/interview/e2e/fixtures/data/roster-broken.json",

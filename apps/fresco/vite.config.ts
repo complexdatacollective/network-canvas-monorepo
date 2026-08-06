@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
 import tailwindcss from '@tailwindcss/vite';
@@ -16,9 +17,40 @@ import { defineConfig } from 'vite';
  * adapter, `vite build` emits only `dist/server/server.js` — a fetch-handler
  * module with no listening server — and the container contract cannot be met.
  */
+
+/**
+ * `server-only` ships both a throwing entry and a no-op `empty.js`, and selects
+ * between them with the `react-server` export condition. `empty.js` is not
+ * reachable through the package's `exports` map, so it is resolved by path,
+ * relative to wherever pnpm actually put the package.
+ */
+const serverOnlyEmpty = path.join(
+  path.dirname(createRequire(import.meta.url).resolve('server-only')),
+  'empty.js',
+);
 export default defineConfig({
   resolve: {
     alias: [
+      /**
+       * `server-only`'s package exports resolve to a module whose entire body
+       * is `throw new Error(...)` unless the `react-server` export condition is
+       * set. Next sets that condition; Vite sets it in no environment, so the
+       * throwing entry is what gets loaded.
+       *
+       * This produces a dev/prod split that fails in the more dangerous
+       * direction. `vite build` tree-shakes the side-effect-only import away —
+       * the throw is absent from `.output` and production works — while
+       * `vite dev` externalises the package and Node's CJS loader executes the
+       * throw, so **every route 500s and the dev server is unusable**. A green
+       * production build says nothing about it.
+       *
+       * Selecting the package's own `empty.js` is exactly what the
+       * `react-server` condition does, so this changes no behaviour that was
+       * ever available here. The 21 `import 'server-only'` guards are inert
+       * under Vite either way; the real boundary in the Start tree is
+       * `@tanstack/react-start/server-only` plus Import Protection.
+       */
+      { find: /^server-only$/, replacement: serverOnlyEmpty },
       /**
        * `queries/` cannot be ported, only replaced: every function in it is a
        * `'use cache'` function, and TanStack Start has no server-cache
