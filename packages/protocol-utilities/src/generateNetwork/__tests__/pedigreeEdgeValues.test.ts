@@ -96,6 +96,11 @@ const codebook = {
           type: 'text',
           validation: { unique: true },
         },
+        displayName: {
+          name: 'Display name',
+          type: 'text',
+          validation: { unique: true },
+        },
         isEgo: { name: 'Is ego', type: 'boolean' },
         relationship: { name: 'Relationship', type: 'text' },
         biologicalSex: {
@@ -265,6 +270,36 @@ describe('FamilyPedigree materialization', () => {
           node[entityAttributesProperty].generationMarker !== undefined,
       ),
     ).toBe(true);
+  });
+
+  it('does not write a form variable that collides with the internal name path', () => {
+    if (familyStage.type !== 'FamilyPedigree') {
+      throw new Error('expected a FamilyPedigree stage');
+    }
+    const stage = {
+      ...familyStage,
+      nodeConfig: {
+        ...familyStage.nodeConfig,
+        nodeLabelVariable: 'displayName',
+        form: [{ variable: 'name', prompt: 'This field is reserved.' }],
+      },
+    } as unknown as Stage;
+    const { network } = generateNetwork({
+      seed: 42,
+      codebook,
+      stages: [stage],
+      familyPedigree: { scenario: 'none' },
+    });
+
+    for (const node of network.nodes) {
+      const attributes = node[entityAttributesProperty];
+      expect(attributes).not.toHaveProperty('name');
+      if (attributes.isEgo === true) {
+        expect(attributes).not.toHaveProperty('displayName');
+      } else {
+        expect(typeof attributes.displayName).toBe('string');
+      }
+    }
   });
 
   it('uses interface-valid relationship, gamete, activity, and carrier semantics', () => {

@@ -56,9 +56,17 @@ function promptFixedVariables(stage: Stage, prompt?: CreationPrompt): string[] {
 /** Variables rendered as ordinary fields or labels by FamilyPedigree. */
 export function pedigreeDrawnNodeVariables(stage: Stage): Set<string> {
   if (stage.type !== 'FamilyPedigree') return new Set();
+  const nodeLabelVariable = stage.nodeConfig?.nodeLabelVariable;
   return setOf([
-    stage.nodeConfig?.nodeLabelVariable,
-    ...(stage.nodeConfig?.form ?? []).map((field) => field.variable),
+    nodeLabelVariable,
+    ...(stage.nodeConfig?.form ?? [])
+      .map((field) => field.variable)
+      // PersonNameField owns the wizard's internal `name` path. A second form
+      // field with that id is suppressed by the live interface, as is a form
+      // field duplicating the configured label variable.
+      .filter(
+        (variable) => variable !== nodeLabelVariable && variable !== 'name',
+      ),
   ]);
 }
 
