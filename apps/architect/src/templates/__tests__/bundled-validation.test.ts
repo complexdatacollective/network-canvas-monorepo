@@ -58,7 +58,7 @@ const consentFlows = [
     postConsentStageId: 'ego-form-background',
   },
   {
-    name: 'Eco-Genetic Relationship Maps',
+    name: 'Colored Eco-Genetic Relationship Map (CEGRM)',
     protocol: getBundledTemplateProtocol('eco-genetic-relationship-maps'),
     consentStageId: 'information-intro',
     consentVariableId: 'participant_consent',

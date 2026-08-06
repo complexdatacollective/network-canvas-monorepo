@@ -145,15 +145,15 @@ because an unregistered protocol is covered by no test and would drift from the 
 Each differs in **research purpose** and in which layer of the CEGRM it treats as the object of
 measurement, not merely in length.
 
-| #   | Template                                      | The object of measurement                        | Signature technique                                                   | Stages |
-| --- | --------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------- | ------ |
-| A   | **Eco-Genetic Relationship Maps**             | Ego's resource exchanges, laid over the pedigree | Pedigree → colour-map pipeline closing on a grouped-overlay Narrative | 12     |
-| B   | **Family Health Communication Networks**      | The communication network _among kin_            | `OneToManyDyadCensus` over the pedigree → at-risk vs. told comparison | 12     |
-| C   | **Support Ecologies in Inherited Conditions** | Breadth, types and depth of support              | `NetworkComposer` co-construction with convex-hull social circles     | 10     |
+| #   | Template                                         | The object of measurement                        | Signature technique                                                   | Stages |
+| --- | ------------------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------- | ------ |
+| A   | **Colored Eco-Genetic Relationship Map (CEGRM)** | Ego's resource exchanges, laid over the pedigree | Pedigree → colour-map pipeline closing on a grouped-overlay Narrative | 14     |
+| B   | **Family Health Communication Networks**         | The communication network _among kin_            | `OneToManyDyadCensus` over the pedigree → at-risk vs. told comparison | 12     |
+| C   | **Support Ecologies in Inherited Conditions**    | Breadth, types and depth of support              | `NetworkComposer` co-construction with convex-hull social circles     | 10     |
 
 ---
 
-### Proposal A — Eco-Genetic Relationship Maps
+### Proposal A — Colored Eco-Genetic Relationship Map (CEGRM)
 
 _General case of: overlaying a personal support network onto a genetic pedigree, for families
 living with an inherited condition._
@@ -169,17 +169,20 @@ whose presets _are_ the coloured overlays. This is the design that most directly
 FamilyPedigree → NarrativePedigree pairing and shows off what the paper instrument cannot do:
 switch overlays live, trace an inheritance pathway for one person, and export a snapshot.
 
-**Codebook.** _Node `person`:_ `name` (text), `is_ego` (boolean), `relationship_to_ego` (text,
+**Codebook.** _Node `person`:_ `name` (required, unique text used by both the pedigree and quick
+add), `is_ego` (boolean), `relationship_to_ego` (text,
 written automatically at finalize), `biologicalSex` (locked categorical), `layout`, `tie_type`
 (categorical: close friend / friend / colleague or classmate / neighbour / faith community /
 health professional / other) + `tie_type_other` (text), condition booleans `has_condition` and
-`had_testing`, categorical `living_status`, numeric `birth_year`; four domain booleans
+`had_testing`, categorical `living_status`, numeric `birth_year`, ordinal `closeness` and
+`contact_frequency`; four domain booleans
 `exch_information`, `exch_tangible`,
 `exch_emotional`, `exch_spiritual`; three role booleans `role_gatherer`, `role_disseminator`,
 `role_blocker`. Node shape: `{ default: 'circle', dynamic: { type: 'discrete', variable:
 'biologicalSex', map: [male→square, female→circle, intersex→diamond] } }`.
 _Edge `family_relationship`:_ the four locked pedigree variables. _Edge `knows`:_ member-to-member
-ties. _Ego:_ consent, age, education and partnered status.
+ties. _Ego:_ consent, age and education. Partnership information comes from the pedigree rather
+than being asked redundantly on the ego form.
 
 **Stage sketch.**
 
@@ -192,13 +195,16 @@ ties. _Ego:_ consent, age, education and partnered status.
 5. `Information` — "now the people beyond your family".
 6. `NameGeneratorQuickAdd` — four prompts adding non-kin.
 7. `CategoricalBin` — sort the people you added into relationship types.
-8. `Sociogram` — ties, then the four exchange domains.
-9. `Sociogram` — the three communication roles, filtered to family members.
-10. `Narrative` — **the coloured map**: overview, support overlays and communication overlays,
+8. `OrdinalBin` — perceived closeness across family and non-family contacts.
+9. `OrdinalBin` — contact frequency over the past 12 months, excluding people recorded as
+   deceased.
+10. `Sociogram` — ties, then the four exchange domains.
+11. `Sociogram` — the three communication roles, filtered to family members.
+12. `Narrative` — **the coloured map**: overview, support overlays and communication overlays,
     with social ties visible throughout.
-11. `NarrativePedigree` — the inheritance pathway, conservatively configured with inferred risk
+13. `NarrativePedigree` — the inheritance pathway, conservatively configured with inferred risk
     off and an unknown inheritance pattern.
-12. `Information` — closing and debrief.
+14. `Information` — closing and debrief.
 
 **Worked configuration for the distinctive stages.**
 
@@ -495,9 +501,13 @@ The implemented template was refined further after comparison with the alternati
 - **Communication roles follow their published family scope.** Gatherer, disseminator and blocker
   are filtered to non-ego pedigree members; the researcher notes explain how to widen that scope
   when non-family information brokerage is part of the study.
+- **Network Canvas tie measures supplement the CEGRM domains.** Separate ordinal bins collect
+  perceived closeness and contact frequency for family and non-family contacts. Contact frequency
+  excludes people recorded as deceased; the template identifies both measures as additions to,
+  rather than claims about, the published CEGRM instrument.
 - **The researcher-notes screen carries pre-fielding instructions** for condition wording,
   inheritance configuration, consent, safeguarding, referral and distress procedures, spiritual
-  support, optional closeness/contact measures, and capture of the qualitative reflection.
+  support, and capture of the qualitative reflection.
 
 **Proposal B is the strongest second**, and is the more novel research instrument — it produces a
 directed kin communication network that the paper method structurally cannot capture. Its open

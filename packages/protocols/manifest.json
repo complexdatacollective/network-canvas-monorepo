@@ -66,8 +66,8 @@
     {
       "id": "eco-genetic-relationship-maps",
       "kind": "template",
-      "name": "Eco-Genetic Relationship Maps",
-      "description": "A family pedigree overlaid with the support network around an inherited condition",
+      "name": "Colored Eco-Genetic Relationship Map (CEGRM)",
+      "description": "An implementation of the CEGRM method that overlays a family pedigree with the support network around an inherited condition",
       "protocolPath": "templates/eco-genetic-relationship-maps/protocol.json",
       "assetDir": "templates/eco-genetic-relationship-maps/assets",
       "architectTemplate": true

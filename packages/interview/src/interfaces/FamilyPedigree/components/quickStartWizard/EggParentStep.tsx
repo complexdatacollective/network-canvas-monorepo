@@ -3,7 +3,6 @@
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { FRAMING_TERMS, type FramingId } from '@codaco/shared-consts';
 
@@ -11,6 +10,7 @@ import useProtocolForm from '../../../../forms/useProtocolForm';
 import { useStageSelector } from '../../../../hooks/useStageSelector';
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
 import { getNodeForm, getNodeType } from '../../utils/nodeUtils';
+import PersonNameField from '../PersonNameField';
 
 const INTRO_COPY: Record<FramingId, string> = {
   gamete:
@@ -39,10 +39,8 @@ export default function EggParentStep() {
       <Paragraph>{INTRO_COPY[framingKey]}</Paragraph>
       <hr />
       <FieldNamespace prefix="egg-parent">
-        <Field
-          name="name"
+        <PersonNameField
           label="What is their name?"
-          component={InputField}
           hint="Leave blank if the name is not known"
           autoFocus
         />

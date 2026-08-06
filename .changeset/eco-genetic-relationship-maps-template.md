@@ -1,5 +1,10 @@
 ---
 '@codaco/architect': minor
+'@codaco/interview': patch
+'@codaco/protocol-utilities': patch
+'@codaco/protocol-validation': patch
 ---
 
-Add an Eco-Genetic Relationship Maps template for families living with an inherited condition. It builds a family pedigree, adds the friends and others who matter to the participant, records the information, practical help, feelings and spiritual connection exchanged with each person, and closes on a colour-coded map of the whole network and a view of how the condition runs in the family.
+Add a Colored Eco-Genetic Relationship Map (CEGRM) template for families living with an inherited condition. It combines a family pedigree with the participant's wider social network, records relationship closeness and contact frequency alongside exchanges of information, practical help, emotional and spiritual support, and closes on a visual map and an inheritance view.
+
+Treat the Family Pedigree node label as a validated codebook field, apply its rules to every pedigree name entry point, and expose those rules beside the label-variable selector in Architect. Reduce the default synthetic Sociogram edge density so preview networks remain legible as their node count grows.

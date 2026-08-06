@@ -15,6 +15,10 @@ vi.mock('../../../../../forms/useProtocolForm', () => ({
   default: () => ({ fieldComponents: null }),
 }));
 
+vi.mock('../../PersonNameField', () => ({
+  default: ({ label }: { label: string }) => <input aria-label={label} />,
+}));
+
 const testConfig: VariableConfig = {
   nodeType: 'person',
   edgeType: 'family',

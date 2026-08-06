@@ -37,10 +37,11 @@ export type FamilyPedigreeIntroItem = z.infer<typeof IntroScreenItemSchema>;
 export const NodeConfigSchema = z.strictObject({
   // Node type for alter nodes in the codebook
   type: entityTypeReference({ entity: 'node' }),
-  // Text variable used to store the node's display label
+  // Text variable collected through the pedigree's name field and used as the
+  // node's display label
   nodeLabelVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'node' },
-    usage: 'unvalidatedAttribute',
+    usage: 'validatedAttribute',
   }),
   // Boolean variable marking the ego node
   egoVariable: entityAttributeReference({

@@ -4,6 +4,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { BIOLOGICAL_SEX_LEAD_IN } from '@codaco/shared-consts';
 
 import BiologicalSexField from '../BiologicalSexField';
+import PersonNameField from '../PersonNameField';
 
 /**
  * Captures the participant's own biological sex. Ego is a leaf/proband with no
@@ -14,6 +15,7 @@ import BiologicalSexField from '../BiologicalSexField';
 export default function EgoSexStep() {
   return (
     <>
+      <PersonNameField label="What is your name?" autoFocus />
       <Paragraph>{BIOLOGICAL_SEX_LEAD_IN}</Paragraph>
       <BiologicalSexField subject="self" />
     </>

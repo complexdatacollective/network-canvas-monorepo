@@ -1,15 +1,14 @@
 'use client';
 
-import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { BiologicalSex } from '@codaco/shared-consts';
 
 import useProtocolForm from '../../../../forms/useProtocolForm';
 import { useStageSelector } from '../../../../hooks/useStageSelector';
 import { getNodeForm, getNodeType } from '../../utils/nodeUtils';
 import BiologicalSexField from '../BiologicalSexField';
+import PersonNameField from '../PersonNameField';
 
 type PersonFieldsProps = {
   namespace?: string;
@@ -20,12 +19,14 @@ type PersonFieldsProps = {
     attributes?: Record<string, unknown>;
   };
   namePlaceholder?: string;
+  currentEntityId?: string;
 };
 
 export default function PersonFields({
   namespace,
   initial,
   namePlaceholder = 'Enter name',
+  currentEntityId,
 }: PersonFieldsProps) {
   const nodeType = useStageSelector(getNodeType);
   const nodeForm = useStageSelector(getNodeForm);
@@ -43,13 +44,12 @@ export default function PersonFields({
 
   const content = (
     <>
-      <Field
-        name="name"
+      <PersonNameField
         label="Name"
-        component={InputField}
         placeholder={namePlaceholder}
         hint="Leave blank if the name is not known"
         initialValue={initial?.name ?? ''}
+        currentEntityId={currentEntityId}
       />
       <BiologicalSexField
         subject="other"
