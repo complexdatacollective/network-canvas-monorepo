@@ -1,25 +1,14 @@
-import { v4 as uuid } from 'uuid';
-
-import type { AdditionalAttributes, Stage } from '@codaco/protocol-validation';
+import type { Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
-  entityPrimaryKeyProperty,
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
 
 import type { VariableEntry } from '../types';
-import {
-  claimFixedValues,
-  generateAttributesForEntity,
-  rosterRowIsDrawable,
-} from './attributes';
 import type { FeasibilityConfig } from './config';
 import { dateValueResolution, stepsBetween } from './constraints/dateWindow';
-import {
-  completionCheckFor,
-  type EntityScopeRef,
-} from './constraints/generateEntityAttributes';
+import { completionCheckFor } from './constraints/generateEntityAttributes';
 import {
   COMPARATOR_DIRECTION,
   COMPARISON_RULES,
@@ -28,7 +17,7 @@ import {
 } from './constraints/types';
 import { valueKey } from './constraints/uniqueRegistry';
 import { distinctOptionValues } from './constraints/valueSpace';
-import type { GenerationContext, StageOfType } from './context';
+import type { StageOfType } from './context';
 import { getSubjectType } from './subject';
 
 /**
@@ -41,16 +30,6 @@ export type NodeCreationStage = StageOfType<
   | 'NameGeneratorRoster'
   | 'NetworkComposer'
 >;
-
-/**
- * Minimal prompt shape node creation needs: an id (for `promptIDs`) and any
- * additional attributes to stamp onto created nodes. NetworkComposer, which is
- * promptless, passes a synthetic `{ id }`.
- */
-type NodeDrawPrompt = {
-  id?: string;
-  additionalAttributes?: AdditionalAttributes;
-};
 
 /**
  * Roster state for a name-generator stage.
@@ -864,4 +843,3 @@ export function getNodeCountBounds(
   // inverted would clamp the stage below the minimum the protocol asks for.
   return { minNodes, maxNodes: Math.max(maxNodes, minNodes) };
 }
-

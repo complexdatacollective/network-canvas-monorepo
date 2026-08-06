@@ -1,9 +1,5 @@
 import type { Variable } from '@codaco/protocol-validation';
-import {
-  entityAttributesProperty,
-  type NcNode,
-  type VariableValue,
-} from '@codaco/shared-consts';
+import type { VariableValue } from '@codaco/shared-consts';
 
 import type { VariableEntry } from '../types';
 import {
@@ -115,7 +111,6 @@ export function rosterRowIsDrawable(
 
   return true;
 }
-
 
 /**
  * Records the `unique` values an entity was given from outside the registry — a
