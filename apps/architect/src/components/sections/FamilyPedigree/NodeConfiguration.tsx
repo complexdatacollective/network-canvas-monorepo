@@ -12,6 +12,7 @@ import {
   SubmissionError,
 } from 'redux-form';
 
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
@@ -498,8 +499,12 @@ const NodeConfigurationInner = ({
 
         {nodeType && (
           <>
-            {/* `[&_.variable-pill]:bg-white` lifts the pills off the surface-2 panel */}
-            <div className="bg-surface-2 text-surface-2-contrast my-7 flex flex-col gap-7 rounded p-5 [&_.variable-pill]:bg-white">
+            <Surface
+              noContainer
+              spacing="sm"
+              shadow="none"
+              className="my-7 flex flex-col gap-7 overflow-visible!"
+            >
               <VariableRow
                 name="nodeConfig.nodeLabelVariable"
                 label="Node Label"
@@ -545,7 +550,7 @@ const NodeConfigurationInner = ({
                 onCreateOption={handleNewBiologicalSexVariable}
                 crossClassPick={makeSlotValidator('biologicalSexVariable')}
               />
-            </div>
+            </Surface>
 
             <Section
               title="Form Fields"
@@ -557,7 +562,6 @@ const NodeConfigurationInner = ({
                 </Paragraph>
               }
               layout="vertical"
-              className="bg-surface-2 text-surface-2-contrast p-5"
             >
               <ValidatedFieldArray
                 name="nodeConfig.form"
