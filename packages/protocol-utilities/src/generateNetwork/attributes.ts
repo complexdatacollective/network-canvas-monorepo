@@ -137,3 +137,51 @@ export function claimFixedValues(
     }
   }
 }
+
+/**
+ * Holds the `unique` values an entity will be given from outside the registry
+ * back from generated draws, without issuing them.
+ *
+ * The plan walks a type's creating stages in interview order, so a stage that
+ * draws freely runs before a later stage's prompt or roster row is known. A
+ * free draw that took a value one of those will write leaves the network
+ * holding it twice, which `unique` forbids and nothing downstream repairs.
+ * Reservations are soft — a draw with nothing else left takes one anyway —
+ * which is the right strength here: refusing a value on account of an entity
+ * the run may never build would fail protocols that generate perfectly well.
+ *
+ * Every hold is released as its value is consumed or its row passed over, so
+ * a pool the draw never reaches stops constraining it.
+ */
+export function reserveFixedValues(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  fixed: Record<string, VariableValue>,
+): void {
+  const registry = scopeKey(ref);
+
+  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
+    for (const id of memberIds) {
+      const value = fixed[id];
+      if (value !== undefined)
+        ctx.uniqueRegistry.reserve(registry, slot, value);
+    }
+  }
+}
+
+export function unreserveFixedValues(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  fixed: Record<string, VariableValue>,
+): void {
+  const registry = scopeKey(ref);
+
+  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
+    for (const id of memberIds) {
+      const value = fixed[id];
+      if (value !== undefined) {
+        ctx.uniqueRegistry.unreserve(registry, slot, value);
+      }
+    }
+  }
+}

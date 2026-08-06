@@ -45,6 +45,7 @@ const pairKey = (a: string, b: string): string =>
 
 type Planned = {
   attributes: Record<string, VariableValue>;
+  fixedAtCreation: Record<string, VariableValue>;
   missing: Set<string>;
 };
 
@@ -53,6 +54,23 @@ const valueFor = (planned: Planned, variableId: string): VariableValue =>
   planned.missing.has(variableId)
     ? null
     : (planned.attributes[variableId] ?? null);
+
+/**
+ * What an entity carries the moment it is created.
+ *
+ * A value the creating interaction fixes is written as the interaction writes
+ * it, even where a later stage goes on to overwrite it — that later write is
+ * what lands the planned final value, and the difference between the two is
+ * the ordering effect a session should show. Everything else the creating
+ * interaction writes is already planned as final.
+ */
+const creationValueFor = (
+  planned: Planned,
+  variableId: string,
+): VariableValue =>
+  variableId in planned.fixedAtCreation
+    ? (planned.fixedAtCreation[variableId] ?? null)
+    : valueFor(planned, variableId);
 
 export function materialiseSession(params: {
   ctx: GenerationContext;
@@ -155,16 +173,14 @@ export function materialiseSession(params: {
         // roster draw — the row's own data.
         const writeSet = new Set<string>([
           ...creation.writesAtCreation,
-          ...Object.keys(
-            creation.promptFixedValues[planned.promptIndex] ?? {},
-          ),
+          ...Object.keys(creation.promptFixedValues[planned.promptIndex] ?? {}),
           ...(planned.rosterRow
             ? Object.keys(planned.rosterRow[entityAttributesProperty])
             : []),
         ]);
         const attributes: Record<string, VariableValue> = {};
         for (const variableId of writeSet) {
-          attributes[variableId] = valueFor(planned, variableId);
+          attributes[variableId] = creationValueFor(planned, variableId);
         }
 
         const promptIDs =
@@ -194,7 +210,7 @@ export function materialiseSession(params: {
 
         const attributes: Record<string, VariableValue> = {};
         for (const variableId of creation.writesAtCreation) {
-          attributes[variableId] = valueFor(planned, variableId);
+          attributes[variableId] = creationValueFor(planned, variableId);
         }
         const edge = {
           [entityPrimaryKeyProperty]: planned.uid,
@@ -249,12 +265,15 @@ export function materialiseSession(params: {
       // left unlinked is an explicit negative nomination. TieStrengthCensus
       // records negatives only — a positive lives as the ordinal value on
       // the edge itself.
+      // Read as a draft throughout: Architect previews a stage while it is
+      // still being authored, and a missing subject or prompt must leave the
+      // preview without metadata rather than throw.
       const tuples: DyadCensusMetadataItem[] = [];
       const subjects = filteredSubjects(
-        stage.subject.type,
+        stage.subject?.type ?? '',
         'filter' in stage ? stage.filter : undefined,
       );
-      stage.prompts.forEach((prompt, promptIndex) => {
+      (stage.prompts ?? []).forEach((prompt, promptIndex) => {
         const members = finalPairsByType.get(prompt.createEdge) ?? new Set();
         for (let a = 0; a < subjects.length; a++) {
           for (let b = a + 1; b < subjects.length; b++) {
@@ -270,7 +289,7 @@ export function materialiseSession(params: {
     } else if (stage.type === 'FamilyPedigree') {
       draft.stageMetadata[i] = {
         isNetworkCommitted: true,
-        ...(stage.framing.mode === 'participantChoice'
+        ...(stage.framing?.mode === 'participantChoice'
           ? {
               selectedFraming:
                 FRAMING_IDS[

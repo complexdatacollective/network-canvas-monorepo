@@ -46,6 +46,14 @@ export type NodeCreation = {
   promptFixedValues: Record<string, boolean>[];
   /** Stage id for the roster three-way `externalData` lookup. */
   rosterStageId?: string;
+  /**
+   * Which side wins when a roster row and its prompt both carry a variable.
+   * `NameGeneratorRoster` builds the node itself and spreads the row's data
+   * last, so the row wins; every other roster path adds the node to a prompt,
+   * and `addNodeToPrompt` asserts the prompt's values over whatever the node
+   * already holds.
+   */
+  rosterValuesWin: boolean;
 };
 
 export type EdgeCreation = {
@@ -130,7 +138,58 @@ export type StageEffects = {
    * subject, filter) that contributes endpoint pairs to their domain.
    */
   edgeCreationsByType: Map<string, EdgeCreation[]>;
+  /**
+   * Per entity scope (`node:person`, `edge:friend`, `ego`), every variable
+   * some stage writes.
+   *
+   * The planner draws only what appears here: a variable nothing writes is
+   * never answered, so planning a value for it would claim a `unique` slot the
+   * network never uses — and feasibility, which exempts unwritten variables
+   * from its counting, would accept protocols the plan then failed on.
+   */
+  writeIndex: Map<string, Map<string, number>>;
+  /**
+   * The last stage that writes each variable onto entities it did not itself
+   * create — a form, a bin, a census — which is what can overwrite a value an
+   * earlier stage fixed.
+   *
+   * Creation-time writes are deliberately excluded: a prompt's
+   * `additionalAttributes` land only on the nodes added under that prompt, so
+   * a later stage fixing a value says nothing about an entity created before
+   * it. Filtered and skippable writes are excluded too, since neither is
+   * certain to reach a given entity — the direction feasibility already takes
+   * when it keeps a pin it cannot prove is redrawn.
+   */
+  rewriteIndex: Map<string, Map<string, number>>;
 };
+
+/** Scope key for `writeIndex`, matching the constraint machinery's. */
+export const scopeKeyFor = (entity: string, type?: string): string =>
+  entity === 'ego' ? 'ego' : `${entity}:${type}`;
+
+/** The variables some stage writes for one entity scope. */
+export function writtenVariables(
+  effects: StageEffects,
+  entity: string,
+  type?: string,
+): Set<string> {
+  const writes = effects.writeIndex.get(scopeKeyFor(entity, type));
+  return new Set(writes?.keys() ?? []);
+}
+
+/**
+ * Whether any stage after `stageIndex` writes `variableId` on this scope — the
+ * test for whether a value fixed at creation survives to the final network.
+ */
+export function isRewrittenAfter(
+  effects: StageEffects,
+  scope: string,
+  variableId: string,
+  stageIndex: number,
+): boolean {
+  const last = effects.rewriteIndex.get(scope)?.get(variableId);
+  return last !== undefined && last > stageIndex;
+}
 
 const behavioursCapacity = (
   behaviours: { minNodes?: number; maxNodes?: number } | undefined,
@@ -139,17 +198,64 @@ const behavioursCapacity = (
   max: behaviours?.maxNodes ?? null,
 });
 
+/**
+ * Architect's StageEditor previews half-built stages through PreviewHost, so
+ * analysis reads a stage as a draft: any property the schema requires may be
+ * absent while it is being authored. These accessors take the declared type
+ * and answer for a draft, so a stage missing its subject or form contributes
+ * nothing instead of throwing and collapsing the preview into its failure
+ * screen.
+ */
+const subjectTypeOf = (subject: { type?: string } | undefined) => subject?.type;
+
+/** The variables a form's fields write, skipping fields with none chosen. */
+const formVariables = (
+  form: { fields?: readonly { variable?: string }[] } | undefined,
+): string[] =>
+  definedStrings((form?.fields ?? []).map((field) => field.variable));
+
+const definedStrings = (values: readonly (string | undefined)[]): string[] =>
+  values.filter((value): value is string => value !== undefined);
+
+// Written over the array type rather than its element, so a case handling two
+// stage types (OrdinalBin/CategoricalBin) keeps the union of their prompts
+// instead of collapsing to whichever branch inference reached first.
+const promptsOf = <T extends readonly unknown[]>(
+  prompts: T | undefined,
+): T | readonly [] => prompts ?? [];
+
+/**
+ * A name generator given panels draws real rows too, from `externalData` under
+ * the stage's own id — the same three-way lookup a roster stage uses.
+ *
+ * It still fabricates: a panel is a shortcut for naming someone already known,
+ * not a closed list, so an exhausted panel leaves the stage adding people by
+ * hand. And it adds through `addNodeToPrompt`, which asserts the prompt's
+ * values over the row's, opposite to the roster interface.
+ */
+const panelSource = (
+  panels: readonly unknown[] | undefined,
+  stageId: string,
+): Pick<NodeCreation, 'rosterStageId' | 'rosterValuesWin'> => ({
+  ...(panels !== undefined && panels.length > 0
+    ? { rosterStageId: stageId }
+    : {}),
+  rosterValuesWin: false,
+});
+
 const promptFixedValues = (
   prompts: readonly {
-    additionalAttributes?: readonly { variable: string; value: boolean }[];
+    additionalAttributes?: readonly { variable?: string; value?: boolean }[];
   }[],
 ): Record<string, boolean>[] =>
   prompts.map((prompt) =>
     Object.fromEntries(
-      (prompt.additionalAttributes ?? []).map((attribute) => [
-        attribute.variable,
-        attribute.value,
-      ]),
+      (prompt.additionalAttributes ?? [])
+        .filter(
+          (attribute): attribute is { variable: string; value: boolean } =>
+            attribute.variable !== undefined && attribute.value !== undefined,
+        )
+        .map((attribute) => [attribute.variable, attribute.value]),
     ),
   );
 
@@ -157,11 +263,17 @@ const promptFixedValues = (
  * Values a FamilyPedigree fixes on every edge it creates: the relationship
  * type is 'biological' (a categorical, so an array) and the link is active.
  */
-export const pedigreeEdgeFixedValues = (
-  edgeConfig: StageOf<'FamilyPedigree'>['edgeConfig'],
+const pedigreeEdgeFixedValues = (
+  edgeConfig:
+    | { relationshipTypeVariable?: string; isActiveVariable?: string }
+    | undefined,
 ): Record<string, unknown> => ({
-  [edgeConfig.relationshipTypeVariable]: ['biological'],
-  [edgeConfig.isActiveVariable]: true,
+  ...(edgeConfig?.relationshipTypeVariable !== undefined
+    ? { [edgeConfig.relationshipTypeVariable]: ['biological'] }
+    : {}),
+  ...(edgeConfig?.isActiveVariable !== undefined
+    ? { [edgeConfig.isActiveVariable]: true }
+    : {}),
 });
 
 function summariseStage(stage: Stage, index: number): StageEffectSummary {
@@ -189,58 +301,74 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
 
   switch (stage.type) {
     case 'NameGenerator': {
+      const nodeType = subjectTypeOf(stage.subject);
+      if (nodeType === undefined) break;
       summary.nodeCreations.push({
         stageIndex: index,
-        nodeType: stage.subject.type,
+        nodeType,
         source: 'fabricated',
         capacity: behavioursCapacity(stage.behaviours),
-        writesAtCreation: stage.form.fields.map((field) => field.variable),
-        promptFixedValues: promptFixedValues(stage.prompts),
+        writesAtCreation: formVariables(stage.form),
+        promptFixedValues: promptFixedValues(promptsOf(stage.prompts)),
+        ...panelSource(stage.panels, stage.id),
       });
       break;
     }
 
     case 'NameGeneratorQuickAdd': {
+      const nodeType = subjectTypeOf(stage.subject);
+      if (nodeType === undefined) break;
       summary.nodeCreations.push({
         stageIndex: index,
-        nodeType: stage.subject.type,
+        nodeType,
         source: 'fabricated',
         capacity: behavioursCapacity(stage.behaviours),
-        writesAtCreation: [stage.quickAdd],
-        promptFixedValues: promptFixedValues(stage.prompts),
+        writesAtCreation: definedStrings([stage.quickAdd]),
+        promptFixedValues: promptFixedValues(promptsOf(stage.prompts)),
+        ...panelSource(stage.panels, stage.id),
       });
       break;
     }
 
     case 'NameGeneratorRoster': {
+      const nodeType = subjectTypeOf(stage.subject);
+      if (nodeType === undefined) break;
       summary.nodeCreations.push({
         stageIndex: index,
-        nodeType: stage.subject.type,
+        nodeType,
         source: 'roster',
         capacity: behavioursCapacity(stage.behaviours),
         // Roster rows arrive carrying their own attribute data.
         writesAtCreation: [],
-        promptFixedValues: promptFixedValues(stage.prompts),
+        promptFixedValues: promptFixedValues(promptsOf(stage.prompts)),
         rosterStageId: stage.id,
+        // This interface builds the node itself, spreading the row's data
+        // over the prompt's attributes.
+        rosterValuesWin: true,
       });
       break;
     }
 
     case 'Sociogram': {
-      for (const prompt of stage.prompts) {
-        summary.writes.push({
-          stageIndex: index,
-          entity: 'node',
-          entityType: stage.subject.type,
-          variableId: prompt.layout.layoutVariable,
-          ...(stage.filter ? { filter: stage.filter } : {}),
-          mode: 'layout',
-        });
+      const nodeType = subjectTypeOf(stage.subject);
+      if (nodeType === undefined) break;
+      for (const prompt of promptsOf(stage.prompts)) {
+        const layoutVariable = prompt.layout?.layoutVariable;
+        if (layoutVariable !== undefined) {
+          summary.writes.push({
+            stageIndex: index,
+            entity: 'node',
+            entityType: nodeType,
+            variableId: layoutVariable,
+            ...(stage.filter ? { filter: stage.filter } : {}),
+            mode: 'layout',
+          });
+        }
         if (prompt.highlight?.allowHighlighting && prompt.highlight.variable) {
           summary.writes.push({
             stageIndex: index,
             entity: 'node',
-            entityType: stage.subject.type,
+            entityType: nodeType,
             variableId: prompt.highlight.variable,
             ...(stage.filter ? { filter: stage.filter } : {}),
             mode: 'highlight',
@@ -250,7 +378,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
           summary.edgeCreations.push({
             stageIndex: index,
             edgeType: prompt.edges.create,
-            subjectNodeType: stage.subject.type,
+            subjectNodeType: nodeType,
             ...(stage.filter ? { filter: stage.filter } : {}),
             ownNodesOnly: false,
             recordsNegatives: null,
@@ -268,11 +396,14 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       // records none for this type), so only DyadCensus emits metadata —
       // dropping the previous generator's fabricated-but-ignored entries.
       if (stage.type === 'DyadCensus') summary.metadataKind = 'dyadCensus';
-      for (const prompt of stage.prompts) {
+      const nodeType = subjectTypeOf(stage.subject);
+      if (nodeType === undefined) break;
+      for (const prompt of promptsOf(stage.prompts)) {
+        if (prompt.createEdge === undefined) continue;
         summary.edgeCreations.push({
           stageIndex: index,
           edgeType: prompt.createEdge,
-          subjectNodeType: stage.subject.type,
+          subjectNodeType: nodeType,
           ...(stage.filter ? { filter: stage.filter } : {}),
           ownNodesOnly: false,
           recordsNegatives: stage.type === 'DyadCensus' ? 'dyadCensus' : null,
@@ -284,17 +415,21 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
     }
 
     case 'TieStrengthCensus': {
-      for (const prompt of stage.prompts) {
+      const nodeType = subjectTypeOf(stage.subject);
+      if (nodeType === undefined) break;
+      for (const prompt of promptsOf(stage.prompts)) {
+        if (prompt.createEdge === undefined) continue;
         summary.edgeCreations.push({
           stageIndex: index,
           edgeType: prompt.createEdge,
-          subjectNodeType: stage.subject.type,
+          subjectNodeType: nodeType,
           ...(stage.filter ? { filter: stage.filter } : {}),
           ownNodesOnly: false,
           recordsNegatives: 'tieStrength',
-          writesAtCreation: [prompt.edgeVariable],
+          writesAtCreation: definedStrings([prompt.edgeVariable]),
           structured: null,
         });
+        if (prompt.edgeVariable === undefined) continue;
         summary.writes.push({
           stageIndex: index,
           entity: 'edge',
@@ -308,11 +443,14 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
 
     case 'OrdinalBin':
     case 'CategoricalBin': {
-      for (const prompt of stage.prompts) {
+      const nodeType = subjectTypeOf(stage.subject);
+      if (nodeType === undefined) break;
+      for (const prompt of promptsOf(stage.prompts)) {
+        if (prompt.variable === undefined) continue;
         summary.writes.push({
           stageIndex: index,
           entity: 'node',
-          entityType: stage.subject.type,
+          entityType: nodeType,
           variableId: prompt.variable,
           ...(stage.filter ? { filter: stage.filter } : {}),
           mode: stage.type === 'OrdinalBin' ? 'ordinalBin' : 'categoricalBin',
@@ -322,11 +460,11 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
     }
 
     case 'EgoForm': {
-      for (const field of stage.form.fields) {
+      for (const variableId of formVariables(stage.form)) {
         summary.writes.push({
           stageIndex: index,
           entity: 'ego',
-          variableId: field.variable,
+          variableId,
           mode: 'form',
         });
       }
@@ -334,12 +472,14 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
     }
 
     case 'AlterForm': {
-      for (const field of stage.form.fields) {
+      const nodeType = subjectTypeOf(stage.subject);
+      if (nodeType === undefined) break;
+      for (const variableId of formVariables(stage.form)) {
         summary.writes.push({
           stageIndex: index,
           entity: 'node',
-          entityType: stage.subject.type,
-          variableId: field.variable,
+          entityType: nodeType,
+          variableId,
           ...(stage.filter ? { filter: stage.filter } : {}),
           mode: 'form',
         });
@@ -348,12 +488,14 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
     }
 
     case 'AlterEdgeForm': {
-      for (const field of stage.form.fields) {
+      const edgeType = subjectTypeOf(stage.subject);
+      if (edgeType === undefined) break;
+      for (const variableId of formVariables(stage.form)) {
         summary.writes.push({
           stageIndex: index,
           entity: 'edge',
-          entityType: stage.subject.type,
-          variableId: field.variable,
+          entityType: edgeType,
+          variableId,
           ...(stage.filter ? { filter: stage.filter } : {}),
           mode: 'form',
         });
@@ -362,59 +504,62 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
     }
 
     case 'FamilyPedigree': {
-      const formFields = (stage.nodeConfig.form ?? []).map(
-        (field) => field.variable,
-      );
       summary.metadataKind = 'familyPedigree';
+      const { nodeConfig, edgeConfig } = stage;
+      const nodeType = nodeConfig?.type;
+      const edgeType = edgeConfig?.type;
+      if (nodeType === undefined || edgeType === undefined) break;
+      const formFields = definedStrings(
+        (nodeConfig.form ?? []).map((field) => field.variable),
+      );
       summary.nodeCreations.push({
         stageIndex: index,
-        nodeType: stage.nodeConfig.type,
+        nodeType,
         source: 'pedigree',
         // The proband always exists; the family around them is population-
         // sized by the planner.
         capacity: { min: 1, max: null },
-        writesAtCreation: [
-          stage.nodeConfig.egoVariable,
-          stage.nodeConfig.nodeLabelVariable,
-          stage.nodeConfig.relationshipVariable,
-          stage.nodeConfig.biologicalSexVariable,
+        writesAtCreation: definedStrings([
+          nodeConfig.egoVariable,
+          nodeConfig.nodeLabelVariable,
+          nodeConfig.relationshipVariable,
+          nodeConfig.biologicalSexVariable,
           ...formFields,
-        ],
+        ]),
         promptFixedValues: [],
+        rosterValuesWin: false,
       });
       summary.edgeCreations.push({
         stageIndex: index,
-        edgeType: stage.edgeConfig.type,
-        subjectNodeType: stage.nodeConfig.type,
+        edgeType,
+        subjectNodeType: nodeType,
         ownNodesOnly: true,
         recordsNegatives: null,
-        writesAtCreation: Object.keys(
-          pedigreeEdgeFixedValues(stage.edgeConfig),
-        ),
+        writesAtCreation: Object.keys(pedigreeEdgeFixedValues(edgeConfig)),
         structured: 'pedigree',
       });
-      const nominationVariables = (stage.nominationPrompts ?? []).map(
-        (prompt) => prompt.variable,
+      const nominationVariables = definedStrings(
+        (stage.nominationPrompts ?? []).map((prompt) => prompt.variable),
       );
       for (const variableId of nominationVariables) {
         summary.writes.push({
           stageIndex: index,
           entity: 'node',
-          entityType: stage.nodeConfig.type,
+          entityType: nodeType,
           variableId,
           mode: 'pedigreeNomination',
         });
       }
       summary.pedigree = {
         stageIndex: index,
-        nodeType: stage.nodeConfig.type,
-        edgeType: stage.edgeConfig.type,
-        egoVariable: stage.nodeConfig.egoVariable,
-        labelVariable: stage.nodeConfig.nodeLabelVariable,
-        relationshipVariable: stage.nodeConfig.relationshipVariable,
-        biologicalSexVariable: stage.nodeConfig.biologicalSexVariable,
+        nodeType,
+        edgeType,
+        egoVariable: nodeConfig.egoVariable ?? '',
+        labelVariable: nodeConfig.nodeLabelVariable ?? '',
+        relationshipVariable: nodeConfig.relationshipVariable ?? '',
+        biologicalSexVariable: nodeConfig.biologicalSexVariable ?? '',
         formFields,
-        edgeFixedValues: pedigreeEdgeFixedValues(stage.edgeConfig),
+        edgeFixedValues: pedigreeEdgeFixedValues(edgeConfig),
         framing: stage.framing,
         nominationVariables,
       };
@@ -422,11 +567,14 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
     }
 
     case 'Geospatial': {
-      for (const prompt of stage.prompts) {
+      const nodeType = subjectTypeOf(stage.subject);
+      if (nodeType === undefined) break;
+      for (const prompt of promptsOf(stage.prompts)) {
+        if (prompt.variable === undefined) continue;
         summary.writes.push({
           stageIndex: index,
           entity: 'node',
-          entityType: stage.subject.type,
+          entityType: nodeType,
           variableId: prompt.variable,
           ...(stage.filter ? { filter: stage.filter } : {}),
           mode: 'geospatial',
@@ -437,32 +585,35 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
 
     case 'NetworkComposer': {
       summary.metadataKind = 'networkComposer';
+      const nodeType = subjectTypeOf(stage.subject);
+      if (nodeType === undefined) break;
       summary.nodeCreations.push({
         stageIndex: index,
-        nodeType: stage.subject.type,
+        nodeType,
         source: 'composer',
         capacity: { min: 0, max: null },
-        writesAtCreation: [
+        writesAtCreation: definedStrings([
           stage.quickAdd,
-          ...(stage.nodeForm?.fields ?? []).map((field) => field.variable),
+          ...formVariables(stage.nodeForm),
           // Group membership is toggled through the composer's own tools; the
           // planned categorical value lands with the node. The layout
           // variable is NOT written: generated sessions report automatic
           // layout in stage metadata instead of fabricating positions.
-          ...(stage.convexHullVariable ? [stage.convexHullVariable] : []),
-        ],
+          stage.convexHullVariable,
+        ]),
         promptFixedValues: [],
+        rosterValuesWin: false,
       });
       for (const edge of stage.edges ?? []) {
+        const edgeType = subjectTypeOf(edge.subject);
+        if (edgeType === undefined) continue;
         summary.edgeCreations.push({
           stageIndex: index,
-          edgeType: edge.subject.type,
-          subjectNodeType: stage.subject.type,
+          edgeType,
+          subjectNodeType: nodeType,
           ownNodesOnly: true,
           recordsNegatives: null,
-          writesAtCreation: (edge.form?.fields ?? []).map(
-            (field) => field.variable,
-          ),
+          writesAtCreation: formVariables(edge.form),
           structured: null,
         });
       }
@@ -486,18 +637,61 @@ export function analyseStageEffects(stages: Stage[]): StageEffects {
 
   const creatableNodeTypes = new Set<string>();
   const edgeCreationsByType = new Map<string, EdgeCreation[]>();
+  const writeIndex = new Map<string, Map<string, number>>();
+  const rewriteIndex = new Map<string, Map<string, number>>();
+
+  const recordInto =
+    (index: Map<string, Map<string, number>>) =>
+    (scope: string, variableId: string, at: number): void => {
+      const forScope = index.get(scope) ?? new Map<string, number>();
+      forScope.set(variableId, Math.max(forScope.get(variableId) ?? -1, at));
+      index.set(scope, forScope);
+    };
+  const recordWrite = recordInto(writeIndex);
+  const recordRewrite = recordInto(rewriteIndex);
+
   for (const summary of summaries) {
     for (const creation of summary.nodeCreations) {
       creatableNodeTypes.add(creation.nodeType);
+      const scope = scopeKeyFor('node', creation.nodeType);
+      for (const variableId of creation.writesAtCreation) {
+        recordWrite(scope, variableId, creation.stageIndex);
+      }
+      // A prompt's fixed values are written onto the node as surely as a form
+      // field is, so they belong in the write set — the plan needs a value for
+      // them, and a later stage rewriting one makes the fixed value an
+      // intermediate rather than the entity's final state.
+      for (const fixed of creation.promptFixedValues) {
+        for (const variableId of Object.keys(fixed)) {
+          recordWrite(scope, variableId, creation.stageIndex);
+        }
+      }
     }
     for (const creation of summary.edgeCreations) {
       const list = edgeCreationsByType.get(creation.edgeType) ?? [];
       list.push(creation);
       edgeCreationsByType.set(creation.edgeType, list);
+      const scope = scopeKeyFor('edge', creation.edgeType);
+      for (const variableId of creation.writesAtCreation) {
+        recordWrite(scope, variableId, creation.stageIndex);
+      }
+    }
+    for (const write of summary.writes) {
+      const scope = scopeKeyFor(write.entity, write.entityType);
+      recordWrite(scope, write.variableId, write.stageIndex);
+      if (write.filter === undefined && summary.stage.skipLogic === undefined) {
+        recordRewrite(scope, write.variableId, write.stageIndex);
+      }
     }
   }
 
   // Codebook types no stage names simply never appear in these sets; the
   // planner resolves their counts (and topologies) against membership here.
-  return { stages: summaries, creatableNodeTypes, edgeCreationsByType };
+  return {
+    stages: summaries,
+    creatableNodeTypes,
+    edgeCreationsByType,
+    writeIndex,
+    rewriteIndex,
+  };
 }

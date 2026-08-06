@@ -31,6 +31,22 @@ const nameGenerator = (overrides: Record<string, unknown> = {}): Stage =>
     ...overrides,
   });
 
+/**
+ * A form pass over every person, writing the variables named.
+ *
+ * The plan draws only what some stage writes — a variable no interaction ever
+ * asks about stays unanswered — so a test reading a drawn value has to give it
+ * a writer.
+ */
+const alterForm = (...variables: string[]): Stage =>
+  stage({
+    id: 'form-1',
+    type: 'AlterForm',
+    label: 'About them',
+    subject: { entity: 'node', type: 'person' },
+    form: { fields: variables.map((variable) => ({ variable, prompt: '?' })) },
+  });
+
 const baseCodebook = (
   personSynthetic?: Record<string, unknown>,
   extras: Record<string, unknown> = {},
@@ -129,7 +145,7 @@ describe('planNetwork populations', () => {
   it('draws the declared constant population', () => {
     const result = plan(
       baseCodebook({ count: { distribution: 'constant', value: 5 } }),
-      [nameGenerator()],
+      [nameGenerator(), alterForm('age')],
     );
     expect(result.nodes).toHaveLength(5);
     for (const node of result.nodes) {
@@ -270,7 +286,7 @@ describe('planNetwork missingness', () => {
           },
         },
       ),
-      [nameGenerator()],
+      [nameGenerator(), alterForm('hobby')],
     );
     for (const node of result.nodes) {
       expect(node.attributes.hobby).toBeNull();

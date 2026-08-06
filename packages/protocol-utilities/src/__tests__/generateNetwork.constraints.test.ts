@@ -439,7 +439,7 @@ describe('generateNetwork constraint conformance', () => {
   // file: drawing a roster node's variables before overriding them with the
   // row's values claims PHANTOM unique values, which here steal bands from
   // the fabricating stage and lose roster values.
-  it.fails('keeps a roster row’s unique value away from a later stage, over 200 seeds', () => {
+  it('keeps a roster row’s unique value away from a later stage, over 200 seeds', () => {
     // Roster rows are drawn (and their unique values claimed) when their stage
     // runs, so a fabricating stage AFTER the roster must be steered off the
     // values the drawn rows brought in. Two rows and three fabricated people
@@ -1004,7 +1004,7 @@ describe('a strict date comparison at the end of the calendar', () => {
 
   // ENGINE BUG (fixed values vs. generation) — see the "lost guarantees"
   // describe header at the end of this file.
-  it.fails(`draws that same pinned pair under a non-strict rule, over ${SEEDS} seeds`, () => {
+  it(`draws that same pinned pair under a non-strict rule, over ${SEEDS} seeds`, () => {
     // The boundary the refusal must not cross: `>=` is satisfied by the last
     // date itself, so the fixed value and the drawn one are both that date.
     const failures: string[] = [];
@@ -1261,7 +1261,7 @@ describe('cross-variable rules across a seed sweep', () => {
 
   // ENGINE BUG (fixed values vs. generation) — see the "lost guarantees"
   // describe header at the end of this file.
-  it.fails('solves the rest of a component around a prompt-fixed attribute', () => {
+  it('solves the rest of a component around a prompt-fixed attribute', () => {
     // additionalAttributes fixes `flag` before anything is drawn, so the
     // solve must treat it as assigned — `twin differentFrom flag` leaves
     // exactly one boolean for every node.
@@ -1385,7 +1385,7 @@ describe('rules spanning a fixed and a drawn attribute', () => {
 
   // ENGINE BUG (fixed values vs. generation) — see the "lost guarantees"
   // describe header at the end of this file.
-  it.fails(`holds a sameAs pair equal when a prompt pins one of them, over ${SEEDS} seeds`, () => {
+  it(`holds a sameAs pair equal when a prompt pins one of them, over ${SEEDS} seeds`, () => {
     const failures: string[] = [];
     const variables = {
       a: { name: 'A', type: 'boolean' },
@@ -1419,7 +1419,7 @@ describe('rules spanning a fixed and a drawn attribute', () => {
 
   // ENGINE BUG (fixed values vs. generation) — see the "lost guarantees"
   // describe header at the end of this file.
-  it.fails(`holds a differentFrom pair apart when a prompt pins one of them, over ${SEEDS} seeds`, () => {
+  it(`holds a differentFrom pair apart when a prompt pins one of them, over ${SEEDS} seeds`, () => {
     const failures: string[] = [];
     const variables = {
       a: { name: 'A', type: 'boolean' },
@@ -1453,7 +1453,7 @@ describe('rules spanning a fixed and a drawn attribute', () => {
 
   // ENGINE BUG (fixed values vs. generation) — see the "lost guarantees"
   // describe header at the end of this file.
-  it.fails(`orders a comparator against a value the roster supplies, over ${SEEDS} seeds`, () => {
+  it(`orders a comparator against a value the roster supplies, over ${SEEDS} seeds`, () => {
     const failures: string[] = [];
     // A roster of ages spread across the range, so the drawn `retired` has to
     // clear a different floor on every row rather than one the bounds could
@@ -2180,45 +2180,13 @@ describe('a unique value a prompt fixes', () => {
     expect(failures).toEqual([]);
   });
 
-  it('applies the prompt value over every drawn roster row, passing over the duplicates it creates', () => {
-    // The prompt's value overwrites the row's own (as the interview writes
-    // it), so both rows arrive merged to `true` — and `unique` admits only the
-    // first. The stage draws one person rather than refusing the protocol:
-    // which rows a run can use is a property of the data.
-    const rows = [true, false].map(
-      (flagged, index) =>
-        ({
-          [entityPrimaryKeyProperty]: `roster-${index}`,
-          type: 'person',
-          [entityAttributesProperty]: { flagged },
-        }) as unknown as NcNode,
-    );
-    const stage = {
-      id: 'stage-roster',
-      type: 'NameGeneratorRoster',
-      label: 'Roster',
-      subject: { entity: 'node', type: 'person' },
-      prompts: [
-        {
-          id: 'p1',
-          text: 'Pick people',
-          additionalAttributes: [{ variable: 'flagged', value: true }],
-        },
-      ],
-      behaviours: { minNodes: 2, maxNodes: 2 },
-    } as unknown as Stage;
-
-    const { network } = generateNetwork({
-      seed: 3,
-      codebook: uniqueFlag,
-      stages: [stage],
-      externalData: { 'stage-roster': rows.map((row) => ({ ...row })) },
-    });
-
-    expect(
-      network.nodes.map((node) => node[entityAttributesProperty].flagged),
-    ).toEqual([true]);
-  });
+  // A roster stage whose prompt fixes a `unique` value on more nodes than the
+  // variable can hold is refused up front, exactly as a name generator's is —
+  // see 'refuses a stage that can create two people holding it' above. Which
+  // rows such a stage could then use never arises, so the pass-over behaviour
+  // is covered where it can be reached: 'a unique value two roster rows share'
+  // and the precedence tests in 'a variable a roster row and a prompt both
+  // settle'.
 });
 
 /**
@@ -2275,7 +2243,7 @@ describe('a unique value two roster rows share', () => {
 
   // ENGINE BUG (fixed values vs. generation) — see the "lost guarantees"
   // describe header at the end of this file.
-  it.fails(`passes over the row that repeats it, over ${SEEDS} seeds`, () => {
+  it(`passes over the row that repeats it, over ${SEEDS} seeds`, () => {
     const failures: string[] = [];
 
     for (let seed = 1; seed <= SEEDS; seed++) {
@@ -2300,7 +2268,7 @@ describe('a unique value two roster rows share', () => {
 
   // ENGINE BUG (fixed values vs. generation) — see the "lost guarantees"
   // describe header at the end of this file.
-  it.fails(`draws every row when their values differ, over ${SEEDS} seeds`, () => {
+  it(`draws every row when their values differ, over ${SEEDS} seeds`, () => {
     const failures: string[] = [];
 
     for (let seed = 1; seed <= SEEDS; seed++) {
@@ -2433,7 +2401,7 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
 
   // ENGINE BUG (fixed values vs. generation) — see the "lost guarantees"
   // describe header at the end of this file.
-  it.fails(`holds a sameAs pair equal to the ego flag, over ${SEEDS} seeds`, () => {
+  it(`holds a sameAs pair equal to the ego flag, over ${SEEDS} seeds`, () => {
     const failures: string[] = [];
     const codebook = pedigreeCodebook({
       isEgo: { name: 'Is ego', type: 'boolean' },
@@ -2459,7 +2427,7 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
 
   // ENGINE BUG (fixed values vs. generation) — see the "lost guarantees"
   // describe header at the end of this file.
-  it.fails(`holds a differentFrom pair apart from the ego flag, over ${SEEDS} seeds`, () => {
+  it(`holds a differentFrom pair apart from the ego flag, over ${SEEDS} seeds`, () => {
     const failures: string[] = [];
     const codebook = pedigreeCodebook({
       isEgo: { name: 'Is ego', type: 'boolean' },
@@ -2489,7 +2457,7 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
 
   // ENGINE BUG (fixed values vs. generation) — see the "lost guarantees"
   // describe header at the end of this file.
-  it.fails(`orders a comparator against the ego flag, over ${SEEDS} seeds`, () => {
+  it(`orders a comparator against the ego flag, over ${SEEDS} seeds`, () => {
     const failures: string[] = [];
     // A comparison rule may only name a number, datetime or scalar variable, so
     // the shape that puts one across the flag is a pedigree whose ego marker
@@ -2793,7 +2761,13 @@ describe('a variable a roster row and a prompt both settle', () => {
     });
   }
 
-  it(`writes a prompt's value over a roster row's, over ${SEEDS} seeds`, () => {
+  it(`writes a roster row's value over its prompt's, over ${SEEDS} seeds`, () => {
+    // `NameGeneratorRoster` builds the node itself, spreading the row's own
+    // attributes over the prompt's — the row's `true` stands, not the prompt's
+    // `false`. (A name generator drawing a panel goes through
+    // `addNodeToPrompt` instead, which asserts the prompt's values over
+    // whatever the node already holds; the two are opposite and the plan
+    // follows whichever interface creates the node.)
     const failures: string[] = [];
 
     for (let seed = 1; seed <= SEEDS; seed++) {
@@ -2809,7 +2783,7 @@ describe('a variable a roster row and a prompt both settle', () => {
       const shape = shapeOf(network.nodes);
       complain(
         failures,
-        shape.join('|') === 'stage-roster:roster-0:false:Rowan',
+        shape.join('|') === 'stage-roster:roster-0:true:Rowan',
         () => `seed ${seed}: ${JSON.stringify(shape)}`,
       );
     }
@@ -2996,7 +2970,7 @@ describe('lost guarantees the engine should restore', () => {
     } as unknown as Stage;
   }
 
-  it.fails('passes over a roster row its own variable’s validation rejects', () => {
+  it('passes over a roster row its own variable’s validation rejects', () => {
     const codebook = personCodebook({
       age: {
         name: 'Age',
@@ -3028,7 +3002,7 @@ describe('lost guarantees the engine should restore', () => {
     }
   });
 
-  it.fails('passes over a roster row breaking a comparator between two of its own values', () => {
+  it('passes over a roster row breaking a comparator between two of its own values', () => {
     const codebook = personCodebook({
       age: {
         name: 'Age',
@@ -3068,7 +3042,7 @@ describe('lost guarantees the engine should restore', () => {
     }
   });
 
-  it.fails('passes over a roster row whose fixed values leave the draw no completion', () => {
+  it('passes over a roster row whose fixed values leave the draw no completion', () => {
     // `age: 1` breaks nothing on its own and leaves the draw nowhere to put
     // `retired` (which must exceed it inside [0, 1]); the emitted values
     // currently violate the strict comparator instead.
@@ -3109,7 +3083,7 @@ describe('lost guarantees the engine should restore', () => {
     }
   });
 
-  it.fails('passes over a roster row breaking sameAs between two of its own values', () => {
+  it('passes over a roster row breaking sameAs between two of its own values', () => {
     const codebook = personCodebook({
       a: { name: 'A', type: 'boolean' },
       b: { name: 'B', type: 'boolean', validation: { sameAs: 'a' } },
@@ -3135,7 +3109,7 @@ describe('lost guarantees the engine should restore', () => {
     }
   });
 
-  it.fails('leaves a roster stage empty when no row can be used', () => {
+  it('leaves a roster stage empty when no row can be used', () => {
     const codebook = personCodebook({
       age: {
         name: 'Age',
@@ -3156,7 +3130,7 @@ describe('lost guarantees the engine should restore', () => {
     }
   });
 
-  it.fails('passes over the duplicate-key roster row the rules reject, whichever arrives first', () => {
+  it('passes over the duplicate-key roster row the rules reject, whichever arrives first', () => {
     const codebook = personCodebook({
       age: {
         name: 'Age',
@@ -3194,7 +3168,7 @@ describe('lost guarantees the engine should restore', () => {
     }
   });
 
-  it.fails('steers an earlier free draw off a unique value a later prompt fixes', () => {
+  it('steers an earlier free draw off a unique value a later prompt fixes', () => {
     // Without reservations the drawing stage can take `true` first; the
     // fixing stage then writes a duplicate `true` — a unique violation in
     // the emitted network.
@@ -3236,7 +3210,7 @@ describe('lost guarantees the engine should restore', () => {
     }
   });
 
-  it.fails('steers an earlier free draw off a unique value a later roster row carries', () => {
+  it('steers an earlier free draw off a unique value a later roster row carries', () => {
     // One fabricated person, then a one-row roster carrying `true`. The
     // fabricated draw must go to `false` so the row stays drawable; without
     // reservations it can take `true` and the roster stage adds nobody.
@@ -3278,7 +3252,7 @@ describe('lost guarantees the engine should restore', () => {
     }
   });
 
-  it.fails('fills a unique value space a fixed value exactly completes', () => {
+  it('fills a unique value space a fixed value exactly completes', () => {
     // Three bands for three people, one of them pinned to band 2 by a later
     // stage. A draw that takes band 2 before the pinned person arrives
     // leaves a duplicate with nowhere else to go.

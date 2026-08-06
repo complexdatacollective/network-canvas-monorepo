@@ -31,37 +31,6 @@ export type NodeCreationStage = StageOfType<
   | 'NetworkComposer'
 >;
 
-/**
- * Roster state for a name-generator stage.
- *
- * `pool` is the stage's unfiltered roster rows; the drawable rows are those in
- * `pool` not already in `used`. Presence of `pool` is load-bearing and
- * three-way: `undefined` means "no roster known" (the stage had no external
- * data entry), an empty array means "roster known to be empty" (the asset
- * resolved and parsed but yielded no rows, or a panel filtered them all out),
- * and a non-empty array is a roster with rows. A `NameGeneratorRoster` stage
- * fabricates only in the first case; a known-empty or exhausted roster produces
- * zero nodes. See `createNodesForStage`.
- */
-export type RosterDraw = {
-  pool?: NcNode[];
-  /**
-   * Roster rows already drawn, shared across all prompts and stages.
-   *
-   * Keyed by primary key, and read both to build a call's drawable pool and
-   * again for every candidate that call judges — so a key drawn earlier in the
-   * same draw turns away the rows repeating it, exactly as a key drawn by an
-   * earlier stage does. One key admits one node per run: the interview's roster
-   * excludes every entry sharing a key the moment one of them is added, and its
-   * session reducer refuses a second node arriving under a key the network
-   * already holds. Which of the rows a caller gave one key is drawn is settled
-   * by the walk rather than by their order — see `createNodesForStage`.
-   */
-  used: Set<string>;
-  /** Whether the stage may fabricate nodes beyond the roster. */
-  allowFabrication: boolean;
-};
-
 function getPromptAdditionalAttributes(
   additional: AdditionalAttributes | undefined,
 ): Record<string, boolean> {

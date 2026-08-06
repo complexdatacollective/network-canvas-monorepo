@@ -39,6 +39,7 @@ describe('analyseStageEffects', () => {
         capacity: { min: 2, max: 6 },
         writesAtCreation: ['name'],
         promptFixedValues: [{ close: true }, {}],
+        rosterValuesWin: false,
       },
     ]);
     expect(effects.creatableNodeTypes).toEqual(new Set(['person']));

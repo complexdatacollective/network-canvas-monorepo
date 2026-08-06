@@ -162,7 +162,7 @@ describe('generateNetwork (plan → materialise pipeline)', () => {
       boolean,
     ][];
     expect(negatives).toHaveLength(6);
-    expect(negatives.every(([, , , answer]) => answer === false)).toBe(true);
+    expect(negatives.every(([, , , answer]) => !answer)).toBe(true);
   });
 
   it('links census tuple uids to materialised nodes', () => {
@@ -283,7 +283,12 @@ describe('generateNetwork (plan → materialise pipeline)', () => {
       label: 'Rank',
       subject: { entity: 'node', type: 'person' },
       prompts: [
-        { id: 'ob-p1', text: 'Rank', variable: 'rank', color: 'ord-color-seq-1' },
+        {
+          id: 'ob-p1',
+          text: 'Rank',
+          variable: 'rank',
+          color: 'ord-color-seq-1',
+        },
       ],
     });
     const result = generateNetwork({

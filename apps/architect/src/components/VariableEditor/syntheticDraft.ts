@@ -55,7 +55,7 @@ const toText = (value: FieldValue | undefined): string | undefined => {
 };
 
 /** Distinct typed option values in first-occurrence order. */
-export function distinctDraftValues(
+function distinctDraftValues(
   options: SyntheticDraftContext['options'],
 ): { value: string | number; label: string }[] {
   const seen = new Set<string>();
@@ -101,7 +101,7 @@ export function weightRows(ctx: SyntheticDraftContext): WeightRow[] {
 }
 
 /** The legal selection counts under the draft's options and validation. */
-export function legalCounts(ctx: SyntheticDraftContext): number[] {
+function legalCounts(ctx: SyntheticDraftContext): number[] {
   const distinct = distinctDraftValues(ctx.options).length;
   const validation =
     'validation' in ctx.variable ? (ctx.variable.validation ?? {}) : {};

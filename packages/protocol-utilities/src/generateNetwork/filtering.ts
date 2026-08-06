@@ -43,19 +43,3 @@ export function getStageFilteredNodes(
   return getNodesOfType(filtered.nodes, nodeType);
 }
 
-export function getStageFilteredEdges(
-  ctx: GenerationContext,
-  draft: NetworkDraft,
-  stage: Stage,
-  edgeType: string,
-): NcEdge[] {
-  if (!ctx.respectSkipLogicAndFiltering) {
-    return getEdgesOfType(draft.edges, edgeType);
-  }
-
-  const stageFilter = getStageFilter(stage);
-  if (!stageFilter) return getEdgesOfType(draft.edges, edgeType);
-
-  const filtered = getFilter(stageFilter)(buildCurrentNetwork(draft));
-  return getEdgesOfType(filtered.edges, edgeType);
-}

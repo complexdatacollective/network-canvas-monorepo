@@ -1440,7 +1440,10 @@ describe('a value a prompt fixes and a roster row carries', () => {
         .map((node) => node[entityAttributesProperty].flagged)
         .toSorted((left, right) => String(left).localeCompare(String(right)));
 
-      expect(flags, `seed ${seed}`).toEqual([false, true]);
+      // The prompt's value lands on the panel's node; the roster's node
+      // carries only what its row supplied, so the flag stays unwritten
+      // there rather than drawing the other boolean.
+      expect(flags, `seed ${seed}`).toEqual([true, undefined]);
     }
   });
 
@@ -1619,35 +1622,15 @@ describe('a value a prompt fixes and a roster row carries', () => {
 
     const stages = [rosterStage, panelStage(true)];
 
-    /** Every value `flagged` holds across the network one seed builds. */
-    function flagsDrawn(
-      codebook: StructuralCodebook,
-      externalData: Record<string, NcNode[]>,
-      seed: number,
-    ) {
-      const { network } = generateNetwork({
-        seed,
-        codebook,
-        stages,
-        externalData,
-      });
-      return network.nodes.map(
-        (node) => node[entityAttributesProperty].flagged,
-      );
-    }
-
     it('carries no value its own rules reject', () => {
-      // The row is one no participant's form would have accepted, so the roster
-      // stage draws nobody and the panel's node is the only holder of `true`.
+      // The row is one no participant's form would have accepted, so the
+      // analysis counts nobody for it and the panel's node is the only counted
+      // holder of `true`. (The planner itself now adds roster rows as the
+      // interview does — as researcher data, unvalidated — so only the
+      // counting side of the verdict remains observable here.)
       const dead = { 'stage-roster': [row('r1', { flagged: true, age: 5 })] };
 
       expect(analyseFeasibility(flagAndAge, stages, config, dead)).toEqual([]);
-
-      for (let seed = 1; seed <= 20; seed++) {
-        expect(flagsDrawn(flagAndAge, dead, seed), `seed ${seed}`).toEqual([
-          true,
-        ]);
-      }
     });
 
     it('still refuses where the same row is one the draw can build', () => {
@@ -1668,13 +1651,6 @@ describe('a value a prompt fixes and a roster row carries', () => {
       expect(
         analyseFeasibility(flagAndComparator, stages, config, dead),
       ).toEqual([]);
-
-      for (let seed = 1; seed <= 20; seed++) {
-        expect(
-          flagsDrawn(flagAndComparator, dead, seed),
-          `seed ${seed}`,
-        ).toEqual([true]);
-      }
     });
 
     it('still refuses where the completion the draw needs is there', () => {
@@ -1936,6 +1912,7 @@ describe('a rule between two values one prompt fixes', () => {
       type,
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [
         {
           id: 'p1',
@@ -2068,6 +2045,7 @@ describe('a value one prompt fixes against its own rules', () => {
       type,
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [
         {
           id: 'p1',
@@ -2200,6 +2178,7 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
       type,
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: values.map((set, index) => ({
         id: `p${index + 1}`,
         text: 'Name people',
@@ -2371,7 +2350,18 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
     // more than any other — so the emitted network is read back to show the
     // acceptance was earned rather than lucky.
     const codebook = unenumerable({ greaterThanVariable: 'age' });
-    const stages = [pinning([{ age: true }])];
+    // The read-back needs `retired` written into the network, and a created
+    // node carries only what its creating interaction writes — so the stage's
+    // form renders the variable alongside the prompt's pin.
+    const stages = [
+      {
+        ...pinning([{ age: true }]),
+        form: {
+          title: 'About this person',
+          fields: [{ variable: 'retired', prompt: 'Retired when?' }],
+        },
+      } as unknown as Stage,
+    ];
 
     expect(analyseFeasibility(codebook, stages, config)).toEqual([]);
 
@@ -2757,6 +2747,7 @@ describe('a pedigree edge variable no stage writes', () => {
   const person = {
     name: 'Person',
     color: 'node-color-seq-1',
+    synthetic: { count: { distribution: 'constant', value: 4 } },
     variables: { name: { name: 'Name', type: 'text' } },
   };
 

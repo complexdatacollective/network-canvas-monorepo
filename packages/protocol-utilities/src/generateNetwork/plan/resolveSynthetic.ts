@@ -38,9 +38,9 @@ export const DEFAULT_EDGE_TOPOLOGY: EdgeTopology = {
 };
 
 /** Window a number variable draws over when validation gives no usable one. */
-export const DEFAULT_NUMBER_WINDOW = { min: 18, max: 80 } as const;
+const DEFAULT_NUMBER_WINDOW = { min: 18, max: 80 } as const;
 
-export const DEFAULT_PROBABILITY_TRUE = 0.5;
+const DEFAULT_PROBABILITY_TRUE = 0.5;
 
 export type ResolvedDatetimeDescriptor =
   | { distribution: 'uniform'; min?: string; max?: string }

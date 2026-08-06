@@ -96,7 +96,7 @@ const seedCount = (family: string): SyntheticCount => {
   }
 };
 
-export function NodeSyntheticControl({
+function NodeSyntheticControl({
   value,
   onChange,
 }: {
@@ -246,7 +246,7 @@ const seedTopology = (metric: string, family: string): EdgeTopology => {
   }
 };
 
-export function EdgeSyntheticControl({
+function EdgeSyntheticControl({
   value,
   onChange,
 }: {

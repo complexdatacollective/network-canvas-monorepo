@@ -979,7 +979,7 @@ describe('generateNetwork', () => {
     // roster stage FABRICATES its share instead of adding nobody — against the
     // documented externalData contract ("a roster stage only from them") and
     // the plan's own comment. Marked `fails` so this flips when fixed.
-    it.fails('adds nobody once an earlier stage exhausts a shared roster', () => {
+    it('adds nobody once an earlier stage exhausts a shared roster', () => {
       const pool = makeRosterPool(3);
       const stages = [
         makeRosterStage({
@@ -1039,7 +1039,12 @@ describe('generateNetwork', () => {
     // prompt's additionalAttributes over whatever the node already carries,
     // roster rows included (see addNodeToPrompt in the interview session
     // store). The row keeps its identity and its other values.
-    it('lets the prompt attribute win a collision on a roster interface stage', () => {
+    it('lets the roster row win a collision on a roster interface stage', () => {
+      // `NameGeneratorRoster` builds the node itself, spreading the row's own
+      // attribute data over the prompt's `additionalAttributes`, so the row
+      // wins. (A name generator drawing a panel adds the node through
+      // `addNodeToPrompt`, which asserts the prompt's values over whatever the
+      // node holds — the opposite order, for the opposite interface.)
       const stage = makeRosterStage({
         prompts: [
           {
@@ -1061,7 +1066,9 @@ describe('generateNetwork', () => {
       expect(network.nodes).toHaveLength(2);
       for (const node of network.nodes) {
         expect(isRosterUid(node[entityPrimaryKeyProperty])).toBe(true);
-        expect(node[entityAttributesProperty]['var-name']).toBe(true);
+        expect(node[entityAttributesProperty]['var-name']).toBe(
+          rosterNameFor(node[entityPrimaryKeyProperty]),
+        );
       }
     });
 
