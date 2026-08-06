@@ -33,7 +33,7 @@ test('creates a valid Anonymisation stage from scratch', async ({
 
   // The "Body" field is a `RichText` field (`ValidatedField label="Body"
   // name="explanationText.body" component={RichText}`) — `fillRichText`
-  // resolves by the field's `label` prop text, NOT its redux-form `name`
+  // resolves by the field's `label` prop text, NOT its `name`
   // (confirmed against `RichTextField.tsx`, which passes `label={label ??
   // input.name ?? ''}` down to the Tiptap editor's `aria-label`/
   // `aria-labelledby`), so the accessible name is `'Body'`, not

@@ -33,7 +33,10 @@ type Prompt = Record<string, unknown>;
  * longer surfaces a dialog-form `initialValues` prop separately from the row.
  */
 const makeItemSelector =
-  (entity: 'node' | 'edge' | 'ego', type: string | null): DialogArrayItemSelector =>
+  (
+    entity: 'node' | 'edge' | 'ego',
+    type: string | null,
+  ): DialogArrayItemSelector =>
   (state, { item }) => {
     const prompt = item as Prompt;
     const variable = typeof prompt.variable === 'string' ? prompt.variable : '';

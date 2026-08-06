@@ -17,7 +17,7 @@ test('the field editor blocks an inverted min/max validation pair', async ({
 
   // EgoForm's introductionPanel title/text are both `z.string().min(1)`
   // (protocol-validation's IntroductionPanelSchema), so the dialog-level
-  // redux-form validate fails `editor.save()` without them — mirrors
+  // submit validation fails `editor.save()` without them — mirrors
   // ego-form.spec.ts's create-from-scratch spec.
   await editor
     .field('introductionPanel.title')

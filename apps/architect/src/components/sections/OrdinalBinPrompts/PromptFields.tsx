@@ -4,7 +4,6 @@ import { shallowEqual, useSelector } from 'react-redux';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';

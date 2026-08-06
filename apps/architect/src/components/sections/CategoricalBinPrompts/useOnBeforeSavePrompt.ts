@@ -22,10 +22,8 @@ const isRecord = (value: unknown): value is UnknownRecord =>
 
 /**
  * The `DialogArrayField.onBeforeSave` replacement for the deleted
- * `withPromptChangeHandler` HOC (`helpers.tsx`, `withPromptChangeHandler.tsx`
- * and their `withVariableHandlers`/`withVariableOptions` siblings stay in
- * place, unconverted, because `OrdinalBinPrompts` still imports them against
- * the legacy `~/components/Form/DialogArrayField`).
+ * `withPromptChangeHandler` HOC. Shared with `OrdinalBinPrompts`, exactly as
+ * that HOC was.
  *
  * A prompt row's PRE-EDIT `variable`/`otherVariable` no longer arrive as a
  * dialog-form `initialValues` prop — `CategoricalBinPrompts.tsx`'s
@@ -144,9 +142,8 @@ export function useOnBeforeSavePrompt(
 
       // The mirror gate for CategoricalBin's `otherVariable`, a VALIDATED
       // writer: reject a pick a bin/highlight/census/etc. elsewhere already
-      // writes without validation. Absent on OrdinalBin prompts (which no
-      // longer share this hook — Ordinal keeps the legacy HOC), so this is a
-      // no-op there.
+      // writes without validation. OrdinalBin prompts have no follow-up
+      // option, so this is a no-op there.
       const otherVariableId =
         typeof otherVariable === 'string' ? otherVariable : '';
       const otherVariableIssue = crossClassPickIssue({

@@ -7,14 +7,14 @@ import { expect, type Locator, type Page } from '@playwright/test';
 //   matches `stageId="new"` to StageEditorPage.
 // - The stage-name input is a plain `<input aria-label="Stage name">`
 //   (StageHeading.tsx's `HeadingInput`) — not wrapped by the `data-field-name`
-//   seam (it's rendered via a bare redux-form `Field`, not `FrescoReduxField`),
+//   seam (it's a bare input, not a form field),
 //   so `getByRole('textbox', { name: 'Stage name' })` is the only way in.
 // - `section()`/`field()` match the two seams the rest of the suite relies on:
 //   `Section` (EditorLayout/Section.tsx) stamps `data-name={title}` on its
 //   `<section>` when `title` is a string; `UnconnectedField`
 //   (fresco-ui/form/Field/UnconnectedField.tsx) stamps
-//   `data-field-name={name}` on every field rendered through
-//   `FrescoReduxField` (Task 2's seam).
+//   `data-field-name={name}` on every field, and the connected `Field`
+//   stamps the same attribute on the identical wrapper (Task 2's seam).
 // - `expectNoIssues()`'s `getByTestId('issue')` is real: `Issues.tsx`'s issues
 //   popover renders each flattened sync-validation error as
 //   `<li data-testid="issue">`. That popover only mounts once a submit has
@@ -24,8 +24,8 @@ import { expect, type Locator, type Page } from '@playwright/test';
 // - `save()`'s button: StageEditorNav.tsx's toolbar segment
 //   `id: 'finished-editing', label: 'Finished Editing'` only pushes into the
 //   toolbar when `hasUnsavedChanges` is true, and its `onClick` dispatches
-//   `submit(formName)` (redux-form). StageEditor.tsx's `onSubmit` handler
-//   navigates to `/protocol` only once redux-form's sync validators all pass
+//   a submit of the stage form. StageEditor.tsx's `onSubmit` handler
+//   navigates to `/protocol` only once the form's validators all pass
 //   and the commit actually runs — so `waitForURL` after the click is a
 //   genuine round-trip assertion, not just a click-and-hope.
 export class StageEditor {
