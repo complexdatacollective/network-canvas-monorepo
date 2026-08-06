@@ -243,4 +243,63 @@ describe('AddPersonFields partner screening', () => {
       ).toBeTruthy();
     });
   });
+
+  it('preserves the current/ex answer when switching between the new and existing branches', async () => {
+    // The "current" field is hoisted above both FieldGroups so it stays
+    // mounted across a partnerType switch — its answer must be carried as
+    // live form state rather than relying on dormant-field remount-restore.
+    const nodes = new Map([
+      ['ego', makeNode('ego', 'Ego')],
+      ['cousin', makeNode('cousin', 'Cousin')],
+    ]);
+    const edges = new Map<string, NcEdge>();
+
+    const Wrapper = makeWrapper(nodes, edges);
+
+    render(
+      <Wrapper>
+        <Form onSubmit={() => ({ success: true })}>
+          <AddPersonFields
+            anchorNodeId="ego"
+            nodes={nodes}
+            edges={edges}
+            variableConfig={variableConfig}
+          />
+        </Form>
+      </Wrapper>,
+    );
+
+    // Default branch is "new"; answer "Ex" instead of the "current" default.
+    fireEvent.click(screen.getByRole('radio', { name: 'Ex' }));
+    expect(
+      screen.getByRole('radio', { name: 'Ex', checked: true }),
+    ).toBeTruthy();
+
+    // Switch to the "existing" branch.
+    fireEvent.click(
+      screen.getByRole('radio', { name: /Yes — already in the family tree/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('radio', { name: 'Cousin' })).toBeTruthy();
+    });
+
+    // The "Ex" answer must still be selected — a single Field instance
+    // persisted across the branch switch instead of resetting.
+    expect(
+      screen.getByRole('radio', { name: 'Ex', checked: true }),
+    ).toBeTruthy();
+
+    // Switch back to "new" and confirm the answer still holds.
+    fireEvent.click(
+      screen.getByRole('radio', { name: /No — add a new person/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: /name/i })).toBeTruthy();
+    });
+    expect(
+      screen.getByRole('radio', { name: 'Ex', checked: true }),
+    ).toBeTruthy();
+  });
 });

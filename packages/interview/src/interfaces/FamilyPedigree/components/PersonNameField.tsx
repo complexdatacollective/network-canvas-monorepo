@@ -64,9 +64,7 @@ export default function PersonNameField({
   const codebook = useSelector(getCodebook);
   const pedigreeNodes = useFamilyPedigreeStore((state) => state.network.nodes);
   const baseValidationContext = useStageSelector(getValidationContext);
-  const getActiveFormValues = useFormStore(
-    (state) => state.getActiveFormValues,
-  );
+  const getFormValues = useFormStore((state) => state.getFormValues);
   const wizardContext = useContext(WizardContext);
 
   const nodeVariables = codebook.node?.[nodeType]?.variables ?? {};
@@ -92,7 +90,7 @@ export default function PersonNameField({
                       ...Object.values(
                         wizardContext?.completedStepValues ?? {},
                       ),
-                      getActiveFormValues(),
+                      getFormValues(),
                     ],
                     value,
                   ) > 1
