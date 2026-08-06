@@ -31,6 +31,42 @@ import {
 // Debounce window (ms) for leaf-field edits before they snapshot.
 const SNAPSHOT_DEBOUNCE_MS = 400;
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Whether an array-valued change is structural (a discrete gesture: add,
+ * remove, reorder, or a whole-value replacement) rather than an in-place edit
+ * of a single row's cell.
+ *
+ * Inline row editors (Options, MultiSelect) write the whole array on every
+ * keystroke, so without this a row edit would push one undo entry per
+ * character. Rows have no stable id to compare, so identity is positional:
+ * exactly one index differing, with a record on both sides, is a row being
+ * typed into. Anything else — a length change, several indices moving, or a
+ * primitive element swapping — is a gesture worth its own timeline entry.
+ *
+ * A debounced row edit is still never lost: blur flushes it, and
+ * `useStageDraftHistory` flushes any pending edit before undo/redo.
+ */
+const isStructuralArrayChange = (before: unknown, after: unknown): boolean => {
+  if (!Array.isArray(before) || !Array.isArray(after)) {
+    return Array.isArray(before) || Array.isArray(after);
+  }
+
+  if (before.length !== after.length) return true;
+
+  const differing = before.reduce<number[]>((indices, element, index) => {
+    if (!isEqual(element, after[index])) indices.push(index);
+    return indices;
+  }, []);
+
+  if (differing.length !== 1) return true;
+
+  const index = differing[0]!;
+  return !isRecord(before[index]) || !isRecord(after[index]);
+};
+
 // Coalescing window (ms) for the Redux mirror of the form's values.
 const LIVE_VALUES_DEBOUNCE_MS = 100;
 
@@ -198,13 +234,14 @@ const StageFormBridge = ({
 
       if (changed.length === 0) return;
 
-      // Every array in the stage form is one opaque field value, so an array
-      // write is an add/remove/reorder/whole-item edit: one logical change,
-      // snapshotted immediately (replaces redux-form's ARRAY_* actions and
-      // its `field.endsWith(']')` whole-element rule).
-      const isArrayChange = changed.some(
-        ({ previous: before, next: after }) =>
-          Array.isArray(before) || Array.isArray(after),
+      // Every array in the stage form is one opaque field value, so a
+      // *structural* array write — add, remove, reorder, or a whole-value
+      // replacement — is one logical change and snapshots immediately
+      // (replaces redux-form's ARRAY_* actions and its `field.endsWith(']')`
+      // whole-element rule). An in-place edit of one row's cell arrives the
+      // same way but is a keystroke, so it debounces like any other leaf.
+      const isArrayChange = changed.some(({ previous: before, next: after }) =>
+        isStructuralArrayChange(before, after),
       );
 
       cancelPendingSnapshot();

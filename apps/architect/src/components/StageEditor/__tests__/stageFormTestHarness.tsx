@@ -50,6 +50,21 @@ export const PromptListControl = ({
     >
       Add prompt
     </button>
+    <button
+      type="button"
+      onClick={() =>
+        onChange?.(
+          value.map((prompt, index) =>
+            index === 0 ? { ...prompt, text: `${prompt.text}!` } : prompt,
+          ),
+        )
+      }
+    >
+      Edit first prompt
+    </button>
+    <button type="button" onClick={() => onChange?.([...value].toReversed())}>
+      Reverse prompts
+    </button>
     <span data-testid="prompt-count">{value.length}</span>
   </div>
 );

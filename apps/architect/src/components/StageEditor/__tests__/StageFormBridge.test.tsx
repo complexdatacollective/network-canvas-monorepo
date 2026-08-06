@@ -109,6 +109,49 @@ describe('StageFormBridge', () => {
     });
   });
 
+  it('debounces an in-place edit of one array row', () => {
+    const { snapshots } = renderStageForm({
+      committedStage,
+      children: <PromptsField />,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add prompt' }));
+    expect(snapshots).toHaveLength(1);
+
+    // Inline row editors rewrite the whole array per keystroke; that must not
+    // become one undo entry per character.
+    fireEvent.click(screen.getByRole('button', { name: 'Edit first prompt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit first prompt' }));
+    expect(snapshots).toHaveLength(1);
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+
+    expect(snapshots).toHaveLength(2);
+    expect(snapshots[1]).toMatchObject({
+      prompts: [{ id: 'p1', text: 'Prompt 1!!' }],
+    });
+  });
+
+  it('snapshots a reorder immediately', () => {
+    const { snapshots } = renderStageForm({
+      committedStage,
+      children: <PromptsField />,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add prompt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add prompt' }));
+    expect(snapshots).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reverse prompts' }));
+
+    expect(snapshots).toHaveLength(3);
+    expect(snapshots[2]).toMatchObject({
+      prompts: [{ id: 'p2' }, { id: 'p1' }],
+    });
+  });
+
   it('flushes a pending debounce when a field is blurred', () => {
     const { snapshots } = renderStageForm({
       committedStage,
