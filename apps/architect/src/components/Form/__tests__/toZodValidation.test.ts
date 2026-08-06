@@ -326,7 +326,7 @@ describe('splitValidation — custom-routed Architect rules', () => {
     ]);
   });
 
-  it('reports only the first failing rule, as redux-form did', async () => {
+  it('reports only the first failing rule', async () => {
     const validation = {
       validRegExp: true,
       uniqueByList: ['[unclosed'],

@@ -157,5 +157,3 @@ export const VariablePickerControl = ({
     </>
   );
 };
-
-export default VariablePickerControl;

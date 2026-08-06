@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
-
 import type { OptionValue } from '~/components/Form/arrayFields/Option';
 
 import BooleanChoice from '../BooleanChoice';

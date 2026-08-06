@@ -44,7 +44,9 @@ describe('ShapePicker', () => {
       screen.getByRole('radio', { name: 'Select shape Circle' }),
     ).toHaveAttribute('aria-checked', 'true');
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Select shape Diamond' }));
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'Select shape Diamond' }),
+    );
 
     expect(getStoreApi()?.getState().getFormValues().shape).toBe('diamond');
   });

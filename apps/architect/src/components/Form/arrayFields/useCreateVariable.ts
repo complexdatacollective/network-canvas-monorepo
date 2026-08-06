@@ -22,9 +22,9 @@ export type CreateVariable = (
  * Creates a codebook variable for a subject and returns its id, or `undefined`
  * when creation failed (the researcher is told why in a dialog).
  *
- * The `withCreateVariableHandler` enhancer this replaces also dispatched a
- * redux-form `change` to write the new id into a named field. Array rows own
- * their value directly now, so the id is returned to the caller instead.
+ * The `withCreateVariableHandler` enhancer this replaces also wrote the new
+ * id into a named form field. Array rows own their value directly now, so the
+ * id is returned to the caller instead.
  */
 export const useCreateVariable = (
   entity: Entity,
@@ -74,5 +74,3 @@ export const useCreateVariable = (
     [dispatch, entity, openDialog, type],
   );
 };
-
-export default useCreateVariable;

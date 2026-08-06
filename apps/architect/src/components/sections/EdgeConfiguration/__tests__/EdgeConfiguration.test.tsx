@@ -45,7 +45,7 @@ vi.mock('../EdgeTypeMultiSelect', () => ({
 
 // Surface the wiring (fieldName, entity, type, editFormName) as data-attributes
 // so the tests assert the real bindings rather than just "a mock rendered".
-vi.mock('~/components/EditableAttributesList/EditableAttributesList', () => ({
+vi.mock('~/components/Form/arrayFields/EditableAttributesList', () => ({
   default: ({
     fieldName,
     entity,

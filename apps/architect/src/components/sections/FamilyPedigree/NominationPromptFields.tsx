@@ -2,7 +2,7 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
-import VariablePickerControl from '~/components/Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import type { Entity } from '~/components/NewVariableWindow';
 import NewVariableWindow, {
   useNewVariableWindowState,

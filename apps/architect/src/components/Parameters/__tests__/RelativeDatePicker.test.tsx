@@ -42,7 +42,9 @@ describe('RelativeDatePicker parameters', () => {
       fireEvent.blur(input);
 
       await waitFor(() => {
-        expect(screen.getByText('Too small. Value must be at least 0.')).toBeInTheDocument();
+        expect(
+          screen.getByText('Too small. Value must be at least 0.'),
+        ).toBeInTheDocument();
       });
     },
   );
@@ -56,7 +58,9 @@ describe('RelativeDatePicker parameters', () => {
       fireEvent.change(input, { target: { value: '-5' } });
       fireEvent.blur(input);
       await waitFor(() => {
-        expect(screen.getByText('Too small. Value must be at least 0.')).toBeInTheDocument();
+        expect(
+          screen.getByText('Too small. Value must be at least 0.'),
+        ).toBeInTheDocument();
       });
 
       fireEvent.change(input, { target: { value: '0' } });

@@ -71,8 +71,7 @@ const EntityTypeDialog = ({
       // `updateType` replaces the whole definition, and `getFormValues()`
       // reports registered fields only — so the properties this editor does
       // not render (`variables` above all) are carried over from the committed
-      // definition. redux-form got this for free by seeding the whole form
-      // from `initialValues`.
+      // definition.
       const configuration = parse({ ...initialValues, ...values });
 
       try {

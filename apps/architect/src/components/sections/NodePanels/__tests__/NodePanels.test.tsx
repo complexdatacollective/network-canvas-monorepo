@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
 // Bypasses the real NodePanel (which pulls in NetworkFilter's whole nested
-// rule-builder tree) the same way the redux-form era test bypassed it —
-// this test only exercises the array's own add/remove/toggle plumbing.
+// rule-builder tree): this test only exercises the array's own
+// add/remove/toggle plumbing.
 vi.mock('../NodePanel', () => ({
   default: () => <div data-testid="node-panel" />,
 }));
@@ -48,8 +48,8 @@ describe('NodePanels', () => {
     expect(getFieldState('panels[0].id')).toBeUndefined();
 
     // The section starts collapsed (no committed panels) — the real Section
-    // toggle switch (unmocked here, unlike the redux-form era test) must be
-    // opened before its children — including the "Add new panel" button —
+    // toggle switch (unmocked here) must be opened before its children —
+    // including the "Add new panel" button —
     // exist in the tree. `handleToggleChange` is async (it awaits `confirm`
     // even on the allow-through path), so the switch flips a tick after the
     // click.

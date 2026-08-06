@@ -18,8 +18,8 @@ type SubjectSelectFieldProps = CreateFormFieldProps<
 
 /**
  * A stage's `subject` is stored as `{entity, type}` but the picker speaks bare
- * type ids. This replaces redux-form's `format`/`parse` pair, which the
- * fresco-ui form store has no equivalent for.
+ * type ids, so this field bridges the two — the fresco-ui form store has no
+ * `format`/`parse` hook of its own.
  */
 const SubjectSelectField = ({
   value,

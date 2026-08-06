@@ -5,7 +5,9 @@
  */
 export type ParameterValues = Record<string, unknown>;
 
-export const asParameterValues = (value: unknown): ParameterValues | undefined =>
+export const asParameterValues = (
+  value: unknown,
+): ParameterValues | undefined =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
     ? (value as ParameterValues)
     : undefined;

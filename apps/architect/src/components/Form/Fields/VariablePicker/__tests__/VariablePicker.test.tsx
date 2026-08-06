@@ -37,7 +37,7 @@ vi.mock('../VariableSpotlight', () => ({
 }));
 
 import ArchitectField from '../../../ArchitectField';
-import VariablePicker from '../VariablePicker';
+import { VariablePickerControl as VariablePicker } from '../VariablePicker';
 
 const options = [
   { label: 'Age', value: 'age', type: 'number' },

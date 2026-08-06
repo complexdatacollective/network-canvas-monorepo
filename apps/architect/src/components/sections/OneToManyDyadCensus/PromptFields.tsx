@@ -14,7 +14,7 @@ import { getFieldId } from '~/utils/issues';
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
 import { getSortOrderOptionGetter } from '../CategoricalBinPrompts/optionGetters';
-import EntitySelectField from '../fields/EntitySelectField/EntitySelectField';
+import { EntitySelectControl as EntitySelectField } from '../fields/EntitySelectField/EntitySelectField';
 
 type SelectOption = {
   label: string;

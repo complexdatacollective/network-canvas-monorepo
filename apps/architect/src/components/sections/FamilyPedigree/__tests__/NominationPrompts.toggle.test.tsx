@@ -44,7 +44,9 @@ const renderSection = () => {
   const store = configureStore({
     reducer: {
       activeProtocol: (
-        state = { present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] } },
+        state = {
+          present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] },
+        },
       ) => state,
       stageEditorDraft,
     },

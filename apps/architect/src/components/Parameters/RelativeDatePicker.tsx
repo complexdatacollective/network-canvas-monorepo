@@ -1,12 +1,12 @@
 import { useState } from 'react';
 
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
-import DatePicker, { DATE_FORMATS } from '~/components/Form/Fields/DatePicker';
 import ArchitectField from '~/components/Form/ArchitectField';
+import DatePicker, { DATE_FORMATS } from '~/components/Form/Fields/DatePicker';
 
 import {
   parameterInteger,

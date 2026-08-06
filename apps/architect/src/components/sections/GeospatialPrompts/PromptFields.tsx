@@ -13,7 +13,7 @@ import type { RootState } from '~/ducks/modules/root';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { excludeValidatedUses } from '~/selectors/roleFilters';
 
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 
 const VARIABLE_TYPE = 'location';
 

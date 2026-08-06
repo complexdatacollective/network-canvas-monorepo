@@ -15,8 +15,6 @@ export type { OptionValue } from './Option';
  * (`validation={{ minTwoOptions, completeOptions }}`), where the shared
  * adapter routes them through fresco-ui's `custom` entry with the whole array
  * as the value — rows are not registered fields and cannot carry them.
- *
- * Duplicated from the redux-form `Options` until stage E deletes it.
  */
 export const minTwoOptions = (value: unknown) =>
   !value || (Array.isArray(value) && value.length < 2)

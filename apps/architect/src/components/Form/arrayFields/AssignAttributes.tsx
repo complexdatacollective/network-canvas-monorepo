@@ -17,8 +17,6 @@ const ALLOWED_TYPES = ['boolean'];
 /**
  * Narrows the shared pool to variables this control can stamp, and disables
  * the ones another row in the same list already claims.
- *
- * Duplicated from the redux-form `AssignAttributes` until stage E deletes it.
  */
 export const getAssignableVariableOptions = (
   variableOptions: VariableOption[],

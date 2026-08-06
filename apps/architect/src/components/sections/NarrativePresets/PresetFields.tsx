@@ -11,7 +11,7 @@ import type { RootState } from '~/ducks/modules/root';
 
 import Row from '../../EditorLayout/Row';
 import Section from '../../EditorLayout/Section';
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getEdgesForSubject, getNarrativeVariables } from './selectors';
 
 type PresetFieldsProps = {

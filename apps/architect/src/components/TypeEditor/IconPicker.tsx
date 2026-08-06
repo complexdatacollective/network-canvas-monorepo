@@ -13,9 +13,9 @@ import {
   useState,
 } from 'react';
 
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { comboboxTriggerVariants } from '@codaco/fresco-ui/form/fields/Combobox/shared';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';

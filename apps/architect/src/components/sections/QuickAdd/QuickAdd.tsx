@@ -12,7 +12,7 @@ import {
 import { useAppSelector } from '~/ducks/hooks';
 
 import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequired';
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import { getQuickAddOptionsForSubject } from './withOptions';
 

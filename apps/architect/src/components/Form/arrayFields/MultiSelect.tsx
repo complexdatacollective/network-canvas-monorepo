@@ -21,13 +21,14 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import RowField from './RowField';
 
 // Row background reads `--rule-bg` so callers (e.g. Validations error state)
-// can flip it without re-defining the row layout. The redux-form module still
-// owns the exported copies these mirror, until stage E deletes it.
-const MULTI_SELECT_RULE_CLASSES =
+// can flip it without re-defining the row layout.
+export const MULTI_SELECT_RULE_CLASSES =
   'flex items-center py-5 bg-(--rule-bg) publish-colors text-sortable-contrast rounded z-1 transition-colors duration-300 ease-in-out';
-const MULTI_SELECT_CONTROL_CLASSES = 'flex grow-0 items-center gap-2 px-5';
-const MULTI_SELECT_OPTIONS_CLASSES = 'flex-1 flex items-center px-5';
-const MULTI_SELECT_OPTION_CLASSES = 'flex flex-1 items-start ml-5 first:ml-0';
+export const MULTI_SELECT_CONTROL_CLASSES =
+  'flex grow-0 items-center gap-2 px-5';
+export const MULTI_SELECT_OPTIONS_CLASSES = 'flex-1 flex items-center px-5';
+export const MULTI_SELECT_OPTION_CLASSES =
+  'flex flex-1 items-start ml-5 first:ml-0';
 
 const FrescoNativeSelectField = NativeSelectField as ComponentType<
   Record<string, unknown>

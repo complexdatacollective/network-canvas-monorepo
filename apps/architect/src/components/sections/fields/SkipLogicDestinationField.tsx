@@ -96,8 +96,8 @@ type DestinationSelectProps = CreateFormFieldProps<
 
 /**
  * The stored value is a destination object; the control speaks route strings.
- * This replaces redux-form's `format`/`parse` pair, which the fresco-ui form
- * store has no equivalent for.
+ * This field bridges the two — the fresco-ui form store has no
+ * `format`/`parse` hook of its own.
  */
 const DestinationSelect = ({
   value,

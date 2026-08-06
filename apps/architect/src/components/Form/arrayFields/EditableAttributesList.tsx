@@ -36,8 +36,7 @@ import DialogArrayField, {
 const NO_FIELDS: Record<string, unknown>[] = [];
 
 // DialogArrayField renders these with the edited row's own properties, so it
-// types them by the only shape it can know. Same widening the redux-form
-// version got for free from its untyped `componentProps` bag.
+// types them by the only shape it can know.
 const EditorFields = ComposerAttributeFields as ComponentType<
   Record<string, unknown>
 >;
@@ -46,9 +45,8 @@ const Preview = ComposerFieldPreview as ComponentType<Record<string, unknown>>;
 /**
  * The dialog opens on the field merged with its codebook variable's
  * `options`/`validation`, which the composer keeps on the variable rather than
- * the field. Replaces the redux-form path lookup (`formValueSelector(form)(
- * state, 'nodeForm.fields[2]')`) — the row now arrives directly, because the
- * array is one opaque field value.
+ * the field. The row arrives directly, because the array is one opaque field
+ * value.
  */
 const composerItemSelector =
   (entity: 'node' | 'edge', type: string | null): DialogArrayItemSelector =>
@@ -92,14 +90,12 @@ type EditableAttributesListProps = {
 };
 
 /**
- * The fresco-ui-native successor to
- * `~/components/EditableAttributesList/EditableAttributesList.tsx`: a
- * dialog-edited list of an entity's editable attributes.
+ * A dialog-edited list of an entity's editable attributes.
  *
- * The cross-form reads that used `formValueSelector('edit-stage')` now go
- * through `useStageFormValues`, which reads the stage form's store directly —
- * including from inside a row dialog, whose own `FormStoreProvider` shadows
- * `useFormValue` but deliberately not the stage form context.
+ * Cross-form reads go through `useStageFormValues`, which reads the stage
+ * form's store directly — including from inside a row dialog, whose own
+ * `FormStoreProvider` shadows `useFormValue` but deliberately not the stage
+ * form context.
  */
 const EditableAttributesList = ({
   fieldName,
@@ -133,7 +129,7 @@ const EditableAttributesList = ({
   const composerFields = useStageFormValues(stagePaths)[fieldName];
 
   const { committedStage, stageId } = useStageFormContext();
-  // Per-Field `initialValue` replaces redux-form's whole-form `initialValues`.
+  // Per-Field `initialValue`: the form store has no whole-form initial values.
   const initialValue = useMemo(() => {
     const committed: unknown = get(committedStage, fieldName);
     return Array.isArray(committed)
@@ -161,8 +157,7 @@ const EditableAttributesList = ({
   );
   // The stage's own id comes from the editor's identity rather than a form
   // value: `getFormValues()` reports registered fields only, and no field
-  // registers `id` (redux-form saw it because `initialValues` seeded the
-  // whole form).
+  // registers `id`.
   const excludeStageId = stageId ?? undefined;
   const crossFormRendered = useMemo(
     () =>

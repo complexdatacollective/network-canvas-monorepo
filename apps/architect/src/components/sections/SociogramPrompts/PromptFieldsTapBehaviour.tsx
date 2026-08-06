@@ -15,8 +15,8 @@ import {
 } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/modules/root';
 
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
-import EntitySelectField from '../fields/EntitySelectField/EntitySelectField';
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
+import { EntitySelectControl as EntitySelectField } from '../fields/EntitySelectField/EntitySelectField';
 import {
   type CurrentFilters,
   getEdgeFilters,

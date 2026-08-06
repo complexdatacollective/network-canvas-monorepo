@@ -14,7 +14,7 @@ import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 // The picker is stubbed to a plain select so a test can choose a variable
 // without depending on VariableSpotlight's own UI.
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: ({
+  VariablePickerControl: ({
     name,
     value,
     onChange,
@@ -161,12 +161,12 @@ describe('CategoricalBinPrompts', () => {
     expect(screen.queryByLabelText('otherVariable')).not.toBeInTheDocument();
   });
 
-  // Regression: DialogArrayField's handleSave merges this session's
-  // submitted values OVER the row's pre-edit ones (to preserve properties
-  // the editor never renders), so an existing row's committed
-  // otherVariable/otherOptionLabel/otherVariablePrompt do not simply vanish
-  // when the researcher collapses "Other" and re-saves — they must be
-  // actively stripped (`useOnBeforeSavePrompt`'s `hasOtherVariable` signal).
+  // Regression: DialogArrayField's handleSave merges this session's submitted
+  // values OVER the row's pre-edit ones (to preserve properties the editor
+  // never renders), so an existing row's committed
+  // otherVariable/otherOptionLabel/otherVariablePrompt would survive a
+  // toggle-off on that merge alone. `mergeEditedRow` reads the cleared
+  // fields' dormant entries and deletes those keys instead.
   it('clears an existing otherVariable trio from the saved prompt after "Other" is toggled off', async () => {
     const { getPrompts } = renderSection({
       subject: { entity: 'node', type: 'person' },
@@ -210,7 +210,6 @@ describe('CategoricalBinPrompts', () => {
     expect(prompt).not.toHaveProperty('otherVariable');
     expect(prompt).not.toHaveProperty('otherOptionLabel');
     expect(prompt).not.toHaveProperty('otherVariablePrompt');
-    expect(prompt).not.toHaveProperty('hasOtherVariable');
     expect(prompt).toMatchObject({ id: 'p1', variable: 'group' });
   });
 });

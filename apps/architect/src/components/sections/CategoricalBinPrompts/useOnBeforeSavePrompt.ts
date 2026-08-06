@@ -65,30 +65,19 @@ export function useOnBeforeSavePrompt(
     > => {
       if (!isRecord(value)) return value as UnknownRecord;
 
-      // `hasOtherVariable` is a real, always-registered field
-      // (PromptFields.tsx) tracking whether the toggleable "Other" section
-      // is open THIS session — the only reliable signal here. Editing an
-      // EXISTING row merges this session's submitted values OVER the row's
-      // pre-edit ones (DialogArrayField's handleSave, to preserve properties
-      // the editor never renders), so a collapsed "Other" section's
-      // unregistered `otherVariable` does NOT make it absent from `value`:
-      // the row's stale pre-edit pick silently survives the merge instead.
-      // Without this flag that stale value would leak back into the saved
-      // prompt even after the researcher explicitly turned "Other" off.
+      // Turning the "Other" section off clears its fields explicitly
+      // (PromptFields.tsx), which `DialogArrayField`'s `mergeEditedRow` turns
+      // into a deletion of those keys — so an absent `otherVariable` here
+      // genuinely means "off" rather than "the section happened to be
+      // collapsed", and needs no marker field of its own.
       const {
         variable,
         variableOptions,
-        hasOtherVariable,
         _originalVariable,
         _originalOtherVariable,
         ...rest
       } = value;
       const variableId = typeof variable === 'string' ? variable : '';
-      if (!hasOtherVariable) {
-        delete rest.otherVariable;
-        delete rest.otherOptionLabel;
-        delete rest.otherVariablePrompt;
-      }
       const otherVariable = rest.otherVariable;
 
       // Saving new options for the bound variable can make its own committed

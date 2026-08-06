@@ -27,8 +27,11 @@ const renderFields = (nodeType = 'node-type-1') => {
   const store = configureStore({
     reducer: {
       activeProtocol: (
-        state = { present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] } },
+        state = {
+          present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] },
+        },
       ) => state,
+      stageEditorDraft: (state = { ui: { liveValues: null } }) => state,
     },
   });
   return render(

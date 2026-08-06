@@ -6,7 +6,7 @@ import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
-import VariablePickerControl from '~/components/Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
 import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';

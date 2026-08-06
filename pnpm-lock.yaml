@@ -400,9 +400,6 @@ importers:
       redux:
         specifier: ^5.0.1
         version: 5.0.1
-      redux-form:
-        specifier: 'catalog:'
-        version: 8.3.10(immutable@4.3.8)(react-redux@9.3.0(@types/react@19.2.18)(react@19.2.8)(redux@5.0.1))(react@19.2.8)(redux@5.0.1)
       redux-logger:
         specifier: 'catalog:'
         version: 3.0.6
@@ -461,9 +458,6 @@ importers:
       '@types/recompose':
         specifier: ^0.30.15
         version: 0.30.15
-      '@types/redux-form':
-        specifier: ^8.3.11
-        version: 8.3.11
       '@vite-pwa/assets-generator':
         specifier: ^1.0.2
         version: 1.0.2(@types/node@24.13.3)
@@ -7892,9 +7886,6 @@ packages:
 
   '@types/recompose@0.30.15':
     resolution: {integrity: sha512-glX9JbRTG4WSaWxDrsHlinoRC1YRb0vNr+ocPBgBTJgMawkYx8fqwuduahzy25XBSc3xfG/k9b5XPyW6FuHVkw==}
-
-  '@types/redux-form@8.3.11':
-    resolution: {integrity: sha512-aHZgvDt9rg6C/8IHVgooCABxrWzQxJlVP47b6draiMLXKfWbyhYOVf8AV8+UPujRTnVxp1mWb57kL+r/Rl3wNQ==}
 
   '@types/redux-logger@3.0.13':
     resolution: {integrity: sha512-jylqZXQfMxahkuPcO8J12AKSSCQngdEWQrw7UiLUJzMBcv1r4Qg77P6mjGLjM27e5gFQDPD8vwUMJ9AyVxFSsg==}
@@ -21324,11 +21315,6 @@ snapshots:
       '@types/prop-types': 15.7.15
       '@types/react': 19.2.18
 
-  '@types/redux-form@8.3.11':
-    dependencies:
-      '@types/react': 19.2.18
-      redux: 4.2.1
-
   '@types/redux-logger@3.0.13':
     dependencies:
       redux: 5.0.1
@@ -28494,22 +28480,6 @@ snapshots:
       react-is: 16.13.1
       react-redux: 7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
       redux: 4.2.1
-    optionalDependencies:
-      immutable: 4.3.8
-
-  redux-form@8.3.10(immutable@4.3.8)(react-redux@9.3.0(@types/react@19.2.18)(react@19.2.8)(redux@5.0.1))(react@19.2.8)(redux@5.0.1):
-    dependencies:
-      '@babel/runtime': 7.29.7
-      es6-error: 4.1.1
-      hoist-non-react-statics: 3.3.2
-      invariant: 2.2.4
-      is-promise: 2.2.2
-      lodash: 4.18.1
-      prop-types: 15.8.1
-      react: 19.2.8
-      react-is: 16.13.1
-      react-redux: 9.3.0(@types/react@19.2.18)(react@19.2.8)(redux@5.0.1)
-      redux: 5.0.1
     optionalDependencies:
       immutable: 4.3.8
 

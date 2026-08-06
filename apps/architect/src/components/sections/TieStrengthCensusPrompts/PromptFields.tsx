@@ -25,7 +25,7 @@ import {
 import { excludeValidatedUses } from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
 
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getEdgesForSubject } from '../SociogramPrompts/selectors';
 
 type SelectOption = {
@@ -93,8 +93,8 @@ const PromptFields = ({
   });
 
   // Picking a different edge variable replaces the draft options with that
-  // variable's already-committed ones (redux-form's `withVariableOptions`
-  // lifecycle this replaces) — but only on an actual change, so opening the
+  // variable's already-committed ones — but only on an actual change, so
+  // opening the
   // dialog on an already-configured prompt doesn't clobber its live draft.
   const previousEdgeVariableRef = useRef(currentEdgeVariable);
   useEffect(() => {

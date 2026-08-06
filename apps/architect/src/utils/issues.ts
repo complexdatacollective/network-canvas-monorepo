@@ -8,8 +8,7 @@ type FlattenedIssue = {
  *
  * The store already keys errors by resolved field name (`prompts`,
  * `introductionPanel.title`) with an array of messages, so this only has to
- * pair each message with its field — the recursive walk this replaced existed
- * to unpick redux-form's nested error tree.
+ * pair each message with its field.
  */
 const flattenIssues = (
   fieldErrors: Record<string, string[] | undefined>,

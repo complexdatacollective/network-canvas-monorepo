@@ -1,9 +1,8 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-// ContentGrid is a different batch's conversion; these are the row
-// renderers IntroScreen's DialogArrayField mounts, stubbed the same way the
-// redux-form-era test isolated them.
+// The row renderers IntroScreen's DialogArrayField mounts, stubbed so this
+// test covers the array plumbing only.
 vi.mock('~/components/sections/ContentGrid/ItemEditor', () => ({
   default: () => <div data-testid="item-editor" />,
 }));

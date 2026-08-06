@@ -29,8 +29,8 @@ type Entity = 'node' | 'edge' | 'ego';
  * reason attached.
  *
  * The `withFormHandlers`/`withComposerFormHandlers` enhancers this replaces
- * signalled failure by throwing redux-form's `SubmissionError`; the dialog
- * form takes the same information as a return value now.
+ * signalled failure by throwing; the dialog form takes the same information
+ * as a return value now.
  */
 export type FieldCommit = (
   values: Record<string, unknown>,

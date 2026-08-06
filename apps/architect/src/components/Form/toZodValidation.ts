@@ -255,7 +255,7 @@ function partitionRules(validation: ArchitectValidation): {
  * Each validator keeps its `(value, allValues, props, name)` signature, so
  * cross-field rules read the reassembled form values and name-sensitive rules
  * (`uniqueArrayAttribute`) see the field's resolved bracket path. The first
- * failing rule wins, matching redux-form's one-error-per-field behaviour.
+ * failing rule wins — one error per field.
  *
  * Both the config and the field name are read through getters so a caller can
  * keep one `custom` object alive across renders while its inputs change.
@@ -325,8 +325,8 @@ export function splitValidation(
  * carrying validator closures (or a `custom` entry rebuilt each render)
  * serialises identically every time, so the memo would pin the very first
  * closure forever. This keeps ONE `custom` entry for the field's lifetime
- * whose schema reads the latest config through a ref — the same trick
- * `useValidate` used to stop redux-form re-registering the field.
+ * whose schema reads the latest config through a ref, so a changed config
+ * never re-registers the field.
  */
 export function useValidationProps(
   validation: ArchitectValidation | undefined,

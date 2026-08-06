@@ -43,11 +43,9 @@ export const allowsBackgroundImage = (interfaceType: StageType): boolean =>
   interfacesWithBackgroundImages.includes(interfaceType);
 
 /**
- * `InputField` always emits the raw typed string (there is no fresco-ui
- * `parse`/`format` hook, unlike redux-form's `normalize`/`fromReduxValue`),
- * so the number the stage schema expects has to be bridged at this specific
- * field — the per-field "parse/format wrapper" the migration plan calls for
- * in place of the deleted `FrescoReduxField` `reduxIntegerValue` helper.
+ * `InputField` always emits the raw typed string (fresco-ui has no
+ * `parse`/`format` hook), so the number the stage schema expects has to be
+ * bridged at this specific field.
  */
 const IntegerInput = ({
   value,

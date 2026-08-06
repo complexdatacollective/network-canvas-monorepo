@@ -812,7 +812,7 @@ export const crossClassPickIssue = ({
 };
 
 /**
- * redux-form sync validate for the field-editor dialog. Errors are keyed at
+ * Form-level validate for the field-editor dialog. Errors are keyed at
  * `validation` so they surface through the Validations field's FieldErrors on
  * a failed save and anchor to getFieldId('validation') for scroll-to-error.
  *

@@ -46,9 +46,8 @@ const NoRenderField = (_props: {
  * whichever form it is nested in, since the field-editor dialog carries them
  * as live sibling fields. This isolated validation-only form has no such
  * fields, so this mirrors the selected variable's own committed values into
- * hidden registrations — restoring what redux-form's whole-form
- * `initialValues` used to make available to `formValueSelector` reads with no
- * Field ever mounted for them.
+ * hidden registrations: the form store reports registered fields only, so a
+ * value no Field ever mounts for is otherwise unreadable.
  */
 const VariableSiblingFieldMirror = ({ variable }: { variable: Variable }) => (
   <div className="hidden" aria-hidden>
@@ -86,12 +85,10 @@ const VariableSiblingFieldMirror = ({ variable }: { variable: Variable }) => (
 
 /**
  * Writes a committed change in the nested validation-only form back to the
- * selected codebook variable — the direct translation of the old isolated
- * redux-form's `onChange` config. Mounted unconditionally alongside
+ * selected codebook variable. Mounted unconditionally alongside
  * `ValidationSection` (not just while its toggle is open): `useFormValue`
  * only reports a REGISTERED field, so this only ever fires once the user has
- * actually expanded the section and edited a rule, exactly matching the old
- * `onChange` handler, which only fired on an actual value change.
+ * actually expanded the section and edited a rule.
  */
 const ValidationCommitObserver = ({
   currentValidation,

@@ -13,10 +13,9 @@ import {
 } from '~/components/StageEditor/stageFormContext';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
-// The "create a new variable" dialog is still redux-form-based (a different
-// batch's file); `FieldFields` (the Form Fields row editor) transitively
-// imports `~/components/Validations` (the Validations batch's in-flight
-// barrel removal) — neither is exercised by the reset behaviour below.
+// Neither the "create a new variable" dialog nor `FieldFields` (the Form
+// Fields row editor, which transitively imports `~/components/Validations`)
+// is exercised by the reset behaviour below.
 vi.mock('~/components/NewVariableWindow', () => ({
   default: () => null,
   useNewVariableWindowState: (initial: unknown) => [initial, () => undefined],
@@ -52,7 +51,9 @@ const renderComponent = (committedStage: Record<string, unknown>) => {
   const store = configureStore({
     reducer: {
       activeProtocol: (
-        state = { present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] } },
+        state = {
+          present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] },
+        },
       ) => state,
       stageEditorDraft,
     },

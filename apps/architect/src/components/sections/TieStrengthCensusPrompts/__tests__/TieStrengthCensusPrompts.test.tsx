@@ -9,7 +9,7 @@ import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: ({
+  VariablePickerControl: ({
     name,
     value,
     onChange,

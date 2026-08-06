@@ -126,8 +126,8 @@ const useFormStoreApi = (): StageFormStoreApi => {
 };
 
 /**
- * Replaces the redux-form draft listener middleware: watches the stage form's
- * zustand store and drives the `stageEditorDraft` timeline from it, and
+ * Watches the stage form's zustand store and drives the `stageEditorDraft`
+ * timeline from it, and
  * provides the stage form context (identity, store api, submit state, and the
  * restore handle `useStageDraftHistory` drives undo/redo through).
  */
@@ -199,8 +199,8 @@ const StageFormBridge = ({
   const runRestore = useCallback(
     (apply: () => void) => {
       restoring.current = true;
-      // Mirrored into Redux so anything reading `getDraftRestoring` agrees
-      // with the ref for the duration of the restore.
+      // Mirrored into `stageEditorDraft.ui.restoring` so a Redux-side reader
+      // agrees with the ref for the duration of the restore.
       dispatch(setRestoring(true));
       try {
         apply();
@@ -225,8 +225,7 @@ const StageFormBridge = ({
 
       const { blurred, changed } = diffFields(previous.fields, next.fields);
 
-      // Blur commits whatever the user has typed so far (replaces the BLUR
-      // action the redux-form listener flushed on).
+      // Blur commits whatever the user has typed so far.
       if (blurred && snapshotTimer.current !== null) {
         cancelPendingSnapshot();
         takeSnapshot();
@@ -236,9 +235,8 @@ const StageFormBridge = ({
 
       // Every array in the stage form is one opaque field value, so a
       // *structural* array write — add, remove, reorder, or a whole-value
-      // replacement — is one logical change and snapshots immediately
-      // (replaces redux-form's ARRAY_* actions and its `field.endsWith(']')`
-      // whole-element rule). An in-place edit of one row's cell arrives the
+      // replacement — is one logical change and snapshots immediately.
+      // An in-place edit of one row's cell arrives the
       // same way but is a keystroke, so it debounces like any other leaf.
       const isArrayChange = changed.some(({ previous: before, next: after }) =>
         isStructuralArrayChange(before, after),
@@ -267,7 +265,7 @@ const StageFormBridge = ({
   committedStageRef.current = committedStage;
 
   useEffect(() => {
-    // Seed the draft baseline (replaces redux-form's INITIALIZE). Field
+    // Seed the draft baseline. Field
     // registration happens in child effects, which have all run by now, so the
     // form's own values are the stage's opening state — and the space every
     // later snapshot is expressed in. Seeding with the committed stage instead

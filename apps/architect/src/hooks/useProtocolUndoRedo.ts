@@ -7,7 +7,7 @@ import {
 } from '~/ducks/modules/activeProtocol';
 import { getCanRedo, getCanUndo } from '~/selectors/protocol';
 
-type ScopedUndoRedo = {
+type ProtocolUndoRedo = {
   canUndo: boolean;
   canRedo: boolean;
   undo: () => void;
@@ -23,7 +23,7 @@ type ScopedUndoRedo = {
  * instead — and `StageEditorPage` renders outside `ProjectLayout`, so this
  * hook's remaining consumers are never on screen in the stage editor.
  */
-export const useScopedUndoRedo = (): ScopedUndoRedo => {
+export const useProtocolUndoRedo = (): ProtocolUndoRedo => {
   const dispatch = useAppDispatch();
 
   const canUndo = useAppSelector(getCanUndo);

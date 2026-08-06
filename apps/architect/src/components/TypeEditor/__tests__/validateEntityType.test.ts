@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import validateEntityType, {
-  SHAPE_MAPPING_FIELD,
-} from '../validateEntityType';
+import validateEntityType, { SHAPE_MAPPING_FIELD } from '../validateEntityType';
 
 describe('validateEntityType()', () => {
   it('returns no errors when there is no dynamic shape mapping', () => {

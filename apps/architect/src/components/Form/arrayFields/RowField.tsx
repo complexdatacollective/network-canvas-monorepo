@@ -39,9 +39,8 @@ export type RowFieldProps = {
    */
   allValues?: Record<string, unknown>;
   /**
-   * Reveal errors without waiting for an edit — the local replacement for
-   * redux-form's `touch()` (Options' "Finish editing option" refusing to
-   * collapse an incomplete row).
+   * Reveal errors without waiting for an edit (Options' "Finish editing
+   * option" refusing to collapse an incomplete row).
    */
   forceShowErrors?: boolean;
   /** Anything else is forwarded to the control (placeholder, options, …). */

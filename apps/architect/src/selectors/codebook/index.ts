@@ -14,7 +14,7 @@ import type { RootState } from '~/ducks/store';
 
 import { getCodebook } from '../protocol';
 import { asOptions } from '../utils';
-import { type GetIsUsedOptions, makeOptionsWithIsUsedSelector } from './isUsed';
+import { optionsWithIsUsedSelector } from './isUsed';
 
 // Types
 type Subject = {
@@ -274,63 +274,17 @@ export const makeGetVariable = (uuid: string) => (state: RootState) => {
   return get(variables, uuid, null);
 };
 
-// Create a properly memoized selector factory for variable options
-const createVariableOptionsSelector = () => {
-  const cache = new Map<string, ReturnType<typeof createSelector>>();
-
-  return (isUsedOptions: GetIsUsedOptions = {}) => {
-    const cacheKey = JSON.stringify(isUsedOptions);
-
-    if (!cache.has(cacheKey)) {
-      const selector = createSelector(
-        [
-          (state: RootState) => state,
-          (_state: RootState, variables: Variables) => variables,
-        ],
-        (state, variables): VariableOption[] => {
-          const options = asOptions(variables);
-          const optionsWithIsUsedSelector =
-            makeOptionsWithIsUsedSelector(isUsedOptions);
-          return optionsWithIsUsedSelector(state, options);
-        },
-      );
-      cache.set(cacheKey, selector);
-    }
-
-    const cachedSelector = cache.get(cacheKey);
-    if (!cachedSelector) {
-      throw new Error(`Selector not found in cache for key: ${cacheKey}`);
-    }
-    return cachedSelector;
-  };
-};
-
-// Create the cached factory instance
-const getVariableOptionsSelector = createVariableOptionsSelector();
-
 // Main selector for getting variable options - properly memoized
 export const getVariableOptionsForSubjectSelector = createSelector(
-  [
-    (state: RootState) => state,
-    getVariablesForSubjectSelector,
-    (
-      _state: RootState,
-      _subject: Subject,
-      isUsedOptions: GetIsUsedOptions = {},
-    ) => isUsedOptions,
-  ],
-  (state, variables, isUsedOptions): VariableOption[] => {
-    const selector = getVariableOptionsSelector(isUsedOptions);
-    return selector(state, variables);
-  },
+  [(state: RootState) => state, getVariablesForSubjectSelector],
+  (state, variables): VariableOption[] =>
+    optionsWithIsUsedSelector(state, asOptions(variables)),
 );
 
 export const getVariableOptionsForSubject = (
   state: RootState,
   subject: Subject,
-  isUsedOptions: GetIsUsedOptions = {},
-): VariableOption[] =>
-  getVariableOptionsForSubjectSelector(state, subject, isUsedOptions);
+): VariableOption[] => getVariableOptionsForSubjectSelector(state, subject);
 
 // Internal memoized selector for getting options for a specific variable (used by getOptionsForVariable below)
 const getOptionsForVariableSelector = createSelector(

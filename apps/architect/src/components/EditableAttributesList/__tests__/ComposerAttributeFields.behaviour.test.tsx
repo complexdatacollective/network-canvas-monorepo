@@ -174,13 +174,16 @@ let fieldHandlers: Record<string, unknown> = {};
 // `HiddenFieldValue` stays REAL: the composer editor carries the variable's
 // committed validation rules through it, and those rules are exactly what the
 // contradiction check judges the draft against.
-vi.mock('~/components/sections/Form/withFieldsHandlers', async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import('~/components/sections/Form/withFieldsHandlers')
-    >();
-  return { ...actual, useFieldHandlers: () => fieldHandlers };
-});
+vi.mock(
+  '~/components/sections/Form/withFieldsHandlers',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('~/components/sections/Form/withFieldsHandlers')
+      >();
+    return { ...actual, useFieldHandlers: () => fieldHandlers };
+  },
+);
 
 import { withFormLevelValidate } from '~/components/DialogForm/formLevelValidate';
 import EditableAttributesList from '~/components/Form/arrayFields/EditableAttributesList';
@@ -281,7 +284,8 @@ const renderEditor = ({
   return { submitted };
 };
 
-const save = () => fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+const save = () =>
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
 const threeOptions = [
   { label: 'Red', value: 'red' },

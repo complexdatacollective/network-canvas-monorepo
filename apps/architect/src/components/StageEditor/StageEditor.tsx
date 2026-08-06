@@ -31,7 +31,6 @@ import { reportError } from '~/utils/reportError';
 
 import {
   buildProtocolWithStage,
-  normalizePreviewStage,
   shouldOverridePreviewStage,
 } from './buildProtocolWithStage';
 import { getStageEditorInitialValues } from './getStageEditorInitialValues';
@@ -131,8 +130,8 @@ const StageEditor = (props: StageEditorProps) => {
   // only gate: it covers structural problems field-level validators miss — e.g.
   // a side panel with no title (`title` pruned away -> required field missing)
   // or with a malformed filter — even when the relevant section is collapsed
-  // and its fields are unmounted. (The form's own `isValid` was dropped with
-  // redux-form's `isInvalid`: it is a strict subset of this check, and it is
+  // and its fields are unmounted. (The form's own `isValid` is deliberately
+  // not consulted: it is a strict subset of this check, and it is
   // populated lazily by whichever fields happen to have validated, which would
   // make the button's enabled state depend on where the researcher had
   // clicked.) Starts `false` (disabled until proven valid) so preview can't be
@@ -152,10 +151,9 @@ const StageEditor = (props: StageEditorProps) => {
     // can't disagree with what clicking Preview would actually do. The initial
     // one-stage override is runtime-only; skip logic remains in this shape.
     const runValidation = () => {
-      const stageToValidate = normalizePreviewStage(formValues);
       const wipProtocol = buildProtocolWithStage(
         protocol,
-        stageToValidate,
+        formValues,
         id,
         insertAtIndex,
       );
@@ -267,10 +265,9 @@ const StageEditor = (props: StageEditorProps) => {
       return;
     }
 
-    const normalizedStage = normalizePreviewStage(formValues);
     const previewProtocol = buildProtocolWithStage(
       protocol,
-      normalizedStage,
+      formValues,
       id,
       insertAtIndex,
     );

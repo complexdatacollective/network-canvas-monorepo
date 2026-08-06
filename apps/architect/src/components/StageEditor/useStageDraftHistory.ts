@@ -80,8 +80,7 @@ export type StageDraftHistory = {
 
 /**
  * Undo/redo over the stage editor's draft timeline, applied to the fresco-ui
- * form store. Replaces the `draftUndo`/`draftRedo` thunks, which read and
- * wrote redux-form's values.
+ * form store.
  */
 export const useStageDraftHistory = (): StageDraftHistory => {
   const dispatch = useAppDispatch();

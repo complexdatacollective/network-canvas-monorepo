@@ -145,9 +145,9 @@ const NativeSelect = ({
     () => getCreateOptionError(newOptionValue),
     [getCreateOptionError, newOptionValue],
   );
-  // The "you must click create to finish" nudge is gone with redux-form's
-  // submitFailed: the surrounding field renders its own required error under
-  // the create form when a submit is attempted with nothing selected.
+  // No separate "you must click create to finish" nudge: the surrounding
+  // field renders its own required error under the create form when a submit
+  // is attempted with nothing selected.
   const createError = createOptionError || createRequestError || false;
   const showCreateError = Boolean(createError);
 

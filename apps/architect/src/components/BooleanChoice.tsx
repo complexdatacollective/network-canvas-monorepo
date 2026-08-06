@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
-import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { OptionValue } from '~/components/Form/arrayFields/Option';
@@ -188,10 +188,10 @@ const BooleanChoice = ({ initialValue }: BooleanChoiceProps) => {
   return (
     <div>
       <Paragraph>
-        The BooleanChoice input component allows you to specify rich text
-        labels for the two choices that your participant sees. Create a label
-        for the first option, representing the value true, and the second
-        option, representing the value false, below.
+        The BooleanChoice input component allows you to specify rich text labels
+        for the two choices that your participant sees. Create a label for the
+        first option, representing the value true, and the second option,
+        representing the value false, below.
       </Paragraph>
       <Paragraph>
         Each value can also be styled to indicate that it is negative. When

@@ -5,12 +5,9 @@ import {
   type PayloadAction,
   type UnknownAction,
 } from '@reduxjs/toolkit';
-import { isEqual } from 'es-toolkit/compat';
-import { change, getFormValues } from 'redux-form';
 
 import type { Stage } from '@codaco/protocol-validation';
-import type { AppDispatch, RootState } from '~/ducks/store';
-import { getDraftRestoring } from '~/selectors/stageEditorDraft';
+import type { AppDispatch } from '~/ducks/store';
 
 import createTimelineReducer, {
   createTimelineActions,
@@ -117,80 +114,4 @@ export default reducer;
 
 export const resetDraft = (values: Stage | null) => (dispatch: AppDispatch) => {
   dispatch(draftTimelineActions.reset(values));
-};
-
-// Leaf-field edits are debounced before they snapshot (see the draft
-// listener), so the latest keystrokes may not be in history yet when the user
-// undoes/redoes — via the keyboard shortcut OR the toolbar button. Commit any
-// such in-progress edit first, so a step never skips or drops it. (The
-// listener's stale debounce timer, if any, is harmless: after the step the form
-// matches `present`, so it dedupes to a no-op; a fresh edit clears it.)
-const flushPendingEdit = (dispatch: AppDispatch, getState: () => RootState) => {
-  const state = getState();
-  if (getDraftRestoring(state)) return;
-  const values = getFormValues('edit-stage')(state);
-  if (!values) return;
-  if (isEqual(values, state.stageEditorDraft.history.present)) return;
-  dispatch(draftSnapshot(values as Stage));
-};
-
-export const draftUndo =
-  () => (dispatch: AppDispatch, getState: () => RootState) => {
-    flushPendingEdit(dispatch, getState);
-
-    const state = getState();
-    const past = state.stageEditorDraft.history.past;
-    if (!past || past.length === 0) {
-      return;
-    }
-
-    const target = (past[past.length - 1] ?? {}) as Record<string, unknown>;
-    const current = (getFormValues('edit-stage')(state) ?? {}) as Record<
-      string,
-      unknown
-    >;
-
-    dispatch(draftTimelineActions.undo());
-    applyDiff(dispatch, current, target);
-  };
-
-export const draftRedo =
-  () => (dispatch: AppDispatch, getState: () => RootState) => {
-    // A pending edit branches history: committing it correctly clears the redo
-    // stack, so an in-progress edit always wins over a stale redo.
-    flushPendingEdit(dispatch, getState);
-
-    const state = getState();
-    const future = state.stageEditorDraft.history.future;
-    if (!future || future.length === 0) {
-      return;
-    }
-
-    const target = (future[0] ?? {}) as Record<string, unknown>;
-    const current = (getFormValues('edit-stage')(state) ?? {}) as Record<
-      string,
-      unknown
-    >;
-
-    dispatch(draftTimelineActions.redo());
-    applyDiff(dispatch, current, target);
-  };
-
-// Apply only the changed fields from `target` onto the form, wrapped in a
-// restoring flag so listeners can ignore the resulting form changes.
-const applyDiff = (
-  dispatch: AppDispatch,
-  current: Record<string, unknown>,
-  target: Record<string, unknown>,
-) => {
-  dispatch(setRestoring(true));
-
-  const keys = new Set([...Object.keys(current), ...Object.keys(target)]);
-  for (const key of keys) {
-    if (!isEqual(current[key], target[key])) {
-      dispatch(change('edit-stage', key, target[key]));
-    }
-  }
-
-  dispatch(setRestoring(false));
 };

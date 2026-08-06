@@ -27,7 +27,7 @@ import {
 import { excludeValidatedUses } from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
 
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
 

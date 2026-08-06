@@ -5,9 +5,7 @@ import type {
 } from '@codaco/fresco-ui/form/store/types';
 
 /**
- * Context surfaced to a form-level `validate` function. Mirrors what
- * redux-form passed as `validate`'s second argument for an array item's
- * editor form (see InlineEditScreen/Form's eleventh-wave Finding 4 and
+ * Context surfaced to a form-level `validate` function (see
  * DialogArrayField's `editorValidate`): the committed array index of the row
  * being edited, so a sibling-duplicate check can exclude that row. A new
  * (not-yet-committed) item reports no index.
@@ -16,9 +14,8 @@ export type FormLevelValidateContext = { editIndex?: number };
 
 /**
  * A form-level validator run at the top of onSubmit, ahead of the caller's
- * own onSubmit — the redux-form `validate` option (InlineEditScreen/Form,
- * DialogArrayField's `editorValidate`) translated into a plain function. A
- * non-empty result short-circuits the submit with those field errors.
+ * own onSubmit (DialogArrayField's `editorValidate`). A non-empty result
+ * short-circuits the submit with those field errors.
  */
 export type FormLevelValidate = (
   values: Record<string, FieldValue>,
@@ -26,9 +23,9 @@ export type FormLevelValidate = (
 ) => Record<string, string | string[]> | undefined;
 
 /**
- * A submit handler that may resolve without an explicit result. Callers
- * ported from the redux-form era often signal success by simply not
- * throwing, rather than returning `{success: true}`.
+ * A submit handler that may resolve without an explicit result. Some callers
+ * signal success by simply not throwing, rather than returning
+ * `{success: true}`.
  */
 export type LenientSubmitHandler = (
   values: Record<string, FieldValue>,

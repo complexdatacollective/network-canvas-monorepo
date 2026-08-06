@@ -18,8 +18,7 @@ import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 import { optionsMatch } from '~/utils/variables';
 
 // The dialog EdgeConfiguration opens for "create a new variable" — irrelevant
-// to the reset-on-type-change behaviour below and still redux-form-based
-// (a different batch's file).
+// to the reset-on-type-change behaviour below.
 vi.mock('~/components/NewVariableWindow', () => ({
   default: () => null,
   useNewVariableWindowState: (initial: unknown) => [initial, () => undefined],

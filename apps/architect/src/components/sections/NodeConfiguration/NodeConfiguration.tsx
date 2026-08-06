@@ -5,13 +5,13 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section, Subsection } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
+import EditableAttributesList from '~/components/Form/arrayFields/EditableAttributesList';
 import IssueAnchor from '~/components/IssueAnchor';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
 import {
   useCreateVariable,
   useSetStageValue,
@@ -39,8 +39,7 @@ import {
   excludeValidatedUses,
 } from '~/selectors/roleFilters';
 
-import EditableAttributesList from '../../EditableAttributesList/EditableAttributesList';
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import { useComposerFieldCommit } from '../Form/fieldCommit';
 import { getLayoutVariablesForSubject } from '../SociogramPrompts/selectors';
@@ -111,7 +110,7 @@ export const NodeConfigurationComponent = ({
   const initialAutomaticLayout = useStageInitialValue<boolean>(
     'behaviours.automaticLayout',
   );
-  const initialNodeForm = useStageInitialValue<unknown>('nodeForm');
+  const initialNodeForm = useStageInitialValue('nodeForm');
   const initialLayoutVariable = useStageInitialValue<string>('layoutVariable');
 
   // Selecting a node type resets subject-dependent fields (see
@@ -392,7 +391,6 @@ export const NodeConfigurationComponent = ({
           fieldName="nodeForm.fields"
           entity={entity === 'ego' ? 'node' : entity}
           type={type}
-          form={STAGE_FORM_ID}
           editFormName="node-attr-edit"
           title="Edit attribute"
           handleChangeFields={handleChangeFields}

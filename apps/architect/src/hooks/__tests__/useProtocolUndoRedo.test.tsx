@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useScopedUndoRedo } from '../useScopedUndoRedo';
+import { useProtocolUndoRedo } from '../useProtocolUndoRedo';
 
 const undoWithNavigation = vi.fn(() => ({ type: 'main/undo' }));
 const redoWithNavigation = vi.fn(() => ({ type: 'main/redo' }));
@@ -31,14 +31,14 @@ const wrapperFor = (store: ReturnType<typeof createStore>) =>
     return <Provider store={store}>{children}</Provider>;
   };
 
-describe('useScopedUndoRedo', () => {
+describe('useProtocolUndoRedo', () => {
   beforeEach(() => {
     undoWithNavigation.mockClear();
     redoWithNavigation.mockClear();
   });
 
   it('reports the protocol timeline can-undo/redo flags', () => {
-    const { result } = renderHook(() => useScopedUndoRedo(), {
+    const { result } = renderHook(() => useProtocolUndoRedo(), {
       wrapper: wrapperFor(createStore({ canUndo: true, canRedo: false })),
     });
 
@@ -47,7 +47,7 @@ describe('useScopedUndoRedo', () => {
   });
 
   it('dispatches the navigation-aware protocol timeline ops', () => {
-    const { result } = renderHook(() => useScopedUndoRedo(), {
+    const { result } = renderHook(() => useProtocolUndoRedo(), {
       wrapper: wrapperFor(createStore()),
     });
 

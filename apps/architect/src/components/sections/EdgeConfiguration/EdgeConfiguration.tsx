@@ -1,11 +1,10 @@
 import { useSelector } from 'react-redux';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import EditableAttributesList from '~/components/EditableAttributesList/EditableAttributesList';
 import { Section, Subsection } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
+import EditableAttributesList from '~/components/Form/arrayFields/EditableAttributesList';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
 import {
   useStageFormValue,
   useStageInitialValue,
@@ -71,7 +70,6 @@ const EdgeAttributeBlock = ({
           fieldName={fieldName}
           entity={entity}
           type={type}
-          form={STAGE_FORM_ID}
           editFormName={editFormName}
           handleChangeFields={handleChangeFields}
         />
@@ -85,7 +83,7 @@ const resolveEdgeLabel = (
 ) => codebook?.edge?.[type]?.name ?? type;
 const EdgeConfiguration = (_props: StageEditorSectionProps) => {
   const codebook = useSelector(getCodebook);
-  const edges = toEdgeEntries(useStageFormValue<unknown>('edges'));
+  const edges = toEdgeEntries(useStageFormValue('edges'));
   const initialEdges = useStageInitialValue<EdgeEntry[]>('edges');
   return (
     <>

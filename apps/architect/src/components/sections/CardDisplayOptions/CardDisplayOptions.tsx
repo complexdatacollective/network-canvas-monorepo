@@ -81,38 +81,41 @@ const CardDisplayOptions = ({
             </em>
           </Paragraph>
         )}
-        {maxVariableOptions > 0 && (
-          <ArchitectArrayField
-            name="cardOptions.additionalProperties"
-            label="Additional display properties"
-            labelHidden
-            component={MultiSelect}
-            initialValue={initialAdditionalProperties}
-            maxItems={maxVariableOptions}
-            properties={[
-              {
-                fieldName: 'variable',
-              },
-              {
-                fieldName: 'label',
-                control: 'input',
-                label: 'Label',
-                placeholder: 'Label',
-              },
-            ]}
-            options={(
-              fieldName: string,
-              rowValues: unknown,
-              allValues: unknown,
-            ) =>
-              variableOptionsGetter(
-                fieldName,
-                rowValues,
-                allValues as Array<Record<string, unknown>>,
-              )
-            }
-          />
-        )}
+        {/* Mounted unconditionally, including while the roster's variables are
+            still loading (or if the asset can no longer be parsed). The stage
+            saves the registered fields only, so a field that never mounts for
+            an already-configured value silently deletes it; `maxItems` of 0
+            still hides the add affordance, which is all the empty case needs. */}
+        <ArchitectArrayField
+          name="cardOptions.additionalProperties"
+          label="Additional display properties"
+          labelHidden
+          component={MultiSelect}
+          initialValue={initialAdditionalProperties}
+          maxItems={maxVariableOptions}
+          properties={[
+            {
+              fieldName: 'variable',
+            },
+            {
+              fieldName: 'label',
+              control: 'input',
+              label: 'Label',
+              placeholder: 'Label',
+            },
+          ]}
+          options={(
+            fieldName: string,
+            rowValues: unknown,
+            allValues: unknown,
+          ) =>
+            variableOptionsGetter(
+              fieldName,
+              rowValues,
+              allValues as Array<Record<string, unknown>>,
+            )
+          }
+        />
       </Row>
     </Section>
   );
@@ -122,8 +125,8 @@ type GatedProps = StageEditorSectionProps & { dataSource?: string };
 
 /**
  * `compose` is hoisted to module scope so the gated component keeps a stable
- * identity across renders — `dataSource` (the redux-form `withMapFormToProps`
- * replacement) is read via `useStageFormValue` in the wrapper below.
+ * identity across renders — `dataSource` is read via `useStageFormValue` in
+ * the wrapper below.
  */
 const GatedCardDisplayOptions = compose<CardDisplayOptionsProps, GatedProps>(
   withDisabledAssetRequired,

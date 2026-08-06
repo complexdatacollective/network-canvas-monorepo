@@ -2,8 +2,10 @@ import { values } from 'es-toolkit/compat';
 import { useCallback, useMemo, useRef } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
-import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import type {
+  CreateFormFieldProps,
+  FieldValue,
+} from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -47,8 +49,8 @@ type VariableNameFieldProps = CreateFormFieldProps<
 
 /**
  * Variable names are NMTOKENs, so the characters `safeName` strips can never
- * be part of one. Filtering on change (rather than only validating) replaces
- * redux-form's `normalize` prop.
+ * be part of one, so the value is filtered on change rather than only
+ * validated.
  */
 const VariableNameField = ({
   value,

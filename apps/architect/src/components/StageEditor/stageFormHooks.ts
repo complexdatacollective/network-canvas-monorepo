@@ -16,8 +16,6 @@ import safeName from '~/utils/safeName';
 
 import { useStageFormContext } from './stageFormContext';
 
-export { useStageFormValues } from './useStageFormValues';
-
 type ValueCache = {
   /** Identity of the store's `fields` map `values` was assembled from. */
   fields: unknown;
@@ -39,8 +37,7 @@ type ValueCache = {
  * 3. `committedStage` by path — the field has never registered. Without this a
  *    section gated on `startExpanded={!!value}` could never open on entry: its
  *    fields cannot register while it is closed, so nothing would ever put the
- *    committed value in reach. It is the equivalent of redux-form seeding its
- *    values from `initialValues`.
+ *    committed value in reach.
  *
  * Reads the stage form specifically, so it keeps working inside a dialog that
  * has mounted its own form store (where `useFormValue` addresses the dialog).

@@ -59,7 +59,7 @@ export type AssignAttributesContextValue = {
   /**
    * The array's committed value. A row's committed pick is the escape hatch
    * for the cross-class gate: reselecting what is already saved is never a new
-   * contradiction. Replaces the redux-form `getFormInitialValues` read.
+   * contradiction.
    */
   committedValue: AttributeValue[];
 };

@@ -2,11 +2,11 @@ import { useEffect, useRef } from 'react';
 
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import ArchitectField from '~/components/Form/ArchitectField';
 import DatePicker, {
   DATE_FORMATS,
   DATE_TYPES,
 } from '~/components/Form/Fields/DatePicker';
-import ArchitectField from '~/components/Form/ArchitectField';
 
 import { parameterString, type ParameterValues } from './parameterValues';
 

@@ -9,12 +9,12 @@ import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options from '~/components/Form/arrayFields/Options';
+import { useClearValue } from '~/components/Form/clearFieldValue';
 import RichTextField from '~/components/Form/Fields/RichText/Field';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import { useClearValue } from '~/components/sections/Form/withFieldsHandlers';
 import PromptText from '~/components/sections/PromptText';
 import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
 import { useAppSelector } from '~/ducks/hooks';
@@ -24,7 +24,7 @@ import {
 } from '~/selectors/codebook';
 import { getFieldId } from '~/utils/issues';
 
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
@@ -62,27 +62,12 @@ const PromptFields = ({
   bucketSortOrder,
 }: PromptFieldsProps) => {
   const setFieldValue = useFormStore((state) => state.setFieldValue);
-  const registerField = useFormStore((state) => state.registerField);
-  const unregisterField = useFormStore((state) => state.unregisterField);
   const clearValue = useClearValue();
   const {
     variable: liveVariable,
     otherVariable: liveOtherVariable,
     variableOptions: liveVariableOptions,
   } = useFormValue(['variable', 'otherVariable', 'variableOptions'] as const);
-
-  // `hasOtherVariable` is a real, ALWAYS-registered field (never gated by the
-  // toggleable Section's isOpen, unlike `otherVariable` itself) — the save
-  // path (`DialogArrayField`'s handleSave) merges this session's submitted
-  // values OVER the row's pre-edit ones to preserve properties the editor
-  // never renders, so an unregistered (collapsed) `otherVariable` would let
-  // its stale pre-edit value silently survive a toggle-off. This field is
-  // `useOnBeforeSavePrompt`'s only reliable signal that the toggle is off.
-  useEffect(() => {
-    registerField({ name: 'hasOtherVariable', initialValue: !!otherVariable });
-    return () => unregisterField('hasOtherVariable');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const currentVariable =
     typeof liveVariable === 'string' ? liveVariable : variable;
   const currentOtherVariable =
@@ -108,8 +93,8 @@ const PromptFields = ({
   });
 
   // Picking a different variable replaces the draft options with that
-  // variable's already-committed ones (redux-form's `withVariableOptions`
-  // lifecycle this replaces) — but only on an actual change, so opening the
+  // variable's already-committed ones — but only on an actual change, so
+  // opening the
   // dialog on an already-configured prompt doesn't clobber its live draft.
   const previousVariableRef = useRef(currentVariable);
   useEffect(() => {
@@ -139,8 +124,11 @@ const PromptFields = ({
     const [id, params] = args as [string, { field: string }];
     setFieldValue(params.field, id);
   };
+  // Clearing (rather than relying on unmount) is what tells the save the
+  // researcher turned this off: `DialogArrayField`'s `mergeEditedRow` reads
+  // the cleared fields' dormant entries and DELETES those keys from the row,
+  // instead of letting the pre-edit values survive the merge.
   const handleToggleOtherVariable = (nextState: boolean) => {
-    setFieldValue('hasOtherVariable', nextState);
     if (!nextState) {
       clearValue('otherVariable');
       clearValue('otherVariablePrompt');

@@ -141,8 +141,8 @@ type GatedProps = StageEditorSectionProps & { dataSource?: string };
 
 /**
  * `compose` is hoisted to module scope so the gated component keeps a stable
- * identity across renders — `dataSource` (the redux-form `withMapFormToProps`
- * replacement) is read via `useStageFormValue` in the wrapper below.
+ * identity across renders — `dataSource` is read via `useStageFormValue` in
+ * the wrapper below.
  */
 const GatedSearchOptions = compose<SearchOptionsProps, GatedProps>(
   withDisabledAssetRequired,

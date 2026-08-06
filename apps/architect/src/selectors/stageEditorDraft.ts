@@ -1,5 +1,4 @@
-import { isEqual, omit } from 'es-toolkit/compat';
-import { getFormValues } from 'redux-form';
+import { isEqual } from 'es-toolkit/compat';
 
 import type { RootState } from '~/ducks/modules/root';
 
@@ -8,9 +7,6 @@ export const getCanUndoDraft = (state: RootState): boolean =>
 
 export const getCanRedoDraft = (state: RootState): boolean =>
   (state.stageEditorDraft.history.future?.length ?? 0) > 0;
-
-export const getDraftRestoring = (state: RootState): boolean =>
-  state.stageEditorDraft.ui.restoring;
 
 // The mirror only holds values for fields that are currently registered, so a
 // collapsed section contributes nothing while the baseline it is compared
@@ -46,8 +42,8 @@ const pruneEmpty = (value: unknown): unknown => {
 };
 
 /**
- * Dirty state for the fresco-ui stage form, derived from the live mirror the
- * stage form bridge maintains rather than from redux-form's values.
+ * Dirty state for the stage form, derived from the live mirror the stage form
+ * bridge maintains.
  *
  * Deliberately a deep comparison against the committed baseline (not
  * fresco-ui's sticky `isDirty`), so undoing back to the committed values
@@ -68,21 +64,4 @@ export const getLiveStageDraftDirty = (state: RootState): boolean => {
   if (liveValues == null) return false;
 
   return !isEqual(pruneEmpty(liveValues), pruneEmpty(initialValues));
-};
-
-export const getStageDraftDirty = (state: RootState): boolean => {
-  // Until the baseline is seeded, comparing populated values against {} would
-  // report dirty spuriously and flash the "Finished Editing" button on entry.
-  if (state.stageEditorDraft.ui.initialValues == null) return false;
-
-  const current = omit(
-    (getFormValues('edit-stage')(state) ?? {}) as Record<string, unknown>,
-    ['_modified'],
-  );
-  const initial = omit(
-    (state.stageEditorDraft.ui.initialValues ?? {}) as Record<string, unknown>,
-    ['_modified'],
-  );
-
-  return !isEqual(current, initial);
 };

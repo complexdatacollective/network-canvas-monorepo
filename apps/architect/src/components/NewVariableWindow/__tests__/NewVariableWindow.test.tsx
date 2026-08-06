@@ -7,9 +7,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // while still mounting a real form store around the fields.
 const dialogFormSpy = vi.fn<(props: { onClose: () => void }) => void>();
 vi.mock('~/components/DialogForm/DialogForm', async () => {
-  const { default: FormStoreProvider } = await import(
-    '@codaco/fresco-ui/form/store/formStoreProvider'
-  );
+  const { default: FormStoreProvider } =
+    await import('@codaco/fresco-ui/form/store/formStoreProvider');
   return {
     default: (props: { onClose: () => void; children?: ReactNode }) => {
       dialogFormSpy(props);
@@ -123,7 +122,7 @@ describe('NewVariableWindow dirty-guard on dismiss', () => {
 });
 
 // Variable names are NMTOKENs, so the characters safeName strips can never be
-// typed into the field (redux-form's `normalize` prop before the migration).
+// typed into the field.
 describe('NewVariableWindow name normalisation', () => {
   it('drops characters a variable name cannot contain', () => {
     renderWindow(vi.fn());

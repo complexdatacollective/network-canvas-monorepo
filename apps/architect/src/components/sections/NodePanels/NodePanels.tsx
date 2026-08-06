@@ -15,14 +15,12 @@ import {
 
 import NodePanel, { type NodePanelValue } from './NodePanel';
 
-// FieldArray's own reorderable-connected-field pattern was retired with
-// redux-form (fresco-ui's opaque-array rule deliberately doesn't support
-// atomic re-keying — see plan §2.8's "explicitly NOT requested" list), but
-// NetworkFilter (used by each row below) reads/writes the STAGE form
+// Every other array in the stage form is one opaque field value, but
+// NetworkFilter (used by each row below) reads and writes the STAGE form
 // directly. So each panel's fields stay individually registered on the
-// stage — `panels[N].title`/`.dataSource`/`.filter` — exactly as they were
-// under redux-form, and this component only drives the add/remove/reorder UI
-// over them: `ArrayField` renders bounded by `MAX_PANELS`, uncontrolled by a
+// stage — `panels[N].title`/`.dataSource`/`.filter` — and this component only
+// drives the add/remove/reorder UI over them: `ArrayField` renders bounded by
+// `MAX_PANELS`, uncontrolled by a
 // literal `panels` field (registering one would race the individual leaves —
 // see MAX_PANELS below), and `handlePanelsChange` writes the recomputed list
 // back across the same bounded set of field paths.
@@ -158,5 +156,3 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
     </Section>
   );
 };
-
-export default NodePanels;

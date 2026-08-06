@@ -33,15 +33,13 @@ const NO_DRAFT_VARIABLES: ReadonlySet<string> = new Set();
  * multi-row form of the usual currentValue escape, so an existing row keeps
  * rendering its selection.
  *
- * Duplicated from the redux-form `AssignAttributes` (whose copy
- * `sections/__tests__/pickerExclusions.test.ts` pins) until stage E deletes
- * that module, the same way `getAssignableVariableOptions` is duplicated into
- * `Form/arrayFields/AssignAttributes.tsx`.
+ * Exported for `sections/__tests__/pickerExclusions.test.ts`, which pins this
+ * exclusion direction against the opposite-direction quickAdd pickers.
  */
-const getAdditionalAttributesOptionsForSubject = (
+export const getAdditionalAttributesOptionsForSubject = (
   state: RootState,
   subject: { entity: 'node' | 'edge' | 'ego'; type: string },
-  committedVariables: readonly string[],
+  committedVariables?: readonly string[],
   excludedStageIndex?: number,
 ) =>
   excludeValidatedUses(
@@ -59,8 +57,7 @@ type PromptFieldsProps = {
   /**
    * The row's committed `additionalAttributes`: both the array field's
    * `initialValue` and the cross-class gate's escape hatch (reselecting what
-   * this prompt already saved is never a new contradiction), replacing the
-   * redux-form `getFormInitialValues` read.
+   * this prompt already saved is never a new contradiction).
    */
   additionalAttributes?: AttributeValue[];
   currentStageIndex?: number;

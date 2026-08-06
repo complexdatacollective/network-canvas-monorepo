@@ -13,8 +13,8 @@ import StageFormBridge from './StageFormBridge';
 import { useStageFormContext } from './stageFormContext';
 
 /**
- * DOM id of the stage editor's form element. Kept as the historical redux-form
- * name because e2e selectors and the dialog form ids derived from it
+ * DOM id of the stage editor's form element. Kept as the historical name
+ * because e2e selectors and the dialog form ids derived from it
  * (`${STAGE_FORM_ID}-${arrayName}-item-editor`) depend on the exact string.
  */
 export const STAGE_FORM_ID = 'edit-stage';

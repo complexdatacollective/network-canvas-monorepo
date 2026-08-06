@@ -13,7 +13,7 @@ import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getSortOrderOptionGetter } from '../CategoricalBinPrompts/optionGetters';
 import { getLayoutVariablesForSubject } from './selectors';
 

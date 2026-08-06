@@ -9,7 +9,7 @@ import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 // The cross-class exclusivity gate now runs as `editorValidate`, captured
-// from the mocked `DialogArrayField` the same way the redux-form era test
+// from the mocked `DialogArrayField`, the same way an earlier revision
 // captured `onBeforeSave` — see GeospatialPrompts.tsx's comment on why
 // `editorValidate` (with its `initialValues` context) replaced `onBeforeSave`
 // for this check.

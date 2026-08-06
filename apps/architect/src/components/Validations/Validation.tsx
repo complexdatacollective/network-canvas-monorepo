@@ -14,7 +14,7 @@ import {
   MULTI_SELECT_OPTION_CLASSES,
   MULTI_SELECT_OPTIONS_CLASSES,
   MULTI_SELECT_RULE_CLASSES,
-} from '../Form/MultiSelect';
+} from '../Form/arrayFields/MultiSelect';
 import { floorIssue } from './contradictions';
 import {
   getValidationLabel,

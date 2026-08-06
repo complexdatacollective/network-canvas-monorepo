@@ -37,10 +37,9 @@ type ValidationSectionProps = {
    * The committed validation record — seeds the `validation` field's
    * `initialValue`, and (before that field has ever registered, e.g. while
    * this toggleable section starts collapsed) whether the section should
-   * start open. fresco-ui forms carry no whole-form initial values (unlike
-   * redux-form's `initialValues`, which seeded `formValueSelector` reads
-   * regardless of whether a Field ever mounted), so the caller threads this
-   * through explicitly — its own dialog's `item`, or (from
+   * start open. fresco-ui forms carry no whole-form initial values — a value
+   * is only readable once some Field has registered for it — so the caller
+   * threads this through explicitly: its own dialog's `item`, or (from
    * `CodebookVariableValidationSection`) the selected variable's own
    * validation.
    */
@@ -121,8 +120,7 @@ const ValidationSection = ({
   // is actively editing, but this error can attach to `validation` before it
   // has ever registered (the section was collapsed), and a freshly-mounted
   // field is neither dirty nor blurred. Rendering the message here directly,
-  // keyed only on the error existing, is what let redux-form's
-  // `submitFailed`-gated (not dirty-gated) `FieldErrors` show it before.
+  // keyed only on the error existing, is what surfaces it at all.
   const validationErrorsId = getFieldId('validation-sync-error');
   const handleToggleChange = (nextState: boolean) => {
     if (!nextState) {

@@ -5,7 +5,7 @@ import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import { getFieldId } from '~/utils/issues';
 
-import EntitySelectField from '../fields/EntitySelectField/EntitySelectField';
+import { EntitySelectControl as EntitySelectField } from '../fields/EntitySelectField/EntitySelectField';
 
 type PromptFieldsProps = {
   text?: string;

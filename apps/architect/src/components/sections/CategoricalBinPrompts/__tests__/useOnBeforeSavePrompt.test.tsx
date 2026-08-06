@@ -258,10 +258,6 @@ const OTHER_PROMPT_VALUE = {
     { label: 'B', value: 'b' },
   ],
   otherVariable: 'other',
-  // `hasOtherVariable` is the always-registered marker PromptFields.tsx
-  // keeps in sync with the toggleable "Other" section — true here because
-  // this fixture represents an open, filled-in "Other" section.
-  hasOtherVariable: true,
 };
 
 describe('useOnBeforeSavePrompt otherVariable mirror gate', () => {
@@ -299,42 +295,7 @@ describe('useOnBeforeSavePrompt otherVariable mirror gate', () => {
       otherVariableProtocol([]),
     );
     const { otherVariable: _unused, ...withoutOther } = OTHER_PROMPT_VALUE;
-    const result = await onBeforeSave({
-      ...withoutOther,
-      hasOtherVariable: false,
-    });
+    const result = await onBeforeSave(withoutOther);
     expect(result).not.toHaveProperty('otherVariable');
-  });
-
-  // Regression: DialogArrayField's handleSave merges this session's
-  // submitted values OVER the row's pre-edit ones (`{...item, ...values}`),
-  // so an EXISTING row's otherVariable/otherOptionLabel/otherVariablePrompt
-  // do NOT simply vanish when their fields unmount on toggle-off — they
-  // survive as leftover top-level keys on the merged value, still present in
-  // `rest` unless explicitly stripped. `hasOtherVariable: false` is that
-  // strip signal.
-  it('strips a stale otherVariable/otherOptionLabel/otherVariablePrompt left over from an existing row after "Other" is toggled off', async () => {
-    const onBeforeSave = renderOnBeforeSave(
-      undefined,
-      otherVariableProtocol([]),
-    );
-    const result = await onBeforeSave({
-      variable: 'cat',
-      variableOptions: [
-        { label: 'A', value: 'a' },
-        { label: 'B', value: 'b' },
-      ],
-      // Simulates DialogArrayField's merge: the row's pre-edit otherVariable
-      // trio survives in the merged value even though their fields
-      // unregistered on toggle-off.
-      otherVariable: 'other',
-      otherOptionLabel: 'Other',
-      otherVariablePrompt: 'Please specify',
-      hasOtherVariable: false,
-    });
-    expect(result).not.toHaveProperty('otherVariable');
-    expect(result).not.toHaveProperty('otherOptionLabel');
-    expect(result).not.toHaveProperty('otherVariablePrompt');
-    expect(result).not.toHaveProperty('hasOtherVariable');
   });
 });

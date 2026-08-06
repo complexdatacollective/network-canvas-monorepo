@@ -7,7 +7,7 @@ import {
 } from './nodeConfigurationTestHarness';
 
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: ({
+  VariablePickerControl: ({
     name,
     onCreateOption,
   }: {
@@ -55,7 +55,7 @@ type OpenWindowCall = {
 };
 const openWindowSpy = vi.fn<(call: OpenWindowCall) => void>();
 
-vi.mock('~/components/EditableAttributesList/EditableAttributesList', () => ({
+vi.mock('~/components/Form/arrayFields/EditableAttributesList', () => ({
   default: ({ fieldName }: { fieldName: string }) => (
     <div data-testid="attributes-list" data-fieldname={fieldName} />
   ),

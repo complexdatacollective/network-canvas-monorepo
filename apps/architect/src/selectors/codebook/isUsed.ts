@@ -1,6 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { get } from 'es-toolkit/compat';
-import { getFormValues } from 'redux-form';
 
 import type { RootState } from '~/ducks/store';
 
@@ -9,10 +8,6 @@ import { getProtocol } from '../protocol';
 import { getIdsFromCodebook } from './helpers';
 
 // Types
-export type GetIsUsedOptions = {
-  formNames?: string[];
-};
-
 type IsUsedMap = {
   [variableId: string]: boolean;
 };
@@ -25,101 +20,57 @@ type VariableOption = {
   isUsed?: boolean;
 };
 
-// Helper selectors
-const getFormsSelector = (formNames: string[]) =>
-  createSelector([(state: RootState) => state], (state) => {
-    const forms: Record<string, unknown> = {};
-    formNames.forEach((formName) => {
-      forms[formName] = getFormValues(formName)(state);
-    });
-    return forms;
-  });
-
-const getAllFormsSelector = createSelector(
-  [(state: RootState) => state],
-  (state) => {
-    const formState = (state.form ?? {}) as Record<
-      string,
-      { values?: unknown } | undefined
-    >;
-    const forms: Record<string, unknown> = {};
-    Object.entries(formState).forEach(([formName, value]) => {
-      forms[formName] = value?.values;
-    });
-    return forms;
-  },
-);
+// The stage form's live values, mirrored into Redux by `StageFormBridge` —
+// the only Redux-visible view of in-progress editor state.
+const getLiveStageValues = (state: RootState) =>
+  state.stageEditorDraft.ui.liveValues;
 
 /**
- * Gets a key value object describing which variables are in use (including in redux forms).
+ * Gets a key value object describing which variables are in use, including by
+ * the stage currently being edited but not yet saved.
  *
  * Uses getVariableIndex (derived from collectEntityAttributeReferences) to ensure
  * consistency between "is used" checks and "where used" display. Both systems share the
  * same source of truth: the extractor-derived variable index.
  *
- * For redux forms (unsaved changes), JSON string search is used since form paths are dynamic.
+ * The unsaved stage is matched by JSON string search, because the shape of a
+ * stage's in-progress values is dynamic and cannot be walked at known paths.
  *
- * @param options - options object
- * @param options.formNames - names of forms to check for variable usage
- * @returns selector function that returns a key value object describing which variables are in use
+ * @returns a key value object describing which variables are in use
  */
-export const makeGetIsUsed = (options: GetIsUsedOptions = {}) => {
-  const { formNames = [] } = options;
+export const getIsUsed = createSelector(
+  [getProtocol, getLiveStageValues, getVariableIndex],
+  (protocol, liveValues, variableIndex): IsUsedMap => {
+    if (!protocol?.codebook) {
+      return {};
+    }
 
-  // Create the forms selector based on whether we have specific form names or not
-  const formsSelector =
-    formNames.length > 0 ? getFormsSelector(formNames) : getAllFormsSelector;
+    const variableIds = getIdsFromCodebook(protocol.codebook);
 
-  // Uses getVariableIndex to share the same source of truth as usage display
-  return createSelector(
-    [getProtocol, formsSelector, getVariableIndex],
-    (protocol, forms, variableIndex): IsUsedMap => {
-      if (!protocol?.codebook) {
-        return {};
-      }
+    // Variables referenced at known paths (same source as usage display)
+    const referencedVariables = new Set(Object.values(variableIndex));
 
-      const variableIds = getIdsFromCodebook(protocol.codebook);
+    const liveStageData = liveValues ? JSON.stringify(liveValues) : '';
 
-      // Variables referenced at known paths (same source as usage display)
-      const referencedVariables = new Set(Object.values(variableIndex));
+    return variableIds.reduce<IsUsedMap>((memo, variableId) => {
+      const inProtocol = referencedVariables.has(variableId);
+      const inLiveStage = liveStageData.includes(`"${variableId}"`);
 
-      // For forms (unsaved changes), use JSON search since form structure is dynamic
-      const formsData = JSON.stringify(forms);
-
-      const isUsed = variableIds.reduce<IsUsedMap>((memo, variableId) => {
-        const inProtocol = referencedVariables.has(variableId);
-        const inForms = formsData.includes(`"${variableId}"`);
-
-        memo[variableId] = inProtocol || inForms;
-        return memo;
-      }, {});
-
-      return isUsed;
-    },
-  );
-};
-
-// Default instance of getIsUsed
-export const getIsUsed = makeGetIsUsed();
+      memo[variableId] = inProtocol || inLiveStage;
+      return memo;
+    }, {});
+  },
+);
 
 /**
- * Factory function that creates a selector to add isUsed property to variable options
- * @param isUsedOptions - options to pass to getIsUsed
- * @returns memoized selector that adds isUsed property to options
+ * Adds an `isUsed` property to a list of variable options.
  */
-export const makeOptionsWithIsUsedSelector = (
-  isUsedOptions: GetIsUsedOptions = {},
-) => {
-  const isUsedSelector = makeGetIsUsed(isUsedOptions);
-
-  return createSelector(
-    [isUsedSelector, (_state: RootState, options: VariableOption[]) => options],
-    (isUsed, options): VariableOption[] => {
-      return options.map(({ value, ...rest }) => ({
-        ...rest,
-        value,
-        isUsed: get(isUsed, value, false),
-      }));
-    },
-  );
-};
+export const optionsWithIsUsedSelector = createSelector(
+  [getIsUsed, (_state: RootState, options: VariableOption[]) => options],
+  (isUsed, options): VariableOption[] =>
+    options.map(({ value, ...rest }) => ({
+      ...rest,
+      value,
+      isUsed: get(isUsed, value, false),
+    })),
+);

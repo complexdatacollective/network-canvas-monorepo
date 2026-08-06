@@ -230,5 +230,3 @@ export const EntitySelectControl = ({
     </>
   );
 };
-
-export default EntitySelectControl;

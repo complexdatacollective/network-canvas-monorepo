@@ -1,21 +1,8 @@
-import { omit } from 'es-toolkit/compat';
 import { v1 as uuid } from 'uuid';
 
 import { resolveSkipLogicDestinationIndex } from '@codaco/network-query';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import prune from '~/utils/prune';
-
-/**
- * Normalises the live form values into the stage that preview will actually
- * build, validate, and launch.
- *
- * `_modified` is editor-only bookkeeping and is always dropped. The preview
- * override is determined after this stage is inserted into the work-in-progress
- * protocol, so the real skip logic remains in place.
- */
-export function normalizePreviewStage(formValues: Stage): Stage {
-  return omit(formValues, ['_modified']) as Stage;
-}
 
 /**
  * Whether skip routing could make a stage unavailable during an interview.

@@ -9,18 +9,16 @@ import {
 } from '@codaco/shared-consts';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
-import VariablePickerControl from '~/components/Form/Fields/VariablePicker/VariablePicker';
+import { clearFieldValue } from '~/components/Form/clearFieldValue';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { Entity } from '~/components/NewVariableWindow';
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import EntitySelectControl from '~/components/sections/fields/EntitySelectField/EntitySelectField';
+import { EntitySelectControl } from '~/components/sections/fields/EntitySelectField/EntitySelectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import {
-  type StageFormStoreApi,
-  useStageFormContext,
-} from '~/components/StageEditor/stageFormContext';
+import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
 import {
   useSetStageValue,
   useStageFormValue,
@@ -54,32 +52,6 @@ const EDGE_DEPENDENT_VARIABLE_FIELDS = [
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/**
- * Clears `path` plus every registered AND dormant descendant leaf — the
- * container-safe reset `~/components/sections/Form/withFieldsHandlers.tsx`'s
- * (not yet exported; local copy pending that hoist) `useClearValue`
- * established. None of `EDGE_DEPENDENT_VARIABLE_FIELDS` currently has
- * descendants of its own, but going through the shared-shaped reset keeps
- * this in lockstep with that convention rather than a plain `setFieldValue`.
- */
-const clearValueTree = (storeApi: StageFormStoreApi, path: string) => {
-  const state = storeApi.getState();
-  const isDescendant = (name: string) =>
-    name.startsWith(`${path}.`) || name.startsWith(`${path}[`);
-
-  const names = new Set<string>([path]);
-  for (const name of state.fields.keys()) {
-    if (isDescendant(name)) names.add(name);
-  }
-  for (const name of state.dormantValues.keys()) {
-    if (isDescendant(name)) names.add(name);
-  }
-
-  for (const name of names) {
-    state.setFieldValue(name, undefined);
-  }
-};
 
 type VariableWindowInitialProps = {
   entity: Entity;
@@ -166,7 +138,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
     previousEdgeType.current = edgeType;
     if (!previous || previous === edgeType) return;
     for (const field of EDGE_DEPENDENT_VARIABLE_FIELDS) {
-      clearValueTree(storeApi, field);
+      clearFieldValue(storeApi, field);
     }
   }, [edgeType, storeApi]);
 

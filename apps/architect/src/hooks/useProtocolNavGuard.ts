@@ -383,7 +383,8 @@ export const useProtocolNavGuard = () => {
         // takes this branch, but the uncommitted (unpersisted) draft would still
         // be lost — so surface it and reset the draft on confirm.
         const draftDirty =
-          isStageEditorPath(oldPath) && getLiveStageDraftDirty(store.getState());
+          isStageEditorPath(oldPath) &&
+          getLiveStageDraftDirty(store.getState());
         void promptLeaveEditor(
           dispatch,
           openDialog,

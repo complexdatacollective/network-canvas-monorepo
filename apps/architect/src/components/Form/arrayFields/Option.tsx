@@ -43,7 +43,7 @@ const isNumberLike = (value: string) =>
 
 /**
  * A numeric-looking option value is stored as a number, matching the protocol
- * schema. (Duplicated from the redux-form Option row until stage E deletes it.)
+ * schema.
  */
 export const parseOptionValue = (value: string) =>
   isNumberLike(value) ? toNumber(value) : value;
@@ -101,8 +101,8 @@ const Option = ({
   const interactionDisabled = disabled || readOnly;
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
 
-  // Replaces redux-form's `touch()`: refusing to collapse an incomplete row
-  // has to reveal why, before the row has necessarily been edited.
+  // Refusing to collapse an incomplete row has to reveal why, before the row
+  // has necessarily been edited.
   const [forceShowErrors, setForceShowErrors] = useState(false);
 
   // immediateAdd (see Options.tsx) commits a new option straight into the

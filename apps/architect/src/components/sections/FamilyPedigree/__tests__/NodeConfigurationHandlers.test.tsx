@@ -13,8 +13,7 @@ import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 // `withHandlers`/`connect` composition): ArchitectField/FieldFields/
 // NewVariableWindow are stubbed so only the array field's `onBeforeSave` is
 // exercised; `updateVariableAsync`/`createVariableAsync` are faked thunks so
-// the codebook write itself is a plain spy, matching the isolation level of
-// the redux-form-era test.
+// the codebook write itself is a plain spy.
 vi.mock('~/components/EditorLayout', () => ({
   Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -81,7 +80,9 @@ const renderSection = (): ((value: unknown) => unknown) => {
   const store = configureStore({
     reducer: {
       activeProtocol: (
-        state = { present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] } },
+        state = {
+          present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] },
+        },
       ) => state,
       stageEditorDraft,
     },

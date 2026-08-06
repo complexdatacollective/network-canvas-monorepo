@@ -8,8 +8,7 @@ import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
  * `DialogForm` mounts the form store itself, so a Cancel handler that lives
  * outside it (the unsaved-changes guard) cannot call `useFormMeta`. Rendering
  * this among the dialog's children mirrors the flag into a ref the owner can
- * read at dismiss time — the replacement for redux-form's `isDirty(form)`
- * selector, which was readable from anywhere.
+ * read at dismiss time.
  */
 const DirtyProbe = ({ dirtyRef }: { dirtyRef: RefObject<boolean> }) => {
   const { isDirty } = useFormMeta();

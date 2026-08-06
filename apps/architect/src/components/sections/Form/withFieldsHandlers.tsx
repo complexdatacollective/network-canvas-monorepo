@@ -1,12 +1,12 @@
 import { find, get, has } from 'es-toolkit/compat';
-import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { useClearValue } from '~/components/Form/clearFieldValue';
 import {
   formattedInputOptions,
   getComponentsForType,
@@ -45,8 +45,7 @@ const READ_FIELDS = [
  * Registers a value the editor carries but renders no control for.
  *
  * `getFormValues()` reports registered fields only, so anything the save
- * handler or the contradiction check reads has to be a real field — redux-form
- * got these for free from the editor's whole-form `initialValues`. Used for
+ * handler or the contradiction check reads has to be a real field. Used for
  * `_createNewVariable` in both editors, and for the composer editor's
  * `validation`, which it carries from the codebook without offering an editor
  * for it.
@@ -84,50 +83,10 @@ const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
 /**
- * Clears a value that may be held as a CONTAINER of registered leaves.
- *
- * The form store's `fields`/`dormantValues` are exact-string-keyed maps with
- * no hierarchy: `parameters` is never registered, only `parameters.type`,
- * `parameters.min` and friends. So `setFieldValue('parameters', undefined)`
- * clears nothing — and because an unregistered field's last value is parked
- * dormant and preferred over `initialValue` when it next registers, the
- * previous input control's parameters would come straight back the moment a
- * control that uses the same leaf is chosen again.
- *
- * Clearing every registered AND dormant descendant (plus the path itself, for
- * the values that really are one opaque field) is the container-safe reset.
- */
-export const useClearValue = () => {
-  const storeApi = useContext(FormStoreContext);
-
-  return useCallback(
-    (path: string) => {
-      if (!storeApi) return;
-      const state = storeApi.getState();
-      const isDescendant = (name: string) =>
-        name.startsWith(`${path}.`) || name.startsWith(`${path}[`);
-
-      const names = new Set<string>([path]);
-      for (const name of state.fields.keys()) {
-        if (isDescendant(name)) names.add(name);
-      }
-      for (const name of state.dormantValues.keys()) {
-        if (isDescendant(name)) names.add(name);
-      }
-
-      for (const name of names) {
-        state.setFieldValue(name, undefined);
-      }
-    },
-    [storeApi],
-  );
-};
-
-/**
  * The variable/input-control pair at the heart of both field editors.
  *
- * The two cross-field resets redux-form ran from the fields' `onChange` props
- * are observer effects here: a caller `onChange` on a fresco-ui `Field`
+ * The two cross-field resets are observer effects rather than handlers hung
+ * off the fields themselves: a caller `onChange` on a fresco-ui `Field`
  * replaces the store's own write and detaches the field, so a side effect on
  * change has to watch the value instead. Each effect records the first value
  * it sees once the field is registered and acts only on later changes, so
@@ -168,7 +127,7 @@ export const useFieldHandlers = ({
   );
 
   const baseVariableOptions = useSelector((state: RootState) =>
-    getVariableOptionsForSubjectSelector(state, subject, {}),
+    getVariableOptionsForSubjectSelector(state, subject),
   );
 
   // This picker is a VALIDATED writer (Form, NetworkComposer fields,

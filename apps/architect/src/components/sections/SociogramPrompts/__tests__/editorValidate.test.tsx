@@ -8,11 +8,10 @@ import type { Stage } from '@codaco/protocol-validation';
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
-// The cross-class exclusivity gate now runs as `editorValidate`, captured
-// from the mocked `DialogArrayField` the same way the redux-form era test
-// captured `onBeforeSave` — see SociogramPrompts.tsx's comment on why
-// `editorValidate` (with its `initialValues` context) replaced `onBeforeSave`
-// for this check.
+// The cross-class exclusivity gate runs as `editorValidate`, captured from
+// the mocked `DialogArrayField` — see SociogramPrompts.tsx's comment on why
+// `editorValidate` (with its `initialValues` context) owns this check rather
+// than `onBeforeSave`.
 type EditorValidate = (
   values: Record<string, unknown>,
   context?: { initialValues?: unknown },

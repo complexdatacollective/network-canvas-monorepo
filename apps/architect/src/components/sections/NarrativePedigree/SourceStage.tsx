@@ -5,6 +5,7 @@ import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
+import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
   type StageFormStoreApi,
@@ -18,30 +19,16 @@ import type { RootState } from '~/ducks/store';
 import { getStageList } from '~/selectors/protocol';
 
 /**
- * Resets `diseases` to an empty array, clearing any registered AND dormant
- * descendant first — the container-safe reset
- * `~/components/sections/Form/withFieldsHandlers.tsx`'s (not yet exported;
- * local copy pending that hoist) `useClearValue` established. `diseases`
- * itself has no descendants today (it is one opaque array field), but this
- * keeps the reset future-proof against that changing, while still leaving
- * the field an EMPTY ARRAY rather than `undefined` — Diseases.tsx's `notEmpty`
- * validator reports a friendly "create at least one" message only when the
- * field is actually registered with an array value; `undefined` would read as
- * a missing required field instead once schema-validated.
+ * Resets `diseases` to an empty array. The container-safe clear runs first so
+ * any registered or dormant descendant goes too; the field is then left an
+ * EMPTY ARRAY rather than `undefined` — Diseases.tsx's `notEmpty` validator
+ * reports a friendly "create at least one" message only when the field is
+ * actually registered with an array value; `undefined` would read as a
+ * missing required field instead once schema-validated.
  */
-const isDiseasesDescendant = (name: string) =>
-  name.startsWith('diseases.') || name.startsWith('diseases[');
-
 const clearDiseasesValue = (storeApi: StageFormStoreApi) => {
-  const state = storeApi.getState();
-
-  for (const name of state.fields.keys()) {
-    if (isDiseasesDescendant(name)) state.setFieldValue(name, undefined);
-  }
-  for (const name of state.dormantValues.keys()) {
-    if (isDiseasesDescendant(name)) state.setFieldValue(name, undefined);
-  }
-  state.setFieldValue('diseases', []);
+  clearFieldValue(storeApi, 'diseases');
+  storeApi.getState().setFieldValue('diseases', []);
 };
 
 const SourceStage = (_props: StageEditorSectionProps) => {

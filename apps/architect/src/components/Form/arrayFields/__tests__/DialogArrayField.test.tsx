@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { useContext, type ContextType, type ReactNode } from 'react';
+import { useContext, useState, type ContextType, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -16,11 +16,12 @@ import { renderStageForm } from '~/components/StageEditor/__tests__/stageFormTes
 
 import ArchitectArrayField from '../../ArchitectArrayField';
 import ArchitectField from '../../ArchitectField';
+import { useClearValue } from '../../clearFieldValue';
 import DialogArrayField, {
   type DialogArrayEditorValidate,
 } from '../DialogArrayField';
 
-type Item = { id: string; label: string };
+type Item = { id: string; label: string; note?: string };
 
 /** `initialValue` is a register-effect dependency, so keep it stable. */
 const NO_ITEMS: Item[] = [];
@@ -59,6 +60,71 @@ const EditorFields = (props: Record<string, unknown>) => {
   );
 };
 
+/**
+ * Stands in for a toggleable Section: turning the note off clears the field
+ * explicitly and then unmounts it, which is what the save has to read as
+ * "the researcher removed this".
+ */
+const ToggleableEditorFields = (props: Record<string, unknown>) => {
+  const clearValue = useClearValue();
+  const [open, setOpen] = useState(typeof props.note === 'string');
+
+  return (
+    <>
+      <ArchitectField
+        name="label"
+        label="Item label"
+        component={TextInput}
+        initialValue={typeof props.label === 'string' ? props.label : ''}
+      />
+      <button
+        type="button"
+        onClick={() => {
+          if (open) clearValue('note');
+          setOpen(!open);
+        }}
+      >
+        Toggle note
+      </button>
+      {open && (
+        <ArchitectField
+          name="note"
+          label="Note"
+          component={TextInput}
+          initialValue={typeof props.note === 'string' ? props.note : ''}
+        />
+      )}
+    </>
+  );
+};
+
+/** Unmounts a field the researcher never touched, without clearing it. */
+const UnmountingEditorFields = (props: Record<string, unknown>) => {
+  const [visible, setVisible] = useState(true);
+
+  return (
+    <>
+      <ArchitectField
+        name="label"
+        label="Item label"
+        component={TextInput}
+        initialValue={typeof props.label === 'string' ? props.label : ''}
+      />
+      <button type="button" onClick={() => setVisible(false)}>
+        Hide note
+      </button>
+      {visible && (
+        <ArchitectField
+          name="note"
+          label="Note"
+          component={TextInput}
+          initialValue=""
+        />
+      )}
+    </>
+  );
+};
+
 type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
 let storeApi: StoreApi | null = null;
@@ -73,6 +139,7 @@ const getItems = (): Item[] => {
 };
 
 type FieldOverrides = {
+  editorFieldsComponent?: React.ComponentType<Record<string, unknown>>;
   editorValidate?: DialogArrayEditorValidate;
   normalizeItem?: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
@@ -81,7 +148,13 @@ type FieldOverrides = {
 
 const arrayField = (
   initialItems: Item[],
-  { editorValidate, normalizeItem, onBeforeSave, sortable }: FieldOverrides,
+  {
+    editorFieldsComponent = EditorFields,
+    editorValidate,
+    normalizeItem,
+    onBeforeSave,
+    sortable,
+  }: FieldOverrides,
 ) => (
   <ArchitectArrayField
     name="items"
@@ -89,7 +162,7 @@ const arrayField = (
     component={DialogArrayField}
     initialValue={initialItems}
     previewComponent={Preview}
-    editorFieldsComponent={EditorFields}
+    editorFieldsComponent={editorFieldsComponent}
     editorTitle="Edit item"
     addTitle="Add item"
     itemLabel="item"
@@ -155,6 +228,46 @@ describe('DialogArrayField', () => {
 
     await waitFor(() => {
       expect(getItems()).toEqual([{ id: 'item-1', label: 'After' }]);
+    });
+  });
+
+  it('drops a field the editor cleared before its section unmounted', async () => {
+    setup({
+      initialItems: [{ id: 'item-1', label: 'Before', note: 'Remove me' }],
+      editorFieldsComponent: ToggleableEditorFields,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle note' }));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('textbox', { name: 'Note' }),
+      ).not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(getItems()).toEqual([{ id: 'item-1', label: 'Before' }]);
+    });
+  });
+
+  it('does not invent a key for an untouched field that merely unmounted', async () => {
+    setup({
+      initialItems: [{ id: 'item-1', label: 'Before' }],
+      editorFieldsComponent: UnmountingEditorFields,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hide note' }));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('textbox', { name: 'Note' }),
+      ).not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(getItems()).toEqual([{ id: 'item-1', label: 'Before' }]);
     });
   });
 

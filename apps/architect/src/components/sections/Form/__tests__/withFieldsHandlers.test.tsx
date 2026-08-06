@@ -156,8 +156,8 @@ describe('useFieldHandlers variable options', () => {
   });
 });
 
-// The two cross-field resets used to run from the fields' redux-form
-// `onChange` props. As observer effects they must fire on a real change and
+// The two cross-field resets are observer effects rather than field
+// `onChange` handlers. They must fire on a real change and
 // stay silent while the dialog is settling, or opening a committed row would
 // wipe the very values it opened on.
 describe('useFieldHandlers cross-field observers', () => {

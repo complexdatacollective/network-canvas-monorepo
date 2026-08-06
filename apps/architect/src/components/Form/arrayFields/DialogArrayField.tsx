@@ -1,6 +1,4 @@
 /**
- * The fresco-ui-native successor to `~/components/Form/DialogArrayField.tsx`.
- *
  * COMPOSITION: this is a *field component*, rendered as
  * `<ArchitectArrayField name="prompts" component={DialogArrayField} … />`.
  * It receives the whole array as one `value`/`onChange` pair and never
@@ -8,52 +6,9 @@
  * the stage form: a deleted row's dormant value must not be able to resurrect
  * itself in `getFormValues()`. Making it a field component rather than a
  * self-contained `name`-taking section keeps ONE owner of the field name, the
- * validation adapter and the Issues anchor (`ArchitectArrayField`), and makes
- * the stage-C call-site conversion the same `component={X}` collapse every
- * other field gets.
- *
- * LEGACY → NEW prop map (for the stage C converter). Everything a call site
- * passes inside `componentProps` moves up one level, unchanged, except where
- * noted:
- *
- *   ValidatedFieldArray  → ArchitectArrayField      (name/label/validation)
- *     component={DialogArrayField}                  (unchanged)
- *     componentProps={{ … }}                        flattened onto the element
- *
- *   addButtonLabel        → addButtonLabel          unchanged
- *   emptyStateMessage     → emptyStateMessage       unchanged
- *   itemLabel             → itemLabel               unchanged
- *   addTitle              → addTitle                unchanged
- *   editorTitle           → editorTitle             unchanged
- *   previewComponent      → previewComponent        unchanged
- *   previewProps          → previewProps            unchanged
- *   editorFieldsComponent → editorFieldsComponent   unchanged
- *   editorProps           → editorProps             unchanged
- *   editorValidate        → editorValidate          unchanged signature
- *                                                   `(values, {editIndex})`,
- *                                                   now run by DialogForm's
- *                                                   form-level `validate`
- *   normalizeItem         → normalizeItem           unchanged
- *   onBeforeSave          → onBeforeSave            may now RETURN
- *                                                   `{success:false,
- *                                                   fieldErrors}` instead of
- *                                                   throwing SubmissionError
- *   itemSelector          → itemSelector            signature changes:
- *                                                   `(state, {form, editField})`
- *                                                   becomes
- *                                                   `(state, {item, index})` —
- *                                                   the edited row arrives
- *                                                   directly instead of being
- *                                                   looked up by form path
- *   itemTemplate          → itemTemplate            unchanged (still uuid-
- *                                                   defaulted `id`)
- *   requestedEditFormName → requestedEditFormName   unchanged (DOM id only)
- *   sortable/maxItems/    → same                    unchanged
- *   getId/itemClasses
- *
- * Dropped, because nothing consumed them: the `form` and `fieldId` props the
- * legacy preview renderer injected (redux-form path plumbing).
+ * validation adapter and the Issues anchor (`ArchitectArrayField`).
  */
+import { cloneDeep, isEqual, set, unset } from 'es-toolkit/compat';
 import { Pencil, Trash2 } from 'lucide-react';
 import {
   createContext,
@@ -65,6 +20,7 @@ import {
   useRef,
   useState,
   type ComponentType,
+  type RefObject,
 } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 import { v4 as uuid } from 'uuid';
@@ -78,10 +34,12 @@ import ArrayField, {
   type ArrayFieldItemProps,
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import DialogForm from '~/components/DialogForm/DialogForm';
 import type { FormLevelValidate } from '~/components/DialogForm/formLevelValidate';
 import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
+import type { StageFormStoreApi } from '~/components/StageEditor/stageFormContext';
 import type { RootState } from '~/ducks/modules/root';
 import { ensureError } from '~/utils/ensureError';
 
@@ -101,7 +59,7 @@ export type DialogArrayItemSelector = (
 ) => unknown;
 
 /**
- * `editorValidate` keeps its redux-form-era shape: the second argument carries
+ * `editorValidate` keeps its legacy shape: the second argument carries
  * the edited row's committed array index so a sibling-duplicate check can
  * exclude that row. A new item is not in the committed array and reports none.
  */
@@ -110,8 +68,7 @@ export type DialogArrayEditorValidate = (
   context?: {
     editIndex?: number;
     /**
-     * The row's PRE-EDIT committed values (redux-form surfaced these as the
-     * decorated form's `initialValues` prop). `makeFieldEditorValidate` reads
+     * The row's PRE-EDIT committed values. `makeFieldEditorValidate` reads
      * them for its unchanged-pick escape.
      */
     initialValues?: unknown;
@@ -179,9 +136,9 @@ const defaultEditFormName = (arrayName: string) =>
   `${STAGE_FORM_ID}-${arrayName.replaceAll(/[^a-zA-Z0-9]+/g, '-')}-item-editor`;
 
 /**
- * `editorValidate` returns redux-form's loosely-typed error object. Only
- * string(-list) entries can be rendered as field errors; anything else was
- * inert under redux-form too, so it is dropped rather than stringified.
+ * `editorValidate` returns a loosely-typed error object. Only string(-list)
+ * entries can be rendered as field errors; anything else has never been
+ * displayable, so it is dropped rather than stringified.
  */
 const toFieldErrors = (
   errors: Record<string, unknown> | undefined,
@@ -196,6 +153,68 @@ const toFieldErrors = (
   );
 
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+};
+
+/**
+ * Publishes the dialog form's own store api to `DialogEditor`, which renders
+ * `DialogForm` and therefore sits OUTSIDE the provider that form creates —
+ * but needs the store's dormant entries at save time (see `mergeEditedRow`).
+ */
+const DialogStoreCapture = ({
+  apiRef,
+}: {
+  apiRef: RefObject<StageFormStoreApi | null>;
+}) => {
+  const storeApi = useContext(FormStoreContext);
+
+  useEffect(() => {
+    apiRef.current = storeApi ?? null;
+    return () => {
+      apiRef.current = null;
+    };
+  }, [apiRef, storeApi]);
+
+  return null;
+};
+
+/**
+ * The values a save commits for an edited row.
+ *
+ * The dialog form only reports the fields it actually RENDERED, so properties
+ * the editor never registers — `id` above all — are carried over from the row
+ * being edited. That carry-over alone would also resurrect a value
+ * the researcher explicitly cleared this session, because clearing a field in
+ * a section that then collapses leaves the field unregistered, and so absent
+ * from the submitted values rather than present-and-empty.
+ *
+ * The store's dormant entries are the record of what became of those unmounted
+ * fields. An entry whose value has diverged from the value its field
+ * registered with is a real edit and is applied over the committed row —
+ * `undefined` meaning "cleared", which DELETES the key. An entry still equal to
+ * its own `initialValue` is an untouched field that merely unmounted (a
+ * section that became disabled, a branch that stopped rendering) and is
+ * ignored, so a normalised `initialValue` such as `?? []` cannot invent a key
+ * the row never had.
+ */
+const mergeEditedRow = (
+  committed: ArrayItem,
+  storeApi: StageFormStoreApi | null,
+  submitted: Record<string, FieldValue>,
+): ArrayItem => {
+  const dormant = storeApi?.getState().dormantValues;
+  if (!dormant || dormant.size === 0) return { ...committed, ...submitted };
+
+  const merged = cloneDeep(committed);
+  for (const [name, field] of dormant) {
+    if (isEqual(field.value, field.initialValue)) continue;
+    if (field.value === undefined) {
+      unset(merged, name);
+    } else {
+      set(merged, name, field.value);
+    }
+  }
+
+  return { ...merged, ...submitted };
 };
 
 type DialogArrayContextValue = {
@@ -385,6 +404,7 @@ const DialogEditor = ({
   }, [selectedItem, session]);
 
   const saveInFlightRef = useRef(false);
+  const storeApiRef = useRef<StageFormStoreApi | null>(null);
   const mountedRef = useRef(true);
   const activeItemRef = useRef(sessionItem);
   activeItemRef.current = sessionItem;
@@ -413,11 +433,11 @@ const DialogEditor = ({
       const itemAtSaveStart = activeItemRef.current;
 
       try {
-        // The dialog form only reports the fields it actually rendered, so
-        // properties the editor never registers — `id` above all — are carried
-        // over from the row being edited. redux-form got this for free: its
-        // `values` started life as the editor's `initialValues`.
-        let valueToSave: unknown = { ...itemValuesRef.current, ...values };
+        let valueToSave: unknown = mergeEditedRow(
+          itemValuesRef.current,
+          storeApiRef.current,
+          values,
+        );
         if (onBeforeSave) {
           const transformedValue = await onBeforeSave(valueToSave);
           if (isFailedSubmission(transformedValue)) return transformedValue;
@@ -473,6 +493,7 @@ const DialogEditor = ({
       }
       style={{ borderRadius: 'var(--radius)' }}
     >
+      <DialogStoreCapture apiRef={storeApiRef} />
       {createElement(editorFieldsComponent, {
         ...itemValues,
         ...editorProps,

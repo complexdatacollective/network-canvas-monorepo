@@ -95,17 +95,12 @@ const getEdgeOptions = createSelector([getEdgeTypes], (edgeTypes) =>
   asOptions(edgeTypes),
 );
 
-type EdgeTypeMultiSelectFieldProps = CreateFormFieldProps<
-  EdgeEntry[],
-  'div',
-  Record<never, never>
->;
+type EdgeTypeMultiSelectFieldProps = CreateFormFieldProps<EdgeEntry[], 'div'>;
 
 /**
  * Field-component wrapper for `EdgeTypeMultiSelectInner`: sources the
  * codebook's edge types and adapts a fresco-ui `Field`'s `value`/`onChange`
- * contract, replacing the redux-form `Field`/`connect` pairing this used to
- * be built from.
+ * contract.
  */
 const EdgeTypeMultiSelectField = ({
   value,

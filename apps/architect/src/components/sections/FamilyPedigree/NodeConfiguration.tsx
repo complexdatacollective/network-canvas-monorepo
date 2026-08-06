@@ -15,13 +15,14 @@ import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
-import VariablePickerControl from '~/components/Form/Fields/VariablePicker/VariablePicker';
+import { clearFieldValue } from '~/components/Form/clearFieldValue';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { Entity } from '~/components/NewVariableWindow';
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import EntitySelectControl from '~/components/sections/fields/EntitySelectField/EntitySelectField';
+import { EntitySelectControl } from '~/components/sections/fields/EntitySelectField/EntitySelectField';
 import {
   composerValidationViews,
   sharedFormValidationView,
@@ -34,10 +35,7 @@ import {
   normalizeField,
 } from '~/components/sections/Form/helpers';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import {
-  type StageFormStoreApi,
-  useStageFormContext,
-} from '~/components/StageEditor/stageFormContext';
+import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
 import {
   useSetStageValue,
   useStageFormValue,
@@ -169,36 +167,6 @@ const VariableRow = ({
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/**
- * Clears `path` plus every registered AND dormant descendant leaf — the
- * container-safe reset `~/components/sections/Form/withFieldsHandlers.tsx`'s
- * (not yet exported; local copy pending that hoist) `useClearValue`
- * established. The form store's `fields`/`dormantValues` maps are flat,
- * exact-string-keyed: writing to a CONTAINER key like `nodeConfig` reaches no
- * registered field at all (`nodeConfig.nodeLabelVariable` etc. are the real
- * keys) and silently no-ops. The dormant half matters too: `registerField`
- * prefers a dormant value over `initialValue`, so clearing only the
- * currently-registered leaves lets a collapsed section's fields resurrect the
- * old value when they remount.
- */
-const clearValueTree = (storeApi: StageFormStoreApi, path: string) => {
-  const state = storeApi.getState();
-  const isDescendant = (name: string) =>
-    name.startsWith(`${path}.`) || name.startsWith(`${path}[`);
-
-  const names = new Set<string>([path]);
-  for (const name of state.fields.keys()) {
-    if (isDescendant(name)) names.add(name);
-  }
-  for (const name of state.dormantValues.keys()) {
-    if (isDescendant(name)) names.add(name);
-  }
-
-  for (const name of names) {
-    state.setFieldValue(name, undefined);
-  }
-};
-
 /** The four nodeConfig slots that write node attributes without validation. */
 const NODE_SLOT_FIELDS = [
   'nodeLabelVariable',
@@ -233,7 +201,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   // ArchitectField would replace the store write instead of running alongside
   // it, so the reset is an observer effect. Every non-preserved top-level key
   // is cleared as a whole TREE (registered + dormant descendants — see
-  // `clearValueTree`), unioning currently-assembled keys with the committed
+  // `clearFieldValue`), unioning currently-assembled keys with the committed
   // stage's own keys so a collapsed section's stale value is cleared too.
   // `nodeConfig` clears as a tree like every other reset key — including its
   // own `type` descendant, the field that just changed — so it is restored
@@ -253,7 +221,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
     ).filter((key) => !topLevelPreserved.has(key));
 
     for (const field of fieldsToReset) {
-      clearValueTree(storeApi, field);
+      clearFieldValue(storeApi, field);
     }
     setStageValue('nodeConfig.type', nodeType);
   }, [committedStage, nodeType, setStageValue, storeApi]);

@@ -137,10 +137,9 @@ describe('ValidationSection with a target-only contradiction', () => {
     ).not.toBeInTheDocument();
 
     // The draft edit switches the picker to year resolution, breaking the
-    // incoming full-resolution sameAs from `a`. Unlike redux-form's
-    // `getFormSyncErrors` (recomputed on every value change), fresco-ui's
-    // form-level validate only runs at submit time, so the section stays
-    // collapsed here — a documented, accepted behaviour shift (plan §2.5).
+    // incoming full-resolution sameAs from `a`. fresco-ui's form-level
+    // validate only runs at submit time (not on every value change), so the
+    // section stays collapsed here — a documented, accepted behaviour.
     fireEvent.click(
       screen.getByRole('button', { name: 'Switch to year resolution' }),
     );

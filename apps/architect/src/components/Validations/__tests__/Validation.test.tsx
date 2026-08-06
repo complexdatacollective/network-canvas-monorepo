@@ -78,7 +78,7 @@ describe('Validation', () => {
       target: { value: '3' },
     });
 
-    // Editing the value alone must not write to the redux-form field yet.
+    // Editing the value alone must not write to the form field yet.
     expect(onUpdate).not.toHaveBeenCalled();
 
     fireEvent.click(

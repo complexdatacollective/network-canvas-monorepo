@@ -46,9 +46,8 @@ const asStage = (values: Record<string, unknown>) => values as unknown as Stage;
 
 /**
  * The prompt editor's additional-attributes pool must exclude a variable the
- * outer stage's own (not yet saved) form fields already collect — the
- * `stageForm` prop the redux-form section threaded down to `AssignAttributes`,
- * now read straight from the stage form store.
+ * outer stage's own (not yet saved) form fields already collect, read
+ * straight from the stage form store.
  */
 it('excludes the outer stage form’s draft validated variables from the pool', async () => {
   captured.props = undefined;

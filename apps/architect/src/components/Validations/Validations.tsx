@@ -11,7 +11,10 @@ import {
   findLegalReferenceTargets,
   floorIssue,
 } from './contradictions';
-import { getValidationOptionsForVariableType, isValidationWithListValue } from './options';
+import {
+  getValidationOptionsForVariableType,
+  isValidationWithListValue,
+} from './options';
 import Validation from './Validation';
 
 type ValidationValue = boolean | number | string | null;

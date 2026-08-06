@@ -111,8 +111,8 @@ export const normalizeField = (field: Record<string, unknown>) =>
 /**
  * Opens the row editor on the field merged with its codebook variable's
  * rendering and rules, which the plain Form keeps on the variable rather than
- * the field. The edited row arrives directly now that the array is one opaque
- * field value, replacing the redux-form path lookup.
+ * the field. The edited row arrives directly, because the array is one opaque
+ * field value.
  */
 export const itemSelector =
   (entity: string | null, type: string | null): DialogArrayItemSelector =>

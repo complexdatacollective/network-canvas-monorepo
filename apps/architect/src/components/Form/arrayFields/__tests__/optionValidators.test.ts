@@ -5,7 +5,7 @@ import { getValidations } from '~/utils/validations';
 import { parseOptionValue } from '../Option';
 import { completeOptions, minTwoOptions } from '../Options';
 
-describe('Options', () => {
+describe('Options validators', () => {
   it('requires at least two options', () => {
     expect(minTwoOptions(undefined)).toMatch(/minimum of two options/i);
     expect(minTwoOptions([])).toMatch(/minimum of two options/i);

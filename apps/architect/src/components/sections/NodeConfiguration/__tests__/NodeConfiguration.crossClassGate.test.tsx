@@ -17,7 +17,7 @@ import {
 // gate NodeConfiguration.tsx wires up for real, rather than capturing an
 // internal validator function.
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: ({
+  VariablePickerControl: ({
     name,
     value,
     onChange,
@@ -37,7 +37,7 @@ vi.mock('~/components/NewVariableWindow', () => ({
   default: () => null,
   useNewVariableWindowState: (initial: unknown) => [initial, () => undefined],
 }));
-vi.mock('~/components/EditableAttributesList/EditableAttributesList', () => ({
+vi.mock('~/components/Form/arrayFields/EditableAttributesList', () => ({
   default: () => <div data-testid="attributes-list" />,
 }));
 vi.mock('~/components/sections/CodebookVariableValidationSection', () => ({
