@@ -366,6 +366,20 @@ const pedigreeEdgeFixedValues = (
     : {}),
 });
 
+/**
+ * A stage that contributes nothing, keeping its position so consumers can
+ * still address stages by index.
+ */
+const emptySummary = (stage: Stage, index: number): StageEffectSummary => ({
+  index,
+  stage,
+  kind: 'content',
+  metadataKind: null,
+  nodeCreations: [],
+  edgeCreations: [],
+  writes: [],
+});
+
 function summariseStage(stage: Stage, index: number): StageEffectSummary {
   if (isContentStage(stage)) {
     return {
@@ -780,8 +794,25 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
   return summary;
 }
 
-export function analyseStageEffects(stages: Stage[]): StageEffects {
-  const summaries = stages.map((stage, index) => summariseStage(stage, index));
+/**
+ * @param reachable Indexes of the stages the run can actually arrive at, when
+ * skip logic is respected. A stage proven unreachable contributes nothing: it
+ * creates nobody and writes nothing, so planning a share of a population for
+ * it would leave that share unbuilt (materialisation skips the stage and does
+ * not reallocate) and would spend `unique` values on entities the session
+ * never holds. Its index is kept so every consumer still addresses stages by
+ * position. Omitted means every stage is reachable, which is the reading when
+ * skip logic is not respected.
+ */
+export function analyseStageEffects(
+  stages: Stage[],
+  reachable?: ReadonlySet<number>,
+): StageEffects {
+  const summaries = stages.map((stage, index) =>
+    reachable === undefined || reachable.has(index)
+      ? summariseStage(stage, index)
+      : emptySummary(stage, index),
+  );
 
   const creatableNodeTypes = new Set<string>();
   const edgeCreationsByType = new Map<string, EdgeCreation[]>();

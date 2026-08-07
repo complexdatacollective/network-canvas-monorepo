@@ -1039,3 +1039,46 @@ describe('a stage filtered on a value only a later stage collects', () => {
     expect(network.edges).toHaveLength(0);
   });
 });
+
+describe('a node generator skip logic proves unreachable', () => {
+  it('is given no share of the declared population', () => {
+    // Materialisation skips the stage and does not reallocate its share to a
+    // later creator, so a population apportioned to an unreachable generator
+    // is simply never built — the finished network sits below what the
+    // codebook declares, and the values that share claimed are spent on
+    // people the session never holds.
+    const { network } = generateNetwork({
+      seed: 17,
+      codebook: codebook({ name: { name: 'Name', type: 'text' } }),
+      stages: [
+        nameGenerator({ id: 'reached', behaviours: {} }),
+        nameGenerator({
+          id: 'never-reached',
+          behaviours: {},
+          skipLogic: {
+            action: 'SKIP',
+            filter: {
+              join: 'AND',
+              rules: [
+                {
+                  id: 'r1',
+                  type: 'ego',
+                  options: { attribute: 'nothing', operator: 'NOT_EXISTS' },
+                },
+              ],
+            },
+          },
+        }),
+      ],
+      respectSkipLogicAndFiltering: true,
+    });
+
+    // The codebook declares three people and one reachable generator, so all
+    // three are named there rather than two of them going missing with the
+    // stage that was to have named them.
+    expect(network.nodes).toHaveLength(3);
+    for (const node of network.nodes) {
+      expect(node.stageId).toBe('reached');
+    }
+  });
+});

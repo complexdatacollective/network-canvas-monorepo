@@ -203,7 +203,19 @@ export function generateNetwork(
   }
   const renderedCodebook = composed.codebook;
 
-  const effects = analyseStageEffects(stages);
+  // A stage skip logic proves unreachable contributes nothing to the plan.
+  // Planning a share of a node type's population for one would leave that
+  // share unbuilt — materialisation skips the stage and does not reallocate to
+  // a later creator — so the finished network would sit below its declared
+  // population, and the `unique` values that share claimed would be spent on
+  // people the session never holds. Indexes are preserved, because every
+  // consumer of the analysis addresses stages by position.
+  const reachableIndexes = new Set<number>();
+  const reachable = new Set(feasibilityStages);
+  stages.forEach((stage, index) => {
+    if (reachable.has(stage)) reachableIndexes.add(index);
+  });
+  const effects = analyseStageEffects(stages, reachableIndexes);
 
   // Refused before anything is drawn, and before the seed is consulted: a
   // protocol whose declared rules no value can satisfy fails the same way on
