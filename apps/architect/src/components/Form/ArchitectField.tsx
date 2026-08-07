@@ -1,4 +1,5 @@
 import { startCase } from 'es-toolkit/compat';
+import type { ReactNode } from 'react';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type {
@@ -31,25 +32,36 @@ function stripStoreOwnedProps<T extends object>(props: T): T {
   return stripped;
 }
 
+/**
+ * A hidden label and a visible hint cannot coexist: the hint would be prose
+ * with nothing naming it on screen, and a hint is never appropriate as
+ * screen-reader-only text. A field is either naked — named by its
+ * surroundings, saying nothing more — or it shows both.
+ */
+type LabellingProps =
+  | { labelHidden: true; hint?: never }
+  | { labelHidden?: false; hint?: ReactNode };
+
 export type ArchitectFieldProps<C extends ValidFieldComponent> = Omit<
   FieldProps<C>,
-  keyof ValidationPropsCatalogue
-> & {
-  /**
-   * Architect's validation configuration. Rules with a fresco-ui equivalent
-   * become native `Field` validation props; the rest run through
-   * `~/utils/validations`. See `toZodValidation.ts`.
-   */
-  validation?: ArchitectValidation;
-};
+  keyof ValidationPropsCatalogue | 'labelHidden' | 'hint'
+> &
+  LabellingProps & {
+    /**
+     * Architect's validation configuration. Rules with a fresco-ui equivalent
+     * become native `Field` validation props; the rest run through
+     * `~/utils/validations`. See `toZodValidation.ts`.
+     */
+    validation?: ArchitectValidation;
+  };
 
 /**
  * Architect's field primitive: the Issues-panel anchor plus a form-connected
  * fresco-ui `Field`.
  *
- * `label` is required — there is no fallback to the field name. Where a
- * surrounding Section heading already names the field, pass `labelHidden` so
- * the label survives for screen readers.
+ * `label` is required — there is no fallback to the field name. `labelHidden`
+ * keeps it for screen readers where the surrounding heading already names the
+ * field, and is mutually exclusive with `hint` (see LabellingProps).
  */
 function ArchitectField<C extends ValidFieldComponent>(
   props: ArchitectFieldProps<C>,

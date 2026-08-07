@@ -49,6 +49,9 @@ const MapOptions = () => {
   const tokenAssetId = useStageFormValue<string | undefined>(
     'mapOptions.tokenAssetId',
   );
+  // Read for the same reason: the map preview `MapSelection` opens renders a
+  // real Mapbox map, which needs the key and style the sibling fields hold.
+  const style = useStageFormValue<string | undefined>('mapOptions.style');
   const initialMapOptions = useStageInitialValue<MapOptionsValue>('mapOptions');
   const initialTargetFeatureProperty = useStageInitialValue<string>(
     'mapOptions.targetFeatureProperty',
@@ -194,14 +197,13 @@ const MapOptions = () => {
         {/*
           NOTE: this registers a SEPARATE field at the parent `mapOptions`
           path, alongside the `mapOptions.*` leaf fields above — inherited
-          from the pre-migration field layout. `getFormValues()` sets each
-          registered field's value at its own path with no partial-merge
-          across overlapping paths, so on save whichever of this field or the
-          leaves happens to be processed last in field-registration order
-          wins the `mapOptions` object's shape in the assembled output.
-          `MapSelection`/`MapView` currently round-trips `value` verbatim
-          (preserving whatever extra keys it was seeded with), so this only
-          matters if that round-trip ever narrows the object.
+          from the pre-migration field layout, and kept because the map view
+          is two values (`center` + `initialZoom`) set by one control.
+          `getFormValues()` writes container paths before the leaves inside
+          them, so the leaf fields above always win their own keys no matter
+          what order the fields registered in; this field effectively
+          contributes only `center`/`initialZoom`. `previewOptions` hands it
+          the sibling values its map preview needs to render.
         */}
         <ArchitectField
           name="mapOptions"
@@ -209,6 +211,7 @@ const MapOptions = () => {
           initialValue={initialMapOptions}
           validation={{ required: requiredMapView }}
           label="Map center and zoom"
+          previewOptions={{ tokenAssetId, style }}
         />
       </Section>
     </>

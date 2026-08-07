@@ -39,6 +39,22 @@ const DateTimeParameters = ({
   const dateType = useFormStore(
     (state) => state.getFieldState(typeField)?.value,
   );
+  const typeRegistered = useFormStore((state) => state.fields.has(typeField));
+
+  // Re-seeds the default resolution after something else has emptied it.
+  //
+  // The field's own `initialValue` only applies at registration, and the
+  // observer that reacts to an input-control change clears every
+  // `parameters.*` leaf — including the one this section has just registered,
+  // because React flushes a child's effects before its parent's. Choosing
+  // DatePicker from another control therefore lands on a REQUIRED resolution
+  // with no value and no visible default, and the field editor cannot be
+  // saved. Watching for the empty value (rather than seeding once on mount)
+  // also covers an undo/redo restore that drops the key.
+  useEffect(() => {
+    if (!typeRegistered || dateType !== undefined) return;
+    setFieldValue(typeField, DEFAULT_DATE_TYPE);
+  }, [dateType, setFieldValue, typeField, typeRegistered]);
 
   // The range fields are typed against the chosen resolution, so changing it
   // invalidates whatever is already there. This replaces the field's old

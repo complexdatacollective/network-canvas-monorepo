@@ -11,7 +11,6 @@ const Title = (_props: StageEditorSectionProps) => {
     <Section title="Page Heading">
       <ArchitectField
         label="Page heading"
-        labelHidden
         hint="Use the page heading to show a large title element on your information stage."
         name="title"
         component={InputField}

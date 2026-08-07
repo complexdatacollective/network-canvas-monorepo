@@ -123,7 +123,9 @@ const AssignAttributes = ({
         onChange={onChange}
         itemComponent={Attribute}
         itemTemplate={itemTemplate}
-        itemClasses="p-0! shadow-none"
+        // The row renders its own Surface, so ArrayField's wrapper stays bare
+        // rather than nesting two levels of padded, shadowed surface.
+        itemClasses="p-0! shadow-none bg-transparent"
         addButtonLabel="Add new variable to assign"
         emptyStateMessage="No additional variables assigned."
         immediateAdd

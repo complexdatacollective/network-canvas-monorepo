@@ -11,6 +11,7 @@ import { useSelector } from 'react-redux';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ArrayFieldItemProps } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import {
   crossClassPickIssue,
@@ -156,46 +157,43 @@ const Attribute = ({
   };
 
   return (
-    <div className="my-5 flex rounded p-5">
-      <div className="flex shrink-0 grow basis-auto flex-col">
-        <div className="shrink-0 grow basis-auto">
+    <Surface className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-8">
+      {/* Fields carry their own bottom margin, so this column just stacks. */}
+      <div>
+        <RowField
+          name={`${rowFieldName}.variable`}
+          label="Create or select a variable"
+          component={FrescoVariablePicker}
+          value={variable}
+          onChange={(value: unknown) =>
+            onUpdate({
+              variable: typeof value === 'string' ? value : null,
+            })
+          }
+          validation={{ required: true, crossClassPick: crossClassValidate }}
+          options={variableOptions}
+          onCreateOption={handleCreateOption}
+          entity={entity}
+          type={type}
+          disabled={disabled || readOnly}
+        />
+        {variable && (
           <RowField
-            name={`${rowFieldName}.variable`}
-            label="Create or select a variable"
-            component={FrescoVariablePicker}
-            value={variable}
+            name={`${rowFieldName}.value`}
+            label="Value to assign"
+            hint="Every node created on this prompt is given this value."
+            component={FrescoBooleanControl}
+            value={item.value}
             onChange={(value: unknown) =>
               onUpdate({
-                variable: typeof value === 'string' ? value : null,
+                value: typeof value === 'boolean' ? value : null,
               })
             }
-            validation={{ required: true, crossClassPick: crossClassValidate }}
-            options={variableOptions}
-            onCreateOption={handleCreateOption}
-            entity={entity}
-            type={type}
+            validation={{ required: true }}
+            options={BOOLEAN_OPTIONS}
+            noReset
             disabled={disabled || readOnly}
           />
-        </div>
-        {variable && (
-          <fieldset className="border-outline shrink-0 grow basis-auto rounded border-2 border-dashed p-5 [&>legend]:px-5">
-            <legend>Set value of variable to:</legend>
-            <RowField
-              name={`${rowFieldName}.value`}
-              label="Value"
-              component={FrescoBooleanControl}
-              value={item.value}
-              onChange={(value: unknown) =>
-                onUpdate({
-                  value: typeof value === 'boolean' ? value : null,
-                })
-              }
-              validation={{ required: true }}
-              options={BOOLEAN_OPTIONS}
-              noReset
-              disabled={disabled || readOnly}
-            />
-          </fieldset>
         )}
       </div>
       <IconButton
@@ -203,10 +201,9 @@ const Attribute = ({
         aria-label="Delete attribute"
         color="destructive"
         disabled={disabled || readOnly}
-        className="ml-5 self-center"
         onClick={onDelete}
       />
-    </div>
+    </Surface>
   );
 };
 

@@ -69,7 +69,7 @@ async function isRejected(
 describe('splitValidation — native mapping', () => {
   it('maps required onto fresco-ui required', () => {
     expect(splitValidation({ required: true }, 'f')).toEqual({
-      nativeProps: { required: 'Required' },
+      nativeProps: { required: 'This field is required.' },
     });
   });
 
@@ -95,7 +95,7 @@ describe('splitValidation — native mapping', () => {
   it('maps requiredAcceptsZero onto required, keeping zero a valid answer', async () => {
     expect(
       splitValidation({ requiredAcceptsZero: true }, 'f').nativeProps,
-    ).toEqual({ required: 'Required' });
+    ).toEqual({ required: 'This field is required.' });
 
     await expect(isRejected({ requiredAcceptsZero: true }, 0)).resolves.toBe(
       false,
@@ -129,7 +129,7 @@ describe('splitValidation — native mapping', () => {
   it('pairs minSelected with required, because fresco-ui minSelected ignores an empty selection', async () => {
     expect(splitValidation({ minSelected: 1 }, 'f').nativeProps).toEqual({
       minSelected: 1,
-      required: 'Required',
+      required: 'This field is required.',
     });
 
     // Architect's minSelected rejected an empty/absent selection; the pairing

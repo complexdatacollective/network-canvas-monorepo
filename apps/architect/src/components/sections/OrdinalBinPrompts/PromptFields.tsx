@@ -193,7 +193,6 @@ const PromptFields = ({
             <ArchitectArrayField
               name="variableOptions"
               label="Option values"
-              labelHidden
               hint={
                 <>
                   Create <strong>up to 5</strong> options for this variable.

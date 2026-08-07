@@ -95,7 +95,6 @@ const NewVariableFields = ({
         <ArchitectField
           name="name"
           label="Variable name"
-          labelHidden
           hint="The variable name is how you will reference the variable elsewhere, including in exported data."
           component={VariableNameField}
           placeholder="e.g. Nickname"
@@ -146,7 +145,6 @@ const NewVariableFields = ({
             <ArchitectArrayField
               name="options"
               label="Options"
-              labelHidden
               hint="Create the values this input control offers the participant."
               component={Options}
               initialValue={initialOptions}

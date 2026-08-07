@@ -117,7 +117,6 @@ const FieldFields = ({
         <ArchitectField
           name="prompt"
           label="Prompt text"
-          labelHidden
           hint="The question to display to the participant. Supports markdown formatting."
           component={RichText}
           initialValue={asString(item.prompt)}
@@ -157,7 +156,6 @@ const FieldFields = ({
         <ArchitectField
           name="component"
           label="Input control"
-          labelHidden
           hint={
             <>
               How the answer is collected. For detailed information about these
@@ -234,7 +232,6 @@ const FieldFields = ({
             <ArchitectArrayField
               name="options"
               label="Options"
-              labelHidden
               hint="The input type you selected indicates that this is a categorical or ordinal variable. Create a minimum of two possible values for the participant to choose between."
               component={Options}
               initialValue={asOptions(item.options)}

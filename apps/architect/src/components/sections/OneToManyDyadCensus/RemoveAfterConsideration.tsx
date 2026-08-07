@@ -16,7 +16,6 @@ const RemoveAfterConsideration = () => {
           component={FrescoBooleanField}
           initialValue={initialValue}
           label="Remove after consideration"
-          labelHidden
           hint={
             <Paragraph>
               This toggle determines if a node should continue to be shown in

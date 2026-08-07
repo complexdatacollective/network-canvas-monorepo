@@ -17,6 +17,31 @@ import type {
 enableMapSet();
 
 /**
+ * How deeply a field name addresses the form's value tree — `a` is 1,
+ * `a.b` is 2, `a[0].b` is 3. Used to order `getFormValues`'s writes so a
+ * container path is always written before the leaves inside it.
+ */
+const pathSpecificity = (fieldName: string): number =>
+  fieldName
+    .split('.')
+    .reduce((total, part) => total + (/\[\d+\]$/.test(part) ? 2 : 1), 0);
+
+/**
+ * Every path a field name sits inside — `a[0].b` yields `a`, `a[0]`, `a[0].b`
+ * minus itself. Used to spot a field whose value another registered field
+ * would overwrite.
+ */
+const enclosingPaths = (fieldName: string): string[] => {
+  const paths: string[] = [];
+  for (let index = 1; index < fieldName.length; index += 1) {
+    if (fieldName[index] === '.' || fieldName[index] === '[') {
+      paths.push(fieldName.slice(0, index));
+    }
+  }
+  return paths;
+};
+
+/**
  * Helper to calculate form validity based on both field states and form-level errors.
  * A form is valid only if all fields are valid AND there are no form-level errors.
  */
@@ -369,13 +394,32 @@ export const createFormStore = (): FormStoreApi => {
       getFormValues: () => {
         const state = get();
         const values = {};
+        const hasField = (name: string) => state.fields.has(name);
         // Only registered fields contribute: an unmounted field's value is
         // not part of the form's output. Dormant storage exists solely to
         // restore a value when the field remounts and to back the
         // getFieldState fallback for cross-step reads.
+        //
+        // Registration order, which is also the output's key order.
         state.fields.forEach((fieldState, fieldName) => {
           setValue(values, fieldName, fieldState.value);
         });
+
+        // A form may register a field at a CONTAINER path (`mapOptions`)
+        // *and* fields at leaves inside it (`mapOptions.style`). `setValue`
+        // replaces whatever sits at a path, so the pass above lets whichever
+        // of the two happened to mount last silently erase the other. Replay
+        // just those nested fields, shallowest first, so the more specific
+        // field always wins — and only they, so a form without overlapping
+        // paths keeps byte-identical output.
+        const nested = Array.from(state.fields.keys())
+          .filter((name) => enclosingPaths(name).some(hasField))
+          .toSorted((a, b) => pathSpecificity(a) - pathSpecificity(b));
+
+        for (const name of nested) {
+          setValue(values, name, state.fields.get(name)!.value);
+        }
+
         return values as Record<string, FieldValue>;
       },
 

@@ -82,10 +82,9 @@ const NetworkFilter = ({
       <ArchitectField
         name={name}
         label="Filter"
-        labelHidden
         hint={
           <Paragraph>
-            You can optionally filter which nodes are shown on in this panel.
+            You can optionally filter which nodes are shown in this panel.
           </Paragraph>
         }
         component={FilterField}

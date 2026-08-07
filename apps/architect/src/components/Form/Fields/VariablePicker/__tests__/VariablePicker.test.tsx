@@ -150,7 +150,7 @@ describe('VariablePicker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByTestId('variable-field-error')).toHaveTextContent(
-      'Required',
+      'This field is required.',
     );
   });
 

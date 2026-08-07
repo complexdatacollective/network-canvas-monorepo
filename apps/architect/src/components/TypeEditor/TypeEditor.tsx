@@ -85,7 +85,6 @@ const TypeEditor = ({
       <Section title={`${capitalize(entity)} Type`} layout="vertical">
         <ArchitectField
           label={`${capitalize(entity)} type name`}
-          labelHidden
           hint={
             <>
               This name identifies the {entity} type in the codebook and in your
@@ -112,7 +111,6 @@ const TypeEditor = ({
           component={ColorPicker}
           name="color"
           label="Color"
-          labelHidden
           hint={`Choose a color for this ${entity} type.`}
           initialValue={initialValues.color}
           validation={{ required: true }}
@@ -125,7 +123,6 @@ const TypeEditor = ({
           <ArchitectField
             component={ShapePickerControl}
             label="Shape"
-            labelHidden
             hint="Choose a default shape for this node type."
             name="shape.default"
             initialValue={initialValues.shape?.default ?? DEFAULT_NODE_SHAPE}
@@ -149,7 +146,6 @@ const TypeEditor = ({
           <ArchitectField
             component={IconPicker}
             label="Icon"
-            labelHidden
             hint={`Choose an icon to display on interfaces that create this ${entity}.`}
             name="icon"
             initialValue={initialValues.icon ?? DEFAULT_NODE_ICON}

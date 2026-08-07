@@ -102,7 +102,6 @@ const Filter = () => {
       <ArchitectField
         name="filter"
         label="Filter"
-        labelHidden
         hint={
           <Paragraph>
             You can optionally filter which nodes or edges are shown on this

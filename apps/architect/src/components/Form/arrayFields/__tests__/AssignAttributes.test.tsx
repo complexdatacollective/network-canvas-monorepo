@@ -132,12 +132,12 @@ describe('AssignAttributes', () => {
       screen.getByRole('button', { name: 'Add new variable to assign' }),
     );
     await waitFor(() => expect(getAttributes()).toHaveLength(1));
-    expect(screen.queryByText('Set value of variable to:')).toBeNull();
+    expect(screen.queryByLabelText('Value to assign')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select variable' }));
 
     await waitFor(() =>
-      expect(screen.getByText('Set value of variable to:')).toBeInTheDocument(),
+      expect(screen.getByLabelText('Value to assign')).toBeInTheDocument(),
     );
     expect(getAttributes()).toEqual([{ variable: 'picked' }]);
   });

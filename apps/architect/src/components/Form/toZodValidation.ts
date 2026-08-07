@@ -78,6 +78,12 @@ const NMTOKEN_PATTERN = '^[a-zA-Z0-9._\\-:]+$';
 const NMTOKEN_HINT = 'Use only letters, numbers and the symbols ._-:';
 
 /**
+ * fresco-ui's built-in required copy addresses a participant mid-interview;
+ * Architect is researcher-facing, so it states the rule instead.
+ */
+const REQUIRED_MESSAGE = 'This field is required.';
+
+/**
  * Maps one Architect rule onto fresco-ui `Field` props, or returns `null` to
  * say "no honest native equivalent — route this rule through `custom`".
  *
@@ -131,10 +137,9 @@ const requiredLike =
     // would validate the same way but still mark the control aria-required.
     if (!enabled) return {};
 
-    // Default message stays 'Required': fresco-ui's built-in copy ("You must
-    // answer this question before continuing.") is participant-voice, and
-    // Architect is a researcher-facing tool. Author-supplied messages win.
-    return { required: resolvedMessage ?? 'Required' };
+    // fresco-ui's built-in copy is participant-voice; Architect is
+    // researcher-facing. Author-supplied messages win.
+    return { required: resolvedMessage ?? REQUIRED_MESSAGE };
   };
 
 /**
@@ -192,7 +197,7 @@ const nativeMappers: Record<string, NativeMapper> = {
 
     const props: NativeValidationProps = { minSelected: value };
     if (!REQUIRED_RULE_NAMES.some((rule) => rule in config)) {
-      props.required = 'Required';
+      props.required = REQUIRED_MESSAGE;
     }
     return props;
   },

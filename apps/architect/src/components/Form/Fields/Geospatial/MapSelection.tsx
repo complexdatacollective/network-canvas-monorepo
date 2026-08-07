@@ -33,7 +33,17 @@ export const requiredMapView = (value: unknown) => {
     : 'Required';
 };
 
-type MapSelectionProps = CreateFormFieldProps<MapValue, 'fieldset'>;
+type MapSelectionProps = CreateFormFieldProps<MapValue, 'fieldset'> & {
+  /**
+   * The LIVE values of the sibling `mapOptions.*` fields that the map preview
+   * needs but this field does not own. Under redux-form every `mapOptions.*`
+   * control wrote into one shared nested value tree, so this field's own
+   * `value` always carried its siblings' latest edits; the form store keys
+   * fields independently, so they have to be handed over explicitly or the
+   * preview opens with no API key and no style.
+   */
+  previewOptions?: Pick<MapValue, 'tokenAssetId' | 'style'>;
+};
 
 /**
  * Opens the map editor to set a stage's initial map view. Labelling belongs to
@@ -43,6 +53,7 @@ const MapSelection = ({
   id,
   name,
   value = {},
+  previewOptions,
   onChange,
   onBlur,
   onFocus,
@@ -84,8 +95,24 @@ const MapSelection = ({
       {showMap &&
         createPortal(
           <MapView
-            mapOptions={value}
-            onChange={(nextValue) => onChange?.(nextValue)}
+            mapOptions={{
+              ...value,
+              // A stage being re-edited seeds `value` from its committed
+              // `mapOptions`, so these two keys can be present but stale —
+              // the live sibling field wins whenever it has an answer.
+              tokenAssetId: previewOptions?.tokenAssetId ?? value.tokenAssetId,
+              style: previewOptions?.style ?? value.style,
+            }}
+            // Only the map view itself belongs to this field. Writing the
+            // preview's copy of the sibling values back would put a second
+            // writer on paths the sibling fields own.
+            onChange={(nextValue) =>
+              onChange?.({
+                ...value,
+                center: nextValue.center,
+                initialZoom: nextValue.initialZoom,
+              })
+            }
             close={() => setShowMap(false)}
           />,
           document.body,

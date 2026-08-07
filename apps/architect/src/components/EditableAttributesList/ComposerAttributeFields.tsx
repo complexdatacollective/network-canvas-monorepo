@@ -139,7 +139,6 @@ const ComposerAttributeFields = ({
         <ArchitectField
           name="variable"
           label="Variable"
-          labelHidden
           hint="Create or select a variable to collect this attribute. If you select an existing variable, any changes you make to the input control or validation options will also change other uses of this variable."
           component={VariablePickerControl}
           initialValue={asString(item.variable)}
@@ -160,7 +159,6 @@ const ComposerAttributeFields = ({
         <ArchitectField
           name="label"
           label="Label"
-          labelHidden
           hint="Optionally caption this attribute in the side panel. When left empty, the variable's name is shown instead."
           component={InputField}
           initialValue={asString(item.label)}
@@ -178,7 +176,6 @@ const ComposerAttributeFields = ({
         <ArchitectField
           name="component"
           label="Input control"
-          labelHidden
           hint={
             <>
               How the answer is collected. For detailed information about these
@@ -255,7 +252,6 @@ const ComposerAttributeFields = ({
             <ArchitectArrayField
               name="options"
               label="Options"
-              labelHidden
               hint="The input type you selected indicates that this is a categorical or ordinal variable. Create a minimum of two possible values for the participant to choose between."
               component={Options}
               initialValue={asOptions(item.options)}
