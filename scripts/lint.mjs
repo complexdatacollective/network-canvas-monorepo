@@ -146,9 +146,13 @@ export function findNulBytes(paths, readFile = (path) => readFileSync(path)) {
       // A path that cannot be read is the concern of the tools that follow.
       continue;
     }
-    // The same window Git uses to decide: a NUL past it does not make the
-    // file binary, so it is not this check's business either.
-    const index = contents.subarray(0, GIT_BINARY_SNIFF_BYTES).indexOf(0);
+    // The whole file, because the tools disagree about where to stop looking
+    // and the widest one decides what this check has to cover. Git sniffs only
+    // the first 8000 bytes, so a NUL past that keeps its diff; ripgrep finds
+    // one anywhere and then reports "binary file matches" for the whole file,
+    // suppressing every match in it — including matches that precede the byte.
+    // Scanning a prefix would license exactly the file that greps to nothing.
+    const index = contents.indexOf(0);
     if (index === -1) continue;
     offenders.push({
       path,
@@ -201,9 +205,6 @@ const BINARY_ASSET_EXTENSIONS = new Set([
   '.woff2',
   '.zip',
 ]);
-
-/** Git inspects this many leading bytes before calling a file binary. */
-const GIT_BINARY_SNIFF_BYTES = 8000;
 
 export function trackedTextFiles(cwd = process.cwd()) {
   const result = spawnSync('git', ['ls-files', '-z'], {

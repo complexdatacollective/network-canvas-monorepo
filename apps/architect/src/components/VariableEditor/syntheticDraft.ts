@@ -261,10 +261,14 @@ export function assembleSynthetic(
   const missingProbability = ctx.required
     ? undefined
     : toNumber(get('missingProbability'));
-  const missing =
-    missingProbability !== undefined && missingProbability > 0
-      ? { missingProbability }
-      : {};
+  // Zero is the documented default and stores nothing. Everything else is
+  // carried into the candidate — including a value out of range, which the
+  // schema is what rejects. The control's native `min`/`max` do not decide
+  // this: the form submits with `noValidate`, so dropping an illegal number
+  // here would save silently and show the default again on reopening.
+  const carriesMissing =
+    missingProbability !== undefined && missingProbability !== 0;
+  const missing = carriesMissing ? { missingProbability } : {};
 
   switch (ctx.variable.type) {
     case 'layout':
@@ -275,9 +279,7 @@ export function assembleSynthetic(
     case 'scalar': {
       const distribution = toText(get('distribution'));
       if (!distribution) {
-        return missingProbability !== undefined && missingProbability > 0
-          ? { missingProbability }
-          : undefined;
+        return carriesMissing ? { missingProbability } : undefined;
       }
       const mean = toNumber(get('mean'));
       const sd = toNumber(get('sd'));
@@ -419,13 +421,40 @@ const issueKey = (located: LocatedIssue): string =>
   `${located.path.map(String).join('.')}|${located.issue.message}`;
 
 /**
- * The issues of a failed parse, taken from the union members that came
- * closest. `VariableSchema` is a plain union, so one failure nests EVERY
+ * Whether a branch rejected the value's discriminant — the literal one level
+ * below the union itself, `type` for a variable and `distribution` for a
+ * distribution descriptor. Such a branch describes some other variable type,
+ * and every one of its issues is about not being that type.
+ */
+const rejectsDiscriminant = (
+  branch: readonly LocatedIssue[],
+  depth: number,
+): boolean =>
+  branch.some(
+    (located) =>
+      located.issue.code === 'invalid_value' &&
+      located.path.length === depth + 1,
+  );
+
+/**
+ * The issues of a failed parse, taken from the union members that describe
+ * this value. `VariableSchema` is a plain union, so one failure nests EVERY
  * member's issues — including the type mismatches of the ten variable types
- * this variable is not. The members that fit report the fewest issues, which
- * is the same closeness Zod's own error message reads by; two members can be
- * equally close (a componentless boolean matches both of its own), and they
- * then repeat each other, so identical issues collapse.
+ * this variable is not.
+ *
+ * Members are chosen by the discriminant, not by issue count. Counting looks
+ * like the closeness Zod's own message reads by, but it inverts under load: a
+ * member for another type bottoms out at two issues (the wrong `type`, plus
+ * one `unrecognized_keys` swallowing every property it does not know), while
+ * the member that actually fits reports one issue per real mistake. Past two
+ * mistakes the fitting member is the furthest, its issues are dropped, and a
+ * draft the schema rejects is reported as valid. Discarding the members that
+ * rejected the discriminant removes exactly the members that cannot be this
+ * value. Where that leaves nothing — no member accepted the discriminant —
+ * every member is considered, since a bad guess beats no error at all.
+ *
+ * Two members can still both fit (a componentless boolean matches both of its
+ * own); they then repeat each other, so identical issues collapse.
  */
 const closestIssues = (
   issues: readonly SchemaIssue[],
@@ -439,9 +468,13 @@ const closestIssues = (
       return [{ path, issue }];
     }
     const branches = issue.errors.map((branch) => closestIssues(branch, path));
-    const closest = Math.min(...branches.map((branch) => branch.length));
+    const fitting = branches.filter(
+      (branch) => !rejectsDiscriminant(branch, path.length),
+    );
+    const considered = fitting.length > 0 ? fitting : branches;
+    const closest = Math.min(...considered.map((branch) => branch.length));
     const seen = new Set<string>();
-    return branches
+    return considered
       .filter((branch) => branch.length === closest)
       .flat()
       .filter((located) => {

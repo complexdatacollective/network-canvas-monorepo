@@ -28,7 +28,9 @@ import { buildCurrentNetwork } from '../filtering';
 import { markStageInProgress } from '../inProgress';
 import {
   equalityGroups,
+  groupMissingProbability,
   missingProbabilities,
+  requiredVariables,
   type NetworkPlan,
   shuffled,
   topologyTarget,
@@ -224,6 +226,7 @@ export function materialiseSession(params: {
    * the same registry the plan drew against.
    */
   const missingByVariable = missingProbabilities(ctx.codebook);
+  const requiredByVariable = requiredVariables(ctx.codebook);
   const groupsByScope = new Map<string, string[][]>();
   const groupsFor = (ref: EntityScopeRef): string[][] => {
     const key = scopeKey(ref);
@@ -262,13 +265,15 @@ export function materialiseSession(params: {
   ): void => {
     const members = groupsFor(ref).find((group) => group.includes(variableId));
     if (members === undefined) return;
-    const probability = Math.max(
-      ...members.map((id) => missingByVariable.get(id) ?? 0),
+    const probability = groupMissingProbability(
+      members,
+      missingByVariable,
+      requiredByVariable,
     );
     if (probability <= 0) return;
 
-    const groupKey = members.toSorted().join(' ');
-    const decisionKey = `${uid} ${groupKey}`;
+    const groupKey = members.toSorted().join('\u0000');
+    const decisionKey = `${uid}\u0000${groupKey}`;
     let decided = unplannedMissing.get(decisionKey);
     if (decided === undefined) {
       decided = source

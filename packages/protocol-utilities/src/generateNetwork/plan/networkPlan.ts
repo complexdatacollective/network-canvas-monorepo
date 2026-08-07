@@ -156,6 +156,49 @@ export function missingProbabilities(
   return probabilities;
 }
 
+/** Variable ids the codebook marks required, resolved once per run. */
+export function requiredVariables(codebook: StructuralCodebook): Set<string> {
+  const required = new Set<string>();
+  const collect = (variables: VariablesRecord) => {
+    for (const [id, variable] of Object.entries(variables)) {
+      // Not every branch of the variable union carries `validation` — a layout
+      // or location variable has none to declare.
+      if ('validation' in variable && variable.validation?.required === true) {
+        required.add(id);
+      }
+    }
+  };
+  for (const definition of Object.values(codebook.node ?? {})) {
+    collect(variablesOf(definition));
+  }
+  for (const definition of Object.values(codebook.edge ?? {})) {
+    collect(variablesOf(definition));
+  }
+  collect(variablesOf(codebook.ego));
+  return required;
+}
+
+/**
+ * The chance a `sameAs` group goes unanswered: the largest probability any
+ * member declares, because a variable cannot be answered while the value it is
+ * declared equal to is not.
+ *
+ * A required member takes the whole group to zero. `resolveVariableSynthetic`
+ * already refuses a probability on a required variable, and the schema rejects
+ * one, but both judge a variable alone — neither sees that an optional variable
+ * is tied to a required one. Left unguarded the maximum would carry the
+ * optional member's probability onto its required sibling and empty a field
+ * the runtime's own validator insists on.
+ */
+export function groupMissingProbability(
+  members: readonly string[],
+  probabilities: ReadonlyMap<string, number>,
+  required: ReadonlySet<string>,
+): number {
+  if (members.some((id) => required.has(id))) return 0;
+  return Math.max(...members.map((id) => probabilities.get(id) ?? 0));
+}
+
 /**
  * The variable groups a missingness decision is taken over: the `sameAs`
  * equality classes, resolved exactly as the draw itself resolves them.
@@ -180,13 +223,16 @@ function applyMissingness(
   attributes: Record<string, VariableValue>,
   fixedKeys: ReadonlySet<string>,
   probabilities: Map<string, number>,
+  required: ReadonlySet<string>,
   groups: readonly string[][],
   source: RandomSource,
 ): Set<string> {
   const missing = new Set<string>();
   for (const members of groups) {
-    const probability = Math.max(
-      ...members.map((id) => probabilities.get(id) ?? 0),
+    const probability = groupMissingProbability(
+      members,
+      probabilities,
+      required,
     );
     if (probability <= 0) continue;
     // A value the creating interaction settled stands: missingness describes a
@@ -462,6 +508,7 @@ export function planNetwork(
 ): NetworkPlan {
   const source = ctx.valueGen.randomSource;
   const missing = missingProbabilities(ctx.codebook);
+  const required = requiredVariables(ctx.codebook);
 
   // --- Ego -----------------------------------------------------------------
   const egoUid = deterministicUuid(source.stream('id', 'ego'));
@@ -472,6 +519,7 @@ export function planNetwork(
     egoAttributes,
     new Set(),
     missing,
+    required,
     equalityGroups(constraintsFor(ctx, { entity: 'ego' })),
     source,
   );
@@ -648,6 +696,7 @@ export function planNetwork(
           attributes,
           new Set(Object.keys(fixedFinal)),
           missing,
+          required,
           missingGroups,
           source,
         );
@@ -727,6 +776,7 @@ export function planNetwork(
         attributes,
         new Set(Object.keys(fixedFinal)),
         missing,
+        required,
         missingGroups,
         source,
       );

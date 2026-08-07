@@ -178,6 +178,19 @@ test('a NUL byte in a source file is reported with its line', () => {
   ]);
 });
 
+test('a NUL byte past the window Git sniffs is still reported', () => {
+  const nul = String.fromCharCode(0);
+  // Past 8000 bytes Git keeps diffing the file as text, so the byte is easy to
+  // believe harmless. Ripgrep disagrees: it finds a NUL anywhere and then
+  // suppresses every match in the file, so a deep one hides the most code.
+  const padding = 'const filler = 1;\n'.repeat(600);
+  const read = () => Buffer.from(`${padding}const sep = '${nul}';\n`, 'utf8');
+
+  const [offender] = findNulBytes(['deep.ts'], read);
+  assert.equal(offender?.path, 'deep.ts');
+  assert.equal(offender?.line, 601);
+});
+
 test('an unreadable path is left to the tools that follow', () => {
   const read = () => {
     throw new Error('ENOENT');
@@ -234,11 +247,16 @@ test('source the formatter does not handle is scanned too', () => {
   assert.ok(tracked.some((path) => path.endsWith('.sh')));
 });
 
-test('a NUL past the window Git inspects is not the scan’s business', () => {
-  // Git decides binary-ness from the leading bytes only, so a NUL beyond them
-  // costs no diff and reporting it would be a false alarm.
+test('the scan does not stop at the window Git inspects', () => {
+  // Git decides binary-ness from the leading bytes only, so a deep NUL keeps
+  // its diff — but Git is not the only reader. Ripgrep finds one at any offset
+  // and answers "binary file matches" for the file as a whole, so the code
+  // around it stops being greppable. Bounding the scan to Git's window would
+  // wave through precisely that file.
   const read = () =>
     Buffer.concat([Buffer.alloc(9000, 0x61), Buffer.from([0])]);
 
-  assert.deepEqual(findNulBytes(['late.ts'], read), []);
+  assert.deepEqual(findNulBytes(['late.ts'], read), [
+    { path: 'late.ts', line: 1 },
+  ]);
 });

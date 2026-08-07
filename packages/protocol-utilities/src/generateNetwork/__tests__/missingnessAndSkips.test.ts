@@ -16,7 +16,10 @@ type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
  * holding one of them null beside a populated sibling is one no participant
  * could have submitted.
  */
-function tiedCodebook(missingProbability: number): Codebook {
+function tiedCodebook(
+  missingProbability: number,
+  echoValidation: Record<string, unknown> = {},
+): Codebook {
   return {
     node: {
       person: {
@@ -32,7 +35,7 @@ function tiedCodebook(missingProbability: number): Codebook {
           echo: {
             name: 'Echo',
             type: 'boolean',
-            validation: { sameAs: 'answer' },
+            validation: { sameAs: 'answer', ...echoValidation },
           },
         },
       },
@@ -85,6 +88,28 @@ describe('missingness across a sameAs group', () => {
         const attributes = node[entityAttributesProperty];
         expect(attributes.answer, `seed ${seed}`).not.toBeNull();
         expect(attributes.echo, `seed ${seed}`).toEqual(attributes.answer);
+      }
+    }
+  });
+
+  it('answers the group when a member is required', () => {
+    // The schema rejects missingness only on the variable that declares it, so
+    // an optional variable may carry a probability while the variable it is
+    // tied to is required. Nulling the group would then emit a session whose
+    // required field is empty — something the runtime's own validator refuses,
+    // and so something no participant could have submitted either.
+    for (let seed = 1; seed <= 20; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: tiedCodebook(1, { required: true }),
+        stages: [collectingGenerator('answer', 'echo')],
+      });
+
+      expect(network.nodes.length, `seed ${seed}`).toBeGreaterThan(0);
+      for (const node of network.nodes) {
+        const attributes = node[entityAttributesProperty];
+        expect(attributes.echo, `seed ${seed}`).not.toBeNull();
+        expect(attributes.answer, `seed ${seed}`).toEqual(attributes.echo);
       }
     }
   });

@@ -39,6 +39,14 @@ const numberVariable = {
   component: 'Number',
 } as const satisfies Variable;
 
+// Deliberately without a component: the schema leaves it optional, and such a
+// variable matches both datetime members, so its parse fails as a union rather
+// than resolving to one branch.
+const datetimeVariable = {
+  name: 'Met_On',
+  type: 'datetime',
+} as const satisfies Variable;
+
 const categoricalVariable = {
   name: 'Closeness',
   type: 'categorical',
@@ -96,6 +104,30 @@ describe('validateAssembledVariable()', () => {
     });
     expect(errors?.fieldErrors[syntheticField('sd')]).toEqual([
       'Enter 0 or more',
+    ]);
+  });
+
+  it('rejects a draft carrying more mistakes than a foreign branch reports', () => {
+    // A variable with no component matches two members of its own type, so the
+    // parse comes back as a union error listing all eleven. A member for
+    // another type stops at two issues — the wrong `type`, and one
+    // `unrecognized_keys` covering every property it has never heard of —
+    // however wrong the draft is, while the members that fit report one issue
+    // per real mistake. At three mistakes the fitting members are no longer
+    // the fewest, and picking by count would drop precisely the issues worth
+    // showing and call the draft valid.
+    const errors = validateAssembledVariable(contextFor(datetimeVariable), {
+      distribution: 'normal',
+      mean: 'not-a-date',
+      sdDays: -5,
+      missingProbability: 2,
+    } as never);
+
+    expect(errors?.fieldErrors[syntheticField('sdDays')]).toEqual([
+      'Enter 0 or more',
+    ]);
+    expect(errors?.fieldErrors[syntheticField('missingProbability')]).toEqual([
+      'Enter 1 or less',
     ]);
   });
 
@@ -217,6 +249,40 @@ describe('validateAssembledVariable()', () => {
     expect(
       validateAssembledVariable(context, { missingProbability: 0.1 }),
     ).toBeUndefined();
+  });
+});
+
+describe('a missing probability outside its range', () => {
+  const numberFields = {
+    [syntheticField('distribution')]: 'uniform',
+    [syntheticField('min')]: 0,
+    [syntheticField('max')]: 10,
+  };
+
+  it('reaches the assembled descriptor so the schema can refuse it', () => {
+    // The control carries a native `min`, but the form submits with
+    // `noValidate`, so nothing has rejected this by the time it arrives.
+    // Dropping it here would save a descriptor the author never asked for and
+    // show the default on reopening, with nothing said about the input.
+    const assembled = assembleSynthetic(contextFor(numberVariable), {
+      ...numberFields,
+      [syntheticField('missingProbability')]: -1,
+    });
+
+    expect(assembled).toMatchObject({ missingProbability: -1 });
+    expect(
+      validateAssembledVariable(contextFor(numberVariable), assembled)
+        ?.fieldErrors[syntheticField('missingProbability')],
+    ).toEqual(['Enter 0 or more']);
+  });
+
+  it('still stores nothing for the default of zero', () => {
+    expect(
+      assembleSynthetic(contextFor(numberVariable), {
+        ...numberFields,
+        [syntheticField('missingProbability')]: 0,
+      }),
+    ).not.toHaveProperty('missingProbability');
   });
 });
 
