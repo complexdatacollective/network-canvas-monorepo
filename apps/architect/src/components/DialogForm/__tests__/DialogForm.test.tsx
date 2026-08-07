@@ -67,7 +67,14 @@ describe('DialogForm', () => {
     // The footer (and its SubmitButton) is rendered outside the <form>
     // element — association happens purely via the native `form=` attribute.
     expect(submitButton.closest('form')).toBeNull();
-    expect(submitButton).toHaveAttribute('form', 'assoc-form');
+    // The caller's `formId` is only the stem of the real DOM id (a per-mount
+    // suffix keeps it unique), so assert the association resolves to THIS
+    // dialog's form rather than pinning the literal id.
+    const associatedId = submitButton.getAttribute('form');
+    expect(associatedId).toMatch(/^assoc-form-/);
+    expect(document.getElementById(associatedId!)).toBe(
+      document.querySelector('form'),
+    );
 
     fireEvent.click(submitButton);
 
@@ -76,6 +83,75 @@ describe('DialogForm', () => {
         expect.objectContaining({ label: 'Alice' }),
       );
     });
+  });
+
+  it('gives two dialogs sharing a formId distinct form ids, so each Submit drives its own form', async () => {
+    // A dialog stays mounted while it animates closed, so a second dialog of
+    // the same kind opened in that window briefly coexists with the first.
+    // `form=` resolves by id and takes the first match in document order — if
+    // both forms carried the caller's `formId`, the new dialog's Submit would
+    // silently drive the old, closing form and do nothing at all.
+    const onSubmitClosing = vi.fn().mockResolvedValue({ success: true });
+    const onSubmitOpening = vi.fn().mockResolvedValue({ success: true });
+
+    render(
+      <>
+        <DialogForm
+          open
+          onClose={vi.fn()}
+          title="Closing"
+          formId="shared-form"
+          submitLabel="Save closing"
+          onSubmit={onSubmitClosing}
+        >
+          <Field
+            name="label"
+            label="Closing label"
+            component={InputField}
+            initialValue="old"
+          />
+        </DialogForm>
+        <DialogForm
+          open
+          onClose={vi.fn()}
+          title="Opening"
+          formId="shared-form"
+          submitLabel="Save opening"
+          onSubmit={onSubmitOpening}
+        >
+          <Field
+            name="label"
+            label="Opening label"
+            component={InputField}
+            initialValue="new"
+          />
+        </DialogForm>
+      </>,
+    );
+
+    const forms = document.querySelectorAll('form');
+    expect(forms).toHaveLength(2);
+    expect(forms[0]!.id).not.toBe(forms[1]!.id);
+
+    // Query the DOM rather than the accessibility tree: two simultaneously
+    // open modals leave the lower one aria-hidden, which is exactly the
+    // transient state under test.
+    const submitButtons =
+      document.querySelectorAll<HTMLButtonElement>('button[form]');
+    expect(submitButtons).toHaveLength(2);
+    // Each Submit points at its OWN dialog's form, not the first one in the
+    // document.
+    expect(submitButtons[0]!.getAttribute('form')).toBe(forms[0]!.id);
+    expect(submitButtons[1]!.getAttribute('form')).toBe(forms[1]!.id);
+
+    fireEvent.click(submitButtons[1]!);
+
+    await waitFor(() => {
+      expect(onSubmitOpening).toHaveBeenCalledWith(
+        expect.objectContaining({ label: 'new' }),
+      );
+    });
+    expect(onSubmitClosing).not.toHaveBeenCalled();
   });
 
   it('blocks submit on a form-level validate result, renders the field error, and invokes fresco-ui’s focusFirstError', async () => {

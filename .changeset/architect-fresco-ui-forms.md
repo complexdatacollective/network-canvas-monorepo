@@ -13,3 +13,6 @@ Fixes a number of editing bugs found along the way:
 - Card display options are no longer dropped from a saved stage when the roster they read from is slow to load or can no longer be parsed.
 - An option list edited inside a dialog no longer reverts to its previous value when the dialog is saved.
 - Undo and redo now cover edits made in sections that are currently collapsed.
+- Opening a second editor dialog immediately after saving one no longer leaves its save button inert. The closing dialog briefly remains on screen, and the new dialog's button could attach itself to the dialog on its way out, so pressing it did nothing at all.
+- A name generator's side panels are now saved with their identifiers intact. Previously a stage with a side panel could be written in a state the protocol validator rejects, reporting the protocol as misconfigured.
+- Returning to the start screen straight after an edit now offers to save that edit. Within a moment of typing, Architect could still regard the stage as unchanged and quietly discard the change.

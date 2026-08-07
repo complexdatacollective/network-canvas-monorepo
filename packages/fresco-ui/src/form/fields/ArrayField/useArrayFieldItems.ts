@@ -337,7 +337,16 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
   // Add a confirmed item directly without entering editing mode
   const addItem = useCallback(
     (item: T): void => {
-      const internalId = crypto.randomUUID();
+      // Honour the item's OWN id when `getId` can supply one, the same way the
+      // initial state and the external-value sync do. Minting an unrelated
+      // internal id here reads as the same row only until the id surfaces in
+      // `value` — at which point `getKnownInternalId` starts answering with the
+      // item's id, the row's React key changes, and it remounts. For a row
+      // whose children are form fields that is destructive: the replacement
+      // mounts before the outgoing row's exit animation finishes, so the
+      // outgoing row's unregister tears down the fields the new row has just
+      // registered under the same names.
+      const internalId = getInternalId(item);
       const newItem: WithItemProperties<T> = {
         ...item,
         _internalId: internalId,
@@ -352,7 +361,7 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
       replaceState({ ...currentState, items: newItems });
       notifyChange(newItems, { type: 'insert', index });
     },
-    [notifyChange, replaceState],
+    [getInternalId, notifyChange, replaceState],
   );
 
   // Start editing an existing item (sets editing ID, no draft flag)

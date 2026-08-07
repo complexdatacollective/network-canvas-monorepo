@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -21,11 +21,10 @@ export type DialogFormProps = {
   onClose: () => void;
   title?: React.ReactNode;
   /**
-   * DOM id for the underlying `<form>`. The footer's SubmitButton associates
-   * with it via the native `form=` attribute so it can live outside the form
-   * element, in the dialog footer. Callers pass stable ids (e.g.
-   * `'editable-list-form'`) — the same id is safe to reuse across every
-   * editor dialog of a kind, since only one such dialog is ever open at once.
+   * Stable, human-readable NAME for the underlying `<form>` (e.g.
+   * `'editable-list-form'`). It is only the stem of the element's DOM id — a
+   * per-instance suffix is appended (see `DialogFormBody`) — so callers may
+   * reuse one name across every editor dialog of a kind.
    */
   formId: string;
   /** Footer submit button label, e.g. 'Add' or 'Save'. */
@@ -59,6 +58,9 @@ export type DialogFormProps = {
   children?: React.ReactNode;
 };
 
+/** Distinguishes concurrently mounted forms — see `domFormId` below. */
+let nextDialogFormInstance = 0;
+
 const DialogFormBody = ({
   open,
   onClose,
@@ -74,6 +76,30 @@ const DialogFormBody = ({
   children,
 }: DialogFormProps) => {
   const { isSubmitting } = useFormMeta();
+
+  /**
+   * The footer's SubmitButton is not a descendant of the `<form>` — it sits in
+   * the dialog footer — so it associates with it through the native `form=`
+   * attribute, which resolves by DOM id. That resolution takes the FIRST
+   * element with the id in document order, so the id has to be unique in the
+   * document, and a caller-supplied `formId` is not: a dialog stays mounted
+   * while it animates closed (Base UI `keepMounted` under `AnimatePresence`),
+   * so a second dialog of the same kind opened during that window renders a
+   * second `<form>` with the same id. The new dialog's Submit then resolved to
+   * the OLD, closing form, and pressing it did nothing at all — no submit, no
+   * error, the dialog simply stayed open. Suffixing makes each mounted form
+   * addressable on its own; the caller's name is kept as the stem so the ids
+   * stay legible.
+   *
+   * The suffix is a per-MOUNT counter rather than `useId`, which answers by
+   * tree position: a dialog that closes and reopens in the same slot remounts
+   * there and would be handed the same id again, recreating the collision for
+   * exactly the overlap this guards against.
+   */
+  const [domFormId] = useState(() => {
+    nextDialogFormInstance += 1;
+    return `${formId}-${nextDialogFormInstance}`;
+  });
 
   const handleClose = useCallback(() => {
     if (!isSubmitting) onClose();
@@ -97,12 +123,12 @@ const DialogFormBody = ({
           <Button color="default" onClick={handleClose} disabled={isSubmitting}>
             {cancelLabel}
           </Button>
-          <SubmitButton form={formId}>{submitLabel}</SubmitButton>
+          <SubmitButton form={domFormId}>{submitLabel}</SubmitButton>
         </>
       }
     >
       <Layout>
-        <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
+        <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
           {children}
         </FormWithoutProvider>
       </Layout>

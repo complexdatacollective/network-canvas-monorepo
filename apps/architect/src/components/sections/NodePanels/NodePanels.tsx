@@ -6,6 +6,7 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
+import { HiddenFieldValue } from '~/components/sections/Form/withFieldsHandlers';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
   useSetStageValue,
@@ -134,6 +135,30 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
       startExpanded={!!panels}
       handleToggleChange={handleToggleChange}
     >
+      {/*
+        Each panel's id has no control of its own, but `getFormValues()`
+        reports REGISTERED fields only — `writePanelAt`'s `setFieldValue` parks
+        an unregistered name in dormant storage, where the save cannot see it.
+        Without these registrations a panel is saved with no `id` at all and
+        the protocol fails validation (`stages.N.panels.0.id`).
+
+        They belong HERE rather than in `NodePanel`, even though every other
+        panel field is registered there. `getId` reads the id back off the
+        assembled value, so an id that comes and goes with the row would flip
+        `ArrayField`'s internal id between the panel's own uuid and a minted
+        one — remounting the row, unregistering the id with it, and starting
+        the same cycle again. This component never remounts, so the id stays
+        registered and the row's identity stays put.
+      */}
+      {(panels ?? EMPTY_PANELS).map((panel, index) => (
+        <HiddenFieldValue
+          // Panels are addressed by position (`writePanelAt`), so position is
+          // the identity here.
+          key={`panel-id-${index}`}
+          name={`panels[${index}].id`}
+          initialValue={typeof panel?.id === 'string' ? panel.id : undefined}
+        />
+      ))}
       <UnconnectedField
         name="panels"
         label="Side panel configuration"
