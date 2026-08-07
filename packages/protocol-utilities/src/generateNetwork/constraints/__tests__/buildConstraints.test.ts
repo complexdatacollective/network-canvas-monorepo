@@ -97,7 +97,11 @@ describe('buildVariableConstraints', () => {
       TODAY,
     );
 
-    expect(result.dateWindow).toEqual({ resolution: 'full', max: TODAY });
+    expect(result.dateWindow).toEqual({
+      resolution: 'full',
+      max: TODAY,
+      maxDerived: true,
+    });
   });
 
   // DatePicker's field offers no date after today when the protocol declares no
@@ -142,6 +146,7 @@ describe('buildVariableConstraints', () => {
       resolution: 'year',
       min: '2030',
       max: '2136',
+      maxDerived: true,
     });
   });
 
@@ -149,7 +154,12 @@ describe('buildVariableConstraints', () => {
     {
       type: 'year',
       parameters: {},
-      expected: { resolution: 'year', min: '1920', max: '2026' },
+      expected: {
+        resolution: 'year',
+        min: '1920',
+        max: '2026',
+        maxDerived: true,
+      },
     },
     {
       type: 'year',
@@ -164,7 +174,12 @@ describe('buildVariableConstraints', () => {
     {
       type: 'month',
       parameters: { min: '2030' },
-      expected: { resolution: 'month', min: '2030-01', max: '2136-12' },
+      expected: {
+        resolution: 'month',
+        min: '2030-01',
+        max: '2136-12',
+        maxDerived: true,
+      },
     },
   ])(
     'matches the today-dependent $type dropdown window for $parameters',
@@ -345,6 +360,7 @@ describe('buildVariableConstraints', () => {
       resolution: 'full',
       min: '2030-01-01',
       max: '2030-01-01',
+      maxDerived: true,
     });
   });
 

@@ -244,6 +244,19 @@ const rejectDisjointNumberSynthetic = (
     }
     return;
   }
+  // A lognormal draws from a strictly positive support, so it is bounded below
+  // whether or not the descriptor authors a minimum. Comparing only an
+  // authored `min` let a nonpositive ceiling through, and generation then
+  // truncated every draw onto that ceiling — the authored distribution
+  // discarded in silence rather than refused here.
+  if (synthetic.distribution === 'lognormal' && upper <= 0) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message:
+        'A lognormal draws only positive values, which the validation maxValue excludes',
+      path: ['synthetic', 'distribution'],
+    });
+  }
   if (synthetic.min !== undefined && synthetic.min > upper) {
     ctx.addIssue({
       code: 'custom' as const,

@@ -555,6 +555,14 @@ export function planNetwork(
     // leaves the stage fabricating as usual. A name generator's panel is not
     // a ceiling — it can always add someone the panel does not list — so only
     // a roster interface's pool binds.
+    //
+    // Rows are taken without replacement across the whole run, so a row an
+    // earlier roster will claim is not capacity a later one has. Counting each
+    // pool whole credited two rosters over one pool with twice its people; the
+    // share the second could then not fill was simply dropped, and the
+    // population came up short by exactly the overlap. Each pool is therefore
+    // counted in the rows still unspoken for when its turn arrives.
+    const claimedRosterUids = new Set<string>(ctx.usedRosterUids);
     const capacities = creations.map((creation) => {
       const capacity = { ...creation.capacity };
       if (
@@ -563,11 +571,24 @@ export function planNetwork(
       ) {
         const pool = ctx.externalData?.[creation.rosterStageId];
         if (pool !== undefined) {
+          const unclaimed: string[] = [];
+          for (const row of pool) {
+            const uid = row[entityPrimaryKeyProperty];
+            if (claimedRosterUids.has(uid)) continue;
+            if (unclaimed.includes(uid)) continue;
+            unclaimed.push(uid);
+          }
           capacity.max =
             capacity.max === null
-              ? pool.length
-              : Math.min(capacity.max, pool.length);
+              ? unclaimed.length
+              : Math.min(capacity.max, unclaimed.length);
           capacity.min = Math.min(capacity.min, capacity.max);
+          // Only the rows this stage can actually take are spoken for. Claiming
+          // the whole pool would starve a later stage over the same roster of
+          // people the earlier one was never going to reach.
+          for (const uid of unclaimed.slice(0, capacity.max)) {
+            claimedRosterUids.add(uid);
+          }
         }
       }
       return capacity;

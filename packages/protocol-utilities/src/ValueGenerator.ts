@@ -6,6 +6,7 @@ import type { VariableValue } from '@codaco/shared-consts';
 import {
   addSteps,
   type DateResolution,
+  offsetWithinOfferedDates,
   openDateFloor,
   stepsBetween,
   todayYmd,
@@ -585,7 +586,14 @@ export class ValueGenerator {
             : ({ distribution: 'uniform' } as const);
 
         const declaredMin = window.min;
-        const declaredMax = window.max;
+        // A full-resolution picker validates nothing above the ceiling it
+        // offers, so a ceiling that is only today standing in for an absent
+        // bound is a stand-in exactly as the floor beneath it is, and a
+        // descriptor may replace it. A coarse picker is a closed dropdown
+        // whose ceiling the submission does check, so that one stays a rule.
+        const ceilingIsStandIn =
+          window.maxDerived === true && window.resolution === 'full';
+        const declaredMax = ceilingIsStandIn ? undefined : window.max;
         const descriptorMin = 'min' in descriptor ? descriptor.min : undefined;
         const descriptorMax = 'max' in descriptor ? descriptor.max : undefined;
 
@@ -625,8 +633,17 @@ export class ValueGenerator {
         // from unvalidated input; the whole descriptor window is dropped and
         // the field's own is drawn from.
         if (min > max) {
-          min = fallbackMin;
-          max = fallbackMax;
+          if (ceilingIsStandIn && descriptorMin !== undefined) {
+            // The floor is declared and the ceiling is not, so the ceiling is
+            // what moves. Cutting an open-ended window off at today says
+            // nothing about a descriptor that asks for later dates; dropping
+            // the descriptor instead would answer a request for 2030 onwards
+            // with the last decade, which is the declaration inverted.
+            max = offsetWithinOfferedDates(min, defaultSpan, resolution);
+          } else {
+            min = fallbackMin;
+            max = fallbackMax;
+          }
         }
 
         const span = Math.max(0, stepsBetween(min, max, resolution));

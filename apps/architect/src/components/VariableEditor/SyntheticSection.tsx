@@ -48,6 +48,11 @@ const DISTRIBUTION_OPTIONS: Record<string, { label: string; value: string }[]> =
   };
 
 const GENERATOR_LABELS: Record<string, string> = {
+  // Listed like any other generator, because it is one. Naming it here rather
+  // than prepending a hand-written entry is what keeps the choice single: the
+  // enum already carries `neutralWords`, so a separate entry would render a
+  // second option with the same value and the same React key.
+  neutralWords: 'Neutral words (default)',
   personName: 'Person name',
   firstName: 'First name',
   lastName: 'Last name',
@@ -60,6 +65,13 @@ const GENERATOR_LABELS: Record<string, string> = {
   sentence: 'Sentence',
   paragraph: 'Paragraph',
 };
+
+/** One option per declared generator, in the order the schema lists them. */
+export const generatorOptions = (): { label: string; value: string }[] =>
+  SYNTHETIC_TEXT_GENERATORS.map((generator) => ({
+    label: GENERATOR_LABELS[generator] ?? generator,
+    value: generator,
+  }));
 
 const probabilityFieldProps = {
   component: InputField,
@@ -309,13 +321,7 @@ export default function SyntheticSection({
               hint="How realistic values are produced for this field."
               initialValue={String(initial[syntheticField('generator')] ?? '')}
               component={NativeSelectField}
-              options={[
-                { label: 'Neutral words (default)', value: 'neutralWords' },
-                ...SYNTHETIC_TEXT_GENERATORS.map((generator) => ({
-                  label: GENERATOR_LABELS[generator] ?? generator,
-                  value: generator,
-                })),
-              ]}
+              options={generatorOptions()}
             />
           )}
           {(type === 'ordinal' || type === 'categorical') && (

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Variable } from '@codaco/protocol-validation';
+import { SYNTHETIC_TEXT_GENERATORS } from '@codaco/protocol-validation';
 
 import {
   assembleSynthetic,
@@ -11,6 +12,7 @@ import {
   validateAssembledVariable,
   weightRows,
 } from './syntheticDraft';
+import { generatorOptions } from './SyntheticSection';
 
 /**
  * The editor's own controls carry native `min`/`max`/`step` attributes that
@@ -369,5 +371,19 @@ describe('a categorical whose weights exclude some options', () => {
     // edit to it can be saved.
     const assembled = assembleSynthetic(ctx, initialSyntheticValues(ctx));
     expect(validateAssembledVariable(ctx, assembled)).toBeUndefined();
+  });
+});
+
+describe('the text generator options', () => {
+  it('offers each generator exactly once, with a written label', () => {
+    // `neutralWords` is a declared generator, so a hand-written entry for it
+    // alongside the mapped enum renders two options with the same value and
+    // the same React key — two choices that save identically.
+    const options = generatorOptions();
+    const values = options.map((option) => option.value);
+
+    expect(values).toEqual([...SYNTHETIC_TEXT_GENERATORS]);
+    expect(new Set(values).size).toBe(values.length);
+    expect(options.map((option) => option.label)).not.toContain('neutralWords');
   });
 });

@@ -245,6 +245,35 @@ describe('synthetic metadata (additive to schema 8)', () => {
       expect(hasIssue(result, 'exceeds the validation maxValue')).toBe(true);
     });
 
+    it('rejects a lognormal under a nonpositive ceiling', () => {
+      // The descriptor authors no `min`, so comparing only authored bounds
+      // finds nothing to object to. A lognormal's support is positive
+      // regardless, and generation truncates into the validation window — so
+      // accepting this stores a distribution that can only ever emit the
+      // ceiling itself.
+      const protocol = withPersonVariable(
+        'debt',
+        numberVariable(
+          { distribution: 'lognormal', mean: 100, sd: 20 },
+          { maxValue: -1 },
+        ),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(hasIssue(result, 'draws only positive values')).toBe(true);
+    });
+
+    it('accepts a lognormal whose ceiling leaves positive room', () => {
+      const protocol = withPersonVariable(
+        'debt',
+        numberVariable(
+          { distribution: 'lognormal', mean: 100, sd: 20 },
+          { maxValue: 500 },
+        ),
+      );
+      expect(parse(protocol).success).toBe(true);
+    });
+
     it('rejects a constant outside the validation bounds', () => {
       const protocol = withPersonVariable(
         'height',
