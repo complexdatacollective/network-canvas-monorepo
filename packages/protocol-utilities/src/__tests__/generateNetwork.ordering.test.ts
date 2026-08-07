@@ -812,3 +812,127 @@ describe('a NetworkComposer’s tools over people and links already present', ()
     }
   });
 });
+
+describe('an edge retried at a stage that cannot reach its endpoints', () => {
+  it('is not made there', () => {
+    // Sharing an edge type is not sharing a domain. When the planned creator
+    // is skipped, the retry is offered to whatever creates that type next —
+    // and a creator whose filter excludes these people could not have
+    // presented this edge, so it must not land it.
+    const withWave = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            name: { name: 'Name', type: 'text' },
+            wave: { name: 'Wave', type: 'number' },
+          },
+          synthetic: { count: { distribution: 'constant', value: 4 } },
+        },
+      },
+      edge: {
+        friend: {
+          name: 'Friend',
+          color: 'edge-color-seq-1',
+          variables: {},
+          synthetic: {
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 1 },
+            },
+          },
+        },
+      },
+      ego: { variables: {} },
+    } as unknown as Codebook;
+
+    const { network } = generateNetwork({
+      seed: 31,
+      codebook: withWave,
+      stages: [
+        nameGenerator({
+          id: 'ng-one',
+          prompts: [
+            {
+              id: 'ng-one-p1',
+              text: 'Who?',
+              additionalAttributes: [{ variable: 'wave', value: 1 }],
+            },
+          ],
+          behaviours: { minNodes: 2, maxNodes: 2 },
+        }),
+        nameGenerator({
+          id: 'ng-two',
+          prompts: [
+            {
+              id: 'ng-two-p1',
+              text: 'Who else?',
+              additionalAttributes: [{ variable: 'wave', value: 2 }],
+            },
+          ],
+          behaviours: { minNodes: 2, maxNodes: 2 },
+        }),
+        // Plans every pair, then never runs.
+        stage({
+          id: 'skipped',
+          type: 'DyadCensus',
+          label: 'All pairs',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [{ id: 'sk-p1', text: 'Which?', createEdge: 'friend' }],
+          skipLogic: {
+            action: 'SKIP',
+            filter: {
+              join: 'AND',
+              rules: [
+                {
+                  id: 'r0',
+                  type: 'ego',
+                  options: { attribute: 'missing', operator: 'NOT_EXISTS' },
+                },
+              ],
+            },
+          },
+        }),
+        // Only ever asked about wave 2, so only that pair is its to make.
+        stage({
+          id: 'wave-two-only',
+          type: 'DyadCensus',
+          label: 'Wave two',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [{ id: 'w2-p1', text: 'Which?', createEdge: 'friend' }],
+          filter: {
+            join: 'AND',
+            rules: [
+              {
+                id: 'r1',
+                type: 'node',
+                options: {
+                  type: 'person',
+                  attribute: 'wave',
+                  operator: 'EXACTLY',
+                  value: 2,
+                },
+              },
+            ],
+          },
+        }),
+      ],
+      respectSkipLogicAndFiltering: true,
+    });
+
+    expect(network.nodes).toHaveLength(4);
+
+    const waveOf = new Map(
+      network.nodes.map((node) => [
+        node[entityPrimaryKeyProperty],
+        attributesOf(node).wave,
+      ]),
+    );
+    // Every edge that survived is one the wave-two census could have drawn.
+    for (const edge of network.edges) {
+      expect(waveOf.get(edge.from)).toBe(2);
+      expect(waveOf.get(edge.to)).toBe(2);
+    }
+  });
+});

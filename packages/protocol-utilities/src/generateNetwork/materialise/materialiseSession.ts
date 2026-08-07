@@ -124,6 +124,21 @@ export function materialiseSession(params: {
   const materialisedNodes = new Set<string>();
   const materialisedEdges = new Set<string>();
 
+  /**
+   * The domain each edge type's walk-time topology is measured over, grown as
+   * the walk meets creators of that type.
+   *
+   * Accumulated across creations and stages, not recomputed per creator, for
+   * the reason the planner accumulates its own: two creators of one type can
+   * have overlapping but different filtered subject sets, and a target
+   * measured over each in turn is a target over neither. Two four-node
+   * domains sharing two nodes at density 0.5 span eleven pairs and want six
+   * edges; taken separately they want three and then three-less-the-shared,
+   * which is five.
+   */
+  const walkPairsByType = new Map<string, Set<string>>();
+  const walkNodesByType = new Map<string, Set<string>>();
+
   // Final pair membership per edge type, for census answers and negatives.
   const finalPairsByType = new Map<string, Set<string>>();
   for (const edge of plan.edges) {
@@ -391,6 +406,25 @@ export function materialiseSession(params: {
     );
 
     for (const creation of summary.edgeCreations) {
+      // Who this interaction could actually join, for judging an edge planned
+      // before it. Built lazily: only a retry consults it.
+      let reach: Set<string> | undefined;
+      const canJoin = (from: string, to: string): boolean => {
+        if (reach === undefined) {
+          let candidates = filteredSubjects(
+            creation.subjectNodeType,
+            creation.filter,
+          );
+          if (creation.ownNodesOnly) {
+            candidates = candidates.filter((node) => node.stageId === stage.id);
+          }
+          reach = new Set(
+            candidates.map((node) => node[entityPrimaryKeyProperty]),
+          );
+        }
+        return reach.has(from) && reach.has(to);
+      };
+
       for (const planned of plan.edges) {
         // `<=`, not `===`: an edge is planned at the earliest stage that could
         // create it, and skip logic can bypass exactly that stage while a
@@ -403,6 +437,20 @@ export function materialiseSession(params: {
         if (materialisedEdges.has(planned.uid)) continue;
         if (!presentNodes.has(planned.from)) continue;
         if (!presentNodes.has(planned.to)) continue;
+        // A retry is being offered to an interaction that did not plan it, and
+        // sharing an edge type is not the same as sharing a domain: a later
+        // creator can have a different subject type, a narrower filter, or its
+        // own nodes only. Landing the edge anyway would put one in the session
+        // that no reachable stage could have presented. Only the retry is
+        // judged this way — an edge planned for this very stage was already
+        // drawn from its domain, and re-testing the filter against a
+        // half-written session rather than the planned network would drop
+        // edges whose filter reads a value a later stage writes.
+        if (
+          planned.creationStageIndex < i &&
+          !canJoin(planned.from, planned.to)
+        )
+          continue;
 
         const attributes: Record<string, VariableValue> = {};
         for (const variableId of creation.writesAtCreation) {
@@ -453,29 +501,47 @@ export function materialiseSession(params: {
       // fresh target against the unlinked remainder applies the declared
       // density again to what the last pass left: two passes at 0.5 leaving
       // 0.75. Counting what exists towards the target settles both.
+      //
+      // The domain is also carried between creators rather than rebuilt for
+      // each, so two whose filtered subject sets overlap without matching are
+      // measured over their union.
+      const domainPairs =
+        walkPairsByType.get(creation.edgeType) ?? new Set<string>();
+      walkPairsByType.set(creation.edgeType, domainPairs);
+      const domainNodes =
+        walkNodesByType.get(creation.edgeType) ?? new Set<string>();
+      walkNodesByType.set(creation.edgeType, domainNodes);
+
       const reachable: { a: string; b: string; linked: boolean }[] = [];
-      let wholePairs = 0;
-      let wholeLinked = 0;
       for (let a = 0; a < subjects.length; a++) {
         for (let b = a + 1; b < subjects.length; b++) {
           const uidA = subjects[a]![entityPrimaryKeyProperty];
           const uidB = subjects[b]![entityPrimaryKeyProperty];
-          const isLinked = linked.has(pairKey(uidA, uidB));
-          wholePairs += 1;
-          if (isLinked) wholeLinked += 1;
+          domainPairs.add(pairKey(uidA, uidB));
+          domainNodes.add(uidA);
+          domainNodes.add(uidB);
           // Only pairs the plan could not reach are this block's to add: one
           // whose endpoints it both held was already decided.
           if (nodeByUid.has(uidA) && nodeByUid.has(uidB)) continue;
-          reachable.push({ a: uidA, b: uidB, linked: isLinked });
+          reachable.push({
+            a: uidA,
+            b: uidB,
+            linked: linked.has(pairKey(uidA, uidB)),
+          });
         }
       }
       if (reachable.length === 0) continue;
+
+      // What the accumulated domain already holds, however it came to hold it.
+      let domainLinked = 0;
+      for (const key of domainPairs) if (linked.has(key)) domainLinked += 1;
 
       // Reuse, not replacement: a pair this type already joins was answered
       // when that edge was made, exactly as `edgeExists` has the interview
       // reuse it, so it counts towards the target rather than being redrawn.
       const outstanding =
-        topologyTarget(target, wholePairs, subjects.length) - wholeLinked;
+        topologyTarget(target, domainPairs.size, domainNodes.size) -
+        domainLinked;
       if (outstanding <= 0) continue;
 
       const ref = { entity: 'edge' as const, type: creation.edgeType };

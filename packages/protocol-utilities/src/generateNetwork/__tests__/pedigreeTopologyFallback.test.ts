@@ -281,3 +281,111 @@ describe('a composer edge form over a pedigree', () => {
     }
   });
 });
+
+describe('two walk-time creators whose subject sets overlap', () => {
+  it('targets the union of their domains, not each in turn', () => {
+    // Neither census's subject set contains the other's, so a target measured
+    // over each in turn is a target over neither: the first spends its share
+    // on its own pairs, and the second re-measures against a domain that never
+    // includes the pairs only the first could see.
+    const density = 0.5;
+    const overlapping = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          synthetic: { count: { distribution: 'constant', value: 8 } },
+          variables: {
+            name: { name: 'Name', type: 'text' },
+            isEgo: { name: 'Is ego', type: 'boolean' },
+            relationship: { name: 'Relationship', type: 'text' },
+            sex: { name: 'Sex', type: 'text' },
+          },
+        },
+      },
+      edge: {
+        knows: {
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+          variables: {},
+          synthetic: {
+            metric: 'density',
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: density },
+            },
+          },
+        },
+      },
+    } as unknown as Codebook;
+
+    const censusExcluding = (id: string, relationship: string): Stage =>
+      ({
+        id,
+        type: 'DyadCensus',
+        label: 'Who knows whom',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: `${id}-p1`, text: 'Which?', createEdge: 'knows' }],
+        filter: {
+          join: 'AND',
+          rules: [
+            {
+              id: `${id}-r1`,
+              type: 'node',
+              options: {
+                type: 'person',
+                attribute: 'relationship',
+                operator: 'NOT',
+                value: relationship,
+              },
+            },
+          ],
+        },
+      }) as unknown as Stage;
+
+    for (let seed = 1; seed <= 10; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: overlapping,
+        stages: [
+          pedigree,
+          censusExcluding('census-a', 'Parent'),
+          censusExcluding('census-b', 'Sibling'),
+        ],
+        respectSkipLogicAndFiltering: true,
+      });
+
+      const people = network.nodes.filter((node) => node.type === 'person');
+      const relationshipOf = (uid: string) =>
+        people.find((node) => node[entityPrimaryKeyProperty] === uid)?.[
+          'attributes' as never
+        ] as unknown as Record<string, unknown> | undefined;
+
+      const pairsOf = (excluded: string) => {
+        const set = people.filter(
+          (node) =>
+            (relationshipOf(node[entityPrimaryKeyProperty])?.relationship ??
+              null) !== excluded,
+        );
+        const keys = new Set<string>();
+        for (let a = 0; a < set.length; a++) {
+          for (let b = a + 1; b < set.length; b++) {
+            keys.add(
+              pairKey(
+                set[a]![entityPrimaryKeyProperty],
+                set[b]![entityPrimaryKeyProperty],
+              ),
+            );
+          }
+        }
+        return keys;
+      };
+
+      const union = new Set([...pairsOf('Parent'), ...pairsOf('Sibling')]);
+      const knows = network.edges.filter((edge) => edge.type === 'knows');
+
+      expect(union.size).toBeGreaterThan(0);
+      expect(knows).toHaveLength(Math.round(density * union.size));
+    }
+  });
+});
