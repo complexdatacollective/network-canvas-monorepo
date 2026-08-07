@@ -1,0 +1,607 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Studio OpenAPI fidelity spike",
+    "version": "0.0.1"
+  },
+  "components": {
+    "schemas": {
+      "SessionPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Session"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data",
+          "next_cursor",
+          "has_more"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "wave": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "finished",
+              "abandoned"
+            ]
+          },
+          "network": {
+            "$ref": "#/components/schemas/Network"
+          },
+          "lastEvent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionStartedEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SessionStageCompletedEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SessionFinishedEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SessionAbandonedEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "studyId",
+          "wave",
+          "status",
+          "network",
+          "lastEvent",
+          "startedAt",
+          "finishedAt"
+        ]
+      },
+      "Network": {
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeEntity"
+            }
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EdgeEntity"
+            }
+          },
+          "ego": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EgoEntity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "nodes",
+          "edges",
+          "ego"
+        ]
+      },
+      "NodeEntity": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "enum": [
+              "node"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/Attributes"
+          }
+        },
+        "required": [
+          "entityType",
+          "id",
+          "type",
+          "attributes"
+        ]
+      },
+      "Attributes": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/VariableValue"
+        }
+      },
+      "VariableValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "EdgeEntity": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "enum": [
+              "edge"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "to": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/Attributes"
+          }
+        },
+        "required": [
+          "entityType",
+          "id",
+          "type",
+          "from",
+          "to",
+          "attributes"
+        ]
+      },
+      "EgoEntity": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "enum": [
+              "ego"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/Attributes"
+          }
+        },
+        "required": [
+          "entityType",
+          "id",
+          "attributes"
+        ]
+      },
+      "SessionStartedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "session.started"
+            ]
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "type",
+          "sessionId",
+          "occurredAt"
+        ]
+      },
+      "SessionStageCompletedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "session.stage_completed"
+            ]
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stageId": {
+            "type": "string"
+          },
+          "stageIndex": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "type",
+          "sessionId",
+          "stageId",
+          "stageIndex",
+          "occurredAt"
+        ]
+      },
+      "SessionFinishedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "session.finished"
+            ]
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "type",
+          "sessionId",
+          "occurredAt"
+        ]
+      },
+      "SessionAbandonedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "session.abandoned"
+            ]
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastStageId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "type",
+          "sessionId",
+          "lastStageId",
+          "occurredAt"
+        ]
+      },
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status"
+        ]
+      },
+      "Entity": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/NodeEntity"
+          },
+          {
+            "$ref": "#/components/schemas/EdgeEntity"
+          },
+          {
+            "$ref": "#/components/schemas/EgoEntity"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "entityType",
+          "mapping": {
+            "node": "#/components/schemas/NodeEntity",
+            "edge": "#/components/schemas/EdgeEntity",
+            "ego": "#/components/schemas/EgoEntity"
+          }
+        }
+      },
+      "SessionEvent": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SessionStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/SessionStageCompletedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/SessionFinishedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/SessionAbandonedEvent"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "session.started": "#/components/schemas/SessionStartedEvent",
+            "session.stage_completed": "#/components/schemas/SessionStageCompletedEvent",
+            "session.finished": "#/components/schemas/SessionFinishedEvent",
+            "session.abandoned": "#/components/schemas/SessionAbandonedEvent"
+          }
+        }
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/studies/{studyId}/sessions": {
+      "get": {
+        "operationId": "listSessions",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "studyId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}": {
+      "get": {
+        "operationId": "getSession",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "sessionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A session with its network payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/entities/{entityId}": {
+      "get": {
+        "operationId": "getEntity",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "sessionId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "entityId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A network entity (node, edge, or ego)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Entity"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/studies/{studyId}/events": {
+      "get": {
+        "operationId": "listEvents",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "studyId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session lifecycle events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionEvent"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}
