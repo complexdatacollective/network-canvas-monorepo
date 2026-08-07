@@ -175,6 +175,82 @@ describe('Validations behaviour', () => {
     });
   });
 
+  // `required`/`unique` are `z.boolean().optional()` in the protocol schema,
+  // so an explicit `false` is a valid saved shape — and one the contradiction
+  // analyser reads as OFF (it gates on `required === true`). Deciding the
+  // switch from key presence alone rendered it on and then parsed the
+  // displayed rule as `true`, inventing a contradiction the saved protocol
+  // does not have.
+  describe('value-less rules saved as false', () => {
+    it('renders an explicit false as switched off, with no phantom contradiction', () => {
+      setup({
+        variableType: 'text',
+        entity: 'node',
+        currentVariableId: 'text-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { required: false, maxLength: 0 },
+      });
+
+      expect(toggle('Required')).not.toBeChecked();
+      expect(toggle('Maximum length')).toBeChecked();
+      expect(numberValue('Maximum length')).toHaveValue(0);
+      expect(
+        screen.queryByText(/required answers cannot satisfy maxLength/),
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders an explicit unique false as switched off', () => {
+      setup({
+        variableType: 'text',
+        entity: 'node',
+        currentVariableId: 'text-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { unique: false },
+      });
+
+      expect(toggle('Must be unique')).not.toBeChecked();
+    });
+
+    it('switches a false rule on rather than off on the first click', () => {
+      const { committedValidation } = setup({
+        variableType: 'text',
+        entity: 'node',
+        currentVariableId: 'text-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { required: false },
+      });
+
+      fireEvent.click(toggle('Required'));
+
+      expect(toggle('Required')).toBeChecked();
+      expect(committedValidation()).toEqual({ required: true });
+    });
+
+    it('settles a held false rule once another row makes room for it', () => {
+      const { committedValidation } = setup({
+        variableType: 'text',
+        entity: 'node',
+        currentVariableId: 'text-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { required: false, maxLength: 0 },
+      });
+
+      fireEvent.click(toggle('Required'));
+      expect(
+        screen.getByText(/required answers cannot satisfy maxLength \(0\)/),
+      ).toBeInTheDocument();
+      expect(committedValidation()).toEqual({ required: false, maxLength: 0 });
+
+      fireEvent.blur(typeValue('Maximum length', '5'));
+
+      expect(committedValidation()).toEqual({ required: true, maxLength: 5 });
+    });
+  });
+
   describe('committing', () => {
     it('commits a value-less rule the moment it is switched on', () => {
       const { committedValidation } = setup({
@@ -936,6 +1012,36 @@ describe('Validations behaviour', () => {
 
       expect(committedValidation()).toEqual({ minValue: 9, maxValue: 11 });
       expect(numberValue('Minimum value')).toHaveValue(9);
+    });
+
+    // The same Safari path, but the in-flight edit still contradicts once the
+    // other row lands. It cannot be applied yet — and must not be discarded
+    // either: reverting the field to the committed fallback loses typed input
+    // without a trace, leaving the researcher nothing to correct.
+    it('keeps an in-flight edit that still contradicts after another row commits', () => {
+      const { committedValidation } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { minValue: 5, maxValue: 10 },
+      });
+
+      typeValue('Minimum value', '20');
+      fireEvent.click(stepper('Increase Maximum value'));
+
+      expect(committedValidation()).toEqual({ minValue: 5, maxValue: 11 });
+      expect(numberValue('Minimum value')).toHaveValue(20);
+      expect(
+        screen.getByText(/minValue \(20\) is greater than maxValue \(11\)/),
+      ).toBeInTheDocument();
+
+      // Still live, so a later commit that makes room applies it.
+      fireEvent.blur(typeValue('Maximum value', '30'));
+
+      expect(committedValidation()).toEqual({ minValue: 20, maxValue: 30 });
+      expect(numberValue('Minimum value')).toHaveValue(20);
     });
 
     it('withholds a value-less rule that contradicts a committed bound', () => {

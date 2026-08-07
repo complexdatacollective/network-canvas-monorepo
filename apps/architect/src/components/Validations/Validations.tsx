@@ -25,6 +25,20 @@ const EMPTY_RECORD: Record<string, unknown> = {};
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * Whether `rules` holds `ruleKey` as an ON rule. A value-less rule's entry IS
+ * its switch state: the schema types `required`/`unique` as
+ * `z.boolean().optional()`, so an explicit `false` — which an imported or
+ * hand-edited protocol may carry, and which the contradiction analyser reads
+ * as off (it gates on `required === true`) — is an OFF rule, not an on one
+ * whose value happens to be absent. Key presence alone would render it on and
+ * then parse the displayed rule as `true`, inventing a contradiction the
+ * saved protocol does not have.
+ */
+const holdsRule = (rules: Record<string, unknown>, ruleKey: string) =>
+  Object.hasOwn(rules, ruleKey) &&
+  (!isValidationWithoutValue(ruleKey) || rules[ruleKey] === true);
+
 type ValidationsFieldProps = {
   meta: {
     submitFailed: boolean;
@@ -57,6 +71,12 @@ type CheckDraft = (
   base?: Record<string, unknown>,
 ) => string[];
 
+type SettleOutcome = {
+  next: Record<string, unknown>;
+  /** The keys this pass resolved — the only rows safe to clear. */
+  settled: string[];
+};
+
 type RuleListProps = {
   groups: ValidationGroup[];
   committed: Record<string, unknown>;
@@ -83,19 +103,23 @@ const RuleList = ({
   const [focusRequest, setFocusRequest] = useState<string | null>(null);
 
   const isOn = (ruleKey: string) =>
-    Object.hasOwn(committed, ruleKey) || openKeys.has(ruleKey);
+    holdsRule(committed, ruleKey) || openKeys.has(ruleKey);
 
   const textFor = (ruleKey: string) =>
     Object.hasOwn(drafts, ruleKey)
       ? drafts[ruleKey]!
       : formatCommitted(committed[ruleKey]);
 
-  const settle = (base: Record<string, unknown>, skip?: string) => {
+  const settle = (
+    base: Record<string, unknown>,
+    skip?: string,
+  ): SettleOutcome => {
     const next = { ...base };
+    const settled: string[] = [];
     // A row that still holds a draft is pending even when `base` already
     // carries a committed value for it: that value is only the fallback the row
     // would show if the edit were abandoned, and `applyCommit` clears the draft
-    // of every key it writes — so settling the fallback would discard the edit.
+    // of every key it settles — so settling the fallback would discard the edit.
     // `skip` is the row whose own commit started this pass, whose value in
     // `base` is authoritative (a stepper commits a value its draft has not
     // caught up with). Settling each key at most once keeps the pass finite.
@@ -103,7 +127,7 @@ const RuleList = ({
       [...openKeys].filter(
         (ruleKey) =>
           ruleKey !== skip &&
-          (Object.hasOwn(drafts, ruleKey) || !Object.hasOwn(next, ruleKey)),
+          (Object.hasOwn(drafts, ruleKey) || !holdsRule(next, ruleKey)),
       ),
     );
     let settledAny = true;
@@ -120,16 +144,27 @@ const RuleList = ({
         }
         next[ruleKey] = parsed;
         pending.delete(ruleKey);
+        settled.push(ruleKey);
         settledAny = true;
       }
     }
 
-    return next;
+    // The row whose own commit started this pass is settled by that commit
+    // whenever its value survived into `next`; a REJECTED commit removes it
+    // instead, and must keep its draft displayed and flagged.
+    if (skip !== undefined && Object.hasOwn(next, skip)) {
+      settled.push(skip);
+    }
+
+    return { next, settled };
   };
 
-  const applyCommit = (next: Record<string, unknown>) => {
-    const settled = Object.keys(next);
-
+  // Only rows this pass actually resolved lose their draft and open state. A
+  // draft that still contradicts once another row commits stays exactly as
+  // typed — displayed, and flagged by `issuesFor` — instead of reverting to
+  // the committed fallback, which would discard typed input without a trace
+  // and leave the researcher nothing to correct.
+  const applyCommit = ({ next, settled }: SettleOutcome) => {
     setOpenKeys((current) => {
       const remaining = new Set(current);
       settled.forEach((ruleKey) => remaining.delete(ruleKey));
