@@ -354,7 +354,10 @@ export class ValueGenerator {
         // called — so this overrides the resolved generator rather than
         // deferring to it.
         if (opts?.forceRealisticName === true) {
-          const name = this.generateConstrainedName(constraints, stream.faker());
+          const name = this.generateConstrainedName(
+            constraints,
+            stream.faker(),
+          );
           if (name !== undefined) return name;
         }
 
