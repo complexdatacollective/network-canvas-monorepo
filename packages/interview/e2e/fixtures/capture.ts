@@ -47,6 +47,9 @@ const MOTION_DRAG_ELEMENT_STYLES = `${MOTION_DRAG_SELECTOR} {
   transform: none !important;
   translate: none !important;
 }`;
+const MOTION_DRAG_STATIC_PAGE_STYLES = `${MOTION_DRAG_SELECTOR} {
+  visibility: hidden !important;
+}`;
 
 const dragOffset = process.env.E2E_VISUAL_DRAG_OFFSET;
 const MOTION_DRAG_OFFSET_STYLES =
@@ -263,6 +266,29 @@ export function createCaptureInterview(
           }
         : {}),
     });
+
+    if (dragContainers.length > 0) {
+      // Keep the normal strict page threshold for everything outside the
+      // audited drag surface. The element snapshots below cover the hidden
+      // pixels independently, so a small unrelated page regression cannot be
+      // absorbed by the one-pixel positional allowance above.
+      const hiddenDragContainers = await page.addStyleTag({
+        content: MOTION_DRAG_STATIC_PAGE_STYLES,
+      });
+      try {
+        await expect
+          .soft(page)
+          .toHaveScreenshot(withScreenshotSuffix(name, 'static-content'), {
+            fullPage: options.fullPage ?? false,
+            mask: options.mask,
+            maxDiffPixels: 250,
+          });
+      } finally {
+        await hiddenDragContainers.evaluate((element) =>
+          element.parentNode?.removeChild(element),
+        );
+      }
+    }
 
     for (const [index, container] of dragContainers.entries()) {
       const duplicateCount = dragContainers.filter(
