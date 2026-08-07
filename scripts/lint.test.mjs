@@ -7,9 +7,11 @@ import { test } from 'node:test';
 
 import {
   changedPaths,
+  findNulBytes,
   planChangedLint,
   requiresFullLint,
   runLint,
+  trackedTextFiles,
 } from './lint.mjs';
 
 const exists = () => true;
@@ -150,4 +152,57 @@ test('changed-file linting tolerates an explicit set ignored by Oxlint', async (
   });
 
   assert.equal(status, 0);
+});
+
+test('a NUL byte in a source file is reported with its line', () => {
+  const nul = String.fromCharCode(0);
+  const read = (path) =>
+    Buffer.from(
+      {
+        'clean.ts': "export const sep = '\\u0000';\n",
+        'corrupt.ts': `const a = 1;\nconst sep = '${nul}';\n`,
+      }[path] ?? '',
+      'utf8',
+    );
+
+  assert.deepEqual(findNulBytes(['clean.ts', 'corrupt.ts'], read), [
+    { path: 'corrupt.ts', line: 2 },
+  ]);
+});
+
+test('an unreadable path is left to the tools that follow', () => {
+  const read = () => {
+    throw new Error('ENOENT');
+  };
+
+  assert.deepEqual(findNulBytes(['gone.ts'], read), []);
+});
+
+test('a NUL byte fails the run even when every tool is happy', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'lint-nul-'));
+  try {
+    const path = join(directory, 'corrupt.ts');
+    writeFileSync(path, `const sep = '${String.fromCharCode(0)}';\n`);
+
+    // Reported through the formatter's file set, which covers every text
+    // extension the repository lints or formats.
+    const status = await runLint({
+      full: false,
+      reason: '',
+      oxlintFiles: [],
+      oxfmtFiles: [path],
+    });
+
+    assert.equal(status, 1);
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
+
+test('a full run scans the tracked text files rather than the whole tree', async () => {
+  const tracked = trackedTextFiles();
+
+  assert.ok(tracked.includes('scripts/lint.mjs'));
+  assert.ok(tracked.every((path) => !path.endsWith('.png')));
+  assert.deepEqual(findNulBytes(tracked), []);
 });

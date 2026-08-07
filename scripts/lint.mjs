@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -118,6 +118,58 @@ export function changedPaths(base, head = 'HEAD', cwd = process.cwd()) {
   return result.stdout.split('\0').filter(Boolean);
 }
 
+/**
+ * Source files that are text everywhere except for a stray NUL byte.
+ *
+ * Git classifies a file as binary on finding one, and from then on the file has
+ * no diff, no line-wise merge and nothing reviewable in a pull request; grep
+ * skips it silently too. A NUL is a legitimate thing to want in a string — as a
+ * separator no identifier can contain, say — but it belongs in the source as an
+ * escape, which reads identically at runtime and keeps the file text. Nothing
+ * else about the byte is wrong, which is exactly why it survives review: the
+ * code works, and the damage is to everyone's ability to see it.
+ */
+export function findNulBytes(paths, readFile = (path) => readFileSync(path)) {
+  const offenders = [];
+  for (const path of paths) {
+    let contents;
+    try {
+      contents = readFile(path);
+    } catch {
+      // A path that cannot be read is the concern of the tools that follow.
+      continue;
+    }
+    const index = contents.indexOf(0);
+    if (index === -1) continue;
+    offenders.push({
+      path,
+      line: contents.subarray(0, index).toString('utf8').split('\n').length,
+    });
+  }
+  return offenders;
+}
+
+/** Tracked files the formatter recognises, for a whole-repository run. */
+export function trackedTextFiles(cwd = process.cwd()) {
+  const result = spawnSync('git', ['ls-files', '-z'], {
+    cwd,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) return [];
+  return result.stdout
+    .split('\0')
+    .filter(Boolean)
+    .filter((path) => OXFMT_EXTENSIONS.has(extname(path).toLowerCase()));
+}
+
+function reportNulBytes(offenders) {
+  for (const { path, line } of offenders) {
+    console.error(
+      `${path}:${line} contains a NUL byte, which makes Git treat the whole file as binary (no diff, no review, no line-wise merge). Write it as the escape '\\u0000' instead.`,
+    );
+  }
+}
+
 function run(command, args) {
   return new Promise((resolve) => {
     const child = spawn(command, args, { stdio: 'inherit' });
@@ -136,7 +188,12 @@ function run(command, args) {
   });
 }
 
-export async function runLint(plan) {
+export async function runLint(plan, listTracked = trackedTextFiles) {
+  // Ahead of the tools, because neither can see it: oxlint parses the file
+  // happily and oxfmt reformats around the byte, leaving the damage in place.
+  const offenders = findNulBytes(plan.full ? listTracked() : plan.oxfmtFiles);
+  reportNulBytes(offenders);
+
   const jobs = [];
   if (plan.full || plan.oxlintFiles.length > 0) {
     const paths = plan.full
@@ -151,8 +208,10 @@ export async function runLint(plan) {
     jobs.push(['oxfmt', run('pnpm', ['exec', 'oxfmt', '--check', ...paths])]);
   }
   if (jobs.length === 0) {
-    console.log('No changed files require linting or formatting.');
-    return 0;
+    if (offenders.length === 0) {
+      console.log('No changed files require linting or formatting.');
+    }
+    return offenders.length === 0 ? 0 : 1;
   }
 
   const results = await Promise.all(
@@ -162,7 +221,7 @@ export async function runLint(plan) {
   for (const [name, status] of failures) {
     console.error(`${name} failed with exit code ${status}`);
   }
-  return failures.length === 0 ? 0 : 1;
+  return failures.length === 0 && offenders.length === 0 ? 0 : 1;
 }
 
 async function main() {
