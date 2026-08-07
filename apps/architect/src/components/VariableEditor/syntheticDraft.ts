@@ -106,7 +106,12 @@ export function weightRows(ctx: SyntheticDraftContext): WeightRow[] {
 
 /** The legal selection counts under the draft's options and validation. */
 function legalCounts(ctx: SyntheticDraftContext): number[] {
-  const distinct = distinctDraftValues(ctx.options).length;
+  // Selection is without replacement over the positively weighted values, so
+  // a count above how many of those there are cannot be drawn. Offering one
+  // put a row in the table that `rejectIllegalSelectionCounts` refuses even at
+  // probability zero — which blocked saving any edit to a variable that was
+  // perfectly valid when the editor opened.
+  const distinct = weightRows(ctx).filter((row) => row.initial > 0).length;
   const validation =
     'validation' in ctx.variable ? (ctx.variable.validation ?? {}) : {};
   const minSelected =
@@ -361,10 +366,18 @@ export function assembleSynthetic(
       if (optionWeights.length > 0) base.optionWeights = optionWeights;
 
       if (ctx.variable.type === 'categorical') {
-        const rows = selectionCountRows(ctx).map((row) => ({
-          count: row.count,
-          probability: Math.max(0, toNumber(values[row.fieldName]) ?? 0),
-        }));
+        // Against the weights being saved rather than the ones the editor
+        // opened with, so zeroing a weight drops the counts it made
+        // undrawable instead of assembling a table the schema then refuses.
+        const selectable = optionWeights.filter(
+          (entry) => entry.weight > 0,
+        ).length;
+        const rows = selectionCountRows(ctx)
+          .filter((row) => row.count <= selectable)
+          .map((row) => ({
+            count: row.count,
+            probability: Math.max(0, toNumber(values[row.fieldName]) ?? 0),
+          }));
         const total = rows.reduce((sum, row) => sum + row.probability, 0);
         // Normalised so the stored table always satisfies the schema's
         // sum-to-one rule whatever mixture the researcher typed — except a

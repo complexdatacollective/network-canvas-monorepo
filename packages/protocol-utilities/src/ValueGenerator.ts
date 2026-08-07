@@ -574,11 +574,9 @@ export class ValueGenerator {
           resolution: 'full' as const,
         };
         const resolution = window.resolution;
-        let max = window.max ?? truncateToResolution(this.today, resolution);
         const defaultSpan = constraints.unique
           ? this.uniqueDateHeadroom(resolution)
           : this.defaultDateSpan(resolution);
-        let min = window.min ?? openDateFloor(max, defaultSpan, resolution);
 
         const resolved = this.resolvedFor(entry);
         const descriptor =
@@ -586,17 +584,49 @@ export class ValueGenerator {
             ? resolved.descriptor
             : ({ distribution: 'uniform' } as const);
 
-        // Narrow the effective window by the descriptor's own bounds (same
-        // resolution, so lexicographic comparison is date order). A
-        // descriptor window disjoint from the effective one is ignored:
-        // validation stays authoritative and the metadata is target-only.
-        if ('min' in descriptor && descriptor.min !== undefined) {
-          const narrowed = descriptor.min > min ? descriptor.min : min;
+        const declaredMin = window.min;
+        const declaredMax = window.max;
+        const descriptorMin = 'min' in descriptor ? descriptor.min : undefined;
+        const descriptorMax = 'max' in descriptor ? descriptor.max : undefined;
+
+        // An absent field bound is not a bound. The fallbacks here stand in
+        // for one so an open-ended draw has somewhere to land — roughly the
+        // last decade — and a declared synthetic window REPLACES the stand-in
+        // rather than intersecting with it. Intersecting discarded an
+        // authored 1950–1960 as disjoint from a window the field never
+        // declared, and generated recent dates instead.
+        const fallbackMax =
+          declaredMax ?? truncateToResolution(this.today, resolution);
+        const fallbackMin =
+          declaredMin ?? openDateFloor(fallbackMax, defaultSpan, resolution);
+
+        let max = declaredMax ?? descriptorMax ?? fallbackMax;
+        let min =
+          declaredMin ??
+          descriptorMin ??
+          openDateFloor(max, defaultSpan, resolution);
+
+        // Where the field DOES declare a bound it is a rule rather than a
+        // stand-in, so the descriptor may only narrow it, and a descriptor
+        // window disjoint from it is ignored: validation stays authoritative
+        // and the metadata is target-only.
+        if (declaredMin !== undefined && descriptorMin !== undefined) {
+          const narrowed = descriptorMin > min ? descriptorMin : min;
           if (narrowed <= max) min = narrowed;
         }
-        if ('max' in descriptor && descriptor.max !== undefined) {
-          const narrowed = descriptor.max < max ? descriptor.max : max;
+        if (declaredMax !== undefined && descriptorMax !== undefined) {
+          const narrowed = descriptorMax < max ? descriptorMax : max;
           if (narrowed >= min) max = narrowed;
+        }
+
+        // One declared end can still be crossed by the other end taken from a
+        // descriptor — a field floored at 2000 beside a synthetic ceiling of
+        // 1960. The schema rejects that pairing, so this is only reachable
+        // from unvalidated input; the whole descriptor window is dropped and
+        // the field's own is drawn from.
+        if (min > max) {
+          min = fallbackMin;
+          max = fallbackMax;
         }
 
         const span = Math.max(0, stepsBetween(min, max, resolution));

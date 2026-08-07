@@ -2686,3 +2686,48 @@ describe('redeclaring a variable the builder already seeded', () => {
     });
   });
 });
+
+describe('synthetic metadata that does not match the variable type', () => {
+  // `AddVariableInput.synthetic` is the whole union, so nothing in the type
+  // system stops this. Stored unchecked it makes the builder emit two
+  // disagreeing artefacts: a protocol the schema rejects, and a network drawn
+  // from the type's default as though nothing had been declared.
+  it('is refused rather than stored', () => {
+    const si = new SyntheticInterview();
+    const person = si.addNodeType({ name: 'Person' });
+
+    expect(() =>
+      si.addVariableToNodeType(person.id, {
+        name: 'age',
+        type: 'number',
+        synthetic: { generator: 'personName' } as never,
+      }),
+    ).toThrow(/not valid for a "number" variable/);
+  });
+
+  it('is refused on an edge variable too', () => {
+    const si = new SyntheticInterview();
+    const friend = si.addEdgeType({ name: 'Friend' });
+
+    expect(() =>
+      si.addVariableToEdgeType(friend.id, {
+        name: 'note',
+        type: 'text',
+        synthetic: { probabilityTrue: 0.5 } as never,
+      }),
+    ).toThrow(/not valid for a "text" variable/);
+  });
+
+  it('leaves matching metadata alone', () => {
+    const si = new SyntheticInterview();
+    const person = si.addNodeType({ name: 'Person' });
+
+    expect(() =>
+      si.addVariableToNodeType(person.id, {
+        name: 'age',
+        type: 'number',
+        synthetic: { distribution: 'constant', value: 40 },
+      }),
+    ).not.toThrow();
+  });
+});

@@ -270,3 +270,38 @@ describe('a categorical selection-count table of nothing but zeros', () => {
     expect(validateAssembledVariable(ctx, assembled)).toBeDefined();
   });
 });
+
+describe('a categorical whose weights exclude some options', () => {
+  it('offers only counts the positive weights can actually draw', () => {
+    // Selection is without replacement over the positively weighted values, so
+    // a count above how many of those there are cannot be drawn — and offering
+    // one put a row in the table that the schema refuses even at probability
+    // zero, blocking every edit to a variable that opened perfectly valid.
+    const variable = {
+      name: 'roles',
+      type: 'categorical',
+      options: [
+        { label: 'Family', value: 'family' },
+        { label: 'Work', value: 'work' },
+        { label: 'Other', value: 'other' },
+      ],
+      synthetic: {
+        optionWeights: [
+          { value: 'family', weight: 1 },
+          { value: 'work', weight: 1 },
+          { value: 'other', weight: 0 },
+        ],
+      },
+    } as unknown as Variable;
+
+    const ctx = contextFor(variable);
+    expect(Math.max(...selectionCountRows(ctx).map((row) => row.count))).toBe(
+      2,
+    );
+
+    // And the assembled variable is one the schema accepts, so an unrelated
+    // edit to it can be saved.
+    const assembled = assembleSynthetic(ctx, initialSyntheticValues(ctx));
+    expect(validateAssembledVariable(ctx, assembled)).toBeUndefined();
+  });
+});

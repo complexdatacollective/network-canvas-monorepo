@@ -1082,3 +1082,95 @@ describe('a node generator skip logic proves unreachable', () => {
     }
   });
 });
+
+describe('an open-ended date variable with a declared window', () => {
+  it('draws from the window rather than from the fallback span', () => {
+    // The field declares no bounds, so the engine invents a span — roughly the
+    // last decade — for an open-ended draw to land in. That stand-in is not a
+    // rule, and intersecting a declared 1950–1960 with it discarded the
+    // authored window as disjoint and generated recent dates instead.
+    const { network } = generateNetwork({
+      seed: 19,
+      codebook: codebook({
+        name: { name: 'Name', type: 'text' },
+        born: {
+          name: 'Born',
+          type: 'datetime',
+          component: 'DatePicker',
+          synthetic: {
+            distribution: 'uniform',
+            min: '1950-01-01',
+            max: '1960-01-01',
+          },
+        },
+      }),
+      stages: [nameGenerator(), alterForm('form', 'born')],
+    });
+
+    expect(network.nodes).toHaveLength(3);
+    for (const node of network.nodes) {
+      const born = String(attributesOf(node).born);
+      expect(born >= '1950-01-01' && born <= '1960-01-01').toBe(true);
+    }
+  });
+});
+
+describe('a stage guarded on an ego field no reachable form collects', () => {
+  it('is proven unreachable and given no population', () => {
+    // An EgoForm makes possible only the fields it actually asks for. Marking
+    // every ego variable as possible left this guard undecidable, so the stage
+    // stayed in the plan, took part of the population, and then never ran.
+    const { network } = generateNetwork({
+      seed: 23,
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            variables: { name: { name: 'Name', type: 'text' } },
+            synthetic: { count: { distribution: 'constant', value: 3 } },
+          },
+        },
+        edge: {},
+        ego: {
+          variables: {
+            asked: { name: 'Asked', type: 'text' },
+            never: { name: 'Never', type: 'boolean' },
+          },
+        },
+      } as unknown as Codebook,
+      stages: [
+        stage({
+          id: 'ego',
+          type: 'EgoForm',
+          label: 'About you',
+          form: { fields: [{ variable: 'asked', prompt: 'Your name?' }] },
+        }),
+        nameGenerator({ id: 'reached', behaviours: {} }),
+        nameGenerator({
+          id: 'guarded',
+          behaviours: {},
+          skipLogic: {
+            action: 'SHOW',
+            filter: {
+              join: 'AND',
+              rules: [
+                {
+                  id: 'r1',
+                  type: 'ego',
+                  options: { attribute: 'never', operator: 'EXISTS' },
+                },
+              ],
+            },
+          },
+        }),
+      ],
+      respectSkipLogicAndFiltering: true,
+    });
+
+    expect(network.nodes).toHaveLength(3);
+    for (const node of network.nodes) {
+      expect(node.stageId).toBe('reached');
+    }
+  });
+});

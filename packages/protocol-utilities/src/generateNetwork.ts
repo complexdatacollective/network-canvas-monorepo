@@ -318,7 +318,6 @@ export function generateNetwork(
   );
 
   const feasibilityStages = reachableStagesForFeasibility(
-    codebook,
     stages,
     respectSkipLogicAndFiltering,
   );
