@@ -1,0 +1,1 @@
+{"name":"spike-saml","private":true,"type":"module","dependencies":{"@better-auth/sso":"^1.6.26","@hono/node-server":"^2.1.0","better-auth":"^1.6.26","hono":"^4.13.1","pg":"^8.22.0"}}
