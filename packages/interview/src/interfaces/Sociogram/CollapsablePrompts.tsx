@@ -61,6 +61,12 @@ const CollapsablePrompts = (props: {
       // a different pixel boundary, even when automated hosts skip animations.
       // Omit the drag feature only in that explicit host mode; reduced-motion
       // users still retain the panel's drag interaction.
+      // `skipAnimations` is deliberately the automation signal here: test
+      // hosts set it through AnimationProvider.disableAnimations, while OS
+      // reduced motion does not. Detecting CI/E2E inside this host-agnostic
+      // package would couple it to one build environment. If animation
+      // disabling gains a non-test use, introduce an explicit automated-
+      // interaction flag instead of broadening this proxy.
       drag={!skipAnimations}
       dragConstraints={skipAnimations ? undefined : dragConstraints}
       noContainer
