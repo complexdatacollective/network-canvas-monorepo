@@ -1,0 +1,35 @@
+{
+  "name": "@codaco/studio-sync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Studio sync protocol core: shared apply engine, lease state machine, idempotent commit path, and manifest-hash resume.",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "packages/studio-sync"
+  },
+  "type": "module",
+  "exports": {
+    "./apply": "./src/apply.ts",
+    "./client": "./src/client.ts",
+    "./server": "./src/server.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.3.0",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:^",
+    "@types/pg": "^8.20.4",
+    "fast-check": "^4.9.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
