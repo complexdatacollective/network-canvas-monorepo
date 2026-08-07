@@ -1,0 +1,1 @@
+{"name":"spike-aggregates","private":true,"type":"module","dependencies":{"@codaco/protocol-utilities":"^3.2.0","@codaco/shared-consts":"^5.6.1","pg":"^8.22.0","pg-boss":"^12.27.0","pg-copy-streams":"^7.0.0"}}
