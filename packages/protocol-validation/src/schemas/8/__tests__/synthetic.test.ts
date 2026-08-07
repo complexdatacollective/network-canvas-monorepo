@@ -670,6 +670,62 @@ describe('synthetic metadata (additive to schema 8)', () => {
       expect(parse(protocol).success).toBe(false);
     });
 
+    it('accepts a window that overlaps the field window', () => {
+      const protocol = withPersonVariable(
+        'dateMet',
+        datetimeVariable(
+          { distribution: 'uniform', min: '2020-06-01', max: '2021-06-01' },
+          { type: 'full', min: '2020-01-01', max: '2020-12-31' },
+        ),
+      );
+      expect(parse(protocol).success).toBe(true);
+    });
+
+    it('rejects a window that starts after the field window ends', () => {
+      const protocol = withPersonVariable(
+        'dateMet',
+        datetimeVariable(
+          { distribution: 'uniform', min: '2030-01-01' },
+          { type: 'full', min: '2020-01-01', max: '2020-12-31' },
+        ),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(hasIssue(result, 'after the latest date this field accepts')).toBe(
+        true,
+      );
+    });
+
+    it('rejects a window that ends before the field window starts', () => {
+      const protocol = withPersonVariable(
+        'dateMet',
+        datetimeVariable(
+          { distribution: 'uniform', max: '2010-01-01' },
+          { type: 'full', min: '2020-01-01' },
+        ),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(
+        hasIssue(result, 'before the earliest date this field accepts'),
+      ).toBe(true);
+    });
+
+    it('compares the field window at the variable resolution', () => {
+      const protocol = withPersonVariable(
+        'dateMet',
+        datetimeVariable(
+          { distribution: 'uniform', min: '2030-01' },
+          { type: 'month', min: '2005-01', max: '2010-12' },
+        ),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(hasIssue(result, 'after the latest date this field accepts')).toBe(
+        true,
+      );
+    });
+
     it('rejects a normal mean that is not a full ISO date', () => {
       const protocol = withPersonVariable(
         'dateMet',

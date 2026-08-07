@@ -1,9 +1,12 @@
+import type * as z from 'zod/mini';
+
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { resolveVariableSynthetic } from '@codaco/protocol-utilities';
 import {
   DEFAULT_OPTION_WEIGHT,
   optionValueKey,
   type Variable,
+  VariableSchema,
   type VariableSynthetic,
 } from '@codaco/protocol-validation';
 
@@ -15,7 +18,8 @@ import {
  * resolution the generator draws with (`resolveVariableSynthetic`), so the
  * UI's starting point is exactly what an undeclared protocol produces.
  * Submission assembles a schema-valid `synthetic` object from the flat field
- * values, normalising selection-count probabilities to sum to 1.
+ * values, normalising selection-count probabilities to sum to 1, and holds
+ * the result to the codebook schema before it can be saved.
  */
 
 export type SyntheticDraftContext = {
@@ -380,4 +384,187 @@ export function assembleSynthetic(
       return { ...base, ...missing } as VariableSynthetic;
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Submission-time validation
+// ---------------------------------------------------------------------------
+
+/** Draft errors in the shape the form store consumes. */
+type SyntheticDraftErrors = {
+  /** Keyed by flat field name; rendered under the control that owns it. */
+  fieldErrors: Record<string, string[]>;
+  /** Rendered as a list at the top of the form. */
+  formErrors: string[];
+};
+
+type SchemaIssue = z.core.$ZodIssue;
+type LocatedIssue = { path: PropertyKey[]; issue: SchemaIssue };
+
+const issueKey = (located: LocatedIssue): string =>
+  `${located.path.map(String).join('.')}|${located.issue.message}`;
+
+/**
+ * The issues of a failed parse, taken from the union members that came
+ * closest. `VariableSchema` is a plain union, so one failure nests EVERY
+ * member's issues — including the type mismatches of the ten variable types
+ * this variable is not. The members that fit report the fewest issues, which
+ * is the same closeness Zod's own error message reads by; two members can be
+ * equally close (a componentless boolean matches both of its own), and they
+ * then repeat each other, so identical issues collapse.
+ */
+const closestIssues = (
+  issues: readonly SchemaIssue[],
+  prefix: PropertyKey[] = [],
+): LocatedIssue[] =>
+  issues.flatMap((issue) => {
+    const path = [...prefix, ...issue.path];
+    // A discriminated union that matched no branch carries no nested issues:
+    // its own message is the whole of what went wrong.
+    if (issue.code !== 'invalid_union' || issue.errors.length === 0) {
+      return [{ path, issue }];
+    }
+    const branches = issue.errors.map((branch) => closestIssues(branch, path));
+    const closest = Math.min(...branches.map((branch) => branch.length));
+    const seen = new Set<string>();
+    return branches
+      .filter((branch) => branch.length === closest)
+      .flat()
+      .filter((located) => {
+        const key = issueKey(located);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  });
+
+/** The scalar synthetic properties this editor renders a control for. */
+const SYNTHETIC_LEAF_FIELDS = new Set([
+  'distribution',
+  'generator',
+  'max',
+  'mean',
+  'min',
+  'missingProbability',
+  'probabilityTrue',
+  'sd',
+  'sdDays',
+  'value',
+]);
+
+/**
+ * The field an issue belongs under, or undefined where no control owns it —
+ * a rule about a table as a whole, an entry naming an option value the draft
+ * no longer offers, or a property this editor does not yet render. Those
+ * become form errors instead, which is what makes them visible: the store
+ * discards an error naming a field that is not registered.
+ *
+ * Table entries are matched on the value they carry rather than on their
+ * position, so a row the draft has since dropped resolves to no control
+ * instead of to whichever row inherited its index.
+ */
+const fieldForIssue = (
+  ctx: SyntheticDraftContext,
+  synthetic: VariableSynthetic | undefined,
+  path: PropertyKey[],
+): string | undefined => {
+  const [, second, third, fourth] = path;
+  if (second === 'optionWeights' && typeof third === 'number') {
+    const entry =
+      synthetic && 'optionWeights' in synthetic
+        ? synthetic.optionWeights?.[third]
+        : undefined;
+    if (!entry) return undefined;
+    const key = optionValueKey(entry.value);
+    return weightRows(ctx).find((row) => optionValueKey(row.value) === key)
+      ?.fieldName;
+  }
+  if (
+    second === 'selectionCount' &&
+    third === 'probabilities' &&
+    typeof fourth === 'number'
+  ) {
+    const entry =
+      synthetic && 'selectionCount' in synthetic
+        ? synthetic.selectionCount?.probabilities[fourth]
+        : undefined;
+    if (!entry) return undefined;
+    return selectionCountRows(ctx).find((row) => row.count === entry.count)
+      ?.fieldName;
+  }
+  return typeof second === 'string' && SYNTHETIC_LEAF_FIELDS.has(second)
+    ? syntheticField(second)
+    : undefined;
+};
+
+/**
+ * A message for the author. The schema's own refinements are already phrased
+ * for one and pass through unchanged; Zod's structural wording ("Too big:
+ * expected number to be <=1") names the constraint the parser applied rather
+ * than the correction to make, and is restated against the bound it carries.
+ */
+const describeIssue = (issue: SchemaIssue): string => {
+  const numeric =
+    'origin' in issue && (issue.origin === 'number' || issue.origin === 'int');
+  if (issue.code === 'too_small' && numeric) {
+    return issue.inclusive
+      ? `Enter ${issue.minimum} or more`
+      : `Enter more than ${issue.minimum}`;
+  }
+  if (issue.code === 'too_big' && numeric) {
+    return issue.inclusive
+      ? `Enter ${issue.maximum} or less`
+      : `Enter less than ${issue.maximum}`;
+  }
+  if (issue.code === 'invalid_type') return 'Enter a value';
+  return issue.message;
+};
+
+/**
+ * The errors saving this draft would introduce, or undefined when it is safe
+ * to save.
+ *
+ * Every synthetic control is a native input whose `min`/`max`/`step` nothing
+ * enforces — the form renders `noValidate`, and the field validator speaks
+ * `minValue`/`maxValue` — so the codebook schema is the only thing standing
+ * between a typo (a probability of 2, a negative standard deviation,
+ * inverted bounds, weights that are all zero) and a protocol that no longer
+ * validates.
+ *
+ * Issues outside the `synthetic` subtree are deliberately left alone. They
+ * describe a variable that was already invalid when the editor opened, and
+ * this editor cannot reach them: refusing an unrelated rename over one would
+ * strand the author with no way out of the dialog.
+ */
+export function validateAssembledVariable(
+  ctx: SyntheticDraftContext,
+  synthetic: VariableSynthetic | undefined,
+): SyntheticDraftErrors | undefined {
+  const candidate: Record<string, unknown> = { ...ctx.variable };
+  if (synthetic) {
+    candidate.synthetic = synthetic;
+  } else {
+    delete candidate.synthetic;
+  }
+
+  const result = VariableSchema.safeParse(candidate);
+  if (result.success) return undefined;
+
+  const fieldErrors: Record<string, string[]> = {};
+  const formErrors: string[] = [];
+  for (const located of closestIssues(result.error.issues)) {
+    if (located.path[0] !== 'synthetic') continue;
+    const message = describeIssue(located.issue);
+    const field = fieldForIssue(ctx, synthetic, located.path);
+    if (field === undefined) {
+      if (!formErrors.includes(message)) formErrors.push(message);
+      continue;
+    }
+    const existing = (fieldErrors[field] ??= []);
+    if (!existing.includes(message)) existing.push(message);
+  }
+
+  return Object.keys(fieldErrors).length > 0 || formErrors.length > 0
+    ? { fieldErrors, formErrors }
+    : undefined;
 }

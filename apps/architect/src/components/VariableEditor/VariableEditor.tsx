@@ -31,6 +31,7 @@ import {
   assembleSynthetic,
   SYNTHETIC_ENABLED_FIELD,
   type SyntheticDraftContext,
+  validateAssembledVariable,
 } from './syntheticDraft';
 import SyntheticSection from './SyntheticSection';
 
@@ -192,6 +193,14 @@ function VariableEditorInner({
       const synthetic = values[SYNTHETIC_ENABLED_FIELD]
         ? assembleSynthetic(context, values)
         : undefined;
+
+      // The synthetic controls' bounds are native input attributes, which
+      // this form does not enforce; the codebook schema does, and a draft it
+      // rejects would be saved as a protocol that no longer validates.
+      const syntheticErrors = validateAssembledVariable(context, synthetic);
+      if (syntheticErrors) {
+        return { success: false, ...syntheticErrors };
+      }
 
       // Every claimed key must be re-supplied when it should survive; the
       // sections this editor does not yet edit pass straight through.

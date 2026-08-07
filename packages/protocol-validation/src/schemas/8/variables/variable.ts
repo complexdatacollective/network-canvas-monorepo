@@ -434,9 +434,20 @@ export const isValidDateAtResolution = (
 // A synthetic date window is expressed at the variable's own resolution (its
 // bounds compare against stored values), while a normal descriptor's mean is
 // always a full YYYY-MM-DD date because its sdDays operates in days.
+//
+// `fieldWindow` is the window the field itself collects within, and it stays
+// authoritative over synthetic draws exactly as validation bounds do for a
+// number: the generator narrows its effective window by the descriptor's
+// bounds and, where the two do not overlap, drops the descriptor and draws
+// from the field's window instead. A synthetic window that can never reach
+// the field's is therefore metadata that could never take effect — reject it
+// here rather than silently ignore it at generation time, mirroring
+// `rejectDisjointNumberSynthetic`. Both ends are strings at the same
+// resolution, so a lexicographic comparison is date order.
 const rejectInvalidDatetimeSynthetic = (
   synthetic: DatetimeSynthetic | undefined,
   resolution: keyof typeof DATE_RESOLUTION,
+  fieldWindow: { min?: string; max?: string } | undefined,
   ctx: z.RefinementCtx,
 ) => {
   if (!synthetic || !('distribution' in synthetic)) return;
@@ -452,16 +463,46 @@ const rejectInvalidDatetimeSynthetic = (
       });
     }
   }
+  // Only comparable bounds take part in the comparisons below; a bound at the
+  // wrong resolution already carries its own issue.
+  const comparable = (bound: string | undefined): string | undefined =>
+    bound !== undefined && isValidDateAtResolution(bound, resolution)
+      ? bound
+      : undefined;
+  const syntheticMin = comparable(synthetic.min);
+  const syntheticMax = comparable(synthetic.max);
+  const windowMin = comparable(fieldWindow?.min);
+  const windowMax = comparable(fieldWindow?.max);
   if (
-    synthetic.min !== undefined &&
-    synthetic.max !== undefined &&
-    isValidDateAtResolution(synthetic.min, resolution) &&
-    isValidDateAtResolution(synthetic.max, resolution) &&
-    synthetic.min > synthetic.max
+    syntheticMin !== undefined &&
+    syntheticMax !== undefined &&
+    syntheticMin > syntheticMax
   ) {
     ctx.addIssue({
       code: 'custom' as const,
       message: 'Synthetic "min" must not be after "max"',
+      path: ['synthetic', 'max'],
+    });
+  }
+  if (
+    syntheticMin !== undefined &&
+    windowMax !== undefined &&
+    syntheticMin > windowMax
+  ) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'Synthetic "min" is after the latest date this field accepts',
+      path: ['synthetic', 'min'],
+    });
+  }
+  if (
+    syntheticMax !== undefined &&
+    windowMin !== undefined &&
+    syntheticMax < windowMin
+  ) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'Synthetic "max" is before the earliest date this field accepts',
       path: ['synthetic', 'max'],
     });
   }
@@ -559,6 +600,7 @@ const dateTimeDatePickerSchema = baseVariableSchema
     rejectInvalidDatetimeSynthetic(
       variable.synthetic,
       variable.parameters?.type ?? 'full',
+      variable.parameters,
       ctx,
     );
   });
@@ -622,8 +664,11 @@ const dateTimeRelativeDatePickerSchema = baseVariableSchema
   })
   .superRefine(rejectMissingOnRequired)
   .superRefine((variable, ctx) => {
-    // RelativeDatePicker stores full-resolution dates.
-    rejectInvalidDatetimeSynthetic(variable.synthetic, 'full', ctx);
+    // RelativeDatePicker stores full-resolution dates. It declares no window
+    // to intersect against: its window is derived from `anchor` ± `before`/
+    // `after`, and an omitted anchor is the interview date — a window that
+    // moves with the run cannot make a stored protocol invalid.
+    rejectInvalidDatetimeSynthetic(variable.synthetic, 'full', undefined, ctx);
   });
 
 const textVariableSchema = baseVariableSchema
