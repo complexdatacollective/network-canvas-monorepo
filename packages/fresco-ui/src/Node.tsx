@@ -7,12 +7,15 @@ import {
   type CSSProperties,
   type Ref,
   useEffect,
+  useState,
 } from 'react';
 import { useMergeRefs } from 'react-best-merge-refs';
 
+import { useIsTruncated } from './hooks/useIsTruncated';
 import { useNodeInteractions } from './hooks/useNodeInteractions';
 import usePrevious from './hooks/usePrevious';
 import { useSafeAnimate } from './hooks/useSafeAnimate';
+import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 import { composeEventHandlers } from './utils/composeEventHandlers';
 import { cva, type VariantProps } from './utils/cva';
 
@@ -154,6 +157,8 @@ type UINodeProps = {
   onPointerDown?: (e: React.PointerEvent) => void;
   /** External pointer up handler (composes with internal behavior) */
   onPointerUp?: (e: React.PointerEvent) => void;
+  /** Suppresses the truncated-label tooltip */
+  tooltipDisabled?: boolean;
   ref?: Ref<HTMLButtonElement>;
 } & VariantProps<typeof nodeVariants> &
   Omit<
@@ -202,6 +207,8 @@ export default function Node(props: UINodeProps) {
     className,
     style,
     ref,
+    id,
+    tooltipDisabled = false,
     onPointerDown: externalPointerDown,
     onPointerUp: externalPointerUp,
     onKeyDown: externalKeyDown,
@@ -232,6 +239,33 @@ export default function Node(props: UINodeProps) {
     hasClickHandler,
     disabled,
   });
+
+  const { ref: labelRef, isTruncated } = useIsTruncated<HTMLSpanElement>({
+    watch: label,
+    enabled: !loading,
+  });
+
+  const [pointerHeld, setPointerHeld] = useState(false);
+  useEffect(() => {
+    if (!pointerHeld) return undefined;
+    const release = () => setPointerHeld(false);
+    window.addEventListener('pointerup', release);
+    window.addEventListener('pointercancel', release);
+    return () => {
+      window.removeEventListener('pointerup', release);
+      window.removeEventListener('pointercancel', release);
+    };
+  }, [pointerHeld]);
+
+  const grabbed = buttonProps['aria-grabbed'];
+  const tooltipEnabled =
+    isTruncated &&
+    !loading &&
+    !disabled &&
+    !pointerHeld &&
+    grabbed !== true &&
+    grabbed !== 'true' &&
+    !tooltipDisabled;
 
   // Scope for selected state animation (box-shadow on the shape layer, so
   // the ring follows the shape's border radius and rotation)
@@ -283,11 +317,15 @@ export default function Node(props: UINodeProps) {
   const nodeContent = (
     <>
       {loading && <Loader2 className="animate-spin" size={24} />}
-      {!loading && <span className={labelVariants({ size })}>{label}</span>}
+      {!loading && (
+        <span ref={labelRef} className={labelVariants({ size })}>
+          {label}
+        </span>
+      )}
     </>
   );
 
-  return (
+  const button = (
     <motion.button
       {...buttonProps}
       tabIndex={
@@ -295,6 +333,7 @@ export default function Node(props: UINodeProps) {
       }
       ref={useMergeRefs({ ref, scope })}
       type="button"
+      id={id}
       disabled={disabled}
       aria-label={ariaLabel ?? label}
       aria-pressed={
@@ -316,8 +355,8 @@ export default function Node(props: UINodeProps) {
       data-node-linking={linking || undefined}
       data-node-highlighted={highlighted || undefined}
       onPointerDown={composeEventHandlers(
-        nodeProps.onPointerDown,
-        externalPointerDown,
+        composeEventHandlers(nodeProps.onPointerDown, externalPointerDown),
+        () => setPointerHeld(true),
       )}
       onPointerUp={composeEventHandlers(
         nodeProps.onPointerUp,
@@ -370,5 +409,18 @@ export default function Node(props: UINodeProps) {
         {props.children}
       </span>
     </motion.button>
+  );
+
+  return (
+    <Tooltip disabled={!tooltipEnabled}>
+      <TooltipTrigger id={id} render={button} />
+      <TooltipContent
+        aria-hidden="true"
+        pointerEvents="none"
+        className="wrap-anywhere whitespace-pre-line"
+      >
+        {label}
+      </TooltipContent>
+    </Tooltip>
   );
 }
