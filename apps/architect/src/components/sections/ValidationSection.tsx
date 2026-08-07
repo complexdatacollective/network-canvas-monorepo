@@ -11,6 +11,7 @@ import { Section } from '~/components/EditorLayout';
 import Validations from '~/components/Validations';
 import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/modules/root';
+import useLatchedExpansion from '~/hooks/useLatchedExpansion';
 
 import { getFieldId } from '../../utils/issues';
 
@@ -33,7 +34,7 @@ const ValidationSection = ({
   form,
   entity,
   id = getFieldId('validation'),
-  summary = 'Add one or more validation rules to this form field.',
+  summary = 'Choose which validation rules apply to this form field.',
   variableType = '',
   existingVariables,
   allVariables,
@@ -49,6 +50,8 @@ const ValidationSection = ({
     );
   }, [form]);
   const hasValidation = useSelector(hasValidationSelector);
+  const { startExpanded, onExplicitClose } =
+    useLatchedExpansion(!!hasValidation);
   // Eleventh-wave Finding 3: the dialog's form-level validate
   // (makeFieldEditorValidate) keys contradiction messages at `validation`
   // even when the edited variable has no rules of its own (the target-only
@@ -66,6 +69,7 @@ const ValidationSection = ({
   });
   const handleToggleChange = (nextState: boolean) => {
     if (!nextState) {
+      onExplicitClose();
       dispatch(change(form, 'validation', null) as UnknownAction);
     }
     return true;
@@ -86,7 +90,7 @@ const ValidationSection = ({
       summary={<Paragraph>{summary}</Paragraph>}
       disabled={disabled}
       toggleable
-      startExpanded={!!hasValidation}
+      startExpanded={startExpanded}
       forceExpanded={hasValidationSyncError}
       handleToggleChange={handleToggleChange}
     >

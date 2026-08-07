@@ -48,7 +48,7 @@ const VariableValidationForm = ({
     allVariables={variables}
     currentVariableId={variableId}
     id={`codebook-validation-${variableId}`}
-    summary="Add one or more validation rules to the selected variable."
+    summary="Choose which validation rules apply to the selected variable."
   />
 );
 
