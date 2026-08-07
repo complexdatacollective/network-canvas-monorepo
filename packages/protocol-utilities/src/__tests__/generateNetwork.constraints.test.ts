@@ -6,6 +6,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  RELATIONSHIP_TYPE_OPTIONS,
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../generateNetwork';
@@ -2351,13 +2352,12 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
         family: {
           color: 'edge-color-seq-1',
           variables: {
+            // The full set: a pedigree writes partner links as well as
+            // parentage, and refuses a codebook that cannot hold one.
             linkType: {
               name: 'Link type',
               type: 'categorical',
-              options: [
-                { label: 'Biological', value: 'biological' },
-                { label: 'Adoptive', value: 'adoptive' },
-              ],
+              options: RELATIONSHIP_TYPE_OPTIONS,
             },
             active: { name: 'Active', type: 'boolean' },
           },
@@ -2400,8 +2400,9 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
     });
   }
 
-  // ENGINE BUG (fixed values vs. generation) — see the "lost guarantees"
-  // describe header at the end of this file.
+  // The family-member form is not shown for ego — its iconic node is asked
+  // only for biological sex — so a form-drawn variable is absent there and the
+  // rule is judged on the relatives that carry one.
   it(`holds a sameAs pair equal to the ego flag, over ${SEEDS} seeds`, () => {
     const failures: string[] = [];
     const codebook = pedigreeCodebook({
@@ -2414,6 +2415,7 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
       complainAboutTheFlag(failures, seed, nodes);
 
       attributesOf(nodes).forEach((attrs, index) => {
+        if (attrs.flag === undefined) return;
         complain(
           failures,
           attrs.flag === attrs.isEgo,
@@ -2484,6 +2486,8 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
       complainAboutTheFlag(failures, seed, nodes);
 
       attributesOf(nodes).forEach((attrs, index) => {
+        // Ego is asked only for biological sex, so it carries no rank.
+        if (attrs.rank === undefined) return;
         complain(
           failures,
           Number(attrs.rank) < Number(attrs.isEgo),
@@ -2500,6 +2504,8 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
     // Per-variable substreams: giving the flag a reader changes what the
     // reading variable draws, and nothing else. Age and aliveness come from
     // their own streams, so the two protocols must agree on them exactly.
+    // Identical but for the rule itself, so a value that moves can only have
+    // moved because of it.
     const withoutRule = pedigreeCodebook({
       isEgo: { name: 'Is ego', type: 'boolean' },
       flag: { name: 'Flag', type: 'boolean' },
@@ -2508,6 +2514,7 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
         type: 'number',
         validation: { minValue: 0, maxValue: 100 },
       },
+      alive: { name: 'Alive', type: 'boolean' },
     });
     const withRule = pedigreeCodebook({
       isEgo: { name: 'Is ego', type: 'boolean' },

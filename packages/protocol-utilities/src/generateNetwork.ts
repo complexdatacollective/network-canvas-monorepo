@@ -89,10 +89,16 @@ function countCeiling(count: SyntheticCount): number {
 }
 
 /**
- * The largest family a FamilyPedigree stage may build, taken from the
- * declared count of the node type it builds one from.
+ * How large an undeclared family may grow. A pedigree sizes itself from its
+ * population profile rather than from a count, so this only caps its optional
+ * branches.
+ */
+const DEFAULT_PEDIGREE_NODE_CEILING = 32;
+
+/**
+ * The largest family a FamilyPedigree stage may build, taken from the declared
+ * count of the node type it builds one from.
  *
- * The pedigree generator needs a single ceiling for its optional branches.
  * Where several pedigree stages name different node types, the largest wins:
  * the value bounds what any of them could draw, and the generator's own
  * seven-person core keeps a small declared count from making a family
@@ -108,9 +114,17 @@ function familyPedigreeNodeCeiling(
     const type = stage.nodeConfig?.type;
     const definition = type === undefined ? undefined : codebook.node?.[type];
     if (definition === undefined) continue;
+    // Only a DECLARED count applies. The generic node default (1–8) describes
+    // how many people a name generator elicits, which says nothing about a
+    // family: a pedigree's core is seven people before any optional branch,
+    // so defaulting to it would cap every undeclared pedigree below its own
+    // minimum.
+    const declared = definition.synthetic?.count !== undefined;
     ceiling = Math.max(
       ceiling,
-      countCeiling(resolveNodeCount(definition, { creatable: true })),
+      declared
+        ? countCeiling(resolveNodeCount(definition, { creatable: true }))
+        : DEFAULT_PEDIGREE_NODE_CEILING,
     );
   }
   return ceiling;
@@ -125,6 +139,7 @@ function deriveFeasibilityConfig(
   codebook: StructuralCodebook,
   creatableNodeTypes: ReadonlySet<string>,
   today: string,
+  pedigreeCeiling: number,
 ): FeasibilityConfig {
   let nodeCap = 1;
   for (const [type, definition] of Object.entries(codebook.node ?? {})) {
@@ -141,7 +156,7 @@ function deriveFeasibilityConfig(
     sociogramEdgeProbability: { min: 0, max: 1 },
     censusEdgeProbability: { min: 0, max: 1 },
     networkComposerEdgeProbability: { min: 0, max: 1 },
-    familyPedigreeNodeCount: { min: 0, max: nodeCap },
+    familyPedigreeNodeCount: { min: 0, max: pedigreeCeiling },
     today,
   };
 }
@@ -215,6 +230,7 @@ export function generateNetwork(
       renderedCodebook,
       effects.creatableNodeTypes,
       resolvedConfig.today,
+      resolvedFamilyPedigree.maxNodes,
     ),
     externalData,
     respectSkipLogicAndFiltering,
