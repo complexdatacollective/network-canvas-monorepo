@@ -2,6 +2,7 @@ import { isEqual, omit } from 'es-toolkit/compat';
 import { useEffect, useMemo } from 'react';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
@@ -86,9 +87,9 @@ const VariableSiblingFieldMirror = ({ variable }: { variable: Variable }) => (
 /**
  * Writes a committed change in the nested validation-only form back to the
  * selected codebook variable. Mounted unconditionally alongside
- * `ValidationSection` (not just while its toggle is open): `useFormValue`
- * only reports a REGISTERED field, so this only ever fires once the user has
- * actually expanded the section and edited a rule.
+ * `ValidationSection` (not just while its toggle is open): the `validation`
+ * field only exists once the user has actually expanded the section, so this
+ * stays silent until then.
  */
 const ValidationCommitObserver = ({
   currentValidation,
@@ -98,13 +99,22 @@ const ValidationCommitObserver = ({
   onCommit: (validation: ValidationMap) => void;
 }) => {
   const { validation } = useFormValue(['validation'] as const);
+  // Turning the section off clears the field to `undefined` (see
+  // `ValidationSection`'s `handleToggleChange`), which reads identically to a
+  // field that has never mounted. Only the store tells the two apart, and the
+  // difference matters: the first is a removal that must reach the codebook,
+  // the second must write nothing at all.
+  const hasValidationField = useFormStore(
+    (store) => store.getFieldState('validation') !== undefined,
+  );
 
   useEffect(() => {
-    if (validation === undefined) return;
+    if (!hasValidationField) return;
     // `useFormValue` returns the field's raw `FieldValue`; `Validations`'s
-    // own `validation` Field always writes a `ValidationMap`.
+    // own `validation` Field always writes a `ValidationMap`, and a cleared
+    // field means every rule was removed.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const next = validation as ValidationMap;
+    const next = (validation ?? {}) as ValidationMap;
     if (!isEqual(next, currentValidation)) {
       onCommit(next);
     }
@@ -113,7 +123,7 @@ const ValidationCommitObserver = ({
     // just caused feeding a new (but equal-content) `currentValidation` back
     // in on the next render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [validation]);
+  }, [hasValidationField, validation]);
 
   return null;
 };

@@ -33,8 +33,7 @@ vi.mock('~/components/EditorLayout', () => ({
 
 vi.mock('~/components/Form/arrayFields/Options', () => ({
   default: () => null,
-  minTwoOptions: () => undefined,
-  completeOptions: () => undefined,
+  optionsValidation: {},
 }));
 vi.mock('~/components/Options/LockedOptions', () => ({ default: () => null }));
 vi.mock('~/selectors/codebook', () => ({ getVariablesForSubject: () => ({}) }));

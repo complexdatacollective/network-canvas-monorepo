@@ -121,6 +121,9 @@ const useCodebookCommit = () => {
 
   // Editing the codebook from inside the stage editor is an external edit: it
   // never passes through the stage form, so the draft has to be told directly.
+  // Call this only once a write has actually landed — nothing decrements
+  // `externalEditCount` for the life of the editor, so a failed save that
+  // marked one would leave the stage dirty (and prompting on discard) forever.
   const markEdited = useCallback(() => {
     dispatch(markExternalEdit());
   }, [dispatch]);
@@ -155,8 +158,6 @@ export const useFormFieldCommit = ({
         ),
       };
 
-      markEdited();
-
       if (!_createNewVariable) {
         if (!getVariable(variable ?? '')) return VARIABLE_NOT_FOUND;
 
@@ -168,6 +169,8 @@ export const useFormFieldCommit = ({
           CODEBOOK_PROPERTIES,
         );
 
+        markEdited();
+
         return { variable, ...rest };
       }
 
@@ -176,9 +179,11 @@ export const useFormFieldCommit = ({
         name: _createNewVariable,
       });
 
-      return isSubmissionResult(created)
-        ? created
-        : { variable: created, ...rest };
+      if (isSubmissionResult(created)) return created;
+
+      markEdited();
+
+      return { variable: created, ...rest };
     },
     [createVariable, entity, getVariable, markEdited, type, updateVariable],
   );
@@ -218,8 +223,6 @@ export const useComposerFieldCommit = ({
       // so the applicability sweep lands on the row instead.
       const fieldValues = { ...rest, parameters: applicable.parameters };
 
-      markEdited();
-
       if (!_createNewVariable) {
         if (!getVariable(variable ?? '')) return VARIABLE_NOT_FOUND;
 
@@ -230,6 +233,8 @@ export const useComposerFieldCommit = ({
           codebookConfiguration,
           COMPOSER_CODEBOOK_PROPERTIES,
         );
+
+        markEdited();
 
         // fieldValues retains component + parameters
         return { variable, ...fieldValues };
@@ -242,9 +247,11 @@ export const useComposerFieldCommit = ({
         name: _createNewVariable,
       });
 
-      return isSubmissionResult(created)
-        ? created
-        : { variable: created, ...fieldValues };
+      if (isSubmissionResult(created)) return created;
+
+      markEdited();
+
+      return { variable: created, ...fieldValues };
     },
     [createVariable, entity, getVariable, markEdited, type, updateVariable],
   );

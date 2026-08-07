@@ -119,6 +119,20 @@ const renderComponent = (committedStage: Record<string, unknown>) => {
     },
     getFieldValue: (name: string) =>
       getContext().storeApi.getState().getFieldState(name)?.value,
+    /**
+     * Stands in for `useStageDraftHistory`, whose `applyDiff` writes every
+     * field named in the timeline snapshot inside a single `runRestore`.
+     */
+    restore: (values: Record<string, unknown>) => {
+      act(() => {
+        getContext().draft.runRestore(() => {
+          const { setFieldValue } = getContext().storeApi.getState();
+          for (const [name, value] of Object.entries(values)) {
+            setFieldValue(name, value as never);
+          }
+        });
+      });
+    },
   };
 };
 
@@ -182,5 +196,70 @@ describe('EdgeConfiguration edge-type change', () => {
     expect(view.getFieldValue('edgeConfig.relationshipTypeVariable')).toBe(
       'relVar',
     );
+  });
+
+  describe('undo', () => {
+    const PARTNER_CONFIG = {
+      'edgeConfig.type': 'partner',
+      'edgeConfig.relationshipTypeVariable': 'relVar',
+      'edgeConfig.isActiveVariable': 'activeVar',
+      'edgeConfig.isGestationalCarrierVariable': 'gcVar',
+      'edgeConfig.gameteRoleVariable': 'gameteVar',
+    };
+
+    it('keeps the variable slots an undo restored alongside the edge type', () => {
+      const view = renderComponent(COMMITTED_EDGE_CONFIG);
+
+      view.setEdgeType('marriage');
+      expect(
+        view.getFieldValue('edgeConfig.relationshipTypeVariable'),
+      ).toBeUndefined();
+
+      view.restore(PARTNER_CONFIG);
+
+      expect(view.getFieldValue('edgeConfig.type')).toBe('partner');
+      // The restore brought the partner slots back with the edge type;
+      // observing the restored type as "a change" must not clear them again.
+      expect(view.getFieldValue('edgeConfig.relationshipTypeVariable')).toBe(
+        'relVar',
+      );
+      expect(view.getFieldValue('edgeConfig.isActiveVariable')).toBe(
+        'activeVar',
+      );
+      expect(
+        view.getFieldValue('edgeConfig.isGestationalCarrierVariable'),
+      ).toBe('gcVar');
+      expect(view.getFieldValue('edgeConfig.gameteRoleVariable')).toBe(
+        'gameteVar',
+      );
+    });
+
+    it('still clears the slots on a user edit that follows a restore', () => {
+      const view = renderComponent(COMMITTED_EDGE_CONFIG);
+
+      view.setEdgeType('marriage');
+      view.restore(PARTNER_CONFIG);
+      view.setEdgeType('marriage');
+
+      expect(
+        view.getFieldValue('edgeConfig.relationshipTypeVariable'),
+      ).toBeUndefined();
+      expect(
+        view.getFieldValue('edgeConfig.gameteRoleVariable'),
+      ).toBeUndefined();
+    });
+
+    it('still clears the slots on a user edit after a restore that left the edge type alone', () => {
+      const view = renderComponent(COMMITTED_EDGE_CONFIG);
+
+      // A restore of some other field bumps the same counter, so the guard has
+      // to be consumed even when `edgeConfig.type` did not move.
+      view.restore({ 'edgeConfig.isActiveVariable': 'activeVar' });
+      view.setEdgeType('marriage');
+
+      expect(
+        view.getFieldValue('edgeConfig.relationshipTypeVariable'),
+      ).toBeUndefined();
+    });
   });
 });

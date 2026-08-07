@@ -7,6 +7,7 @@ import { Row, Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import {
   type StageFormStoreApi,
   useStageFormContext,
@@ -52,12 +53,22 @@ const SourceStage = (_props: StageEditorSectionProps) => {
   // alongside it — so `previousSourceStageId` tracks the field across
   // renders and skips the stage's first pick.
   const previousSourceStageId = useRef(sourceStageId);
+  const restoreVersion = useStageRestoreVersion();
+  const previousRestoreVersion = useRef(restoreVersion);
   useEffect(() => {
     const previous = previousSourceStageId.current;
     previousSourceStageId.current = sourceStageId;
+    const previousVersion = previousRestoreVersion.current;
+    previousRestoreVersion.current = restoreVersion;
     if (!previous || sourceStageId === previous) return;
+
+    // An undo/redo restores the source stage together with the diseases that
+    // belong to it, so clearing here would wipe the half of the restore the
+    // user was reaching for.
+    if (previousVersion !== restoreVersion) return;
+
     clearDiseasesValue(storeApi);
-  }, [sourceStageId, storeApi]);
+  }, [restoreVersion, sourceStageId, storeApi]);
 
   return (
     <Section

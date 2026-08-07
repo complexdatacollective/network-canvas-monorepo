@@ -17,6 +17,7 @@ import type { RootState } from '~/ducks/modules/root';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { EntitySelectControl as EntitySelectField } from '../fields/EntitySelectField/EntitySelectField';
+import { HiddenFieldValue } from '../Form/withFieldsHandlers';
 import {
   type CurrentFilters,
   getEdgeFilters,
@@ -28,6 +29,18 @@ const TAP_BEHAVIOURS = {
   CREATE_EDGES: 'create edges',
   HIGHLIGHT_ATTRIBUTES: 'highlight attributes',
 };
+
+/**
+ * `highlight.allowHighlighting` is what the interview runtime gates the
+ * tap-to-toggle branch on (`Sociogram.tsx`), and the protocol schema pairs it
+ * with `highlight.variable`: enabled requires the variable, and the variable
+ * without the flag is an accepted but inert prompt. Nothing renders a control
+ * for it, so it is registered as a value-only field for as long as attribute
+ * toggling is the selected behaviour — otherwise the dialog's submitted
+ * `highlight` object (which REPLACES the committed one wholesale, see
+ * `DialogArrayField`'s `mergeEditedRow`) would carry only the variable.
+ */
+const ALLOW_HIGHLIGHTING_FIELD = 'highlight.allowHighlighting';
 
 type TapBehaviourProps = {
   entity: 'node' | 'edge' | 'ego';
@@ -73,6 +86,16 @@ const TapBehaviour = ({
     initialState(),
   );
 
+  // Turning highlighting off writes `false` rather than just dropping the
+  // variable: the committed flag survives a save that never mentions it
+  // (`mergeEditedRow` keeps whatever the row already had), which would leave
+  // an enabled highlight with no variable — a prompt the schema rejects.
+  // Written unconditionally, which is also what every canonical sociogram
+  // prompt records (`highlight: {allowHighlighting: false}` on the
+  // layout-only and edge-creation prompts of the sample protocol).
+  const disableHighlighting = () =>
+    setLocalFieldValue(ALLOW_HIGHLIGHTING_FIELD, false);
+
   const handleChangeTapBehaviour = (behaviour: string | number | undefined) => {
     const nextBehaviour = typeof behaviour === 'string' ? behaviour : null;
     setTapBehaviour(nextBehaviour);
@@ -81,16 +104,22 @@ const TapBehaviour = ({
       // dialog's own submitted values, but an explicit clear also resets the
       // dormant slot so re-toggling within the same session starts fresh.
       setLocalFieldValue('edges.create', undefined);
+      // Re-selecting this behaviour has to overwrite the `false` a previous
+      // switch parked, which the field would otherwise adopt on registration
+      // in preference to its own initial value.
+      setLocalFieldValue(ALLOW_HIGHLIGHTING_FIELD, true);
     }
     if (nextBehaviour === TAP_BEHAVIOURS.CREATE_EDGES) {
       // Reset attribute highlighting.
       setLocalFieldValue('highlight.variable', undefined);
+      disableHighlighting();
     }
   };
   const handleToggleChange = (value: boolean) => {
     if (value) return true;
     setLocalFieldValue('edges.create', undefined);
     setLocalFieldValue('highlight.variable', undefined);
+    disableHighlighting();
     return true;
   };
 
@@ -142,19 +171,22 @@ const TapBehaviour = ({
       {tapBehaviour && (
         <Row>
           {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
-            <ArchitectField
-              name="highlight.variable"
-              label="Boolean Attribute to Toggle"
-              component={VariablePicker}
-              validation={{ required: true }}
-              initialValue={initialHighlight?.variable ?? undefined}
-              entity={entity}
-              type={type}
-              onCreateOption={(value: string) =>
-                handleCreateVariable(value, 'boolean', 'highlight.variable')
-              }
-              options={highlightVariablesForSubject}
-            />
+            <>
+              <HiddenFieldValue name={ALLOW_HIGHLIGHTING_FIELD} initialValue />
+              <ArchitectField
+                name="highlight.variable"
+                label="Boolean Attribute to Toggle"
+                component={VariablePicker}
+                validation={{ required: true }}
+                initialValue={initialHighlight?.variable ?? undefined}
+                entity={entity}
+                type={type}
+                onCreateOption={(value: string) =>
+                  handleCreateVariable(value, 'boolean', 'highlight.variable')
+                }
+                options={highlightVariablesForSubject}
+              />
+            </>
           )}
           {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
             <>

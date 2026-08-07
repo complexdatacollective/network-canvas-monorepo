@@ -15,11 +15,11 @@ type BooleanOption = {
   negative?: boolean;
 };
 
-// The `value` of each option is fixed by its position (true/false) and never
-// user-edited, but the schema requires it (`booleanOptionsSchema` in
-// `@codaco/protocol-validation`). "Yes"/"No" match the historic mount-time
-// default this replaces (`withBackgroundChangeHandler`'s sibling in this
-// file, deleted with its HOC).
+// The two options a new BooleanChoice starts from. The schema requires a
+// `value` on every option (`booleanOptionsSchema` in
+// `@codaco/protocol-validation`) but offers no editor for it, so these supply
+// it. "Yes"/"No" match the historic mount-time default this replaces
+// (`withBackgroundChangeHandler`'s sibling in this file, deleted with its HOC).
 const DEFAULT_OPTIONS: [BooleanOption, BooleanOption] = [
   { label: 'Yes', value: true },
   { label: 'No', value: false, negative: true },
@@ -31,10 +31,15 @@ const DEFAULT_OPTIONS: [BooleanOption, BooleanOption] = [
  * options editor uses — because callers source it through the same
  * `item.options` prop those editors read. A Boolean's `options` are actually
  * `{label, value: boolean, negative?}`, so this re-derives the two entries
- * BooleanChoice owns rather than trusting the borrowed type: `value` is
- * always fixed by position (never read from committed data), `label` is kept
- * when present, and `negative` is recovered from the raw object since
- * `OptionValue` has no field for it.
+ * BooleanChoice owns rather than trusting the borrowed type: `label` and
+ * `value` are kept when present, and `negative` is recovered from the raw
+ * object since `OptionValue` has no field for it.
+ *
+ * The committed `value` is retained rather than reimposed by position because
+ * the schema constrains neither the order of the two options nor which
+ * boolean each carries: substituting the positional fallback would reverse
+ * which boolean a label records on any protocol that stores them false-first,
+ * silently rewriting what already-collected answers mean.
  */
 const toBooleanOption = (
   option: OptionValue | undefined,
@@ -46,7 +51,7 @@ const toBooleanOption = (
   const record = option as Partial<BooleanOption> | undefined;
   return {
     label: typeof record?.label === 'string' ? record.label : fallback.label,
-    value: fallback.value,
+    value: typeof record?.value === 'boolean' ? record.value : fallback.value,
     ...(typeof record?.negative === 'boolean'
       ? { negative: record.negative }
       : {}),
@@ -108,8 +113,14 @@ function BooleanChoiceOptionsField({
     <div className="grid grid-cols-1 gap-5">
       <div className="bg-surface-3 text-surface-3-contrast rounded p-7 [&_h3]:mt-0">
         <Heading level="h3">Option One</Heading>
+        {/*
+          Each card states the boolean its option actually records rather than
+          a fixed true/false, because the committed values are retained (see
+          `toBooleanOption`) and a protocol may store them false-first.
+        */}
         <Paragraph>
-          This option will set the value <strong>true</strong> when selected.
+          This option will set the value{' '}
+          <strong>{String(optionOne.value)}</strong> when selected.
         </Paragraph>
         <UnconnectedField
           name="options[0].label"
@@ -131,7 +142,8 @@ function BooleanChoiceOptionsField({
       <div className="bg-surface-3 text-surface-3-contrast rounded p-7 [&_h3]:mt-0">
         <Heading level="h3">Option Two</Heading>
         <Paragraph>
-          This option will set the value <strong>false</strong> when selected.
+          This option will set the value{' '}
+          <strong>{String(optionTwo.value)}</strong> when selected.
         </Paragraph>
         <UnconnectedField
           name="options[1].label"

@@ -1,8 +1,10 @@
-import { difference, isEqual, union } from 'es-toolkit/compat';
+import { difference, get, isEqual, union } from 'es-toolkit/compat';
 import { useEffect, useRef } from 'react';
 
 import type { StageSubject, StageType } from '@codaco/protocol-validation';
+import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import { getInterfaceTemplate } from '~/components/StageEditor/interfaceTemplates';
+import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
 import {
   useSetStageValue,
@@ -32,14 +34,25 @@ const useResetStageOnSubjectChange = (interfaceType: StageType): void => {
   const setStageValue = useSetStageValue();
 
   const previousSubject = useRef(subject);
+  const restoreVersion = useStageRestoreVersion();
+  const previousRestoreVersion = useRef(restoreVersion);
 
   useEffect(() => {
     const previous = previousSubject.current;
     previousSubject.current = subject;
+    const previousVersion = previousRestoreVersion.current;
+    previousRestoreVersion.current = restoreVersion;
 
     // Only a change away from an existing subject invalidates the stage; the
     // first subject a stage is given has nothing to reset.
     if (!previous || isEqual(previous, subject)) {
+      return;
+    }
+
+    // An undo/redo restores the subject together with the configuration that
+    // belongs to it, so resetting here would wipe the half of the restore the
+    // user was reaching for.
+    if (previousVersion !== restoreVersion) {
       return;
     }
 
@@ -57,9 +70,34 @@ const useResetStageOnSubjectChange = (interfaceType: StageType): void => {
     );
 
     fieldsToReset.forEach((field) => {
+      // The store keys fields by exact name with no hierarchy, so writing a
+      // container (`form`, `background`, `behaviours`) is only parked as a
+      // dormant value and never replaces the descendants a section actually
+      // registers (`form.fields`, `background.image`) — which would then be
+      // saved still carrying the previous subject's variable references.
+      clearFieldValue(storeApi, field);
+
       setStageValue(field, template[field] ?? null);
+
+      const { fields, dormantValues } = storeApi.getState();
+      const names = new Set([...fields.keys(), ...dormantValues.keys()]);
+      for (const name of names) {
+        if (!name.startsWith(`${field}.`) && !name.startsWith(`${field}[`)) {
+          continue;
+        }
+        // A nested template default has to be addressed by the same name the
+        // section registered, or it lands on the container instead.
+        setStageValue(name, get(template, name));
+      }
     });
-  }, [committedStage, interfaceType, setStageValue, storeApi, subject]);
+  }, [
+    committedStage,
+    interfaceType,
+    restoreVersion,
+    setStageValue,
+    storeApi,
+    subject,
+  ]);
 };
 
 export default useResetStageOnSubjectChange;

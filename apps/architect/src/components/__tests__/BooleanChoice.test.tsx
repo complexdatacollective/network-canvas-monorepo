@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import Form from '@codaco/fresco-ui/form/Form';
 import type { OptionValue } from '~/components/Form/arrayFields/Option';
 
@@ -80,6 +81,54 @@ describe('BooleanChoice', () => {
     const labels = await screen.findAllByRole('textbox', { name: 'Label' });
     expect(labels[0]).toHaveTextContent('Consented');
     expect(labels[1]).toHaveTextContent('Declined');
+  });
+
+  // Regression: the committed `value` of each option used to be replaced by
+  // its position (option one true, option two false), so saving a protocol
+  // that stores its options false-first reversed which boolean each label
+  // records — silently changing what already-collected answers mean.
+  it('keeps each committed boolean with its own label when the options are stored false-first', async () => {
+    const onSubmit = vi.fn(() => ({ success: true }) as const);
+    const { container } = render(
+      <Form onSubmit={onSubmit}>
+        <BooleanChoice
+          initialValue={booleanOptions([
+            { label: 'No', value: false, negative: true },
+            { label: 'Yes', value: true },
+          ])}
+        />
+      </Form>,
+    );
+
+    submit(container);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const [values] = onSubmit.mock.calls[0] as unknown as [
+      Record<string, FieldValue>,
+    ];
+    expect(values.options).toEqual([
+      { label: 'No', value: false, negative: true },
+      { label: 'Yes', value: true },
+    ]);
+  });
+
+  it('states the boolean each card actually records', () => {
+    const { container } = render(
+      <Form onSubmit={() => ({ success: true })}>
+        <BooleanChoice
+          initialValue={booleanOptions([
+            { label: 'No', value: false, negative: true },
+            { label: 'Yes', value: true },
+          ])}
+        />
+      </Form>,
+    );
+
+    const [cardOne, cardTwo] = Array.from(container.querySelectorAll('h3')).map(
+      (heading) => heading.parentElement?.textContent ?? '',
+    );
+    expect(cardOne).toContain('set the value false');
+    expect(cardTwo).toContain('set the value true');
   });
 
   it('rejects a blank option label on submit', async () => {

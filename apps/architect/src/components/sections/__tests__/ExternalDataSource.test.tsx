@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -135,5 +135,108 @@ describe('ExternalDataSource', () => {
     for (const path of DEPENDENT_LEAF_PATHS) {
       expect(getFieldState(path)?.value).toBeUndefined();
     }
+  });
+
+  describe('undo', () => {
+    const renderRoster = () =>
+      renderStageForm({
+        committedStage: asStage({
+          dataSource: 'asset-1',
+          subject: { entity: 'node', type: 'person' },
+        }),
+        children: (
+          <>
+            <ExternalDataSource {...STAGE_PROPS} />
+            <DependentFields />
+          </>
+        ),
+      });
+
+    const changeDataSource = (value: string) => {
+      fireEvent.change(screen.getByLabelText('Roster data source'), {
+        target: { value },
+      });
+    };
+
+    /**
+     * Stands in for `useStageDraftHistory`, whose `applyDiff` writes every
+     * field named in the timeline snapshot inside a single `runRestore`.
+     */
+    const restore = (
+      context: ReturnType<ReturnType<typeof renderRoster>['getContext']>,
+      values: Record<string, unknown>,
+    ) => {
+      act(() => {
+        context.draft.runRestore(() => {
+          const { setFieldValue } = context.storeApi.getState();
+          for (const [name, value] of Object.entries(values)) {
+            setFieldValue(name, value as never);
+          }
+        });
+      });
+    };
+
+    const ASSET_1_CONFIG = {
+      'dataSource': 'asset-1',
+      'cardOptions.additionalProperties': [{ variable: 'x' }],
+      'sortOptions.sortOrder': [{ property: 'x', direction: 'asc' }],
+      'sortOptions.sortableProperties': [{ variable: 'x' }],
+      'searchOptions.matchProperties': ['x'],
+      'searchOptions.fuzziness': 0.5,
+    };
+
+    it('keeps the configuration an undo restored alongside the data source', async () => {
+      const { getFieldState, getContext } = renderRoster();
+
+      changeDataSource('asset-2');
+      await waitFor(() => {
+        expect(getFieldState('searchOptions.fuzziness')?.value).toBeUndefined();
+      });
+
+      restore(getContext(), ASSET_1_CONFIG);
+
+      expect(getFieldState('dataSource')?.value).toBe('asset-1');
+      // The restore brought asset-1's configuration back with it; observing
+      // the restored data source as "a change" must not clear it again.
+      expect(getFieldState('searchOptions.fuzziness')?.value).toBe(0.5);
+      expect(getFieldState('searchOptions.matchProperties')?.value).toEqual([
+        'x',
+      ]);
+      expect(getFieldState('cardOptions.additionalProperties')?.value).toEqual([
+        { variable: 'x' },
+      ]);
+    });
+
+    it('still resets dependents on a user edit that follows a restore', async () => {
+      const { getFieldState, getContext } = renderRoster();
+
+      changeDataSource('asset-2');
+      await waitFor(() => {
+        expect(getFieldState('searchOptions.fuzziness')?.value).toBeUndefined();
+      });
+
+      restore(getContext(), ASSET_1_CONFIG);
+      changeDataSource('asset-3');
+
+      await waitFor(() => {
+        expect(getFieldState('searchOptions.fuzziness')?.value).toBeUndefined();
+      });
+      for (const path of DEPENDENT_LEAF_PATHS) {
+        expect(getFieldState(path)?.value).toBeUndefined();
+      }
+    });
+
+    it('still resets dependents on a user edit after a restore that left the data source alone', async () => {
+      const { getFieldState, getContext } = renderRoster();
+
+      // A restore of some other field bumps the same counter, so the guard has
+      // to be consumed even when `dataSource` did not move.
+      restore(getContext(), { 'searchOptions.fuzziness': 0.9 });
+      changeDataSource('asset-2');
+
+      await waitFor(() => {
+        expect(getFieldState('searchOptions.fuzziness')?.value).toBeUndefined();
+      });
+    });
   });
 });

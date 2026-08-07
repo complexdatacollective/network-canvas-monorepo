@@ -5,6 +5,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import {
   useSetStageValue,
   useStageFormValue,
@@ -32,10 +33,19 @@ const ExternalDataSource = ({
   // this must only reset the dependent sections on a genuine user edit, never
   // when an existing stage is simply loaded into the editor.
   const previousDataSourceRef = useRef(dataSource);
+  const restoreVersion = useStageRestoreVersion();
+  const previousRestoreVersionRef = useRef(restoreVersion);
   useEffect(() => {
     const previousDataSource = previousDataSourceRef.current;
     previousDataSourceRef.current = dataSource;
+    const previousRestoreVersion = previousRestoreVersionRef.current;
+    previousRestoreVersionRef.current = restoreVersion;
     if (previousDataSource === dataSource) return;
+
+    // An undo/redo restores the data source *and* the configuration that
+    // belongs with it; clearing here would immediately undo that half of the
+    // restore, and leave the user unable to recover the old source's setup.
+    if (previousRestoreVersion !== restoreVersion) return;
 
     // Clear every LEAF path each dependent section actually registers —
     // `cardOptions`/`sortOptions`/`searchOptions` are never fields in their
@@ -47,7 +57,7 @@ const ExternalDataSource = ({
     setStageValue('sortOptions.sortableProperties', undefined);
     setStageValue('searchOptions.matchProperties', undefined);
     setStageValue('searchOptions.fuzziness', undefined);
-  }, [dataSource, setStageValue]);
+  }, [dataSource, restoreVersion, setStageValue]);
 
   return (
     <Section

@@ -12,6 +12,7 @@ import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import {
   useCreateVariable,
   useSetStageValue,
@@ -122,12 +123,22 @@ export const NodeConfigurationComponent = ({
   // enhancer-era `NodeType.handleResetStage` behaviour this replaces.
   const { subject } = useSubject();
   const previousSubjectRef = useRef(subject);
+  const restoreVersion = useStageRestoreVersion();
+  const previousRestoreVersionRef = useRef(restoreVersion);
   useEffect(() => {
     const previous = previousSubjectRef.current;
     previousSubjectRef.current = subject;
+    const previousRestoreVersion = previousRestoreVersionRef.current;
+    previousRestoreVersionRef.current = restoreVersion;
     if (!previous || isEqual(previous, subject)) return;
+
+    // An undo/redo restores the subject together with the toggle state that
+    // belongs to it, so re-seeding here would overwrite the half of the
+    // restore the user was reaching for.
+    if (previousRestoreVersion !== restoreVersion) return;
+
     setStageValue('behaviours.automaticLayout', true);
-  }, [subject, setStageValue]);
+  }, [restoreVersion, subject, setStageValue]);
 
   // quickAdd applies codebook validation, while convexHullVariable's group
   // and lasso interactions write directly. Their gates therefore check

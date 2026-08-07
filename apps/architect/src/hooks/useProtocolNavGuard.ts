@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
 import { useAppDispatch } from '~/ducks/hooks';
 import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { resetDraft } from '~/ducks/modules/stageEditorDraft';
@@ -355,6 +356,10 @@ export const useProtocolNavGuard = () => {
       // overview) with uncommitted edits: intra-/protocol nav that the
       // leavingProtocol check misses. Only prompt when the draft is actually
       // dirty, so ordinary Back from a pristine editor navigates freely.
+      // The mirror of the stage form's values is debounced, so an edit made
+      // in the last moment before Back is not in Redux yet. Without this the
+      // guard reads a pristine draft and discards that edit silently.
+      flushStageLiveValues();
       const leavingDirtyStageEditor =
         !leavingProtocol &&
         isStageEditorPath(oldPath) &&

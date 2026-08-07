@@ -87,17 +87,68 @@ const CODEBOOK = {
             { label: 'Friends', value: 'friends' },
           ],
         },
+        // A categorical variable whose codebook options are already too few
+        // for the schema — picking it seeds the draft with exactly one.
+        sparse: {
+          name: 'Sparse',
+          type: 'categorical',
+          options: [{ label: 'Only', value: 'only' }],
+        },
+        // A form elsewhere collects this one (a VALIDATED use), so the bin's
+        // own picker — an UNVALIDATED writer — must not offer it.
+        validated_elsewhere: {
+          name: 'Validated Elsewhere',
+          type: 'categorical',
+          options: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+        },
+        free_text: { name: 'Free Text', type: 'text' },
+        // FamilyPedigree writes this one without validation, so the "other"
+        // picker — a VALIDATED writer — must not offer it.
+        unvalidated_elsewhere: { name: 'Unvalidated Elsewhere', type: 'text' },
       },
     },
   },
 };
 
+const PROTOCOL = {
+  schemaVersion: 8,
+  codebook: CODEBOOK,
+  stages: [
+    {
+      id: 'form-stage',
+      type: 'AlterForm',
+      label: 'F',
+      subject: { entity: 'node', type: 'person' },
+      introductionPanel: { title: 'T', text: 'X' },
+      form: { fields: [{ variable: 'validated_elsewhere', prompt: 'P' }] },
+    },
+    {
+      id: 'pedigree-stage',
+      type: 'FamilyPedigree',
+      label: 'P',
+      nodeConfig: {
+        type: 'person',
+        relationshipVariable: 'unvalidated_elsewhere',
+      },
+    },
+  ],
+};
+
 const asStage = (values: Record<string, unknown>) => values as unknown as Stage;
+
+const optionValues = (label: string) =>
+  Array.from(
+    screen.getByLabelText(label).querySelectorAll<HTMLOptionElement>('option'),
+    (option) => option.value,
+  );
 
 const renderSection = (committedStage: Record<string, unknown>) => {
   const store = configureStore({
     reducer: {
-      activeProtocol: (state = { present: { codebook: CODEBOOK } }) => state,
+      activeProtocol: (state = { present: PROTOCOL }) => state,
       stageEditorDraft,
     },
   });
@@ -256,5 +307,60 @@ describe('CategoricalBinPrompts', () => {
     expect(prompt).not.toHaveProperty('otherOptionLabel');
     expect(prompt).not.toHaveProperty('otherVariablePrompt');
     expect(prompt).toMatchObject({ id: 'p1', variable: 'group' });
+  });
+
+  // Regression: `Options` no longer owns `minTwoOptions`/`completeOptions`, so
+  // an array field that omits them lets the dialog save an option list the
+  // categorical variable schema rejects — which `useOnBeforeSavePrompt` then
+  // writes straight into the codebook.
+  it('refuses to save a variable option list with fewer than two options', async () => {
+    const { getPrompts } = renderSection({
+      subject: { entity: 'node', type: 'person' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.change(await screen.findByLabelText('variable'), {
+      target: { value: 'sparse' },
+    });
+    fireEvent.change(screen.getByLabelText('text'), {
+      target: { value: 'Group these' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await screen.findByText(/minimum of two options/i),
+    ).toBeInTheDocument();
+    expect(getPrompts()).toBeUndefined();
+  });
+
+  // The invariant this file already states in prose: the main picker is an
+  // UNVALIDATED writer and the "other" picker a VALIDATED one, so each must
+  // drop the opposite class's existing uses up front rather than leaving the
+  // researcher to complete a row the save-time backstop then rejects.
+  it('keeps opposite-class writers out of both variable pickers', async () => {
+    renderSection({
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Group these',
+          variable: 'group',
+          otherVariable: 'free_text',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit prompt' }));
+    await screen.findByLabelText('otherVariable');
+
+    expect(optionValues('variable')).toContain('group');
+    expect(optionValues('variable')).not.toContain('validated_elsewhere');
+    // The current pick always escapes its own exclusion.
+    expect(optionValues('otherVariable')).toContain('free_text');
+    expect(optionValues('otherVariable')).not.toContain(
+      'unvalidated_elsewhere',
+    );
   });
 });

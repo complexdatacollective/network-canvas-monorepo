@@ -36,6 +36,7 @@ import {
   normalizeField,
 } from '~/components/sections/Form/helpers';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
 import {
   useSetStageValue,
@@ -214,10 +215,20 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   // own `type` descendant, the field that just changed — so it is restored
   // immediately after, matching `PRESERVE_ON_NODE_TYPE_CHANGE`'s intent.
   const previousNodeType = useRef(nodeType);
+  const restoreVersion = useStageRestoreVersion();
+  const previousRestoreVersion = useRef(restoreVersion);
   useEffect(() => {
     const previous = previousNodeType.current;
     previousNodeType.current = nodeType;
+    const previousVersion = previousRestoreVersion.current;
+    previousRestoreVersion.current = restoreVersion;
     if (!previous || previous === nodeType) return;
+
+    // An undo/redo restores the node type together with the configuration
+    // that belongs to it, so resetting here would wipe the half of the restore
+    // the user was reaching for — and, since this reset clears nearly the whole
+    // stage, would leave that configuration unrecoverable.
+    if (previousVersion !== restoreVersion) return;
 
     const topLevelPreserved = new Set(
       PRESERVE_ON_NODE_TYPE_CHANGE.filter((key) => !key.includes('.')),
@@ -231,7 +242,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
       clearFieldValue(storeApi, field);
     }
     setStageValue('nodeConfig.type', nodeType);
-  }, [committedStage, nodeType, setStageValue, storeApi]);
+  }, [committedStage, nodeType, restoreVersion, setStageValue, storeApi]);
 
   const nodeVariableOptions = useSelector((state: RootState) =>
     nodeType

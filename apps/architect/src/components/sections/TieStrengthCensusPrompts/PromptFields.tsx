@@ -9,7 +9,9 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
-import Options from '~/components/Form/arrayFields/Options';
+import Options, {
+  optionsValidation,
+} from '~/components/Form/arrayFields/Options';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import RichTextField from '~/components/Form/Fields/RichText/Field';
 import NewVariableWindow, {
@@ -266,6 +268,7 @@ const PromptFields = ({
                   label="Options"
                   labelHidden
                   component={Options}
+                  validation={optionsValidation}
                   initialValue={variableOptions}
                 />
               </Row>

@@ -3,7 +3,11 @@ import { useCallback, useMemo } from 'react';
 import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { isOptionComplete } from '~/components/Options/optionCompleteness';
+import {
+  isOptionComplete,
+  isOptionLabelEmpty,
+  isOptionValueEmpty,
+} from '~/components/Options/optionCompleteness';
 
 import Option, { OptionsContext, type OptionValue } from './Option';
 import { arrayScopedValues } from './RowField';
@@ -12,9 +16,9 @@ export type { OptionValue } from './Option';
 
 /**
  * Array-level rules. They belong to the caller's `ArchitectArrayField`
- * (`validation={{ minTwoOptions, completeOptions }}`), where the shared
- * adapter routes them through fresco-ui's `custom` entry with the whole array
- * as the value — rows are not registered fields and cannot carry them.
+ * (`validation={optionsValidation}`), where the shared adapter routes them
+ * through fresco-ui's `custom` entry with the whole array as the value — rows
+ * are not registered fields and cannot carry them.
  */
 export const minTwoOptions = (value: unknown) =>
   !value || (Array.isArray(value) && value.length < 2)
@@ -25,6 +29,67 @@ export const completeOptions = (value: unknown) =>
   Array.isArray(value) && !value.every(isOptionComplete)
     ? 'Every option needs both a label and a value.'
     : undefined;
+
+/**
+ * Strings compare case-insensitively, matching `uniqueArrayAttribute` — the
+ * rule the rows run — so the array and its rows never disagree about which
+ * entries clash.
+ */
+const hasDuplicates = (values: unknown[]) => {
+  const seen = new Set<unknown>();
+  for (const value of values) {
+    const key = typeof value === 'string' ? value.toLowerCase() : value;
+    if (seen.has(key)) return true;
+    seen.add(key);
+  }
+  return false;
+};
+
+const readOptions = (value: unknown): Record<string, unknown>[] =>
+  Array.isArray(value)
+    ? value.filter(
+        (option): option is Record<string, unknown> =>
+          typeof option === 'object' && option !== null,
+      )
+    : [];
+
+/**
+ * Duplicate values export as indistinguishable answers, so the ARRAY has to
+ * reject them: the rows run `uniqueArrayAttribute` too, but a row is not a
+ * registered field (see RowField) and can only display its error — nothing
+ * carries it into the form's validity. Incomplete entries are `completeOptions`'
+ * business and are ignored here so one edit does not raise two errors.
+ */
+export const uniqueOptionValues = (value: unknown) =>
+  hasDuplicates(
+    readOptions(value)
+      .map((option) => option.value)
+      .filter((optionValue) => !isOptionValueEmpty(optionValue)),
+  )
+    ? 'Every option needs a unique value.'
+    : undefined;
+
+/** The label counterpart of `uniqueOptionValues`. */
+export const uniqueOptionLabels = (value: unknown) =>
+  hasDuplicates(
+    readOptions(value)
+      .map((option) => option.label)
+      .filter((label) => !isOptionLabelEmpty(label)),
+  )
+    ? 'Every option needs a unique label.'
+    : undefined;
+
+/**
+ * Every array-level rule an options editor needs, as one object for the
+ * owning `ArchitectArrayField`'s `validation` prop. Passed whole rather than
+ * rule by rule so a call site cannot silently keep some and drop others.
+ */
+export const optionsValidation = {
+  minTwoOptions,
+  completeOptions,
+  uniqueOptionValues,
+  uniqueOptionLabels,
+};
 
 const EMPTY_OPTIONS: OptionValue[] = [];
 

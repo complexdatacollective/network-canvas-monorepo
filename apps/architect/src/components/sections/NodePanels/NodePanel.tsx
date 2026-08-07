@@ -11,6 +11,7 @@ import ArchitectField from '~/components/Form/ArchitectField';
 import DataSource from '~/components/Form/Fields/DataSource';
 import IssueAnchor from '~/components/IssueAnchor';
 import NetworkFilter from '~/components/sections/fields/NetworkFilter';
+import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import {
   useSetStageValue,
   useStageFormValue,
@@ -88,9 +89,13 @@ const NodePanel = ({
   // while the panel's filter has edge rules asks for confirmation, since an
   // external data file has no edges to filter.
   const previousDataSourceRef = useRef(dataSource);
+  const restoreVersion = useStageRestoreVersion();
+  const previousRestoreVersionRef = useRef(restoreVersion);
   useEffect(() => {
     const previousValue = previousDataSourceRef.current;
     previousDataSourceRef.current = dataSource;
+    const previousRestoreVersion = previousRestoreVersionRef.current;
+    previousRestoreVersionRef.current = restoreVersion;
     if (
       previousValue === undefined ||
       dataSource === previousValue ||
@@ -99,6 +104,13 @@ const NodePanel = ({
     ) {
       return;
     }
+
+    // The confirmation is awaited, so the timeline can hold an entry pairing
+    // an external data source with the edge rules that had not been stripped
+    // yet. Stepping onto it must not re-open the dialog: confirming would
+    // delete the rules the restore just brought back, and cancelling would
+    // write the data source back and undo the step itself.
+    if (previousRestoreVersion !== restoreVersion) return;
 
     void (async () => {
       const confirmed = await confirm({
@@ -120,7 +132,7 @@ const NodePanel = ({
     // Only the dataSource transition itself should retrigger this — `filter`
     // and `confirm` are read at fire time, not watched for their own changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataSource, fieldName, setStageValue]);
+  }, [dataSource, fieldName, restoreVersion, setStageValue]);
 
   return (
     <div className="flex w-full items-center gap-4">

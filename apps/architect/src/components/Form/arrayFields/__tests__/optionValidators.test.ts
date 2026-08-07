@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { getValidations } from '~/utils/validations';
 
 import { parseOptionValue } from '../Option';
-import { completeOptions, minTwoOptions } from '../Options';
+import {
+  completeOptions,
+  minTwoOptions,
+  optionsValidation,
+  uniqueOptionLabels,
+  uniqueOptionValues,
+} from '../Options';
 
 describe('Options validators', () => {
   it('requires at least two options', () => {
@@ -79,5 +85,69 @@ describe('Options validators', () => {
         'options[0].value',
       ),
     ).toBeUndefined();
+  });
+
+  // The rows already run `uniqueArrayAttribute`, but a row is not a
+  // registered field — its error is display-only. Without an equivalent
+  // whole-array rule the owning form stays valid and the duplicate saves.
+  it('rejects duplicate option values at the array level', () => {
+    expect(
+      uniqueOptionValues([
+        { label: 'One', value: 'a' },
+        { label: 'Two', value: 'b' },
+      ]),
+    ).toBeUndefined();
+    expect(
+      uniqueOptionValues([
+        { label: 'One', value: 'a' },
+        { label: 'Two', value: 'a' },
+      ]),
+    ).toMatch(/unique value/i);
+    // Matches `uniqueArrayAttribute`'s case-insensitive string comparison, so
+    // the array and its rows never disagree about which entries clash.
+    expect(
+      uniqueOptionValues([
+        { label: 'One', value: 'One' },
+        { label: 'Two', value: 'one' },
+      ]),
+    ).toMatch(/unique value/i);
+    expect(
+      uniqueOptionValues([
+        { label: 'One', value: 1 },
+        { label: 'Two', value: '1' },
+      ]),
+    ).toBeUndefined();
+    // Empty values are `completeOptions`' business.
+    expect(
+      uniqueOptionValues([{ label: 'One' }, { label: 'Two', value: '' }]),
+    ).toBeUndefined();
+    expect(uniqueOptionValues(undefined)).toBeUndefined();
+  });
+
+  it('rejects duplicate option labels at the array level', () => {
+    expect(
+      uniqueOptionLabels([
+        { label: 'One', value: 'a' },
+        { label: 'Two', value: 'b' },
+      ]),
+    ).toBeUndefined();
+    expect(
+      uniqueOptionLabels([
+        { label: 'One', value: 'a' },
+        { label: 'one', value: 'b' },
+      ]),
+    ).toMatch(/unique label/i);
+    expect(
+      uniqueOptionLabels([{ value: 'a' }, { label: '  ', value: 'b' }]),
+    ).toBeUndefined();
+  });
+
+  it('bundles every array-level rule so a call site cannot keep only some', () => {
+    expect(optionsValidation).toEqual({
+      minTwoOptions,
+      completeOptions,
+      uniqueOptionValues,
+      uniqueOptionLabels,
+    });
   });
 });

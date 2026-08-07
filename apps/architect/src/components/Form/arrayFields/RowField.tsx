@@ -57,6 +57,14 @@ export type RowFieldProps = {
  * `data-field-name` seam E2E specs target. Errors appear once the row has been
  * edited, matching fresco-ui's never-before-interaction rule.
  *
+ * These errors are therefore DISPLAY ONLY: nothing here reaches the owning
+ * form's validity, and registering rows to change that is exactly what the
+ * one-opaque-value rule forbids (a deleted row's dormant value would
+ * resurrect itself). Any rule that must also BLOCK a save has to exist as an
+ * array-level rule on the owning field as well — `Options.tsx`'s
+ * `optionsValidation` is the worked example, pairing this row's
+ * `uniqueArrayAttribute` with an equivalent whole-array check.
+ *
  * Follows the `Query/Rules/RuleField.tsx` precedent.
  */
 const RowField = ({

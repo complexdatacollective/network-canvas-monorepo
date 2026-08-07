@@ -1,5 +1,6 @@
 import { isEqual } from 'es-toolkit/compat';
 import {
+  createContext,
   type ReactNode,
   useCallback,
   useContext,
@@ -69,6 +70,45 @@ const isStructuralArrayChange = (before: unknown, after: unknown): boolean => {
 
 // Coalescing window (ms) for the Redux mirror of the form's values.
 const LIVE_VALUES_DEBOUNCE_MS = 100;
+
+const StageRestoreVersionContext = createContext(0);
+
+/**
+ * Counts the undo/redo restores this stage form has applied.
+ *
+ * A section that resets dependent fields when it observes a value change has
+ * to tell a restored value apart from a user edit, or it clears the very
+ * configuration the restore just brought back alongside it. Neither
+ * `ui.restoring` nor the bridge's ref can answer that: both are only ever true
+ * *inside* `runRestore`, and the effect observing the change does not run
+ * until the commit the restore scheduled — by which time the restore is over.
+ * A version that changes with the value, and stays changed, survives that gap.
+ *
+ * Deliberately its own context rather than another key on the stage form
+ * context: every `useStageFormValue` in the editor re-renders when that value's
+ * identity changes.
+ */
+export const useStageRestoreVersion = (): number =>
+  useContext(StageRestoreVersionContext);
+
+/**
+ * The mounted stage form's mirror flush, published at module scope.
+ *
+ * The mirror is debounced, and the readers that must not miss the user's last
+ * edit — the editor's Cancel and Preview handlers, and the router's navigation
+ * guard — all sit *outside* the form's provider, so they cannot reach
+ * `refreshLiveValues` through the stage form context. Without a flush, an edit
+ * made inside the coalescing window is invisible to them: leaving discards it
+ * with no confirmation, and Preview launches the previous values.
+ *
+ * Safe at module scope because the editor route mounts exactly one stage form
+ * at a time (the provider is keyed by stage).
+ */
+let mountedStageFormFlush: (() => void) | null = null;
+
+export const flushStageLiveValues = (): void => {
+  mountedStageFormFlush?.();
+};
 
 type StageFormBridgeProps = {
   committedStage: Stage | null;
@@ -186,6 +226,15 @@ const StageFormBridge = ({
     );
   }, [dispatch, storeApi]);
 
+  useEffect(() => {
+    mountedStageFormFlush = refreshLiveValues;
+    return () => {
+      if (mountedStageFormFlush === refreshLiveValues) {
+        mountedStageFormFlush = null;
+      }
+    };
+  }, [refreshLiveValues]);
+
   const scheduleLiveValues = useCallback(() => {
     if (liveValuesTimer.current !== null) return;
     liveValuesTimer.current = setTimeout(() => {
@@ -195,6 +244,8 @@ const StageFormBridge = ({
       );
     }, LIVE_VALUES_DEBOUNCE_MS);
   }, [dispatch, storeApi]);
+
+  const [restoreVersion, setRestoreVersion] = useState(0);
 
   const runRestore = useCallback(
     (apply: () => void) => {
@@ -207,6 +258,9 @@ const StageFormBridge = ({
       } finally {
         restoring.current = false;
         dispatch(setRestoring(false));
+        // Batched with the store writes `apply` made, so the commit that first
+        // renders a restored value always carries the new version with it.
+        setRestoreVersion((version) => version + 1);
         refreshLiveValues();
       }
     },
@@ -324,7 +378,9 @@ const StageFormBridge = ({
 
   return (
     <StageFormContext.Provider value={value}>
-      {children}
+      <StageRestoreVersionContext.Provider value={restoreVersion}>
+        {children}
+      </StageRestoreVersionContext.Provider>
     </StageFormContext.Provider>
   );
 };

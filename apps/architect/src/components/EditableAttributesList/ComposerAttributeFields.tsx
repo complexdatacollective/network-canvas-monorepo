@@ -9,8 +9,7 @@ import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
-  completeOptions,
-  minTwoOptions,
+  optionsValidation,
   type OptionValue,
 } from '~/components/Form/arrayFields/Options';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
@@ -255,7 +254,7 @@ const ComposerAttributeFields = ({
               hint="The input type you selected indicates that this is a categorical or ordinal variable. Create a minimum of two possible values for the participant to choose between."
               component={Options}
               initialValue={asOptions(item.options)}
-              validation={{ minTwoOptions, completeOptions }}
+              validation={optionsValidation}
             />
           )}
         </Section>

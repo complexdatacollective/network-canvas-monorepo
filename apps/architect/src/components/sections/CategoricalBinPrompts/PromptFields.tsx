@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { shallowEqual } from 'react-redux';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -8,7 +9,9 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
-import Options from '~/components/Form/arrayFields/Options';
+import Options, {
+  optionsValidation,
+} from '~/components/Form/arrayFields/Options';
 import { useClearValue } from '~/components/Form/clearFieldValue';
 import RichTextField from '~/components/Form/Fields/RichText/Field';
 import NewVariableWindow, {
@@ -22,6 +25,10 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubject,
 } from '~/selectors/codebook';
+import {
+  excludeUnvalidatedUses,
+  excludeValidatedUses,
+} from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -103,11 +110,31 @@ const PromptFields = ({
     setFieldValue('variableOptions', optionsForCurrentVariable);
   }, [currentVariable, optionsForCurrentVariable, setFieldValue]);
 
-  const categoricalVariableOptions = rawVariableOptions.filter(
-    ({ type: variableType }) => variableType === 'categorical',
+  // Both exclusions keep the picker's own current pick, so opening an
+  // already-configured prompt never loses its variable from the list.
+  const categoricalVariableOptions = useAppSelector(
+    (state) =>
+      excludeValidatedUses(
+        state,
+        subject,
+        rawVariableOptions.filter(
+          ({ type: variableType }) => variableType === 'categorical',
+        ),
+        currentVariable,
+      ),
+    shallowEqual,
   );
-  const otherVariableTextOptions = rawVariableOptions.filter(
-    ({ type: variableType }) => variableType === 'text',
+  const otherVariableTextOptions = useAppSelector(
+    (state) =>
+      excludeUnvalidatedUses(
+        state,
+        subject,
+        rawVariableOptions.filter(
+          ({ type: variableType }) => variableType === 'text',
+        ),
+        currentOtherVariable,
+      ),
+    shallowEqual,
   );
   const getOptions = getSortOrderOptionGetter(rawVariableOptions);
   const sortMaxItems = getOptions('property', undefined, []).length;
@@ -199,6 +226,7 @@ const PromptFields = ({
               label="Options"
               labelHidden
               component={Options}
+              validation={optionsValidation}
               initialValue={variableOptions}
             />
           </Row>

@@ -1,5 +1,6 @@
+import { omit } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useStore } from 'react-redux';
 import { useLocation } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -34,6 +35,7 @@ import { getStageEditorInitialValues } from './getStageEditorInitialValues';
 import type { SectionComponent } from './Interfaces';
 import { getInterface } from './Interfaces';
 import StageForm from './StageForm';
+import { flushStageLiveValues } from './StageFormBridge';
 import StageHeading from './StageHeading';
 
 type StageEditorProps = {
@@ -61,6 +63,7 @@ const StageEditor = (props: StageEditorProps) => {
   const { id = null, type, insertAtIndex } = props;
 
   const dispatch = useAppDispatch();
+  const reduxStore = useStore<RootState>();
   const { openDialog } = useDialog();
   const [, setLocation] = useLocation();
 
@@ -116,6 +119,25 @@ const StageEditor = (props: StageEditorProps) => {
   const hasUnsavedChanges = useSelector(getLiveStageDraftDirty);
   const formValues = useSelector(getLiveStageValues);
 
+  /**
+   * The stage's `id` and `type` belong to no field, so neither survives a trip
+   * through the form. Every consumer of the form's values has to merge them
+   * back: without `type` the stage matches no member of the schema's tagged
+   * union, and the whole protocol fails validation.
+   */
+  const withStageIdentity = useCallback(
+    (values: Stage): Stage =>
+      ({
+        id: committedStage.id,
+        type: committedStage.type,
+        // No field owns either key, so `values` cannot carry them — dropping
+        // them keeps that explicit, and keeps the committed identity
+        // authoritative if a future field ever does register one.
+        ...omit(values as unknown as Record<string, unknown>, ['id', 'type']),
+      }) as unknown as Stage,
+    [committedStage],
+  );
+
   // Preview state
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
   const useSyntheticData = useSelector(getPreviewUseSyntheticData);
@@ -150,7 +172,7 @@ const StageEditor = (props: StageEditorProps) => {
     const runValidation = () => {
       const wipProtocol = buildProtocolWithStage(
         protocol,
-        formValues,
+        withStageIdentity(formValues),
         id,
         insertAtIndex,
       );
@@ -184,23 +206,17 @@ const StageEditor = (props: StageEditorProps) => {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [protocol, formValues, id, insertAtIndex]);
+  }, [protocol, formValues, id, insertAtIndex, withStageIdentity]);
 
   const isStageInvalid = !isWipProtocolValid;
 
   const onSubmit = useCallback<FormSubmitHandler>(
     (values: Record<string, FieldValue>) => {
-      // The form's values only carry fields that are currently registered, so
-      // the stage's identity — which no field owns — is merged back in. The
-      // flip side is that a key the form no longer carries has been removed
-      // (a section toggled off), which is why the update overwrites rather
-      // than merges: preview already renders the stage without it, and a merge
-      // would silently resurrect it on save.
-      const normalizedStage = {
-        id: committedStage.id,
-        type: committedStage.type,
-        ...values,
-      } as unknown as Stage;
+      // A key the form no longer carries has been removed (a section toggled
+      // off), which is why the update overwrites rather than merges: preview
+      // already renders the stage without it, and a merge would silently
+      // resurrect it on save.
+      const normalizedStage = withStageIdentity(values as unknown as Stage);
 
       if (id) {
         dispatch(stageActions.updateStage(id, normalizedStage, true));
@@ -218,12 +234,17 @@ const StageEditor = (props: StageEditorProps) => {
 
       return { success: true };
     },
-    [committedStage, id, insertAtIndex, setLocation, dispatch],
+    [withStageIdentity, id, insertAtIndex, setLocation, dispatch],
   );
 
   // Cancel handler with unsaved changes confirmation
   const handleCancel = useCallback(async (): Promise<boolean> => {
-    if (!hasUnsavedChanges) {
+    // The mirror is debounced, so an edit made in the last fraction of a
+    // second may not have reached Redux. Reading a stale mirror here discards
+    // that edit with no confirmation at all.
+    flushStageLiveValues();
+
+    if (!getLiveStageDraftDirty(reduxStore.getState())) {
       dispatch(resetDraft(null));
       setLocation('/protocol');
       return true;
@@ -248,10 +269,15 @@ const StageEditor = (props: StageEditorProps) => {
     }
 
     return false;
-  }, [hasUnsavedChanges, openDialog, setLocation, dispatch]);
+  }, [openDialog, reduxStore, setLocation, dispatch]);
 
   const handlePreview = useCallback(async () => {
-    if (!protocol || !formValues) {
+    // Preview must show the stage as it is on screen, not as the mirror last
+    // coalesced it.
+    flushStageLiveValues();
+    const liveValues = getLiveStageValues(reduxStore.getState());
+
+    if (!protocol || !liveValues) {
       void openDialog({
         type: 'acknowledge',
         intent: 'destructive',
@@ -264,7 +290,7 @@ const StageEditor = (props: StageEditorProps) => {
 
     const previewProtocol = buildProtocolWithStage(
       protocol,
-      formValues,
+      withStageIdentity(liveValues),
       id,
       insertAtIndex,
     );
@@ -327,7 +353,8 @@ const StageEditor = (props: StageEditorProps) => {
     protocol,
     stageIndex,
     openDialog,
-    formValues,
+    reduxStore,
+    withStageIdentity,
     id,
     insertAtIndex,
     useSyntheticData,

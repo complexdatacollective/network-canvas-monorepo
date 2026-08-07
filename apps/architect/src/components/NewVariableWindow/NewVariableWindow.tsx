@@ -16,8 +16,7 @@ import { Section, Subsection } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
-  completeOptions,
-  minTwoOptions,
+  optionsValidation,
   type OptionValue,
 } from '~/components/Form/arrayFields/Options';
 import LockedOptions from '~/components/Options/LockedOptions';
@@ -148,7 +147,7 @@ const NewVariableFields = ({
               hint="Create the values this input control offers the participant."
               component={Options}
               initialValue={initialOptions}
-              validation={{ minTwoOptions, completeOptions }}
+              validation={optionsValidation}
             />
           )}
         </Subsection>

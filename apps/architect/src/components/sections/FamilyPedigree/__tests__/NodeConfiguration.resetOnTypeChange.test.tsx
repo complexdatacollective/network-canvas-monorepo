@@ -117,6 +117,20 @@ const renderComponent = (committedStage: Record<string, unknown>) => {
     },
     getFieldValue: (name: string) =>
       getContext().storeApi.getState().getFieldState(name)?.value,
+    /**
+     * Stands in for `useStageDraftHistory`, whose `applyDiff` writes every
+     * field named in the timeline snapshot inside a single `runRestore`.
+     */
+    restore: (values: Record<string, unknown>) => {
+      act(() => {
+        getContext().draft.runRestore(() => {
+          const { setFieldValue } = getContext().storeApi.getState();
+          for (const [name, value] of Object.entries(values)) {
+            setFieldValue(name, value as never);
+          }
+        });
+      });
+    },
   };
 };
 
@@ -204,5 +218,71 @@ describe('NodeConfiguration node-type change', () => {
     const view = renderComponent(COMMITTED_NODE_CONFIG);
 
     expect(view.getFieldValue('nodeConfig.nodeLabelVariable')).toBe('labelVar');
+  });
+
+  describe('undo', () => {
+    const PERSON_CONFIG = {
+      'nodeConfig.type': 'person',
+      'nodeConfig.nodeLabelVariable': 'labelVar',
+      'nodeConfig.egoVariable': 'egoVar',
+      'nodeConfig.relationshipVariable': 'relVar',
+      'nodeConfig.biologicalSexVariable': 'sexVar',
+      'nodeConfig.form': [{ id: 'f1', variable: 'labelVar', prompt: 'P' }],
+    };
+
+    it('keeps the configuration an undo restored alongside the node type', () => {
+      const view = renderComponent(COMMITTED_NODE_CONFIG);
+
+      view.setNodeType('other');
+      expect(
+        view.getFieldValue('nodeConfig.nodeLabelVariable'),
+      ).toBeUndefined();
+
+      view.restore(PERSON_CONFIG);
+
+      expect(view.getFieldValue('nodeConfig.type')).toBe('person');
+      // The restore brought the whole person configuration back with the node
+      // type; observing the restored type as "a change" must not wipe it.
+      expect(view.getFieldValue('nodeConfig.nodeLabelVariable')).toBe(
+        'labelVar',
+      );
+      expect(view.getFieldValue('nodeConfig.egoVariable')).toBe('egoVar');
+      expect(view.getFieldValue('nodeConfig.relationshipVariable')).toBe(
+        'relVar',
+      );
+      expect(view.getFieldValue('nodeConfig.biologicalSexVariable')).toBe(
+        'sexVar',
+      );
+      expect(view.getFieldValue('nodeConfig.form')).toEqual([
+        { id: 'f1', variable: 'labelVar', prompt: 'P' },
+      ]);
+    });
+
+    it('still resets the stage on a user edit that follows a restore', () => {
+      const view = renderComponent(COMMITTED_NODE_CONFIG);
+
+      view.setNodeType('other');
+      view.restore(PERSON_CONFIG);
+      view.setNodeType('other');
+
+      expect(
+        view.getFieldValue('nodeConfig.nodeLabelVariable'),
+      ).toBeUndefined();
+      expect(view.getFieldValue('nodeConfig.form')).toBeUndefined();
+      expect(view.getFieldValue('nodeConfig.type')).toBe('other');
+    });
+
+    it('still resets the stage on a user edit after a restore that left the node type alone', () => {
+      const view = renderComponent(COMMITTED_NODE_CONFIG);
+
+      // A restore of some other field bumps the same counter, so the guard has
+      // to be consumed even when `nodeConfig.type` did not move.
+      view.restore({ 'nodeConfig.egoVariable': 'egoVar' });
+      view.setNodeType('other');
+
+      expect(
+        view.getFieldValue('nodeConfig.nodeLabelVariable'),
+      ).toBeUndefined();
+    });
   });
 });

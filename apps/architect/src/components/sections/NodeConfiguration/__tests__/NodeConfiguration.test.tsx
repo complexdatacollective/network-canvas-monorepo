@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -224,5 +224,90 @@ describe('NodeConfiguration', () => {
     expect(
       screen.queryByText(/complete the required options above/i),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('NodeConfiguration automatic-layout re-seed on subject change', () => {
+  /** Stable identities: `useStageFormValue` compares by value, not identity. */
+  const PERSON = { entity: 'node', type: 'person' } as const;
+  const FRIEND = { entity: 'node', type: 'friend' } as const;
+
+  const renderWithSubject = () =>
+    renderSection(
+      {},
+      {
+        committedStage: {
+          subject: PERSON,
+          behaviours: { automaticLayout: false },
+        },
+      },
+    );
+
+  const setSubject = (
+    view: ReturnType<typeof renderWithSubject>,
+    subject: typeof PERSON | typeof FRIEND,
+  ) => {
+    act(() => {
+      view.getContext().storeApi.getState().setFieldValue('subject', subject);
+    });
+  };
+
+  /**
+   * Stands in for `useStageDraftHistory`, whose `applyDiff` writes every field
+   * named in the timeline snapshot inside a single `runRestore`.
+   */
+  const restore = (
+    view: ReturnType<typeof renderWithSubject>,
+    values: Record<string, unknown>,
+  ) => {
+    act(() => {
+      view.getContext().draft.runRestore(() => {
+        const { setFieldValue } = view.getContext().storeApi.getState();
+        for (const [name, value] of Object.entries(values)) {
+          setFieldValue(name, value as never);
+        }
+      });
+    });
+  };
+
+  it('turns automatic layout back on when the subject changes', () => {
+    const view = renderWithSubject();
+    expect(view.getFieldState('behaviours.automaticLayout')?.value).toBe(false);
+
+    setSubject(view, FRIEND);
+
+    expect(view.getFieldState('behaviours.automaticLayout')?.value).toBe(true);
+  });
+
+  it('keeps the automatic-layout value an undo restored alongside the subject', () => {
+    const view = renderWithSubject();
+
+    setSubject(view, FRIEND);
+    restore(view, { 'subject': PERSON, 'behaviours.automaticLayout': false });
+
+    // The restore brought the subject's own toggle state back with it;
+    // observing the restored subject as "a change" must not overwrite it.
+    expect(view.getFieldState('behaviours.automaticLayout')?.value).toBe(false);
+  });
+
+  it('still re-seeds on a user subject change that follows a restore', () => {
+    const view = renderWithSubject();
+
+    setSubject(view, FRIEND);
+    restore(view, { 'subject': PERSON, 'behaviours.automaticLayout': false });
+    setSubject(view, FRIEND);
+
+    expect(view.getFieldState('behaviours.automaticLayout')?.value).toBe(true);
+  });
+
+  it('still re-seeds on a user subject change after a restore that left the subject alone', () => {
+    const view = renderWithSubject();
+
+    // A restore of some other field bumps the same counter, so the guard has
+    // to be consumed even when `subject` did not move.
+    restore(view, { 'behaviours.automaticLayout': false });
+    setSubject(view, FRIEND);
+
+    expect(view.getFieldState('behaviours.automaticLayout')?.value).toBe(true);
   });
 });

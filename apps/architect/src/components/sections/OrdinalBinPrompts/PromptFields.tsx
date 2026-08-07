@@ -8,8 +8,7 @@ import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
-  completeOptions,
-  minTwoOptions,
+  optionsValidation,
   type OptionValue,
 } from '~/components/Form/arrayFields/Options';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
@@ -199,7 +198,7 @@ const PromptFields = ({
                 </>
               }
               component={Options}
-              validation={{ minTwoOptions, completeOptions }}
+              validation={optionsValidation}
               initialValue={variableOptions}
             />
           </Row>

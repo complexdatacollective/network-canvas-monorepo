@@ -30,8 +30,7 @@ vi.mock('~/components/Form/Fields/InputPreview', () => ({
 }));
 vi.mock('~/components/Form/arrayFields/Options', () => ({
   default: () => <div data-testid="options" />,
-  minTwoOptions: () => undefined,
-  completeOptions: () => undefined,
+  optionsValidation: {},
 }));
 vi.mock('~/components/Parameters', () => ({
   default: () => <div data-testid="parameters" />,

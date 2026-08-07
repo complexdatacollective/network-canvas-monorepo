@@ -88,6 +88,20 @@ const renderSection = ({
         getContext().storeApi.getState().setFieldValue('sourceStageId', value);
       });
     },
+    /**
+     * Stands in for `useStageDraftHistory`, whose `applyDiff` writes every
+     * field named in the timeline snapshot inside a single `runRestore`.
+     */
+    restore: (values: Record<string, unknown>) => {
+      act(() => {
+        getContext().draft.runRestore(() => {
+          const { setFieldValue } = getContext().storeApi.getState();
+          for (const [name, value] of Object.entries(values)) {
+            setFieldValue(name, value as never);
+          }
+        });
+      });
+    },
   };
 };
 
@@ -162,5 +176,49 @@ describe('SourceStage', () => {
     view.setSourceStageId('stage-1');
 
     expect(view.getDiseasesValue()).toBeUndefined();
+  });
+
+  describe('undo', () => {
+    const DISEASES = [{ id: 'd1' }];
+
+    it('keeps the diseases an undo restored alongside the source stage', () => {
+      const view = renderSection({
+        committedStage: { sourceStageId: 'stage-1', diseases: DISEASES },
+      });
+
+      view.setSourceStageId('stage-3');
+      expect(view.getDiseasesValue()).toEqual([]);
+
+      view.restore({ sourceStageId: 'stage-1', diseases: DISEASES });
+
+      // The restore brought stage-1's diseases back with the source stage;
+      // observing the restored source as "a change" must not clear them again.
+      expect(view.getDiseasesValue()).toEqual(DISEASES);
+    });
+
+    it('still clears diseases on a user edit that follows a restore', () => {
+      const view = renderSection({
+        committedStage: { sourceStageId: 'stage-1', diseases: DISEASES },
+      });
+
+      view.setSourceStageId('stage-3');
+      view.restore({ sourceStageId: 'stage-1', diseases: DISEASES });
+      view.setSourceStageId('stage-3');
+
+      expect(view.getDiseasesValue()).toEqual([]);
+    });
+
+    it('still clears diseases on a user edit after a restore that left the source stage alone', () => {
+      const view = renderSection({
+        committedStage: { sourceStageId: 'stage-1', diseases: DISEASES },
+      });
+
+      // A restore of some other field bumps the same counter, so the guard has
+      // to be consumed even when `sourceStageId` did not move.
+      view.restore({ diseases: DISEASES });
+      view.setSourceStageId('stage-3');
+
+      expect(view.getDiseasesValue()).toEqual([]);
+    });
   });
 });

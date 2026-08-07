@@ -19,6 +19,7 @@ import NewVariableWindow, {
 } from '~/components/NewVariableWindow';
 import { EntitySelectControl } from '~/components/sections/fields/EntitySelectField/EntitySelectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
 import {
   useSetStageValue,
@@ -134,14 +135,24 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
   // observer effect instead. `previousEdgeType` starts as the field's own
   // current value, so a stage's first edge-type pick never trips the reset.
   const previousEdgeType = useRef(edgeType);
+  const restoreVersion = useStageRestoreVersion();
+  const previousRestoreVersion = useRef(restoreVersion);
   useEffect(() => {
     const previous = previousEdgeType.current;
     previousEdgeType.current = edgeType;
+    const previousVersion = previousRestoreVersion.current;
+    previousRestoreVersion.current = restoreVersion;
     if (!previous || previous === edgeType) return;
+
+    // An undo/redo restores the edge type together with the slots that belong
+    // to it, so clearing here would wipe the half of the restore the user was
+    // reaching for.
+    if (previousVersion !== restoreVersion) return;
+
     for (const field of EDGE_DEPENDENT_VARIABLE_FIELDS) {
       clearFieldValue(storeApi, field);
     }
-  }, [edgeType, storeApi]);
+  }, [edgeType, restoreVersion, storeApi]);
 
   const edgeVariableOptions = useSelector((state: RootState) =>
     edgeType

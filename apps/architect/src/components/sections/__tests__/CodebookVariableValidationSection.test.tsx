@@ -130,4 +130,55 @@ describe('CodebookVariableValidationSection', () => {
 
     expect(store.getState().stageEditorDraft.ui.externalEditCount).toBe(1);
   });
+
+  it('commits the removal when the section is turned off, so the old rules leave the codebook', async () => {
+    codebookVariables.current = {
+      v1: {
+        id: 'v1',
+        name: 'Age',
+        type: 'number',
+        validation: { required: true },
+      } as Variable & { id: string },
+    };
+    updateVariableAsync.mockClear();
+
+    const { store } = renderSection();
+
+    // Existing rules: the section starts expanded, so this click turns it off.
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
+    );
+
+    await waitFor(() => {
+      expect(updateVariableAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variable: 'v1',
+          configuration: { validation: {} },
+          replaceProperties: ['validation'],
+        }),
+      );
+    });
+
+    expect(store.getState().stageEditorDraft.ui.externalEditCount).toBe(1);
+  });
+
+  it('writes nothing for a variable whose section is never opened', async () => {
+    codebookVariables.current = {
+      v1: { id: 'v1', name: 'Age', type: 'number' } as Variable & {
+        id: string;
+      },
+    };
+    updateVariableAsync.mockClear();
+
+    const { store } = renderSection();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('switch', { name: 'Turn this feature on or off' }),
+      ).toBeInTheDocument();
+    });
+
+    expect(updateVariableAsync).not.toHaveBeenCalled();
+    expect(store.getState().stageEditorDraft.ui.externalEditCount).toBe(0);
+  });
 });
