@@ -632,6 +632,22 @@ export class ValueGenerator {
         const fallbackMin =
           declaredMin ?? openDateFloor(fallbackMax, defaultSpan, resolution);
 
+        // A `unique` walk takes the FIELD's window rather than the
+        // descriptor's, which is what every other type does: the number
+        // branch walks its validation window and sets the distribution aside,
+        // because realism yields to satisfiability wherever the two disagree.
+        // Feasibility counts that same field window, so walking the narrower
+        // descriptor here exhausted a registry the pre-count had said held
+        // room — a descriptor pinned to a single day repeated it for every
+        // entity and failed the run after the first.
+        if (seq !== undefined) {
+          const walkSpan = Math.max(
+            0,
+            stepsBetween(fallbackMin, fallbackMax, resolution),
+          );
+          return addSteps(fallbackMin, seq % (walkSpan + 1), resolution);
+        }
+
         let max = declaredMax ?? descriptorMax ?? fallbackMax;
         let min =
           declaredMin ??
@@ -671,9 +687,6 @@ export class ValueGenerator {
         }
 
         const span = Math.max(0, stepsBetween(min, max, resolution));
-        if (seq !== undefined) {
-          return addSteps(min, seq % (span + 1), resolution);
-        }
 
         if (descriptor.distribution === 'normal') {
           const meanStep = clamp(
