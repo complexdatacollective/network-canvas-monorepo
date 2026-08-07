@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -13,6 +13,7 @@ import {
   useStageFormValue,
   useSubject,
 } from '~/components/StageEditor/stageFormHooks';
+import useLatchedExpansion from '~/hooks/useLatchedExpansion';
 
 import NodePanel, { type NodePanelValue } from './NodePanel';
 
@@ -24,7 +25,9 @@ import NodePanel, { type NodePanelValue } from './NodePanel';
 // `MAX_PANELS`, uncontrolled by a
 // literal `panels` field (registering one would race the individual leaves —
 // see MAX_PANELS below), and `handlePanelsChange` writes the recomputed list
-// back across the same bounded set of field paths.
+// back across the same bounded set of field paths. The list this component
+// renders from is likewise assembled per index (`usePanelAt`) rather than read
+// off the `panels` container path.
 const MAX_PANELS = 2;
 
 // `ArrayField` decides whether to re-sync its internal item list from `value`
@@ -42,6 +45,46 @@ const createNodePanel = (): NodePanelValue => ({
   dataSource: 'existing',
   filter: null,
 });
+
+/**
+ * One panel, assembled from its own registered/dormant leaves.
+ *
+ * Deliberately NOT `useStageFormValue('panels')`. `panels` is never a
+ * registered field, so a container read is answered by the store's DORMANT map
+ * as soon as `removePanels` parks its "cleared" sentinel there — and a dormant
+ * entry outranks the assembled form values for the rest of the editing session
+ * (see `stageFormHooks.ts`'s documented resolution order). The container read
+ * therefore stays `undefined` forever after one toggle-off: the id
+ * registrations below never render again, and a panel added afterwards is
+ * saved with no `id` at all, which the protocol schema rejects
+ * (`panelSchema.id`). Reading the leaves has the same clear/restore semantics
+ * without the shadowing — `writePanelAt` parks each leaf dormant too, so a
+ * cleared panel reads back as cleared and a re-added one reads back as
+ * present.
+ *
+ * Returns `undefined` for a slot with no id, which is exactly the slot
+ * `writePanelAt(index, undefined)` leaves behind.
+ */
+const usePanelAt = (index: number): NodePanelValue | undefined => {
+  const id = useStageFormValue<string>(`panels[${index}].id`);
+  const title = useStageFormValue<string | null>(`panels[${index}].title`);
+  const dataSource = useStageFormValue<string>(`panels[${index}].dataSource`);
+  const filter = useStageFormValue(`panels[${index}].filter`);
+
+  return useMemo(() => {
+    if (typeof id !== 'string') return undefined;
+    // The same normalisation `writePanelAt` applies, so a reorder (which
+    // rewrites every slot from this list) cannot turn an absent optional
+    // leaf — `filter` is unregistered whenever NetworkFilter's own toggle is
+    // shut — into a hole in the panel it writes back.
+    return {
+      id,
+      title: title ?? null,
+      dataSource: dataSource ?? 'existing',
+      filter: filter ?? null,
+    };
+  }, [dataSource, filter, id, title]);
+};
 
 export const handlePanelToggleChange = async (
   newState: boolean,
@@ -74,7 +117,25 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
   const disabled = !type;
   const { confirm } = useDialog();
   const setStageValue = useSetStageValue();
-  const panels = useStageFormValue<NodePanelValue[] | null>('panels');
+  // One read per slot, because hooks need a static call count — this pair IS
+  // `MAX_PANELS`, and adding a third panel means adding a third read.
+  const panel0 = usePanelAt(0);
+  const panel1 = usePanelAt(1);
+  const panels = useMemo(() => {
+    const configured = [panel0, panel1].filter(
+      (panel): panel is NodePanelValue => panel !== undefined,
+    );
+    // `undefined` (not `[]`) for "no panels": it is what the toggle reads as
+    // off, and what keeps `EMPTY_PANELS` — a stable reference — as the value
+    // handed to `ArrayField` in that case.
+    return configured.length > 0 ? configured : undefined;
+  }, [panel0, panel1]);
+  // Removing the last panel must not collapse the section out from under the
+  // user; an explicit toggle-off releases the latch, so panels restored
+  // afterwards (undo) expand it again rather than being saved out of sight.
+  const { startExpanded, onExplicitClose } = useLatchedExpansion(
+    panels !== undefined,
+  );
 
   const writePanelAt = useCallback(
     (index: number, panel: NodePanelValue | undefined) => {
@@ -101,24 +162,36 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
   );
 
   const handleToggleChange = useCallback(
-    (newState: boolean) =>
-      handlePanelToggleChange(newState, panels, confirm, () => {
-        // The stage's `panels` key was never registered as its own field
-        // (see the file-top note), so an explicit dormant write is the only
-        // way to signal "cleared" — plain unmount would just fall back to
-        // the last committed value (stageFormHooks.ts's useStageFormValue
-        // resolution order). Also clear every panel's own leaves: they are
-        // real per-index fields (`panels[N].id/.title/.dataSource/.filter`),
-        // and `registerField` prefers a dormant value over `initialValue`, so
-        // leaving their dormant slots untouched would let a remount
-        // resurrect the pre-toggle-off data even though `panels` itself
-        // reads as cleared.
-        for (let index = 0; index < MAX_PANELS; index += 1) {
-          writePanelAt(index, undefined);
-        }
-        setStageValue('panels', undefined);
-      }),
-    [confirm, panels, setStageValue, writePanelAt],
+    async (newState: boolean) => {
+      const allowed = await handlePanelToggleChange(
+        newState,
+        panels,
+        confirm,
+        () => {
+          // Clear every panel's own leaves: they are real per-index fields
+          // (`panels[N].id/.title/.dataSource/.filter`), and `registerField`
+          // prefers a dormant value over `initialValue`, so leaving their
+          // dormant slots untouched would let a remount resurrect the
+          // pre-toggle-off data. Clearing the ids is also what makes the
+          // section read as off — `usePanelAt` keys on them.
+          for (let index = 0; index < MAX_PANELS; index += 1) {
+            writePanelAt(index, undefined);
+          }
+          // The stage's `panels` key is never a registered field, so nothing
+          // parks a "cleared" record for it on unmount. Written so undo/redo
+          // sees the whole key as a known name rather than reconstructing it
+          // from the leaves; the section's own reads deliberately never touch
+          // it (see `usePanelAt`).
+          setStageValue('panels', undefined);
+        },
+      );
+      // Release the latch only once the close has actually gone through: a
+      // cancelled confirm leaves the section open, and releasing the latch
+      // there would collapse it on the very next render anyway.
+      if (allowed && !newState) onExplicitClose();
+      return allowed;
+    },
+    [confirm, onExplicitClose, panels, setStageValue, writePanelAt],
   );
 
   return (
@@ -132,7 +205,7 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
           generator.
         </Paragraph>
       }
-      startExpanded={!!panels}
+      startExpanded={startExpanded}
       handleToggleChange={handleToggleChange}
     >
       {/*

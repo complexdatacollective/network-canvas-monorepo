@@ -15,3 +15,5 @@ Surfaces gained a fourth nesting level, so deeply nested content has one more st
 Fields no longer establish a CSS size container unless they lay out inline, which is the only layout that queries it. Making every field a size container could, in Chromium, leave a field's control with its styles but without any layout at all — rendering it invisible and unusable — when a large neighbouring section appeared at the same moment.
 
 Adding a row to a list field now keeps the row's own identity instead of assigning it an unrelated one. The mismatch surfaced a moment later and remounted the row, and any form fields it contained were torn down with it, losing what had just been entered.
+
+A field that is checked while part of the form appears or disappears now finishes that check instead of abandoning it. Previously the field kept whatever error it was already showing, so an answered field could go on reporting itself as required — most visibly where answering one field is what reveals the next section.

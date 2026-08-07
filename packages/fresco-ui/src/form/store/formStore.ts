@@ -55,6 +55,32 @@ const calculateFormValidity = (
   return allFieldsValid && formErrors.length === 0;
 };
 
+/**
+ * The fields with a validation in flight, other than `exclude`.
+ *
+ * Every authoritative state transition invalidates all in-flight validations,
+ * because a field's schema may depend on any value in the form. Invalidation
+ * silently DISCARDS those results, and nothing else reschedules them, so the
+ * field keeps whatever error it held before its validation started —
+ * indefinitely, until something else validates it. Callers must therefore
+ * revalidate the fields returned here against the new snapshot.
+ *
+ * `exclude` is the field the transition is about: its own component owns
+ * rescheduling its (possibly debounced) validation.
+ */
+const collectSupersededFields = (
+  fields: Map<string, FieldState>,
+  exclude?: string,
+): string[] => {
+  const superseded: string[] = [];
+  fields.forEach((field, name) => {
+    if (name !== exclude && field.meta.isValidating) {
+      superseded.push(name);
+    }
+  });
+  return superseded;
+};
+
 export type FormStore = {
   fields: Map<string, FieldState>;
   dormantValues: Map<string, FieldState>;
@@ -175,6 +201,20 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       registerField: (config) => {
+        // Mounting a field is an authoritative transition — it adds a value to
+        // the snapshot every other field's schema can see — so it invalidates
+        // every in-flight validation. Reschedule the ones belonging to OTHER
+        // fields; without this, a field whose validation was in flight silently
+        // keeps its previous error.
+        //
+        // A section gated on another field's value is exactly this case: the
+        // gate field's post-change revalidation is dropped by the very mount
+        // that change caused, so its now-stale "required" error survives until
+        // the field is blurred again.
+        const supersededFields = collectSupersededFields(
+          get().fields,
+          config.name,
+        );
         invalidateAllValidations();
         set((state) => {
           state.isValidating = false;
@@ -210,12 +250,23 @@ export const createFormStore = (): FormStoreApi => {
             state.errors.formErrors,
           );
         });
+
+        supersededFields.forEach((name) => {
+          void get().validateField(name);
+        });
       },
 
       unregisterField: (fieldName) => {
         // Check if field exists before updating to avoid unnecessary renders
         const currentState = get();
         if (currentState.fields.has(fieldName)) {
+          // Unmounting removes a value from the snapshot, so it invalidates
+          // every in-flight validation for the same reason `registerField`
+          // does — and the surviving fields' validations must be rescheduled.
+          const supersededFields = collectSupersededFields(
+            currentState.fields,
+            fieldName,
+          );
           invalidateAllValidations();
           set((state) => {
             state.isValidating = false;
@@ -257,6 +308,10 @@ export const createFormStore = (): FormStoreApi => {
               state.fields,
               state.errors.formErrors,
             );
+          });
+
+          supersededFields.forEach((name) => {
+            void get().validateField(name);
           });
         }
       },
@@ -335,18 +390,14 @@ export const createFormStore = (): FormStoreApi => {
           return;
         }
 
-        // Invalidation silently drops any sibling field's in-flight
-        // validation, and nothing else reschedules it — the field would stay
-        // invalid with no error until the next whole-form validation. Capture
-        // those fields so they can be revalidated against the new values
-        // below. The changed field itself is excluded: its component owns
+        // Capture the sibling fields whose in-flight validation the write
+        // below invalidates, so they can be revalidated against the new
+        // values. The changed field itself is excluded: its component owns
         // rescheduling its (debounced) validate-on-change.
-        const supersededFields: string[] = [];
-        get().fields.forEach((field, name) => {
-          if (name !== fieldName && field.meta.isValidating) {
-            supersededFields.push(name);
-          }
-        });
+        const supersededFields = collectSupersededFields(
+          get().fields,
+          fieldName,
+        );
 
         invalidateAllValidations();
         set((state) => {

@@ -93,7 +93,15 @@ const DisplayEdges = ({ edges: initialEdges }: DisplayEdgesProps) => {
         </Paragraph>
       }
       toggleable
-      startExpanded={!!initialEdges?.display?.length}
+      // Open for a row that arrived WITH display edges, and also whenever the
+      // live value gains one — the observer effect below unions a newly
+      // created edge type in, and `edges.display` only reaches the saved
+      // prompt while its field is mounted (an unregistered field's value is
+      // parked in the store's dormant map and excluded from `getFormValues`).
+      // Following only the pre-edit value silently dropped every
+      // auto-displayed create-edge, contradicting the notice this section
+      // renders ("The edge type being created must always be displayed").
+      startExpanded={!!initialEdges?.display?.length || !!displayEdges?.length}
       disabled={edgesForSubject.length === 0}
       handleToggleChange={(value: boolean) => {
         // Disallow closing when there is a disabled edge option
