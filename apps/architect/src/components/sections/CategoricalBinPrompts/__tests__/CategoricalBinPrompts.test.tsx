@@ -40,6 +40,26 @@ vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   ),
 }));
 
+// Likewise the rich text fields, so a test can supply the required prompt
+// text without driving TipTap's contenteditable through jsdom.
+vi.mock('~/components/Form/Fields/RichText/Field', () => ({
+  default: ({
+    name,
+    value,
+    onChange,
+  }: {
+    name?: string;
+    value?: unknown;
+    onChange?: (value: string) => void;
+  }) => (
+    <input
+      aria-label={name}
+      value={typeof value === 'string' ? value : ''}
+      onChange={(event) => onChange?.(event.target.value)}
+    />
+  ),
+}));
+
 vi.mock('~/components/NewVariableWindow', () => ({
   default: () => null,
   useNewVariableWindowState: (initial: unknown) => [initial, () => undefined],
@@ -117,6 +137,29 @@ const renderSection = (committedStage: Record<string, unknown>) => {
   };
 };
 
+/**
+ * Waits for a row editor's save to COMMIT, not merely to start.
+ *
+ * `SubmitButton` keeps its accessible name while the form is submitting, so
+ * the control disappears only when the dialog itself unmounts — which happens
+ * downstream of `DialogArrayField`'s `onSave`. Reading the committed array
+ * before this resolves would read the pre-edit row.
+ *
+ * The generous budget is deliberate: the commit runs an async codebook write,
+ * and this suite's slowest CI runs are ~20x a developer machine. It cannot
+ * mask a wrong result — the condition is unreachable until the row commits, so
+ * a broken save times out here rather than passing on stale state.
+ */
+const waitForSave = (submitLabel: string) =>
+  waitFor(
+    () => {
+      expect(
+        screen.queryByRole('button', { name: submitLabel }),
+      ).not.toBeInTheDocument();
+    },
+    { timeout: 5000 },
+  );
+
 describe('CategoricalBinPrompts', () => {
   it('disables the section when the stage has no subject type', () => {
     renderSection({ subject: { entity: 'node' } });
@@ -134,19 +177,25 @@ describe('CategoricalBinPrompts', () => {
   });
 
   it('saves a new prompt with a picked categorical variable', async () => {
-    renderSection({ subject: { entity: 'node', type: 'person' } });
+    const { getPrompts } = renderSection({
+      subject: { entity: 'node', type: 'person' },
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
     fireEvent.change(await screen.findByLabelText('variable'), {
       target: { value: 'group' },
     });
+    // `text` is required, so a prompt with none never leaves the dialog.
+    fireEvent.change(screen.getByLabelText('text'), {
+      target: { value: 'Group these' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('button', { name: 'Add' }),
-      ).not.toBeInTheDocument();
-    });
+    await waitForSave('Add');
+
+    expect(getPrompts()).toMatchObject([
+      { text: 'Group these', variable: 'group' },
+    ]);
   });
 
   // The "Other" section is toggleable and starts collapsed for a prompt with
@@ -200,11 +249,7 @@ describe('CategoricalBinPrompts', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('button', { name: 'Save' }),
-      ).not.toBeInTheDocument();
-    });
+    await waitForSave('Save');
 
     const [prompt] = getPrompts() as Record<string, unknown>[];
     expect(prompt).not.toHaveProperty('otherVariable');

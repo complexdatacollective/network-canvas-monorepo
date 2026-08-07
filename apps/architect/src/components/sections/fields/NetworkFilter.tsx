@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { ruleValidator } from '~/components/Query';
 import {
@@ -66,7 +65,11 @@ const NetworkFilter = ({
   const contrastProps =
     variant === 'contrast'
       ? {
-          className: 'bg-surface-3 text-surface-3-contrast p-4 rounded-sm',
+          // The deepest surface level: the panel this sits in is painted
+          // `bg-accent`, which resolves to the same slate blue as
+          // `--surface-3` in Architect's theme, so level 3 gave the filter no
+          // edge against its own container.
+          className: 'bg-surface-4 text-surface-4-contrast p-4 rounded-sm',
           layout: 'vertical' as 'vertical' | 'horizontal',
         }
       : {};
@@ -79,14 +82,17 @@ const NetworkFilter = ({
       handleToggleChange={handleToggleChange}
       {...contrastProps}
     >
+      {/*
+        The section heading is the filter's only visible name — it is what
+        labels the toggle beside it, including while the section is collapsed
+        and the field is unmounted. So the field repeats nothing: no second
+        "Filter" label, and no summary restating what the toggle plus the rule
+        builder already show. `labelHidden` keeps the accessible name.
+      */}
       <ArchitectField
         name={name}
         label="Filter"
-        hint={
-          <Paragraph>
-            You can optionally filter which nodes are shown in this panel.
-          </Paragraph>
-        }
+        labelHidden
         component={FilterField}
         initialValue={initialFilter}
         allowEdgeRules={allowEdgeRules}

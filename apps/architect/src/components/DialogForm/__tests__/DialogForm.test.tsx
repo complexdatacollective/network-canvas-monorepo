@@ -233,12 +233,16 @@ describe('DialogForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
+    // The submit control keeps its name while busy — it reports the busy
+    // state instead — so "Save is gone" still means "the dialog closed".
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-      expect(
-        screen.getByRole('button', { name: /submitting/i }),
-      ).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
     });
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
 
     // Non-dismissible: neither Escape nor the (disabled) Cancel button close it.
     fireEvent.keyDown(document, { key: 'Escape' });

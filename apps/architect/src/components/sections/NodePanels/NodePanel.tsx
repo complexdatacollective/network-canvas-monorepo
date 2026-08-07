@@ -9,15 +9,13 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ArchitectField from '~/components/Form/ArchitectField';
 import DataSource from '~/components/Form/Fields/DataSource';
+import IssueAnchor from '~/components/IssueAnchor';
 import NetworkFilter from '~/components/sections/fields/NetworkFilter';
 import {
   useSetStageValue,
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
-import { getFieldId } from '~/utils/issues';
-
-import Section from '../../EditorLayout/Section';
 
 const EXISTING_DATA_SOURCE = 'existing';
 
@@ -137,56 +135,54 @@ const NodePanel = ({
         />
       )}
       <div className="min-w-0 flex-1">
-        <Section
-          title="Panel Title"
-          summary={
+        {/*
+          These fields used to sit inside `Section`s that carried the
+          `getFieldId(...)` scroll targets the Issues panel resolves against
+          (utils/issues.ts `candidateIdsFor`). The fields render bare now, so
+          the exact-path anchors are rendered directly — `ArchitectField`'s own
+          anchor only covers the `._error` candidate, and its `startCase(name)`
+          description would put the raw field path in the issues list.
+        */}
+        <IssueAnchor
+          fieldName={`${fieldName}.title`}
+          description="Panel title"
+        />
+        <ArchitectField
+          name={`${fieldName}.title`}
+          label="Panel title"
+          hint={
             <Paragraph>
               The panel title will be shown above the list of nodes within the
               panel.
             </Paragraph>
           }
-          id={getFieldId(`${fieldName}.title`)}
-          layout="vertical"
-          className="bg-slate-blue-dark mt-10 text-white [--text-dark:white]"
-        >
-          <ArchitectField
-            name={`${fieldName}.title`}
-            label="Panel title"
-            labelHidden
-            component={InputField}
-            validation={{ required: true }}
-            initialValue={initialTitle ?? ''}
-            placeholder="Panel title"
-          />
-        </Section>
-        <Section
-          title="Data Source"
-          summary={
+          component={InputField}
+          validation={{ required: true }}
+          initialValue={initialTitle ?? ''}
+        />
+        <IssueAnchor
+          fieldName={`${fieldName}.dataSource`}
+          description={`Panel ${index + 1} data source`}
+        />
+        <ArchitectField
+          name={`${fieldName}.dataSource`}
+          // Every panel repeated the same hardcoded "Data source" label —
+          // distinguish which panel this is (the panel's own index is the
+          // only thing that varies; the panel has no title field value
+          // available here to name it by).
+          label={`Data source for panel ${index + 1}`}
+          hint={
             <Paragraph>
-              Choose where the data for this panel should come from (either the
-              in-progress interview session [&quot;People you have already
-              named&quot;], or an external network data file that you have
-              added).
+              Choose where this panel&rsquo;s data comes from: the in-progress
+              interview session (&ldquo;People you have already named&rdquo;),
+              or a network data file you have added to this protocol.
             </Paragraph>
           }
-          id={getFieldId(`${fieldName}.dataSource`)}
-          layout="vertical"
-          className="bg-slate-blue-dark mt-10 text-white [--text-dark:white]"
-        >
-          <ArchitectField
-            name={`${fieldName}.dataSource`}
-            // Every panel repeated the same hardcoded "Data source" label —
-            // distinguish which panel this is (the panel's own index is the
-            // only thing that varies; the panel has no title field value
-            // available here to name it by).
-            label={`Panel ${index + 1} data source`}
-            labelHidden
-            component={DataSource}
-            validation={{ required: true }}
-            initialValue={initialDataSource}
-            canUseExisting
-          />
-        </Section>
+          component={DataSource}
+          validation={{ required: true }}
+          initialValue={initialDataSource}
+          canUseExisting
+        />
         <NetworkFilter
           variant="contrast"
           name={`${fieldName}.filter`}

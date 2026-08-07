@@ -7,3 +7,7 @@ Boolean and rich-select option cards now set their own text colour alongside the
 Modal popups now finish their exit animation instead of restarting it whenever a surrounding component re-renders, which could leave a closed modal mounted on screen and covering whatever opened next.
 
 Form values now resolve a nested field over the field that holds its container path, instead of whichever registered last winning. A form with both `mapOptions` and `mapOptions.style` registered could previously lose one of them on submit.
+
+Submit buttons keep the same label while a form is submitting, showing progress through their spinner and disabled state instead of renaming themselves. A button that renamed itself mid-submit could make an automated check believe a dialog had already closed. Pass `submittingText` to opt back in to a changed label.
+
+Surfaces gained a fourth nesting level, so deeply nested content has one more step of contrast before it repeats its parent's colour.
