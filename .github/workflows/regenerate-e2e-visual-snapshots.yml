@@ -119,7 +119,7 @@ jobs:
           fi
           ./packages/interview/e2e/scripts/run.sh \
             "${projects[@]}" \
-            --grep '^visual Geospatial: core-click-select-and-prompt-panel$' \
+            --grep 'visual Geospatial: core-click-select-and-prompt-panel$' \
             --workers=1 \
             --retries=0 \
             --update-snapshots
@@ -144,7 +144,7 @@ jobs:
           fi
           ./packages/interview/e2e/scripts/run.sh \
             "${projects[@]}" \
-            --grep '^visual Geospatial: core-click-select-and-prompt-panel$' \
+            --grep 'visual Geospatial: core-click-select-and-prompt-panel$' \
             --workers=1 \
             --retries=0 \
             --repeat-each="$ITERATIONS"

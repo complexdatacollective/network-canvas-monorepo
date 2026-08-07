@@ -1,3 +1,5 @@
+import { expect } from '@playwright/test';
+
 import { matrixTest } from '../../fixtures/matrix-test.js';
 import { ALL_SUITES } from '../../matrix/all-scenarios.js';
 import { installScenario } from '../../matrix/run-scenario.js';
@@ -11,7 +13,7 @@ async function attachGeospatialDiagnostics(
 ): Promise<void> {
   if (process.env.E2E_VISUAL_DEBUG !== 'geospatial') return;
 
-  const panel = page.getByTestId('collapsable-prompts');
+  const panel = page.getByTestId('collapsible-prompts');
   const diagnostics = await panel.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     const computedStyle = getComputedStyle(element);
@@ -70,6 +72,10 @@ for (const suite of ALL_SUITES) {
           scenario.id === GEOSPATIAL_STRESS_SCENARIO;
         if (isGeospatialStressScenario) {
           await stage.geospatial.waitForMapIdle();
+          await expect(page.getByTestId('collapsible-prompts')).toHaveCSS(
+            'transform',
+            'none',
+          );
           await attachGeospatialDiagnostics(page, 'initial');
         }
         await interview.captureInitial(mask);

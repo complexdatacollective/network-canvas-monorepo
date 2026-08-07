@@ -1,5 +1,5 @@
 import { ChevronUp, GripHorizontal } from 'lucide-react';
-import { motion, MotionConfigContext, type BoundingBox } from 'motion/react';
+import { motion, MotionConfigContext } from 'motion/react';
 import {
   type ReactNode,
   type RefObject,
@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import usePrevious from '@codaco/fresco-ui/hooks/usePrevious';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -17,18 +18,6 @@ import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 
 const MotionChevron = motion.create(ChevronUp);
-
-const roundDragConstraints = ({
-  top,
-  right,
-  bottom,
-  left,
-}: BoundingBox): BoundingBox => ({
-  top: Math.round(top),
-  right: Math.round(right),
-  bottom: Math.round(bottom),
-  left: Math.round(left),
-});
 
 /**
  * Floating, draggable panel showing the current prompt. Collapsible via the
@@ -49,6 +38,7 @@ const CollapsablePrompts = (props: {
   const [collapsed, setCollapsed] = useState(false);
   const contentId = useId();
   const { skipAnimations } = useContext(MotionConfigContext);
+  const shouldSkipAnimations = useShouldSkipAnimations();
 
   const isCollapsed = collapsible && collapsed;
 
@@ -62,22 +52,23 @@ const CollapsablePrompts = (props: {
 
   return (
     <MotionSurface
-      data-testid="collapsable-prompts"
+      data-testid="collapsible-prompts"
       className={cx(
         'bg-surface/80 absolute top-4 right-4 z-10 flex w-fit max-w-sm cursor-move flex-col items-center overflow-hidden border-b-2 shadow-2xl backdrop-blur-md',
         className,
       )}
-      layout={!skipAnimations}
-      drag
-      dragConstraints={dragConstraints}
-      // Constraint resizes can otherwise leave a fractional drag transform even
-      // when Motion's test mode has disabled every animation.
-      onMeasureDragConstraints={
-        skipAnimations ? roundDragConstraints : undefined
-      }
+      layout={!shouldSkipAnimations}
+      // Motion's drag projection writes a near-zero transform after measuring
+      // constraints. That compositor transform rasterises the resting panel on
+      // a different pixel boundary, even when automated hosts skip animations.
+      // Omit the drag feature only in that explicit host mode; reduced-motion
+      // users still retain the panel's drag interaction.
+      drag={!skipAnimations}
+      dragConstraints={skipAnimations ? undefined : dragConstraints}
       noContainer
       spacing="sm"
       shadow="sm"
+      initial={shouldSkipAnimations ? false : undefined}
       variants={{
         initial: {
           scale: 0.4,
