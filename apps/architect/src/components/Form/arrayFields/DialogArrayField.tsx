@@ -217,8 +217,29 @@ const mergeEditedRow = (
   return { ...merged, ...submitted };
 };
 
+/**
+ * The researcher-facing account of a save that landed after its row was gone.
+ * Architect is an authoring tool, so this says what happened and what to do
+ * next rather than reporting a failure.
+ */
+const rowRemovedMessage = (itemLabel: string) =>
+  `This ${itemLabel} was removed while your changes were being saved, so there is nothing left to save them to. Copy anything you want to keep, then cancel and add a new ${itemLabel}.`;
+
 type DialogArrayContextValue = {
   addTitle: string;
+  /**
+   * Commits a row the list has already moved on from — the editor's session
+   * was replaced, or the editor unmounted, while `onBeforeSave` was in flight.
+   * The row is addressed by its OWN id rather than by whichever row the list
+   * is editing now, so index drift (a reorder, an insertion, an undo) can
+   * never land the edit on a different row. Returns `false` when that row is
+   * no longer in the committed array: there is then nothing to commit to.
+   */
+  commitDetachedRow: (
+    editedRow: ArrayItem,
+    value: ArrayItem,
+    isNewRow: boolean,
+  ) => boolean;
   editorFieldsComponent: Renderer;
   editorProps?: Record<string, unknown>;
   editorTitle: string;
@@ -333,11 +354,13 @@ const DialogEditor = ({
 }: ArrayFieldEditorProps<ArrayItem>) => {
   const {
     addTitle,
+    commitDetachedRow,
     editFormName,
     editorFieldsComponent,
     editorProps,
     editorTitle,
     editorValidate,
+    itemLabel,
     itemSelector,
     normalizeItem,
     onBeforeSave,
@@ -408,6 +431,8 @@ const DialogEditor = ({
   const mountedRef = useRef(true);
   const activeItemRef = useRef(sessionItem);
   activeItemRef.current = sessionItem;
+  const isNewItemRef = useRef(false);
+  isNewItemRef.current = session?.isNewItem ?? false;
   const itemValuesRef = useRef(itemValues);
   itemValuesRef.current = itemValues;
 
@@ -431,6 +456,7 @@ const DialogEditor = ({
       if (saveInFlightRef.current) return { success: true };
       saveInFlightRef.current = true;
       const itemAtSaveStart = activeItemRef.current;
+      const wasNewRow = isNewItemRef.current;
 
       try {
         let valueToSave: unknown = mergeEditedRow(
@@ -444,15 +470,49 @@ const DialogEditor = ({
           if (transformedValue !== undefined) valueToSave = transformedValue;
         }
 
-        // The dialog may have been torn down (or moved to another row) while
-        // the pre-save work was in flight; committing then would write the
-        // edit onto whatever is there now.
-        if (!mountedRef.current || activeItemRef.current !== itemAtSaveStart) {
+        const rowToCommit = normalizeItem(valueToSave) as ArrayItem;
+
+        // The happy path: this editor is still the one editing this row, so
+        // the list's own save handles the commit — including a draft's
+        // promotion to a confirmed row, and closing the editor.
+        if (mountedRef.current && activeItemRef.current === itemAtSaveStart) {
+          onSave(rowToCommit);
           return { success: true };
         }
 
-        onSave(normalizeItem(valueToSave) as ArrayItem);
-        return { success: true };
+        // Otherwise the editor moved to a different session, or unmounted,
+        // while the pre-save work was in flight. `onSave` commits to whichever
+        // row the list is editing NOW, so it cannot be trusted here — but the
+        // researcher's edit must not be thrown away either. Commit it to the
+        // row it was actually made on, addressed by that row's own id.
+        if (
+          itemAtSaveStart &&
+          commitDetachedRow(itemAtSaveStart, rowToCommit, wasNewRow)
+        ) {
+          // The list never ran its own save, so nothing has cleared the
+          // editing state; close the editor the way a normal save would.
+          onCancel();
+          return { success: true };
+        }
+
+        // Nothing can be committed: the row has left the array, or it carries
+        // no id and ArrayField's positional fallback has already handed its
+        // editing session to a neighbour. Writing anywhere now would be a
+        // write onto a different row, so the save reports what happened.
+        //
+        // Be clear-eyed about where that report goes. Every route here has
+        // already torn down the form that submitted: an unmounted editor has
+        // no form at all, and a session that moved on remounted `DialogForm`
+        // (keyed on `session.id`) with a fresh store, so these errors are set
+        // on the store the submit came from and no longer render. The truthful
+        // result is returned regardless — a caller that can still show it
+        // should, and the outcome is "not saved" either way. What this path
+        // must never do is report a save that did not happen as a success,
+        // which is what silently closes the dialog over a discarded edit.
+        return {
+          success: false,
+          formErrors: [rowRemovedMessage(itemLabel)],
+        };
       } catch (error) {
         return {
           success: false,
@@ -462,7 +522,14 @@ const DialogEditor = ({
         saveInFlightRef.current = false;
       }
     },
-    [normalizeItem, onBeforeSave, onSave],
+    [
+      commitDetachedRow,
+      itemLabel,
+      normalizeItem,
+      onBeforeSave,
+      onCancel,
+      onSave,
+    ],
   );
 
   const validate = useMemo<FormLevelValidate | undefined>(() => {
@@ -541,9 +608,52 @@ function DialogArrayField<T extends ArrayItem>({
     } as Partial<T>;
   }, [itemTemplate]);
 
+  const resolveItemId = useMemo(
+    () =>
+      getId ??
+      ((candidate: T) =>
+        typeof candidate.id === 'string' ? candidate.id : undefined),
+    [getId],
+  );
+
+  // The committed array, read at commit time rather than closed over, so a
+  // save that outlives its editing session still writes onto the CURRENT
+  // array instead of resurrecting the one the session opened on.
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
+  const commitDetachedRow = useCallback(
+    (editedRow: ArrayItem, rowValue: ArrayItem, isNewRow: boolean) => {
+      if (!onChange) return false;
+
+      const committed = valueRef.current ?? [];
+      const editedRowId = resolveItemId(editedRow as T);
+      const index =
+        editedRowId === undefined
+          ? -1
+          : committed.findIndex((row) => resolveItemId(row) === editedRowId);
+
+      if (index !== -1) {
+        const next = [...committed];
+        next[index] = rowValue as T;
+        onChange(next);
+        return true;
+      }
+
+      // A row being ADDED is not in the committed array yet, and `createItem`
+      // has just minted its id, so appending it cannot overwrite another row.
+      // The end of the list is where the list's own save would have put it.
+      if (!isNewRow) return false;
+      onChange([...committed, rowValue as T]);
+      return true;
+    },
+    [onChange, resolveItemId],
+  );
+
   const context = useMemo<DialogArrayContextValue>(
     () => ({
       addTitle: addTitle ?? `Add ${itemLabel}`,
+      commitDetachedRow,
       editFormName: requestedEditFormName ?? defaultEditFormName(name),
       editorFieldsComponent,
       editorProps,
@@ -558,6 +668,7 @@ function DialogArrayField<T extends ArrayItem>({
     }),
     [
       addTitle,
+      commitDetachedRow,
       editorFieldsComponent,
       editorProps,
       editorTitle,
@@ -583,11 +694,7 @@ function DialogArrayField<T extends ArrayItem>({
         addButtonLabel={addButtonLabel}
         emptyStateMessage={emptyStateMessage}
         itemTemplate={createItem}
-        getId={
-          getId ??
-          ((candidate) =>
-            typeof candidate.id === 'string' ? candidate.id : undefined)
-        }
+        getId={resolveItemId}
         itemClasses={itemClasses}
         // Rows run their own confirm dialog, which names the item type.
         confirmDelete={false}

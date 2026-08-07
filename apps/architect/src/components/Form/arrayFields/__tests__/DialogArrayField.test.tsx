@@ -21,7 +21,9 @@ import DialogArrayField, {
   type DialogArrayEditorValidate,
 } from '../DialogArrayField';
 
-type Item = { id: string; label: string; note?: string };
+// `id` is optional so a case can exercise rows that carry none, which fall
+// back to ArrayField's positional identity.
+type Item = { id?: string; label: string; note?: string };
 
 /** `initialValue` is a register-effect dependency, so keep it stable. */
 const NO_ITEMS: Item[] = [];
@@ -136,6 +138,36 @@ const CaptureStore = () => {
 const getItems = (): Item[] => {
   if (!storeApi) throw new Error('form store was not captured');
   return (storeApi.getState().getFormValues().items ?? []) as Item[];
+};
+
+/**
+ * Rewrites the whole array from outside the field, the way an undo/redo
+ * restore does (`StageFormBridge`'s `runRestore` writes through
+ * `setFieldValue`). Used to move the ground under an in-flight row save.
+ */
+const setItems = (items: Item[]) => {
+  if (!storeApi) throw new Error('form store was not captured');
+  const { setFieldValue } = storeApi.getState();
+  act(() => setFieldValue('items', items));
+};
+
+/** A promise the test releases, for suspending `onBeforeSave` mid-save. */
+const deferred = () => {
+  let release: (() => void) | undefined;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { promise, release: () => release?.() };
+};
+
+const releaseAndSettle = async ({
+  promise,
+  release,
+}: ReturnType<typeof deferred>) => {
+  await act(async () => {
+    release();
+    await promise;
+  });
 };
 
 type FieldOverrides = {
@@ -453,28 +485,139 @@ describe('DialogArrayField', () => {
     expect([...storeApi.getState().fields.keys()]).toEqual(['items']);
   });
 
-  it('ignores an async completion after the array editor unmounts', async () => {
-    let resolvePreSave: ((value: undefined) => void) | undefined;
-    const pendingSave = new Promise<undefined>((resolve) => {
-      resolvePreSave = resolve;
+  it('commits a slow save to the row it was made on, not to whatever now sits at its index', async () => {
+    const gate = deferred();
+    const onBeforeSave = vi.fn(async (value: unknown) => {
+      await gate.promise;
+      return value;
     });
-    const onBeforeSave = vi.fn(() => pendingSave);
+    setup({
+      initialItems: [
+        { id: 'item-1', label: 'First' },
+        { id: 'item-2', label: 'Second' },
+      ],
+      onBeforeSave,
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit item' })[0]!);
+    fireEvent.change(editorInput(), { target: { value: 'First edited' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onBeforeSave).toHaveBeenCalledOnce());
+
+    // The array is rewritten under the in-flight save, exactly as an undo or a
+    // reorder does: the edited row is still there, but no longer at index 0,
+    // and the editing session it belonged to has been replaced.
+    setItems([
+      { id: 'item-2', label: 'Second' },
+      { id: 'item-1', label: 'First' },
+    ]);
+
+    await releaseAndSettle(gate);
+
+    // The edit lands on item-1 at its NEW index, and item-2 — which now
+    // occupies the index the save started from — is untouched.
+    await waitFor(() => {
+      expect(getItems()).toEqual([
+        { id: 'item-2', label: 'Second' },
+        { id: 'item-1', label: 'First edited' },
+      ]);
+    });
+  });
+
+  it('does not resurrect a row that was removed while its save was in flight', async () => {
+    const gate = deferred();
+    const onBeforeSave = vi.fn(async (value: unknown) => {
+      await gate.promise;
+      return value;
+    });
+    setup({
+      initialItems: [
+        { id: 'item-1', label: 'First' },
+        { id: 'item-2', label: 'Second' },
+      ],
+      onBeforeSave,
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit item' })[0]!);
+    fireEvent.change(editorInput(), { target: { value: 'First edited' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onBeforeSave).toHaveBeenCalledOnce());
+
+    setItems([{ id: 'item-2', label: 'Second' }]);
+
+    await releaseAndSettle(gate);
+
+    // There is no row left to commit to, so the save writes nothing: neither
+    // a resurrected item-1 nor item-1's label onto item-2.
+    await waitFor(() => {
+      expect(getItems()).toEqual([{ id: 'item-2', label: 'Second' }]);
+    });
+    // The save returns a failure, but the list has already stopped editing a
+    // row that is no longer there, so the dialog closes on its own and that
+    // failure has nowhere to render — see the comment on the path itself.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('textbox', { name: 'Item label' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('refuses a save it cannot place, rather than writing it onto the row that took its place', async () => {
+    const gate = deferred();
+    const onBeforeSave = vi.fn(async (value: unknown) => {
+      await gate.promise;
+      return value;
+    });
+    // Rows with no id of their own fall back to ArrayField's positional
+    // identity, so deleting the first row hands its editing session — and the
+    // still-open editor — to the second. Nothing here can be addressed by id,
+    // and the one thing the save must not do is write onto that neighbour.
+    setup({
+      initialItems: [{ label: 'First' }, { label: 'Second' }],
+      onBeforeSave,
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit item' })[0]!);
+    fireEvent.change(editorInput(), { target: { value: 'First edited' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onBeforeSave).toHaveBeenCalledOnce());
+
+    setItems([{ label: 'Second' }]);
+
+    await releaseAndSettle(gate);
+
+    expect(getItems()).toEqual([{ label: 'Second' }]);
+    // The editor is still open — on the neighbour, showing its own value, not
+    // the edit that was in flight for the row that is gone.
+    expect(editorInput()).toHaveValue('Second');
+  });
+
+  it('commits a row the researcher added even if the array editor unmounts first', async () => {
+    const gate = deferred();
+    const onBeforeSave = vi.fn(async (value: unknown) => {
+      await gate.promise;
+      return value;
+    });
     const { unmount } = setup({ onBeforeSave });
 
     fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
-    fireEvent.change(editorInput(), { target: { value: 'Stale completion' } });
+    fireEvent.change(editorInput(), { target: { value: 'Slow addition' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     await waitFor(() => expect(onBeforeSave).toHaveBeenCalledOnce());
 
     const captured = storeApi;
     unmount();
-    await act(async () => {
-      resolvePreSave?.(undefined);
-      await pendingSave;
-    });
+    await releaseAndSettle(gate);
 
     if (!captured) throw new Error('form store was not captured');
-    expect(captured.getState().getFormValues().items ?? []).toEqual([]);
+    // The field is unregistered, so the row is not part of `getFormValues()`
+    // — an unmounted field contributes nothing to the form's output. What
+    // matters is that the researcher's row was written to the field rather
+    // than silently dropped: the store parks it for the field's next
+    // registration, which is where it comes back from.
+    expect(captured.getState().getFieldState('items')?.value).toEqual([
+      expect.objectContaining({ label: 'Slow addition' }),
+    ]);
   });
 });
 
