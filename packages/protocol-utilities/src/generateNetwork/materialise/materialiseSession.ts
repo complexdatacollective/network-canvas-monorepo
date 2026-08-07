@@ -493,10 +493,11 @@ export function materialiseSession(params: {
 
       for (const pair of chosen) {
         const attributes: Record<string, VariableValue> = {};
+        const uid = deterministicUuid(
+          source.stream('id', 'edge', 'unplanned', creation.edgeType),
+        );
         draft.edges.push({
-          [entityPrimaryKeyProperty]: deterministicUuid(
-            source.stream('id', 'edge', 'unplanned', creation.edgeType),
-          ),
+          [entityPrimaryKeyProperty]: uid,
           type: creation.edgeType,
           from: pair.a,
           to: pair.b,
@@ -505,6 +506,13 @@ export function materialiseSession(params: {
         finalPairs.add(pairKey(pair.a, pair.b));
         for (const variableId of creation.writesAtCreation) {
           drawVariableOnto(ctx, ref, attributes, variableId, unplannedDraw++);
+          // Every variable written at an edge's creation currently also has a
+          // population write that would apply this later, so no protocol shape
+          // tells the two apart today. It is applied at the draw anyway: this
+          // is where the value comes into being, and leaving the declaration
+          // to be honoured by a separate write is a coincidence of the two
+          // models agreeing, not something this code establishes.
+          applyUnplannedMissingness(ref, uid, attributes, variableId);
         }
       }
     }

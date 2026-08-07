@@ -615,3 +615,200 @@ describe('a NetworkComposer following a stage that named people', () => {
     }
   });
 });
+
+describe('a stage filtered on the edge type it creates', () => {
+  it('sees the edges its predecessors made', () => {
+    // Two censuses each link their own wave, then a third asks about everyone
+    // who by now has a friendship. The interview answers that against the
+    // edges already collected, so the third census reaches every pair; a plan
+    // blind to its own type's earlier edges admits nobody there and stops at
+    // the two within-wave links.
+    const withWaves = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            name: { name: 'Name', type: 'text' },
+            wave: { name: 'Wave', type: 'number' },
+          },
+          synthetic: { count: { distribution: 'constant', value: 4 } },
+        },
+      },
+      edge: {
+        friend: {
+          name: 'Friend',
+          color: 'edge-color-seq-1',
+          variables: {},
+          synthetic: {
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 1 },
+            },
+          },
+        },
+      },
+      ego: { variables: {} },
+    } as unknown as Codebook;
+
+    const wave = (id: string, value: number): Stage =>
+      nameGenerator({
+        id,
+        prompts: [
+          {
+            id: `${id}-p1`,
+            text: 'Who?',
+            additionalAttributes: [{ variable: 'wave', value }],
+          },
+        ],
+        behaviours: { minNodes: 2, maxNodes: 2 },
+      });
+
+    const censusFiltered = (id: string, rule: Record<string, unknown>): Stage =>
+      stage({
+        id,
+        type: 'DyadCensus',
+        label: 'Pairs',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: `${id}-p1`, text: 'Which?', createEdge: 'friend' }],
+        filter: { join: 'AND', rules: [rule] },
+      });
+
+    const { network } = generateNetwork({
+      seed: 13,
+      codebook: withWaves,
+      stages: [
+        wave('ng-one', 1),
+        censusFiltered('census-one', {
+          id: 'r1',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'wave',
+            operator: 'EXACTLY',
+            value: 1,
+          },
+        }),
+        wave('ng-two', 2),
+        censusFiltered('census-two', {
+          id: 'r2',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'wave',
+            operator: 'EXACTLY',
+            value: 2,
+          },
+        }),
+        censusFiltered('census-all', {
+          id: 'r3',
+          type: 'edge',
+          options: { type: 'friend', operator: 'EXISTS' },
+        }),
+      ],
+      respectSkipLogicAndFiltering: true,
+    });
+
+    expect(network.nodes).toHaveLength(4);
+    // Every pair among the four, not just the two within-wave links.
+    expect(network.edges).toHaveLength(6);
+  });
+});
+
+describe('a NetworkComposer’s tools over people and links already present', () => {
+  const composerCodebook = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        variables: {
+          name: { name: 'Name', type: 'text' },
+          role: { name: 'Role', type: 'text' },
+          groups: {
+            name: 'Groups',
+            type: 'categorical',
+            options: [
+              { label: 'Family', value: 'family' },
+              { label: 'Work', value: 'work' },
+            ],
+          },
+        },
+        synthetic: { count: { distribution: 'constant', value: 3 } },
+      },
+    },
+    edge: {
+      friend: {
+        name: 'Friend',
+        color: 'edge-color-seq-1',
+        variables: { since: { name: 'Since', type: 'text' } },
+        synthetic: {
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: 1 },
+          },
+        },
+      },
+    },
+    ego: { variables: {} },
+  } as unknown as Codebook;
+
+  const composer = stage({
+    id: 'composer',
+    type: 'NetworkComposer',
+    label: 'Compose',
+    subject: { entity: 'node', type: 'person' },
+    nodeForm: { fields: [{ variable: 'role', prompt: 'Their role?' }] },
+    convexHullVariable: 'groups',
+    edges: [
+      {
+        subject: { entity: 'edge', type: 'friend' },
+        form: { fields: [{ variable: 'since', prompt: 'Since when?' }] },
+      },
+    ],
+  });
+
+  const sociogram = stage({
+    id: 'sociogram',
+    type: 'Sociogram',
+    label: 'Draw links',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [
+      {
+        id: 's-p1',
+        text: 'Who knows whom?',
+        edges: { create: 'friend' },
+      },
+    ],
+  });
+
+  it('assigns groups to people an earlier stage introduced', () => {
+    // The canvas loads every node of the subject type, and the group tool acts
+    // on whatever is on it — so membership is not something only the
+    // composer's own people can hold.
+    const { network } = generateNetwork({
+      seed: 21,
+      codebook: composerCodebook,
+      stages: [nameGenerator(), composer],
+    });
+
+    expect(network.nodes.length).toBeGreaterThanOrEqual(3);
+    for (const node of network.nodes) {
+      expect(attributesOf(node).groups).toBeDefined();
+    }
+  });
+
+  it('asks its edge form of links a Sociogram drew before it', () => {
+    // The inspector opens the edge form for any edge on the canvas, including
+    // ones that existed before this stage ran.
+    const { network } = generateNetwork({
+      seed: 22,
+      codebook: composerCodebook,
+      stages: [nameGenerator(), sociogram, composer],
+    });
+
+    expect(network.edges.length).toBeGreaterThan(0);
+    for (const edge of network.edges) {
+      expect(attributesOf(edge as unknown as NcNode).since).toBeDefined();
+    }
+  });
+});

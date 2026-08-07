@@ -681,13 +681,23 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       // it names someone as they are added and is not asked again.
       // A composer declares no stage filter, so the write reaches the whole
       // subject type — exactly the set the canvas is loaded with.
-      for (const variableId of formVariables(stage.nodeForm)) {
+      //
+      // The hull variable joins the form fields for the same reason. Group
+      // membership is toggled with the composer's own tools, which act on
+      // whatever is on the canvas: keeping it a creation write would land the
+      // planned memberships on the composer's own people alone and leave
+      // everyone introduced earlier out of every group.
+      for (const variableId of definedStrings([
+        ...formVariables(stage.nodeForm),
+        stage.convexHullVariable,
+      ])) {
         summary.writes.push({
           stageIndex: index,
           entity: 'node',
           entityType: nodeType,
           variableId,
-          mode: 'form',
+          mode:
+            variableId === stage.convexHullVariable ? 'composerHull' : 'form',
         });
       }
       for (const edge of stage.edges ?? []) {
@@ -708,6 +718,19 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
           writesAtCreation: formVariables(edge.form),
           structured: null,
         });
+        // And the edge form is no more creation-only than the node form: the
+        // inspector opens it for any edge on the canvas, including ones a
+        // Sociogram drew before this stage ran, whose planned values would
+        // otherwise never be landed.
+        for (const variableId of formVariables(edge.form)) {
+          summary.writes.push({
+            stageIndex: index,
+            entity: 'edge',
+            entityType: edgeType,
+            variableId,
+            mode: 'form',
+          });
+        }
       }
       break;
     }

@@ -209,3 +209,75 @@ describe('a mean-degree topology split across planned and pedigree people', () =
     }
   });
 });
+
+describe('a composer edge form over a pedigree', () => {
+  it('honours a declared missingness on a field it is the only writer of', () => {
+    // The edge is built during the walk, over people the plan never held, so
+    // nothing about it comes from the plan — the value and the missingness
+    // decision are both taken here.
+    const withMissingField = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          synthetic: { count: { distribution: 'constant', value: 8 } },
+          variables: {
+            name: { name: 'Name', type: 'text' },
+            isEgo: { name: 'Is ego', type: 'boolean' },
+            relationship: { name: 'Relationship', type: 'text' },
+            sex: { name: 'Sex', type: 'text' },
+          },
+        },
+      },
+      edge: {
+        knows: {
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+          synthetic: {
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 1 },
+            },
+          },
+          variables: {
+            since: {
+              name: 'Since',
+              type: 'text',
+              synthetic: { missingProbability: 1 },
+            },
+          },
+        },
+      },
+    } as unknown as Codebook;
+
+    const composer = {
+      id: 'stage-composer',
+      type: 'NetworkComposer',
+      label: 'Compose',
+      subject: { entity: 'node', type: 'person' },
+      edges: [
+        {
+          subject: { entity: 'edge', type: 'knows' },
+          form: { fields: [{ variable: 'since', prompt: 'Since when?' }] },
+        },
+      ],
+    } as unknown as Stage;
+
+    for (let seed = 1; seed <= 8; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: withMissingField,
+        stages: [pedigree, composer],
+      });
+
+      const knows = network.edges.filter((edge) => edge.type === 'knows');
+      expect(knows.length).toBeGreaterThan(0);
+      for (const edge of knows) {
+        const value = (
+          edge as unknown as { attributes: Record<string, unknown> }
+        ).attributes.since;
+        expect(value ?? null).toBeNull();
+      }
+    }
+  });
+});

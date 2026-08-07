@@ -354,51 +354,45 @@ function rowJudgeFor(
 type EligiblePair = { a: string; b: string; firstStageIndex: number };
 
 /**
- * The eligible endpoint domain for one edge type: the union over its creating
- * stages of the unordered subject-node pairs each stage can reach, respecting
- * own-nodes-only restrictions and (when enabled) stage filters. Each pair
- * remembers the earliest stage that could create it, which is where a planned
- * edge materialises.
+ * The unordered subject-node pairs ONE creating stage can reach, respecting
+ * own-nodes-only restrictions and (when enabled) its filter. Each pair
+ * remembers this stage, which is where a planned edge on it materialises.
  *
- * A stage can only link nodes that exist by the time it runs, so each
- * creation sees the population as of its own point in the interview. Pairing
- * across the whole final network instead would plan edges onto endpoints a
- * later stage has yet to introduce — an anachronistic session, and a domain
- * wider than the stage-time populations feasibility counts, so protocols it
- * accepted could exhaust their values mid-plan.
+ * A stage can only link nodes that exist by the time it runs, so a creation
+ * sees the population as of its own point in the interview. Pairing across the
+ * whole final network instead would plan edges onto endpoints a later stage
+ * has yet to introduce — an anachronistic session, and a domain wider than the
+ * stage-time populations feasibility counts, so protocols it accepted could
+ * exhaust their values mid-plan.
  *
- * The same stage-time cut applies to `plannedEdges`, the edges already planned
- * for the types settled before this one. A filter rule of type `edge` selects
- * the nodes an edge of that type touches, so judging it against an edgeless
- * shadow answers about a network the interview never has: `EXISTS` admits
- * nobody and plans no edges at all, and `NOT_EXISTS` admits everybody
- * including the very nodes it is meant to exclude.
+ * The same stage-time cut applies to `visibleEdges`. A filter rule of type
+ * `edge` selects the nodes an edge of that type touches, so judging it against
+ * an edgeless shadow answers about a network the interview never has: `EXISTS`
+ * admits nobody and plans no edges at all, and `NOT_EXISTS` admits everybody
+ * including the very nodes it is meant to exclude. The caller passes both the
+ * edges of types settled earlier and the ones already committed for this type,
+ * so a stage filtering on the type it creates sees what its predecessors made.
  *
- * Two domains stay invisible, both because they are not settled when this
- * runs. A type cannot see its own earlier edges — the selection that would
- * populate them is what this domain is being computed for — and a pedigree's
- * structural links are built by the specialist generator during the walk. A
- * filter reading either therefore still judges against nothing.
+ * A pedigree's structural links remain invisible: they are built by the
+ * specialist generator during the walk, so nothing here can know them.
  */
-function eligiblePairs(
+function eligiblePairsForCreation(
   ctx: GenerationContext,
-  creations: EdgeCreation[],
+  creation: EdgeCreation,
   nodes: PlannedNode[],
   egoUid: string,
-  plannedEdges: readonly PlannedEdge[],
+  visibleEdges: readonly PlannedEdge[],
 ): Map<string, EligiblePair> {
   const pairs = new Map<string, EligiblePair>();
 
-  for (const creation of [...creations].toSorted(
-    (a, b) => a.stageIndex - b.stageIndex,
-  )) {
+  {
     const existing = nodes.filter(
       (node) => node.creationStageIndex <= creation.stageIndex,
     );
     const network = plannedNetwork(
       egoUid,
       existing,
-      plannedEdges.filter(
+      visibleEdges.filter(
         (edge) => edge.creationStageIndex <= creation.stageIndex,
       ),
     );
@@ -759,23 +753,59 @@ export function planNetwork(
     };
     topologyByType.set(type, target);
 
-    const pairs = eligiblePairs(
-      ctx,
-      topologyCreations,
-      nodes,
-      egoUid,
-      plannedEdges,
-    );
-    if (pairs.size === 0) continue;
+    // Creations are settled one at a time, in interview order, each committing
+    // its edges before the next one's domain is built.
+    //
+    // A stage can filter on the very type it creates — "everyone who already
+    // has a friendship" — and the interview answers that against the edges its
+    // predecessors made. Computing the whole union domain first and selecting
+    // over it once could never show a creation the edges of its own type,
+    // because the selection that would produce them is what the domain is
+    // being computed for. Settling incrementally breaks that circle: by the
+    // time a later creation is judged, the earlier ones are real.
+    //
+    // The target is re-measured against the domain accumulated so far and
+    // reduced by what is already committed, so the total after the last
+    // creation is the target over the full union — what a single global
+    // selection would have produced, arrived at without the blind spot.
+    const domain = new Map<string, EligiblePair>();
+    const typeEdges: PlannedEdge[] = [];
+    const taken = new Set<string>();
 
-    const eligibleNodeCount = new Set(
-      [...pairs.values()].flatMap((pair) => [pair.a, pair.b]),
-    ).size;
-    const plannedTarget = topologyTarget(target, pairs.size, eligibleNodeCount);
+    for (const creation of [...topologyCreations].toSorted(
+      (a, b) => a.stageIndex - b.stageIndex,
+    )) {
+      for (const [key, pair] of eligiblePairsForCreation(
+        ctx,
+        creation,
+        nodes,
+        egoUid,
+        [...plannedEdges, ...typeEdges],
+      )) {
+        if (!domain.has(key)) domain.set(key, pair);
+      }
+      if (domain.size === 0) continue;
 
-    const typeEdges = shuffled([...pairs.values()], edgeStream)
-      .slice(0, plannedTarget)
-      .map((pair) => buildEdge(pair.a, pair.b, pair.firstStageIndex, {}));
+      const eligibleNodeCount = new Set(
+        [...domain.values()].flatMap((pair) => [pair.a, pair.b]),
+      ).size;
+      const outstanding =
+        topologyTarget(target, domain.size, eligibleNodeCount) -
+        typeEdges.length;
+      if (outstanding <= 0) continue;
+
+      const available = [...domain.entries()].filter(
+        ([key]) => !taken.has(key),
+      );
+      for (const [key, pair] of shuffled(available, edgeStream).slice(
+        0,
+        outstanding,
+      )) {
+        taken.add(key);
+        typeEdges.push(buildEdge(pair.a, pair.b, pair.firstStageIndex, {}));
+      }
+    }
+
     edgesByType.set(type, typeEdges);
     plannedEdges.push(...typeEdges);
   }
