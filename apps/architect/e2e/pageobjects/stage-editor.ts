@@ -65,6 +65,30 @@ function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
     });
 }
 
+// One line of inline markdown. Only the emphasis markers need to arrive as
+// real keystrokes — Tiptap converts `**bold**` / `_italic_` / `*italic*`
+// through ProseMirror input rules, which fire on the closing character and
+// are invisible to bulk insertion. Everything between them is plain prose
+// that `insertText` places in one call.
+//
+// This is the difference between ~15,000 keystroke round trips across the
+// spec and a few hundred: the whole-protocol build types 15kB of canonical
+// copy, of which under 5% carries emphasis. It is also SAFER than typing
+// everything, because bulk-inserted prose cannot trip an input rule it was
+// never meant to (a sentence that happens to start `1. `, say). Correctness
+// is not assumed — the final comparison re-parses every string, so a
+// mis-typed mark fails the run loudly.
+export async function typeInlineRun(page: Page, text: string): Promise<void> {
+  for (const segment of text.split(EMPHASIS_SPLIT)) {
+    if (!segment) continue;
+    if (EMPHASIS_TEST.test(segment)) {
+      await page.keyboard.type(segment);
+    } else {
+      await page.keyboard.insertText(segment);
+    }
+  }
+}
+
 export class StageEditor {
   private readonly page: Page;
 
@@ -112,15 +136,12 @@ export class StageEditor {
   // `ariaLabel` string, so a single role/name locator covers both cases.
   async fillRichText(ariaLabel: string, text: string): Promise<void> {
     const editor = this.page.getByRole('textbox', { name: ariaLabel });
-    await editor.click();
-    try {
-      await editor.fill(text);
-    } catch {
-      // Tiptap intercepts real keystrokes via ProseMirror, not just a generic
-      // `input` event — if `.fill()`'s synthetic event doesn't take, fall
-      // back to genuine keystrokes.
-      await this.page.keyboard.type(text);
-    }
+    // The surrounding field can render before Tiptap has attached its
+    // ProseMirror contenteditable. With animations disabled that gap is easy
+    // to hit; wait for the actual editor instead of swallowing fill failures
+    // and typing into whichever element happens to own focus.
+    await expect(editor).toBeEditable();
+    await editor.fill(text);
   }
 
   // Type canonical markdown into a Tiptap RichText editor the way a user
@@ -150,7 +171,7 @@ export class StageEditor {
         await this.page.keyboard.press('Enter');
       }
       if (block.kind === 'paragraph') {
-        await this.typeInlineRun(block.text);
+        await typeInlineRun(this.page, block.text);
         needsBlockBreak = true;
         continue;
       }
@@ -160,37 +181,13 @@ export class StageEditor {
         } else {
           await this.page.keyboard.press('Enter');
         }
-        await this.typeInlineRun(item);
+        await typeInlineRun(this.page, item);
       }
       // Exit the list: the first Enter opens an empty item, the second lifts
       // it out into a fresh paragraph — so the next block needs no break.
       await this.page.keyboard.press('Enter');
       await this.page.keyboard.press('Enter');
       needsBlockBreak = false;
-    }
-  }
-
-  // One line of inline markdown. Only the emphasis markers need to arrive as
-  // real keystrokes — Tiptap converts `**bold**` / `_italic_` / `*italic*`
-  // through ProseMirror input rules, which fire on the closing character and
-  // are invisible to bulk insertion. Everything between them is plain prose
-  // that `insertText` places in one call.
-  //
-  // This is the difference between ~15,000 keystroke round trips across the
-  // spec and a few hundred: the whole-protocol build types 15kB of canonical
-  // copy, of which under 5% carries emphasis. It is also SAFER than typing
-  // everything, because bulk-inserted prose cannot trip an input rule it was
-  // never meant to (a sentence that happens to start `1. `, say). Correctness
-  // is not assumed — the final comparison re-parses every string, so a
-  // mis-typed mark fails the run loudly.
-  private async typeInlineRun(text: string): Promise<void> {
-    for (const segment of text.split(EMPHASIS_SPLIT)) {
-      if (!segment) continue;
-      if (EMPHASIS_TEST.test(segment)) {
-        await this.page.keyboard.type(segment);
-      } else {
-        await this.page.keyboard.insertText(segment);
-      }
     }
   }
 

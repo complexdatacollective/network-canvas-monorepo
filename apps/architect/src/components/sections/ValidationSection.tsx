@@ -8,6 +8,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Variable } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
 import Validations from '~/components/Validations/Validations';
+import useLatchedExpansion from '~/hooks/useLatchedExpansion';
 
 import { getFieldId } from '../../utils/issues';
 
@@ -49,7 +50,7 @@ const ValidationSection = ({
   disabled = false,
   entity,
   id = getFieldId('validation'),
-  summary = 'Add one or more validation rules to this form field.',
+  summary = 'Choose which validation rules apply to this form field.',
   variableType = '',
   existingVariables,
   allVariables,
@@ -99,6 +100,11 @@ const ValidationSection = ({
       ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion
         hasEntries(liveValidation as ValidationMap)
       : hasEntries(initialValue);
+  // Removing the last rule must not collapse the section out from under the
+  // user — but an explicit close still releases the latch, so rules restored
+  // afterwards (undo, or a reinitialize) reopen it rather than being saved
+  // out of sight.
+  const { startExpanded, onExplicitClose } = useLatchedExpansion(hasValidation);
   // Eleventh-wave Finding 3: the dialog's form-level validate
   // (makeFieldEditorValidate) keys contradiction messages at `validation`
   // even when the edited variable has no rules of its own (the target-only
@@ -124,6 +130,7 @@ const ValidationSection = ({
   const validationErrorsId = getFieldId('validation-sync-error');
   const handleToggleChange = (nextState: boolean) => {
     if (!nextState) {
+      onExplicitClose();
       setFieldValue('validation', undefined);
     }
     return true;
@@ -144,7 +151,7 @@ const ValidationSection = ({
       summary={<Paragraph>{summary}</Paragraph>}
       disabled={disabled}
       toggleable
-      startExpanded={hasValidation}
+      startExpanded={startExpanded}
       forceExpanded={hasValidationSyncError}
       handleToggleChange={handleToggleChange}
     >

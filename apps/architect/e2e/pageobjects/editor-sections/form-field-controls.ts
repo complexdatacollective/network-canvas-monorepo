@@ -1,5 +1,6 @@
 import { type Locator, type Page } from '@playwright/test';
 
+import { typeInlineRun } from '../stage-editor.js';
 import {
   createVariableViaSpotlight,
   fillOptionRows,
@@ -32,7 +33,7 @@ import {
 //   explicit false on option one → click twice (on→off), explicit false on
 //   option two → click once (its default is true).
 // - Required validation goes through the toggleable Validation section:
-//   'Add new' → bare select[name="validation-key"] → 'Add validation rule'.
+//   open the section, then switch the 'Required' rule on in the rule list.
 export type BooleanOptionSpec = {
   label: string;
   // 'omit' → never touch the toggle (option one only — option two defaults
@@ -59,7 +60,7 @@ async function replaceRichTextContent(
   await editorBox.click();
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.press('Delete');
-  await page.keyboard.type(text);
+  await typeInlineRun(page, text);
 }
 
 async function setBooleanOption(
@@ -167,13 +168,7 @@ export async function addConfiguredFormField(
       .getByRole('switch', { name: 'Turn this feature on or off' })
       .click();
     await validation
-      .getByRole('button', { name: 'Add new', exact: true })
-      .click();
-    await page
-      .locator('select[name="validation-key"]')
-      .selectOption({ label: 'Required' });
-    await page
-      .getByRole('button', { name: 'Add validation rule', exact: true })
+      .getByRole('switch', { name: 'Required', exact: true })
       .click();
   }
 

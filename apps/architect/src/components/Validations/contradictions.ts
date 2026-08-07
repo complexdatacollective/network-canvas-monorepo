@@ -302,8 +302,6 @@ export type ReferenceTargetLegalityInput = {
   validation: UnknownRecord;
   /** The reference-type rule being edited (e.g. `sameAs`). */
   ruleKey: string;
-  /** The row's PRE-draft key, when its type is mid-change. */
-  replacingKey?: string;
   /** Candidate target ids to evaluate — typically every id in `existingVariables`. */
   candidateIds: string[];
   component?: unknown;
@@ -397,7 +395,6 @@ export const findLegalReferenceTargets = ({
   variableType,
   validation,
   ruleKey,
-  replacingKey,
   candidateIds,
   component,
   options,
@@ -408,9 +405,6 @@ export const findLegalReferenceTargets = ({
   const id = currentVariableId || draftVariableId(allVariables);
 
   const baseline: UnknownRecord = { ...validation };
-  if (replacingKey && replacingKey !== ruleKey) {
-    delete baseline[replacingKey];
-  }
   delete baseline[ruleKey];
 
   const draftEntry = (draftValidation: UnknownRecord): UnknownRecord => {

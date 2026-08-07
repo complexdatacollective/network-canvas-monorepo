@@ -9,6 +9,7 @@ import {
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
 import Validations from '~/components/Validations/Validations';
+import useLatchedExpansion from '~/hooks/useLatchedExpansion';
 import { getFieldId } from '~/utils/issues';
 
 type ValidationValue = boolean | number | string | null;
@@ -19,7 +20,10 @@ const hasEntries = (value: ValidationMap | undefined): boolean =>
 
 const validationErrorsId = getFieldId('anonymisation-validation-sync-error');
 
-const AnonymisationValidation = (_props: StageEditorSectionProps) => {
+const AnonymisationValidation = ({
+  stagePath,
+  interfaceType,
+}: StageEditorSectionProps) => {
   const setStageValue = useSetStageValue();
   // The Field's own `initialValue` (registration-time only — must not track
   // live edits, or every keystroke would re-register the field); the toggle's
@@ -28,6 +32,11 @@ const AnonymisationValidation = (_props: StageEditorSectionProps) => {
   const initialValidation = useStageInitialValue<ValidationMap>('validation');
   const liveValidation = useStageFormValue<ValidationMap>('validation');
   const hasValidation = hasEntries(liveValidation);
+  // Removing the last rule must not collapse the section out from under the
+  // user — but an explicit close still releases the latch, so rules restored
+  // afterwards (undo, or a reinitialize) reopen it rather than being saved
+  // out of sight.
+  const { startExpanded, onExplicitClose } = useLatchedExpansion(hasValidation);
   // Audit sweep: the shape ValidationSection was already fixed for. A
   // collapsed toggleable Section unmounts its children, and `validateForm`
   // only fails a submit over errors on REGISTERED fields — so a sync error
@@ -42,6 +51,7 @@ const AnonymisationValidation = (_props: StageEditorSectionProps) => {
     Array.isArray(fieldErrors) && fieldErrors.length > 0;
   const handleToggleValidation = (nextState: boolean) => {
     if (!nextState) {
+      onExplicitClose();
       setStageValue('validation', undefined);
     }
     return true;
@@ -52,10 +62,10 @@ const AnonymisationValidation = (_props: StageEditorSectionProps) => {
       title="Passphrase Validation"
       summary={
         <Paragraph>
-          Add one or more validation rules for the passphrase.
+          Choose which validation rules apply to the passphrase.
         </Paragraph>
       }
-      startExpanded={hasValidation}
+      startExpanded={startExpanded}
       forceExpanded={hasValidationSyncError}
       handleToggleChange={handleToggleValidation}
     >
@@ -65,6 +75,12 @@ const AnonymisationValidation = (_props: StageEditorSectionProps) => {
           initialValue={initialValidation}
           variableType="passphrase"
           entity="ego"
+          // The stage editor reinitializes in place when the edited stage
+          // changes, and keeps same-interface sections mounted — so without
+          // stage identity the rule list would carry one passphrase's
+          // uncommitted rows onto the next stage's saved rules. `stagePath` is
+          // the edited stage's own slot, and is null only before it exists.
+          scopeId={stagePath ?? `new-${interfaceType}`}
         />
       </Row>
       {/* fresco-ui's own Field error slot only shows once the field is both

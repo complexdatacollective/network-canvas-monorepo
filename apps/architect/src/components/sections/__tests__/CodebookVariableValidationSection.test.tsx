@@ -90,7 +90,9 @@ describe('CodebookVariableValidationSection', () => {
 
     renderSection();
 
-    expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: 'Requirements' }),
+    ).toBeInTheDocument();
   });
 
   it('commits an added rule back to the codebook variable via updateVariableAsync, marking the draft dirty', async () => {
@@ -104,18 +106,14 @@ describe('CodebookVariableValidationSection', () => {
     const { store } = renderSection();
 
     // No existing rules: the section starts collapsed, so its toggle has to
-    // be opened before the row editor is reachable. `Section`'s toggle
+    // be opened before the rule list is reachable. `Section`'s toggle
     // handler is async (it awaits `handleToggleChange`), so the resulting
     // `setInternalOpen` lands a microtask after the click.
     fireEvent.click(
       screen.getByRole('switch', { name: 'Turn this feature on or off' }),
     );
-    fireEvent.click(await screen.findByRole('button', { name: 'Add new' }));
-    fireEvent.change(screen.getByRole('combobox'), {
-      target: { value: 'required' },
-    });
     fireEvent.click(
-      screen.getByRole('button', { name: 'Add validation rule' }),
+      await screen.findByRole('switch', { name: 'Required', hidden: true }),
     );
 
     await waitFor(() => {

@@ -1,8 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { isEqual } from 'es-toolkit/compat';
+import { useCallback, useEffect, useState } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { VariableSchema, type Variable } from '@codaco/protocol-validation';
 import AppForm from '~/components/Form/AppForm';
@@ -15,6 +18,8 @@ beforeAll(() => {
   // into view; jsdom implements no scrolling (see ArchitectField.test.tsx).
   Element.prototype.scrollTo ??= () => undefined;
 });
+
+type ValidationMap = Record<string, boolean | number | string | null>;
 
 // Eleventh-wave Finding 3: a variable that is only the TARGET of another
 // variable's sameAs (it configures no rules of its own) still gets the
@@ -130,10 +135,10 @@ describe('ValidationSection with a target-only contradiction', () => {
     );
 
     // No rules of its own and no contradiction yet: the section starts
-    // collapsed, so its children (the Validations field and its FieldErrors)
-    // are unmounted.
+    // collapsed, so its children (the rule list and its FieldErrors) are
+    // unmounted.
     expect(
-      screen.queryByRole('button', { name: 'Add new' }),
+      screen.queryByRole('group', { name: 'Requirements' }),
     ).not.toBeInTheDocument();
 
     // The draft edit switches the picker to year resolution, breaking the
@@ -144,7 +149,7 @@ describe('ValidationSection with a target-only contradiction', () => {
       screen.getByRole('button', { name: 'Switch to year resolution' }),
     );
     expect(
-      screen.queryByRole('button', { name: 'Add new' }),
+      screen.queryByRole('group', { name: 'Requirements' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/different resolutions/)).not.toBeInTheDocument();
 
@@ -161,7 +166,9 @@ describe('ValidationSection with a target-only contradiction', () => {
       await screen.findByText(/different resolutions/),
     ).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: 'Requirements' }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -201,13 +208,132 @@ describe('ValidationSection forceExpanded on a store-level validation error', ()
     );
 
     expect(
-      screen.queryByRole('button', { name: 'Add new' }),
+      screen.queryByRole('group', { name: 'Requirements' }),
     ).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Force a validation error' }),
     );
 
-    expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: 'Requirements' }),
+    ).toBeInTheDocument();
+  });
+});
+
+/**
+ * Mirrors `CodebookVariableValidationSection`'s commit observer: the section's
+ * `initialValue` is the COMMITTED rule map, and a commit made inside the
+ * section (including the toggle-off that clears the field) writes it back. Two
+ * signals, exactly as the real one: the field's value, and whether the field
+ * is registered at all — a cleared field and a never-mounted one both read
+ * `undefined`.
+ */
+const CommitMirror = ({
+  committed,
+  onCommit,
+}: {
+  committed: ValidationMap;
+  onCommit: (validation: ValidationMap) => void;
+}) => {
+  const { validation } = useFormValue(['validation'] as const);
+  const hasValidationField = useFormStore(
+    (store) => store.getFieldState('validation') !== undefined,
+  );
+
+  useEffect(() => {
+    if (!hasValidationField) return;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const next = (validation ?? {}) as ValidationMap;
+    if (!isEqual(next, committed)) {
+      onCommit(next);
+    }
+  }, [hasValidationField, validation, committed, onCommit]);
+
+  return null;
+};
+
+const LatchHarness = () => {
+  const [committed, setCommitted] = useState<ValidationMap>({ minValue: 3 });
+  const setFieldValue = useFormStore((store) => store.setFieldValue);
+  const write = useCallback(
+    (next: ValidationMap) => {
+      setCommitted(next);
+      setFieldValue('validation', next);
+    },
+    [setFieldValue],
+  );
+
+  return (
+    <>
+      <CommitMirror committed={committed} onCommit={setCommitted} />
+      <ValidationSection
+        entity="node"
+        variableType="number"
+        existingVariables={{}}
+        allVariables={{}}
+        currentVariableId="c"
+        initialValue={committed}
+      />
+      <button type="button" onClick={() => write({})}>
+        Clear the last rule
+      </button>
+      {/* Stands in for the stage editor's Undo (or a reinitialize): the rule
+          map the section's own toggle cleared is written back from outside. */}
+      <button type="button" onClick={() => write({ minValue: 3 })}>
+        Restore the rules
+      </button>
+    </>
+  );
+};
+
+const renderLatchHarness = () =>
+  render(
+    <AppForm onSubmit={() => ({ success: true })}>
+      <LatchHarness />
+    </AppForm>,
+  );
+
+describe('ValidationSection expansion latch', () => {
+  it('stays open when the last rule is cleared', () => {
+    renderLatchHarness();
+
+    expect(
+      screen.getByRole('group', { name: 'Requirements' }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Clear the last rule' }),
+    );
+
+    expect(
+      screen.getByRole('group', { name: 'Requirements' }),
+    ).toBeInTheDocument();
+  });
+
+  // Rules restored after the section was switched off are still saved, so
+  // leaving the section shut would hide them from the researcher entirely.
+  it('reopens when rules are restored after the section is switched off', async () => {
+    renderLatchHarness();
+
+    // Section settles its own toggle asynchronously (handleToggleChange may
+    // return a promise), so the collapse lands a tick after the click.
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('group', { name: 'Requirements' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore the rules' }));
+
+    expect(
+      screen.getByRole('group', { name: 'Requirements' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
+    ).toBeChecked();
   });
 });
