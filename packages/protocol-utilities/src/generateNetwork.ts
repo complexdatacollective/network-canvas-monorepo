@@ -302,16 +302,19 @@ function deriveFeasibilityConfig(
     for (const subjectType of new Set(
       topologyCreations.map((creation) => creation.subjectNodeType),
     )) {
-      // A pedigree's people are absent from `effectivePopulation` (its
-      // creations are skipped when that map is built), so a type it builds
-      // would otherwise be counted at its declared count — zero pairs for a
-      // declared count of 1, hiding the family's real pair count.
-      const count = Math.max(
-        effectivePopulation.get(subjectType) ??
-          nodeCountByType[subjectType]?.max ??
-          nodeCap,
-        pedigreePopulation.get(subjectType) ?? 0,
-      );
+      // The two populations ADD. A pedigree's people are absent from
+      // `effectivePopulation` — its creations are skipped when that map is
+      // built — and `materializeFamilyPedigree` appends its family to what is
+      // already there rather than replacing it, so a type built both ways ends
+      // up carrying both. Taking the larger of the two under-counted the pairs
+      // of exactly that type: one ordinary person beside a seven-person core
+      // is eight subjects and 28 pairs, counted as 21.
+      //
+      // A type with no ordinary creations contributes no ordinary population;
+      // reading its declared count here would invent one, since that count is
+      // what the pedigree ceiling is already derived from.
+      const ordinary = effectivePopulation.get(subjectType) ?? 0;
+      const count = ordinary + (pedigreePopulation.get(subjectType) ?? 0);
       const pairs = pairsAmong(count);
       ceiling += Math.min(
         pairs,

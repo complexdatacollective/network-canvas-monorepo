@@ -29,6 +29,13 @@ const scalarNormal = {
   synthetic: { distribution: 'normal', mean: 0.5, sd: 0.1 },
 } as const satisfies Variable;
 
+const numberUniform = {
+  name: 'Age',
+  type: 'number',
+  component: 'Number',
+  synthetic: { distribution: 'uniform', min: 18, max: 80 },
+} as const satisfies Variable;
+
 const numberNormal = {
   name: 'Age',
   type: 'number',
@@ -61,6 +68,22 @@ describe('SyntheticSection', () => {
     const { min, max } = boundFields();
     expect(min).toBeNull();
     expect(max).toBeNull();
+  });
+
+  it('marks a number uniform’s bounds required, since the schema demands them', () => {
+    mount(numberUniform);
+    const { min, max } = boundFields();
+    // fresco-ui marks a required field for assistive tech rather than with the
+    // native attribute, since the form submits with `noValidate`.
+    expect(min?.getAttribute('aria-required')).toBe('true');
+    expect(max?.getAttribute('aria-required')).toBe('true');
+  });
+
+  it('leaves a number normal’s bounds optional, since the schema allows either', () => {
+    mount(numberNormal);
+    const { min, max } = boundFields();
+    expect(min?.getAttribute('aria-required')).toBe('false');
+    expect(max?.getAttribute('aria-required')).toBe('false');
   });
 
   it('still offers them for a number normal, which can', () => {

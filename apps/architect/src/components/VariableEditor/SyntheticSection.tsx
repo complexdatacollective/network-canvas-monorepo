@@ -117,6 +117,19 @@ function NumericParameters({
           step: 'any',
         } as const);
 
+  // A number's uniform is the one descriptor whose bounds the schema demands:
+  // `numberUniformSchema` takes `min` and `max` as required, while its normal
+  // and lognormal take them optionally and a scalar's uniform likewise. An
+  // author switching an existing number from normal to uniform meets two empty
+  // controls, so calling them optional there sends them to a save that cannot
+  // succeed.
+  const boundsRequired = kind === 'number' && distribution === 'uniform';
+  const boundsHint = boundsRequired
+    ? 'Required for a uniform distribution.'
+    : kind === 'scalar'
+      ? 'Optional. Scalar values always stay within 0 and 1.'
+      : 'Optional. Values are always kept inside the validation bounds.';
+
   return (
     <>
       {distribution !== 'uniform' && (
@@ -155,19 +168,17 @@ function NumericParameters({
           <Field
             name={syntheticField('min')}
             label="Minimum"
-            hint={
-              kind === 'scalar'
-                ? 'Optional. Scalar values always stay within 0 and 1.'
-                : 'Optional. Values are always kept inside the validation bounds.'
-            }
+            hint={boundsHint}
             initialValue={initialFor('min')}
+            required={boundsRequired}
             {...bounded}
           />
           <Field
             name={syntheticField('max')}
             label="Maximum"
-            hint="Optional."
+            hint={boundsHint}
             initialValue={initialFor('max')}
+            required={boundsRequired}
             {...bounded}
           />
         </>
