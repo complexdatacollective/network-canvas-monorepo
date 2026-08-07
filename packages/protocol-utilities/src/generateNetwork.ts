@@ -1,8 +1,4 @@
-import type {
-  Stage,
-  StructuralCodebook,
-  SyntheticCount,
-} from '@codaco/protocol-validation';
+import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
 import { analyseStageEffects } from './generateNetwork/analyse/stageEffects';
@@ -24,8 +20,10 @@ import type { EntityConstraints } from './generateNetwork/constraints/types';
 import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
 import type { GenerationContext } from './generateNetwork/context';
 import { resolveFamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/referencePopulation';
+import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigree/reservations';
 import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types';
 import { materialiseSession } from './generateNetwork/materialise/materialiseSession';
+import { countCeiling } from './generateNetwork/plan/distributions';
 import { planNetwork } from './generateNetwork/plan/networkPlan';
 import { resolveNodeCount } from './generateNetwork/plan/resolveSynthetic';
 import { ValueGenerator } from './ValueGenerator';
@@ -72,21 +70,6 @@ export type GenerateNetworkResult = {
   currentStep: number;
   droppedOut: boolean;
 };
-
-/** A ceiling no draw from the descriptor can exceed (six sigma for the open
- * families), for seed-independent worst-case feasibility counting. */
-function countCeiling(count: SyntheticCount): number {
-  switch (count.distribution) {
-    case 'constant':
-      return count.value;
-    case 'uniform':
-      return count.max;
-    case 'poisson':
-      return count.max ?? Math.ceil(count.mean + 6 * Math.sqrt(count.mean) + 1);
-    case 'normal':
-      return count.max ?? Math.max(0, Math.ceil(count.mean + 6 * count.sd));
-  }
-}
 
 /**
  * How large an undeclared family may grow. A pedigree sizes itself from its
@@ -285,6 +268,16 @@ export function generateNetwork(
       edge: constraintsByType(renderedCodebook.edge),
     },
   };
+
+  // A pedigree's ego flag, biological sexes and relationship types are fixed
+  // by the specialist generator during the walk rather than drawn in the plan,
+  // so nothing else holds them back. Reserve them before planning, for the
+  // same reason the plan reserves a prompt's fixed values and a roster's rows:
+  // a free draw that took one of these would leave the network holding it
+  // twice once the family is built, which `unique` forbids and nothing
+  // downstream repairs. Reservations are soft, so a draw with nothing else
+  // left still takes one.
+  reserveFamilyPedigreeFixedValues(ctx, stages);
 
   const plan = planNetwork(ctx, effects);
 

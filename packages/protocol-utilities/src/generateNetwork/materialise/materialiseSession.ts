@@ -8,7 +8,6 @@ import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  FRAMING_IDS,
   type NcEdge,
   type NcNetwork,
   type NcNode,
@@ -16,13 +15,20 @@ import {
 } from '@codaco/shared-consts';
 
 import type { StageEffectSummary, StageEffects } from '../analyse/stageEffects';
+import { drawVariableOnto } from '../attributes';
+import type { EntityScopeRef } from '../constraints/generateEntityAttributes';
 import type { GenerationContext, NetworkDraft } from '../context';
 import { materializeFamilyPedigree } from '../familyPedigree/materializeFamilyPedigree';
 import { familyPedigreeSeed } from '../familyPedigree/seed';
 import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/types';
 import { buildCurrentNetwork } from '../filtering';
 import { markStageInProgress } from '../inProgress';
-import type { NetworkPlan } from '../plan/networkPlan';
+import {
+  type NetworkPlan,
+  shuffled,
+  topologyTarget,
+} from '../plan/networkPlan';
+import { deterministicUuid } from '../plan/random';
 
 /**
  * The materialise phase: walks the protocol in interview order and replays
@@ -139,6 +145,80 @@ export function materialiseSession(params: {
     return candidates;
   };
 
+  /**
+   * The edges one write reaches.
+   *
+   * A stage's filter narrows its edges exactly as it narrows its nodes: an
+   * excluded edge is never presented, so writing to it would put values in the
+   * dataset the interview never collected — values that go on to steer later
+   * skip and filter decisions. A tie-strength write is narrower still, because
+   * the census records a strength only for the pairs it actually walked: edges
+   * between people outside its subject set were never asked about.
+   */
+  const writtenEdges = (
+    write: StageEffectSummary['writes'][number],
+  ): NcEdge[] => {
+    let candidates = draft.edges.filter(
+      (edge) => edge.type === write.entityType,
+    );
+    if (write.filter && ctx.respectSkipLogicAndFiltering) {
+      const kept = new Set(
+        getFilter(write.filter)(buildCurrentNetwork(draft)).edges.map(
+          (edge) => edge[entityPrimaryKeyProperty],
+        ),
+      );
+      candidates = candidates.filter((edge) =>
+        kept.has(edge[entityPrimaryKeyProperty]),
+      );
+    }
+    if (write.subjectNodeType !== undefined) {
+      const subjects = new Set(
+        filteredSubjects(write.subjectNodeType, write.filter).map(
+          (node) => node[entityPrimaryKeyProperty],
+        ),
+      );
+      candidates = candidates.filter(
+        (edge) => subjects.has(edge.from) && subjects.has(edge.to),
+      );
+    }
+    return candidates;
+  };
+
+  /**
+   * Distinguishes successive draws onto entities the plan does not own, so two
+   * pedigree edges given the same variable by one form do not draw identically.
+   */
+  let unplannedDraw = 0;
+
+  /**
+   * Lands one write on one entity.
+   *
+   * The plan is consulted first and used wherever it holds a value. It does
+   * not always hold one, for two reasons that meet here. A FamilyPedigree
+   * builds its people and links during this walk rather than in the plan; and
+   * a variable no stage writes except behind a filter is deliberately left
+   * unplanned, because only the session as it stands at this stage can say
+   * which entities the filter admits — planning it for the whole type would
+   * claim a `unique` value for every entity when the session gives it to a
+   * few. Either way the value is drawn now, against the same constraints and
+   * the same registry the plan drew against.
+   */
+  const landWrite = (
+    ref: EntityScopeRef,
+    attributes: Record<string, VariableValue>,
+    planned: Planned | undefined,
+    variableId: string,
+  ): void => {
+    if (
+      planned &&
+      (variableId in planned.attributes || planned.missing.has(variableId))
+    ) {
+      attributes[variableId] = valueFor(planned, variableId);
+      return;
+    }
+    drawVariableOnto(ctx, ref, attributes, variableId, unplannedDraw++);
+  };
+
   const totalStages = stages.length;
   let currentStep = 0;
   let droppedOut = false;
@@ -237,11 +317,20 @@ export function materialiseSession(params: {
       }
     }
 
+    // Endpoints have to be in the session for an edge between them to be: a
+    // creating stage the participant skipped introduced nobody, and an edge
+    // planned onto its people would dangle from ids the network never held.
+    const presentNodes = new Set(
+      draft.nodes.map((node) => node[entityPrimaryKeyProperty]),
+    );
+
     for (const creation of summary.edgeCreations) {
       for (const planned of plan.edges) {
         if (planned.creationStageIndex !== i) continue;
         if (planned.type !== creation.edgeType) continue;
         if (materialisedEdges.has(planned.uid)) continue;
+        if (!presentNodes.has(planned.from)) continue;
+        if (!presentNodes.has(planned.to)) continue;
 
         const attributes: Record<string, VariableValue> = {};
         for (const variableId of creation.writesAtCreation) {
@@ -259,8 +348,74 @@ export function materialiseSession(params: {
       }
     }
 
+    // A FamilyPedigree builds its people during this walk, so the plan had no
+    // domain over which to place a later census or sociogram's edges between
+    // them — it would have been pairing nodes that did not yet exist. The same
+    // declared topology is applied here to exactly the pairs the plan could
+    // not see: every candidate below has at least one endpoint the plan never
+    // held, so nothing the plan already decided is drawn twice.
+    for (const creation of summary.edgeCreations) {
+      if (creation.structured !== null) continue;
+      const target = plan.topologyByType.get(creation.edgeType);
+      if (target === undefined) continue;
+
+      const subjects = filteredSubjects(
+        creation.subjectNodeType,
+        creation.filter,
+      );
+      const linked = new Set(
+        draft.edges
+          .filter((edge) => edge.type === creation.edgeType)
+          .map((edge) => pairKey(edge.from, edge.to)),
+      );
+      const candidates: { a: string; b: string }[] = [];
+      for (let a = 0; a < subjects.length; a++) {
+        for (let b = a + 1; b < subjects.length; b++) {
+          const uidA = subjects[a]![entityPrimaryKeyProperty];
+          const uidB = subjects[b]![entityPrimaryKeyProperty];
+          if (nodeByUid.has(uidA) && nodeByUid.has(uidB)) continue;
+          // Reuse, not replacement: a pair this type already joins was
+          // answered when that edge was made, exactly as `edgeExists` has the
+          // interview reuse it.
+          if (linked.has(pairKey(uidA, uidB))) continue;
+          candidates.push({ a: uidA, b: uidB });
+        }
+      }
+      if (candidates.length === 0) continue;
+
+      const nodeCount = new Set(candidates.flatMap((pair) => [pair.a, pair.b]))
+        .size;
+      const ref = { entity: 'edge' as const, type: creation.edgeType };
+      const chosen = shuffled(
+        candidates,
+        source.stream('edges', 'unplanned', creation.edgeType),
+      ).slice(0, topologyTarget(target, candidates.length, nodeCount));
+
+      for (const pair of chosen) {
+        const attributes: Record<string, VariableValue> = {};
+        draft.edges.push({
+          [entityPrimaryKeyProperty]: deterministicUuid(
+            source.stream('id', 'edge', 'unplanned', creation.edgeType),
+          ),
+          type: creation.edgeType,
+          from: pair.a,
+          to: pair.b,
+          [entityAttributesProperty]: attributes,
+        } as NcEdge);
+        for (const variableId of creation.writesAtCreation) {
+          drawVariableOnto(ctx, ref, attributes, variableId, unplannedDraw++);
+        }
+      }
+    }
+
     // --- Variable writes ------------------------------------------------
-    for (const write of summary.writes) {
+    // A FamilyPedigree's own writes — its nomination and disease variables —
+    // are landed by the generator that built the family, which is the only
+    // thing that knows which of its people each one applies to, and which
+    // normalises them across the families an earlier stage committed. Replaying
+    // them here would overwrite that with an independent draw.
+    const writes = stage.type === 'FamilyPedigree' ? [] : summary.writes;
+    for (const write of writes) {
       if (write.entity === 'ego') {
         draft.egoAttributes[write.variableId] = valueFor(
           plan.ego,
@@ -269,25 +424,26 @@ export function materialiseSession(params: {
         continue;
       }
       if (write.entity === 'node') {
+        const ref = { entity: 'node' as const, type: write.entityType ?? '' };
         for (const node of filteredSubjects(
           write.entityType ?? '',
           write.filter,
         )) {
-          const planned = nodeByUid.get(node[entityPrimaryKeyProperty]);
-          if (!planned) continue;
-          node[entityAttributesProperty][write.variableId] = valueFor(
-            planned,
+          landWrite(
+            ref,
+            node[entityAttributesProperty],
+            nodeByUid.get(node[entityPrimaryKeyProperty]),
             write.variableId,
           );
         }
         continue;
       }
-      for (const edge of draft.edges) {
-        if (edge.type !== write.entityType) continue;
-        const planned = edgeByUid.get(edge[entityPrimaryKeyProperty]);
-        if (!planned) continue;
-        edge[entityAttributesProperty][write.variableId] = valueFor(
-          planned,
+      const ref = { entity: 'edge' as const, type: write.entityType ?? '' };
+      for (const edge of writtenEdges(write)) {
+        landWrite(
+          ref,
+          edge[entityAttributesProperty],
+          edgeByUid.get(edge[entityPrimaryKeyProperty]),
           write.variableId,
         );
       }

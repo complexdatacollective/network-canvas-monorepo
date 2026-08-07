@@ -93,7 +93,40 @@ function sampleBeta(mean: number, sd: number, stream: RandomStream): number {
   const beta = (1 - mean) * nu;
   const x = sampleGamma(alpha, stream);
   const y = sampleGamma(beta, stream);
-  return x / (x + y);
+  const total = x + y;
+  // At the variance limit the shapes approach zero and both gamma draws
+  // underflow to zero, leaving this ratio as 0/0. The limit is not undefined
+  // though: as the shapes vanish a Beta puts all its mass on the endpoints,
+  // with P(1) = alpha/(alpha+beta) = mean. Drawing that Bernoulli is the
+  // distribution the descriptor asks for rather than a repair of it, and it
+  // keeps a NaN — which survives every later clamp — out of the network.
+  if (!Number.isFinite(total) || total === 0) {
+    return stream.next() < mean ? 1 : 0;
+  }
+  return x / total;
+}
+
+/**
+ * A ceiling no draw from the descriptor can exceed, for seed-independent
+ * worst-case feasibility counting.
+ *
+ * The open families have no natural maximum, so an undeclared one is pinned
+ * at six sigma. That bound is only sound because {@link sampleCount} clamps to
+ * this very function: an unclamped tail would let a seed create more entities
+ * than preflight counted, so a protocol whose value space feasibility had
+ * approved could still exhaust it mid-plan.
+ */
+export function countCeiling(count: SyntheticCount): number {
+  switch (count.distribution) {
+    case 'constant':
+      return count.value;
+    case 'uniform':
+      return count.max;
+    case 'poisson':
+      return count.max ?? Math.ceil(count.mean + 6 * Math.sqrt(count.mean) + 1);
+    case 'normal':
+      return count.max ?? Math.max(0, Math.ceil(count.mean + 6 * count.sd));
+  }
 }
 
 /**
@@ -111,19 +144,11 @@ export function sampleCount(
       return stream.int(descriptor.min, descriptor.max);
     case 'poisson': {
       const raw = samplePoisson(descriptor.mean, stream);
-      return clamp(
-        raw,
-        descriptor.min ?? 0,
-        descriptor.max ?? Number.POSITIVE_INFINITY,
-      );
+      return clamp(raw, descriptor.min ?? 0, countCeiling(descriptor));
     }
     case 'normal': {
       const raw = Math.round(stream.normal(descriptor.mean, descriptor.sd));
-      return clamp(
-        raw,
-        descriptor.min ?? 0,
-        descriptor.max ?? Number.POSITIVE_INFINITY,
-      );
+      return clamp(raw, descriptor.min ?? 0, countCeiling(descriptor));
     }
   }
 }

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import type { SyntheticCount } from '@codaco/protocol-validation';
+
 import {
+  countCeiling,
   sampleContinuous,
   sampleCount,
   sampleWeightedIndex,
@@ -170,6 +173,90 @@ describe('sampleContinuous', () => {
         s,
       ),
     ).toBe(0.4);
+  });
+
+  /**
+   * The method-of-moments shapes vanish as the standard deviation approaches
+   * the variance limit, underflowing both gamma draws to zero and leaving the
+   * ratio to evaluate as 0/0. A NaN survives every later clamp, so it reached
+   * the network as a stored scalar.
+   */
+  it('never draws NaN for a schema-valid beta at the variance limit', () => {
+    const s = stream('beta-limit');
+    const values = collect(N, () =>
+      sampleContinuous(
+        { distribution: 'beta', mean: 0.5, sd: 0.4999 },
+        { min: 0, max: 1 },
+        s,
+      ),
+    );
+    expect(values.some(Number.isNaN)).toBe(false);
+    expect(Math.min(...values)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...values)).toBeLessThanOrEqual(1);
+  });
+
+  /**
+   * As the shapes vanish a beta puts all its mass on the endpoints, with
+   * P(1) = mean. The degenerate draw is that limit rather than a repair of it,
+   * so the declared mean still has to come out.
+   */
+  it('keeps the declared mean as a beta collapses onto its endpoints', () => {
+    const s = stream('beta-degenerate');
+    const values = collect(N, () =>
+      sampleContinuous(
+        { distribution: 'beta', mean: 0.5, sd: 0.4999 },
+        { min: 0, max: 1 },
+        s,
+      ),
+    );
+    expect(mean(values)).toBeCloseTo(0.5, 1);
+  });
+});
+
+describe('sampleCount against the ceiling feasibility counts', () => {
+  /**
+   * Feasibility counts an undeclared maximum at six sigma and refuses
+   * protocols whose value space that ceiling would exhaust. An unclamped tail
+   * let a seed create more entities than were counted, so a protocol accepted
+   * before the seed was consulted could still run out of values mid-plan.
+   */
+  const staysUnderCeiling = (
+    descriptor: SyntheticCount,
+    label: string,
+  ): void => {
+    const s = stream(label);
+    const values = collect(N, () => sampleCount(descriptor, s));
+    expect(Math.max(...values)).toBeLessThanOrEqual(countCeiling(descriptor));
+    expect(Math.min(...values)).toBeGreaterThanOrEqual(0);
+  };
+
+  it('bounds an unbounded normal', () => {
+    staysUnderCeiling(
+      { distribution: 'normal', mean: 4, sd: 2 },
+      'normal-ceiling',
+    );
+  });
+
+  it('bounds an unbounded poisson', () => {
+    staysUnderCeiling({ distribution: 'poisson', mean: 3 }, 'poisson-ceiling');
+  });
+
+  it('bounds a normal whose tail runs far past its mean', () => {
+    staysUnderCeiling(
+      { distribution: 'normal', mean: 50, sd: 40 },
+      'wide-normal-ceiling',
+    );
+  });
+
+  it('honours a declared maximum ahead of the derived one', () => {
+    const descriptor: SyntheticCount = {
+      distribution: 'normal',
+      mean: 10,
+      sd: 5,
+      max: 6,
+    };
+    expect(countCeiling(descriptor)).toBe(6);
+    staysUnderCeiling(descriptor, 'declared-max-ceiling');
   });
 });
 

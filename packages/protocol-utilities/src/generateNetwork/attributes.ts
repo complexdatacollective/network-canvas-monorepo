@@ -194,6 +194,48 @@ export function unreserveFixedValues(
 }
 
 /**
+ * Draws one variable onto an entity the plan does not own.
+ *
+ * A FamilyPedigree builds its people and links during the session walk rather
+ * than in the plan, so a later stage that writes onto them has no planned
+ * value to land. The value is drawn here instead, against the same constraints
+ * and the same registry every other value was drawn against — the pedigree's
+ * own materialisation already works this way, so this keeps one entity's
+ * history consistent rather than introducing a second source of values.
+ *
+ * Whatever the entity already holds for the variable is released from the
+ * registry and withheld from the draw: this is the last writer replacing an
+ * earlier value, so keeping the old one issued would have the entity competing
+ * with itself for a `unique` slot, and leaving it in `existing` would pin the
+ * redraw to the value it is meant to replace.
+ */
+export function drawVariableOnto(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  attributes: Record<string, VariableValue>,
+  variableId: string,
+  index: number,
+): void {
+  const registry = scopeKey(ref);
+  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
+    if (!memberIds.includes(variableId)) continue;
+    for (const id of memberIds) {
+      const value = attributes[id];
+      if (value !== undefined)
+        ctx.uniqueRegistry.release(registry, slot, value);
+    }
+  }
+
+  const context = { ...attributes };
+  delete context[variableId];
+  const drawn = generateAttributesForEntity(ctx, ref, index, {
+    existing: context,
+    only: new Set([variableId]),
+  });
+  if (variableId in drawn) attributes[variableId] = drawn[variableId]!;
+}
+
+/**
  * Replaces fixed values on an entity that already contributed to the unique
  * registry. Unlike {@link claimFixedValues}, this releases the affected slot's
  * previous value before claiming the replacement, so normalising an inherited
