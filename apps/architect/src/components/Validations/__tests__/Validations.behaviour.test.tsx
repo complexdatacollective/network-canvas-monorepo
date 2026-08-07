@@ -876,6 +876,68 @@ describe('Validations behaviour', () => {
       expect(committedValidation()).toEqual({ maxLength: 0 });
     });
 
+    // A rejected commit removes the rule from the committed map, so the row is
+    // left pending with its typed value and nothing stale is left behind for
+    // the settling loop to prefer over it.
+    it('settles a rejected edit to an existing rule once another row makes room', () => {
+      const { committedValidation } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { minValue: 5, maxValue: 10 },
+      });
+
+      fireEvent.blur(typeValue('Minimum value', '20'));
+      expect(committedValidation()).toEqual({ maxValue: 10 });
+      expect(numberValue('Minimum value')).toHaveValue(20);
+
+      fireEvent.blur(typeValue('Maximum value', '30'));
+
+      expect(committedValidation()).toEqual({ minValue: 20, maxValue: 30 });
+      expect(numberValue('Minimum value')).toHaveValue(20);
+    });
+
+    // The row a researcher is typing in has not necessarily blurred when
+    // another row commits: a stepper button settles its own row on click, and
+    // Safari does not move focus to a button at all. The committed value is
+    // then only the fallback the row would show if the edit were abandoned —
+    // it must not be settled in place of the edit itself.
+    it('settles an in-flight edit to an existing rule when another row commits', () => {
+      const { committedValidation } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { minValue: 5, maxValue: 10 },
+      });
+
+      typeValue('Minimum value', '20');
+      fireEvent.blur(typeValue('Maximum value', '30'));
+
+      expect(committedValidation()).toEqual({ minValue: 20, maxValue: 30 });
+      expect(numberValue('Minimum value')).toHaveValue(20);
+    });
+
+    it('settles an in-flight edit when another row is stepped', () => {
+      const { committedValidation } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { minValue: 5, maxValue: 10 },
+      });
+
+      typeValue('Minimum value', '9');
+      fireEvent.click(stepper('Increase Maximum value'));
+
+      expect(committedValidation()).toEqual({ minValue: 9, maxValue: 11 });
+      expect(numberValue('Minimum value')).toHaveValue(9);
+    });
+
     it('withholds a value-less rule that contradicts a committed bound', () => {
       const { committedValidation } = setup({
         variableType: 'text',

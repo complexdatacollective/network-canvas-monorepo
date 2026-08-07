@@ -92,14 +92,25 @@ const RuleList = ({
 
   const settle = (base: Record<string, unknown>, skip?: string) => {
     const next = { ...base };
+    // A row that still holds a draft is pending even when `base` already
+    // carries a committed value for it: that value is only the fallback the row
+    // would show if the edit were abandoned, and `applyCommit` clears the draft
+    // of every key it writes — so settling the fallback would discard the edit.
+    // `skip` is the row whose own commit started this pass, whose value in
+    // `base` is authoritative (a stepper commits a value its draft has not
+    // caught up with). Settling each key at most once keeps the pass finite.
+    const pending = new Set(
+      [...openKeys].filter(
+        (ruleKey) =>
+          ruleKey !== skip &&
+          (Object.hasOwn(drafts, ruleKey) || !Object.hasOwn(next, ruleKey)),
+      ),
+    );
     let settledAny = true;
 
     while (settledAny) {
       settledAny = false;
-      for (const ruleKey of openKeys) {
-        if (ruleKey === skip || Object.hasOwn(next, ruleKey)) {
-          continue;
-        }
+      for (const ruleKey of pending) {
         const parsed = parseForRule(ruleKey, textFor(ruleKey));
         if (
           !isDraftComplete(ruleKey, parsed) ||
@@ -108,6 +119,7 @@ const RuleList = ({
           continue;
         }
         next[ruleKey] = parsed;
+        pending.delete(ruleKey);
         settledAny = true;
       }
     }
@@ -152,7 +164,7 @@ const RuleList = ({
     if (isValidationWithoutValue(ruleKey)) {
       const parsed = parseForRule(ruleKey, '');
       if (checkDraft(ruleKey, parsed).length === 0) {
-        applyCommit(settle({ ...committed, [ruleKey]: parsed }));
+        applyCommit(settle({ ...committed, [ruleKey]: parsed }, ruleKey));
       }
       return;
     }
@@ -176,7 +188,7 @@ const RuleList = ({
     applyCommit(
       rejected
         ? settle(omit(committed, ruleKey), ruleKey)
-        : settle({ ...committed, [ruleKey]: parsed }),
+        : settle({ ...committed, [ruleKey]: parsed }, ruleKey),
     );
   };
 
@@ -258,6 +270,12 @@ const RuleList = ({
 type ValidationsProps = {
   name: string;
   entity?: string;
+  /**
+   * Identity of whatever owns these rules when it is not a codebook variable —
+   * the Anonymisation passphrase belongs to a stage. Scopes the rule list's
+   * uncommitted row state, which `currentVariableId` cannot scope there.
+   */
+  scopeId?: string;
   validationGroups?: ValidationGroup[];
   value?: Record<string, unknown> | null;
   update: (value: Record<string, unknown>) => void;
@@ -274,6 +292,7 @@ type ValidationsProps = {
 const Validations = ({
   name,
   entity,
+  scopeId,
   validationGroups = [],
   existingVariables = {},
   value,
@@ -428,7 +447,7 @@ const Validations = ({
     <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
       <Field name={name} component={ValidationsField}>
         <RuleList
-          key={`${currentVariableId ?? ''}|${variableType ?? ''}|${entity ?? ''}`}
+          key={`${scopeId ?? ''}|${currentVariableId ?? ''}|${variableType ?? ''}|${entity ?? ''}`}
           groups={validationGroups}
           committed={committed}
           update={update}

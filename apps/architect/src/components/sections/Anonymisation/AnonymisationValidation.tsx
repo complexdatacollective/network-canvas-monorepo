@@ -14,7 +14,11 @@ import useLatchedExpansion from '~/hooks/useLatchedExpansion';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
+const AnonymisationValidation = ({
+  form,
+  stagePath,
+  interfaceType,
+}: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
   // Create memoized selector for hasValidation
   const hasValidationSelector = useMemo(() => {
@@ -25,7 +29,8 @@ const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
     );
   }, [form]);
   const hasValidation = useSelector(hasValidationSelector);
-  const startExpanded = useLatchedExpansion(!!hasValidation);
+  const { startExpanded, onExplicitClose } =
+    useLatchedExpansion(!!hasValidation);
   // Audit sweep: the shape ValidationSection was already fixed for. A
   // collapsed toggleable Section unmounts its children, and redux-form only
   // fails a submit over errors on REGISTERED fields — so a sync error keyed
@@ -39,6 +44,7 @@ const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
   });
   const handleToggleValidation = (nextState: boolean) => {
     if (!nextState) {
+      onExplicitClose();
       dispatch(change(form, 'validation', null));
     }
     return true;
@@ -62,6 +68,12 @@ const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
           name="validation"
           variableType="passphrase"
           entity="ego"
+          // The stage editor reinitializes in place when the edited stage
+          // changes, and keeps same-interface sections mounted — so without
+          // stage identity the rule list would carry one passphrase's
+          // uncommitted rows onto the next stage's saved rules. `stagePath` is
+          // the edited stage's own slot, and is null only before it exists.
+          scopeId={stagePath ?? `new-${interfaceType}`}
         />
       </Row>
     </Section>

@@ -16,6 +16,7 @@ type OwnProps = {
   existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
   allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
   currentVariableId?: string;
+  scopeId?: string;
 };
 
 const mapStateToProps = (

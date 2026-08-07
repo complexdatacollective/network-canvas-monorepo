@@ -15,6 +15,13 @@ sit switched on with a sensible value that was never written. And undoing a
 change left the rule switched on with the old value still showing, ready to be
 written out again.
 
+A rule whose value was still being typed is no longer dropped when a different
+rule in the same list is saved: changing a minimum and then nudging the maximum
+now saves both, rather than putting the minimum back to its old number. And
+switching the whole Validation section off and then undoing reopens the section
+with the restored rules in view, instead of leaving rules that will be saved
+hidden behind a switched-off section.
+
 Each rule's plus and minus buttons are also now named after that rule, so a
 screen reader announces "Increase Minimum value" rather than "Increase value"
 on every numeric rule on the screen.

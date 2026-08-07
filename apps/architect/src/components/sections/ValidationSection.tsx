@@ -50,7 +50,8 @@ const ValidationSection = ({
     );
   }, [form]);
   const hasValidation = useSelector(hasValidationSelector);
-  const startExpanded = useLatchedExpansion(!!hasValidation);
+  const { startExpanded, onExplicitClose } =
+    useLatchedExpansion(!!hasValidation);
   // Eleventh-wave Finding 3: the dialog's form-level validate
   // (makeFieldEditorValidate) keys contradiction messages at `validation`
   // even when the edited variable has no rules of its own (the target-only
@@ -68,6 +69,7 @@ const ValidationSection = ({
   });
   const handleToggleChange = (nextState: boolean) => {
     if (!nextState) {
+      onExplicitClose();
       dispatch(change(form, 'validation', null) as UnknownAction);
     }
     return true;

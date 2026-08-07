@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import {
   reducer as formReducer,
@@ -147,6 +147,11 @@ const ClearableHarness = ({ handleSubmit, onSubmit, change }: HarnessProps) => (
     <button type="button" onClick={() => change('validation', {})}>
       Clear the last rule
     </button>
+    {/* Stands in for the stage editor's Undo (or a reinitialize): the rule map
+        the section's own toggle cleared is written back from outside. */}
+    <button type="button" onClick={() => change('validation', { minValue: 3 })}>
+      Restore the rules
+    </button>
   </form>
 );
 
@@ -156,22 +161,26 @@ const ClearableReduxHarness = reduxForm<Record<string, unknown>, OwnProps>({
   touchOnChange: true,
 })(ClearableHarness);
 
+const renderLatchHarness = () => {
+  const store = configureStore({
+    reducer: { form: formReducer },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({ serializableCheck: false }),
+  });
+
+  render(
+    <Provider store={store}>
+      <ClearableReduxHarness
+        onSubmit={vi.fn()}
+        initialValues={{ variable: 'c', validation: { minValue: 3 } }}
+      />
+    </Provider>,
+  );
+};
+
 describe('ValidationSection expansion latch', () => {
   it('stays open when the last rule is cleared', () => {
-    const store = configureStore({
-      reducer: { form: formReducer },
-      middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware({ serializableCheck: false }),
-    });
-
-    render(
-      <Provider store={store}>
-        <ClearableReduxHarness
-          onSubmit={vi.fn()}
-          initialValues={{ variable: 'c', validation: { minValue: 3 } }}
-        />
-      </Provider>,
-    );
+    renderLatchHarness();
 
     expect(
       screen.getByRole('group', { name: 'Requirements' }),
@@ -184,5 +193,31 @@ describe('ValidationSection expansion latch', () => {
     expect(
       screen.getByRole('group', { name: 'Requirements' }),
     ).toBeInTheDocument();
+  });
+
+  // Rules restored after the section was switched off are still saved, so
+  // leaving the section shut would hide them from the researcher entirely.
+  it('reopens when rules are restored after the section is switched off', async () => {
+    renderLatchHarness();
+
+    // Section settles its own toggle asynchronously (handleToggleChange may
+    // return a promise), so the collapse lands a tick after the click.
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('group', { name: 'Requirements' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore the rules' }));
+
+    expect(
+      screen.getByRole('group', { name: 'Requirements' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
+    ).toBeChecked();
   });
 });
