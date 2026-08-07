@@ -80,6 +80,7 @@ export function planChangedLint(paths, fileExists = existsSync) {
       reason: `${fullRunTrigger} can change lint or format results repository-wide`,
       oxlintFiles: [],
       oxfmtFiles: [],
+      scanFiles: [],
     };
   }
 
@@ -92,6 +93,12 @@ export function planChangedLint(paths, fileExists = existsSync) {
     ),
     oxfmtFiles: existing.filter((path) =>
       OXFMT_EXTENSIONS.has(extname(path).toLowerCase()),
+    ),
+    // Wider than either tool's set, because the NUL scan is not about what a
+    // tool can parse: a shell script or a Dockerfile loses its diff to a NUL
+    // exactly as a TypeScript file does.
+    scanFiles: existing.filter(
+      (path) => !BINARY_ASSET_EXTENSIONS.has(extname(path).toLowerCase()),
     ),
   };
 }
@@ -139,7 +146,9 @@ export function findNulBytes(paths, readFile = (path) => readFileSync(path)) {
       // A path that cannot be read is the concern of the tools that follow.
       continue;
     }
-    const index = contents.indexOf(0);
+    // The same window Git uses to decide: a NUL past it does not make the
+    // file binary, so it is not this check's business either.
+    const index = contents.subarray(0, GIT_BINARY_SNIFF_BYTES).indexOf(0);
     if (index === -1) continue;
     offenders.push({
       path,
@@ -149,7 +158,53 @@ export function findNulBytes(paths, readFile = (path) => readFileSync(path)) {
   return offenders;
 }
 
-/** Tracked files the formatter recognises, for a whole-repository run. */
+/**
+ * Every tracked file that is meant to be text.
+ *
+ * Defined by excluding known binary assets rather than by listing the
+ * extensions a formatter happens to handle: a repository's source is wider
+ * than that — shell scripts, extensionless Dockerfiles, `.editorconfig` — and
+ * a NUL hides the diff of any of them just as thoroughly. The two ways of
+ * being wrong are not equal, either. An unlisted binary type reports a NUL and
+ * is fixed by one line here; an unlisted source type stays unwatched, and
+ * nothing about a file silently losing its diff announces itself.
+ */
+const BINARY_ASSET_EXTENSIONS = new Set([
+  '.avif',
+  '.dylib',
+  '.eot',
+  '.gif',
+  '.gz',
+  '.icns',
+  '.ico',
+  '.jar',
+  '.jpeg',
+  '.jpg',
+  '.mov',
+  '.mp3',
+  '.mp4',
+  '.msi',
+  // A protocol bundle: a zip archive under its own extension.
+  '.netcanvas',
+  '.node',
+  '.otf',
+  '.pdf',
+  '.png',
+  '.so',
+  '.svgz',
+  '.ttf',
+  '.wasm',
+  '.wav',
+  '.webm',
+  '.webp',
+  '.woff',
+  '.woff2',
+  '.zip',
+]);
+
+/** Git inspects this many leading bytes before calling a file binary. */
+const GIT_BINARY_SNIFF_BYTES = 8000;
+
 export function trackedTextFiles(cwd = process.cwd()) {
   const result = spawnSync('git', ['ls-files', '-z'], {
     cwd,
@@ -159,7 +214,9 @@ export function trackedTextFiles(cwd = process.cwd()) {
   return result.stdout
     .split('\0')
     .filter(Boolean)
-    .filter((path) => OXFMT_EXTENSIONS.has(extname(path).toLowerCase()));
+    .filter(
+      (path) => !BINARY_ASSET_EXTENSIONS.has(extname(path).toLowerCase()),
+    );
 }
 
 function reportNulBytes(offenders) {
@@ -191,7 +248,9 @@ function run(command, args) {
 export async function runLint(plan, listTracked = trackedTextFiles) {
   // Ahead of the tools, because neither can see it: oxlint parses the file
   // happily and oxfmt reformats around the byte, leaving the damage in place.
-  const offenders = findNulBytes(plan.full ? listTracked() : plan.oxfmtFiles);
+  const offenders = findNulBytes(
+    plan.full ? listTracked() : (plan.scanFiles ?? plan.oxfmtFiles),
+  );
   reportNulBytes(offenders);
 
   const jobs = [];
@@ -231,6 +290,7 @@ async function main() {
     reason: 'full lint requested',
     oxlintFiles: [],
     oxfmtFiles: [],
+    scanFiles: [],
   };
 
   if (changedFromIndex !== -1) {

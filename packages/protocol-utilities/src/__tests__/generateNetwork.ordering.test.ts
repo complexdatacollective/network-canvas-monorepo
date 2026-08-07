@@ -490,3 +490,128 @@ describe('a variable certain to be unanswered', () => {
     }
   });
 });
+
+describe('an edge whose earliest creating stage is skipped', () => {
+  it('is made by the next stage that can create it', () => {
+    // An edge is planned at the earliest stage that could create it. Skip
+    // logic can bypass exactly that stage while a later one creates the same
+    // type, and an edge pinned to the index it was planned at is then never
+    // made — while the census answers, which read planned membership, go on
+    // reporting it as a link the session does not hold.
+    const withScreening = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: { name: { name: 'Name', type: 'text' } },
+          synthetic: { count: { distribution: 'constant', value: 4 } },
+        },
+      },
+      edge: {
+        friend: {
+          name: 'Friend',
+          color: 'edge-color-seq-1',
+          variables: {},
+          synthetic: {
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 1 },
+            },
+          },
+        },
+      },
+      ego: { variables: { skip: { name: 'Skip', type: 'boolean' } } },
+    } as unknown as Codebook;
+
+    const census = (id: string, extra: Record<string, unknown> = {}) =>
+      stage({
+        id,
+        type: 'DyadCensus',
+        label: 'Pairs',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: `${id}-p1`, text: 'Which?', createEdge: 'friend' }],
+        ...extra,
+      });
+
+    const { network, stageMetadata } = generateNetwork({
+      seed: 6,
+      codebook: withScreening,
+      stages: [
+        nameGenerator({ behaviours: { minNodes: 4, maxNodes: 4 } }),
+        // Always skipped: ego holds no value for `skip`, so the rule fails.
+        census('skipped', {
+          skipLogic: {
+            action: 'SKIP',
+            filter: {
+              join: 'AND',
+              rules: [
+                {
+                  id: 'r1',
+                  type: 'ego',
+                  options: { attribute: 'skip', operator: 'NOT_EXISTS' },
+                },
+              ],
+            },
+          },
+        }),
+        census('reached'),
+      ],
+      respectSkipLogicAndFiltering: true,
+    });
+
+    // Density 1 over four people: every pair is linked, and the stage that
+    // ran is the one that made them.
+    expect(network.edges).toHaveLength(6);
+
+    // And no answer describes an edge the session does not hold.
+    const linked = new Set(
+      network.edges.map((edge) =>
+        edge.from < edge.to
+          ? `${edge.from} ${edge.to}`
+          : `${edge.to} ${edge.from}`,
+      ),
+    );
+    for (const tuples of Object.values(stageMetadata ?? {})) {
+      for (const [, a, b, answered] of tuples as [
+        number,
+        string,
+        string,
+        boolean,
+      ][]) {
+        const key = a < b ? `${a} ${b}` : `${b} ${a}`;
+        expect(linked.has(key)).toBe(answered);
+      }
+    }
+  });
+});
+
+describe('a NetworkComposer following a stage that named people', () => {
+  it('asks its node form of the people already in the session', () => {
+    // The canvas holds every node of the subject type, and its inspector opens
+    // the node form for any of them. Treating those fields as creation-only
+    // leaves everyone named earlier without the answers the composer visibly
+    // collected.
+    const { network } = generateNetwork({
+      seed: 8,
+      codebook: codebook({
+        name: { name: 'Name', type: 'text' },
+        role: { name: 'Role', type: 'text' },
+      }),
+      stages: [
+        nameGenerator(),
+        stage({
+          id: 'composer',
+          type: 'NetworkComposer',
+          label: 'Compose',
+          subject: { entity: 'node', type: 'person' },
+          nodeForm: { fields: [{ variable: 'role', prompt: 'Their role?' }] },
+        }),
+      ],
+    });
+
+    expect(network.nodes.length).toBeGreaterThanOrEqual(3);
+    for (const node of network.nodes) {
+      expect(attributesOf(node).role).toBeDefined();
+    }
+  });
+});

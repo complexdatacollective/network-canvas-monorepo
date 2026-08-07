@@ -392,7 +392,13 @@ export function materialiseSession(params: {
 
     for (const creation of summary.edgeCreations) {
       for (const planned of plan.edges) {
-        if (planned.creationStageIndex !== i) continue;
+        // `<=`, not `===`: an edge is planned at the earliest stage that could
+        // create it, and skip logic can bypass exactly that stage while a
+        // later one creates the same type. Pinning the edge to the index it
+        // was planned at would strand it — the session would lose the planned
+        // topology while the census answers, which read planned membership,
+        // went on reporting those absent edges as links.
+        if (planned.creationStageIndex > i) continue;
         if (planned.type !== creation.edgeType) continue;
         if (materialisedEdges.has(planned.uid)) continue;
         if (!presentNodes.has(planned.from)) continue;
@@ -434,40 +440,47 @@ export function materialiseSession(params: {
           .filter((edge) => edge.type === creation.edgeType)
           .map((edge) => pairKey(edge.from, edge.to)),
       );
-      // The whole domain, linked pairs included, because the target is a
-      // property of the domain rather than of whatever is left of it. Two
-      // prompts on one stage — or two stages — creating the same edge type
-      // each reach this block, and measuring a fresh target against only the
-      // unlinked remainder would apply the declared density again to what the
-      // previous pass had not yet linked: two passes at 0.5 leaving 0.75.
-      const domain: { a: string; b: string; linked: boolean }[] = [];
+      // Measured over the whole subject graph and reduced by what that graph
+      // already holds, rather than targeted independently at the partition
+      // this block can add to.
+      //
+      // Two reasons, and mean degree is the one that makes it necessary. It is
+      // a property of a graph, not of a subset: the plan has already emitted
+      // `meanDegree × plannedNodes / 2`, so a fallback drawing another
+      // `meanDegree × itsOwnEndpoints / 2` overshoots the declared degree
+      // outright. Density survives the subset reading arithmetically, but not
+      // repetition — every prompt creating the type reaches this block, and a
+      // fresh target against the unlinked remainder applies the declared
+      // density again to what the last pass left: two passes at 0.5 leaving
+      // 0.75. Counting what exists towards the target settles both.
+      const reachable: { a: string; b: string; linked: boolean }[] = [];
+      let wholePairs = 0;
+      let wholeLinked = 0;
       for (let a = 0; a < subjects.length; a++) {
         for (let b = a + 1; b < subjects.length; b++) {
           const uidA = subjects[a]![entityPrimaryKeyProperty];
           const uidB = subjects[b]![entityPrimaryKeyProperty];
+          const isLinked = linked.has(pairKey(uidA, uidB));
+          wholePairs += 1;
+          if (isLinked) wholeLinked += 1;
+          // Only pairs the plan could not reach are this block's to add: one
+          // whose endpoints it both held was already decided.
           if (nodeByUid.has(uidA) && nodeByUid.has(uidB)) continue;
-          domain.push({
-            a: uidA,
-            b: uidB,
-            linked: linked.has(pairKey(uidA, uidB)),
-          });
+          reachable.push({ a: uidA, b: uidB, linked: isLinked });
         }
       }
-      if (domain.length === 0) continue;
+      if (reachable.length === 0) continue;
 
-      const nodeCount = new Set(domain.flatMap((pair) => [pair.a, pair.b]))
-        .size;
       // Reuse, not replacement: a pair this type already joins was answered
       // when that edge was made, exactly as `edgeExists` has the interview
       // reuse it, so it counts towards the target rather than being redrawn.
       const outstanding =
-        topologyTarget(target, domain.length, nodeCount) -
-        domain.filter((pair) => pair.linked).length;
+        topologyTarget(target, wholePairs, subjects.length) - wholeLinked;
       if (outstanding <= 0) continue;
 
       const ref = { entity: 'edge' as const, type: creation.edgeType };
       const chosen = shuffled(
-        domain.filter((pair) => !pair.linked),
+        reachable.filter((pair) => !pair.linked),
         source.stream('edges', 'unplanned', creation.edgeType),
       ).slice(0, outstanding);
 

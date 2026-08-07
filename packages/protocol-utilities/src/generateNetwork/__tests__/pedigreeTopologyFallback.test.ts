@@ -145,3 +145,67 @@ describe('a census over a family the plan could not size', () => {
     }
   });
 });
+
+describe('a mean-degree topology split across planned and pedigree people', () => {
+  const meanDegreeCodebook = (meanDegree: number): Codebook =>
+    ({
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          synthetic: { count: { distribution: 'constant', value: 10 } },
+          variables: {
+            name: { name: 'Name', type: 'text' },
+            isEgo: { name: 'Is ego', type: 'boolean' },
+            relationship: { name: 'Relationship', type: 'text' },
+            sex: { name: 'Sex', type: 'text' },
+          },
+        },
+      },
+      edge: {
+        knows: {
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+          synthetic: {
+            topology: {
+              metric: 'meanDegree',
+              distribution: { distribution: 'constant', value: meanDegree },
+            },
+          },
+          variables: {},
+        },
+      },
+    }) as unknown as Codebook;
+
+  const namePeople = {
+    id: 'stage-people',
+    type: 'NameGeneratorQuickAdd',
+    label: 'Names',
+    subject: { entity: 'node', type: 'person' },
+    quickAdd: 'name',
+    prompts: [{ id: 'p1', text: 'Who?' }],
+    behaviours: { minNodes: 4, maxNodes: 4 },
+  } as unknown as Stage;
+
+  it('does not exceed the declared degree over the whole graph', () => {
+    // Mean degree is a property of a graph, not of a subset. The plan emits
+    // its share over the people it owns; a fallback that then targets its own
+    // partition independently adds a second share, and the finished network
+    // is connected far past what was declared.
+    const meanDegree = 2;
+
+    for (let seed = 1; seed <= 12; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: meanDegreeCodebook(meanDegree),
+        stages: [namePeople, pedigree, census(1)],
+      });
+
+      const people = network.nodes.filter((node) => node.type === 'person');
+      const knows = network.edges.filter((edge) => edge.type === 'knows');
+      const allowed = Math.round((meanDegree * people.length) / 2);
+
+      expect(knows.length).toBeLessThanOrEqual(allowed);
+    }
+  });
+});

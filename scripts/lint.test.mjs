@@ -55,6 +55,13 @@ test('changed files are routed only to the tools that support them', () => {
       full: false,
       reason: '',
       oxlintFiles: ['apps/architect/src/App.tsx'],
+      scanFiles: [
+        'apps/architect/src/App.tsx',
+        'docs/guide.md',
+        '.github/workflows/example.yml',
+        'config/netlify.toml',
+        'scripts/check.sh',
+      ],
       oxfmtFiles: [
         'apps/architect/src/App.tsx',
         'docs/guide.md',
@@ -73,6 +80,7 @@ test('deleted files and unsupported files are ignored', () => {
   assert.equal(plan.full, false);
   assert.deepEqual(plan.oxlintFiles, []);
   assert.deepEqual(plan.oxfmtFiles, []);
+  assert.deepEqual(plan.scanFiles, []);
 });
 
 test('deleted lint configuration and manifests force a full lint', () => {
@@ -199,10 +207,38 @@ test('a NUL byte fails the run even when every tool is happy', async () => {
   }
 });
 
-test('a full run scans the tracked text files rather than the whole tree', async () => {
+test('a full run scans the tracked text files rather than the whole tree', () => {
   const tracked = trackedTextFiles();
 
   assert.ok(tracked.includes('scripts/lint.mjs'));
   assert.ok(tracked.every((path) => !path.endsWith('.png')));
   assert.deepEqual(findNulBytes(tracked), []);
+});
+
+test('source the formatter does not handle is scanned too', () => {
+  // A shell script or an extensionless Dockerfile loses its diff to a NUL
+  // exactly as a TypeScript file does, so the scan set cannot be the set of
+  // extensions a formatter happens to recognise.
+  const plan = planChangedLint(
+    ['scripts/setup.sh', 'apps/fresco/Dockerfile', 'packages/art/logo.png'],
+    exists,
+  );
+
+  assert.deepEqual(plan.oxfmtFiles, []);
+  assert.deepEqual(plan.scanFiles, [
+    'scripts/setup.sh',
+    'apps/fresco/Dockerfile',
+  ]);
+
+  const tracked = trackedTextFiles();
+  assert.ok(tracked.some((path) => path.endsWith('.sh')));
+});
+
+test('a NUL past the window Git inspects is not the scan’s business', () => {
+  // Git decides binary-ness from the leading bytes only, so a NUL beyond them
+  // costs no diff and reporting it would be a false alarm.
+  const read = () =>
+    Buffer.concat([Buffer.alloc(9000, 0x61), Buffer.from([0])]);
+
+  assert.deepEqual(findNulBytes(['late.ts'], read), []);
 });

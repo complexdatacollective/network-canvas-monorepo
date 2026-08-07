@@ -672,6 +672,24 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
         promptFixedValues: [],
         rosterValuesWin: false,
       });
+      // The node form is not creation-only. The canvas holds every node of the
+      // subject type the session has, and its inspector opens that form for any
+      // of them, so a person an earlier stage introduced is asked the same
+      // questions. Recorded only as creation writes, their planned answers
+      // would never be landed and the finished session would be missing
+      // answers the composer visibly collected. `quickAdd` stays creation-only:
+      // it names someone as they are added and is not asked again.
+      // A composer declares no stage filter, so the write reaches the whole
+      // subject type — exactly the set the canvas is loaded with.
+      for (const variableId of formVariables(stage.nodeForm)) {
+        summary.writes.push({
+          stageIndex: index,
+          entity: 'node',
+          entityType: nodeType,
+          variableId,
+          mode: 'form',
+        });
+      }
       for (const edge of stage.edges ?? []) {
         const edgeType = subjectTypeOf(edge.subject);
         if (edgeType === undefined) continue;
