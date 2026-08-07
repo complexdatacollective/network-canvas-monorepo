@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useContext, type ContextType } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
@@ -78,5 +78,75 @@ describe('BinSortOrderSection', () => {
       ).not.toBeInTheDocument();
     });
     expect(getFieldValue()).toBeUndefined();
+  });
+
+  // A sort rule needs both members: the row's own "Required" cannot refuse the
+  // save (see RowField), and `prune` strips the empty direction rather than the
+  // row, so `{ property: 'name' }` would reach `SortRuleSchema` and fail
+  // whole-protocol validation from a modal that names no field.
+  it('refuses to submit a sort rule with no direction', async () => {
+    const onSubmit = vi.fn(() => ({ success: true as const }));
+    render(
+      <Form onSubmit={onSubmit}>
+        <CaptureStore />
+        <BinSortOrderSection
+          optionGetter={getterSpy}
+          initialValue={[{ property: 'name', direction: 'asc' }]}
+        />
+        <button type="submit">Save</button>
+      </Form>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+    const propertySelects = await screen.findAllByRole('combobox', {
+      name: 'Property',
+    });
+    fireEvent.change(propertySelects[1]!, { target: { value: 'id' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('Every row needs a value in each column.'),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  // The rule must not reach past the rows it owns: a stage that never sorts
+  // leaves the field unregistered (collapsed) or empty, and erroring on either
+  // would put "Finished Editing" out of reach.
+  it('submits a section that was never configured', async () => {
+    const onSubmit = vi.fn(() => ({ success: true as const }));
+    render(
+      <Form onSubmit={onSubmit}>
+        <CaptureStore />
+        <BinSortOrderSection optionGetter={getterSpy} />
+        <button type="submit">Save</button>
+      </Form>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+  });
+
+  it('submits a section whose sort rules are complete', async () => {
+    const onSubmit = vi.fn(() => ({ success: true as const }));
+    render(
+      <Form onSubmit={onSubmit}>
+        <CaptureStore />
+        <BinSortOrderSection
+          optionGetter={getterSpy}
+          initialValue={[{ property: 'name', direction: 'asc' }]}
+        />
+        <button type="submit">Save</button>
+      </Form>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(
+      screen.queryByText('Every row needs a value in each column.'),
+    ).not.toBeInTheDocument();
   });
 });

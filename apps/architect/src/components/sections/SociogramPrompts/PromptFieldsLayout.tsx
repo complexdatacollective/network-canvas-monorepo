@@ -8,7 +8,10 @@ import type { VariableType } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
-import MultiSelect from '~/components/Form/arrayFields/MultiSelect';
+import MultiSelect, {
+  completeRows,
+  type PropertyField,
+} from '~/components/Form/arrayFields/MultiSelect';
 import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
@@ -16,6 +19,17 @@ import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getSortOrderOptionGetter } from '../CategoricalBinPrompts/optionGetters';
 import { getLayoutVariablesForSubject } from './selectors';
+
+const SORT_RULE_PROPERTIES: PropertyField[] = [
+  { fieldName: 'property' },
+  { fieldName: 'direction' },
+];
+
+// A row's own cells cannot block the save (see RowField), and a rule missing
+// its direction fails `SortRuleSchema` after `prune`.
+const SORT_RULE_VALIDATION = {
+  completeRows: completeRows(SORT_RULE_PROPERTIES),
+};
 
 type PromptFieldsProps = {
   entity?: string;
@@ -127,7 +141,8 @@ const PromptFieldsLayout = ({
             labelHidden
             component={MultiSelect}
             initialValue={initialSortOrder ?? []}
-            properties={[{ fieldName: 'property' }, { fieldName: 'direction' }]}
+            properties={SORT_RULE_PROPERTIES}
+            validation={SORT_RULE_VALIDATION}
             maxItems={5}
             options={(
               property: string,

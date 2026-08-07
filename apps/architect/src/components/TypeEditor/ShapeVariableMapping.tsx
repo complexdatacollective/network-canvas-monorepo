@@ -411,12 +411,19 @@ const ShapeVariableMapping = ({
   const [enabled, setEnabled] = useState(Boolean(initialMapping));
 
   const handleToggle = (checked: boolean | undefined) => {
-    if (!checked) {
-      // Clear before unmounting: an unregistered field's last value is parked
-      // dormant, and a dormant mapping would come back the next time the
-      // feature is switched on.
-      setFieldValue(SHAPE_MAPPING_FIELD, undefined);
-    }
+    // Write on BOTH edges. The field is unmounted either way, so whatever it
+    // held is parked dormant, and `registerField` prefers a dormant value over
+    // `initialValue` — turning the feature off therefore has to CLEAR the value
+    // (or the mapping would come back the next time it is switched on), and
+    // turning it on has to stage the empty mapping itself (or the `undefined`
+    // parked by the previous off survives, `getFormValues()` reports no
+    // `shape.dynamic` at all, and the form-level completeness check — which
+    // rightly ignores a type with no mapping — never runs on a toggle that
+    // reads ON).
+    //
+    // The empty mapping, never `initialMapping`: re-enabling must not resurrect
+    // a mapping the author deliberately deleted by switching the feature off.
+    setFieldValue(SHAPE_MAPPING_FIELD, checked ? EMPTY_MAPPING : undefined);
     setEnabled(Boolean(checked));
   };
 

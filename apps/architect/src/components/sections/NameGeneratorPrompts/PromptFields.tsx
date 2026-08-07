@@ -5,6 +5,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import AssignAttributes, {
+  assignAttributesValidation,
   type AttributeValue,
   type VariableOption,
 } from '~/components/Form/arrayFields/AssignAttributes';
@@ -135,6 +136,13 @@ const PromptFields = ({
         layout="vertical"
       >
         <Row>
+          {/*
+            The field only mounts once a node type is chosen: with no subject
+            there is no pool to pick from and nothing to validate. Hoisting it
+            out of this guard would register `additionalAttributes` on prompts
+            that never had it and — through the dialog's overwrite save — write
+            an empty key onto them.
+          */}
           {subject && (
             <ArchitectArrayField
               name="additionalAttributes"
@@ -148,6 +156,12 @@ const PromptFields = ({
               draftValidatedVariables={draftValidatedVariables}
               currentStageIndex={currentStageIndex}
               committedValue={additionalAttributes}
+              // The rows' own `required` rules are display-only (see
+              // `RowField`), so completeness has to exist here too or a
+              // half-finished stamp saves into the protocol unchallenged.
+              // `NameGeneratorRosterPrompts` shares this component, so both
+              // stages are covered from here.
+              validation={assignAttributesValidation}
             />
           )}
         </Row>

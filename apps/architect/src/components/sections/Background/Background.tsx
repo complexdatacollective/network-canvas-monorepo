@@ -1,4 +1,6 @@
-import { type ComponentProps, useState } from 'react';
+import { get } from 'es-toolkit/compat';
+import { type ComponentProps, useEffect, useRef, useState } from 'react';
+import { useStore } from 'react-redux';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -11,10 +13,12 @@ import { Row, Section } from '~/components/EditorLayout';
 import ExternalLink from '~/components/ExternalLink';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import {
   useSetStageValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
+import type { RootState } from '~/ducks/store';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 import Image from '../../Form/Fields/Image';
@@ -73,8 +77,11 @@ const IntegerInput = ({
  * it has to stay local rather than track `background.image` live, because
  * switching TO image mode must show the (still-empty) picker immediately,
  * before any image has actually been chosen. Clearing the fields for the
- * type being switched away from is a plain event handler; there is no other
- * field reacting to a change here, so no observer effect is needed.
+ * type being switched away from is a plain event handler.
+ *
+ * Undo/redo is the one thing that has to reach that local state (see the
+ * restore effect below): a restore writes the background's LEAVES, and which
+ * group they belong to exists nowhere but here.
  */
 const Background = ({ interfaceType }: StageEditorSectionProps) => {
   const setStageValue = useSetStageValue();
@@ -92,6 +99,60 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
     () => imageAllowed && !!imageInitialValue,
   );
   const showImage = imageAllowed && useImage;
+
+  // Undo/redo writes the background's LEAVES and nothing else, so without this
+  // a step is a visible no-op: the obsolete group stays on screen, the
+  // restored values land in the unmounted sibling's dormant storage where
+  // nothing registers them, and `getFormValues()` — what the save and the
+  // Preview mirror read — reports a background with neither group in it.
+  //
+  // The mode is read off the restored snapshot's SHAPE rather than its values.
+  // `getFormValues()` reports registered fields only, so the snapshot carries
+  // a `background.image` key exactly when the picker was the mounted group
+  // when it was taken, and the circle keys exactly when it was not. The values
+  // cannot make that distinction: "image chosen, none picked yet" and
+  // "concentric circles, nothing filled in yet" are both all-undefined, and
+  // guessing wrong there leaves the form's values disagreeing with the entry
+  // that was just restored — which the next step flushes as a new snapshot,
+  // silently branching the timeline and discarding the redo.
+  //
+  // Read imperatively at restore time: subscribing would re-render the section
+  // on every snapshot the whole editor takes, for a value it only ever looks
+  // at here.
+  const reduxStore = useStore<RootState>();
+  const restoreVersion = useStageRestoreVersion();
+  const previousRestoreVersionRef = useRef(restoreVersion);
+  useEffect(() => {
+    const previousRestoreVersion = previousRestoreVersionRef.current;
+    previousRestoreVersionRef.current = restoreVersion;
+
+    // A restore, and ONLY a restore — which also excludes the mount. Reacting
+    // to the values themselves would throw the user straight back out of image
+    // mode the instant they chose it, since no image exists at that point;
+    // that is the whole reason the mode is local state. Neither `ui.restoring`
+    // nor the bridge's ref can stand in for the counter: both are only true
+    // *inside* `runRestore`, which has finished by the time an effect observing
+    // its writes runs (see `useStageRestoreVersion`).
+    if (previousRestoreVersion === restoreVersion) return;
+
+    // `present` is the entry being restored: `useStageDraftHistory` dispatches
+    // the timeline step before it applies the values, in the same batch.
+    const restored = get(
+      reduxStore.getState().stageEditorDraft.history.present ?? {},
+      'background',
+    ) as Record<string, unknown> | undefined;
+
+    if (!restored) return;
+
+    if ('image' in restored) {
+      setUseImage(true);
+      return;
+    }
+
+    if ('concentricCircles' in restored || 'skewedTowardCenter' in restored) {
+      setUseImage(false);
+    }
+  }, [restoreVersion, reduxStore]);
 
   const handleChooseBackgroundType = (
     value: string | number | (string | number)[] | undefined,

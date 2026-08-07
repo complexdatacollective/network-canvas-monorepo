@@ -5,8 +5,10 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
+  completeRows,
   type ItemValue,
   type OptionGetter,
+  type PropertyField,
 } from '~/components/Form/arrayFields/MultiSelect';
 
 type BinSortOrderSectionProps = {
@@ -23,6 +25,17 @@ type BinSortOrderSectionProps = {
   optionGetter: OptionGetter;
   summary?: ReactNode;
 };
+const SORT_RULE_PROPERTIES: PropertyField[] = [
+  { fieldName: 'property' },
+  { fieldName: 'direction' },
+];
+
+// A row's own cells cannot block the save (see RowField), and a rule missing
+// its direction fails `SortRuleSchema` after `prune`.
+const SORT_RULE_VALIDATION = {
+  completeRows: completeRows(SORT_RULE_PROPERTIES),
+};
+
 const getDefaultSummary = () => (
   <Paragraph>
     You may also configure one or more sort rules that determine the order that
@@ -60,7 +73,8 @@ const BinSortOrderSection = ({
           labelHidden
           component={MultiSelect}
           initialValue={initialValue}
-          properties={[{ fieldName: 'property' }, { fieldName: 'direction' }]}
+          properties={SORT_RULE_PROPERTIES}
+          validation={SORT_RULE_VALIDATION}
           maxItems={maxItems}
           options={optionGetter}
         />

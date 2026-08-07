@@ -4,6 +4,7 @@ import { getValidations } from '~/utils/validations';
 
 import { parseOptionValue } from '../Option';
 import {
+  allowedOptionValues,
   completeOptions,
   minTwoOptions,
   optionsValidation,
@@ -142,12 +143,66 @@ describe('Options validators', () => {
     ).toBeUndefined();
   });
 
+  // The rows show the same message through `allowedVariableName`, but a row is
+  // not a registered field — and collapsing it hides the message entirely
+  // while keeping the value, which then becomes an XML key and a CSV column
+  // header. Only the array can refuse the save.
+  it('rejects option values that are not NMTOKENs at the array level', () => {
+    expect(
+      allowedOptionValues([
+        { label: 'One', value: 'a_valid-value.1' },
+        { label: 'Two', value: 'also:valid' },
+      ]),
+    ).toBeUndefined();
+    expect(
+      allowedOptionValues([
+        { label: 'Has space', value: 'not valid' },
+        { label: 'Fine', value: 'fine' },
+      ]),
+    ).toBe(
+      'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
+    );
+    expect(allowedOptionValues([{ label: 'Percent', value: '100%' }])).toMatch(
+      /not a valid option value/i,
+    );
+    // `parseOptionValue` stores numeric-looking input as a number, so the rule
+    // has to test the stringified value rather than the raw one.
+    expect(
+      allowedOptionValues([
+        { label: 'One', value: 1 },
+        { label: 'Minus one', value: -1 },
+        { label: 'Point five', value: '1.5' },
+      ]),
+    ).toBeUndefined();
+    // Empty values are `completeOptions`' business — flagging them here would
+    // raise a syntax error against a row that is merely unfinished.
+    expect(
+      allowedOptionValues([{ label: 'One' }, { label: 'Two', value: '' }]),
+    ).toBeUndefined();
+    expect(allowedOptionValues(undefined)).toBeUndefined();
+    expect(allowedOptionValues([])).toBeUndefined();
+  });
+
   it('bundles every array-level rule so a call site cannot keep only some', () => {
     expect(optionsValidation).toEqual({
       minTwoOptions,
       completeOptions,
       uniqueOptionValues,
       uniqueOptionLabels,
+      allowedOptionValues,
     });
+  });
+
+  // Only the first failing rule is reported per field (see toZodValidation),
+  // so the syntax rule is bundled last: an unfinished row should be told what
+  // it is missing before it is told the missing value is malformed.
+  it('reports completeness before syntax when a row is both', () => {
+    expect(Object.keys(optionsValidation)).toEqual([
+      'minTwoOptions',
+      'completeOptions',
+      'uniqueOptionValues',
+      'uniqueOptionLabels',
+      'allowedOptionValues',
+    ]);
   });
 });

@@ -49,6 +49,50 @@ export type OptionGetter = (
   allValues: unknown,
 ) => Array<Record<string, unknown>>;
 
+const readRows = (value: unknown): ItemValue[] =>
+  Array.isArray(value)
+    ? value.filter(
+        (row): row is ItemValue => typeof row === 'object' && row !== null,
+      )
+    : [];
+
+/**
+ * Judged the way the cells' own `required` judges emptiness (fresco-ui trims
+ * strings), so the array and its rows never disagree about which cell is
+ * unanswered. Stricter than `prune`, which keeps `''` — anything this accepts
+ * therefore survives the commit-time prune as a real value.
+ */
+const isCellEmpty = (cell: unknown) =>
+  cell === undefined ||
+  cell === null ||
+  (typeof cell === 'string' && cell.trim() === '');
+
+/**
+ * The array-level rule every MultiSelect owner must pass as its
+ * `ArchitectArrayField`'s `validation` — the counterpart of the `required` the
+ * cells carry, which is DISPLAY ONLY because a row is not a registered field
+ * (see RowField).
+ *
+ * Without it a half-finished row (pick a property, leave the direction unset)
+ * does not block "Finished Editing": `prune` strips only the empty cell, so
+ * `{ property: 'name' }` reaches the protocol, fails `SortRuleSchema`, and
+ * surfaces as the blocking invalid-protocol dialog — which names no field and
+ * offers only to revert the editing session.
+ *
+ * An absent or empty array is the unconfigured state these toggleable sections
+ * legitimately sit in and passes; a wholly empty row does not, matching
+ * `Options.tsx`'s `completeOptions` (and pre-migration behaviour, where both
+ * cells were registered required fields).
+ */
+export const completeRows =
+  (properties: PropertyField[]) =>
+  (value: unknown): string | undefined =>
+    readRows(value).some((row) =>
+      properties.some(({ fieldName }) => isCellEmpty(row[fieldName])),
+    )
+      ? 'Every row needs a value in each column.'
+      : undefined;
+
 const stripManagedProperties = (item: Partial<ItemValue>): ItemValue => {
   const { _internalId, _draft, ...value } = item;
   return value;
@@ -221,7 +265,9 @@ export type MultiSelectProps = Omit<
  * whole list arrives as ONE `value`/`onChange` pair; no row is ever registered
  * as a form field. Row controls therefore run their own validation locally
  * (see RowField) while keeping the `name[i].property` `data-field-name` paths
- * E2E specs target.
+ * E2E specs target — which is why every owner also passes
+ * `validation={{ completeRows: completeRows(properties) }}`, the only rule
+ * that can actually refuse a half-finished row.
  */
 const MultiSelect = ({
   value = EMPTY_ITEMS,

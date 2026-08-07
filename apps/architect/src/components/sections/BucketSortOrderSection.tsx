@@ -6,8 +6,10 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
+  completeRows,
   type ItemValue,
   type OptionGetter,
+  type PropertyField,
 } from '~/components/Form/arrayFields/MultiSelect';
 
 type BucketSortOrderSectionProps = {
@@ -22,6 +24,17 @@ type BucketSortOrderSectionProps = {
   optionGetter: OptionGetter;
   summary?: ReactNode;
 };
+const SORT_RULE_PROPERTIES: PropertyField[] = [
+  { fieldName: 'property' },
+  { fieldName: 'direction' },
+];
+
+// A row's own cells cannot block the save (see RowField), and a rule missing
+// its direction fails `SortRuleSchema` after `prune`.
+const SORT_RULE_VALIDATION = {
+  completeRows: completeRows(SORT_RULE_PROPERTIES),
+};
+
 const getDefaultSummary = () => (
   <Paragraph>
     Nodes are stacked in the bucket before they are placed by the participant.
@@ -67,7 +80,8 @@ const BucketSortOrderSection = ({
         labelHidden
         component={MultiSelect}
         initialValue={initialValue}
-        properties={[{ fieldName: 'property' }, { fieldName: 'direction' }]}
+        properties={SORT_RULE_PROPERTIES}
+        validation={SORT_RULE_VALIDATION}
         maxItems={maxItems}
         options={optionGetter}
       />

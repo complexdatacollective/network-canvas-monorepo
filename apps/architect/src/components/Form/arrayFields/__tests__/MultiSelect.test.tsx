@@ -6,7 +6,9 @@ import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 import ArchitectArrayField from '../../ArchitectArrayField';
+import type { ArchitectValidation } from '../../toZodValidation';
 import MultiSelect, {
+  completeRows,
   type ItemValue,
   type OptionGetter,
   type PropertyField,
@@ -18,6 +20,10 @@ const DEFAULT_PROPERTIES: PropertyField[] = [
   { fieldName: 'first' },
   { fieldName: 'second' },
 ];
+
+const DEFAULT_VALIDATION: ArchitectValidation = {
+  completeRows: completeRows(DEFAULT_PROPERTIES),
+};
 
 type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
@@ -37,16 +43,20 @@ const setup = ({
   properties = DEFAULT_PROPERTIES,
   options = vi.fn(() => []) as OptionGetter,
   maxItems,
+  validation = DEFAULT_VALIDATION,
+  onSubmit = vi.fn(() => ({ success: true as const })),
 }: {
   initialItems?: ItemValue[];
   properties?: PropertyField[];
   options?: OptionGetter;
   maxItems?: number | null;
+  validation?: ArchitectValidation;
+  onSubmit?: () => { success: true };
 } = {}) => {
   storeApi = null;
 
   render(
-    <Form onSubmit={() => ({ success: true })}>
+    <Form onSubmit={onSubmit}>
       <CaptureStore />
       <ArchitectArrayField
         name="items"
@@ -56,11 +66,13 @@ const setup = ({
         properties={properties}
         options={options}
         maxItems={maxItems}
+        validation={validation}
       />
+      <button type="submit">Save</button>
     </Form>,
   );
 
-  return { getItems, options };
+  return { getItems, options, onSubmit };
 };
 
 describe('MultiSelect', () => {
@@ -174,5 +186,93 @@ describe('MultiSelect', () => {
     await waitFor(() => expect(getItems()).toHaveLength(1));
     if (!storeApi) throw new Error('form store was not captured');
     expect([...storeApi.getState().fields.keys()]).toEqual(['items']);
+  });
+
+  // The rows' own `required` errors are display-only (see RowField), so this
+  // array-level rule is the only thing that can refuse a half-finished row —
+  // which would otherwise reach the protocol as e.g. `{ property: 'name' }`
+  // and fail whole-protocol validation from a modal that names no field.
+  it('refuses to submit a half-finished row', async () => {
+    const options = (() => [
+      { value: 'a', label: 'A' },
+      { value: 'b', label: 'B' },
+    ]) as OptionGetter;
+    const { onSubmit } = setup({ options });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+    fireEvent.change(await screen.findByRole('combobox', { name: 'First' }), {
+      target: { value: 'a' },
+    });
+    await waitFor(() =>
+      expect(getItems()).toEqual([{ first: 'a', second: null }]),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('Every row needs a value in each column.'),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('submits a fully filled row', async () => {
+    const { onSubmit } = setup({ initialItems: [{ first: 'a', second: 'b' }] });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(
+      screen.queryByText('Every row needs a value in each column.'),
+    ).not.toBeInTheDocument();
+  });
+
+  describe('completeRows', () => {
+    const validate = completeRows(DEFAULT_PROPERTIES);
+
+    it('accepts the unconfigured states a toggleable section sits in', () => {
+      // These sections unregister the field when collapsed and register an
+      // empty array when expanded but unused; erroring here would put
+      // "Finished Editing" out of reach for a stage that never sorts.
+      expect(validate(undefined)).toBeUndefined();
+      expect(validate(null)).toBeUndefined();
+      expect(validate([])).toBeUndefined();
+    });
+
+    it('accepts a row with a value in every column', () => {
+      expect(
+        validate([
+          { first: 'a', second: 'b' },
+          { first: 'c', second: 0 },
+        ]),
+      ).toBeUndefined();
+    });
+
+    it('rejects a row that is missing any column', () => {
+      // MultiSelect nulls the later columns when an earlier one changes, so a
+      // half-finished row reads `{ first: 'a', second: null }` — and `prune`
+      // strips the null rather than the row.
+      expect(validate([{ first: 'a', second: null }])).toMatch(/each column/i);
+      expect(validate([{ first: 'a' }])).toMatch(/each column/i);
+      expect(validate([{ second: 'b' }])).toMatch(/each column/i);
+      expect(validate([{}])).toMatch(/each column/i);
+      expect(validate([{ first: 'a', second: 'b' }, { first: 'c' }])).toMatch(
+        /each column/i,
+      );
+    });
+
+    it('treats a blank free-text column as missing, as its own cell does', () => {
+      // fresco-ui's `required` — the rule the cell displays — trims, so the
+      // array has to as well or the two disagree about the same row.
+      expect(validate([{ first: 'a', second: '' }])).toMatch(/each column/i);
+      expect(validate([{ first: 'a', second: '   ' }])).toMatch(/each column/i);
+    });
+
+    it('only inspects the declared columns', () => {
+      // Rows carry no keys beyond their properties, but a stale key from an
+      // earlier configuration must not be able to fail a complete row.
+      expect(
+        validate([{ first: 'a', second: 'b', legacy: null }]),
+      ).toBeUndefined();
+    });
   });
 });

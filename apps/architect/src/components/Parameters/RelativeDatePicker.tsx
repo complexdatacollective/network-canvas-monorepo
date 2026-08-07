@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import ArchitectField from '~/components/Form/ArchitectField';
 import DatePicker, { DATE_FORMATS } from '~/components/Form/Fields/DatePicker';
 
@@ -61,12 +62,35 @@ const RelativeDatePickerParameters = ({
 }: RelativeDatePickerParametersProps) => {
   const anchorField = `${name}.anchor`;
   const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const storeApi = useContext(FormStoreContext);
   const initialAnchor = parameterString(initialParameters?.anchor);
 
   // `useInterviewDate` is a presentation choice, not a saved parameter: the
   // interview date is what an absent `anchor` means, so the toggle stays local
   // and unregistered rather than writing a key the schema does not carry.
-  const [useInterviewDate, setUseInterviewDate] = useState(!initialAnchor);
+  //
+  // It is seeded from the STORE, not from the committed row, and only once per
+  // mount:
+  //
+  // - Once per mount, because the researcher turns the toggle off precisely in
+  //   order to type an anchor, and the anchor is empty for the whole interval
+  //   between the toggle and the first keystroke. Deriving this value, or
+  //   syncing it in an effect, would snap the toggle back on and unmount the
+  //   input the researcher is typing into.
+  // - From the store, because this editor is remounted whenever the variable's
+  //   input control changes, and the observer that reacts to that change clears
+  //   every `parameters.*` leaf (see `withFieldsHandlers`). By the remount the
+  //   row prop still carries the committed anchor that no longer exists in the
+  //   form, so seeding from it would show "use a specific date" with an empty —
+  //   and REQUIRED — anchor input, refusing a save the researcher never broke.
+  //
+  // `getFieldState` reads dormant entries too, and the absence of an entry is
+  // what distinguishes "never registered here" (fall back to the committed row)
+  // from "registered or parked holding no anchor" (the cleared state).
+  const [useInterviewDate, setUseInterviewDate] = useState(() => {
+    const anchorState = storeApi?.getState().getFieldState(anchorField);
+    return !parameterString(anchorState ? anchorState.value : initialAnchor);
+  });
 
   return (
     <>

@@ -51,6 +51,8 @@ vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
 }));
 
 import AssignAttributes, {
+  assignAttributesValidation,
+  completeAttributes,
   getAssignableVariableOptions,
   type AttributeValue,
   type VariableOption,
@@ -83,10 +85,11 @@ const getAttributes = (): AttributeValue[] => {
 const setup = (initialAttributes: AttributeValue[] = NO_ATTRIBUTES) => {
   storeApi = null;
   const store = configureStore({ reducer: (state = {}) => state });
+  const onSubmit = vi.fn(() => ({ success: true }));
 
   const view = render(
     <Provider store={store}>
-      <Form onSubmit={() => ({ success: true })}>
+      <Form onSubmit={onSubmit}>
         <CaptureStore />
         <ArchitectArrayField
           name="additionalAttributes"
@@ -97,13 +100,20 @@ const setup = (initialAttributes: AttributeValue[] = NO_ATTRIBUTES) => {
           type="person"
           variableOptions={VARIABLE_OPTIONS}
           draftValidatedVariables={NO_DRAFT_VARIABLES}
+          // Mirrors the call site: the rows' `required` rules are display-only,
+          // so completeness lives on the array field.
+          validation={assignAttributesValidation}
         />
+        <button type="submit">Save</button>
       </Form>
     </Provider>,
   );
 
-  return { ...view, getAttributes };
+  return { ...view, getAttributes, onSubmit };
 };
+
+const INCOMPLETE_MESSAGE =
+  'Every additional variable needs both a variable and a value.';
 
 describe('getAssignableVariableOptions', () => {
   it('keeps only boolean variables and disables the ones already used', () => {
@@ -183,5 +193,103 @@ describe('AssignAttributes', () => {
     expect([...storeApi.getState().fields.keys()]).toEqual([
       'additionalAttributes',
     ]);
+  });
+});
+
+/**
+ * A stamp the interview cannot apply — no variable, or a variable with no
+ * boolean — is rejected by the protocol schema, but the rows' `required` rules
+ * are display-only, so nothing stopped a half-finished row reaching the saved
+ * protocol. The damage surfaced far from the cause: a permanently disabled
+ * Preview button, and an export that failed validation on import.
+ */
+describe('completeAttributes', () => {
+  it('accepts an empty list', () => {
+    // `additionalAttributes` is optional and most prompts assign nothing.
+    expect(completeAttributes([])).toBeUndefined();
+    expect(completeAttributes(undefined)).toBeUndefined();
+  });
+
+  it('accepts a row that stamps False', () => {
+    // `false` is an answer, not an absent value.
+    expect(
+      completeAttributes([{ variable: 'close', value: false }]),
+    ).toBeUndefined();
+  });
+
+  it.each([
+    ['a row with nothing in it', [{}]],
+    ['a row with no value chosen', [{ variable: 'close' }]],
+    ['a row whose variable was cleared', [{ variable: null, value: true }]],
+    ['a row with an empty variable id', [{ variable: '', value: true }]],
+    [
+      'one incomplete row among complete ones',
+      [{ variable: 'close', value: true }, {}],
+    ],
+  ])('rejects %s', (_label, rows) => {
+    expect(completeAttributes(rows)).toBe(INCOMPLETE_MESSAGE);
+  });
+});
+
+describe('AssignAttributes completeness gate', () => {
+  const addRow = () =>
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add new variable to assign' }),
+    );
+
+  const save = () =>
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  it('refuses to save a row that was added and never finished', async () => {
+    const { onSubmit } = setup();
+
+    addRow();
+    await waitFor(() => expect(getAttributes()).toEqual([{}]));
+    save();
+
+    expect(await screen.findByText(INCOMPLETE_MESSAGE)).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('refuses to save a row whose value was never chosen', async () => {
+    const { onSubmit } = setup([{ variable: 'close' }]);
+
+    save();
+
+    expect(await screen.findByText(INCOMPLETE_MESSAGE)).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('says nothing about a prompt that assigns no variables', async () => {
+    const { onSubmit } = setup();
+
+    save();
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(screen.queryByText(INCOMPLETE_MESSAGE)).toBeNull();
+  });
+
+  it('saves a row that stamps False', async () => {
+    const { onSubmit } = setup([{ variable: 'close', value: false }]);
+
+    save();
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(screen.queryByText(INCOMPLETE_MESSAGE)).toBeNull();
+  });
+
+  // The rows are always open, so the refused save is the only moment that can
+  // point at the offending one — but not before, or a row the researcher has
+  // only just added would greet them with "Required".
+  it('leaves a freshly added row unmarked until the save is refused', async () => {
+    setup();
+
+    addRow();
+    await waitFor(() => expect(getAttributes()).toEqual([{}]));
+    expect(screen.queryByText('Required')).toBeNull();
+
+    save();
+
+    expect(await screen.findByText('Required')).toBeInTheDocument();
   });
 });

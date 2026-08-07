@@ -6,7 +6,9 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
+  completeRows,
   type ItemValue,
+  type PropertyField,
 } from '~/components/Form/arrayFields/MultiSelect';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
@@ -18,6 +20,23 @@ import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
 
 import withDisabledAssetRequired from '../../enhancers/withDisabledAssetRequired';
 import getVariableOptionsGetter from '../SortOptionsForExternalData/getVariableOptionsGetter';
+
+const DISPLAY_PROPERTIES: PropertyField[] = [
+  { fieldName: 'variable' },
+  {
+    fieldName: 'label',
+    control: 'input',
+    label: 'Label',
+    placeholder: 'Label',
+  },
+];
+
+// A row's own cells cannot block the save (see RowField), and a display
+// property missing either member survives `prune` to fail the roster stage's
+// schema.
+const DISPLAY_PROPERTIES_VALIDATION = {
+  completeRows: completeRows(DISPLAY_PROPERTIES),
+};
 
 type CardDisplayOptionsProps = StageEditorSectionProps & {
   dataSource?: string;
@@ -93,17 +112,8 @@ const CardDisplayOptions = ({
           component={MultiSelect}
           initialValue={initialAdditionalProperties}
           maxItems={maxVariableOptions}
-          properties={[
-            {
-              fieldName: 'variable',
-            },
-            {
-              fieldName: 'label',
-              control: 'input',
-              label: 'Label',
-              placeholder: 'Label',
-            },
-          ]}
+          properties={DISPLAY_PROPERTIES}
+          validation={DISPLAY_PROPERTIES_VALIDATION}
           options={(
             fieldName: string,
             rowValues: unknown,

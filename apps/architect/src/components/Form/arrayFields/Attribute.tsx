@@ -63,6 +63,12 @@ export type AssignAttributesContextValue = {
    * contradiction.
    */
   committedValue: AttributeValue[];
+  /**
+   * Reveal every row's errors without waiting for an edit, set once the array
+   * field is showing `completeAttributes`' refusal — otherwise the save is
+   * blocked by a message that never says which row is incomplete.
+   */
+  forceShowErrors: boolean;
 };
 
 export const AssignAttributesContext =
@@ -98,6 +104,7 @@ const Attribute = ({
     draftValidatedVariables,
     currentStageIndex,
     committedValue,
+    forceShowErrors,
   } = useAssignAttributesContext();
   const rowIndex = committedIndex ?? index;
   const rowFieldName = `${arrayName}[${rowIndex}]`;
@@ -171,6 +178,7 @@ const Attribute = ({
             })
           }
           validation={{ required: true, crossClassPick: crossClassValidate }}
+          forceShowErrors={forceShowErrors}
           options={variableOptions}
           onCreateOption={handleCreateOption}
           entity={entity}
@@ -190,6 +198,7 @@ const Attribute = ({
               })
             }
             validation={{ required: true }}
+            forceShowErrors={forceShowErrors}
             options={BOOLEAN_OPTIONS}
             noReset
             disabled={disabled || readOnly}

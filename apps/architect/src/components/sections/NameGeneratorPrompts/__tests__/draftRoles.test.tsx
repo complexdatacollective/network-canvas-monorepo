@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Stage } from '@codaco/protocol-validation';
+import type * as AssignAttributesModule from '~/components/Form/arrayFields/AssignAttributes';
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
@@ -15,13 +16,18 @@ const captured = vi.hoisted(() => ({
 }));
 
 // The row editor itself is exercised in Form/arrayFields/__tests__; this test
-// only cares which pool the prompt dialog hands it.
-vi.mock('~/components/Form/arrayFields/AssignAttributes', () => ({
-  default: (props: Record<string, unknown>) => {
-    captured.props = props;
-    return <div data-testid="assign-attributes" />;
-  },
-}));
+// only cares which pool the prompt dialog hands it. Only the component is
+// replaced — the caller also imports this module's array-level validation.
+vi.mock(
+  '~/components/Form/arrayFields/AssignAttributes',
+  async (importOriginal) => ({
+    ...(await importOriginal<typeof AssignAttributesModule>()),
+    default: (props: Record<string, unknown>) => {
+      captured.props = props;
+      return <div data-testid="assign-attributes" />;
+    },
+  }),
+);
 
 const getCapturedProps = (): Record<string, unknown> | undefined =>
   captured.props;

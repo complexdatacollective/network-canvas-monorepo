@@ -5,7 +5,9 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
+  completeRows,
   type ItemValue,
+  type PropertyField,
 } from '~/components/Form/arrayFields/MultiSelect';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
@@ -18,6 +20,31 @@ import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
 import withDisabledAssetRequired from '../../enhancers/withDisabledAssetRequired';
 import getSortOrderOptionGetter from './getSortOrderOptionGetter';
 import getVariableOptionsGetter from './getVariableOptionsGetter';
+
+const SORT_ORDER_PROPERTIES: PropertyField[] = [
+  { fieldName: 'property' },
+  { fieldName: 'direction' },
+];
+
+const SORTABLE_PROPERTIES: PropertyField[] = [
+  { fieldName: 'variable' },
+  {
+    fieldName: 'label',
+    control: 'input',
+    label: 'Label',
+    placeholder: 'Label',
+  },
+];
+
+// A row's own cells cannot block the save (see RowField), and a half-filled
+// row survives `prune` to fail the roster stage's schema — which requires both
+// members of a sort rule and of a sortable property.
+const SORT_ORDER_VALIDATION = {
+  completeRows: completeRows(SORT_ORDER_PROPERTIES),
+};
+const SORTABLE_PROPERTIES_VALIDATION = {
+  completeRows: completeRows(SORTABLE_PROPERTIES),
+};
 
 type SortOptionsProps = StageEditorSectionProps & {
   dataSource?: string;
@@ -83,7 +110,8 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
           component={MultiSelect}
           initialValue={initialSortOrder}
           maxItems={1}
-          properties={[{ fieldName: 'property' }, { fieldName: 'direction' }]}
+          properties={SORT_ORDER_PROPERTIES}
+          validation={SORT_ORDER_VALIDATION}
           options={sortOrderOptionGetter}
         />
       </Row>
@@ -101,15 +129,8 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
           component={MultiSelect}
           initialValue={initialSortableProperties}
           maxItems={maxVariableOptions}
-          properties={[
-            { fieldName: 'variable' },
-            {
-              fieldName: 'label',
-              control: 'input',
-              label: 'Label',
-              placeholder: 'Label',
-            },
-          ]}
+          properties={SORTABLE_PROPERTIES}
+          validation={SORTABLE_PROPERTIES_VALIDATION}
           options={(
             fieldName: string,
             rowValues: unknown,

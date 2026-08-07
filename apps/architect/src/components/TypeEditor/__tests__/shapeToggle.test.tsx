@@ -11,6 +11,7 @@ import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider
 
 import type { ShapeMappingDraft } from '../shapeMappingTypes';
 import ShapeVariableMapping from '../ShapeVariableMapping';
+import validateEntityType from '../validateEntityType';
 
 type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
@@ -62,13 +63,12 @@ const renderWithShape = (shape: {
     </Provider>,
   );
 
-  const getShape = () =>
-    (storeApi?.getState().getFormValues().shape ?? {}) as Record<
-      string,
-      unknown
-    >;
+  const getValues = (): Record<string, unknown> =>
+    storeApi?.getState().getFormValues() ?? {};
 
-  return { getShape };
+  const getShape = () => (getValues().shape ?? {}) as Record<string, unknown>;
+
+  return { getShape, getValues };
 };
 
 describe('ShapeVariableMapping toggle', () => {
@@ -115,6 +115,41 @@ describe('ShapeVariableMapping toggle', () => {
     fireEvent.click(toggle);
     fireEvent.click(toggle);
 
-    expect(getShape().dynamic).toBeUndefined();
+    // Empty, not the mapping the author just deleted — and not absent either:
+    // see the completeness test below.
+    expect(getShape().dynamic).toEqual({});
+  });
+
+  // Off-then-on and a first-time enable are the same state on screen ("mapping
+  // on, no variable chosen"), so they have to reach `validateEntityType` the
+  // same way. Leaving the disable's cleared value parked dormant made the
+  // re-enabled toggle report no `shape.dynamic` at all, which the validator
+  // reads as the perfectly valid "this type has no mapping" — so the dialog
+  // saved a type whose toggle still read ON, while the identical fresh enable
+  // was refused.
+  const INCOMPLETE_MAPPING_ERRORS = {
+    'shape.dynamic':
+      'Select a variable to map to a shape, or turn off shape mapping.',
+  };
+
+  it('refuses to save a mapping enabled for the first time and left empty', () => {
+    const { getValues } = renderWithShape({ default: 'circle' });
+
+    fireEvent.click(screen.getByLabelText('Map variable to shape'));
+
+    expect(validateEntityType(getValues())).toEqual(INCOMPLETE_MAPPING_ERRORS);
+  });
+
+  it('refuses to save a re-enabled mapping left empty, exactly as a fresh one', () => {
+    const { getValues } = renderWithShape({
+      default: 'diamond',
+      dynamic: MAPPING,
+    });
+
+    const toggle = screen.getByLabelText('Map variable to shape');
+    fireEvent.click(toggle);
+    fireEvent.click(toggle);
+
+    expect(validateEntityType(getValues())).toEqual(INCOMPLETE_MAPPING_ERRORS);
   });
 });

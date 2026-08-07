@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -8,11 +8,13 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import { HiddenFieldValue } from '~/components/sections/Form/withFieldsHandlers';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import {
   useSetStageValue,
   useStageFormValue,
   useSubject,
 } from '~/components/StageEditor/stageFormHooks';
+import { useStageDraftHistory } from '~/components/StageEditor/useStageDraftHistory';
 import useLatchedExpansion from '~/hooks/useLatchedExpansion';
 
 import NodePanel, { type NodePanelValue } from './NodePanel';
@@ -136,6 +138,61 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
   const { startExpanded, onExplicitClose } = useLatchedExpansion(
     panels !== undefined,
   );
+
+  // Adding a panel is invisible to the undo timeline without this. The add
+  // writes per-index leaves (`writePanelAt`) that are not registered yet, and
+  // `setFieldValue` parks an unregistered name in dormant storage WITHOUT
+  // touching the store's `fields` map — so the bridge's subscriber returns on
+  // its `next.fields === previous.fields` guard and never even asks whether
+  // the change was structural. The registrations that follow a commit later
+  // are then discarded as mount churn (`diffFields` ignores fields that appear
+  // or disappear, which is what keeps section expansion out of the timeline).
+  // The researcher gets an add that Undo cannot back out, and a first edit to
+  // the new panel whose undo step deletes the whole panel instead of the edit.
+  //
+  // Snapshotting from inside `handlePanelsChange` cannot fix it: at that
+  // instant the new values are still dormant, `getFormValues()` still reports
+  // the pre-add stage, and the `isEqual` dedup makes the snapshot a no-op.
+  // This effect is the first moment the panel exists in the form's output —
+  // a component's own effects run after its children's, so the row and the id
+  // registrations below have registered by the time it runs.
+  const { flushPendingEdit } = useStageDraftHistory();
+  // Keyed on the ids rather than the panel objects so an ordinary edit to a
+  // panel's title does not re-run the effect at all.
+  const panelIdKey = (panels ?? EMPTY_PANELS)
+    .map((panel) => panel.id)
+    .join('|');
+  const previousPanelIdKeyRef = useRef(panelIdKey);
+  const restoreVersion = useStageRestoreVersion();
+  const previousRestoreVersionRef = useRef(restoreVersion);
+  useEffect(() => {
+    const previousPanelIdKey = previousPanelIdKeyRef.current;
+    previousPanelIdKeyRef.current = panelIdKey;
+    const previousRestoreVersion = previousRestoreVersionRef.current;
+    previousRestoreVersionRef.current = restoreVersion;
+
+    // An undo/redo re-adds a panel by writing exactly the same leaves, so it
+    // reaches this effect looking exactly like the gesture above. Snapshotting
+    // on top of a restore branches `future` and silently destroys the redo.
+    // Neither `ui.restoring` nor the bridge's ref can gate it: both are only
+    // true *inside* `runRestore`, which has finished by the time an effect
+    // observing its writes runs (see `useStageRestoreVersion`).
+    if (previousRestoreVersion !== restoreVersion) return;
+
+    // Only an id that was not there before, which is only ever an add. The
+    // mount is the obvious exclusion — a stage opened with panels already
+    // configured must not push an entry before the researcher has touched
+    // anything — but removals, reorders and the toggle-off are excluded too:
+    // they write leaves that ARE registered, so they already reach the
+    // timeline on the ordinary leaf debounce. Flushing them here instead would
+    // snapshot the removed row mid-exit-animation, while its cleared slot is
+    // still registered and still in `getFormValues()`.
+    const previousIds = previousPanelIdKey ? previousPanelIdKey.split('|') : [];
+    const currentIds = panelIdKey ? panelIdKey.split('|') : [];
+    if (currentIds.every((id) => previousIds.includes(id))) return;
+
+    flushPendingEdit();
+  }, [flushPendingEdit, panelIdKey, restoreVersion]);
 
   const writePanelAt = useCallback(
     (index: number, panel: NodePanelValue | undefined) => {

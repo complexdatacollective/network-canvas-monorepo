@@ -8,6 +8,7 @@ import {
   isOptionLabelEmpty,
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
+import { validations } from '~/utils/validations';
 
 import Option, { OptionsContext, type OptionValue } from './Option';
 import { arrayScopedValues } from './RowField';
@@ -79,6 +80,31 @@ export const uniqueOptionLabels = (value: unknown) =>
     ? 'Every option needs a unique label.'
     : undefined;
 
+// Runs the rows' own rule so the array and its rows can never disagree about
+// which characters — or which wording — apply.
+const validateOptionValue = validations.allowedVariableName('option value');
+
+/**
+ * The array counterpart of the rows' `allowedVariableName`. An option value
+ * has to be an NMTOKEN because it becomes an XML export key and a CSV column
+ * header (`${attributeName}_${option.value}`), and the row's own message is
+ * display-only (see RowField): collapsing the row hides it entirely while
+ * keeping the value, so without this the protocol ships with a value the
+ * researcher was told was invalid.
+ *
+ * Values are stringified because `parseOptionValue` stores numeric-looking
+ * input as a number. Empty values are `completeOptions`' business, and this
+ * rule is bundled last because only the first failing rule is reported per
+ * field (see `toZodValidation`) — a blank row should say what it is missing
+ * before it is told the missing value is malformed.
+ */
+export const allowedOptionValues = (value: unknown) =>
+  readOptions(value)
+    .map((option) => option.value)
+    .filter((optionValue) => !isOptionValueEmpty(optionValue))
+    .map((optionValue) => validateOptionValue(String(optionValue)))
+    .find((message) => message !== undefined);
+
 /**
  * Every array-level rule an options editor needs, as one object for the
  * owning `ArchitectArrayField`'s `validation` prop. Passed whole rather than
@@ -89,6 +115,7 @@ export const optionsValidation = {
   completeOptions,
   uniqueOptionValues,
   uniqueOptionLabels,
+  allowedOptionValues,
 };
 
 const EMPTY_OPTIONS: OptionValue[] = [];
