@@ -1,7 +1,10 @@
 import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
-import { analyseStageEffects } from './generateNetwork/analyse/stageEffects';
+import {
+  analyseStageEffects,
+  type StageEffects,
+} from './generateNetwork/analyse/stageEffects';
 import {
   type FeasibilityConfig,
   type GenerationConfig,
@@ -24,8 +27,14 @@ import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigr
 import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types';
 import { materialiseSession } from './generateNetwork/materialise/materialiseSession';
 import { countCeiling } from './generateNetwork/plan/distributions';
-import { planNetwork } from './generateNetwork/plan/networkPlan';
-import { resolveNodeCount } from './generateNetwork/plan/resolveSynthetic';
+import {
+  apportionCount,
+  planNetwork,
+} from './generateNetwork/plan/networkPlan';
+import {
+  resolveEdgeTopology,
+  resolveNodeCount,
+} from './generateNetwork/plan/resolveSynthetic';
 import { ValueGenerator } from './ValueGenerator';
 
 export type GenerateNetworkParams = {
@@ -113,13 +122,51 @@ function familyPedigreeNodeCeiling(
   return ceiling;
 }
 
+/** Unordered pairs among `count` entities. */
+const pairsAmong = (count: number): number =>
+  count < 2 ? 0 : (count * (count - 1)) / 2;
+
+/**
+ * The largest value a topology distribution can draw, for every seed.
+ *
+ * A declared topology is a draw, and a refusal must not depend on what a draw
+ * happens to produce — the same protocol has to fail on every seed or none.
+ * So this is the distribution's ceiling rather than its centre: a constant is
+ * exact, a bounded family gives its bound, and an unbounded one gives the
+ * domain the sampler clamps it into. Six sigma is deliberately NOT used here,
+ * unlike the count ceiling: nothing clamps a topology draw to it, so a rare
+ * tail would exceed the bound feasibility had counted, and an under-count is
+ * how a protocol passes preflight and then exhausts its values mid-plan.
+ * Density is clamped into 0–1 by the sampler; an unbounded mean degree is not
+ * clamped at all, so it stands as infinite and the pair count bounds it.
+ */
+function topologyMax(topology: ReturnType<typeof resolveEdgeTopology>): number {
+  const { distribution } = topology;
+  const unbounded =
+    topology.metric === 'density' ? 1 : Number.POSITIVE_INFINITY;
+  const raw =
+    distribution.distribution === 'constant'
+      ? distribution.value
+      : (distribution.max ?? unbounded);
+  return topology.metric === 'density'
+    ? Math.min(1, Math.max(0, raw))
+    : Math.max(0, raw);
+}
+
 /**
  * Worst-case bounds feasibility counts against, derived from the codebook's
- * declared populations. Edge probabilities pin at 1: a declared density may
- * reach every eligible pair, and refusals must stay conservative.
+ * declared populations and topologies.
+ *
+ * Both halves are ceilings the planner provably cannot exceed rather than
+ * guesses: a node type's population is apportioned across its creating stages
+ * exactly as the planner apportions it, and an edge type is bounded by the
+ * most its declared topology can ask for. Counting a stage at its type's whole
+ * ceiling, or a pair domain as if every pair could be linked, refuses
+ * protocols whose plan would have fitted comfortably.
  */
 function deriveFeasibilityConfig(
   codebook: StructuralCodebook,
+  effects: StageEffects,
   creatableNodeTypes: ReadonlySet<string>,
   today: string,
   pedigreeCeiling: number,
@@ -135,9 +182,100 @@ function deriveFeasibilityConfig(
     nodeCountByType[type] = { min: 0, max: ceiling };
     nodeCap = Math.max(nodeCap, ceiling);
   }
+
+  // --- Per-stage node shares ------------------------------------------------
+  //
+  // The planner draws one total per type and apportions it across the creating
+  // stages with `apportionCount`, so that same function decides the shares
+  // counted here. A pedigree's people are outside that apportionment — the
+  // specialist generator builds them and `familyPedigreeNodeCount` bounds them
+  // — so its creations are left out, exactly as the planner leaves them out.
+  const nodeCapByStage: Record<string, Record<string, number>> = {};
+  const creationsByType = new Map<
+    string,
+    { stageId: string; capacity: { min: number; max: number | null } }[]
+  >();
+  for (const summary of effects.stages) {
+    for (const creation of summary.nodeCreations) {
+      if (creation.source === 'pedigree') continue;
+      const list = creationsByType.get(creation.nodeType) ?? [];
+      list.push({
+        stageId: summary.stage.id,
+        capacity: creation.capacity,
+      });
+      creationsByType.set(creation.nodeType, list);
+    }
+  }
+  // The most of a type the planner can build. Usually its declared ceiling —
+  // but `apportionCount` honours every stage's declared minimum before it
+  // spreads the remainder, so a protocol whose generators demand more people
+  // between them than the codebook declares gets the people, and counting the
+  // declared ceiling would be counting fewer entities than the run creates.
+  // Under-counting is the direction that matters: it lets a protocol past
+  // preflight and then exhausts its values mid-plan.
+  const effectivePopulation = new Map<string, number>();
+  for (const [type, creations] of creationsByType) {
+    const declaredMinimums = creations.reduce(
+      (sum, creation) => sum + creation.capacity.min,
+      0,
+    );
+    effectivePopulation.set(
+      type,
+      Math.max(nodeCountByType[type]?.max ?? nodeCap, declaredMinimums),
+    );
+  }
+
+  for (const [type, creations] of creationsByType) {
+    const ceiling = nodeCountByType[type]?.max ?? nodeCap;
+    const shares = apportionCount(
+      ceiling,
+      creations.map((creation) => creation.capacity),
+    );
+    creations.forEach((creation, index) => {
+      const forStage = nodeCapByStage[creation.stageId] ?? {};
+      // A stage creating one type through two interactions gets both shares.
+      forStage[type] = (forStage[type] ?? 0) + (shares[index] ?? 0);
+      nodeCapByStage[creation.stageId] = forStage;
+    });
+  }
+
+  // --- Per-type edge ceilings -----------------------------------------------
+  const edgeCountByType: Record<string, number> = {};
+  for (const [type, definition] of Object.entries(codebook.edge ?? {})) {
+    const topologyCreations = (
+      effects.edgeCreationsByType.get(type) ?? []
+    ).filter((creation) => creation.structured === null);
+    if (topologyCreations.length === 0) continue;
+
+    const topology = resolveEdgeTopology(definition);
+    const most = topologyMax(topology);
+    // Summed over the distinct subject types rather than maximised, because a
+    // pair is two nodes of one type: stages over different types reach
+    // disjoint sets of pairs and their edges add up.
+    let ceiling = 0;
+    for (const subjectType of new Set(
+      topologyCreations.map((creation) => creation.subjectNodeType),
+    )) {
+      const count =
+        effectivePopulation.get(subjectType) ??
+        nodeCountByType[subjectType]?.max ??
+        nodeCap;
+      const pairs = pairsAmong(count);
+      ceiling += Math.min(
+        pairs,
+        Math.ceil(
+          topology.metric === 'density' ? most * pairs : (most * count) / 2,
+        ),
+      );
+    }
+    edgeCountByType[type] = ceiling;
+  }
+
   return {
     nodeCount: { min: 0, max: nodeCap },
     nodeCountByType,
+    nodeCapByStage,
+    edgeCountByType,
     rosterDrawRatio: 0.7,
     sociogramEdgeProbability: { min: 0, max: 1 },
     censusEdgeProbability: { min: 0, max: 1 },
@@ -226,6 +364,7 @@ export function generateNetwork(
     feasibilityStages,
     deriveFeasibilityConfig(
       renderedCodebook,
+      effects,
       effects.creatableNodeTypes,
       resolvedConfig.today,
       resolvedFamilyPedigree.maxNodes,

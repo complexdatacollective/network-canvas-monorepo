@@ -3303,3 +3303,68 @@ describe('lost guarantees the engine should restore', () => {
     }
   });
 });
+
+describe('feasibility counting a plan-first run', () => {
+  const personWithUniqueName = (count: number) =>
+    ({
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          synthetic: { count: { distribution: 'constant', value: count } },
+          variables: {
+            code: {
+              name: 'Code',
+              type: 'boolean',
+              validation: { unique: true },
+            },
+          },
+        },
+      },
+      edge: {},
+      ego: { variables: {} },
+    }) as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+  const generator = (id: string) =>
+    ({
+      id,
+      type: 'NameGeneratorQuickAdd',
+      label: 'Names',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'code',
+      prompts: [{ id: `${id}-p1`, text: 'Who?' }],
+    }) as unknown as Stage;
+
+  it('apportions a population across its generators rather than summing', () => {
+    // Two generators of a two-person type build two people between them, not
+    // two each — so a boolean's two distinct values cover them. Counting each
+    // stage at the type's whole ceiling refused this for needing four.
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook: personWithUniqueName(2),
+        stages: [generator('ng-one'), generator('ng-two')],
+      }),
+    ).not.toThrow();
+  });
+
+  it('still counts a population its generators demand above the declaration', () => {
+    // Stage minimums are honoured before the drawn total is spread, so these
+    // two build four people whatever the codebook declares — and a boolean
+    // cannot tell four apart. Counting the declaration alone would have let
+    // this through and run out of values mid-plan.
+    const demanding = (id: string) =>
+      ({
+        ...generator(id),
+        behaviours: { minNodes: 2, maxNodes: 2 },
+      }) as unknown as Stage;
+
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook: personWithUniqueName(2),
+        stages: [demanding('ng-one'), demanding('ng-two')],
+      }),
+    ).toThrow(SyntheticDataConstraintError);
+  });
+});

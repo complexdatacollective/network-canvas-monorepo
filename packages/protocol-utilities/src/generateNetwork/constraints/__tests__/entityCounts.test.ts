@@ -2452,16 +2452,31 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
   it('still refuses when the people the composer can pair exhaust it', () => {
     // Four people pair six ways and two booleans cannot tell six edges apart,
     // so this has to refuse up front rather than run out partway through the
-    // composer's pass.
+    // composer's pass. The density is declared at 1 because the count is now
+    // the declared topology's ceiling rather than the pair total: at the
+    // default 0.3–0.5 the plan reaches three edges, which two booleans cover.
     const generate = (): unknown =>
       generateNetwork({
         seed: 1,
-        codebook: withNodeCount(codebook, 4, 'person'),
+        codebook: withEdgeDensity(withNodeCount(codebook, 4, 'person'), 1),
         stages: [networkComposer()],
       });
 
     expect(generate).toThrow(SyntheticDataConstraintError);
     expect(generate).toThrow(/up to 6 edges of this type can be generated/);
+  });
+
+  it('generates where the declared density leaves the value space enough', () => {
+    // Three people at the default topology. The plan can reach two of their
+    // three pairs, which the type's two distinct values cover — so the refusal
+    // above is about this protocol's density, not its population alone.
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook: withNodeCount(codebook, 3, 'person'),
+      stages: [networkComposer()],
+    });
+
+    expect(network.nodes).toHaveLength(3);
   });
 
   it('still refuses when a later census pairs everyone the composer added', () => {
@@ -2478,13 +2493,16 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
       ],
     } as unknown as Stage;
 
-    expect(() =>
-      generateNetwork({
-        seed: 1,
-        codebook: withNodeCount(codebook, 3, 'person'),
-        stages: [networkComposer(), census],
-      }),
-    ).toThrow(/up to 3 edges of this type can be generated/);
+    expect(
+      () =>
+        generateNetwork({
+          seed: 1,
+          codebook: withEdgeDensity(withNodeCount(codebook, 4, 'person'), 1),
+          stages: [networkComposer(), census],
+        }),
+      // Six, not twelve: one ceiling for the type over the people both stages
+      // share, rather than one per stage that creates it.
+    ).toThrow(/up to 6 edges of this type can be generated/);
   });
 });
 
@@ -2856,7 +2874,9 @@ describe('generateNetwork with stage order deciding what a stage can reach', () 
       });
 
     expect(generate).toThrow(SyntheticDataConstraintError);
-    expect(generate).toThrow(/up to 45 edges of this type can be generated/);
+    // Twenty-three, not the forty-five pairs: the plan draws a density of at
+    // most 0.5 over them and selects that many.
+    expect(generate).toThrow(/up to 23 edges of this type can be generated/);
   });
 
   it('still refuses when the census own people exhaust the value space', () => {
@@ -3013,25 +3033,25 @@ describe('generateNetwork with a census configured to create no edges', () => {
     expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(0);
   });
 
-  it('still refuses a declared zero density, whose worst case stays every pair', () => {
+  it('counts a declared topology at its ceiling rather than at every pair', () => {
     // A declared density is a draw, and a refusal must not depend on what a
     // draw happens to produce: the same protocol has to fail on every seed or
-    // none. So feasibility pins the ceiling at one edge per pair whatever the
-    // codebook declares, and three people are counted at their C(3, 2) = 3
-    // pairs against two distinct booleans — even where the declared density is
-    // the zero that would in fact create nothing.
-    const refuseAt = (density: number) => (): unknown =>
+    // none. That argues for the distribution's CEILING, though, not for every
+    // pair — the planner selects exactly the target it draws, so a density of
+    // zero creates nothing on any seed and a density of one creates every
+    // pair on all of them.
+    const generateAt = (density: number) => (): unknown =>
       generateNetwork({
         seed: 1,
         codebook: withEdgeDensity(codebook, density),
         stages,
       });
 
-    expect(refuseAt(0)).toThrow(SyntheticDataConstraintError);
-    expect(refuseAt(0)).toThrow(/up to 3 edges of this type can be generated/);
-    // And a density that does create edges refuses identically, which is the
-    // whole of the claim: the declared topology is not consulted at all.
-    expect(refuseAt(0.001)).toThrow(
+    // Three people, three pairs, two distinct booleans.
+    expect(generateAt(0)).not.toThrow();
+    expect(generateAt(0.001)).not.toThrow();
+    expect(generateAt(1)).toThrow(SyntheticDataConstraintError);
+    expect(generateAt(1)).toThrow(
       /up to 3 edges of this type can be generated/,
     );
   });

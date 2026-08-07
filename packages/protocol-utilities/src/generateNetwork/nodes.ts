@@ -819,14 +819,23 @@ export function getNodeCountBounds(
     (subjectType === undefined
       ? undefined
       : config.nodeCountByType?.[subjectType]) ?? config.nodeCount;
+  // The share this stage was apportioned, where the run worked one out. A
+  // type's ceiling bounds its whole population rather than each generator of
+  // it, so counting every stage at the ceiling would multiply the population
+  // by the number of stages that build it.
+  const apportioned =
+    subjectType === undefined
+      ? undefined
+      : config.nodeCapByStage?.[stage.id]?.[subjectType];
   const minNodes =
     behaviours && 'minNodes' in behaviours && behaviours.minNodes !== undefined
       ? behaviours.minNodes
       : declared.min;
   const maxNodes =
-    behaviours && 'maxNodes' in behaviours && behaviours.maxNodes !== undefined
+    apportioned ??
+    (behaviours && 'maxNodes' in behaviours && behaviours.maxNodes !== undefined
       ? behaviours.maxNodes
-      : declared.max;
+      : declared.max);
   // A configured minNodes above the max is honoured by raising the ceiling to
   // meet it. `maxNodes` is also the stage's capacity, so leaving the range
   // inverted would clamp the stage below the minimum the protocol asks for.

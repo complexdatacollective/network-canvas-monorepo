@@ -1511,6 +1511,23 @@ export function worstCaseEntityCounts(
     tallyFor(node, nodeType).written = writers;
   }
 
+  // The pair counting above answers "how many pairs could this type reach",
+  // which was the right question when every pair was an independent coin. The
+  // planner instead draws one target from the declared topology and selects
+  // exactly that many, so the pairs are the domain and the target is the
+  // count. Held down to it here rather than in the loops, because the ceiling
+  // is a property of the edge type across every stage that creates it — and
+  // only downwards, so a run that derives no ceiling counts as it always did.
+  //
+  // Pedigree edges are structural rather than drawn from a topology, so they
+  // are tallied separately and are not touched by this.
+  for (const [edgeType, ceiling] of Object.entries(
+    config.edgeCountByType ?? {},
+  )) {
+    const counted = base.get(edgeType);
+    if (counted !== undefined && counted > ceiling) base.set(edgeType, ceiling);
+  }
+
   return {
     node,
     edge: { base, pedigree, named: namedEdgeAttributes(stages) },

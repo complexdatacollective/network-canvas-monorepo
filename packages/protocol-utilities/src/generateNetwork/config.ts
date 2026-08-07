@@ -82,6 +82,28 @@ export type FeasibilityTuning = {
    * its own declaration.
    */
   nodeCountByType?: Record<string, Range>;
+  /**
+   * Per stage, per node type, the most nodes that stage can contribute.
+   *
+   * A type's ceiling is a ceiling on its whole population, not on each stage
+   * that builds it: the planner draws one total and apportions it across the
+   * creating stages. Counting every stage at the type ceiling and summing
+   * therefore multiplies the population by the number of generators, and a
+   * `unique` variable with exactly enough values for the declared population
+   * is refused before a plan that would have satisfied it ever runs.
+   */
+  nodeCapByStage?: Record<string, Record<string, number>>;
+  /**
+   * Per edge type, the most edges the planner can select for it.
+   *
+   * The old counter reads a per-pair probability and so counts every eligible
+   * pair. The planner does not work that way: it draws one target from the
+   * declared topology and selects exactly that many, so a twenty-node graph at
+   * density 0.1 holds about nineteen edges rather than all one hundred and
+   * ninety. Counting the pairs instead refuses `unique` edge variables whose
+   * value space covers the actual plan comfortably.
+   */
+  edgeCountByType?: Record<string, number>;
   rosterDrawRatio: number;
   sociogramEdgeProbability: Range;
   censusEdgeProbability: Range;
