@@ -310,7 +310,7 @@ export default function SyntheticSection({
               initialValue={String(initial[syntheticField('generator')] ?? '')}
               component={NativeSelectField}
               options={[
-                { label: 'Neutral words (default)', value: '' },
+                { label: 'Neutral words (default)', value: 'neutralWords' },
                 ...SYNTHETIC_TEXT_GENERATORS.map((generator) => ({
                   label: GENERATOR_LABELS[generator] ?? generator,
                   value: generator,

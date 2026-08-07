@@ -2642,3 +2642,47 @@ describe('validation rules on the generated ego', () => {
     expect(typeof attrs[nickname.id]).toBe('string');
   });
 });
+
+describe('redeclaring a variable the builder already seeded', () => {
+  // Every node type is seeded with a "name" text variable, so giving that name
+  // its own text generator IS a redeclaration — the deduplication branch is
+  // the only path such a call can take, and dropping the descriptor there
+  // silently ignores the one option the call exists to pass.
+  const variablesOf = (
+    definition: unknown,
+  ): Record<string, { synthetic?: unknown }> =>
+    (definition as { variables: Record<string, { synthetic?: unknown }> })
+      .variables;
+
+  it('keeps a synthetic descriptor passed to the existing entry', () => {
+    const si = new SyntheticInterview();
+    const person = si.addNodeType({ name: 'Person' });
+    const name = si.addVariableToNodeType(person.id, {
+      name: 'name',
+      type: 'text',
+      synthetic: { generator: 'occupation' },
+    });
+
+    const { codebook } = si.getProtocol();
+    expect(variablesOf(codebook.node[person.id])[name.id]?.synthetic).toEqual({
+      generator: 'occupation',
+    });
+  });
+
+  it('keeps one passed to an existing edge variable', () => {
+    const si = new SyntheticInterview();
+    const friend = si.addEdgeType({ name: 'Friend' });
+    si.addVariableToEdgeType(friend.id, { name: 'strength', type: 'number' });
+    const again = si.addVariableToEdgeType(friend.id, {
+      name: 'strength',
+      type: 'number',
+      synthetic: { distribution: 'constant', value: 3 },
+    });
+
+    const { codebook } = si.getProtocol();
+    expect(variablesOf(codebook.edge[friend.id])[again.id]?.synthetic).toEqual({
+      distribution: 'constant',
+      value: 3,
+    });
+  });
+});

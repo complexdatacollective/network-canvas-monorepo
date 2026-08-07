@@ -132,7 +132,7 @@ const variablesOf = (
 ): VariablesRecord => (definition?.variables ?? {}) as VariablesRecord;
 
 /** Per-variable missing probabilities, resolved once per run. */
-function missingProbabilities(
+export function missingProbabilities(
   codebook: StructuralCodebook,
 ): Map<string, number> {
   const probabilities = new Map<string, number>();
@@ -159,7 +159,7 @@ function missingProbabilities(
  * The variable groups a missingness decision is taken over: the `sameAs`
  * equality classes, resolved exactly as the draw itself resolves them.
  */
-const equalityGroups = (constraints: EntityConstraints): string[][] => [
+export const equalityGroups = (constraints: EntityConstraints): string[][] => [
   ...resolveGenerationOrder(constraints).membersOf.values(),
 ];
 

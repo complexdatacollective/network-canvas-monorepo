@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { Variable } from '@codaco/protocol-validation';
 
 import {
+  assembleSynthetic,
+  initialSyntheticValues,
   type SyntheticDraftContext,
   syntheticField,
   validateAssembledVariable,
@@ -214,5 +216,33 @@ describe('validateAssembledVariable()', () => {
     expect(
       validateAssembledVariable(context, { missingProbability: 0.1 }),
     ).toBeUndefined();
+  });
+});
+
+describe('the neutral-words text generator', () => {
+  // Resolution infers `personName` for a name-like variable, so storing the
+  // neutral choice as "nothing declared" makes it unsavable: reopening the
+  // editor shows the inferred generator back again.
+  const nameLike = {
+    name: 'firstName',
+    type: 'text',
+  } as unknown as Variable;
+
+  it('survives a round trip through the draft', () => {
+    const ctx = contextFor(nameLike);
+    const values = initialSyntheticValues(ctx);
+
+    expect(values[syntheticField('generator')]).toBe('personName');
+
+    const assembled = assembleSynthetic(ctx, {
+      ...values,
+      [syntheticField('generator')]: 'neutralWords',
+    });
+    expect(assembled).toMatchObject({ generator: 'neutralWords' });
+
+    const reopened = initialSyntheticValues(
+      contextFor({ ...nameLike, synthetic: assembled } as unknown as Variable),
+    );
+    expect(reopened[syntheticField('generator')]).toBe('neutralWords');
   });
 });

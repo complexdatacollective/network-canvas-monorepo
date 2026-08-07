@@ -220,8 +220,7 @@ export function initialSyntheticValues(
       break;
     }
     case 'text':
-      values[syntheticField('generator')] =
-        resolved.generator === 'neutralWords' ? '' : resolved.generator;
+      values[syntheticField('generator')] = resolved.generator;
       break;
     case 'ordinal':
     case 'categorical': {

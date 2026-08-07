@@ -30,6 +30,7 @@ import {
   textDrawLength,
 } from './generateNetwork/constraints/valueSpace';
 import {
+  descriptorIsIntegral,
   sampleContinuous,
   sampleWeightedIndex,
   sampleWithoutReplacement,
@@ -424,20 +425,24 @@ export class ValueGenerator {
         }
 
         if (seq !== undefined) return min + (seq % (max - min + 1));
+        const drawn = sampleContinuous(
+          descriptor,
+          { min: lowerBound, max: upperBound },
+          stream,
+        );
+        // A descriptor written in fractions is asking for fractional values,
+        // and rounding one would return a number the author did not declare.
+        if (!descriptorIsIntegral(descriptor)) {
+          return clamp(
+            Number(drawn.toFixed(SCALAR_DECIMAL_PLACES)),
+            lowerBound,
+            upperBound,
+          );
+        }
         // Whole values wherever the window admits them, matching how real
         // participants answer integer controls; the distribution shapes which
         // whole value is likely.
-        return clamp(
-          Math.round(
-            sampleContinuous(
-              descriptor,
-              { min: lowerBound, max: upperBound },
-              stream,
-            ),
-          ),
-          min,
-          max,
-        );
+        return clamp(Math.round(drawn), min, max);
       }
 
       case 'scalar': {

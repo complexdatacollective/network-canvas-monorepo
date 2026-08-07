@@ -416,6 +416,13 @@ export class SyntheticInterview {
       if (opts?.encrypted) {
         existing.encrypted = true;
       }
+      // Nor a synthetic descriptor, for the same reason: giving the seeded
+      // "name" its own text generator is a redeclaration by construction, so
+      // dropping it here would silently ignore the one option such a call
+      // exists to pass.
+      if (opts?.synthetic) {
+        existing.synthetic = opts.synthetic;
+      }
       return { id: existing.id };
     }
 
@@ -456,6 +463,9 @@ export class SyntheticInterview {
         throw new Error(
           `Variable "${name}" already exists on edge type "${edgeTypeId}" with type "${existing.type}"; cannot redeclare as "${type}".`,
         );
+      }
+      if (opts?.synthetic) {
+        existing.synthetic = opts.synthetic;
       }
       return { id: existing.id };
     }

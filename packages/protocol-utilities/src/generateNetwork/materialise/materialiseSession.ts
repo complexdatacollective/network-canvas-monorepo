@@ -15,8 +15,11 @@ import {
 } from '@codaco/shared-consts';
 
 import type { StageEffectSummary, StageEffects } from '../analyse/stageEffects';
-import { drawVariableOnto } from '../attributes';
-import type { EntityScopeRef } from '../constraints/generateEntityAttributes';
+import { constraintsFor, drawVariableOnto } from '../attributes';
+import {
+  type EntityScopeRef,
+  scopeKey,
+} from '../constraints/generateEntityAttributes';
 import type { GenerationContext, NetworkDraft } from '../context';
 import { materializeFamilyPedigree } from '../familyPedigree/materializeFamilyPedigree';
 import { familyPedigreeSeed } from '../familyPedigree/seed';
@@ -24,6 +27,8 @@ import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/
 import { buildCurrentNetwork } from '../filtering';
 import { markStageInProgress } from '../inProgress';
 import {
+  equalityGroups,
+  missingProbabilities,
   type NetworkPlan,
   shuffled,
   topologyTarget,
@@ -203,8 +208,68 @@ export function materialiseSession(params: {
    * few. Either way the value is drawn now, against the same constraints and
    * the same registry the plan drew against.
    */
+  const missingByVariable = missingProbabilities(ctx.codebook);
+  const groupsByScope = new Map<string, string[][]>();
+  const groupsFor = (ref: EntityScopeRef): string[][] => {
+    const key = scopeKey(ref);
+    let groups = groupsByScope.get(key);
+    if (groups === undefined) {
+      groups = equalityGroups(constraintsFor(ctx, ref));
+      groupsByScope.set(key, groups);
+    }
+    return groups;
+  };
+
+  /**
+   * Missingness decisions already taken for an entity's equality group.
+   *
+   * A group's members can arrive here through separate writes, and the whole
+   * point of deciding per group is that they agree: one member left null
+   * beside a populated sibling is a session the `sameAs` validator rejects.
+   * So the decision is taken once per entity and group and reused, rather
+   * than redrawn for each member that happens to be written.
+   */
+  const unplannedMissing = new Map<string, boolean>();
+
+  /**
+   * Applies a declared `missingProbability` to a value drawn during the walk.
+   *
+   * The plan applies missingness to everything it draws, but not everything is
+   * planned — a pedigree's people and a filtered-only write are both drawn
+   * here. Without this a variable declared `missingProbability: 1` comes back
+   * populated on exactly those entities, which is the declaration inverted.
+   */
+  const applyUnplannedMissingness = (
+    ref: EntityScopeRef,
+    uid: string,
+    attributes: Record<string, VariableValue>,
+    variableId: string,
+  ): void => {
+    const members = groupsFor(ref).find((group) => group.includes(variableId));
+    if (members === undefined) return;
+    const probability = Math.max(
+      ...members.map((id) => missingByVariable.get(id) ?? 0),
+    );
+    if (probability <= 0) return;
+
+    const groupKey = members.toSorted().join(' ');
+    const decisionKey = `${uid} ${groupKey}`;
+    let decided = unplannedMissing.get(decisionKey);
+    if (decided === undefined) {
+      decided = source
+        .stream('missing', 'unplanned', groupKey, uid)
+        .bool(probability);
+      unplannedMissing.set(decisionKey, decided);
+    }
+    if (!decided) return;
+    for (const id of members) {
+      if (id in attributes) attributes[id] = null;
+    }
+  };
+
   const landWrite = (
     ref: EntityScopeRef,
+    uid: string,
     attributes: Record<string, VariableValue>,
     planned: Planned | undefined,
     variableId: string,
@@ -217,6 +282,7 @@ export function materialiseSession(params: {
       return;
     }
     drawVariableOnto(ctx, ref, attributes, variableId, unplannedDraw++);
+    applyUnplannedMissingness(ref, uid, attributes, variableId);
   };
 
   const totalStages = stages.length;
@@ -368,28 +434,49 @@ export function materialiseSession(params: {
           .filter((edge) => edge.type === creation.edgeType)
           .map((edge) => pairKey(edge.from, edge.to)),
       );
-      const candidates: { a: string; b: string }[] = [];
+      // The whole domain, linked pairs included, because the target is a
+      // property of the domain rather than of whatever is left of it. Two
+      // prompts on one stage — or two stages — creating the same edge type
+      // each reach this block, and measuring a fresh target against only the
+      // unlinked remainder would apply the declared density again to what the
+      // previous pass had not yet linked: two passes at 0.5 leaving 0.75.
+      const domain: { a: string; b: string; linked: boolean }[] = [];
       for (let a = 0; a < subjects.length; a++) {
         for (let b = a + 1; b < subjects.length; b++) {
           const uidA = subjects[a]![entityPrimaryKeyProperty];
           const uidB = subjects[b]![entityPrimaryKeyProperty];
           if (nodeByUid.has(uidA) && nodeByUid.has(uidB)) continue;
-          // Reuse, not replacement: a pair this type already joins was
-          // answered when that edge was made, exactly as `edgeExists` has the
-          // interview reuse it.
-          if (linked.has(pairKey(uidA, uidB))) continue;
-          candidates.push({ a: uidA, b: uidB });
+          domain.push({
+            a: uidA,
+            b: uidB,
+            linked: linked.has(pairKey(uidA, uidB)),
+          });
         }
       }
-      if (candidates.length === 0) continue;
+      if (domain.length === 0) continue;
 
-      const nodeCount = new Set(candidates.flatMap((pair) => [pair.a, pair.b]))
+      const nodeCount = new Set(domain.flatMap((pair) => [pair.a, pair.b]))
         .size;
+      // Reuse, not replacement: a pair this type already joins was answered
+      // when that edge was made, exactly as `edgeExists` has the interview
+      // reuse it, so it counts towards the target rather than being redrawn.
+      const outstanding =
+        topologyTarget(target, domain.length, nodeCount) -
+        domain.filter((pair) => pair.linked).length;
+      if (outstanding <= 0) continue;
+
       const ref = { entity: 'edge' as const, type: creation.edgeType };
       const chosen = shuffled(
-        candidates,
+        domain.filter((pair) => !pair.linked),
         source.stream('edges', 'unplanned', creation.edgeType),
-      ).slice(0, topologyTarget(target, candidates.length, nodeCount));
+      ).slice(0, outstanding);
+
+      // The census answers below read final membership, so a pair joined here
+      // has to join the set they read. Left out, the same pair would carry an
+      // edge and a negative nomination saying it has none.
+      const finalPairs =
+        finalPairsByType.get(creation.edgeType) ?? new Set<string>();
+      finalPairsByType.set(creation.edgeType, finalPairs);
 
       for (const pair of chosen) {
         const attributes: Record<string, VariableValue> = {};
@@ -402,6 +489,7 @@ export function materialiseSession(params: {
           to: pair.b,
           [entityAttributesProperty]: attributes,
         } as NcEdge);
+        finalPairs.add(pairKey(pair.a, pair.b));
         for (const variableId of creation.writesAtCreation) {
           drawVariableOnto(ctx, ref, attributes, variableId, unplannedDraw++);
         }
@@ -431,6 +519,7 @@ export function materialiseSession(params: {
         )) {
           landWrite(
             ref,
+            node[entityPrimaryKeyProperty],
             node[entityAttributesProperty],
             nodeByUid.get(node[entityPrimaryKeyProperty]),
             write.variableId,
@@ -442,6 +531,7 @@ export function materialiseSession(params: {
       for (const edge of writtenEdges(write)) {
         landWrite(
           ref,
+          edge[entityPrimaryKeyProperty],
           edge[entityAttributesProperty],
           edgeByUid.get(edge[entityPrimaryKeyProperty]),
           write.variableId,

@@ -437,6 +437,12 @@ export const DatetimeSyntheticSchema = z.union([
 export type DatetimeSynthetic = z.infer<typeof DatetimeSyntheticSchema>;
 
 export const SYNTHETIC_TEXT_GENERATORS = [
+  // The generator an undeclared variable falls back to, and authorable in its
+  // own right: without it, choosing neutral words for a variable whose name
+  // looks like a person's would have to be stored as "nothing declared", which
+  // resolution reads back as the inferred `personName` — so the choice could
+  // be made in the editor but never saved.
+  'neutralWords',
   'personName',
   'firstName',
   'lastName',

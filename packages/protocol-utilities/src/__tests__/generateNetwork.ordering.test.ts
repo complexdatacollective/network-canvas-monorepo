@@ -398,3 +398,95 @@ describe('a declared distribution', () => {
     }
   });
 });
+
+describe('a number variable declared in fractions', () => {
+  it('is not rounded away to the nearest whole value', () => {
+    // Whole values are the default because that is how participants answer an
+    // integer control, but an author who writes 0.5 has asked for something
+    // else, and rounding returns a number they did not declare.
+    const { network } = generateNetwork({
+      seed: 3,
+      codebook: codebook({
+        name: { name: 'Name', type: 'text' },
+        share: {
+          name: 'Share',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 1 },
+          synthetic: { distribution: 'constant', value: 0.5 },
+        },
+      }),
+      stages: [nameGenerator(), alterForm('form', 'share')],
+    });
+
+    expect(network.nodes).toHaveLength(3);
+    for (const node of network.nodes) {
+      expect(attributesOf(node).share).toBe(0.5);
+    }
+  });
+
+  it('still rounds one declared in whole numbers', () => {
+    const { network } = generateNetwork({
+      seed: 3,
+      codebook: codebook({
+        name: { name: 'Name', type: 'text' },
+        age: {
+          name: 'Age',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 120 },
+          synthetic: { distribution: 'normal', mean: 40, sd: 10 },
+        },
+      }),
+      stages: [nameGenerator(), alterForm('form', 'age')],
+    });
+
+    for (const node of network.nodes) {
+      expect(Number.isInteger(attributesOf(node).age)).toBe(true);
+    }
+  });
+});
+
+describe('a variable certain to be unanswered', () => {
+  it('is null even where only the walk can draw it', () => {
+    // A write reachable solely through a filter is left unplanned, because
+    // only the session as it stands can say who the filter admits. That draw
+    // happens during the walk, and without missingness applied there a
+    // declaration of 1 comes back populated — the declaration inverted.
+    const { network } = generateNetwork({
+      seed: 5,
+      codebook: codebook({
+        name: { name: 'Name', type: 'text' },
+        note: {
+          name: 'Note',
+          type: 'text',
+          synthetic: { missingProbability: 1 },
+        },
+      }),
+      stages: [
+        nameGenerator(),
+        stage({
+          id: 'filtered',
+          type: 'AlterForm',
+          label: 'About some of them',
+          subject: { entity: 'node', type: 'person' },
+          filter: {
+            join: 'AND',
+            rules: [
+              {
+                id: 'r1',
+                type: 'node',
+                options: { type: 'person', operator: 'EXISTS' },
+              },
+            ],
+          },
+          form: { fields: [{ variable: 'note', prompt: '?' }] },
+        }),
+      ],
+      respectSkipLogicAndFiltering: true,
+    });
+
+    expect(network.nodes).toHaveLength(3);
+    for (const node of network.nodes) {
+      expect(attributesOf(node).note).toBeNull();
+    }
+  });
+});

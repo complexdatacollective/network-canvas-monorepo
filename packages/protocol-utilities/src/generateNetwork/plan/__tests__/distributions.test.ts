@@ -4,6 +4,7 @@ import type { SyntheticCount } from '@codaco/protocol-validation';
 
 import {
   countCeiling,
+  descriptorIsIntegral,
   sampleContinuous,
   sampleCount,
   sampleWeightedIndex,
@@ -310,5 +311,55 @@ describe('sampleWithoutReplacement', () => {
       if (first === 'heavy') firstIsHeavy += 1;
     }
     expect(firstIsHeavy / N).toBeCloseTo(0.8, 1);
+  });
+});
+
+describe('an implicit count ceiling', () => {
+  // Six sigma around a small mean can land under a minimum declared
+  // separately, and the bounds check only orders a minimum against a maximum
+  // that is present — so the two can disagree in a schema-valid descriptor.
+  const floored: SyntheticCount[] = [
+    { distribution: 'poisson', mean: 0, min: 5 },
+    { distribution: 'normal', mean: 0, sd: 0, min: 5 },
+  ];
+
+  it.each(floored)('stays above the declared minimum of %o', (descriptor) => {
+    expect(countCeiling(descriptor)).toBeGreaterThanOrEqual(5);
+  });
+
+  it.each(floored)('lets the draw honour that minimum for %o', (descriptor) => {
+    const s = stream(`floor-${descriptor.distribution}`);
+    for (let i = 0; i < 100; i++) {
+      expect(sampleCount(descriptor, s)).toBeGreaterThanOrEqual(5);
+    }
+  });
+
+  it('leaves a declared maximum in charge', () => {
+    expect(
+      countCeiling({ distribution: 'poisson', mean: 0, min: 5, max: 9 }),
+    ).toBe(9);
+  });
+});
+
+describe('recognising a descriptor written in whole numbers', () => {
+  it('accepts whole parameters and an absent bound', () => {
+    expect(descriptorIsIntegral({ distribution: 'constant', value: 7 })).toBe(
+      true,
+    );
+    expect(
+      descriptorIsIntegral({ distribution: 'normal', mean: 34, sd: 12 }),
+    ).toBe(true);
+    expect(
+      descriptorIsIntegral({ distribution: 'uniform', min: 18, max: 80 }),
+    ).toBe(true);
+  });
+
+  it('rejects one carrying a fraction', () => {
+    expect(descriptorIsIntegral({ distribution: 'constant', value: 0.5 })).toBe(
+      false,
+    );
+    expect(
+      descriptorIsIntegral({ distribution: 'normal', mean: 34, sd: 12.5 }),
+    ).toBe(false);
   });
 });
