@@ -31,6 +31,12 @@ export function toVariableEntry(id: string, variable: Variable): VariableEntry {
     options,
     validation: 'validation' in variable ? variable.validation : undefined,
     parameters: 'parameters' in variable ? variable.parameters : undefined,
+    // Load-bearing: the draw resolves a variable's distribution from its
+    // entry, so dropping this here silently returns every declared
+    // distribution, generator, option weighting and missingness to its
+    // default while counts and topology — read straight off the codebook —
+    // went on working.
+    synthetic: 'synthetic' in variable ? variable.synthetic : undefined,
   };
 }
 

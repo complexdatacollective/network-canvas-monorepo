@@ -284,3 +284,30 @@ describe('a half-built stage', () => {
     expect(network.nodes).toHaveLength(3);
   });
 });
+
+describe('a declared distribution', () => {
+  it('reaches the draw rather than falling back to the default', () => {
+    // The draw resolves a variable's distribution from the entry the
+    // constraint layer builds, so a declared distribution has to survive that
+    // translation. It once did not: counts and topology kept working while
+    // every per-variable distribution quietly returned to its default.
+    const { network } = generateNetwork({
+      seed: 7,
+      codebook: codebook({
+        name: { name: 'Name', type: 'text' },
+        age: {
+          name: 'Age',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 120 },
+          synthetic: { distribution: 'constant', value: 41 },
+        },
+      }),
+      stages: [nameGenerator(), alterForm('form', 'age')],
+    });
+
+    expect(network.nodes).toHaveLength(3);
+    for (const node of network.nodes) {
+      expect(attributesOf(node).age).toBe(41);
+    }
+  });
+});
