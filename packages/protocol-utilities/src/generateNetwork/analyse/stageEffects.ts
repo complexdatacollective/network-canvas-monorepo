@@ -1,6 +1,10 @@
 import type { Stage } from '@codaco/protocol-validation';
 
 import { isContentStage } from '../contentStages';
+import {
+  type NodeVariablesFor,
+  withRuleTiedVariables,
+} from './ruleTiedVariables';
 
 /**
  * Normalized stage-effect model: what every stage can create, which variables
@@ -94,6 +98,11 @@ export type VariableWrite = {
   entityType?: string;
   variableId: string;
   filter?: StageFilter;
+  /**
+   * The node type supplying the pairs a census walked. Set only where the
+   * write is confined to those pairs rather than reaching the whole edge type.
+   */
+  subjectNodeType?: string;
   mode: WriteMode;
 };
 
@@ -105,6 +114,10 @@ export type PedigreeEffect = {
   labelVariable: string;
   relationshipVariable: string;
   biologicalSexVariable: string;
+  /**
+   * The node-form fields the interface actually renders — see
+   * {@link pedigreeFormFields} for the ones it suppresses.
+   */
   formFields: string[];
   /**
    * Values the interface fixes on every edge it creates. The
@@ -149,6 +162,21 @@ export type StageEffects = {
    */
   writeIndex: Map<string, Map<string, number>>;
   /**
+   * Per entity scope, the variables at least one write reaches without passing
+   * a stage filter.
+   *
+   * A filtered write lands on the subset the filter admits, which is decided
+   * by the session as it stands when that stage runs — something the plan
+   * cannot know, since the filter may test the very values being drawn. So a
+   * variable only ever written behind a filter is left out of the plan and
+   * drawn during the walk, against the filtered set the materialiser resolves.
+   * Planning it for the whole type instead would claim a `unique` value for
+   * every entity when the session gives it to a few, exhausting a value space
+   * feasibility — which does not count filtered writes against a type either —
+   * had already accepted.
+   */
+  unconditionalWrites: Map<string, Set<string>>;
+  /**
    * The last stage that writes each variable onto entities it did not itself
    * create — a form, a bin, a census — which is what can overwrite a value an
    * earlier stage fixed.
@@ -167,14 +195,26 @@ export type StageEffects = {
 export const scopeKeyFor = (entity: string, type?: string): string =>
   entity === 'ego' ? 'ego' : `${entity}:${type}`;
 
-/** The variables some stage writes for one entity scope. */
+/**
+ * The variables the plan draws for one entity scope: those some stage writes,
+ * less — where filtering is respected — those no stage writes except behind a
+ * filter. See {@link StageEffects.unconditionalWrites}.
+ */
 export function writtenVariables(
   effects: StageEffects,
   entity: string,
   type?: string,
+  respectFiltering = false,
 ): Set<string> {
-  const writes = effects.writeIndex.get(scopeKeyFor(entity, type));
-  return new Set(writes?.keys() ?? []);
+  const scope = scopeKeyFor(entity, type);
+  const written = new Set(effects.writeIndex.get(scope)?.keys() ?? []);
+  if (!respectFiltering) return written;
+  const unconditional = effects.unconditionalWrites.get(scope);
+  return new Set(
+    [...written].filter(
+      (variableId) => unconditional?.has(variableId) === true,
+    ),
+  );
 }
 
 /**
@@ -258,6 +298,23 @@ const promptFixedValues = (
         .map((attribute) => [attribute.variable, attribute.value]),
     ),
   );
+
+/**
+ * The node-form fields a FamilyPedigree renders.
+ *
+ * PersonNameField owns the wizard's internal `name` path, so a form field with
+ * that id is suppressed by the live interface, as is a form field duplicating
+ * the configured label variable. A suppressed field is never asked and so is
+ * never written.
+ */
+const pedigreeFormFields = (
+  nodeConfig: StageOf<'FamilyPedigree'>['nodeConfig'] | undefined,
+): string[] => {
+  const labelVariable = nodeConfig?.nodeLabelVariable;
+  return definedStrings(
+    (nodeConfig?.form ?? []).map((field) => field.variable),
+  ).filter((variable) => variable !== labelVariable && variable !== 'name');
+};
 
 /**
  * Values a FamilyPedigree fixes on every edge it creates: the relationship
@@ -364,7 +421,14 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
             mode: 'layout',
           });
         }
-        if (prompt.highlight?.allowHighlighting && prompt.highlight.variable) {
+        // Edge creation wins where a prompt somehow carries both: the schema
+        // refuses that pairing, and Sociogram's tap handler takes the
+        // edge-creating branch first, leaving the toggle unreachable.
+        if (
+          prompt.highlight?.allowHighlighting &&
+          prompt.highlight.variable &&
+          !prompt.edges?.create
+        ) {
           summary.writes.push({
             stageIndex: index,
             entity: 'node',
@@ -430,11 +494,17 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
           structured: null,
         });
         if (prompt.edgeVariable === undefined) continue;
+        // Scoped to the pairs the census walks. The interface asks about its
+        // own subjects and writes the strength only where it answered
+        // positively, so a type-wide write would put the ordinal on edges
+        // between people this census never considered.
         summary.writes.push({
           stageIndex: index,
           entity: 'edge',
           entityType: prompt.createEdge,
           variableId: prompt.edgeVariable,
+          ...(stage.filter ? { filter: stage.filter } : {}),
+          subjectNodeType: nodeType,
           mode: 'tieStrength',
         });
       }
@@ -509,9 +579,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       const nodeType = nodeConfig?.type;
       const edgeType = edgeConfig?.type;
       if (nodeType === undefined || edgeType === undefined) break;
-      const formFields = definedStrings(
-        (nodeConfig.form ?? []).map((field) => field.variable),
-      );
+      const formFields = pedigreeFormFields(nodeConfig);
       summary.nodeCreations.push({
         stageIndex: index,
         nodeType,
@@ -611,7 +679,13 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
           stageIndex: index,
           edgeType,
           subjectNodeType: nodeType,
-          ownNodesOnly: true,
+          // The canvas is loaded from `getNetworkNodesForType`, which is every
+          // node of the subject type the session holds — not only the ones
+          // this stage added. A participant can therefore join two people an
+          // earlier stage introduced, so restricting the domain to the
+          // composer's own people would plan no edges at all wherever the
+          // population arrived before it.
+          ownNodesOnly: false,
           recordsNegatives: null,
           writesAtCreation: formVariables(edge.form),
           structured: null,
@@ -639,6 +713,13 @@ export function analyseStageEffects(stages: Stage[]): StageEffects {
   const edgeCreationsByType = new Map<string, EdgeCreation[]>();
   const writeIndex = new Map<string, Map<string, number>>();
   const rewriteIndex = new Map<string, Map<string, number>>();
+  const unconditionalWrites = new Map<string, Set<string>>();
+
+  const recordUnconditional = (scope: string, variableId: string): void => {
+    const forScope = unconditionalWrites.get(scope) ?? new Set<string>();
+    forScope.add(variableId);
+    unconditionalWrites.set(scope, forScope);
+  };
 
   const recordInto =
     (index: Map<string, Map<string, number>>) =>
@@ -656,6 +737,9 @@ export function analyseStageEffects(stages: Stage[]): StageEffects {
       const scope = scopeKeyFor('node', creation.nodeType);
       for (const variableId of creation.writesAtCreation) {
         recordWrite(scope, variableId, creation.stageIndex);
+        // A creating interaction reaches every entity it makes, so what it
+        // writes is never behind a filter.
+        recordUnconditional(scope, variableId);
       }
       // A prompt's fixed values are written onto the node as surely as a form
       // field is, so they belong in the write set — the plan needs a value for
@@ -664,6 +748,7 @@ export function analyseStageEffects(stages: Stage[]): StageEffects {
       for (const fixed of creation.promptFixedValues) {
         for (const variableId of Object.keys(fixed)) {
           recordWrite(scope, variableId, creation.stageIndex);
+          recordUnconditional(scope, variableId);
         }
       }
     }
@@ -674,11 +759,15 @@ export function analyseStageEffects(stages: Stage[]): StageEffects {
       const scope = scopeKeyFor('edge', creation.edgeType);
       for (const variableId of creation.writesAtCreation) {
         recordWrite(scope, variableId, creation.stageIndex);
+        recordUnconditional(scope, variableId);
       }
     }
     for (const write of summary.writes) {
       const scope = scopeKeyFor(write.entity, write.entityType);
       recordWrite(scope, write.variableId, write.stageIndex);
+      if (write.filter === undefined) {
+        recordUnconditional(scope, write.variableId);
+      }
       if (write.filter === undefined && summary.stage.skipLogic === undefined) {
         recordRewrite(scope, write.variableId, write.stageIndex);
       }
@@ -692,6 +781,264 @@ export function analyseStageEffects(stages: Stage[]): StageEffects {
     creatableNodeTypes,
     edgeCreationsByType,
     writeIndex,
+    unconditionalWrites,
     rewriteIndex,
   };
+}
+
+/**
+ * Feasibility counting reads the same model one stage at a time, before the
+ * protocol has a plan to index against: it walks the reachable stages itself,
+ * asking of each what it would write onto the people it makes and onto the
+ * people it finds. The queries below answer from the summaries above, so the
+ * switch over stage types stays in one place — a second reading of the schemas
+ * is exactly what lets a counter accept a protocol the walk then fails on.
+ *
+ * The FamilyPedigree ones read `nodeConfig` rather than
+ * {@link StageEffectSummary.pedigree}, which describes the family's edges too
+ * and so stands down when no edge type is configured. A stage that names people
+ * but no link between them still writes onto those people, and the deliberately
+ * partial fixtures feasibility is tested against rely on that.
+ */
+
+/**
+ * One stage's summary, read out of protocol order. The stage indices it carries
+ * mean nothing to these callers, which ask only what a stage writes;
+ * {@link lastExistingWriterByType} supplies the real index itself.
+ */
+const writeSummary = (stage: Stage): StageEffectSummary =>
+  summariseStage(stage, 0);
+
+/** Variables rendered as ordinary fields or labels by FamilyPedigree. */
+export function pedigreeDrawnNodeVariables(stage: Stage): Set<string> {
+  if (stage.type !== 'FamilyPedigree') return new Set();
+  const { nodeConfig } = stage;
+  return new Set(
+    definedStrings([
+      nodeConfig?.nodeLabelVariable,
+      ...pedigreeFormFields(nodeConfig),
+    ]),
+  );
+}
+
+/**
+ * Disease and nomination variables the pedigree materialiser fixes.
+ *
+ * A NarrativePedigree presents the family its source stage built, and the
+ * diseases it reads have to be on those people before it runs — so the stage
+ * that built them is the one that writes them.
+ */
+function pedigreeFixedNodeVariables(
+  stage: Stage,
+  stages: readonly Stage[],
+): Set<string> {
+  if (stage.type !== 'FamilyPedigree') return new Set();
+
+  const variables = new Set(
+    definedStrings(
+      (stage.nominationPrompts ?? []).map((prompt) => prompt.variable),
+    ),
+  );
+  for (const candidate of stages) {
+    if (
+      candidate.type !== 'NarrativePedigree' ||
+      candidate.sourceStageId !== stage.id
+    ) {
+      continue;
+    }
+    for (const disease of candidate.diseases) variables.add(disease.variable);
+  }
+  return variables;
+}
+
+/** Every node variable FamilyPedigree can write while creating its people. */
+export function pedigreeNodeVariables(
+  stage: Stage,
+  stages: readonly Stage[] = [stage],
+): Set<string> {
+  if (stage.type !== 'FamilyPedigree') return new Set();
+  const { nodeConfig } = stage;
+  return new Set(
+    definedStrings([
+      ...pedigreeDrawnNodeVariables(stage),
+      nodeConfig?.egoVariable,
+      nodeConfig?.relationshipVariable,
+      nodeConfig?.biologicalSexVariable,
+      ...pedigreeFixedNodeVariables(stage, stages),
+    ]),
+  );
+}
+
+/** Variables written on FamilyPedigree's one iconic ego node. */
+export function pedigreeEgoNodeVariables(
+  stage: Stage,
+  stages: readonly Stage[] = [stage],
+  variables?: Record<string, unknown>,
+): Set<string> {
+  if (stage.type !== 'FamilyPedigree') return new Set();
+  const { nodeConfig } = stage;
+
+  const directlyWritten = new Set(
+    definedStrings([
+      nodeConfig?.egoVariable,
+      nodeConfig?.biologicalSexVariable,
+      ...pedigreeFixedNodeVariables(stage, stages),
+    ]),
+  );
+  const connected = withRuleTiedVariables(variables, directlyWritten);
+
+  // Name and additional node-form controls are rendered only for relatives.
+  // Do not let a cross-variable rule turn an unrendered ego control into a
+  // synthetic write. A variable that is also written semantically (for
+  // example, an imported conflicting biological-sex form field) remains fixed.
+  for (const variable of pedigreeDrawnNodeVariables(stage)) {
+    if (!directlyWritten.has(variable)) connected.delete(variable);
+  }
+
+  return connected;
+}
+
+/**
+ * The node variables a creating stage fills on the nodes it creates, optionally
+ * narrowed to the ones added under a single prompt.
+ */
+export function nodeVariablesWrittenOnCreation(
+  stage: Stage,
+  stages: readonly Stage[] = [stage],
+  promptIndex?: number,
+): Set<string> {
+  // A pedigree's people carry the semantics the interface owns as well as the
+  // fields it renders, and nothing about them is per-prompt.
+  if (stage.type === 'FamilyPedigree')
+    return pedigreeNodeVariables(stage, stages);
+
+  const written = new Set<string>();
+  for (const creation of writeSummary(stage).nodeCreations) {
+    for (const variableId of creation.writesAtCreation) written.add(variableId);
+    const fixedValues =
+      promptIndex === undefined
+        ? creation.promptFixedValues
+        : [creation.promptFixedValues[promptIndex] ?? {}];
+    for (const fixed of fixedValues) {
+      for (const variableId of Object.keys(fixed)) written.add(variableId);
+    }
+  }
+  return written;
+}
+
+/**
+ * Whether a stage declares a collection surface for the nodes it creates.
+ *
+ * A roster's rows decide what is present, so it keeps the former whole-type
+ * fill for values a row omits. An incomplete hand-built fixture with neither
+ * fields nor prompt assignments gets the same conservative fallback: it may
+ * over-count, but cannot let a real draw run out after feasibility
+ * under-counted it.
+ */
+export function declaresNodeCollection(
+  stage: Stage,
+  promptIndex?: number,
+): boolean {
+  if (stage.type === 'NameGeneratorRoster') return false;
+  return nodeVariablesWrittenOnCreation(stage, [stage], promptIndex).size > 0;
+}
+
+/**
+ * Variables a stage writes onto nodes that existed before it ran, by node type.
+ *
+ * Creation-time writes are excluded: they land on the stage's own new people,
+ * and are counted where those people are counted.
+ */
+function writesOnExistingNodes(
+  stage: Stage,
+  stages: readonly Stage[],
+  variablesFor?: NodeVariablesFor,
+  respectSkipLogicAndFiltering = false,
+): Map<string, Set<string>> {
+  const byType = new Map<string, Set<string>>();
+  const record = (nodeType: string, variableId: string): void => {
+    const forType = byType.get(nodeType) ?? new Set<string>();
+    forType.add(variableId);
+    byType.set(nodeType, forType);
+  };
+
+  if (stage.type === 'FamilyPedigree') {
+    // The live interface keeps earlier same-typed people in the family: the
+    // materialiser clears the focal flag on each of them and normalises every
+    // disease this stage introduces over them. Neither write is a nomination
+    // prompt's, so neither appears in the summary's `writes`.
+    const nodeType = stage.nodeConfig?.type;
+    if (nodeType === undefined) return byType;
+    const directlyWritten = new Set(
+      definedStrings([
+        stage.nodeConfig?.egoVariable,
+        ...pedigreeFixedNodeVariables(stage, stages),
+      ]),
+    );
+    for (const variableId of withRuleTiedVariables(
+      variablesFor?.(nodeType),
+      directlyWritten,
+    )) {
+      record(nodeType, variableId);
+    }
+    return byType;
+  }
+
+  for (const write of writeSummary(stage).writes) {
+    if (write.entity !== 'node' || write.entityType === undefined) continue;
+    // With filtering enabled, this write may reach only a subset of the
+    // existing population. Promoting its variables to every earlier creation
+    // would turn a one-node write into a whole-type feasibility demand. The
+    // creation tally remains authoritative for variables written when those
+    // nodes were made; filtered population writes are settled by the actual
+    // filtered set at generation time.
+    if (respectSkipLogicAndFiltering && write.filter !== undefined) continue;
+    record(write.entityType, write.variableId);
+  }
+  return byType;
+}
+
+/** Whether this stage can rewrite one variable on an existing node. */
+export function stageWritesExistingNodeVariable(
+  stage: Stage,
+  stages: readonly Stage[],
+  nodeType: string,
+  variableId: string,
+  variablesFor?: NodeVariablesFor,
+): boolean {
+  return (
+    writesOnExistingNodes(stage, stages, variablesFor)
+      .get(nodeType)
+      ?.has(variableId) === true
+  );
+}
+
+/** Last stage index writing each variable onto existing nodes, per node type. */
+export function lastExistingWriterByType(
+  stages: readonly Stage[],
+  variablesFor?: NodeVariablesFor,
+  respectSkipLogicAndFiltering = false,
+): Map<string, Map<string, number>> {
+  const byType = new Map<string, Map<string, number>>();
+
+  for (const [stageIndex, stage] of stages.entries()) {
+    const written = writesOnExistingNodes(
+      stage,
+      stages,
+      variablesFor,
+      respectSkipLogicAndFiltering,
+    );
+    for (const [nodeType, variables] of written) {
+      const forType = byType.get(nodeType) ?? new Map<string, number>();
+      for (const variable of variables) {
+        forType.set(
+          variable,
+          Math.max(forType.get(variable) ?? -1, stageIndex),
+        );
+      }
+      byType.set(nodeType, forType);
+    }
+  }
+
+  return byType;
 }

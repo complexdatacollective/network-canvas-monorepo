@@ -2,7 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import type { Stage } from '@codaco/protocol-validation';
 
-import { analyseStageEffects } from '../stageEffects';
+import {
+  analyseStageEffects,
+  declaresNodeCollection,
+  lastExistingWriterByType,
+  nodeVariablesWrittenOnCreation,
+  pedigreeDrawnNodeVariables,
+  pedigreeEgoNodeVariables,
+  pedigreeNodeVariables,
+  stageWritesExistingNodeVariable,
+} from '../stageEffects';
 
 // Analysis operates on already-validated stages; tests build minimal shapes.
 const stage = (value: Record<string, unknown>): Stage =>
@@ -202,6 +211,9 @@ describe('analyseStageEffects', () => {
         entity: 'edge',
         entityType: 'knows',
         variableId: 'strength',
+        // Carried so the write stays confined to the pairs this census walks,
+        // rather than reaching every edge of the type.
+        subjectNodeType: 'person',
         mode: 'tieStrength',
       },
     ]);
@@ -381,7 +393,9 @@ describe('analyseStageEffects', () => {
     );
     expect(summary?.edgeCreations[0]).toMatchObject({
       edgeType: 'works_with',
-      ownNodesOnly: true,
+      // The canvas holds every node of the subject type, so a composer can
+      // join two people an earlier stage introduced.
+      ownNodesOnly: false,
       writesAtCreation: ['since'],
     });
   });
@@ -455,5 +469,181 @@ describe('analyseStageEffects', () => {
         stage({ id: 'x', type: 'HolographicSociogram', label: 'X' }),
       ]),
     ).toThrow(/Unsupported stage type/);
+  });
+});
+
+/**
+ * The projections feasibility counts against. They answer per stage, from the
+ * same summaries the planner reads, so a count and a walk cannot disagree about
+ * what a stage writes.
+ */
+describe('stage write queries', () => {
+  const pedigreeStage = (nodeConfig: Record<string, unknown>): Stage =>
+    stage({
+      id: 'ped',
+      type: 'FamilyPedigree',
+      label: 'Family',
+      nodeConfig: {
+        type: 'family_member',
+        nodeLabelVariable: 'label',
+        egoVariable: 'is_ego',
+        relationshipVariable: 'relationship',
+        biologicalSexVariable: 'sex',
+        ...nodeConfig,
+      },
+      edgeConfig: { type: 'family_link' },
+      framing: { mode: 'fixed', value: 'inclusive' },
+      censusPrompt: 'Add your family.',
+    });
+
+  it('counts a prompt fixed value as written on the nodes it adds', () => {
+    const generator = stage({
+      id: 'ng',
+      type: 'NameGenerator',
+      label: 'Names',
+      subject: nodeSubject,
+      form: { fields: [{ variable: 'nickname', prompt: 'Nickname' }] },
+      prompts: [
+        { id: 'p1', text: 'Close?' },
+        {
+          id: 'p2',
+          text: 'Family?',
+          additionalAttributes: [{ variable: 'is_family', value: true }],
+        },
+      ],
+    });
+
+    expect(nodeVariablesWrittenOnCreation(generator, [generator], 0)).toEqual(
+      new Set(['nickname']),
+    );
+    expect(nodeVariablesWrittenOnCreation(generator, [generator], 1)).toEqual(
+      new Set(['nickname', 'is_family']),
+    );
+  });
+
+  it('leaves a roster and a fixture with no collection surface to the whole-type fill', () => {
+    const roster = stage({
+      id: 'roster',
+      type: 'NameGeneratorRoster',
+      label: 'Roster',
+      subject: nodeSubject,
+      dataSource: 'people.csv',
+      prompts: [{ id: 'p1', text: 'Pick' }],
+    });
+    const bare = stage({
+      id: 'bare',
+      type: 'NameGeneratorQuickAdd',
+      label: 'Names',
+      subject: nodeSubject,
+      prompts: [{ id: 'p1', text: 'Who?' }],
+    });
+
+    expect(declaresNodeCollection(roster, 0)).toBe(false);
+    expect(declaresNodeCollection(bare, 0)).toBe(false);
+  });
+
+  it('suppresses the pedigree form fields the interface never renders', () => {
+    const collides = pedigreeStage({
+      nodeLabelVariable: 'displayName',
+      form: [
+        { variable: 'name', prompt: 'Reserved' },
+        { variable: 'displayName', prompt: 'Duplicated' },
+        { variable: 'age', prompt: 'Age?' },
+      ],
+    });
+
+    expect(pedigreeDrawnNodeVariables(collides)).toEqual(
+      new Set(['displayName', 'age']),
+    );
+  });
+
+  it('gives a pedigree relatives the diseases a NarrativePedigree reads', () => {
+    const family = pedigreeStage({
+      form: [{ variable: 'age', prompt: 'Age?' }],
+    });
+    const stages = [
+      family,
+      stage({
+        id: 'story',
+        type: 'NarrativePedigree',
+        label: 'Story',
+        sourceStageId: 'ped',
+        diseases: [
+          {
+            variable: 'has_condition',
+            inheritancePattern: 'autosomalDominant',
+          },
+        ],
+      }),
+    ];
+
+    expect(pedigreeNodeVariables(family, stages)).toEqual(
+      new Set([
+        'label',
+        'age',
+        'is_ego',
+        'relationship',
+        'sex',
+        'has_condition',
+      ]),
+    );
+  });
+
+  it('asks the pedigree ego only for the values its iconic node carries', () => {
+    const family = pedigreeStage({
+      form: [{ variable: 'age', prompt: 'Age?' }],
+    });
+    // A rule ties the unrendered age control to a value the ego does carry.
+    // Answering it anyway would write a control the ego is never shown.
+    const variables = {
+      sex: {},
+      age: { validation: { sameAs: 'sex' } },
+      label: {},
+      is_ego: {},
+      relationship: {},
+    };
+
+    expect(pedigreeEgoNodeVariables(family, [family], variables)).toEqual(
+      new Set(['is_ego', 'sex']),
+    );
+  });
+
+  it('reads a pedigree as a writer on the people an earlier stage introduced', () => {
+    const family = pedigreeStage({});
+    const stages = [family];
+
+    expect(
+      stageWritesExistingNodeVariable(
+        family,
+        stages,
+        'family_member',
+        'is_ego',
+      ),
+    ).toBe(true);
+    // Biological sex is settled when the pedigree builds its own people; it is
+    // not rewritten over the ones it inherits, except on a reused focal node.
+    expect(
+      stageWritesExistingNodeVariable(family, stages, 'family_member', 'sex'),
+    ).toBe(false);
+  });
+
+  it('skips a filtered writer only where filtering is respected', () => {
+    const stages = [
+      stage({
+        id: 'bin',
+        type: 'OrdinalBin',
+        label: 'Bin',
+        subject: nodeSubject,
+        filter: { join: 'AND', rules: [] },
+        prompts: [{ id: 'p1', text: 'How close?', variable: 'closeness' }],
+      }),
+    ];
+
+    expect(lastExistingWriterByType(stages).get('person')).toEqual(
+      new Map([['closeness', 0]]),
+    );
+    expect(
+      lastExistingWriterByType(stages, undefined, true).get('person'),
+    ).toBeUndefined();
   });
 });

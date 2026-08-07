@@ -11,6 +11,18 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import {
+  type NodeVariablesFor,
+  withRuleTiedVariables,
+} from '../analyse/ruleTiedVariables';
+import {
+  declaresNodeCollection,
+  lastExistingWriterByType,
+  nodeVariablesWrittenOnCreation,
+  pedigreeEgoNodeVariables,
+  pedigreeNodeVariables,
+  stageWritesExistingNodeVariable,
+} from '../analyse/stageEffects';
 import type { FeasibilityConfig } from '../config';
 import type { StageOfType } from '../context';
 import {
@@ -26,16 +38,6 @@ import {
 } from '../nodes';
 import { getSubjectType } from '../subject';
 import { completionCheckFor } from './generateEntityAttributes';
-import {
-  declaresNodeCollection,
-  lastExistingWriterByType,
-  nodeVariablesWrittenOnCreation,
-  pedigreeEgoNodeVariables,
-  pedigreeNodeVariables,
-  stageWritesExistingNodeVariable,
-  withRuleTiedVariables,
-  type NodeVariablesFor,
-} from './stageWrites';
 import type { EntityConstraints } from './types';
 import { valueKey } from './uniqueRegistry';
 
@@ -1297,12 +1299,16 @@ export function worstCaseEntityCounts(
             : stage.type === 'NameGeneratorRoster'
               ? 'all'
               : stage.prompts
-                  .map((prompt, promptIndex) => ({
+                  .map((_prompt, promptIndex) => ({
                     count: fabricatedPromptNodeCeiling(promptIndex, bounds),
-                    variables: declaresNodeCollection(stage, prompt)
+                    variables: declaresNodeCollection(stage, promptIndex)
                       ? withRuleTiedVariables(
                           variables,
-                          nodeVariablesWrittenOnCreation(stage, stages, prompt),
+                          nodeVariablesWrittenOnCreation(
+                            stage,
+                            stages,
+                            promptIndex,
+                          ),
                         )
                       : ('all' as const),
                   }))

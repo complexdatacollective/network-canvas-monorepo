@@ -1,5 +1,3 @@
-import { deterministicUuid } from '../plan/random';
-
 import type { Stage } from '@codaco/protocol-validation';
 import {
   BIOLOGICAL_SEX_VALUES,
@@ -13,6 +11,11 @@ import {
 } from '@codaco/shared-consts';
 
 import { ValueGenerator } from '../../ValueGenerator';
+import { withRuleTiedVariables } from '../analyse/ruleTiedVariables';
+import {
+  pedigreeDrawnNodeVariables,
+  pedigreeEgoNodeVariables,
+} from '../analyse/stageEffects';
 import {
   claimFixedValues,
   generateAttributesForEntity,
@@ -20,13 +23,9 @@ import {
 } from '../attributes';
 import { SyntheticDataConstraintError } from '../constraints/error';
 import type { EntityScopeRef } from '../constraints/generateEntityAttributes';
-import {
-  pedigreeDrawnNodeVariables,
-  pedigreeEgoNodeVariables,
-  withRuleTiedVariables,
-} from '../constraints/stageWrites';
 import type { GenerationContext, NetworkDraft, StageOfType } from '../context';
 import { ruleBrokenByFixedValues } from '../nodes';
+import { deterministicUuid } from '../plan/random';
 import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
 import {
   readPedigreeOptionValue,

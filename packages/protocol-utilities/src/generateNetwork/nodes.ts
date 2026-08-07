@@ -10,11 +10,6 @@ import type { FeasibilityConfig } from './config';
 import { dateValueResolution, stepsBetween } from './constraints/dateWindow';
 import { completionCheckFor } from './constraints/generateEntityAttributes';
 import {
-  declaresNodeCollection,
-  nodeVariablesWrittenOnCreation,
-  withRuleTiedVariables,
-} from './constraints/stageWrites';
-import {
   COMPARATOR_DIRECTION,
   COMPARISON_RULES,
   type ConstrainedVariable,
