@@ -816,14 +816,22 @@ export function getNodeCountBounds(
   config: FeasibilityConfig,
 ): { minNodes: number; maxNodes: number } {
   const behaviours = 'behaviours' in stage ? stage.behaviours : undefined;
+  // The stage's own subject type decides the fallback: a protocol whose
+  // largest type is a hundred-person roster must not have that ceiling
+  // counted against a five-person one.
+  const subjectType = getSubjectType(stage.subject, 'node');
+  const declared =
+    (subjectType === undefined
+      ? undefined
+      : config.nodeCountByType?.[subjectType]) ?? config.nodeCount;
   const minNodes =
     behaviours && 'minNodes' in behaviours && behaviours.minNodes !== undefined
       ? behaviours.minNodes
-      : config.nodeCount.min;
+      : declared.min;
   const maxNodes =
     behaviours && 'maxNodes' in behaviours && behaviours.maxNodes !== undefined
       ? behaviours.maxNodes
-      : config.nodeCount.max;
+      : declared.max;
   // A configured minNodes above the max is honoured by raising the ceiling to
   // meet it. `maxNodes` is also the stage's capacity, so leaving the range
   // inverted would clamp the stage below the minimum the protocol asks for.

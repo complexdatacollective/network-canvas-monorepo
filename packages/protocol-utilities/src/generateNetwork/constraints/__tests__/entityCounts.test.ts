@@ -41,15 +41,25 @@ const resolveGenerationConfig = (
  * `censusEdgeProbability` tuning knobs. A test that wants a particular
  * quantity now says so in the codebook, which is where the planner reads it.
  */
-const withNodeCount = (book: StructuralCodebook, value: number): StructuralCodebook => ({
-  ...book,
-  node: Object.fromEntries(
-    Object.entries(book.node ?? {}).map(([type, definition]) => [
-      type,
-      { ...definition, synthetic: { count: { distribution: 'constant', value } } },
-    ]),
-  ),
-}) as StructuralCodebook;
+const withNodeCount = (
+  book: StructuralCodebook,
+  value: number,
+  only?: string,
+): StructuralCodebook =>
+  ({
+    ...book,
+    node: Object.fromEntries(
+      Object.entries(book.node ?? {}).map(([type, definition]) => [
+        type,
+        type === only || only === undefined
+          ? {
+              ...definition,
+              synthetic: { count: { distribution: 'constant', value } },
+            }
+          : definition,
+      ]),
+    ),
+  }) as StructuralCodebook;
 
 const withEdgeDensity = (book: StructuralCodebook, value: number): StructuralCodebook => ({
   ...book,
@@ -119,11 +129,16 @@ function familyPedigree(overrides: Record<string, unknown> = {}): Stage {
 }
 
 function alterEdgeForm(...variables: string[]): Stage {
+  return edgeAlterFormFor('kin', ...variables);
+}
+
+/** An AlterEdgeForm over any edge type — the writer that lands its values. */
+function edgeAlterFormFor(edgeType: string, ...variables: string[]): Stage {
   return {
-    id: 'stage-edge-form',
+    id: `stage-edge-form-${edgeType}`,
     type: 'AlterEdgeForm',
     label: 'About this relationship',
-    subject: { entity: 'edge', type: 'kin' },
+    subject: { entity: 'edge', type: edgeType },
     form: {
       fields: variables.map((variable) => ({
         variable,
@@ -2030,7 +2045,7 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     for (let seed = 1; seed <= 50; seed++) {
       const { network } = generateNetwork({
         seed,
-        codebook: withNodeCount(codebook, 4),
+        codebook: withNodeCount(codebook, 4, 'person'),
         stages: [rosterStage(), census],
         externalData: underage,
       });
@@ -2342,7 +2357,7 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
     // refused this for needing 21 distinct booleans it never asks for.
     const { network } = generateNetwork({
       seed: 1,
-      codebook: withNodeCount(codebook, 7),
+      codebook: withNodeCount(codebook, 7, 'person'),
       stages: [
         nameGenerator({ behaviours: { minNodes: 5, maxNodes: 5 } }),
         networkComposer(),
@@ -2387,7 +2402,7 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
     expect(() =>
       generateNetwork({
         seed: 1,
-        codebook: withNodeCount(codebook, 3),
+        codebook: withNodeCount(codebook, 3, 'person'),
         stages: [networkComposer(), census],
       }),
     ).toThrow(/up to 3 edges of this type can be generated/);
@@ -3062,10 +3077,12 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
   }
 
   it('creates one edge per pair, whichever prompt reached it first', () => {
+    // A census creates edges but asks nothing about them, so the band only
+    // reaches the network through a form that renders it.
     const { network } = generateNetwork({
       seed: 3,
       codebook: withEdgeDensity(codebook, 1),
-      stages: [threePeople, census],
+      stages: [threePeople, census, edgeAlterFormFor('knows', 'band')],
     });
 
     const knows = network.edges.filter((edge) => edge.type === 'knows');

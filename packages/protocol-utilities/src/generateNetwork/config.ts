@@ -73,7 +73,15 @@ export function resolveGenerationConfig(
  * are pinned at 1 because a declared density may reach every pair.
  */
 export type FeasibilityTuning = {
+  /** Fallback ceiling for a node type the codebook gives no count. */
   nodeCount: Range;
+  /**
+   * Per-type ceilings from the codebook's declared counts. Counting a stage
+   * against the largest population in the protocol would refuse protocols
+   * whose own subject type is far smaller, so each type is counted against
+   * its own declaration.
+   */
+  nodeCountByType?: Record<string, Range>;
   rosterDrawRatio: number;
   sociogramEdgeProbability: Range;
   censusEdgeProbability: Range;

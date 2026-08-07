@@ -142,16 +142,19 @@ function deriveFeasibilityConfig(
   pedigreeCeiling: number,
 ): FeasibilityConfig {
   let nodeCap = 1;
+  const nodeCountByType: Record<string, { min: number; max: number }> = {};
   for (const [type, definition] of Object.entries(codebook.node ?? {})) {
     const ceiling = countCeiling(
       resolveNodeCount(definition, {
         creatable: creatableNodeTypes.has(type),
       }),
     );
+    nodeCountByType[type] = { min: 0, max: ceiling };
     nodeCap = Math.max(nodeCap, ceiling);
   }
   return {
     nodeCount: { min: 0, max: nodeCap },
+    nodeCountByType,
     rosterDrawRatio: 0.7,
     sociogramEdgeProbability: { min: 0, max: 1 },
     censusEdgeProbability: { min: 0, max: 1 },
