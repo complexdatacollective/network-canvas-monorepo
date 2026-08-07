@@ -9,16 +9,10 @@ import { VariablePill } from '~/components/VariablePill';
 import DualLink from './DualLink';
 import { renderValue } from './helpers';
 import MiniTable from './MiniTable';
-import SummaryContext from './SummaryContext';
+import SummaryContext, { type IndexEntry } from './SummaryContext';
 
 type ProtocolType = {
   stages?: Array<{ id: string; label: string }>;
-  [key: string]: unknown;
-};
-
-type IndexEntry = {
-  id: string;
-  stages?: string[];
   [key: string]: unknown;
 };
 
@@ -42,14 +36,25 @@ type VariablesProps = {
   variables?: Record<string, unknown>;
 };
 
+const isVariable = (value: unknown): value is Variable =>
+  typeof value === 'object' &&
+  value !== null &&
+  'name' in value &&
+  typeof value.name === 'string' &&
+  'type' in value &&
+  typeof value.type === 'string';
+
 const Variables = ({ variables }: VariablesProps) => {
   const { protocol, index } = useContext(SummaryContext);
 
   const getUsedIn = makeGetUsedIn(protocol as ProtocolType);
 
-  const sortedVariables = sortBy(toPairs(variables), [
-    (variable) => (variable[1] as Variable).name.toLowerCase(),
-  ]);
+  const sortedVariables = sortBy(
+    toPairs(variables).filter((variable): variable is [string, Variable] =>
+      isVariable(variable[1]),
+    ),
+    [(variable) => variable[1].name.toLowerCase()],
+  );
 
   return (
     <div className="[&_a]:text-neon-coral">
@@ -68,12 +73,10 @@ const Variables = ({ variables }: VariablesProps) => {
             </tr>
           )}
           {sortedVariables.map(([variableId, variableConfiguration]) => {
-            const config = variableConfiguration as Variable;
+            const config = variableConfiguration;
             const { name, type } = config;
 
-            const indexEntry = index.find(
-              ({ id }: { id: string }) => id === variableId,
-            ) as IndexEntry | undefined;
+            const indexEntry = index.find(({ id }) => id === variableId);
 
             let optionsRows: ReactNode[][] = [];
 
@@ -90,7 +93,7 @@ const Variables = ({ variables }: VariablesProps) => {
             return (
               <tr key={variableId} id={`variable-${variableId}`}>
                 <td>
-                  <VariablePill label={name} type={type} />
+                  <VariablePill label={name} type={type} variable={config} />
                 </td>
                 <td>
                   {type}

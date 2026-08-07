@@ -59,11 +59,24 @@ const CLAIMED_PROPERTIES = [
   'synthetic',
 ] as const;
 
+type SyntheticOption = { label: string; value: string | number };
+
+const isSyntheticOption = (option: unknown): option is SyntheticOption => {
+  if (typeof option !== 'object' || option === null) return false;
+  if (!('label' in option) || !('value' in option)) return false;
+  return (
+    typeof option.label === 'string' &&
+    (typeof option.value === 'string' || typeof option.value === 'number')
+  );
+};
+
 export type VariableEditorProps = {
   uuid: string;
   formId: string;
-  /** Renders the enlarged-pill header around the connected name field. */
-  renderHeader: (nameField: React.ReactNode) => React.ReactNode;
+  /** Renders the moved pill around the connected name field. */
+  renderNameField: (nameField: React.ReactNode) => React.ReactNode;
+  /** Renders the attached popup surface around the remaining editor body. */
+  renderBody: (body: React.ReactNode) => React.ReactNode;
   onSaved: (nextName: string) => void;
   onCancelled: () => void;
   /**
@@ -77,7 +90,8 @@ export type VariableEditorProps = {
 function VariableEditorInner({
   uuid,
   formId,
-  renderHeader,
+  renderNameField,
+  renderBody,
   onSaved,
   onCancelled,
   registerCloseGuard,
@@ -117,7 +131,7 @@ function VariableEditorInner({
       variable,
       options:
         'options' in variable && Array.isArray(variable.options)
-          ? (variable.options as { label: string; value: string | number }[])
+          ? variable.options.filter(isSyntheticOption)
           : [],
       required: Boolean(
         'validation' in variable && variable.validation?.required,
@@ -128,7 +142,7 @@ function VariableEditorInner({
   /** The name rules, in the order their messages are most useful. */
   const nameError = useCallback(
     (value: unknown): string | undefined => {
-      const name = String(value ?? '').trim();
+      const name = typeof value === 'string' ? value.trim() : '';
       return (
         validations.required('You must enter a variable name')(name) ??
         validations.uniqueByList(existingVariableNames)(name) ??
@@ -174,6 +188,7 @@ function VariableEditorInner({
   const handleCancel = useCallback(() => {
     void guardedClose().then((allowed) => {
       if (allowed) onCancelled();
+      return allowed;
     });
   }, [guardedClose, onCancelled]);
 
@@ -181,7 +196,7 @@ function VariableEditorInner({
     (values: Record<string, FieldValue>): FormSubmissionResult => {
       if (!variable || !context) return { success: false };
 
-      const name = String(values.name ?? '').trim();
+      const name = typeof values.name === 'string' ? values.name.trim() : '';
       const error = nameError(name);
       if (error) {
         return {
@@ -258,43 +273,50 @@ function VariableEditorInner({
 
   return (
     <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
-      {renderHeader(nameField)}
+      {renderNameField(nameField)}
 
-      <div className="mt-4 max-h-[55vh] w-full overflow-y-auto">
-        <Layout>
-          <Section title="Variable type" layout="vertical" required={false}>
-            <p>
-              This is a {variable.type} variable. Variable type cannot be
-              changed after creation. Changes made here affect every stage that
-              uses this variable.
-            </p>
-          </Section>
-          <SyntheticSection context={context} />
-        </Layout>
-      </div>
+      {renderBody(
+        <>
+          <div
+            className="min-h-0 w-full flex-1 overflow-y-auto"
+            data-variable-pill-editor-scroll
+          >
+            <Layout>
+              <Section title="Variable type" layout="vertical" required={false}>
+                <p>
+                  This is a {variable.type} variable. Variable type cannot be
+                  changed after creation. Changes made here affect every stage
+                  that uses this variable.
+                </p>
+              </Section>
+              <SyntheticSection context={context} />
+            </Layout>
+          </div>
 
-      <div className="mt-4 flex items-center justify-center gap-3">
-        <Button
-          size="sm"
-          variant="default"
-          icon={<X aria-hidden />}
-          disabled={isSubmitting}
-          onClick={handleCancel}
-        >
-          Cancel
-        </Button>
-        <SubmitButton
-          form={formId}
-          size="sm"
-          color="primary"
-          icon={<Check aria-hidden />}
-          // An untouched draft has nothing to save, and offering to save it
-          // would put a redundant entry on the undo timeline.
-          disabled={!isDirty || isSubmitting}
-        >
-          Save Changes
-        </SubmitButton>
-      </div>
+          <div className="mt-4 flex shrink-0 items-center justify-center gap-3">
+            <Button
+              size="sm"
+              variant="default"
+              icon={<X aria-hidden />}
+              disabled={isSubmitting}
+              onClick={handleCancel}
+            >
+              Cancel
+            </Button>
+            <SubmitButton
+              form={formId}
+              size="sm"
+              color="primary"
+              icon={<Check aria-hidden />}
+              // An untouched draft has nothing to save, and offering to save
+              // it would put a redundant entry on the undo timeline.
+              disabled={!isDirty || isSubmitting}
+            >
+              Save Changes
+            </SubmitButton>
+          </div>
+        </>,
+      )}
     </FormWithoutProvider>
   );
 }
