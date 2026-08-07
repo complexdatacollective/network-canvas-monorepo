@@ -166,3 +166,5 @@ minimumReleaseAgeExclude:
   - '@codaco/network-query@1.2.0'
   - '@codaco/protocol-validation@11.9.0'
   - '@codaco/shared-consts@5.5.0'
+  - '@tanstack/react-router@1.170.22'
+  - '@tanstack/router-core@1.171.19'

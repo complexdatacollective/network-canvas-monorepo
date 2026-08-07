@@ -1,0 +1,53 @@
+{
+  "name": "@codaco/studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Network Canvas Studio — cloud platform for designing network interview protocols and collecting network data remotely.",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "apps/studio"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --watch-path=server --watch-path=package.json server/src/dev.ts",
+    "build": "vite build && vite build --config vite.server.config.ts",
+    "start": "node dist/server/index.js",
+    "typecheck": "tsc --build --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.0",
+    "@hono/zod-openapi": "^1.5.1",
+    "hono": "^4.13.0",
+    "ws": "^8.21.2",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/fresco-ui": "workspace:^",
+    "@codaco/tailwind-config": "workspace:^",
+    "@codaco/tsconfig": "workspace:^",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-query": "^5.101.4",
+    "@tanstack/react-router": "^1.170.0",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "catalog:",
+    "jsdom": "catalog:",
+    "motion": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

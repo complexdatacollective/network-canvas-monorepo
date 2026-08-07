@@ -1,0 +1,10 @@
+{
+  "extends": "@codaco/tsconfig/node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.server.json",
+    "strict": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["server/src/**/*.ts", "shared/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
