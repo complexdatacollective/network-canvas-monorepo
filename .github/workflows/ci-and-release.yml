@@ -1354,6 +1354,10 @@ jobs:
       # with a spec's own page.evaluate/addStyleTag calls and surfaces as a
       # spurious action failure (the suite's run.sh explains this at length).
       VITE_DISABLE_ANALYTICS: 'true'
+      # Builds the same deterministic app shell as the Docker pixel lane:
+      # Motion and Base UI animation bookkeeping are both disabled before the
+      # application mounts.
+      VITE_DISABLE_ANIMATIONS: 'true'
       # Makes a stray pixel capture throw here rather than silently
       # comparing container-rasterised baselines against this runner's fonts
       # (see the suite's capture helper).

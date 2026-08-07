@@ -73,6 +73,7 @@ docker run --rm \
   ${PLATFORM_FLAG} \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \
+  -e VITE_DISABLE_ANIMATIONS=true \
   -v "$(pwd)":/workspace \
   -v "${VOLUME}":/workspace/node_modules \
   -v "${TURBO_VOLUME}":/workspace/.turbo/cache \

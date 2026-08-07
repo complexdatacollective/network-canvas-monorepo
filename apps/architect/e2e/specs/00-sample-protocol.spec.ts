@@ -70,6 +70,10 @@ import { StageEditor } from '../pageobjects/stage-editor.js';
 // (later stages reference variables/edge types created by earlier ones —
 // verified: zero forward references in protocol order), so tests cannot run
 // independently, but per-test grouping still isolates which build step broke.
+// Playwright's "Consider running tests from slow files in parallel" hint is
+// intentionally wrong for this harness. Do not parallelise or shard it: every
+// test consumes the IndexedDB protocol authored by the preceding tests, and
+// the final test compares that complete from-scratch document.
 // Long texts, option lists, and parameters are sourced from the canonical
 // JSON itself rather than transcribed, so the spec cannot drift from the
 // fixture it asserts against.
@@ -167,7 +171,7 @@ test.describe.serial('sample protocol built from scratch', () => {
   // there: tests that take 30s standalone take 60s under parallel load, and
   // two of them timed out on the first pass. 120s keeps a 4x margin over
   // observed worst cases without masking a genuine hang.
-  test.describe.configure({ timeout: 120_000 });
+  test.describe.configure({ retries: 1, timeout: 120_000 });
 
   // Undefined until `beforeAll` assigns them, which is what `afterAll` has to
   // tolerate: if setup throws before the assignment, an unguarded teardown

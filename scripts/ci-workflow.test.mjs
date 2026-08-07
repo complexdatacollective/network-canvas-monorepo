@@ -509,3 +509,23 @@ test('the native E2E lane cannot touch pixel baselines', () => {
     );
   }
 });
+
+test('Architect E2E builds disable both animation systems', () => {
+  const nativeJob = job('architect-e2e-native');
+  assert.ok(nativeJob, 'architect-e2e-native job exists');
+  assert.match(
+    nativeJob,
+    /VITE_DISABLE_ANIMATIONS: 'true'/,
+    'the native build disables Motion and Base UI animations',
+  );
+
+  const dockerRunner = readFileSync(
+    new URL('../apps/architect/e2e/scripts/run.sh', import.meta.url),
+    'utf8',
+  );
+  assert.match(
+    dockerRunner,
+    /-e VITE_DISABLE_ANIMATIONS=true/,
+    'the Docker build disables Motion and Base UI animations',
+  );
+});
