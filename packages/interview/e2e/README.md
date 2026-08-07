@@ -186,6 +186,14 @@ snapshotted, and the whole matrix runs fully parallel.
   `pnpm test:e2e:update-snapshots` fallback. Both run only the three visual
   projects; regenerate ARIA snapshots separately and locally.
 
+  This is also how CI splits the suite: `interview-e2e` runs the three
+  `*-visual` projects in the container, and `interview-e2e-native` runs the
+  three `*-matrix` projects on a plain runner (`pnpm test:e2e:native`). Both
+  are required by the `quality` gate. The capture pipeline throws if it is
+  reached with `E2E_PIXEL_LANE=native` set, so a capture that escapes the
+  visual projects fails loudly rather than comparing container-rasterised
+  baselines against the runner's own fonts.
+
   One webkit-only quirk: the matrix fixture disables `backdrop-filter` on
   webkit (see `fixtures/matrix-test.ts`) because Playwright's Linux WebKit
   re-runs each blur in software on every rendering update that invalidates it
