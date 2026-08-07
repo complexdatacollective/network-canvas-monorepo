@@ -2,9 +2,9 @@
 
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
-import { MotionConfig } from 'motion/react';
 import type { ReactNode } from 'react';
 
+import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { Toaster } from '@codaco/fresco-ui/Toast';
@@ -51,12 +51,8 @@ export default function Providers({
   children: ReactNode;
   disableAnimations?: boolean;
 }) {
-  if (disableAnimations) {
-    globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
-  }
-
   return (
-    <MotionConfig reducedMotion="user" skipAnimations={disableAnimations}>
+    <AnimationProvider disableAnimations={disableAnimations}>
       <DirectionProvider direction="ltr">
         <Toast.Provider limit={7}>
           <TooltipProvider>
@@ -75,6 +71,6 @@ export default function Providers({
           <Toaster />
         </Toast.Provider>
       </DirectionProvider>
-    </MotionConfig>
+    </AnimationProvider>
   );
 }

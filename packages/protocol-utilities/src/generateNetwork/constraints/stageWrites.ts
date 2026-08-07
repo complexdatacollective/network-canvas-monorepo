@@ -56,9 +56,17 @@ function promptFixedVariables(stage: Stage, prompt?: CreationPrompt): string[] {
 /** Variables rendered as ordinary fields or labels by FamilyPedigree. */
 export function pedigreeDrawnNodeVariables(stage: Stage): Set<string> {
   if (stage.type !== 'FamilyPedigree') return new Set();
+  const nodeLabelVariable = stage.nodeConfig?.nodeLabelVariable;
   return setOf([
-    stage.nodeConfig?.nodeLabelVariable,
-    ...(stage.nodeConfig?.form ?? []).map((field) => field.variable),
+    nodeLabelVariable,
+    ...(stage.nodeConfig?.form ?? [])
+      .map((field) => field.variable)
+      // PersonNameField owns the wizard's internal `name` path. A second form
+      // field with that id is suppressed by the live interface, as is a form
+      // field duplicating the configured label variable.
+      .filter(
+        (variable) => variable !== nodeLabelVariable && variable !== 'name',
+      ),
   ]);
 }
 
@@ -97,6 +105,32 @@ export function pedigreeNodeVariables(
     stage.nodeConfig?.biologicalSexVariable,
     ...pedigreeDiseaseVariables(stage, stages),
   ]);
+}
+
+/** Variables written on FamilyPedigree's one iconic ego node. */
+export function pedigreeEgoNodeVariables(
+  stage: Stage,
+  stages: readonly Stage[] = [stage],
+  variables?: Record<string, VariableLike>,
+): Set<string> {
+  if (stage.type !== 'FamilyPedigree') return new Set();
+
+  const directlyWritten = setOf([
+    stage.nodeConfig?.egoVariable,
+    stage.nodeConfig?.biologicalSexVariable,
+    ...pedigreeDiseaseVariables(stage, stages),
+  ]);
+  const connected = withRuleTiedVariables(variables, directlyWritten);
+
+  // Name and additional node-form controls are rendered only for relatives.
+  // Do not let a cross-variable rule turn an unrendered ego control into a
+  // synthetic write. A variable that is also written semantically (for
+  // example, an imported conflicting biological-sex form field) remains fixed.
+  for (const variable of pedigreeDrawnNodeVariables(stage)) {
+    if (!directlyWritten.has(variable)) connected.delete(variable);
+  }
+
+  return connected;
 }
 
 /**

@@ -19,6 +19,7 @@ async function selectOrCreateEntityType(
   page: Page,
   entityType: 'node' | 'edge',
   name: string,
+  opts: { icon?: string } = {},
 ): Promise<void> {
   const entityLabel = entityType === 'node' ? 'Node' : 'Edge';
   // `exact: true`: without it the default substring match means selecting a
@@ -39,14 +40,27 @@ async function selectOrCreateEntityType(
   await page
     .getByRole('textbox', { name: `${entityLabel} type name` })
     .fill(name);
-  await page.getByRole('button', { name: 'Save and Close' }).click();
+  if (opts.icon) {
+    // TypeEditor's IconPicker: a combobox (default label 'Icon') whose
+    // options' accessible names contain the icon slug
+    // (IconPicker.test.tsx's own locator convention). Only applies on the
+    // creation branch — the default is 'add-a-person'.
+    await page.getByRole('combobox', { name: 'Icon' }).click();
+    await page.getByRole('option', { name: new RegExp(opts.icon) }).click();
+  }
+  const saveAndClose = page.getByRole('button', { name: 'Save and Close' });
+  await saveAndClose.click();
+  // Wait out the dialog's exit animation before the caller interacts with
+  // controls behind it (see prompts.ts for the shared-dialog-form hazard).
+  await saveAndClose.waitFor({ state: 'detached' });
 }
 
 export async function selectOrCreateNodeType(
   page: Page,
   name: string,
+  opts: { icon?: string } = {},
 ): Promise<void> {
-  await selectOrCreateEntityType(page, 'node', name);
+  await selectOrCreateEntityType(page, 'node', name, opts);
 }
 
 export async function selectOrCreateEdgeType(

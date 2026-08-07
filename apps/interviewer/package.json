@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interviewer",
-  "version": "8.1.0",
+  "version": "8.1.1",
   "private": true,
   "description": "A tool for conducting Network Canvas Interviews.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
@@ -23,6 +23,7 @@
     "chromatic": "chromatic --only-changed --exit-zero-on-changes --storybook-build-dir=storybook-static --storybook-base-dir=apps/interviewer --storybook-config-dir=.storybook --untraced 'apps/architect/package.json' --untraced 'apps/architect-classic/package.json' --untraced 'apps/interviewer-classic/package.json' --untraced 'packages/site-navigation-element/package.json'",
     "test:e2e": "./e2e/scripts/run.sh",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --grep @visual --update-snapshots",
+    "test:e2e:native": "playwright test --config e2e/playwright.config.ts --grep-invert @visual",
     "test:e2e:headed": "pnpm turbo run build --filter=@codaco/interviewer && playwright test --config e2e/playwright.config.ts --headed"
   },
   "dependencies": {

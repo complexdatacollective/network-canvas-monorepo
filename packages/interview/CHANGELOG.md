@@ -1,5 +1,21 @@
 # @codaco/interview
 
+## 7.1.1
+
+### Patch Changes
+
+- 3c8fe35: Generate realistic, source-backed family pedigrees with reproductive scenarios and multi-generational disease lineages, while respecting each stage's collected variables, keeping pedigree membership isolated from other interview stages, correctly rendering shared and multiple unions, widening partnership response columns, and warning participants before discarding onboarding progress.
+
+  Improve pedigree editing and parentage capture by confirming destructive deletions, preserving biological-sex values, allowing current/ex-partner status changes, and recording reproductive roles independently from sex recorded at birth.
+
+- 2325d34: Answers given in the final moments of an interview are no longer lost when a
+  participant finishes. Responses are saved on a short delay, so the very last
+  answer could still be waiting to be written when the interview was marked as
+  complete — and any study that locks an interview once it is finished then
+  rejected that late save without warning. The interview now waits for every
+  outstanding answer to be saved before it is finished. If that final save fails,
+  the participant can still finish rather than being stranded on the interview.
+
 ## 7.1.0
 
 ### Minor Changes

@@ -12,7 +12,8 @@
     "NEXT_PUBLIC_NETWORK_CANVAS_URL",
     "VITE_FRESCO_PREVIEW_URL",
     "VITE_FRESCO_PREVIEW_API_TOKEN",
-    "VITE_DISABLE_ANALYTICS"
+    "VITE_DISABLE_ANALYTICS",
+    "VITE_DISABLE_ANIMATIONS"
   ],
   "tasks": {
     "topo": {
@@ -106,7 +107,8 @@
       "env": [
         "VITE_FRESCO_PREVIEW_URL",
         "VITE_FRESCO_PREVIEW_API_TOKEN",
-        "VITE_DISABLE_ANALYTICS"
+        "VITE_DISABLE_ANALYTICS",
+        "VITE_DISABLE_ANIMATIONS"
       ],
       "outputs": ["dist/**"]
     },
@@ -124,7 +126,7 @@
         "tsconfig*.json",
         "package.json"
       ],
-      "env": ["NODE_ENV"],
+      "env": ["NODE_ENV", "VITE_DISABLE_ANALYTICS"],
       "outputs": ["dist/**"]
     },
     "networkcanvas.com#build": {

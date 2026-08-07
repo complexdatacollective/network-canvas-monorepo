@@ -265,6 +265,7 @@ export default function PedigreeView({
       children: (
         <>
           <PersonFields
+            currentEntityId={nodeId}
             initial={{
               name: currentName,
               biologicalSex: readBiologicalSex(

@@ -563,6 +563,17 @@ const unique: ValidationFunction<string> = (attribute, context) => () => {
         'Attribute must be specified for unique validation',
       );
 
+      // Optional fields may be left unanswered more than once. `required`
+      // owns emptiness; uniqueness begins only once a value is supplied.
+      if (
+        value === undefined ||
+        value === null ||
+        (typeof value === 'string' && value.trim().length === 0) ||
+        (Array.isArray(value) && value.length === 0)
+      ) {
+        return;
+      }
+
       // Collect other values of the same type, excluding the entity
       // currently being edited (if any) so its own value isn't treated
       // as a duplicate.

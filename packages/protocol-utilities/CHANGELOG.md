@@ -1,5 +1,18 @@
 # @codaco/protocol-utilities
 
+## 3.2.0
+
+### Minor Changes
+
+- 3c8fe35: Generate realistic, source-backed family pedigrees with reproductive scenarios and multi-generational disease lineages, while respecting each stage's collected variables, keeping pedigree membership isolated from other interview stages, correctly rendering shared and multiple unions, widening partnership response columns, and warning participants before discarding onboarding progress.
+
+  Improve pedigree editing and parentage capture by confirming destructive deletions, preserving biological-sex values, allowing current/ex-partner status changes, and recording reproductive roles independently from sex recorded at birth.
+
+### Patch Changes
+
+- Updated dependencies [3c8fe35]
+  - @codaco/shared-consts@5.6.1
+
 ## 3.1.1
 
 ### Patch Changes

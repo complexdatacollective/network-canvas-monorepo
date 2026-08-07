@@ -16,6 +16,7 @@ import {
   generateNetwork,
   SyntheticDataConstraintError,
 } from '@codaco/protocol-utilities';
+import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
@@ -27,6 +28,16 @@ import { useAssetResolver } from './useAssetResolver';
 const PAYLOAD_TIMEOUT_MS = 5000;
 const noopSync = async () => {};
 const noopFinish = async () => {};
+
+function protocolWithoutSkipLogic(protocol: CurrentProtocol): CurrentProtocol {
+  return {
+    ...protocol,
+    stages: protocol.stages.map(
+      ({ skipLogic: _skipLogic, ...stage }) => stage as Stage,
+    ),
+  };
+}
+
 async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
   const now = new Date().toISOString();
   const base: SessionPayload = {
@@ -94,9 +105,9 @@ export function PreviewHost() {
   const [failure, setFailure] = useState<PreviewFailure | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   // Index of the stage receiving a one-stage preview override, or null.
-  const [bypassedStageIndex, setBypassedStageIndex] = useState<number | null>(
-    null,
-  );
+  const [initialStageOverrideIndex, setInitialStageOverrideIndex] = useState<
+    number | null
+  >(null);
   const onRequestAsset = useAssetResolver(protocolId);
   // biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce is the deliberate retrigger key
   useEffect(() => {
@@ -111,7 +122,10 @@ export function PreviewHost() {
         // Resolve the protocol payload first (a throw here means an invalid
         // protocol shape), then build the session, which is async because
         // synthetic previews fetch and parse the protocol's roster assets.
-        const protocol = currentProtocolToPayload(previewPayload.protocol);
+        const previewProtocol = previewPayload.respectSkipLogic
+          ? previewPayload.protocol
+          : protocolWithoutSkipLogic(previewPayload.protocol);
+        const protocol = currentProtocolToPayload(previewProtocol);
         const session = await buildSession(previewPayload);
         if (cancelled) return;
         nextPayload = { protocol, session };
@@ -132,8 +146,8 @@ export function PreviewHost() {
       setInterviewPayload(nextPayload);
       setProtocolId(previewPayload.protocolId);
       setCurrentStep(previewPayload.startStage);
-      setBypassedStageIndex(
-        previewPayload.skipLogicBypassed ? previewPayload.startStage : null,
+      setInitialStageOverrideIndex(
+        previewPayload.respectSkipLogic ? previewPayload.startStage : null,
       );
     };
     const onMessage = (event: MessageEvent) => {
@@ -291,7 +305,7 @@ export function PreviewHost() {
         currentStep={currentStep}
         onStepChange={setCurrentStep}
         flags={{ isDevelopment: import.meta.env.DEV }}
-        initialStageOverrideIndex={bypassedStageIndex ?? undefined}
+        initialStageOverrideIndex={initialStageOverrideIndex ?? undefined}
         allowStageNavigation
         disableAnalytics
         analytics={{
