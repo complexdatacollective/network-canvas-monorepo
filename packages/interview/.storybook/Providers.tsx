@@ -44,15 +44,9 @@ const noopFinish = () => Promise.resolve();
  * Shell's own internal Toast.Provider + InterviewToastViewport, so this
  * decorator only needs to provide the default toast surface.
  */
-export default function Providers({
-  children,
-  disableAnimations,
-}: {
-  children: ReactNode;
-  disableAnimations?: boolean;
-}) {
+export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <AnimationProvider disableAnimations={disableAnimations}>
+    <AnimationProvider disableAnimationsForAutomation>
       <DirectionProvider direction="ltr">
         <Toast.Provider limit={7}>
           <TooltipProvider>

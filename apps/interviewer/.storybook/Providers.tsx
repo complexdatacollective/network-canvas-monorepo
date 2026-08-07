@@ -15,15 +15,9 @@ import { TooltipProvider } from '@codaco/fresco-ui/Tooltip';
  * presentational components). Provides the Toast surface, Tooltip, drag-and-drop
  * store, and dialog host that fresco-ui components may reach for.
  */
-export default function Providers({
-  children,
-  disableAnimations,
-}: {
-  children: ReactNode;
-  disableAnimations?: boolean;
-}) {
+export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <AnimationProvider disableAnimations={disableAnimations}>
+    <AnimationProvider disableAnimationsForAutomation>
       <DirectionProvider direction="ltr">
         <Toast.Provider limit={7}>
           <TooltipProvider>

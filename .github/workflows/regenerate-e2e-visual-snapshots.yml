@@ -8,17 +8,17 @@ on:
         required: true
         type: string
       mode:
-        description: Regenerate snapshots or stress the Geospatial visual capture
+        description: Regenerate snapshots or stress Motion drag visual captures
         required: false
         type: string
         default: regenerate
       browser:
-        description: Browser to use for a Geospatial stress run
+        description: Browser to use for a Motion drag stress run
         required: false
         type: string
         default: all
       iterations:
-        description: Number of retry-free Geospatial stress iterations per browser
+        description: Retry-free Motion drag iterations per browser
         required: false
         type: number
         default: 10
@@ -39,9 +39,9 @@ on:
         default: regenerate
         options:
           - regenerate
-          - geospatial-stress
+          - motion-drag-stress
       browser:
-        description: Browser for Geospatial stress runs
+        description: Browser for Motion drag stress runs
         required: true
         type: choice
         default: all
@@ -51,7 +51,7 @@ on:
           - firefox
           - webkit
       iterations:
-        description: Retry-free Geospatial iterations per browser
+        description: Retry-free Motion drag iterations per browser
         required: true
         type: choice
         default: '10'
@@ -72,13 +72,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Validate Geospatial stress inputs
-        if: inputs.mode == 'geospatial-stress'
+      - name: Validate Motion drag stress inputs
+        if: inputs.mode == 'motion-drag-stress'
         env:
           SUITE: ${{ inputs.suite }}
         run: |
           if [[ "$SUITE" != "interview" ]]; then
-            echo "::error::Geospatial stress mode requires the interview suite."
+            echo "::error::Motion drag stress mode requires the interview suite."
             exit 1
           fi
 
@@ -101,8 +101,8 @@ jobs:
         if: inputs.mode == 'regenerate' && inputs.suite == 'interviewer'
         run: ./apps/interviewer/e2e/scripts/run.sh --grep @visual --update-snapshots
 
-      - name: Establish current-render Geospatial baseline
-        if: inputs.mode == 'geospatial-stress'
+      - name: Establish current-render Motion drag baselines
+        if: inputs.mode == 'motion-drag-stress'
         env:
           BROWSER: ${{ inputs.browser }}
           PW_WORKERS: 1
@@ -119,13 +119,38 @@ jobs:
           fi
           ./packages/interview/e2e/scripts/run.sh \
             "${projects[@]}" \
-            --grep 'visual Geospatial: core-click-select-and-prompt-panel$' \
+            --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults|FamilyPedigree: checklist-resting-state)$' \
             --workers=1 \
             --retries=0 \
             --update-snapshots
 
-      - name: Stress Geospatial visual capture
-        if: inputs.mode == 'geospatial-stress'
+      - name: Calibrate one-pixel Motion drag tolerance
+        if: inputs.mode == 'motion-drag-stress'
+        env:
+          BROWSER: ${{ inputs.browser }}
+          PW_WORKERS: 1
+        run: |
+          projects=()
+          if [[ "$BROWSER" == "all" ]]; then
+            projects=(
+              --project=chromium-visual
+              --project=firefox-visual
+              --project=webkit-visual
+            )
+          else
+            projects=("--project=$BROWSER-visual")
+          fi
+          for offset in x y xy; do
+            E2E_VISUAL_DRAG_OFFSET="$offset" \
+              ./packages/interview/e2e/scripts/run.sh \
+              "${projects[@]}" \
+              --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults|FamilyPedigree: checklist-resting-state)$' \
+              --workers=1 \
+              --retries=0
+          done
+
+      - name: Stress Motion drag visual capture
+        if: inputs.mode == 'motion-drag-stress'
         env:
           BROWSER: ${{ inputs.browser }}
           E2E_VISUAL_DEBUG: geospatial
@@ -144,7 +169,7 @@ jobs:
           fi
           ./packages/interview/e2e/scripts/run.sh \
             "${projects[@]}" \
-            --grep 'visual Geospatial: core-click-select-and-prompt-panel$' \
+            --grep 'visual (Geospatial: core-click-select-and-prompt-panel|Sociogram: manual-baseline-placed-and-unplaced|Narrative: layout-variable-node-inclusion-and-defaults|FamilyPedigree: checklist-resting-state)$' \
             --workers=1 \
             --retries=0 \
             --repeat-each="$ITERATIONS"
@@ -198,15 +223,15 @@ jobs:
           retention-days: 14
           compression-level: 0
 
-      - name: Upload Geospatial stress diagnostics
-        if: always() && inputs.mode == 'geospatial-stress'
+      - name: Upload Motion drag stress diagnostics
+        if: always() && inputs.mode == 'motion-drag-stress'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: geospatial-visual-stress-${{ inputs.browser }}
+          name: motion-drag-visual-stress-${{ inputs.browser }}
           path: |
             packages/interview/e2e/playwright-report/
             packages/interview/e2e/test-results/
-            packages/interview/e2e/visual-snapshots/*-matrix/matrix-visual-visual-geospatial-core-click-select-and-prompt-panel-stage-0*.png
+            packages/interview/e2e/visual-snapshots/
           if-no-files-found: warn
           retention-days: 14
           compression-level: 0

@@ -1,9 +1,8 @@
 import { ChevronUp, GripHorizontal } from 'lucide-react';
-import { motion, MotionConfigContext } from 'motion/react';
+import { motion } from 'motion/react';
 import {
   type ReactNode,
   type RefObject,
-  useContext,
   useEffect,
   useId,
   useState,
@@ -36,7 +35,6 @@ const CollapsablePrompts = (props: {
   const { prompt } = usePrompts();
   const [collapsed, setCollapsed] = useState(false);
   const contentId = useId();
-  const { skipAnimations } = useContext(MotionConfigContext);
 
   const isCollapsed = collapsible && collapsed;
 
@@ -51,28 +49,17 @@ const CollapsablePrompts = (props: {
   return (
     <MotionSurface
       data-testid="collapsible-prompts"
+      data-motion-drag-container="prompt-panel"
       className={cx(
         'bg-surface/80 absolute top-4 right-4 z-10 flex w-fit max-w-sm cursor-move flex-col items-center overflow-hidden border-b-2 shadow-2xl backdrop-blur-md',
         className,
       )}
-      layout={!skipAnimations}
-      // Motion's drag projection writes a near-zero transform after measuring
-      // constraints. That compositor transform rasterises the resting panel on
-      // a different pixel boundary, even when automated hosts skip animations.
-      // Omit the drag feature only in that explicit host mode; reduced-motion
-      // users still retain the panel's drag interaction.
-      // `skipAnimations` is deliberately the automation signal here: test
-      // hosts set it through AnimationProvider.disableAnimations, while OS
-      // reduced motion does not. Detecting CI/E2E inside this host-agnostic
-      // package would couple it to one build environment. If animation
-      // disabling gains a non-test use, introduce an explicit automated-
-      // interaction flag instead of broadening this proxy.
-      drag={!skipAnimations}
-      dragConstraints={skipAnimations ? undefined : dragConstraints}
+      layout
+      drag
+      dragConstraints={dragConstraints}
       noContainer
       spacing="sm"
       shadow="sm"
-      initial={skipAnimations ? false : undefined}
       variants={{
         initial: {
           scale: 0.4,

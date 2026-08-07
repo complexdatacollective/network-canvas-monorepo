@@ -90,6 +90,7 @@ docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
 
 docker run --rm --init --name "$CONTAINER_NAME" \
   -e CI=true \
+  -e E2E_VISUAL_DRAG_OFFSET \
   -e E2E_VISUAL_DEBUG \
   -e PW_WORKERS \
   -v "$(pwd)":/workspace \

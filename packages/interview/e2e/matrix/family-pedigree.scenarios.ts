@@ -1147,10 +1147,40 @@ async function walkMinimalTwoParents(fp: FamilyPedigreeFixture): Promise<void> {
   await fp.dismissBuildHint();
 }
 
+function checklistRestingState(): ScenarioDefinition {
+  const si = new SyntheticInterview();
+  const base = buildBaseFamilyPedigree(si);
+
+  si.addStage('FamilyPedigree', {
+    ...commonConfig(base),
+    nodeConfig: nodeConfigOf(base),
+    framing: FIXED_GAMETE,
+    boundaries: BOUNDARIES_OFF,
+  });
+
+  return {
+    id: 'checklist-resting-state',
+    covers: [],
+    visual: true,
+    slow: true,
+    build: () => si,
+    run: async ({ page }) => {
+      const fp = new FamilyPedigreeFixture(page);
+      await walkMinimalTwoParents(fp);
+
+      await expect(fp.checklist).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Pedigree Checklist' }),
+      ).toBeVisible();
+    },
+  };
+}
+
 export const familyPedigreeScenarios: InterfaceScenarios = {
   interfaceType: 'FamilyPedigree',
   scenarios: [
     smokeNuclearFamily(),
+    checklistRestingState(),
     relationshipFormFieldsAndActivePartnerEdge(),
     framingParticipantChoiceWithIntro(),
     framingFixedGendered(),

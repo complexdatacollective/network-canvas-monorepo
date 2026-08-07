@@ -1,5 +1,3 @@
-import { expect } from '@playwright/test';
-
 import { matrixTest } from '../../fixtures/matrix-test.js';
 import { ALL_SUITES } from '../../matrix/all-scenarios.js';
 import { installScenario } from '../../matrix/run-scenario.js';
@@ -73,19 +71,11 @@ for (const suite of ALL_SUITES) {
         if (isGeospatialStressScenario) {
           await stage.geospatial.waitForMapIdle();
           await attachGeospatialDiagnostics(page, 'initial');
-          await expect(page.getByTestId('collapsible-prompts')).toHaveCSS(
-            'transform',
-            'none',
-          );
         }
         await interview.captureInitial(mask);
         await scenario.run(ctx);
         if (isGeospatialStressScenario) {
           await attachGeospatialDiagnostics(page, 'final');
-          await expect(page.getByTestId('collapsible-prompts')).toHaveCSS(
-            'transform',
-            'none',
-          );
         }
         await interview.captureFinal(mask);
       },

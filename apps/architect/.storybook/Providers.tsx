@@ -11,15 +11,9 @@ import { TooltipProvider } from '@codaco/fresco-ui/Tooltip';
  * components add an isolated Redux Provider in their own story so state cannot
  * leak between examples.
  */
-export default function Providers({
-  children,
-  disableAnimations,
-}: {
-  children: ReactNode;
-  disableAnimations?: boolean;
-}) {
+export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <AnimationProvider disableAnimations={disableAnimations}>
+    <AnimationProvider disableAnimationsForAutomation>
       <DirectionProvider direction="ltr">
         <PortalContainerProvider>
           <TooltipProvider>
