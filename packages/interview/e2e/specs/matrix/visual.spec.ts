@@ -72,20 +72,20 @@ for (const suite of ALL_SUITES) {
           scenario.id === GEOSPATIAL_STRESS_SCENARIO;
         if (isGeospatialStressScenario) {
           await stage.geospatial.waitForMapIdle();
+          await attachGeospatialDiagnostics(page, 'initial');
           await expect(page.getByTestId('collapsible-prompts')).toHaveCSS(
             'transform',
             'none',
           );
-          await attachGeospatialDiagnostics(page, 'initial');
         }
         await interview.captureInitial(mask);
         await scenario.run(ctx);
         if (isGeospatialStressScenario) {
+          await attachGeospatialDiagnostics(page, 'final');
           await expect(page.getByTestId('collapsible-prompts')).toHaveCSS(
             'transform',
             'none',
           );
-          await attachGeospatialDiagnostics(page, 'final');
         }
         await interview.captureFinal(mask);
       },

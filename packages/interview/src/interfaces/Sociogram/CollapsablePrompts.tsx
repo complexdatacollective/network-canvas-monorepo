@@ -10,7 +10,6 @@ import {
 } from 'react';
 
 import usePrevious from '@codaco/fresco-ui/hooks/usePrevious';
-import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -38,7 +37,6 @@ const CollapsablePrompts = (props: {
   const [collapsed, setCollapsed] = useState(false);
   const contentId = useId();
   const { skipAnimations } = useContext(MotionConfigContext);
-  const shouldSkipAnimations = useShouldSkipAnimations();
 
   const isCollapsed = collapsible && collapsed;
 
@@ -57,7 +55,7 @@ const CollapsablePrompts = (props: {
         'bg-surface/80 absolute top-4 right-4 z-10 flex w-fit max-w-sm cursor-move flex-col items-center overflow-hidden border-b-2 shadow-2xl backdrop-blur-md',
         className,
       )}
-      layout={!shouldSkipAnimations}
+      layout={!skipAnimations}
       // Motion's drag projection writes a near-zero transform after measuring
       // constraints. That compositor transform rasterises the resting panel on
       // a different pixel boundary, even when automated hosts skip animations.
@@ -68,7 +66,7 @@ const CollapsablePrompts = (props: {
       noContainer
       spacing="sm"
       shadow="sm"
-      initial={shouldSkipAnimations ? false : undefined}
+      initial={skipAnimations ? false : undefined}
       variants={{
         initial: {
           scale: 0.4,
