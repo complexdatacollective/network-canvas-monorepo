@@ -88,6 +88,14 @@ export type GenerateNetworkResult = {
 const DEFAULT_PEDIGREE_NODE_CEILING = 32;
 
 /**
+ * The people every pedigree holds before any optional branch: ego, two
+ * parents, and four grandparents. `generateFamilyPedigree` adds them
+ * unconditionally to satisfy the interface's hard minimum and its grandparent
+ * boundary, so no declared count can produce a smaller family.
+ */
+const MINIMUM_PEDIGREE_CORE = 7;
+
+/**
  * The largest family a FamilyPedigree stage may build, taken from the declared
  * count of the node type it builds one from.
  *
@@ -120,6 +128,43 @@ function familyPedigreeNodeCeiling(
     );
   }
   return ceiling;
+}
+
+/**
+ * The people a pedigree can put on the canvas, per node type it builds.
+ *
+ * The same reckoning as {@link familyPedigreeNodeCeiling}, kept per type
+ * rather than maximised, because a topology ceiling is about the pairs one
+ * subject type reaches. A pedigree's population is not in `effectivePopulation`
+ * at all — that map is built from the stage creations, and pedigree creations
+ * are deliberately skipped — so without this a type a pedigree builds is
+ * counted at its declared count. A `count` of 1 then bounds a census over the
+ * family at zero pairs, which is not a loose ceiling but an under-count: it
+ * hides the real pair count from the value-space check, and a unique edge
+ * variable can pass preflight and run out mid-materialisation.
+ */
+function familyPedigreePopulationByType(
+  codebook: StructuralCodebook,
+  stages: Stage[],
+): Map<string, number> {
+  const populations = new Map<string, number>();
+  for (const stage of stages) {
+    if (stage.type !== 'FamilyPedigree') continue;
+    const type = stage.nodeConfig?.type;
+    const definition = type === undefined ? undefined : codebook.node?.[type];
+    if (type === undefined || definition === undefined) continue;
+    const declared = definition.synthetic?.count !== undefined;
+    const attainable = Math.max(
+      declared
+        ? countCeiling(resolveNodeCount(definition, { creatable: true }))
+        : DEFAULT_PEDIGREE_NODE_CEILING,
+      // The generator builds its core whatever the codebook declares, so the
+      // floor is the core rather than the declaration.
+      MINIMUM_PEDIGREE_CORE,
+    );
+    populations.set(type, Math.max(populations.get(type) ?? 0, attainable));
+  }
+  return populations;
 }
 
 /** Unordered pairs among `count` entities. */
@@ -170,6 +215,7 @@ function deriveFeasibilityConfig(
   creatableNodeTypes: ReadonlySet<string>,
   today: string,
   pedigreeCeiling: number,
+  pedigreePopulation: Map<string, number>,
 ): FeasibilityConfig {
   let nodeCap = 1;
   const nodeCountByType: Record<string, { min: number; max: number }> = {};
@@ -256,10 +302,16 @@ function deriveFeasibilityConfig(
     for (const subjectType of new Set(
       topologyCreations.map((creation) => creation.subjectNodeType),
     )) {
-      const count =
+      // A pedigree's people are absent from `effectivePopulation` (its
+      // creations are skipped when that map is built), so a type it builds
+      // would otherwise be counted at its declared count — zero pairs for a
+      // declared count of 1, hiding the family's real pair count.
+      const count = Math.max(
         effectivePopulation.get(subjectType) ??
-        nodeCountByType[subjectType]?.max ??
-        nodeCap;
+          nodeCountByType[subjectType]?.max ??
+          nodeCap,
+        pedigreePopulation.get(subjectType) ?? 0,
+      );
       const pairs = pairsAmong(count);
       ceiling += Math.min(
         pairs,
@@ -367,6 +419,7 @@ export function generateNetwork(
       effects.creatableNodeTypes,
       resolvedConfig.today,
       resolvedFamilyPedigree.maxNodes,
+      familyPedigreePopulationByType(codebook, stages),
     ),
     externalData,
     respectSkipLogicAndFiltering,

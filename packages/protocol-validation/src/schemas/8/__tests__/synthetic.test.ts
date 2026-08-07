@@ -640,6 +640,35 @@ describe('synthetic metadata (additive to schema 8)', () => {
       synthetic,
     });
 
+    it('rejects a synthetic bound the picker cannot offer', () => {
+      // The picker's own parameters are already held to these floors, and a
+      // synthetic window is drawn from directly where the field declares no
+      // bounds — so a bound below them would have generation emit dates no
+      // participant could enter.
+      const yearZero = withPersonVariable(
+        'dateMet',
+        datetimeVariable({ distribution: 'uniform', min: '0000-01-01' }),
+      );
+      const zeroResult = parse(yearZero);
+      expect(zeroResult.success).toBe(false);
+      expect(hasIssue(zeroResult, 'year of 0001 or later')).toBe(true);
+
+      const smallCoarseYear = withPersonVariable(
+        'dateMet',
+        datetimeVariable(
+          { distribution: 'uniform', min: '0099' },
+          {
+            type: 'year',
+          },
+        ),
+      );
+      const coarseResult = parse(smallCoarseYear);
+      expect(coarseResult.success).toBe(false);
+      expect(hasIssue(coarseResult, 'four-digit year of 1000 or later')).toBe(
+        true,
+      );
+    });
+
     it('accepts a uniform window at the variable resolution', () => {
       const protocol = withPersonVariable(
         'dateMet',

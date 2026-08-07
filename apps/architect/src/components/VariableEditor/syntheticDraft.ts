@@ -358,12 +358,16 @@ export function assembleSynthetic(
 
     case 'ordinal':
     case 'categorical': {
-      const optionWeights = weightRows(ctx)
-        .map((row) => ({
-          value: row.value,
-          weight: toNumber(values[row.fieldName]) ?? DEFAULT_OPTION_WEIGHT,
-        }))
-        .filter((entry) => entry.weight >= 0);
+      // A negative weight is kept rather than dropped. The control carries a
+      // native `min`, but the form submits with `noValidate`, so nothing has
+      // refused it by the time it arrives here — and a dropped row saves as
+      // no entry at all, which reopens showing the default weight of 1 with
+      // nothing said about what was typed. Carried through, the schema's own
+      // bound rejects it under the row that owns it.
+      const optionWeights = weightRows(ctx).map((row) => ({
+        value: row.value,
+        weight: toNumber(values[row.fieldName]) ?? DEFAULT_OPTION_WEIGHT,
+      }));
       const base: Record<string, unknown> = {};
       if (optionWeights.length > 0) base.optionWeights = optionWeights;
 
@@ -378,19 +382,26 @@ export function assembleSynthetic(
           .filter((row) => row.count <= selectable)
           .map((row) => ({
             count: row.count,
-            probability: Math.max(0, toNumber(values[row.fieldName]) ?? 0),
+            probability: toNumber(values[row.fieldName]) ?? 0,
           }));
         const total = rows.reduce((sum, row) => sum + row.probability, 0);
         // Normalised so the stored table always satisfies the schema's
         // sum-to-one rule whatever mixture the researcher typed — except a
-        // table of nothing but zeros, which has no normalisation. That one is
-        // assembled as typed so the schema rejects it and the editor says so:
-        // dropping it instead saved a variable whose reopened editor showed
-        // the runtime's uniform default in place of what the author entered.
+        // table the schema has to see as typed to refuse. One of nothing but
+        // zeros has no normalisation; one carrying a negative would be
+        // normalised INTO range beside a positive row, saving a table the
+        // author never entered and reopening with different numbers. Both are
+        // assembled as typed so the schema rejects them and the editor says
+        // so: dropping them instead saved a variable whose reopened editor
+        // showed the runtime's uniform default in place of what was entered.
+        const normalisable =
+          total > 0 && rows.every((row) => row.probability >= 0);
         base.selectionCount = {
           probabilities: rows.map((row) => ({
             count: row.count,
-            probability: total > 0 ? row.probability / total : row.probability,
+            probability: normalisable
+              ? row.probability / total
+              : row.probability,
           })),
         };
       }

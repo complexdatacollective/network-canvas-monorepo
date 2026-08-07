@@ -140,28 +140,32 @@ function NumericParameters({
           />
         </>
       )}
-      {kind === 'number' && (
-        <>
-          <Field
-            name={syntheticField('min')}
-            label="Minimum"
-            hint="Optional. Values are always kept inside the validation bounds."
-            initialValue={initialFor('min')}
-            component={InputField}
-            type="number"
-            step="any"
-          />
-          <Field
-            name={syntheticField('max')}
-            label="Maximum"
-            hint="Optional."
-            initialValue={initialFor('max')}
-            component={InputField}
-            type="number"
-            step="any"
-          />
-        </>
-      )}
+      {/*
+        Rendered for a scalar as well as a number: the scalar schema takes the
+        same optional bounds, over the 0–1 scale. Leaving them out did not
+        leave them alone — submission rebuilds `synthetic` from the registered
+        fields, so an unrendered bound was an unregistered one, and saving any
+        edit to such a variable quietly widened its distribution back to the
+        whole scale.
+      */}
+      <Field
+        name={syntheticField('min')}
+        label="Minimum"
+        hint={
+          kind === 'scalar'
+            ? 'Optional. Scalar values always stay within 0 and 1.'
+            : 'Optional. Values are always kept inside the validation bounds.'
+        }
+        initialValue={initialFor('min')}
+        {...bounded}
+      />
+      <Field
+        name={syntheticField('max')}
+        label="Maximum"
+        hint="Optional."
+        initialValue={initialFor('max')}
+        {...bounded}
+      />
     </>
   );
 }

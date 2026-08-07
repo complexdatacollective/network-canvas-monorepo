@@ -387,3 +387,93 @@ describe('the text generator options', () => {
     expect(options.map((option) => option.label)).not.toContain('neutralWords');
   });
 });
+
+describe('values the controls reject but the form does not', () => {
+  // The editor submits with `noValidate`, so a native `min` stops nothing.
+  // Anything dropped or clamped on the way into the descriptor is a value the
+  // schema never sees — the save succeeds and the editor reopens showing a
+  // default in place of what was typed.
+
+  it('carries a negative option weight through to its own row', () => {
+    const context = contextFor(categoricalVariable);
+    const rows = weightRows(context);
+    const assembled = assembleSynthetic(context, {
+      [rows[0]!.fieldName]: 1,
+      [rows[1]!.fieldName]: -1,
+    });
+
+    expect(assembled).toMatchObject({
+      optionWeights: [
+        { value: 'close', weight: 1 },
+        { value: 'distant', weight: -1 },
+      ],
+    });
+    expect(
+      validateAssembledVariable(context, assembled)?.fieldErrors[
+        rows[1]!.fieldName
+      ],
+    ).toEqual(['Enter 0 or more']);
+  });
+
+  it('carries a negative selection probability through unnormalised', () => {
+    // Normalising it beside a positive row would divide it INTO range and save
+    // a table the author never entered.
+    const context = contextFor(categoricalVariable);
+    const rows = weightRows(context);
+    const counts = selectionCountRows(context);
+    const assembled = assembleSynthetic(context, {
+      [rows[0]!.fieldName]: 1,
+      [rows[1]!.fieldName]: 1,
+      ...Object.fromEntries(counts.map((row) => [row.fieldName, 0])),
+      [counts[0]!.fieldName]: -1,
+      [counts[1]!.fieldName]: 2,
+    });
+
+    const table = (
+      assembled as { selectionCount?: { probabilities: unknown[] } }
+    ).selectionCount;
+    expect(table?.probabilities).toContainEqual({
+      count: counts[0]!.count,
+      probability: -1,
+    });
+    expect(
+      validateAssembledVariable(context, assembled)?.fieldErrors[
+        counts[0]!.fieldName
+      ],
+    ).toEqual(['Enter 0 or more']);
+  });
+});
+
+describe('a scalar uniform with declared bounds', () => {
+  const scalarVariable = {
+    name: 'Closeness',
+    type: 'scalar',
+    component: 'VisualAnalogScale',
+    synthetic: { distribution: 'uniform', min: 0.2, max: 0.6 },
+  } as const satisfies Variable;
+
+  it('offers the bounds as fields so a save keeps them', () => {
+    // Submission rebuilds `synthetic` from the registered fields, so a bound
+    // with no control is a bound that any edit silently drops — widening the
+    // distribution back to the whole scale.
+    const initial = initialSyntheticValues(contextFor(scalarVariable));
+
+    expect(initial[syntheticField('min')]).toBe(0.2);
+    expect(initial[syntheticField('max')]).toBe(0.6);
+  });
+
+  it('round-trips them through assembly', () => {
+    const context = contextFor(scalarVariable);
+    const assembled = assembleSynthetic(
+      context,
+      initialSyntheticValues(context),
+    );
+
+    expect(assembled).toMatchObject({
+      distribution: 'uniform',
+      min: 0.2,
+      max: 0.6,
+    });
+    expect(validateAssembledVariable(context, assembled)).toBeUndefined();
+  });
+});

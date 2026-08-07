@@ -449,6 +449,39 @@ export const isValidDateAtResolution = (
   return isIsoDate(value);
 };
 
+/**
+ * Why a date bound falls outside what the picker at this resolution can offer,
+ * phrased as the tail of a sentence naming the bound — or `undefined` where the
+ * picker can offer it.
+ *
+ * Shared by the picker's own parameters and by a synthetic window, because the
+ * two describe the same control. A bound the field could never present is
+ * unusable whichever of them wrote it, and a synthetic window is now drawn from
+ * directly where the field declares no bounds of its own, so a floor only the
+ * parameters enforced left generation free to emit dates no participant could
+ * enter.
+ */
+const pickerYearFloorViolation = (
+  value: string,
+  resolution: keyof typeof DATE_RESOLUTION,
+): string | undefined => {
+  // The interview runtime builds a year/month picker's selectable year options
+  // via `y.toString()` (unpadded, e.g. `99`, not `'0099'`), so a stored value
+  // and a zero-padded coarse bound would never compare equal. A full-resolution
+  // YYYY-MM-DD string is always zero-padded and round-trips at any year.
+  if (resolution !== 'full' && Number(value.slice(0, 4)) < 1000) {
+    return 'must use a four-digit year of 1000 or later at year/month resolution';
+  }
+  // '0000-12-31' is a real, round-tripping ISO date (JS Date supports year 0),
+  // but the native HTML date input's earliest selectable date is 0001-01-01, so
+  // a year-zero bound leaves no selectable value that can ever pass. Years
+  // 0001-0999 stay valid at full resolution; coarse ones are floored above.
+  if (resolution === 'full' && Number(value.slice(0, 4)) === 0) {
+    return 'must use a year of 0001 or later — the native date input starts at year 0001';
+  }
+  return undefined;
+};
+
 // A synthetic date window is expressed at the variable's own resolution (its
 // bounds compare against stored values), while a normal descriptor's mean is
 // always a full YYYY-MM-DD date because its sdDays operates in days.
@@ -477,6 +510,15 @@ const rejectInvalidDatetimeSynthetic = (
       ctx.addIssue({
         code: 'custom' as const,
         message: `Synthetic "${bound}" must be a valid ${label} date at this variable's resolution`,
+        path: ['synthetic', bound],
+      });
+      continue;
+    }
+    const offerable = pickerYearFloorViolation(value, resolution);
+    if (offerable !== undefined) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Synthetic "${bound}" ${offerable}`,
         path: ['synthetic', bound],
       });
     }
@@ -558,31 +600,11 @@ export const datePickerParametersSchema = z
         });
         continue;
       }
-      // Eighth-wave Finding 2: the interview runtime builds a year/month
-      // resolution DatePicker's selectable year options via `y.toString()`
-      // (unpadded, e.g. `99`, not `'0099'`), so a stored value ('99') and a
-      // zero-padded coarse-resolution bound ('0099') would never compare
-      // equal even though a full-resolution YYYY-MM-DD string is always
-      // zero-padded and round-trips correctly at any year (the wave-3
-      // small-year fix). Reject small years at year/month resolution only.
-      if (resolution !== 'full' && Number(value.slice(0, 4)) < 1000) {
+      const offerable = pickerYearFloorViolation(value, resolution);
+      if (offerable !== undefined) {
         ctx.addIssue({
           code: 'custom' as const,
-          message: `DatePicker "${bound}" must use a four-digit year of 1000 or later at year/month resolution`,
-          path: [bound],
-        });
-      }
-      // Eleventh-wave Finding 1: '0000-12-31' is a real, round-tripping ISO
-      // date (JS Date supports year 0), but the native HTML date input's
-      // earliest selectable date is 0001-01-01, so a year-zero bound (e.g.
-      // max '0000-12-31' on a required field) leaves no selectable value
-      // that can ever pass. Years 0001-0999 stay valid at full resolution
-      // (the wave-3 small-year support); coarse resolutions are already
-      // floored at 1000 above.
-      if (resolution === 'full' && Number(value.slice(0, 4)) === 0) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `DatePicker "${bound}" must use a year of 0001 or later — the native date input starts at year 0001`,
+          message: `DatePicker "${bound}" ${offerable}`,
           path: [bound],
         });
       }
