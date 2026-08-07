@@ -1,15 +1,10 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
-import { MotionConfig } from 'motion/react';
 import type { ReactNode } from 'react';
 
+import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 import { TooltipProvider } from '@codaco/fresco-ui/Tooltip';
-
-declare global {
-  // eslint-disable-next-line no-var
-  var BASE_UI_ANIMATIONS_DISABLED: boolean | undefined;
-}
 
 /**
  * The UI-provider subset shared by Architect and its stories. Connected
@@ -23,12 +18,8 @@ export default function Providers({
   children: ReactNode;
   disableAnimations?: boolean;
 }) {
-  if (disableAnimations) {
-    globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
-  }
-
   return (
-    <MotionConfig reducedMotion="user" skipAnimations={disableAnimations}>
+    <AnimationProvider disableAnimations={disableAnimations}>
       <DirectionProvider direction="ltr">
         <PortalContainerProvider>
           <TooltipProvider>
@@ -36,6 +27,6 @@ export default function Providers({
           </TooltipProvider>
         </PortalContainerProvider>
       </DirectionProvider>
-    </MotionConfig>
+    </AnimationProvider>
   );
 }

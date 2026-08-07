@@ -18,6 +18,7 @@
   "exports": {
     "./Accordion": "./src/Accordion.tsx",
     "./Alert": "./src/Alert.tsx",
+    "./AnimationProvider": "./src/AnimationProvider.tsx",
     "./Badge": "./src/Badge.tsx",
     "./Definition": "./src/Definition.tsx",
     "./NativeLink": "./src/NativeLink.tsx",
@@ -170,6 +171,10 @@
       "./Alert": {
         "types": "./dist/Alert.d.ts",
         "default": "./dist/Alert.js"
+      },
+      "./AnimationProvider": {
+        "types": "./dist/AnimationProvider.d.ts",
+        "default": "./dist/AnimationProvider.js"
       },
       "./Badge": {
         "types": "./dist/Badge.d.ts",

@@ -4,6 +4,7 @@ import './analytics';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 
+import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
@@ -82,20 +83,24 @@ async function startApp(): Promise<void> {
   }
 
   createRoot(root).render(
-    <AppErrorBoundary>
-      <Provider store={store}>
-        {/* PortalContainerProvider outermost so fresco-ui overlays portal into
-          its viewport layer; the `root` (isolation: isolate) wrapper keeps the
-          app's own stacking contexts from competing with that layer. */}
-        <PortalContainerProvider>
-          <DialogProvider>
-            <div className="root h-full">
-              <AppView />
-            </div>
-          </DialogProvider>
-        </PortalContainerProvider>
-      </Provider>
-    </AppErrorBoundary>,
+    <AnimationProvider
+      disableAnimations={import.meta.env.VITE_DISABLE_ANIMATIONS === 'true'}
+    >
+      <AppErrorBoundary>
+        <Provider store={store}>
+          {/* PortalContainerProvider outermost so fresco-ui overlays portal into
+            its viewport layer; the `root` (isolation: isolate) wrapper keeps the
+            app's own stacking contexts from competing with that layer. */}
+          <PortalContainerProvider>
+            <DialogProvider>
+              <div className="root h-full">
+                <AppView />
+              </div>
+            </DialogProvider>
+          </PortalContainerProvider>
+        </Provider>
+      </AppErrorBoundary>
+    </AnimationProvider>,
   );
 
   // Matches the boot loader's opacity transition in index.html (400ms), plus a
