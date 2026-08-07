@@ -141,31 +141,37 @@ function NumericParameters({
         </>
       )}
       {/*
-        Rendered for a scalar as well as a number: the scalar schema takes the
-        same optional bounds, over the 0–1 scale. Leaving them out did not
-        leave them alone — submission rebuilds `synthetic` from the registered
-        fields, so an unrendered bound was an unregistered one, and saving any
-        edit to such a variable quietly widened its distribution back to the
-        whole scale.
+        Only where the descriptor accepts them. A number takes bounds on every
+        distribution it offers, but a scalar takes them on `uniform` alone —
+        its normal and beta schemas are strict objects without them, so a bound
+        entered against those makes the variable unsavable. Rendering has to
+        match the schema in both directions: an unrendered bound is an
+        unregistered one, and submission rebuilds `synthetic` from the
+        registered fields, so leaving a supported bound out silently widens the
+        distribution on the next save.
       */}
-      <Field
-        name={syntheticField('min')}
-        label="Minimum"
-        hint={
-          kind === 'scalar'
-            ? 'Optional. Scalar values always stay within 0 and 1.'
-            : 'Optional. Values are always kept inside the validation bounds.'
-        }
-        initialValue={initialFor('min')}
-        {...bounded}
-      />
-      <Field
-        name={syntheticField('max')}
-        label="Maximum"
-        hint="Optional."
-        initialValue={initialFor('max')}
-        {...bounded}
-      />
+      {(kind === 'number' || distribution === 'uniform') && (
+        <>
+          <Field
+            name={syntheticField('min')}
+            label="Minimum"
+            hint={
+              kind === 'scalar'
+                ? 'Optional. Scalar values always stay within 0 and 1.'
+                : 'Optional. Values are always kept inside the validation bounds.'
+            }
+            initialValue={initialFor('min')}
+            {...bounded}
+          />
+          <Field
+            name={syntheticField('max')}
+            label="Maximum"
+            hint="Optional."
+            initialValue={initialFor('max')}
+            {...bounded}
+          />
+        </>
+      )}
     </>
   );
 }

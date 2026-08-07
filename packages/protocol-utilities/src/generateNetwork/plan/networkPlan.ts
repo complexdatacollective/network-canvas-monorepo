@@ -132,49 +132,83 @@ const variablesOf = (
   definition: { variables?: VariablesRecord } | undefined,
 ): VariablesRecord => (definition?.variables ?? {}) as VariablesRecord;
 
-/** Per-variable missing probabilities, resolved once per run. */
+/** An entity scope's variables, empty where the scope declares none. */
+const EMPTY_PROBABILITIES: ReadonlyMap<string, number> = new Map();
+const EMPTY_REQUIRED: ReadonlySet<string> = new Set();
+
+export const missingProbabilitiesFor = (
+  probabilities: ReadonlyMap<string, ReadonlyMap<string, number>>,
+  scope: string,
+): ReadonlyMap<string, number> =>
+  probabilities.get(scope) ?? EMPTY_PROBABILITIES;
+
+export const requiredVariablesFor = (
+  required: ReadonlyMap<string, ReadonlySet<string>>,
+  scope: string,
+): ReadonlySet<string> => required.get(scope) ?? EMPTY_REQUIRED;
+
+/**
+ * Missing probabilities, per entity scope and then per variable.
+ *
+ * Scoped rather than flat because a codebook may use one variable key in two
+ * places — the same name under two node types, or on a node and on ego — and
+ * those are separate definitions. Flattened, a probability declared in one
+ * scope was applied to every variable sharing its key, so a variable declaring
+ * no missingness at all came back null on every entity.
+ */
 export function missingProbabilities(
   codebook: StructuralCodebook,
-): Map<string, number> {
-  const probabilities = new Map<string, number>();
-  const collect = (variables: VariablesRecord) => {
+): Map<string, Map<string, number>> {
+  const probabilities = new Map<string, Map<string, number>>();
+  const collect = (scope: string, variables: VariablesRecord) => {
     for (const [id, variable] of Object.entries(variables)) {
       const resolved = resolveVariableSynthetic(variable);
       if (resolved.kind === 'stageOwned') continue;
       if (resolved.missingProbability > 0) {
-        probabilities.set(id, resolved.missingProbability);
+        const forScope = probabilities.get(scope) ?? new Map<string, number>();
+        forScope.set(id, resolved.missingProbability);
+        probabilities.set(scope, forScope);
       }
     }
   };
-  for (const definition of Object.values(codebook.node ?? {})) {
-    collect(variablesOf(definition));
+  for (const [type, definition] of Object.entries(codebook.node ?? {})) {
+    collect(scopeKeyFor('node', type), variablesOf(definition));
   }
-  for (const definition of Object.values(codebook.edge ?? {})) {
-    collect(variablesOf(definition));
+  for (const [type, definition] of Object.entries(codebook.edge ?? {})) {
+    collect(scopeKeyFor('edge', type), variablesOf(definition));
   }
-  collect(variablesOf(codebook.ego));
+  collect(scopeKeyFor('ego'), variablesOf(codebook.ego));
   return probabilities;
 }
 
-/** Variable ids the codebook marks required, resolved once per run. */
-export function requiredVariables(codebook: StructuralCodebook): Set<string> {
-  const required = new Set<string>();
-  const collect = (variables: VariablesRecord) => {
+/**
+ * Variable ids the codebook marks required, per entity scope. Scoped for the
+ * same reason as {@link missingProbabilities}: flattened, a required
+ * definition in any scope suppressed missingness for every variable sharing
+ * its key.
+ */
+export function requiredVariables(
+  codebook: StructuralCodebook,
+): Map<string, Set<string>> {
+  const required = new Map<string, Set<string>>();
+  const collect = (scope: string, variables: VariablesRecord) => {
     for (const [id, variable] of Object.entries(variables)) {
       // Not every branch of the variable union carries `validation` — a layout
       // or location variable has none to declare.
       if ('validation' in variable && variable.validation?.required === true) {
-        required.add(id);
+        const forScope = required.get(scope) ?? new Set<string>();
+        forScope.add(id);
+        required.set(scope, forScope);
       }
     }
   };
-  for (const definition of Object.values(codebook.node ?? {})) {
-    collect(variablesOf(definition));
+  for (const [type, definition] of Object.entries(codebook.node ?? {})) {
+    collect(scopeKeyFor('node', type), variablesOf(definition));
   }
-  for (const definition of Object.values(codebook.edge ?? {})) {
-    collect(variablesOf(definition));
+  for (const [type, definition] of Object.entries(codebook.edge ?? {})) {
+    collect(scopeKeyFor('edge', type), variablesOf(definition));
   }
-  collect(variablesOf(codebook.ego));
+  collect(scopeKeyFor('ego'), variablesOf(codebook.ego));
   return required;
 }
 
@@ -222,7 +256,7 @@ export const equalityGroups = (constraints: EntityConstraints): string[][] => [
 function applyMissingness(
   attributes: Record<string, VariableValue>,
   fixedKeys: ReadonlySet<string>,
-  probabilities: Map<string, number>,
+  probabilities: ReadonlyMap<string, number>,
   required: ReadonlySet<string>,
   groups: readonly string[][],
   source: RandomSource,
@@ -377,6 +411,38 @@ function splitFixedValues(
  * which exempts unwritten variables from its counting, would accept protocols
  * whose plan then ran out of values.
  */
+/**
+ * The variables of an entity whose value is certainly unanswered.
+ *
+ * Drawing one and then nulling it is not merely wasted work: a `unique` draw
+ * CLAIMS its value from the run's registry, so a variable declared missing on
+ * every entity could exhaust a small value space and fail a session whose
+ * final state holds no values at all. The runtime's own `unique` validator
+ * exempts empty values, so those nulls were never in tension with it.
+ *
+ * The conditions are `applyMissingness`'s own, so the two cannot disagree
+ * about which groups these are: no required member, no member whose value an
+ * interaction settles, and a group probability of exactly 1. Anything less
+ * than certain still has to be drawn — the value is needed whenever the
+ * decision comes back false.
+ */
+function certainlyMissingVariables(
+  groups: readonly string[][],
+  probabilities: ReadonlyMap<string, number>,
+  required: ReadonlySet<string>,
+  fixedKeys: ReadonlySet<string>,
+): Set<string> {
+  const certain = new Set<string>();
+  for (const members of groups) {
+    if (members.some((id) => fixedKeys.has(id))) continue;
+    if (groupMissingProbability(members, probabilities, required) !== 1) {
+      continue;
+    }
+    for (const id of members) certain.add(id);
+  }
+  return certain;
+}
+
 const drawableVariables = (
   written: ReadonlySet<string>,
   fixedFinal: Record<string, VariableValue>,
@@ -518,8 +584,8 @@ export function planNetwork(
   const egoMissing = applyMissingness(
     egoAttributes,
     new Set(),
-    missing,
-    required,
+    missingProbabilitiesFor(missing, scopeKeyFor('ego')),
+    requiredVariablesFor(required, scopeKeyFor('ego')),
     equalityGroups(constraintsFor(ctx, { entity: 'ego' })),
     source,
   );
@@ -706,18 +772,32 @@ export function planNetwork(
           creation.stageIndex,
           rowSettled.size > 0 ? rowSettled : undefined,
         );
+        const fixedKeys = new Set(Object.keys(fixedFinal));
+        const certain = certainlyMissingVariables(
+          missingGroups,
+          missingProbabilitiesFor(missing, scope),
+          requiredVariablesFor(required, scope),
+          fixedKeys,
+        );
+        const drawable = drawableVariables(written, fixedFinal);
+        for (const id of certain) drawable.delete(id);
         const generated = generateAttributesForEntity(ctx, ref, typeIndex, {
           existing: fixedFinal,
-          only: drawableVariables(written, fixedFinal),
+          only: drawable,
         });
         claimFixedValues(ctx, ref, fixedFinal);
         unreserveFixedValues(ctx, ref, promptFixed);
         const attributes = { ...generated, ...fixedFinal };
+        // Present but unanswered, so `applyMissingness` still records them as
+        // this entity's missing values rather than leaving the key absent.
+        for (const id of certain) {
+          if (written.has(id)) attributes[id] = null;
+        }
         const missingSet = applyMissingness(
           attributes,
-          new Set(Object.keys(fixedFinal)),
-          missing,
-          required,
+          fixedKeys,
+          missingProbabilitiesFor(missing, scope),
+          requiredVariablesFor(required, scope),
           missingGroups,
           source,
         );
@@ -787,17 +867,29 @@ export function planNetwork(
         scope,
         creationStageIndex,
       );
+      const fixedKeys = new Set(Object.keys(fixedFinal));
+      const certain = certainlyMissingVariables(
+        missingGroups,
+        missingProbabilitiesFor(missing, scope),
+        requiredVariablesFor(required, scope),
+        fixedKeys,
+      );
+      const drawable = drawableVariables(written, fixedFinal);
+      for (const id of certain) drawable.delete(id);
       const generated = generateAttributesForEntity(ctx, ref, edgeIndex, {
         existing: fixedFinal,
-        only: drawableVariables(written, fixedFinal),
+        only: drawable,
       });
       claimFixedValues(ctx, ref, fixedFinal);
       const attributes = { ...generated, ...fixedFinal };
+      for (const id of certain) {
+        if (written.has(id)) attributes[id] = null;
+      }
       const missingSet = applyMissingness(
         attributes,
-        new Set(Object.keys(fixedFinal)),
-        missing,
-        required,
+        fixedKeys,
+        missingProbabilitiesFor(missing, scope),
+        requiredVariablesFor(required, scope),
         missingGroups,
         source,
       );

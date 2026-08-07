@@ -30,7 +30,9 @@ import {
   equalityGroups,
   groupMissingProbability,
   missingProbabilities,
+  missingProbabilitiesFor,
   requiredVariables,
+  requiredVariablesFor,
   type NetworkPlan,
   shuffled,
   topologyTarget,
@@ -265,10 +267,13 @@ export function materialiseSession(params: {
   ): void => {
     const members = groupsFor(ref).find((group) => group.includes(variableId));
     if (members === undefined) return;
+    // Per scope: one variable key can name separate definitions under two
+    // entity types, and each declares its own missingness.
+    const scope = scopeKey(ref);
     const probability = groupMissingProbability(
       members,
-      missingByVariable,
-      requiredByVariable,
+      missingProbabilitiesFor(missingByVariable, scope),
+      requiredVariablesFor(requiredByVariable, scope),
     );
     if (probability <= 0) return;
 
