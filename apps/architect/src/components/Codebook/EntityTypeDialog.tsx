@@ -1,5 +1,5 @@
 import { get } from 'es-toolkit/compat';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
@@ -136,15 +136,49 @@ const EntityTypeDialog = ({
     }
   }, [onClose, openDialog]);
 
+  /**
+   * Every open is a different editing session, so each one needs its own field
+   * store — the `key` `DialogForm` documents for exactly this.
+   *
+   * Identifying the session by what is being edited is not enough. `type` is
+   * undefined for a creation, so `new-${entity}` was the SAME key for two
+   * consecutive creations of the same entity — and this dialog is mounted for
+   * the lifetime of its owner (`NewTypeDialog` keeps it rendered and only
+   * toggles `show`), so nothing else separates them. What normally hides that
+   * is `Modal`'s exit animation: it unmounts the form, whose `useForm` cleanup
+   * resets the store. A close followed by another open before that exit
+   * finishes cancels the removal, so the reset never runs — and the next
+   * type's fields re-register over the previous one's parked values, which
+   * `registerField` prefers over `initialValue`. Creating two edge types back
+   * to back (the sample protocol's edge-creation sociogram does exactly that)
+   * therefore reopened the dialog still holding the first type's name, colour
+   * and shape, and saving it wrote those over the second type's own defaults.
+   * Reopening the same type after abandoning an edit had the same effect.
+   *
+   * Counting opens rather than naming the session also covers that reopen
+   * case, since `type` alone repeats there too. It is bumped as the dialog
+   * OPENS (the React-documented adjust-state-on-prop-change pattern) rather
+   * than on close, so the entering dialog is the fresh one and a close still
+   * animates out.
+   */
+  const [wasShown, setWasShown] = useState(show);
+  const [openCount, setOpenCount] = useState(0);
+  if (show !== wasShown) {
+    setWasShown(show);
+    if (show) {
+      setOpenCount((count) => count + 1);
+    }
+  }
+
   if (!entity) {
     return null;
   }
 
   return (
     <DialogForm
-      // A fresh field store per edited type: the form store has no whole-form
-      // reinitialize, so switching what is being edited must remount it.
-      key={type ?? `new-${entity}`}
+      // `entity`/`type` stay in the key so switching what is being edited
+      // without closing still remounts, as before.
+      key={`${entity}-${type ?? 'new'}-${openCount}`}
       open={show}
       onClose={() => void handleCancel()}
       title={title}
