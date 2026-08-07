@@ -48,6 +48,7 @@ const MOTION_DRAG_ELEMENT_STYLES = `${MOTION_DRAG_SELECTOR} {
   translate: none !important;
 }`;
 const MOTION_DRAG_STATIC_PAGE_STYLES = `${MOTION_DRAG_SELECTOR} {
+  opacity: 0 !important;
   visibility: hidden !important;
 }`;
 
