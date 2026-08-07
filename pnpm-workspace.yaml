@@ -95,7 +95,7 @@ catalog:
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.62.1
-  posthog-js: ^1.409.5
+  posthog-js: ^1.413.2
   react: ^19.2.8
   react-dom: ^19.2.8
   react-dropzone: ^15.0.0
@@ -140,7 +140,6 @@ overrides:
   'slate-history>immer': '^5.3.0'
   # Keep security-sensitive transitives on patched versions when upstream
   # manifests still pin vulnerable releases (inherited from fresco).
-  'dompurify@3.4.7': '^3.4.12'
   'effect@3.17.7': 'catalog:'
   fast-uri: '^3.1.4'
   find-my-way: '^9.7.0'

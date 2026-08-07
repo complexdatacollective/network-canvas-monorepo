@@ -197,7 +197,6 @@ allowBuilds:
 # Keep security-sensitive transitives on patched versions when upstream
 # manifests still pin vulnerable releases.
 overrides:
-  'dompurify@3.4.7': '^3.4.12'
   'effect@3.17.7': '${effectVersion}'
   fast-uri: '^3.1.4'
   find-my-way: '^9.7.0'
