@@ -285,6 +285,93 @@ describe('a half-built stage', () => {
   });
 });
 
+describe('a stage filtered on an edge an earlier stage created', () => {
+  // `close` is listed first so the codebook's own order disagrees with the
+  // interview's: the planner has to settle `friend` first regardless, or the
+  // census that reads it is judged against a network whose edges have not
+  // been planned yet.
+  const twoEdgeTypes = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        variables: { name: { name: 'Name', type: 'text' } },
+        synthetic: { count: { distribution: 'constant', value: 4 } },
+      },
+    },
+    edge: {
+      close: {
+        name: 'Close',
+        color: 'edge-color-seq-2',
+        variables: {},
+        synthetic: {
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: 1 },
+          },
+        },
+      },
+      friend: {
+        name: 'Friend',
+        color: 'edge-color-seq-1',
+        variables: {},
+        synthetic: {
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: 1 },
+          },
+        },
+      },
+    },
+    ego: { variables: {} },
+  } as unknown as Codebook;
+
+  const census = (id: string, edgeType: string, filter?: unknown): Stage =>
+    stage({
+      id,
+      type: 'DyadCensus',
+      label: 'Pairs',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: `${id}-p1`, text: 'Which?', createEdge: edgeType }],
+      ...(filter ? { filter } : {}),
+    });
+
+  const stages = [
+    nameGenerator({ behaviours: { minNodes: 4, maxNodes: 4 } }),
+    census('friends', 'friend'),
+    census('closeness', 'close', {
+      join: 'AND',
+      rules: [
+        {
+          id: 'r1',
+          type: 'edge',
+          options: { type: 'friend', operator: 'EXISTS' },
+        },
+      ],
+    }),
+  ];
+
+  it('plans its edges over the people the filter actually admits', () => {
+    // Everyone is a friend by the time the second census runs, so its
+    // `EXISTS` filter admits all four and its own density of 1 links every
+    // pair. Judged against an edgeless shadow the same filter admits nobody
+    // — the plan would hold no `close` edge at all, for a protocol that in
+    // session produces six.
+    const { network } = generateNetwork({
+      seed: 11,
+      codebook: twoEdgeTypes,
+      stages,
+      respectSkipLogicAndFiltering: true,
+    });
+
+    expect(network.nodes).toHaveLength(4);
+    const byType = (type: string) =>
+      network.edges.filter((edge) => edge.type === type);
+    expect(byType('friend')).toHaveLength(6);
+    expect(byType('close')).toHaveLength(6);
+  });
+});
+
 describe('a declared distribution', () => {
   it('reaches the draw rather than falling back to the default', () => {
     // The draw resolves a variable's distribution from the entry the
