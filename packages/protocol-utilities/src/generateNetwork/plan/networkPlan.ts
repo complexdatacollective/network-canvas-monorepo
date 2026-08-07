@@ -10,6 +10,7 @@ import {
 } from '@codaco/shared-consts';
 
 import {
+  attributesAsOf,
   type EdgeCreation,
   isRewrittenAfter,
   type NodeCreation,
@@ -234,36 +235,50 @@ export function apportionCount(
   return assigned;
 }
 
-function plannedNodeToNc(node: PlannedNode): NcNode {
-  return {
-    [entityPrimaryKeyProperty]: node.uid,
-    type: node.type,
-    [entityAttributesProperty]: node.attributes,
-  };
-}
-
-function plannedEdgeToNc(edge: PlannedEdge): NcEdge {
-  return {
-    [entityPrimaryKeyProperty]: edge.uid,
-    type: edge.type,
-    from: edge.from,
-    to: edge.to,
-    [entityAttributesProperty]: edge.attributes,
-  };
-}
-
+/**
+ * The planned network as the session holds it when `asOf` runs.
+ *
+ * Entities are cut to those that exist by then, and their attributes to those
+ * some stage has written by then. The plan settles final values up front, so
+ * showing a filter the whole of them would answer with the end of the
+ * interview rather than its middle: a stage filtering on a variable only a
+ * later form writes would admit subjects on a value it could not yet have
+ * collected, and plan edges the interview never presents.
+ */
 function plannedNetwork(
   egoUid: string,
   nodes: PlannedNode[],
   edges: readonly PlannedEdge[],
+  effects: StageEffects,
+  asOf: number,
 ): NcNetwork {
   return {
     ego: {
       [entityPrimaryKeyProperty]: egoUid,
       [entityAttributesProperty]: {},
     },
-    nodes: nodes.map(plannedNodeToNc),
-    edges: edges.map(plannedEdgeToNc),
+    nodes: nodes.map((node) => ({
+      [entityPrimaryKeyProperty]: node.uid,
+      type: node.type,
+      [entityAttributesProperty]: attributesAsOf(
+        effects,
+        scopeKeyFor('node', node.type),
+        node.attributes,
+        asOf,
+      ),
+    })) as NcNode[],
+    edges: edges.map((edge) => ({
+      [entityPrimaryKeyProperty]: edge.uid,
+      type: edge.type,
+      from: edge.from,
+      to: edge.to,
+      [entityAttributesProperty]: attributesAsOf(
+        effects,
+        scopeKeyFor('edge', edge.type),
+        edge.attributes,
+        asOf,
+      ),
+    })) as NcEdge[],
   };
 }
 
@@ -382,6 +397,7 @@ function eligiblePairsForCreation(
   nodes: PlannedNode[],
   egoUid: string,
   visibleEdges: readonly PlannedEdge[],
+  effects: StageEffects,
 ): Map<string, EligiblePair> {
   const pairs = new Map<string, EligiblePair>();
 
@@ -395,6 +411,8 @@ function eligiblePairsForCreation(
       visibleEdges.filter(
         (edge) => edge.creationStageIndex <= creation.stageIndex,
       ),
+      effects,
+      creation.stageIndex,
     );
     let candidates = existing.filter(
       (node) => node.type === creation.subjectNodeType,
@@ -781,6 +799,7 @@ export function planNetwork(
         nodes,
         egoUid,
         [...plannedEdges, ...typeEdges],
+        effects,
       )) {
         if (!domain.has(key)) domain.set(key, pair);
       }

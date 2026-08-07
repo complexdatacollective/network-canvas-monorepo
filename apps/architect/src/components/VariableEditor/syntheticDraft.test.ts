@@ -5,6 +5,7 @@ import type { Variable } from '@codaco/protocol-validation';
 import {
   assembleSynthetic,
   initialSyntheticValues,
+  selectionCountRows,
   type SyntheticDraftContext,
   syntheticField,
   validateAssembledVariable,
@@ -244,5 +245,28 @@ describe('the neutral-words text generator', () => {
       contextFor({ ...nameLike, synthetic: assembled } as unknown as Variable),
     );
     expect(reopened[syntheticField('generator')]).toBe('neutralWords');
+  });
+});
+
+describe('a categorical selection-count table of nothing but zeros', () => {
+  it('is reported rather than dropped', () => {
+    // There is no normalisation of an all-zero table. Omitting it saved a
+    // variable whose reopened editor showed the runtime's uniform default in
+    // place of what the author entered, with nothing said.
+    const variable = {
+      name: 'roles',
+      type: 'categorical',
+      options: [
+        { label: 'Family', value: 'family' },
+        { label: 'Work', value: 'work' },
+      ],
+    } as unknown as Variable;
+
+    const ctx = contextFor(variable);
+    const values = initialSyntheticValues(ctx);
+    for (const row of selectionCountRows(ctx)) values[row.fieldName] = 0;
+
+    const assembled = assembleSynthetic(ctx, values);
+    expect(validateAssembledVariable(ctx, assembled)).toBeDefined();
   });
 });

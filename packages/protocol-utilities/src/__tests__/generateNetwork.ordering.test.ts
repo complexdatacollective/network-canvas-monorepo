@@ -424,7 +424,32 @@ describe('a number variable declared in fractions', () => {
     }
   });
 
-  it('still rounds one declared in whole numbers', () => {
+  it('stays continuous even when its parameters are whole', () => {
+    // Integrality is a property of the distribution, not of how its
+    // parameters happen to be spelled: a uniform over 0 to 1 rounded to whole
+    // values is not a uniform, it is a coin.
+    const values = new Set<unknown>();
+    for (let seed = 1; seed <= 20; seed++) {
+      const { network } = generateNetwork({
+        seed,
+        codebook: codebook({
+          name: { name: 'Name', type: 'text' },
+          share: {
+            name: 'Share',
+            type: 'number',
+            validation: { minValue: 0, maxValue: 1 },
+            synthetic: { distribution: 'uniform', min: 0, max: 1 },
+          },
+        }),
+        stages: [nameGenerator(), alterForm('form', 'share')],
+      });
+      for (const node of network.nodes) values.add(attributesOf(node).share);
+    }
+
+    expect([...values].some((value) => !Number.isInteger(value))).toBe(true);
+  });
+
+  it('rounds the default, which is how an integer control is answered', () => {
     const { network } = generateNetwork({
       seed: 3,
       codebook: codebook({
@@ -433,7 +458,6 @@ describe('a number variable declared in fractions', () => {
           name: 'Age',
           type: 'number',
           validation: { minValue: 0, maxValue: 120 },
-          synthetic: { distribution: 'normal', mean: 40, sd: 10 },
         },
       }),
       stages: [nameGenerator(), alterForm('form', 'age')],
@@ -934,5 +958,84 @@ describe('an edge retried at a stage that cannot reach its endpoints', () => {
       expect(waveOf.get(edge.from)).toBe(2);
       expect(waveOf.get(edge.to)).toBe(2);
     }
+  });
+});
+
+describe('a stage filtered on a value only a later stage collects', () => {
+  it('does not admit subjects on an answer it has not asked for yet', () => {
+    // The plan settles final values up front, so handing them to a filter
+    // answers with the end of the interview rather than its middle: the census
+    // here runs before anyone has been asked their role, and against the
+    // finished network it would pair people on an answer that does not exist
+    // when it runs.
+    const withLateRole = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            name: { name: 'Name', type: 'text' },
+            role: {
+              name: 'Role',
+              type: 'text',
+              synthetic: { generator: 'occupation' },
+            },
+          },
+          synthetic: { count: { distribution: 'constant', value: 4 } },
+        },
+      },
+      edge: {
+        friend: {
+          name: 'Friend',
+          color: 'edge-color-seq-1',
+          variables: {},
+          synthetic: {
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 1 },
+            },
+          },
+        },
+      },
+      ego: { variables: {} },
+    } as unknown as Codebook;
+
+    const { network } = generateNetwork({
+      seed: 41,
+      codebook: withLateRole,
+      stages: [
+        nameGenerator({ behaviours: { minNodes: 4, maxNodes: 4 } }),
+        stage({
+          id: 'early-census',
+          type: 'DyadCensus',
+          label: 'Pairs',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [{ id: 'ec-p1', text: 'Which?', createEdge: 'friend' }],
+          filter: {
+            join: 'AND',
+            rules: [
+              {
+                id: 'r1',
+                type: 'node',
+                options: {
+                  type: 'person',
+                  attribute: 'role',
+                  operator: 'EXISTS',
+                },
+              },
+            ],
+          },
+        }),
+        alterForm('roles', 'role'),
+      ],
+      respectSkipLogicAndFiltering: true,
+    });
+
+    expect(network.nodes).toHaveLength(4);
+    // Everyone ends up with a role, but nobody had one when the census ran.
+    for (const node of network.nodes) {
+      expect(attributesOf(node).role).toBeDefined();
+    }
+    expect(network.edges).toHaveLength(0);
   });
 });

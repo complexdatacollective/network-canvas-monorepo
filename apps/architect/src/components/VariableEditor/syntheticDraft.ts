@@ -366,16 +366,18 @@ export function assembleSynthetic(
           probability: Math.max(0, toNumber(values[row.fieldName]) ?? 0),
         }));
         const total = rows.reduce((sum, row) => sum + row.probability, 0);
-        if (total > 0) {
-          // Normalised so the stored table always satisfies the schema's
-          // sum-to-one rule whatever mixture the researcher typed.
-          base.selectionCount = {
-            probabilities: rows.map((row) => ({
-              count: row.count,
-              probability: row.probability / total,
-            })),
-          };
-        }
+        // Normalised so the stored table always satisfies the schema's
+        // sum-to-one rule whatever mixture the researcher typed — except a
+        // table of nothing but zeros, which has no normalisation. That one is
+        // assembled as typed so the schema rejects it and the editor says so:
+        // dropping it instead saved a variable whose reopened editor showed
+        // the runtime's uniform default in place of what the author entered.
+        base.selectionCount = {
+          probabilities: rows.map((row) => ({
+            count: row.count,
+            probability: total > 0 ? row.probability / total : row.probability,
+          })),
+        };
       }
       if (Object.keys(base).length === 0 && missingProbability === undefined) {
         return undefined;

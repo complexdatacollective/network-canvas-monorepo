@@ -30,7 +30,6 @@ import {
   textDrawLength,
 } from './generateNetwork/constraints/valueSpace';
 import {
-  descriptorIsIntegral,
   sampleContinuous,
   sampleWeightedIndex,
   sampleWithoutReplacement,
@@ -430,9 +429,11 @@ export class ValueGenerator {
           { min: lowerBound, max: upperBound },
           stream,
         );
-        // A descriptor written in fractions is asking for fractional values,
-        // and rounding one would return a number the author did not declare.
-        if (!descriptorIsIntegral(descriptor)) {
+        // A declared distribution is continuous whatever its parameters look
+        // like, so it is returned as drawn: rounding a uniform over 0–1 would
+        // collapse it to nothing but 0 and 1, and a declared constant of 0.5
+        // would come back as 1. Only the resolved default rounds.
+        if (resolved.kind === 'number' && resolved.declared) {
           return clamp(
             Number(drawn.toFixed(SCALAR_DECIMAL_PLACES)),
             lowerBound,

@@ -40,32 +40,6 @@ export type ContinuousDescriptor =
 /** A hard value window the drawn value must land inside. */
 export type ValueBounds = { min?: number; max?: number };
 
-/**
- * Whether every parameter the descriptor carries is a whole number.
- *
- * Number draws are rounded by default, because that is how participants answer
- * an integer control and the resolved default window is itself whole. An author
- * who writes a fractional parameter has asked for something else, though, and
- * rounding would quietly discard the declaration — a declared constant of 0.5
- * stored as 1. So the rounding holds for a descriptor written in whole numbers
- * and gives way to one that is not.
- */
-export function descriptorIsIntegral(
-  descriptor: ContinuousDescriptor,
-): boolean {
-  const parameters: (number | undefined)[] =
-    descriptor.distribution === 'constant'
-      ? [descriptor.value]
-      : descriptor.distribution === 'uniform'
-        ? [descriptor.min, descriptor.max]
-        : descriptor.distribution === 'beta'
-          ? [descriptor.mean, descriptor.sd]
-          : [descriptor.mean, descriptor.sd, descriptor.min, descriptor.max];
-  return parameters.every(
-    (parameter) => parameter === undefined || Number.isInteger(parameter),
-  );
-}
-
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 

@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { VariableNameSchema } from '@codaco/shared-consts';
+import {
+  dateWithinPickerRange,
+  RELATIVE_DATE_PICKER_DEFAULT_AFTER,
+  RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
+  VariableNameSchema,
+} from '@codaco/shared-consts';
 
 import {
   findDuplicateName,
@@ -664,11 +669,36 @@ const dateTimeRelativeDatePickerSchema = baseVariableSchema
   })
   .superRefine(rejectMissingOnRequired)
   .superRefine((variable, ctx) => {
-    // RelativeDatePicker stores full-resolution dates. It declares no window
-    // to intersect against: its window is derived from `anchor` ± `before`/
-    // `after`, and an omitted anchor is the interview date — a window that
-    // moves with the run cannot make a stored protocol invalid.
-    rejectInvalidDatetimeSynthetic(variable.synthetic, 'full', undefined, ctx);
+    // RelativeDatePicker stores full-resolution dates, and its window is
+    // derived from `anchor` ± `before`/`after` rather than declared. An
+    // omitted anchor is the interview date, so the window moves with the run
+    // and cannot make a stored protocol invalid — but a declared anchor fixes
+    // it, and synthetic bounds outside a fixed window are bounds the generator
+    // silently ignores. Derived through the same shared helper the runtime and
+    // the generator both use, so there is no second reading of the window.
+    const anchor = variable.parameters?.anchor;
+    const fieldWindow =
+      anchor === undefined || !isIsoDate(anchor)
+        ? undefined
+        : {
+            min: dateWithinPickerRange(
+              anchor,
+              -(
+                variable.parameters?.before ??
+                RELATIVE_DATE_PICKER_DEFAULT_BEFORE
+              ),
+            ),
+            max: dateWithinPickerRange(
+              anchor,
+              variable.parameters?.after ?? RELATIVE_DATE_PICKER_DEFAULT_AFTER,
+            ),
+          };
+    rejectInvalidDatetimeSynthetic(
+      variable.synthetic,
+      'full',
+      fieldWindow,
+      ctx,
+    );
   });
 
 const textVariableSchema = baseVariableSchema

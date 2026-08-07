@@ -866,3 +866,53 @@ describe('synthetic metadata (additive to schema 8)', () => {
     });
   });
 });
+
+describe('a RelativeDatePicker with a declared anchor', () => {
+  const relative = (
+    parameters: Record<string, unknown>,
+    synthetic: Record<string, unknown>,
+  ) =>
+    withPersonVariable('when', {
+      name: 'when',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters,
+      synthetic,
+    });
+
+  it('rejects synthetic bounds outside the window the anchor fixes', () => {
+    // A declared anchor makes the collection window static, and bounds outside
+    // it are bounds the generator silently ignores — saved metadata with no
+    // effect, which is worse than a refusal.
+    expect(
+      parse(
+        relative(
+          { anchor: '2020-06-01', before: 30, after: 30 },
+          { distribution: 'uniform', min: '2030-01-01', max: '2030-02-01' },
+        ),
+      ).success,
+    ).toBe(false);
+  });
+
+  it('accepts bounds inside it', () => {
+    expect(
+      parse(
+        relative(
+          { anchor: '2020-06-01', before: 30, after: 30 },
+          { distribution: 'uniform', min: '2020-05-20', max: '2020-06-20' },
+        ),
+      ).success,
+    ).toBe(true);
+  });
+
+  it('leaves a window with no anchor alone, because it moves with the run', () => {
+    expect(
+      parse(
+        relative(
+          { before: 30, after: 30 },
+          { distribution: 'uniform', min: '2030-01-01', max: '2030-02-01' },
+        ),
+      ).success,
+    ).toBe(true);
+  });
+});

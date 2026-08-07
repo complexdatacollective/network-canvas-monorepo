@@ -189,7 +189,40 @@ export type StageEffects = {
    * when it keeps a pin it cannot prove is redrawn.
    */
   rewriteIndex: Map<string, Map<string, number>>;
+  /**
+   * Per entity scope, the EARLIEST stage that writes each variable.
+   *
+   * `writeIndex` records the last writer, which is what decides an entity's
+   * final value. This records the first, which is when a value starts to
+   * exist: before it, the session holds nothing for that variable, so a stage
+   * filtering on it sees an unanswered entity however the plan ends up.
+   */
+  firstWriteIndex: Map<string, Map<string, number>>;
 };
+
+/**
+ * An entity's attributes as the session holds them when `stageIndex` runs:
+ * everything written by then, and nothing a later stage has yet to ask.
+ *
+ * The plan settles final values up front, so handing them to a filter would
+ * answer with the end of the interview rather than its middle — admitting
+ * subjects on a value the stage could not yet have collected.
+ */
+export function attributesAsOf(
+  effects: StageEffects,
+  scope: string,
+  attributes: Record<string, unknown>,
+  stageIndex: number,
+): Record<string, unknown> {
+  const first = effects.firstWriteIndex.get(scope);
+  if (first === undefined) return {};
+  const projected: Record<string, unknown> = {};
+  for (const [variableId, value] of Object.entries(attributes)) {
+    const at = first.get(variableId);
+    if (at !== undefined && at <= stageIndex) projected[variableId] = value;
+  }
+  return projected;
+}
 
 /** Scope key for `writeIndex`, matching the constraint machinery's. */
 export const scopeKeyFor = (entity: string, type?: string): string =>
@@ -769,7 +802,14 @@ export function analyseStageEffects(stages: Stage[]): StageEffects {
       forScope.set(variableId, Math.max(forScope.get(variableId) ?? -1, at));
       index.set(scope, forScope);
     };
-  const recordWrite = recordInto(writeIndex);
+  const firstWriteIndex = new Map<string, Map<string, number>>();
+  const recordLastWrite = recordInto(writeIndex);
+  const recordWrite = (scope: string, variableId: string, at: number): void => {
+    recordLastWrite(scope, variableId, at);
+    const forScope = firstWriteIndex.get(scope) ?? new Map<string, number>();
+    forScope.set(variableId, Math.min(forScope.get(variableId) ?? at, at));
+    firstWriteIndex.set(scope, forScope);
+  };
   const recordRewrite = recordInto(rewriteIndex);
 
   for (const summary of summaries) {
@@ -824,6 +864,7 @@ export function analyseStageEffects(stages: Stage[]): StageEffects {
     writeIndex,
     unconditionalWrites,
     rewriteIndex,
+    firstWriteIndex,
   };
 }
 

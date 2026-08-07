@@ -95,6 +95,9 @@ describe('resolveVariableSynthetic', () => {
       kind: 'number',
       descriptor: { distribution: 'normal', mean: 34, sd: 12 },
       bounds: { min: 18, max: 99 },
+      // Marked as the author's, so the draw returns it as sampled rather than
+      // rounding it the way it rounds the default window.
+      declared: true,
       missingProbability: 0,
     });
   });
@@ -104,6 +107,7 @@ describe('resolveVariableSynthetic', () => {
     expect(resolved).toMatchObject({
       kind: 'number',
       descriptor: { distribution: 'uniform', min: 18, max: 80 },
+      declared: false,
     });
   });
 

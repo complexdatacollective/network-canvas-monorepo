@@ -4,7 +4,6 @@ import type { SyntheticCount } from '@codaco/protocol-validation';
 
 import {
   countCeiling,
-  descriptorIsIntegral,
   sampleContinuous,
   sampleCount,
   sampleWeightedIndex,
@@ -338,28 +337,5 @@ describe('an implicit count ceiling', () => {
     expect(
       countCeiling({ distribution: 'poisson', mean: 0, min: 5, max: 9 }),
     ).toBe(9);
-  });
-});
-
-describe('recognising a descriptor written in whole numbers', () => {
-  it('accepts whole parameters and an absent bound', () => {
-    expect(descriptorIsIntegral({ distribution: 'constant', value: 7 })).toBe(
-      true,
-    );
-    expect(
-      descriptorIsIntegral({ distribution: 'normal', mean: 34, sd: 12 }),
-    ).toBe(true);
-    expect(
-      descriptorIsIntegral({ distribution: 'uniform', min: 18, max: 80 }),
-    ).toBe(true);
-  });
-
-  it('rejects one carrying a fraction', () => {
-    expect(descriptorIsIntegral({ distribution: 'constant', value: 0.5 })).toBe(
-      false,
-    );
-    expect(
-      descriptorIsIntegral({ distribution: 'normal', mean: 34, sd: 12.5 }),
-    ).toBe(false);
   });
 });

@@ -57,6 +57,17 @@ export type ResolvedVariableSynthetic =
       kind: 'number';
       descriptor: ContinuousDescriptor;
       bounds: ValueBounds;
+      /**
+       * Whether the descriptor is the author's or the resolved default.
+       *
+       * Number draws are rounded only when it is the default. That default is
+       * a uniform over the validation window, and whole values are how
+       * participants answer an integer control — but a declared distribution
+       * is continuous whatever its parameters are spelled like, and rounding
+       * a uniform over 0–1 to nothing but 0 and 1 is not the distribution the
+       * author asked for.
+       */
+      declared: boolean;
       missingProbability: number;
     }
   | {
@@ -246,6 +257,7 @@ export function resolveVariableSynthetic(
         kind: 'number',
         descriptor,
         bounds,
+        declared: declared !== undefined,
         missingProbability: resolveMissingProbability(variable),
       };
     }
