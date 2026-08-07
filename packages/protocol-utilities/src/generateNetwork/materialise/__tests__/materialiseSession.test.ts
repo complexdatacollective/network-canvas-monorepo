@@ -208,9 +208,15 @@ describe('generateNetwork (plan → materialise pipeline)', () => {
               link_type: {
                 name: 'Link_Type',
                 type: 'categorical',
+                // A family is a structure rather than a population, and the
+                // generator builds partners as well as descent: a codebook
+                // offering no `partner` value cannot express the family it
+                // produces, and the pedigree refuses rather than writing a
+                // relationship type the protocol never declared.
                 options: [
                   { label: 'Biological', value: 'biological' },
                   { label: 'Adoptive', value: 'adoptive' },
+                  { label: 'Partner', value: 'partner' },
                 ],
               },
               active: { name: 'Active', type: 'boolean' },
@@ -249,8 +255,15 @@ describe('generateNetwork (plan → materialise pipeline)', () => {
       seed: 5,
     });
 
-    expect(result.network.nodes).toHaveLength(3);
-    expect(result.network.edges).toHaveLength(2);
+    // A declared count caps a pedigree's optional branches rather than sizing
+    // it: the seven-person core — ego, two parents, four grandparents — is
+    // unconditional, because a family has to hold together as a structure
+    // where a name generator's people are merely a population.
+    expect(result.network.nodes.length).toBeGreaterThanOrEqual(7);
+    // And it is connected: every person after the first is reached by a link.
+    expect(result.network.edges.length).toBeGreaterThanOrEqual(
+      result.network.nodes.length - 1,
+    );
     const metadata = result.stageMetadata?.[0] as {
       isNetworkCommitted: boolean;
       selectedFraming?: string;
@@ -258,10 +271,20 @@ describe('generateNetwork (plan → materialise pipeline)', () => {
     expect(metadata.isNetworkCommitted).toBe(true);
     expect(FRAMING_IDS).toContain(metadata.selectedFraming);
 
-    for (const edge of result.network.edges) {
-      expect(edge[entityAttributesProperty].link_type).toEqual(['biological']);
+    const linkTypes = result.network.edges.map(
+      (edge) => edge[entityAttributesProperty].link_type,
+    );
+    for (const [index, edge] of result.network.edges.entries()) {
+      // Every link is stored as the categorical the codebook declares, and
+      // only ever as a value that codebook offers.
+      expect(linkTypes[index]).toHaveLength(1);
+      expect(['biological', 'adoptive', 'partner']).toContain(
+        (linkTypes[index] as string[])[0],
+      );
       expect(edge[entityAttributesProperty].active).toBe(true);
     }
+    // Descent is what a pedigree is built from, so it is always present.
+    expect(linkTypes).toContainEqual(['biological']);
   });
 
   it('simulates drop-out with an aggressive factor', () => {

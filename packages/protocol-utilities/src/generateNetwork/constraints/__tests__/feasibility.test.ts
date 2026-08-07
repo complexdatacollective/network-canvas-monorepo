@@ -1764,10 +1764,6 @@ describe('the ego flag a pedigree stage pins', () => {
     } as unknown as Stage;
   }
 
-  function sizedConfig(nodes: number): typeof config {
-    return { ...config, familyPedigreeNodeCount: { min: nodes, max: nodes } };
-  }
-
   const uniqueFlag = codebookWith({
     isEgo: { name: 'Is ego', type: 'boolean', validation: { unique: true } },
   });

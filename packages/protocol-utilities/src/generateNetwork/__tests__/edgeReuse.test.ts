@@ -240,16 +240,31 @@ describe('TieStrengthCensus over an edge it did not create', () => {
     // The topology target is zero, so every edge here is a structural pedigree
     // edge the census answered — the generator's stand-in for `updateEdge`,
     // which merges the ordinal value into whatever the edge held.
+    //
+    // Measured against the same pedigree run alone rather than against a
+    // literal, because a family is sized by the generator's own structure: the
+    // declared count caps its optional branches and cannot shrink its core.
+    // Two runs of one seed build the same family, so an equal edge count is
+    // exactly the claim that the census added none of its own.
+    const options = { seed: 3, codebook: codebook(0, 4) };
+    const { network: pedigreeOnly } = generateNetwork({
+      ...options,
+      stages: [pedigree],
+    });
     const { network } = generateNetwork({
-      seed: 3,
-      codebook: codebook(0, 4),
+      ...options,
       stages: [pedigree, tieStrength],
     });
 
-    // The pedigree plans exactly one edge per family member after the first.
-    expect(network.edges).toHaveLength(3);
+    expect(network.edges).toHaveLength(pedigreeOnly.edges.length);
+    expect(pairKeys(network.edges)).toEqual(pairKeys(pedigreeOnly.edges));
+    // Which the census then wrote its ordinal onto — and had drawn none of
+    // before it ran.
     for (const edge of network.edges) {
       expect(edge[entityAttributesProperty].strength).toBeDefined();
+    }
+    for (const edge of pedigreeOnly.edges) {
+      expect(edge[entityAttributesProperty].strength).toBeUndefined();
     }
   });
 

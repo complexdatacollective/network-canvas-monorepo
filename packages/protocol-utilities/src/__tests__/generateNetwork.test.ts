@@ -329,6 +329,20 @@ describe('generateNetwork', () => {
       const stages = [
         {
           ...makeTypedNameGeneratorStage('visible', 'bypassed'),
+          // `blocked` is collected here deliberately, and not left to the
+          // shared fixture's form. A stage now writes only what it asks for,
+          // so a variable no reachable stage collects is exempt from
+          // feasibility — and this case would pass for that reason rather
+          // than for the one it is about, the moment the helper's form
+          // changed under it. The contradiction has to sit on a field this
+          // run really writes.
+          form: {
+            title: 'About them',
+            fields: [
+              { variable: 'var-name', prompt: 'Name' },
+              { variable: 'blocked', prompt: 'Blocked' },
+            ],
+          },
           skipLogic: makeHiddenSkipLogic(),
         } as Stage,
       ];
@@ -1421,15 +1435,49 @@ describe('generateNetwork', () => {
       expect(network.nodes).toHaveLength(3);
     });
 
-    it('sizes a FamilyPedigree family from the declared count', () => {
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages: [makeFamilyPedigreeStage()],
-        seed: 42,
-      });
+    it('caps a FamilyPedigree family at the declared count, above its core', () => {
+      // A family is not sized like an elicited population. The generator emits
+      // a complete pedigree — ego, two genetic parents, four genetic
+      // grandparents — and the declared count bounds only what it may add on
+      // top of that. So the count is read as a ceiling on optional branches,
+      // and asserting it against a family means asserting the branches it
+      // permits, not the seven the core costs.
+      const familyOf = (declared: number): number => {
+        const { network } = generateNetwork({
+          codebook: makeCodebook({
+            node: {
+              'node-type-1': {
+                color: 'node-color-seq-1',
+                synthetic: {
+                  count: { distribution: 'constant', value: declared },
+                },
+                variables: { 'var-name': { name: 'Name', type: 'text' } },
+              },
+            },
+          }),
+          stages: [makeFamilyPedigreeStage()],
+          seed: 42,
+        });
+        return network.nodes.length;
+      };
 
-      // makeCodebook declares a constant population of 6.
-      expect(network.nodes).toHaveLength(6);
+      // Room for branches, and the seed takes some of it: a count that only
+      // capped would leave this indistinguishable from the core.
+      const roomy = familyOf(24);
+      expect(roomy).toBeGreaterThan(7);
+      expect(roomy).toBeLessThanOrEqual(24);
+
+      // Tightening the same seed's family to a lower ceiling drops branches
+      // the roomier run kept, while still growing past the core — which is
+      // what makes the count load-bearing rather than incidental.
+      const tight = familyOf(12);
+      expect(tight).toBeGreaterThan(7);
+      expect(tight).toBeLessThan(roomy);
+
+      // And below the core the ceiling stops applying: seven people are what
+      // a pedigree costs whatever the codebook declares, since a family the
+      // interface could never draw is worse than one larger than asked for.
+      expect(familyOf(6)).toBe(7);
     });
   });
 
