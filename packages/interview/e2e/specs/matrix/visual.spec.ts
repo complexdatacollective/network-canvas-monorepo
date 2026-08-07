@@ -3,6 +3,43 @@ import { ALL_SUITES } from '../../matrix/all-scenarios.js';
 import { installScenario } from '../../matrix/run-scenario.js';
 import type { ScenarioContext } from '../../matrix/types.js';
 
+const GEOSPATIAL_STRESS_SCENARIO = 'core-click-select-and-prompt-panel';
+
+async function attachGeospatialDiagnostics(
+  page: ScenarioContext['page'],
+  phase: 'initial' | 'final',
+): Promise<void> {
+  if (process.env.E2E_VISUAL_DEBUG !== 'geospatial') return;
+
+  const panel = page.getByTestId('collapsible-prompts');
+  const diagnostics = await panel.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const computedStyle = getComputedStyle(element);
+
+    return {
+      computedTransform: computedStyle.transform,
+      devicePixelRatio,
+      inlineTransform: element.style.transform,
+      rect: {
+        bottom: rect.bottom,
+        height: rect.height,
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        width: rect.width,
+      },
+    };
+  });
+
+  console.log(
+    `[geospatial-visual-debug] ${phase} ${JSON.stringify(diagnostics)}`,
+  );
+  await matrixTest.info().attach(`geospatial-${phase}.json`, {
+    body: JSON.stringify(diagnostics, null, 2),
+    contentType: 'application/json',
+  });
+}
+
 /**
  * Pixel visual suite. Runs only the `visual`-flagged scenarios of every
  * interface across the `*-visual` Playwright projects (chromium/firefox/webkit),
@@ -28,14 +65,18 @@ for (const suite of ALL_SUITES) {
         const ctx: ScenarioContext = { page, interview, stage, protocol };
         await installScenario(scenario, ctx);
         const mask = scenario.captureMask?.(page);
-        if (
+        const isGeospatialStressScenario =
           suite.interfaceType === 'Geospatial' &&
-          scenario.id === 'core-click-select-and-prompt-panel'
-        ) {
+          scenario.id === GEOSPATIAL_STRESS_SCENARIO;
+        if (isGeospatialStressScenario) {
           await stage.geospatial.waitForMapIdle();
+          await attachGeospatialDiagnostics(page, 'initial');
         }
         await interview.captureInitial(mask);
         await scenario.run(ctx);
+        if (isGeospatialStressScenario) {
+          await attachGeospatialDiagnostics(page, 'final');
+        }
         await interview.captureFinal(mask);
       },
     );

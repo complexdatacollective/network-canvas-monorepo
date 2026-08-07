@@ -5,17 +5,9 @@ import type { ReactNode } from 'react';
 
 import { AnimationProvider } from '../src/AnimationProvider';
 
-type ProvidersProps = {
-  children: ReactNode;
-  disableAnimations?: boolean;
-};
-
-export default function Providers({
-  children,
-  disableAnimations,
-}: ProvidersProps) {
+export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <AnimationProvider disableAnimations={disableAnimations}>
+    <AnimationProvider disableAnimationsForAutomation>
       <DirectionProvider direction="ltr">{children}</DirectionProvider>
     </AnimationProvider>
   );

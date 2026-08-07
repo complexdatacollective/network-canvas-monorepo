@@ -392,6 +392,7 @@ export default function PedigreeChecklist({
         <MotionSurface
           key="pedigree-checklist"
           data-testid="pedigree-checklist"
+          data-motion-drag-container="pedigree-checklist"
           className="bg-surface/80 absolute bottom-4 left-4 z-20 w-80 cursor-move overflow-hidden border-b-2 shadow-2xl backdrop-blur-md"
           layout
           drag
