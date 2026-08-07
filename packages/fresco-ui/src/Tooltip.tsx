@@ -27,6 +27,7 @@ type TooltipContentProps = Omit<
   side?: 'top' | 'bottom' | 'left' | 'right';
   align?: 'start' | 'center' | 'end';
   showArrow?: boolean;
+  pointerEvents?: 'auto' | 'none';
   children?: React.ReactNode;
 };
 
@@ -41,6 +42,7 @@ const TooltipContent = React.forwardRef<
       side = 'top',
       align = 'center',
       showArrow = true,
+      pointerEvents = 'auto',
       children,
       ...props
     },
@@ -54,6 +56,7 @@ const TooltipContent = React.forwardRef<
           sideOffset={sideOffset}
           align={align}
           arrowPadding={POPOVER_ARROW_PADDING}
+          className={cx(pointerEvents === 'none' && 'pointer-events-none!')}
         >
           <AnimatePresence>
             <BaseTooltip.Popup

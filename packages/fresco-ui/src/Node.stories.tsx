@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
 import Node, { NodeColors } from './Node';
+import { withTooltipProvider } from './storybook-support/withTooltipProvider';
+import { TooltipProvider } from './Tooltip';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
@@ -10,6 +12,7 @@ const meta: Meta<typeof Node> = {
   title: 'Components/Node',
   component: Node,
   tags: ['autodocs'],
+  decorators: [withTooltipProvider],
   parameters: {
     layout: 'centered',
     docs: {
@@ -33,6 +36,13 @@ Interaction behaviors are automatically inferred from the props you provide:
 
 This design allows the Node to integrate seamlessly with external interaction systems
 without needing explicit mode flags.
+
+## Truncated Labels
+Labels that exceed the available space are line-clamped. When (and only when) a
+label is actually clamped, the complete label is shown in a tooltip on mouse
+hover and keyboard focus. The tooltip never opens from press, click, or touch,
+is suppressed while a pointer button is held or a drag is active, and cannot
+capture pointer events. The full label always remains the accessible name.
         `,
       },
     },
@@ -393,7 +403,12 @@ export const FocusRing: Story = {
   },
 };
 
-const resilientLabelCases = [
+const resilientLabelCases: readonly {
+  caption: string;
+  label: string;
+  lang: string;
+  dir?: 'rtl';
+}[] = [
   {
     caption: 'Short name',
     label: 'Amina',
@@ -415,11 +430,17 @@ const resilientLabelCases = [
     lang: 'ja',
   },
   {
+    caption: 'Right-to-left text',
+    label: 'محمد عبد الرحمن بن عبد العزيز الحسيني',
+    lang: 'ar',
+    dir: 'rtl',
+  },
+  {
     caption: 'No natural break opportunities',
     label: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     lang: 'en',
   },
-] as const;
+];
 
 const resilientLabelShapes = ['circle', 'square', 'diamond'] as const;
 
@@ -429,7 +450,7 @@ const resilientLabelShapes = ['circle', 'square', 'diamond'] as const;
 export const LongLabels: Story = {
   render: () => (
     <div className="flex flex-col gap-10">
-      {resilientLabelCases.map(({ caption, label, lang }, index) => (
+      {resilientLabelCases.map(({ caption, label, lang, dir }, index) => (
         <section key={caption} className="flex flex-col gap-3">
           <Heading level="h3" margin="none" className="text-base">
             {caption}
@@ -443,6 +464,7 @@ export const LongLabels: Story = {
                 <Node
                   label={label}
                   lang={lang}
+                  dir={dir}
                   shape={shape}
                   size="sm"
                   color={
@@ -699,6 +721,212 @@ export const DisabledNodes: Story = {
       description: {
         story:
           'Disabled nodes are desaturated and have `pointer-events: none`. Visual states like selected can still be shown.',
+      },
+    },
+  },
+};
+
+const tooltipLabelCases: readonly {
+  caption: string;
+  label: string;
+  lang: string;
+  dir?: 'rtl';
+  truncates: boolean;
+}[] = [
+  { caption: 'Short name', label: 'Ash', lang: 'en', truncates: false },
+  {
+    caption: 'Natural word boundaries',
+    label: 'Alexandria Montgomery-Fitzgerald von Habsburg III',
+    lang: 'en',
+    truncates: true,
+  },
+  {
+    caption: 'Locale-aware hyphenation',
+    label:
+      'Alexandra Müller-Lüdenscheidt von Donaudampfschifffahrtsgesellschaft',
+    lang: 'de',
+    truncates: true,
+  },
+  {
+    caption: 'CJK text',
+    label: '佐藤アレクサンドラ美咲エリザベス真理子オリビア',
+    lang: 'ja',
+    truncates: true,
+  },
+  {
+    caption: 'Right-to-left text',
+    label: 'محمد عبد الرحمن بن عبد العزيز الحسيني الهاشمي',
+    lang: 'ar',
+    dir: 'rtl',
+    truncates: true,
+  },
+  {
+    caption: 'No natural break opportunities',
+    label: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    lang: 'en',
+    truncates: true,
+  },
+];
+
+const labelOverflows = (labelElement: HTMLElement) =>
+  labelElement.scrollHeight - labelElement.clientHeight > 1 ||
+  labelElement.scrollWidth - labelElement.clientWidth > 1;
+
+const getOpenTooltip = () =>
+  document.querySelector('[data-base-ui-portal] [data-open][role="tooltip"]');
+
+/**
+ * Truncated labels expose their complete value in a tooltip on hover and
+ * keyboard focus. Untruncated labels never show a tooltip, and pressing a
+ * pointer button closes and suppresses it.
+ */
+export const TruncatedLabelTooltip: Story = {
+  render: () => (
+    <div className="flex flex-wrap gap-8 p-16">
+      {tooltipLabelCases.map(({ caption, label, lang, dir }) => (
+        <div key={caption} className="flex w-32 flex-col items-center gap-2">
+          <Node label={label} lang={lang} dir={dir} onClick={fn()} />
+          <span className="text-center text-xs text-current/70">{caption}</span>
+        </div>
+      ))}
+    </div>
+  ),
+  decorators: [
+    (StoryComponent) => (
+      <TooltipProvider delay={0} closeDelay={0}>
+        <StoryComponent />
+      </TooltipProvider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    for (const { label, truncates } of tooltipLabelCases) {
+      const node = canvas.getByRole('button', { name: label });
+      const visibleLabel = within(node).getByText(label);
+      await expect(labelOverflows(visibleLabel)).toBe(truncates);
+
+      await userEvent.hover(node);
+      if (truncates) {
+        await waitFor(() => expect(getOpenTooltip()).toHaveTextContent(label));
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        await expect(getOpenTooltip()).toBeNull();
+      }
+      await userEvent.unhover(node);
+      await waitFor(() => expect(getOpenTooltip()).toBeNull());
+    }
+
+    const truncatedCase = tooltipLabelCases[1]!;
+    const truncatedNode = canvas.getByRole('button', {
+      name: truncatedCase.label,
+    });
+    await userEvent.hover(truncatedNode);
+    await waitFor(() => expect(getOpenTooltip()).not.toBeNull());
+    await userEvent.pointer({ keys: '[MouseLeft>]', target: truncatedNode });
+    await waitFor(() => expect(getOpenTooltip()).toBeNull());
+    await userEvent.pointer({ keys: '[/MouseLeft]', target: truncatedNode });
+    await userEvent.unhover(truncatedNode);
+    await waitFor(() => expect(getOpenTooltip()).toBeNull());
+
+    // Keyboard focus-open can't be driven by synthetic play input
+    // (no focus-visible modality); covered in Node.tooltip.test.tsx.
+  },
+  parameters: {
+    layout: 'padded',
+    chromatic: { disableSnapshot: true },
+    docs: {
+      description: {
+        story: `
+Overflow is detected from real layout after render — not from character count —
+so only labels that actually clamp get a tooltip. The tooltip opens on mouse
+hover and keyboard focus, never from press, click, or touch; pressing a pointer
+button closes it and keeps it closed while held. The tooltip is rendered with
+\`pointer-events: none\`, so it can never capture a gesture, and its content is
+\`aria-hidden\` because the full label is already the button's accessible name.
+        `,
+      },
+    },
+  },
+};
+
+/**
+ * The truncated-label tooltip in its open state, for visual review.
+ */
+export const TruncatedLabelTooltipOpen: Story = {
+  render: () => (
+    <div className="p-24">
+      <Node
+        label="Alexandria Montgomery-Fitzgerald von Habsburg III"
+        onClick={fn()}
+      />
+    </div>
+  ),
+  decorators: [
+    (StoryComponent) => (
+      <TooltipProvider delay={0} closeDelay={0}>
+        <StoryComponent />
+      </TooltipProvider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const node = canvas.getByRole('button');
+    await userEvent.hover(node);
+    await waitFor(() => expect(getOpenTooltip()).not.toBeNull());
+  },
+  parameters: {
+    chromatic: { pauseAnimationAtEnd: true },
+    docs: {
+      description: {
+        story:
+          'The complete label appears above the node without altering its layout or size.',
+      },
+    },
+  },
+};
+
+/**
+ * Overflow detection holds across every size and shape.
+ */
+export const TruncationAcrossSizes: Story = {
+  render: () => (
+    <div className="flex flex-col gap-8">
+      {(['xxs', 'xs', 'sm', 'md', 'lg'] as const).map((size) => (
+        <div key={size} className="flex items-center gap-8">
+          <span className="w-12 text-sm font-medium">{size}</span>
+          <div className="flex items-end gap-6">
+            {(['circle', 'square', 'diamond'] as const).map((shape) => (
+              <Node
+                key={shape}
+                size={size}
+                shape={shape}
+                label="Alexandria Montgomery-Fitzgerald von Habsburg III"
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const nodes = canvas.getAllByRole('button');
+    await expect(nodes).toHaveLength(15);
+
+    for (const node of nodes) {
+      const visibleLabel = within(node).getByText(
+        'Alexandria Montgomery-Fitzgerald von Habsburg III',
+      );
+      await expect(labelOverflows(visibleLabel)).toBe(true);
+    }
+  },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        story:
+          'A label longer than any node can hold is detected as truncated at every size (each size clamps at a different line count) and shape, so the tooltip is available for all of them.',
       },
     },
   },

@@ -64,6 +64,7 @@
     "./utils/composeEventHandlers": "./src/utils/composeEventHandlers.ts",
     "./utils/NoSSRWrapper": "./src/utils/NoSSRWrapper.tsx",
     "./hooks/useSafeAnimate": "./src/hooks/useSafeAnimate.ts",
+    "./hooks/useIsTruncated": "./src/hooks/useIsTruncated.ts",
     "./hooks/useNodeInteractions": "./src/hooks/useNodeInteractions.ts",
     "./hooks/usePrevious": "./src/hooks/usePrevious.ts",
     "./hooks/useResizablePanel": "./src/hooks/useResizablePanel.ts",
@@ -355,6 +356,10 @@
       "./hooks/useSafeAnimate": {
         "types": "./dist/hooks/useSafeAnimate.d.ts",
         "default": "./dist/hooks/useSafeAnimate.js"
+      },
+      "./hooks/useIsTruncated": {
+        "types": "./dist/hooks/useIsTruncated.d.ts",
+        "default": "./dist/hooks/useIsTruncated.js"
       },
       "./hooks/useNodeInteractions": {
         "types": "./dist/hooks/useNodeInteractions.d.ts",
