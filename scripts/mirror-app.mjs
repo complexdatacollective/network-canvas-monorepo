@@ -37,6 +37,19 @@ import { fileURLToPath } from 'node:url';
 import { parseCatalog, resolveManifest } from './resolve-manifest.mjs';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
+const workspaceCatalog = parseCatalog(
+  readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8'),
+);
+
+function requireCatalogVersion(name) {
+  const version = workspaceCatalog[name];
+  if (!version) {
+    throw new Error(`No default catalog entry for "${name}".`);
+  }
+  return version;
+}
+
+const effectVersion = requireCatalogVersion('effect');
 
 const GITIGNORE = `node_modules/
 dist/
@@ -184,6 +197,7 @@ allowBuilds:
 # Keep security-sensitive transitives on patched versions when upstream
 # manifests still pin vulnerable releases.
 overrides:
+  'effect@3.17.7': '${effectVersion}'
   fast-uri: '^3.1.4'
   find-my-way: '^9.7.0'
   postcss: '^8.5.23'
@@ -220,15 +234,7 @@ function vendorSharedTsconfig(staging, manifest) {
     original.replace(shared, '"./tsconfig/web.json"'),
   );
 
-  const catalog = parseCatalog(
-    readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8'),
-  );
-  const tsResetVersion = catalog['@total-typescript/ts-reset'];
-  if (!tsResetVersion) {
-    throw new Error(
-      'No catalog entry for @total-typescript/ts-reset; the vendored tsconfig names it in `types`.',
-    );
-  }
+  const tsResetVersion = requireCatalogVersion('@total-typescript/ts-reset');
   manifest.devDependencies ??= {};
   manifest.devDependencies['@total-typescript/ts-reset'] = tsResetVersion;
 }
