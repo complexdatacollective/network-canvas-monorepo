@@ -414,7 +414,11 @@ export default function Node(props: UINodeProps) {
   return (
     <Tooltip disabled={!tooltipEnabled}>
       <TooltipTrigger id={id} render={button} />
-      <TooltipContent aria-hidden="true" pointerEvents="none">
+      <TooltipContent
+        aria-hidden="true"
+        pointerEvents="none"
+        className="wrap-anywhere whitespace-pre-line"
+      >
         {label}
       </TooltipContent>
     </Tooltip>

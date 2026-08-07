@@ -155,4 +155,17 @@ describe('Node truncation tooltip', () => {
     const positioner = getPopup()!.closest('[data-base-ui-portal] > *');
     expect(positioner).toHaveClass('pointer-events-none!');
   });
+
+  it('wraps labels with no break opportunities inside the popup', async () => {
+    mockLabelOverflow();
+    const user = userEvent.setup();
+    const unbrokenLabel = 'a'.repeat(48);
+    render(<Node label={unbrokenLabel} onClick={vi.fn()} />);
+
+    await user.tab();
+    await waitFor(() => expect(getPopup()).not.toBeNull());
+
+    expect(getPopup()).toHaveTextContent(unbrokenLabel);
+    expect(getPopup()).toHaveClass('wrap-anywhere', 'whitespace-pre-line');
+  });
 });
