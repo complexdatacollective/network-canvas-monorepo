@@ -1,5 +1,61 @@
 # @codaco/architect
 
+## 8.1.0
+
+### Minor Changes
+
+- fec9536: Add a Colored Eco-Genetic Relationship Map (CEGRM) template for families living with an inherited condition. It combines a family pedigree with the participant's wider social network, records relationship closeness and contact frequency alongside exchanges of information, practical help, emotional and spiritual support, and closes on a visual map and an inheritance view.
+
+  Treat the Family Pedigree node label as a validated codebook field, apply its rules to every family-member name entry point, and expose those rules beside the label-variable selector in Architect. Keep the iconically rendered ego node outside label and additional family-member form collection, including in synthetic previews. Reduce the default synthetic Sociogram edge density so preview networks remain legible as their node count grows.
+
+  Keep optional unique fields empty without false duplicate errors, scope comparison rules to the active field namespace, and prevent dormant or duplicate pedigree name controls from affecting validation.
+
+### Patch Changes
+
+- 52a3fbb: Honor reduced-motion preferences in Architect and expose a shared provider for disabling Motion and Base UI animations together in automated hosts.
+- d5723ec: Prevent the Sociogram editor from showing Finished Editing until the stage has actually changed.
+- e349137: Update runtime dependencies to resolve security vulnerabilities in analytics sanitization, uploads, and form state handling.
+- 8920223: Add a default-off Respect skip logic preview setting so disabled previews show every stage and enabled previews retain routing after the initially force-shown stage.
+- ea06b66: Validation rules now save what the editor shows.
+
+  Nudging a rule's value with the plus or minus button changed the number on
+  screen without saving it, and if the value was being edited at the time, the
+  older number was saved instead. Switching on a rule that needs no value — such
+  as Required — saved it even where it could never be satisfied, for instance
+  alongside a maximum length of zero. A rule held back because it clashed with
+  another one stayed unsaved even after the clash was resolved, so a rule could
+  sit switched on with a sensible value that was never written. And undoing a
+  change left the rule switched on with the old value still showing, ready to be
+  written out again.
+
+  A rule whose value was still being typed is no longer dropped when a different
+  rule in the same list is saved: changing a minimum and then nudging the maximum
+  now saves both, rather than putting the minimum back to its old number. And
+  switching the whole Validation section off and then undoing reopens the section
+  with the restored rules in view, instead of leaving rules that will be saved
+  hidden behind a switched-off section.
+
+  Each rule's plus and minus buttons are also now named after that rule, so a
+  screen reader announces "Increase Minimum value" rather than "Increase value"
+  on every numeric rule on the screen.
+
+  `InputField` gains two optional props to support this: `onStep`, which reports
+  a value settled by a stepper button or arrow key, and `stepperLabels`, which
+  names the stepper buttons. Both default to the previous behaviour.
+
+- Updated dependencies [52a3fbb]
+- Updated dependencies [fec9536]
+- Updated dependencies [90e0178]
+- Updated dependencies [90e0178]
+- Updated dependencies [e349137]
+- Updated dependencies [13e5e99]
+- Updated dependencies [673d5f3]
+- Updated dependencies [ea06b66]
+  - @codaco/fresco-ui@6.0.0
+  - @codaco/interview@8.0.0
+  - @codaco/protocol-utilities@3.2.1
+  - @codaco/protocol-validation@12.1.1
+
 ## 8.0.2
 
 ### Patch Changes
