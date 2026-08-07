@@ -101,8 +101,8 @@ const PILL_PREVIEW_CONTRACT_TRANSITION = {
 const PILL_EDITOR_SCALE = 1.25;
 const PILL_EDITOR_LAYOUT_SPRING = {
   type: 'spring',
-  stiffness: 80,
-  damping: 19,
+  stiffness: 140,
+  damping: 25,
   mass: 1.65,
 } as const;
 // Keep every spatial property on the same physical spring. Deliberately omit
@@ -489,6 +489,7 @@ export const VariablePill = ({
   const [editing, setEditing] = useState(false);
   const [editorClosing, setEditorClosing] = useState(false);
   const [editorOrigin, setEditorOrigin] = useState<EditorOrigin | null>(null);
+  const [editorPillSettled, setEditorPillSettled] = useState(false);
   const [editorReturning, setEditorReturning] = useState(false);
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -691,6 +692,7 @@ export const VariablePill = ({
       returnFrameRef.current = null;
     }
     setEditorClosing(false);
+    setEditorPillSettled(Boolean(shouldReduceMotion));
     setEditorReturning(false);
     setAnnouncement(`Editing variable ${label}`);
     setEditing(true);
@@ -702,6 +704,7 @@ export const VariablePill = ({
     setPreviewExpanded(true);
     setEditing(false);
     setEditorClosing(false);
+    setEditorPillSettled(false);
     setEditorReturning(false);
     setEditorOrigin(null);
     setHovered(false);
@@ -873,7 +876,14 @@ export const VariablePill = ({
         )}
       </span>
 
-      <Modal open={editing} onOpenChange={handleOpenChange}>
+      <Modal
+        open={editing}
+        onOpenChange={handleOpenChange}
+        backdropClassName={cx(
+          'transition-opacity duration-500 ease-out',
+          editorReturning && '!opacity-0',
+        )}
+      >
         {editing && (
           <ModalPopup
             aria-label="Edit variable"
@@ -920,8 +930,28 @@ export const VariablePill = ({
                         ? { duration: 0 }
                         : PILL_EDITOR_LAYOUT_TRANSITION
                     }
+                    onUpdate={(latest) => {
+                      if (editorPillSettled || editorReturning) return;
+                      const { scale, width: animatedWidth, x, y } = latest;
+                      if (
+                        typeof x === 'number' &&
+                        Math.abs(x) <= 1 &&
+                        typeof y === 'number' &&
+                        Math.abs(y) <= 1 &&
+                        typeof animatedWidth === 'number' &&
+                        Math.abs(animatedWidth - editorPillWidth) <= 1 &&
+                        typeof scale === 'number' &&
+                        Math.abs(scale - PILL_EDITOR_SCALE) <= 0.005
+                      ) {
+                        setEditorPillSettled(true);
+                      }
+                    }}
                     onAnimationComplete={() => {
-                      if (editorReturning) finishClosingEditor();
+                      if (editorReturning) {
+                        finishClosingEditor();
+                        return;
+                      }
+                      setEditorPillSettled(true);
                     }}
                     style={editorPillStyle}
                   >
@@ -944,32 +974,28 @@ export const VariablePill = ({
                 <BaseUISharedPopoverContainer
                   className={cx(
                     'relative mx-auto mt-4 flex max-h-[calc(100dvh-7rem)] min-h-0 w-[min(100%,42rem)] flex-col overflow-visible',
-                    editorClosing
+                    editorClosing || !editorPillSettled
                       ? 'pointer-events-none'
                       : 'pointer-events-auto',
                   )}
                   data-variable-pill-editor-body
-                  initial={
-                    shouldReduceMotion
-                      ? false
-                      : { opacity: 0, y: -8, scale: 0.98 }
-                  }
+                  data-variable-pill-editor-surface
+                  initial={false}
                   animate={
-                    editorClosing
-                      ? { opacity: 0, y: -8, scale: 0.98 }
-                      : { opacity: 1, y: 0, scale: 1 }
+                    editorPillSettled && !editorClosing
+                      ? { opacity: 1, y: 0 }
+                      : { opacity: 0, y: -10 }
                   }
                   transition={
                     shouldReduceMotion
                       ? { duration: 0 }
-                      : editorClosing
-                        ? { duration: 0.15, ease: 'easeIn' }
-                        : {
+                      : editorPillSettled && !editorClosing
+                        ? {
                             type: 'tween',
-                            duration: 0.42,
-                            ease: [0.4, 0, 0.2, 1],
-                            delay: 0.2,
+                            duration: 0.26,
+                            ease: [0.16, 1, 0.3, 1],
                           }
+                        : { duration: 0.15, ease: 'easeIn' }
                   }
                 >
                   <span

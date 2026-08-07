@@ -130,6 +130,30 @@ describe('ConnectedVariablePill', () => {
     expect(document.querySelector('.bg-overlay')).toBeInTheDocument();
   });
 
+  it('moves the popup downward only after the pill settles', async () => {
+    await startEditing('node-subject');
+    const surface = document.querySelector(
+      '[data-variable-pill-editor-surface]',
+    );
+    const arrow = document.querySelector('[data-variable-pill-editor-arrow]');
+
+    expect(surface).toHaveStyle({
+      opacity: '0',
+      transform: 'translateY(-10px)',
+    });
+    expect(arrow?.parentElement).toBe(surface);
+
+    await waitFor(
+      () => {
+        expect(surface).toHaveStyle({
+          opacity: '1',
+          transform: 'none',
+        });
+      },
+      { timeout: 2500 },
+    );
+  });
+
   it('shows the concise edit instruction on keyboard focus', async () => {
     render(<ConnectedVariablePill animated editable uuid="node-subject" />);
     const pill = screen.getByRole('button', {
@@ -341,6 +365,7 @@ describe('ConnectedVariablePill', () => {
     expect(
       screen.getByRole('dialog', { name: 'Edit variable' }),
     ).toBeInTheDocument();
+    expect(document.querySelector('.bg-overlay')).toHaveClass('!opacity-0');
 
     await expectClosedWithFocusReturned();
   });
