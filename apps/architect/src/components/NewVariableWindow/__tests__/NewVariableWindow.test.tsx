@@ -132,3 +132,39 @@ describe('NewVariableWindow name normalisation', () => {
     expect(input).toHaveValue('myname0');
   });
 });
+
+// The window is mounted for the lifetime of the picker that owns it and only
+// toggles `show`, so nothing but its DialogForm `key` guarantees the next
+// variable a clean field store. This mirrors the case the key exists for: the
+// form stays mounted across the close (in the app, an exit animation cancelled
+// by an immediate reopen), so the second variable's fields re-register over
+// the first one's parked values — which `registerField` prefers over
+// `initialValue`.
+describe('NewVariableWindow seeding across opens', () => {
+  it('seeds the next variable from its own initial values, not the last one', () => {
+    const first = { name: 'firstVariable', type: 'text' };
+    const second = { name: 'secondVariable', type: 'boolean' };
+    const props = {
+      entity: 'node' as const,
+      type: 'person',
+      onComplete: vi.fn(),
+      onCancel: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <NewVariableWindow {...props} show initialValues={first} />,
+    );
+    expect(screen.getByRole('textbox', { name: 'Variable name' })).toHaveValue(
+      'firstVariable',
+    );
+
+    rerender(
+      <NewVariableWindow {...props} show={false} initialValues={first} />,
+    );
+    rerender(<NewVariableWindow {...props} show initialValues={second} />);
+
+    expect(screen.getByRole('textbox', { name: 'Variable name' })).toHaveValue(
+      'secondVariable',
+    );
+  });
+});

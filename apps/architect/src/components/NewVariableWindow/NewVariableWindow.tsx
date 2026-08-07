@@ -1,5 +1,5 @@
 import { values } from 'es-toolkit/compat';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type {
@@ -265,8 +265,40 @@ export default function NewVariableWindow({
     }
   }, [onCancel, openDialog]);
 
+  /**
+   * Every open of this window creates a DIFFERENT variable, so each one needs
+   * its own field store — the `key` DialogForm documents for exactly this.
+   *
+   * The window is mounted for the lifetime of the picker that owns it and only
+   * toggles `show`, so without a key the store is shared across opens. What
+   * normally hides that is `Modal`'s exit animation: it unmounts the form,
+   * whose `useForm` cleanup resets the store. A close that is followed by
+   * another open before that exit finishes cancels the removal, so the reset
+   * never runs — and the next variable's fields then re-register over the
+   * previous one's parked values, which `registerField` prefers over
+   * `initialValue`. Creating a boolean variable straight after a categorical
+   * one therefore reopened the window still holding `categorical`: the type
+   * selector is locked against correcting it, so the options editor it reveals
+   * could never be satisfied and the save was blocked for good. The quieter
+   * case is worse — a boolean created straight after a TEXT one is stored as
+   * text, a wrong-typed codebook variable with nothing on screen to show it.
+   *
+   * Bumped as the window OPENS (the React-documented adjust-state-on-prop-
+   * change pattern) rather than on close, so the entering dialog is the fresh
+   * one and a close still animates out.
+   */
+  const [wasShown, setWasShown] = useState(show);
+  const [openCount, setOpenCount] = useState(0);
+  if (show !== wasShown) {
+    setWasShown(show);
+    if (show) {
+      setOpenCount((count) => count + 1);
+    }
+  }
+
   return (
     <DialogForm
+      key={openCount}
       open={show}
       onClose={() => void handleCancel()}
       title="Create New Variable"
