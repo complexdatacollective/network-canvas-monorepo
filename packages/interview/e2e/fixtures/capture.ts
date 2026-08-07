@@ -49,6 +49,8 @@ const MOTION_DRAG_ELEMENT_STYLES = `${MOTION_DRAG_SELECTOR} {
 }`;
 const MOTION_DRAG_STATIC_PAGE_STYLES = `${MOTION_DRAG_SELECTOR} {
   opacity: 0 !important;
+  transform: none !important;
+  translate: none !important;
   visibility: hidden !important;
 }`;
 
