@@ -57,9 +57,11 @@ export function useLongPress({
   const feedbackTimerRef = useRef<number | null>(null);
   const detachRef = useRef<(() => void) | null>(null);
   const heldRef = useRef(false);
+  const activePointerRef = useRef<number | null>(null);
   const [isHolding, setIsHolding] = useState(false);
 
   const cancel = useCallback(() => {
+    activePointerRef.current = null;
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -85,15 +87,22 @@ export function useLongPress({
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent) => {
+      // A second finger landing mid-gesture belongs to nobody: the drag system
+      // ignores it too, so tearing the hold down here would discard a
+      // suppression the first finger's release still needs.
+      if (activePointerRef.current !== null) return;
+
       cancel();
       heldRef.current = false;
       if (!enabled || event.button !== 0) return;
 
-      const origin = { x: event.clientX, y: event.clientY };
       // Only the finger that began the hold can abandon it. On a tablet a
       // second finger moving or lifting elsewhere would otherwise cancel a
       // hold the participant is still patiently keeping still.
       const { pointerId } = event;
+      activePointerRef.current = pointerId;
+
+      const origin = { x: event.clientX, y: event.clientY };
 
       const handleMove = (moveEvent: PointerEvent) => {
         if (moveEvent.pointerId !== pointerId) return;

@@ -261,6 +261,36 @@ describe('useLongPress', () => {
     expect(onLongPress).not.toHaveBeenCalled();
   });
 
+  it('keeps a fired hold intact when a second finger lands on the node', () => {
+    const onClickResult = vi.fn();
+    render(<Probe onLongPress={vi.fn()} onClickResult={onClickResult} />);
+
+    // One finger holds until the label appears...
+    fireEvent.pointerDown(target(), {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    });
+    hold();
+    expect(isHolding()).toBe(false);
+
+    // ...then a second finger touches the same node before the first lifts.
+    // The drag system ignores that pointer, so if the hold were torn down here
+    // the first finger's release would select the node despite the reveal.
+    fireEvent.pointerDown(target(), {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 2,
+    });
+
+    fireEvent.pointerUp(window, { pointerId: 1 });
+    fireEvent.click(target());
+
+    expect(onClickResult).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
   it('does not carry a suppression into a later gesture', () => {
     const onClickResult = vi.fn();
     render(<Probe onLongPress={vi.fn()} onClickResult={onClickResult} />);
