@@ -25,7 +25,7 @@ type DragNodeProps = {
   canvasRef: RefObject<HTMLElement | null>;
   onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
   onRemove?: (nodeId: string) => void;
-  onClick?: () => void;
+  onClick?: (source: 'pointer' | 'keyboard') => void;
   shouldSuppressTap?: () => boolean;
   withDndItem?: boolean;
 };
@@ -234,6 +234,27 @@ describe('useCanvasDrag', () => {
     fireEvent.pointerUp(document, { clientX: 0, clientY: 0, pointerId: 2 });
 
     expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it('reports how a node was activated', () => {
+    const onClick = vi.fn();
+    render(<Fixture store={makeSeededStore()} onClick={onClick} />);
+
+    const node = screen.getByTestId('drag-node');
+    fireEvent.pointerDown(node, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(document, { clientX: 0, clientY: 0, pointerId: 1 });
+    expect(onClick).toHaveBeenLastCalledWith('pointer');
+
+    fireEvent.keyDown(node, { key: 'Enter' });
+    expect(onClick).toHaveBeenLastCalledWith('keyboard');
+
+    fireEvent.keyUp(node, { key: ' ' });
+    expect(onClick).toHaveBeenLastCalledWith('keyboard');
   });
 
   it('ignores a second finger moving or lifting mid-gesture', () => {

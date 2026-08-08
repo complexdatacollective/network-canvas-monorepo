@@ -19,6 +19,7 @@ import {
 
 import CanvasNode from './CanvasNode';
 import EdgeLayer from './EdgeLayer';
+import type { ActivationSource } from './useCanvasDrag';
 import type { CanvasStoreApi } from './useCanvasStore';
 
 type CanvasProps = {
@@ -31,7 +32,7 @@ type CanvasProps = {
   store: CanvasStoreApi;
   selectedNodeId: string | null;
   highlightAttribute?: string;
-  onNodeSelect?: (nodeId: string) => void;
+  onNodeSelect?: (nodeId: string, source: ActivationSource) => void;
   onNodeDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
   onDrop?: (nodeId: string, position: { x: number; y: number }) => void;
   allowRepositioning?: boolean;

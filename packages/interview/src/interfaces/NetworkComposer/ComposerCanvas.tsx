@@ -11,6 +11,7 @@ import {
 
 import CanvasNode from '../../canvas/CanvasNode';
 import EdgeLayer from '../../canvas/EdgeLayer';
+import type { ActivationSource } from '../../canvas/useCanvasDrag';
 import { type CanvasStoreApi } from '../../canvas/useCanvasStore';
 import { type ComposerStoreApi, useComposerStore } from './useComposerStore';
 
@@ -34,7 +35,11 @@ type ComposerCanvasProps = {
     releaseNode: (nodeId: string) => void;
   } | null;
   onBackgroundTap: () => void;
-  onNodeTap: (nodeId: string, modifiers: NodeTapModifiers) => void;
+  onNodeTap: (
+    nodeId: string,
+    modifiers: NodeTapModifiers,
+    source: ActivationSource,
+  ) => void;
   onEdgeTap: (edgeId: string) => void;
   onNodeDragEnd: (nodeId: string, position: Position) => void;
 };
@@ -244,7 +249,18 @@ export default function ComposerCanvas({
             canvasRef={canvasRef}
             store={canvasStore}
             onDragEnd={onNodeDragEnd}
-            onSelect={(id) => onNodeTap(id, modifierRef.current)}
+            onSelect={(id, source) =>
+              // Modifiers are only meaningful for the pointer gesture that
+              // captured them. A keyboard press has none of its own, and
+              // reading the cache would apply whatever was last held down.
+              onNodeTap(
+                id,
+                source === 'keyboard'
+                  ? { shift: false, meta: false }
+                  : modifierRef.current,
+                source,
+              )
+            }
             selected={selectedNodeIds.has(nodeId)}
             linking={pendingEdgeSource === nodeId}
             allowRepositioning={allowRepositioning}

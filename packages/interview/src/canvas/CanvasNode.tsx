@@ -6,7 +6,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import Node from '../components/ConnectedNode';
-import { useCanvasDrag } from './useCanvasDrag';
+import { type ActivationSource, useCanvasDrag } from './useCanvasDrag';
 import { type CanvasStoreApi, useCanvasStore } from './useCanvasStore';
 
 type CanvasNodeProps = {
@@ -14,7 +14,7 @@ type CanvasNodeProps = {
   canvasRef: RefObject<HTMLElement | null>;
   store: CanvasStoreApi;
   onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
-  onSelect?: (nodeId: string) => void;
+  onSelect?: (nodeId: string, source: ActivationSource) => void;
   selected?: boolean;
   linking?: boolean;
   highlighted?: boolean;
@@ -69,9 +69,12 @@ export default function CanvasNode({
     return revealed;
   }, []);
 
-  const handleClick = useCallback(() => {
-    onSelect?.(nodeId);
-  }, [onSelect, nodeId]);
+  const handleClick = useCallback(
+    (source: ActivationSource) => {
+      onSelect?.(nodeId, source);
+    },
+    [onSelect, nodeId],
+  );
 
   // Metadata mirrors DrawerNode's drag source so drop handlers can treat
   // canvas-originated and drawer-originated nodes uniformly.
@@ -121,7 +124,10 @@ export default function CanvasNode({
       // For the same reason Node cannot infer the toggle state either, so a
       // selectable node has to declare it or assistive technology cannot tell
       // which nodes are selected.
-      aria-pressed={onSelect ? selected : undefined}
+      // Canvases carry the "on" state under different names — the Sociogram
+      // leaves `selected` false and marks a highlighted node or an edge source
+      // instead — so the reported state has to follow whichever is in use.
+      aria-pressed={onSelect ? selected || highlighted || linking : undefined}
       // While dragged, lift the node above overlapping drop targets
       // (the unplaced-node drawer sits at z-10).
       className={cx('absolute outline-offset-8!', isDragging && 'z-20')}

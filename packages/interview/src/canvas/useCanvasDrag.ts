@@ -11,12 +11,19 @@ import type { CanvasStoreApi } from './useCanvasStore';
 const DRAG_THRESHOLD = 5;
 const NUDGE_AMOUNT = 0.02;
 
+/**
+ * How a node was activated. Pointer taps carry gesture state a keyboard press
+ * has no equivalent for — held modifier keys, a place the pointer is pointing —
+ * so a host cannot treat the two identically.
+ */
+export type ActivationSource = 'pointer' | 'keyboard';
+
 type UseCanvasDragOptions = {
   nodeId: string;
   canvasRef: RefObject<HTMLElement | null>;
   store: CanvasStoreApi;
   onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
-  onClick?: () => void;
+  onClick?: (source: ActivationSource) => void;
   disabled?: boolean;
   simulation?: {
     moveNode: (nodeId: string, position: { x: number; y: number }) => void;
@@ -204,7 +211,7 @@ export function useCanvasDrag({
             }
           }
         } else if (!tapSuppressed) {
-          onClick?.();
+          onClick?.('pointer');
         }
 
         isDraggingRef.current = false;
@@ -243,7 +250,7 @@ export function useCanvasDrag({
         case 'Enter':
           // ARIA button pattern: Enter activates on keydown (and auto-repeats).
           e.preventDefault();
-          onClick?.();
+          onClick?.('keyboard');
           return;
         case ' ':
           // ARIA button pattern: Space activates on keyup; keydown only
@@ -288,7 +295,7 @@ export function useCanvasDrag({
     (e: React.KeyboardEvent) => {
       if (disabled) return;
       if (e.key !== ' ') return;
-      onClick?.();
+      onClick?.('keyboard');
     },
     [disabled, onClick],
   );
