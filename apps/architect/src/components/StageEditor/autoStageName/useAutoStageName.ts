@@ -3,11 +3,11 @@ import { useSelector } from 'react-redux';
 
 import type {
   Item,
-  Panel,
   Stage,
   StageSubject,
   StageType,
 } from '@codaco/protocol-validation';
+import { usePanelsForAutoName } from '~/components/sections/NodePanels/panelSlots';
 import { useAppDispatch } from '~/ducks/hooks';
 import { draftTimelineActions } from '~/ducks/modules/stageEditorDraft';
 import {
@@ -40,7 +40,11 @@ export function useAutoStageName(isNewStage: boolean): {
   const type = useStageFormValue<StageType>('type');
   const label = useStageFormValue<string>('label');
   const subject = useStageFormValue<StageSubject>('subject');
-  const panels = useStageFormValue<Panel[]>('panels');
+  // Assembled from the per-index panel leaves, not read off the `panels`
+  // container path — that path carries a dormant sentinel after a toggle-off
+  // and would report "no panels" for the rest of the session (see
+  // `usePanelsForAutoName`).
+  const panels = usePanelsForAutoName();
   const items = useStageFormValue<Item[]>('items');
   const nominationPrompts =
     useStageFormValue<{ variable: string }[]>('nominationPrompts');

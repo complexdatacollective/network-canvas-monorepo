@@ -18,19 +18,18 @@ import { useStageDraftHistory } from '~/components/StageEditor/useStageDraftHist
 import useLatchedExpansion from '~/hooks/useLatchedExpansion';
 
 import NodePanel, { type NodePanelValue } from './NodePanel';
-
 // Every other array in the stage form is one opaque field value, but
 // NetworkFilter (used by each row below) reads and writes the STAGE form
 // directly. So each panel's fields stay individually registered on the
 // stage — `panels[N].title`/`.dataSource`/`.filter` — and this component only
 // drives the add/remove/reorder UI over them: `ArrayField` renders bounded by
-// `MAX_PANELS`, uncontrolled by a
-// literal `panels` field (registering one would race the individual leaves —
-// see MAX_PANELS below), and `handlePanelsChange` writes the recomputed list
-// back across the same bounded set of field paths. The list this component
-// renders from is likewise assembled per index (`usePanelAt`) rather than read
-// off the `panels` container path.
-const MAX_PANELS = 2;
+// `MAX_PANELS`, uncontrolled by a literal `panels` field (registering one
+// would race the individual leaves), and `handlePanelsChange` writes the
+// recomputed list back across the same bounded set of field paths. The list
+// this component renders from is likewise assembled per index (`usePanelAt`)
+// rather than read off the `panels` container path — as is the stage name's
+// own read, which is why the bound is shared rather than local.
+import { MAX_PANELS } from './panelSlots';
 
 // `ArrayField` decides whether to re-sync its internal item list from `value`
 // by REFERENCE (`useArrayFieldItems.ts`'s `value !== prevValueRef.current`),

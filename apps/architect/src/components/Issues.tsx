@@ -43,8 +43,10 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
     if (hasIssues) setOpen(true);
   }, [hasIssues]);
 
-  const setIssueRef = useCallback((el: HTMLElement | null, fieldId: string) => {
-    issueRefs.current[fieldId] = el;
+  // Keyed by the row's own id rather than its field id: a field that fails
+  // several rules has one row per message, and they must not share a slot.
+  const setIssueRef = useCallback((el: HTMLElement | null, id: string) => {
+    issueRefs.current[id] = el;
   }, []);
 
   const handleClickIssue = useCallback(
@@ -74,8 +76,7 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
   // `open` is a dep because the issue refs are only mounted while the popover is open.
   useEffect(() => {
     if (!open) return;
-    flatIssues.forEach(({ field }: { field: string; issue: string }) => {
-      const fieldId = getFieldId(field);
+    flatIssues.forEach(({ id, field }) => {
       // Resolve via the same ancestor-aware lookup the click handler uses, so
       // fields only reachable through a trimmed ancestor candidate still get a
       // friendly label instead of leaving the raw path in the list.
@@ -83,8 +84,8 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
       if (!targetField) return;
       const fieldName =
         targetField.getAttribute('data-name') || targetField.textContent;
-      if (fieldName && issueRefs?.current[fieldId]) {
-        issueRefs.current[fieldId].textContent = fieldName;
+      if (fieldName && issueRefs?.current[id]) {
+        issueRefs.current[id].textContent = fieldName;
       }
     });
   }, [flatIssues, open]);
@@ -110,11 +111,14 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
             </span>
           </div>
           <ol className="m-0 list-none overflow-y-auto p-0 [counter-reset:issue]">
-            {map(flatIssues, ({ field, issue }) => {
+            {map(flatIssues, ({ id, field, issue }) => {
+              // Row identity (`id`) and anchor target (`fieldId`) are separate:
+              // several rows can share one field, and scroll-to-error resolves
+              // through the field path.
               const fieldId = getFieldId(field);
               return (
                 <li
-                  key={fieldId}
+                  key={id}
                   data-testid="issue"
                   className="hover:bg-surface-2 m-0 bg-transparent p-0 transition-colors duration-300 ease-in-out"
                 >
@@ -123,8 +127,8 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
                     onClick={(e) => handleClickIssue(e, field)}
                     className="block w-full px-5 py-2.5 no-underline before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
                   >
-                    <span ref={(el) => setIssueRef(el, fieldId)}>{field}</span>{' '}
-                    - {issue}
+                    <span ref={(el) => setIssueRef(el, id)}>{field}</span> -{' '}
+                    {issue}
                   </a>
                 </li>
               );

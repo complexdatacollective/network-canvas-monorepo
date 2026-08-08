@@ -11,8 +11,9 @@ describe('utils/issues', () => {
           'form.fields': ['You must create at least one field'],
         }),
       ).toEqual([
-        { issue: 'Required', field: 'label' },
+        { id: 'label#0', issue: 'Required', field: 'label' },
         {
+          id: 'form.fields#0',
           issue: 'You must create at least one field',
           field: 'form.fields',
         },
@@ -23,8 +24,31 @@ describe('utils/issues', () => {
       expect(
         issues.flattenIssues({ name: ['Required', 'Must be unique'] }),
       ).toEqual([
-        { issue: 'Required', field: 'name' },
-        { issue: 'Must be unique', field: 'name' },
+        { id: 'name#0', issue: 'Required', field: 'name' },
+        { id: 'name#1', issue: 'Must be unique', field: 'name' },
+      ]);
+    });
+
+    it('gives sibling messages on one field distinct ids while keeping the field', () => {
+      const flattened = issues.flattenIssues({
+        'introductionPanel.title': ['Required', 'Too long'],
+        'label': ['Required'],
+      });
+
+      expect(new Set(flattened.map(({ id }) => id)).size).toBe(
+        flattened.length,
+      );
+      expect(flattened.map(({ field }) => field)).toEqual([
+        'introductionPanel.title',
+        'introductionPanel.title',
+        'label',
+      ]);
+      // Ids are field-qualified, so they do not collide across fields when
+      // `Object.entries` order changes.
+      expect(flattened.map(({ id }) => id)).toEqual([
+        'introductionPanel.title#0',
+        'introductionPanel.title#1',
+        'label#0',
       ]);
     });
 

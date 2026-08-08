@@ -24,6 +24,10 @@ Fixes a number of editing bugs found along the way:
 - Switching a form field's date control away and back no longer leaves "Use interview date" switched off with an empty anchor date, demanding a value for a field nobody changed.
 - Undo now works on the background of a sociogram or narrative stage. Undoing a switch between concentric circles and an image left the old chooser on screen, so the stage could not be saved until the researcher switched modes by hand. Adding the first side panel is likewise undoable now, and undoing a later edit to it no longer removes the whole panel.
 - An app update arriving moments after an edit no longer reloads over it. Architect checks for unsaved work again at the instant it would apply the update, rather than relying on a reading taken a fraction of a second earlier.
+- Creating a new variable while editing a form field no longer copies the previous variable's settings onto it. The new variable inherited the earlier one's input control — and with it, permanently, its type — along with its answer options, its parameters and its validation rules, without saying so.
+- Removing a categorical bin prompt's "Other" variable now removes its validation settings from the editor too. They stayed on screen belonging to the variable just removed, and editing them wrote straight to that variable, which another stage may still be collecting.
+- The Issues list no longer shows a raw internal field name when one field has more than one problem.
+- A name generator's generated stage name mentions its side panels again after the panels have been turned off and on.
 
 Half-finished settings can no longer be saved. Previously the field showed an error but "Finished Editing" accepted it anyway, and the problem resurfaced later as a protocol-wide "Misconfigured Protocol" message far from the field that caused it:
 

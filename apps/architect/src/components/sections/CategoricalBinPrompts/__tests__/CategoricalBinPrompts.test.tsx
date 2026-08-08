@@ -66,9 +66,14 @@ vi.mock('~/components/NewVariableWindow', () => ({
 }));
 
 // Isolates this suite from ValidationSection's own dependency chain, owned
-// by a different batch.
+// by a different batch. The real component commits rule changes straight to
+// `variableId`'s codebook entry via `updateVariableAsync`, so which variable
+// it is mounted for — surfaced here as `data-variable-id` — is the whole
+// safety property.
 vi.mock('~/components/sections/CodebookVariableValidationSection', () => ({
-  default: () => <div data-testid="validation-section" />,
+  default: ({ variableId }: { variableId?: string }) => (
+    <div data-testid="validation-section" data-variable-id={variableId} />
+  ),
 }));
 
 import CategoricalBinPrompts from '../CategoricalBinPrompts';
@@ -307,6 +312,129 @@ describe('CategoricalBinPrompts', () => {
     expect(prompt).not.toHaveProperty('otherOptionLabel');
     expect(prompt).not.toHaveProperty('otherVariablePrompt');
     expect(prompt).toMatchObject({ id: 'p1', variable: 'group' });
+  });
+
+  // The baseline the two regressions below must not break: a prompt that
+  // really does carry an other variable opens with that variable in the
+  // picker AND its codebook validation section mounted for it.
+  it('shows the validation section for a prompt that has an other variable', async () => {
+    renderSection({
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Group these',
+          variable: 'group',
+          otherVariable: 'free_text',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit prompt' }));
+
+    expect(await screen.findByLabelText('otherVariable')).toHaveValue(
+      'free_text',
+    );
+    expect(screen.getByTestId('validation-section')).toHaveAttribute(
+      'data-variable-id',
+      'free_text',
+    );
+  });
+
+  // Regression: toggling "Other" off CLEARS the trio, and the cleared value
+  // survives the collapse as a dormant entry holding `undefined` — so the
+  // picker remounts blank when the section is turned back on. Deriving the
+  // variable as "live value, or else the row's pre-edit prop" revived the
+  // removed variable there, mounting a fully populated Validation section
+  // under a blank, required picker. `CodebookVariableValidationSection`
+  // commits through `updateVariableAsync` the moment a rule is touched, so
+  // that mount is a live write path onto a codebook variable this prompt no
+  // longer references — and which another stage may still collect.
+  it('does not remount the validation section for a removed other variable', async () => {
+    renderSection({
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Group these',
+          variable: 'group',
+          otherVariable: 'free_text',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit prompt' }));
+    await screen.findByLabelText('otherVariable');
+    expect(screen.getByTestId('validation-section')).toHaveAttribute(
+      'data-variable-id',
+      'free_text',
+    );
+
+    const [otherToggle] = screen
+      .getAllByRole('switch')
+      .filter((toggle) => toggle.getAttribute('aria-checked') === 'true');
+    if (!otherToggle) throw new Error('expected the "Other" toggle to be on');
+
+    // `Section`'s toggle handler is async, so the collapse lands a microtask
+    // after the click.
+    fireEvent.click(otherToggle);
+    await waitFor(() => {
+      expect(screen.queryByLabelText('otherVariable')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(otherToggle);
+    const picker = await screen.findByLabelText('otherVariable');
+
+    // The picker comes back blank, because the clear is what the save reads…
+    expect(picker).toHaveValue('');
+    // …so nothing beneath it may still be pointed at the removed variable.
+    expect(screen.queryByTestId('validation-section')).not.toBeInTheDocument();
+  });
+
+  // The other half of that derivation: clearing the categorical variable
+  // disables this section, which unmounts its children WITHOUT clearing them.
+  // That parks `otherVariable` dormant holding its REAL value, so treating a
+  // dormant entry's mere existence as "removed" would drop a variable the
+  // researcher never touched — the loss `mergeEditedRow` exists to prevent.
+  it('keeps the other variable across a disabled-parent unmount', async () => {
+    renderSection({
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Group these',
+          variable: 'group',
+          otherVariable: 'free_text',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit prompt' }));
+    await screen.findByLabelText('otherVariable');
+
+    fireEvent.change(screen.getByLabelText('variable'), {
+      target: { value: '' },
+    });
+    await waitFor(() => {
+      expect(screen.queryByLabelText('otherVariable')).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('variable'), {
+      target: { value: 'group' },
+    });
+    expect(await screen.findByLabelText('otherVariable')).toHaveValue(
+      'free_text',
+    );
+    expect(screen.getByTestId('validation-section')).toHaveAttribute(
+      'data-variable-id',
+      'free_text',
+    );
   });
 
   // Regression: `Options` no longer owns `minTwoOptions`/`completeOptions`, so

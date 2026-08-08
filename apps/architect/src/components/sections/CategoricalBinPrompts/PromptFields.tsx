@@ -70,15 +70,32 @@ const PromptFields = ({
 }: PromptFieldsProps) => {
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const clearValue = useClearValue();
-  const {
-    variable: liveVariable,
-    otherVariable: liveOtherVariable,
-    variableOptions: liveVariableOptions,
-  } = useFormValue(['variable', 'otherVariable', 'variableOptions'] as const);
+  const { variable: liveVariable, variableOptions: liveVariableOptions } =
+    useFormValue(['variable', 'variableOptions'] as const);
   const currentVariable =
     typeof liveVariable === 'string' ? liveVariable : variable;
-  const currentOtherVariable =
-    typeof liveOtherVariable === 'string' ? liveOtherVariable : otherVariable;
+  // `otherVariable` is the one field here the researcher can explicitly
+  // REMOVE (`handleToggleOtherVariable` clears the trio), so it needs the
+  // three-way resolution a plain value read cannot express: registered →
+  // dormant → the row's pre-edit prop. A value read collapses "no entry at
+  // all" and "an entry holding `undefined`" into the same `undefined`, and
+  // falling back to the prop for both revives the variable that was just
+  // removed — mounting `CodebookVariableValidationSection`, whose rule
+  // changes commit straight to that codebook variable, under a blank picker.
+  //
+  // The dormant entry's VALUE is what decides, never its existence: a section
+  // that becomes `disabled` unmounts these fields WITHOUT clearing them, so a
+  // dormant entry also holds a perfectly live variable that must survive.
+  const otherVariableEntry = useFormStore(
+    (state) =>
+      state.fields.get('otherVariable') ??
+      state.dormantValues.get('otherVariable'),
+  );
+  const currentOtherVariable = otherVariableEntry
+    ? typeof otherVariableEntry.value === 'string'
+      ? otherVariableEntry.value
+      : undefined
+    : otherVariable;
   const currentVariableOptions = Array.isArray(liveVariableOptions)
     ? (liveVariableOptions as VariableOption[])
     : variableOptions;

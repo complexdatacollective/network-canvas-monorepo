@@ -1,4 +1,12 @@
 type FlattenedIssue = {
+  /**
+   * Identity of this row, distinct from the field it points at: one field can
+   * fail several rules, so `field` alone does not tell two rows apart. Consumers
+   * key list items and per-row lookups by `id`, and keep `field` for anchoring.
+   * Qualified by the field (not a bare index) so identity survives a change in
+   * `Object.entries` order.
+   */
+  id: string;
   issue: string;
   field: string;
 };
@@ -8,13 +16,17 @@ type FlattenedIssue = {
  *
  * The store already keys errors by resolved field name (`prompts`,
  * `introductionPanel.title`) with an array of messages, so this only has to
- * pair each message with its field.
+ * pair each message with its field and give it a stable identity.
  */
 const flattenIssues = (
   fieldErrors: Record<string, string[] | undefined>,
 ): FlattenedIssue[] =>
   Object.entries(fieldErrors).flatMap(([field, messages]) =>
-    (messages ?? []).map((issue) => ({ issue, field })),
+    (messages ?? []).map((issue, index) => ({
+      id: `${field}#${index}`,
+      issue,
+      field,
+    })),
   );
 
 const getFieldId = (field: string) => {

@@ -208,9 +208,9 @@ export const useFieldHandlers = ({
   const observedComponent = useRef<{ value: string | undefined } | null>(null);
 
   // Selecting an EXISTING codebook variable adopts its rendering and rules.
-  // A name typed into the create affordance matches nothing in the codebook
-  // and deliberately leaves the rest of the editor alone: the researcher is
-  // about to choose the input control that defines the new variable.
+  // Anything else — a cleared picker, or a name typed into the create
+  // affordance, which by definition matches nothing in the codebook — resets
+  // them instead.
   useEffect(() => {
     if (!variableRegistered) return;
     if (!observedVariable.current) {
@@ -220,7 +220,27 @@ export const useFieldHandlers = ({
     if (observedVariable.current.value === variable) return;
     observedVariable.current = { value: variable };
 
-    if (!variable || !has(existingVariables, variable)) return;
+    if (!variable || !has(existingVariables, variable)) {
+      // A typed name names a BRAND NEW variable, so the variable being
+      // replaced must not hand down its rendering or its rules. `component`
+      // matters most: it fixes the new variable's `type`, which Architect
+      // never lets a researcher change afterwards. Clearing it re-arms its
+      // `required` rule, which is the point — the input control is a
+      // deliberate choice, not an inheritance. `validation` matters just as
+      // much on the composer path, which renders no validation editor at all,
+      // so an inherited rule there would be invisible.
+      //
+      // `options`/`validation` are cleared explicitly rather than left to the
+      // unmount that follows a blank `component`: an unmounted field parks its
+      // value dormant, and a dormant value outranks the assembled one later.
+      setFieldValue('component', undefined);
+      setFieldValue('options', undefined);
+      setFieldValue('validation', undefined);
+      // Parameters are a TREE of leaves rather than one field — see
+      // useClearValue.
+      clearValue('parameters');
+      return;
+    }
 
     const nextComponent = asString(
       get(existingVariables, [variable, 'component']),
