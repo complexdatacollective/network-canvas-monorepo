@@ -98,6 +98,11 @@ export function useCanvasDrag({
       let dndStarted = false;
 
       const handleMove = (moveEvent: PointerEvent) => {
+        // Only the finger that began the gesture drives it. On a multi-touch
+        // canvas a second finger would otherwise move — or end — a drag that
+        // the first finger still owns.
+        if (moveEvent.pointerId !== pointerId) return;
+
         const dx = moveEvent.clientX - startPosRef.current.x;
         const dy = moveEvent.clientY - startPosRef.current.y;
 
@@ -150,6 +155,11 @@ export function useCanvasDrag({
       };
 
       const handleUp = (upEvent: PointerEvent) => {
+        // A different finger lifting must not end this gesture: doing so would
+        // settle the drag early and consume the tap suppression before the
+        // hold that raised it had finished.
+        if (upEvent.pointerId !== pointerId) return;
+
         document.removeEventListener('pointermove', handleMove);
         document.removeEventListener('pointerup', handleUp);
         document.removeEventListener('pointercancel', handleUp);
@@ -288,6 +298,12 @@ export function useCanvasDrag({
       onPointerDown,
       onKeyDown,
       onKeyUp,
+      // A canvas node routes its tap through this hook rather than through an
+      // `onClick` prop, so `Node` cannot infer that it is interactive and
+      // defaults it out of the tab order. Without a tab stop none of the
+      // keyboard handling below it — nudging, Enter to select, Delete to
+      // remove — can be reached at all.
+      tabIndex: disabled ? -1 : 0,
       style: {
         cursor: disabled ? 'default' : 'grab',
         touchAction: 'none' as const,

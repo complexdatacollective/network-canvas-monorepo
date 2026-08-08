@@ -236,6 +236,47 @@ describe('useCanvasDrag', () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
+  it('is reachable by keyboard', () => {
+    render(<Fixture store={makeSeededStore()} />);
+    expect(screen.getByTestId('drag-node')).toHaveAttribute('tabindex', '0');
+  });
+
+  it('ignores a second finger moving or lifting mid-gesture', () => {
+    const onClick = vi.fn();
+    const onDragEnd = vi.fn();
+    render(
+      <Fixture
+        store={makeSeededStore()}
+        onClick={onClick}
+        onDragEnd={onDragEnd}
+      />,
+    );
+
+    const node = screen.getByTestId('drag-node');
+    fireEvent.pointerDown(node, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    });
+
+    // A second finger wanders far and lifts while the first stays put.
+    fireEvent.pointerMove(document, {
+      clientX: 500,
+      clientY: 500,
+      pointerId: 2,
+    });
+    fireEvent.pointerUp(document, { clientX: 500, clientY: 500, pointerId: 2 });
+
+    // The first finger's gesture is untouched: no drag was started by the
+    // stray movement, and its tap has not been settled yet.
+    expect(onDragEnd).not.toHaveBeenCalled();
+    expect(onClick).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(document, { clientX: 0, clientY: 0, pointerId: 1 });
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
   it('does not commit a drop when the pointer is cancelled', () => {
     const onDragEnd = vi.fn();
     let dndStore: StoreApi<DndStore> | null = null;
