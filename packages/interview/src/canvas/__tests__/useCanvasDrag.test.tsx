@@ -25,6 +25,8 @@ type DragNodeProps = {
   canvasRef: RefObject<HTMLElement | null>;
   onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
   onRemove?: (nodeId: string) => void;
+  onClick?: (source: 'pointer' | 'keyboard') => void;
+  shouldSuppressTap?: () => boolean;
   withDndItem?: boolean;
 };
 
@@ -33,6 +35,8 @@ function DragNode({
   canvasRef,
   onDragEnd,
   onRemove,
+  onClick,
+  shouldSuppressTap,
   withDndItem = false,
 }: DragNodeProps) {
   const dndStore = useDndStoreApi();
@@ -42,6 +46,8 @@ function DragNode({
     store,
     onDragEnd,
     onRemove,
+    onClick,
+    shouldSuppressTap,
     dndItem: withDndItem
       ? { type: 'PLACED_NODE', metadata: { nodeId: NODE_ID } }
       : null,
@@ -167,6 +173,124 @@ describe('useCanvasDrag', () => {
       x: expect.any(Number),
       y: expect.any(Number),
     });
+  });
+
+  it('skips the tap when the gesture already did something else', () => {
+    const onClick = vi.fn();
+    const shouldSuppressTap = vi.fn(() => true);
+    render(
+      <Fixture
+        store={makeSeededStore()}
+        onClick={onClick}
+        shouldSuppressTap={shouldSuppressTap}
+      />,
+    );
+
+    const node = screen.getByTestId('drag-node');
+    fireEvent.pointerDown(node, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(document, { clientX: 0, clientY: 0, pointerId: 1 });
+
+    expect(shouldSuppressTap).toHaveBeenCalledOnce();
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('consumes the suppression even when the gesture became a drag', () => {
+    const onClick = vi.fn();
+    // Raised during the gesture — as a press-and-hold reveal would — and never
+    // asked about again, so it must not be left over for the next tap.
+    let suppressed = true;
+    const shouldSuppressTap = vi.fn(() => {
+      const value = suppressed;
+      suppressed = false;
+      return value;
+    });
+    render(
+      <Fixture
+        store={makeSeededStore()}
+        onClick={onClick}
+        shouldSuppressTap={shouldSuppressTap}
+      />,
+    );
+
+    // Hold, reveal, then drag away without releasing: no tap is synthesised.
+    dragBeyondThreshold();
+    fireEvent.pointerUp(document, { clientX: 50, clientY: 50, pointerId: 1 });
+    expect(onClick).not.toHaveBeenCalled();
+    expect(shouldSuppressTap).toHaveBeenCalledOnce();
+
+    // The next ordinary tap must still select.
+    const node = screen.getByTestId('drag-node');
+    fireEvent.pointerDown(node, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 2,
+    });
+    fireEvent.pointerUp(document, { clientX: 0, clientY: 0, pointerId: 2 });
+
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it('reports how a node was activated', () => {
+    const onClick = vi.fn();
+    render(<Fixture store={makeSeededStore()} onClick={onClick} />);
+
+    const node = screen.getByTestId('drag-node');
+    fireEvent.pointerDown(node, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(document, { clientX: 0, clientY: 0, pointerId: 1 });
+    expect(onClick).toHaveBeenLastCalledWith('pointer');
+
+    fireEvent.keyDown(node, { key: 'Enter' });
+    expect(onClick).toHaveBeenLastCalledWith('keyboard');
+
+    fireEvent.keyUp(node, { key: ' ' });
+    expect(onClick).toHaveBeenLastCalledWith('keyboard');
+  });
+
+  it('ignores a second finger moving or lifting mid-gesture', () => {
+    const onClick = vi.fn();
+    const onDragEnd = vi.fn();
+    render(
+      <Fixture
+        store={makeSeededStore()}
+        onClick={onClick}
+        onDragEnd={onDragEnd}
+      />,
+    );
+
+    const node = screen.getByTestId('drag-node');
+    fireEvent.pointerDown(node, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    });
+
+    // A second finger wanders far and lifts while the first stays put.
+    fireEvent.pointerMove(document, {
+      clientX: 500,
+      clientY: 500,
+      pointerId: 2,
+    });
+    fireEvent.pointerUp(document, { clientX: 500, clientY: 500, pointerId: 2 });
+
+    // The first finger's gesture is untouched: no drag was started by the
+    // stray movement, and its tap has not been settled yet.
+    expect(onDragEnd).not.toHaveBeenCalled();
+    expect(onClick).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(document, { clientX: 0, clientY: 0, pointerId: 1 });
+    expect(onClick).toHaveBeenCalledOnce();
   });
 
   it('does not commit a drop when the pointer is cancelled', () => {

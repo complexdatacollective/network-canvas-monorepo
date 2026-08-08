@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useMemo } from 'react';
+import { type RefObject, useCallback, useMemo, useRef } from 'react';
 import type { StoreApi } from 'zustand';
 
 import type { DndStore } from '@codaco/fresco-ui/dnd/dnd';
@@ -6,7 +6,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import Node from '../components/ConnectedNode';
-import { useCanvasDrag } from './useCanvasDrag';
+import { type ActivationSource, useCanvasDrag } from './useCanvasDrag';
 import { type CanvasStoreApi, useCanvasStore } from './useCanvasStore';
 
 type CanvasNodeProps = {
@@ -14,10 +14,18 @@ type CanvasNodeProps = {
   canvasRef: RefObject<HTMLElement | null>;
   store: CanvasStoreApi;
   onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
-  onSelect?: (nodeId: string) => void;
+  onSelect?: (nodeId: string, source: ActivationSource) => void;
   selected?: boolean;
   linking?: boolean;
   highlighted?: boolean;
+  /**
+   * Whether the node currently reads as "on" for whatever the canvas's active
+   * mode makes it mean — selected, highlighted, the source of a pending edge,
+   * or a member of the active group. Only the canvas knows which of those is
+   * in play, so it is declared rather than inferred here. Omitted entirely for
+   * a canvas whose nodes are not a toggle.
+   */
+  pressed?: boolean;
   disabled?: boolean;
   allowRepositioning?: boolean;
   simulation?: {
@@ -41,6 +49,7 @@ export default function CanvasNode({
   selected = false,
   linking = false,
   highlighted = false,
+  pressed,
   disabled = false,
   allowRepositioning = true,
   simulation = null,
@@ -54,9 +63,27 @@ export default function CanvasNode({
     state.positions.get(nodeId),
   );
 
-  const handleClick = useCallback(() => {
-    onSelect?.(nodeId);
-  }, [onSelect, nodeId]);
+  // The canvas synthesises its tap from pointer-up rather than the DOM click
+  // the node itself suppresses, so a hold that revealed the label has to be
+  // withdrawn here or reading a name would also select the person.
+  const labelRevealedRef = useRef(false);
+
+  const handleLabelReveal = useCallback(() => {
+    labelRevealedRef.current = true;
+  }, []);
+
+  const consumeLabelReveal = useCallback(() => {
+    const revealed = labelRevealedRef.current;
+    labelRevealedRef.current = false;
+    return revealed;
+  }, []);
+
+  const handleClick = useCallback(
+    (source: ActivationSource) => {
+      onSelect?.(nodeId, source);
+    },
+    [onSelect, nodeId],
+  );
 
   // Metadata mirrors DrawerNode's drag source so drop handlers can treat
   // canvas-originated and drawer-originated nodes uniformly.
@@ -79,6 +106,7 @@ export default function CanvasNode({
     dndItem,
     dndStore,
     onRemove,
+    shouldSuppressTap: consumeLabelReveal,
   });
 
   if (!position) return null;
@@ -94,6 +122,16 @@ export default function CanvasNode({
       highlighted={highlighted}
       disabled={disabled}
       size="sm"
+      onLabelReveal={handleLabelReveal}
+      // A canvas node routes its tap through useCanvasDrag rather than an
+      // `onClick` prop, so Node cannot infer that it is interactive and would
+      // default it out of the tab order. Focusability follows the node's own
+      // disabled state, not whether it happens to be repositionable: a node
+      // that cannot be moved can still be selected, and its name still has to
+      // be readable.
+      tabIndex={disabled ? -1 : 0}
+      // Node cannot infer the toggle state either, so it comes from the canvas.
+      aria-pressed={pressed}
       // While dragged, lift the node above overlapping drop targets
       // (the unplaced-node drawer sits at z-10).
       className={cx('absolute outline-offset-8!', isDragging && 'z-20')}

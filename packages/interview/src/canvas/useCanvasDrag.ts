@@ -11,12 +11,19 @@ import type { CanvasStoreApi } from './useCanvasStore';
 const DRAG_THRESHOLD = 5;
 const NUDGE_AMOUNT = 0.02;
 
+/**
+ * How a node was activated. Pointer taps carry gesture state a keyboard press
+ * has no equivalent for — held modifier keys, a place the pointer is pointing —
+ * so a host cannot treat the two identically.
+ */
+export type ActivationSource = 'pointer' | 'keyboard';
+
 type UseCanvasDragOptions = {
   nodeId: string;
   canvasRef: RefObject<HTMLElement | null>;
   store: CanvasStoreApi;
   onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
-  onClick?: () => void;
+  onClick?: (source: ActivationSource) => void;
   disabled?: boolean;
   simulation?: {
     moveNode: (nodeId: string, position: { x: number; y: number }) => void;
@@ -36,6 +43,13 @@ type UseCanvasDragOptions = {
   dndStore?: StoreApi<DndStore> | null;
   /** Keyboard equivalent of dragging the node off the canvas (Delete/Backspace). */
   onRemove?: ((nodeId: string) => void) | null;
+  /**
+   * Asked once at the end of every pointer gesture whether that gesture already
+   * did something else — a press-and-hold that revealed a label — and so should
+   * not also count as a tap. Called (and expected to consume) whether or not the
+   * gesture became a drag, so a suppression can never outlive its own gesture.
+   */
+  shouldSuppressTap?: (() => boolean) | null;
 };
 
 export function useCanvasDrag({
@@ -49,6 +63,7 @@ export function useCanvasDrag({
   dndItem = null,
   dndStore = null,
   onRemove = null,
+  shouldSuppressTap = null,
 }: UseCanvasDragOptions) {
   const isDraggingRef = useRef(false);
   const isPointerActiveRef = useRef(false);
@@ -90,6 +105,11 @@ export function useCanvasDrag({
       let dndStarted = false;
 
       const handleMove = (moveEvent: PointerEvent) => {
+        // Only the finger that began the gesture drives it. On a multi-touch
+        // canvas a second finger would otherwise move — or end — a drag that
+        // the first finger still owns.
+        if (moveEvent.pointerId !== pointerId) return;
+
         const dx = moveEvent.clientX - startPosRef.current.x;
         const dy = moveEvent.clientY - startPosRef.current.y;
 
@@ -142,6 +162,11 @@ export function useCanvasDrag({
       };
 
       const handleUp = (upEvent: PointerEvent) => {
+        // A different finger lifting must not end this gesture: doing so would
+        // settle the drag early and consume the tap suppression before the
+        // hold that raised it had finished.
+        if (upEvent.pointerId !== pointerId) return;
+
         document.removeEventListener('pointermove', handleMove);
         document.removeEventListener('pointerup', handleUp);
         document.removeEventListener('pointercancel', handleUp);
@@ -170,6 +195,11 @@ export function useCanvasDrag({
           dndState.endDrag();
         }
 
+        // Consumed on every gesture, including one that became a drag, so a
+        // suppression raised mid-gesture can never be left over to swallow a
+        // later tap.
+        const tapSuppressed = shouldSuppressTap?.() ?? false;
+
         if (isDraggingRef.current) {
           const pos = store.getState().positions.get(nodeId);
           if (pos) {
@@ -180,8 +210,8 @@ export function useCanvasDrag({
               onDragEnd?.(nodeId, pos);
             }
           }
-        } else {
-          onClick?.();
+        } else if (!tapSuppressed) {
+          onClick?.('pointer');
         }
 
         isDraggingRef.current = false;
@@ -203,6 +233,7 @@ export function useCanvasDrag({
       onClick,
       dndItem,
       dndStore,
+      shouldSuppressTap,
     ],
   );
 
@@ -219,7 +250,7 @@ export function useCanvasDrag({
         case 'Enter':
           // ARIA button pattern: Enter activates on keydown (and auto-repeats).
           e.preventDefault();
-          onClick?.();
+          onClick?.('keyboard');
           return;
         case ' ':
           // ARIA button pattern: Space activates on keyup; keydown only
@@ -264,7 +295,7 @@ export function useCanvasDrag({
     (e: React.KeyboardEvent) => {
       if (disabled) return;
       if (e.key !== ' ') return;
-      onClick?.();
+      onClick?.('keyboard');
     },
     [disabled, onClick],
   );

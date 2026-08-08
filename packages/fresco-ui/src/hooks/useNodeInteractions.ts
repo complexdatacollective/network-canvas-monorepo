@@ -144,6 +144,9 @@ export function useNodeInteractions(
       style: {
         touchAction: 'manipulation',
         userSelect: 'none',
+        // iOS Safari otherwise raises its own callout on press-and-hold, which
+        // would fight any hold gesture the node defines.
+        WebkitTouchCallout: 'none',
       },
     },
     isPressed,

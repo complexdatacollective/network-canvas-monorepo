@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -25,6 +25,13 @@ import NetworkComposer from '../NetworkComposer';
 
 // jsdom does not implement ResizeObserver; provide a no-op stub.
 beforeAll(() => {
+  // jsdom does not implement pointer capture, which the canvas drag uses.
+  if (!HTMLElement.prototype.setPointerCapture) {
+    HTMLElement.prototype.setPointerCapture = () => undefined;
+  }
+  if (!HTMLElement.prototype.releasePointerCapture) {
+    HTMLElement.prototype.releasePointerCapture = () => undefined;
+  }
   if (typeof window.ResizeObserver === 'undefined') {
     window.ResizeObserver = class ResizeObserver {
       observe() {}
@@ -180,6 +187,74 @@ describe('NetworkComposer canvas', () => {
     await waitFor(() => {
       const nodes = screen.getAllByRole('button', { name: 'Person' });
       expect(nodes).toHaveLength(2);
+    });
+  });
+
+  it('puts placed nodes in the tab order so they can be reached at all', async () => {
+    renderInterface();
+
+    // A canvas node routes its tap through useCanvasDrag rather than an
+    // onClick prop, so nothing infers interactivity for it; without an
+    // explicit tab stop neither the canvas's own key handling nor a clipped
+    // label's keyboard reveal is reachable.
+    await waitFor(() => {
+      const nodes = screen.getAllByRole('button', { name: 'Person' });
+      expect(nodes).toHaveLength(2);
+      for (const node of nodes) {
+        expect(node).toHaveAttribute('tabindex', '0');
+      }
+    });
+  });
+
+  it('tells assistive technology which placed nodes are selected', async () => {
+    renderInterface();
+
+    await waitFor(() => {
+      const nodes = screen.getAllByRole('button', { name: 'Person' });
+      for (const node of nodes) {
+        expect(node).toHaveAttribute('aria-pressed', 'false');
+      }
+    });
+  });
+
+  it('keeps focus on a node selected from the keyboard', async () => {
+    renderInterface();
+
+    const nodes = await screen.findAllByRole('button', { name: 'Person' });
+    const node = nodes[0]!;
+    node.focus();
+    expect(node).toHaveFocus();
+
+    // Pointer taps hand focus to the stage root so its shortcuts stay live;
+    // doing that to a keyboard user drops them back at the tool palette.
+    fireEvent.keyDown(node, { key: 'Enter' });
+
+    await waitFor(() => expect(node).toHaveFocus());
+  });
+
+  it('does not apply stale pointer modifiers to a keyboard selection', async () => {
+    renderInterface();
+
+    const nodes = await screen.findAllByRole('button', { name: 'Person' });
+    const [first, second] = [nodes[0]!, nodes[1]!];
+
+    // A shift-modified pointer gesture leaves its modifiers cached.
+    fireEvent.pointerDown(first, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+      shiftKey: true,
+    });
+    fireEvent.pointerUp(document, { clientX: 0, clientY: 0, pointerId: 1 });
+    await waitFor(() => expect(first).toHaveAttribute('aria-pressed', 'true'));
+
+    // A later keyboard selection must select alone, not add to the selection.
+    fireEvent.keyDown(second, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(second).toHaveAttribute('aria-pressed', 'true');
+      expect(first).toHaveAttribute('aria-pressed', 'false');
     });
   });
 

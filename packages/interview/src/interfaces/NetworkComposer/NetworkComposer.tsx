@@ -22,6 +22,7 @@ import {
 import ConvexHullLayer from '../../canvas/ConvexHullLayer';
 import StageBackground from '../../canvas/StageBackground';
 import { useAutoLayout } from '../../canvas/useAutoLayout';
+import type { ActivationSource } from '../../canvas/useCanvasDrag';
 import { createCanvasStore } from '../../canvas/useCanvasStore';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
@@ -294,8 +295,15 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   }, [composerStore]);
 
   const handleNodeTap = useCallback(
-    async (tappedId: string, modifiers: NodeTapModifiers) => {
-      rootRef.current?.focus();
+    async (
+      tappedId: string,
+      modifiers: NodeTapModifiers,
+      activationSource: ActivationSource = 'pointer',
+    ) => {
+      // A pointer tap has no focus of its own to preserve, so the stage root
+      // takes it to keep its shortcuts live. Taking it from a keyboard user
+      // would throw them back to the tool palette after every selection.
+      if (activationSource !== 'keyboard') rootRef.current?.focus();
       const {
         activeTool,
         pendingEdgeSource,
@@ -715,8 +723,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         lassoInSelectMode={groupVariable !== null}
         simulation={simulationHandlers}
         onBackgroundTap={handleBackgroundTap}
-        onNodeTap={(nodeId, modifiers) => {
-          void handleNodeTap(nodeId, modifiers);
+        onNodeTap={(nodeId, modifiers, source) => {
+          void handleNodeTap(nodeId, modifiers, source);
         }}
         onEdgeTap={handleEdgeTap}
         onNodeDragEnd={handleNodeDragEnd}
