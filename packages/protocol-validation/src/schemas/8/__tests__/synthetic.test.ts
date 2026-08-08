@@ -338,6 +338,34 @@ describe('synthetic metadata (additive to schema 8)', () => {
       expect(hasIssue(result, 'draws only positive values')).toBe(true);
     });
 
+    it('rejects a zero-deviation lognormal outside the validation bounds', () => {
+      // Positive support, so the lognormal ceiling rule says nothing; with a
+      // deviation of zero the mean is the only value it can produce.
+      const protocol = withPersonVariable(
+        'debt',
+        numberVariable(
+          { distribution: 'lognormal', mean: 1, sd: 0 },
+          { minValue: 10, maxValue: 500 },
+        ),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(
+        hasIssue(result, 'standard deviation of 0 can reach nothing'),
+      ).toBe(true);
+    });
+
+    it('accepts a zero-deviation lognormal inside them', () => {
+      const protocol = withPersonVariable(
+        'debt',
+        numberVariable(
+          { distribution: 'lognormal', mean: 100, sd: 0 },
+          { minValue: 10, maxValue: 500 },
+        ),
+      );
+      expect(parse(protocol).success).toBe(true);
+    });
+
     it('accepts a lognormal whose ceiling leaves positive room', () => {
       const protocol = withPersonVariable(
         'debt',
@@ -753,6 +781,38 @@ describe('synthetic metadata (additive to schema 8)', () => {
             type: 'month',
           },
         ),
+      );
+      expect(parse(protocol).success).toBe(true);
+    });
+
+    it('rejects a zero-deviation date mean outside its own window', () => {
+      // One date and nothing else, so a mean outside the synthetic window is
+      // clamped to a boundary and never appears.
+      const protocol = withPersonVariable(
+        'dateMet',
+        datetimeVariable({
+          distribution: 'normal',
+          mean: '1990-06-15',
+          sdDays: 0,
+          min: '2010-01-01',
+          max: '2020-01-01',
+        }),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(hasIssue(result, 'standard deviation of 0 days')).toBe(true);
+    });
+
+    it('accepts a zero-deviation date mean inside it', () => {
+      const protocol = withPersonVariable(
+        'dateMet',
+        datetimeVariable({
+          distribution: 'normal',
+          mean: '2015-06-15',
+          sdDays: 0,
+          min: '2010-01-01',
+          max: '2020-01-01',
+        }),
       );
       expect(parse(protocol).success).toBe(true);
     });

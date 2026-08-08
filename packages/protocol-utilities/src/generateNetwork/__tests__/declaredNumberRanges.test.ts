@@ -130,6 +130,26 @@ describe('a declared number range outside the realism fallback', () => {
   });
 });
 
+describe('a declared number constant', () => {
+  it('comes back at the precision it was written', () => {
+    // The two-decimal grid keeps a CONTINUOUS draw readable; applied to a
+    // constant it changes the authored value, and nothing in the schema or in
+    // Architect's `step="any"` control gives an author reason to expect that.
+    const scores = scoresFor({ distribution: 'constant', value: 1.234 });
+
+    expect(scores).toEqual([1.234, 1.234, 1.234, 1.234, 1.234, 1.234]);
+  });
+
+  it('is still held inside a declared validation window', () => {
+    const scores = scoresFor(
+      { distribution: 'constant', value: 1.234 },
+      { minValue: 2, maxValue: 10 },
+    );
+
+    for (const score of scores) expect(score).toBe(2);
+  });
+});
+
 describe('one variable key used in two node types', () => {
   it('resolves each definition separately', () => {
     // Resolution is memoised, and keyed by variable id the first definition

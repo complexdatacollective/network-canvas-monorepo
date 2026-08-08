@@ -469,6 +469,14 @@ export class ValueGenerator {
         // collapse it to nothing but 0 and 1, and a declared constant of 0.5
         // would come back as 1. Only the resolved default rounds.
         if (descriptorDeclared) {
+          // A declared constant is returned as written. The two-decimal grid
+          // exists to keep a CONTINUOUS draw readable; applied to a constant
+          // it silently changes the authored value, and `1.234` came back as
+          // `1.23` — which neither the schema nor Architect's `step="any"`
+          // control gave any reason to expect.
+          if (descriptor.distribution === 'constant') {
+            return clamp(drawn, declaredWindow.min, declaredWindow.max);
+          }
           return clamp(
             Number(drawn.toFixed(SCALAR_DECIMAL_PLACES)),
             declaredWindow.min,

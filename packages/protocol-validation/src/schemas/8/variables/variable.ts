@@ -257,6 +257,19 @@ const rejectDisjointNumberSynthetic = (
     }
     return;
   }
+  // A zero-deviation lognormal is a constant at its mean, so the same rule as
+  // a declared constant: a mean outside the window means every draw is clamped
+  // to a boundary and the authored value silently replaced.
+  if (synthetic.distribution === 'lognormal' && synthetic.sd === 0) {
+    if (synthetic.mean < lower || synthetic.mean > upper) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Synthetic mean ${synthetic.mean} lies outside the validation bounds, and a standard deviation of 0 can reach nothing else`,
+        path: ['synthetic', 'mean'],
+      });
+      return;
+    }
+  }
   // A lognormal draws from a strictly positive support, so it is bounded below
   // whether or not the descriptor authors a minimum. Comparing only an
   // authored `min` let a nonpositive ceiling through, and generation then
@@ -585,6 +598,32 @@ const rejectInvalidDatetimeSynthetic = (
       message: 'Synthetic "mean" must be a full ISO date (YYYY-MM-DD)',
       path: ['synthetic', 'mean'],
     });
+  }
+  // A zero-deviation normal names one date and nothing else, so it is held to
+  // the window the same way a bound is: outside it the generator clamps to a
+  // boundary and the authored date never appears. Compared at the variable's
+  // own resolution, which is what its bounds are written at.
+  if (
+    synthetic.distribution === 'normal' &&
+    synthetic.sdDays === 0 &&
+    isIsoDate(synthetic.mean)
+  ) {
+    const mean = comparable(
+      synthetic.mean.slice(0, DATE_RESOLUTION[resolution].length),
+    );
+    const floor = syntheticMin ?? windowMin;
+    const ceiling = syntheticMax ?? windowMax;
+    if (
+      mean !== undefined &&
+      ((floor !== undefined && mean < floor) ||
+        (ceiling !== undefined && mean > ceiling))
+    ) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Synthetic "mean" ${synthetic.mean} lies outside the dates this field draws from, and a standard deviation of 0 days can reach nothing else`,
+        path: ['synthetic', 'mean'],
+      });
+    }
   }
 };
 
