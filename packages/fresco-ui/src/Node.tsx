@@ -353,8 +353,11 @@ export default function Node(props: UINodeProps) {
   // tap — starts from a clean state.
   const handlePointerDown = useCallback(
     (event: React.PointerEvent) => {
-      setLabelRevealed(false);
-      startHold(event);
+      // Only a press that actually begins a gesture dismisses what the last one
+      // revealed. A second finger arriving on a node whose label is already
+      // open is not a new gesture — the hold owns it until it ends — and
+      // closing here would snatch the label away mid-read.
+      if (startHold(event)) setLabelRevealed(false);
     },
     [startHold],
   );

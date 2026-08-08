@@ -287,6 +287,32 @@ describe('Node label reveal', () => {
     expect(getPopup()).not.toBeNull();
   });
 
+  it('keeps a revealed label up when a second finger touches the node', async () => {
+    await renderNode(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
+
+    const button = node(CLIPPED_LABEL);
+    fireEvent.pointerDown(button, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    });
+    await settle(PAST_HOLD);
+    await waitFor(() => expect(getPopup()).not.toBeNull());
+
+    // The hold still owns the gesture, so this is not a new press — closing
+    // here would snatch the label away mid-read.
+    fireEvent.pointerDown(button, {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 2,
+    });
+    await settle(150);
+
+    expect(getPopup()).not.toBeNull();
+  });
+
   it('composes with an external pointer-down handler', async () => {
     const externalPointerDown = vi.fn();
     await renderNode(

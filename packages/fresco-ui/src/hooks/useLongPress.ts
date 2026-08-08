@@ -35,7 +35,12 @@ type UseLongPressOptions = {
 };
 
 type UseLongPressResult = {
-  onPointerDown: (event: React.PointerEvent) => void;
+  /**
+   * Returns false when the event was ignored because another pointer already
+   * owns the gesture, so a caller can leave that gesture's results alone
+   * rather than treating every touch as the start of something new.
+   */
+  onPointerDown: (event: React.PointerEvent) => boolean;
   /**
    * Whether the click following the current gesture should be swallowed,
    * consuming the flag so it reports true only once per hold.
@@ -130,11 +135,12 @@ export function useLongPress({
       // A second finger landing mid-gesture belongs to nobody: the drag system
       // ignores it too, so tearing the hold down here would discard a
       // suppression the first finger's release still needs.
-      if (activePointerRef.current !== null) return;
+      if (activePointerRef.current !== null) return false;
 
       teardown();
       heldRef.current = false;
-      if (!enabled || event.button !== 0) return;
+      // A fresh gesture either way — it simply will not become a hold.
+      if (!enabled || event.button !== 0) return true;
 
       // Only the finger that began the hold can abandon or end it. On a tablet
       // a second finger moving or lifting elsewhere would otherwise disturb a
@@ -196,6 +202,8 @@ export function useLongPress({
         setIsHolding(false);
         onLongPress();
       }, holdDuration);
+
+      return true;
     },
     [
       abandonHold,
