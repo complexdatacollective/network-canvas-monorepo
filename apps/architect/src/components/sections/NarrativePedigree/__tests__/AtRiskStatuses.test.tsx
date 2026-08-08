@@ -1,12 +1,16 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { renderStageForm } from '~/components/StageEditor/__tests__/stageFormTestHarness';
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
 import AtRiskStatuses from '../AtRiskStatuses';
 
-const renderSection = () =>
+const renderSection = (committedStage: Record<string, unknown> | null = null) =>
   renderStageForm({
+    committedStage: committedStage ? asStage(committedStage) : null,
     children: (
       <AtRiskStatuses
         stagePath={null}
@@ -29,6 +33,21 @@ describe('AtRiskStatuses', () => {
     });
     expect(toggle).not.toBeChecked();
     expect(view.getFormValues().showAtRiskStatuses).toBe(false);
+  });
+
+  it('starts from the committed stage when at-risk statuses are already on', () => {
+    // Regression: the field was registered with a hardcoded `false`, so a stage
+    // that had this on opened showing it off — and because the stage saves with
+    // `overwrite: true` over `getFormValues()`, saving any unrelated edit wrote
+    // the `false` back and silently turned the at-risk symbols off.
+    const view = renderSection({ showAtRiskStatuses: true });
+
+    expect(
+      screen.getByRole('switch', {
+        name: 'Show possible (at-risk) statuses',
+      }),
+    ).toBeChecked();
+    expect(view.getFormValues().showAtRiskStatuses).toBe(true);
   });
 
   it('explains what is displayed, how it is calculated, and why it defaults off', () => {
