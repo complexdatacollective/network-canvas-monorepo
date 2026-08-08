@@ -2298,9 +2298,6 @@ importers:
       es-toolkit:
         specifier: 'catalog:'
         version: 1.50.0
-      uuid:
-        specifier: 'catalog:'
-        version: 14.0.1
     devDependencies:
       '@codaco/fresco-ui':
         specifier: workspace:^

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Stage } from '@codaco/protocol-validation';
+import type { Stage, Variables } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -9,12 +9,18 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../generateNetwork';
+import type { FeasibilityConfig } from '../config';
+import { buildEntityConstraints } from '../constraints/buildConstraints';
+import {
+  nodeCountFor,
+  worstCaseEntityCounts,
+} from '../constraints/entityCounts';
 import type { EntityConstraints } from '../constraints/types';
 
 /**
  * How many assignments the completability check has been asked about — one per
- * row `createNodesForStage` judges, since its verdict memo is what stands
- * between a pool of hundreds and a search per row per node.
+ * row each feasibility reader judges, since its verdict memo is what stands
+ * between a pool of hundreds and a search per row per reader.
  */
 const completability = { checks: 0 };
 
@@ -37,31 +43,43 @@ vi.mock('../constraints/generateEntityAttributes', async () => {
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 
+const TODAY = '2026-07-27';
+
 /**
  * A pair a comparator orders inside a range holding no room above 1: a row
  * carrying `age: 1` breaks nothing on its own and leaves the draw nowhere to
- * put `retired`, so the completability check is what turns it away — and every
- * row judged costs exactly one of the checks counted above.
+ * put `retired`, so the completability check is what feasibility's counting
+ * turns it away by — and every row judged costs exactly one of the checks
+ * counted above per reader.
  */
+const variables: Variables = {
+  age: {
+    name: 'Age',
+    type: 'number',
+    validation: { minValue: 0, maxValue: 1 },
+  },
+  retired: {
+    name: 'Retired at',
+    type: 'number',
+    validation: { minValue: 0, maxValue: 1, greaterThanVariable: 'age' },
+  },
+} as unknown as Variables;
+
 const codebook = {
   node: {
-    person: {
-      color: 'node-color-seq-1',
-      variables: {
-        age: {
-          name: 'Age',
-          type: 'number',
-          validation: { minValue: 0, maxValue: 1 },
-        },
-        retired: {
-          name: 'Retired at',
-          type: 'number',
-          validation: { minValue: 0, maxValue: 1, greaterThanVariable: 'age' },
-        },
-      },
-    },
+    person: { color: 'node-color-seq-1', variables },
   },
 } as unknown as Codebook;
+
+const feasibilityConfig: FeasibilityConfig = {
+  nodeCount: { min: 1, max: 8 },
+  rosterDrawRatio: 0.7,
+  sociogramEdgeProbability: { min: 0.3, max: 0.5 },
+  censusEdgeProbability: { min: 0.4, max: 0.6 },
+  networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
+  familyPedigreeNodeCount: { min: 4, max: 10 },
+  today: TODAY,
+};
 
 function rosterStage(count: number): Stage {
   return {
@@ -85,38 +103,22 @@ function rowsOf(ages: number[], keyed: (index: number) => string): NcNode[] {
   );
 }
 
-function draw(seed: number, count: number, rows: NcNode[]): number[] {
-  const { network } = generateNetwork({
-    seed,
-    codebook,
-    stages: [rosterStage(count)],
-    externalData: { 'stage-roster': rows },
-  });
-  return network.nodes.map((node) =>
-    Number(node[entityAttributesProperty].age),
-  );
-}
-
 beforeEach(() => {
   completability.checks = 0;
 });
 
 describe('the verdict a roster row is judged by', () => {
-  // Three readers each judge a row at most once per run: feasibility's drawable
-  // count, which decides how many people the pool can become; its roster/prompt
-  // collision counter, which decides whose values can collide with a prompt's;
-  // and the stage draw itself. They are separate passes over separate
-  // memoisations — the two counters are pure functions with no generation
-  // context to hold one — so the whole-run ceiling is three verdicts per row,
-  // not one.
+  // The readers judging a row are feasibility's: the drawable count, which
+  // decides how many people the pool can become, and the collision counters,
+  // which decide whose values can meet a prompt's. Each is a separate pass
+  // over a separate memoisation, so the whole-run ceiling is a few verdicts
+  // per row — never one per row per node the stage is asked for.
   const READERS = 3;
 
   it('is reached once per row and reader however many nodes are drawn', () => {
-    // Ninety rows the draw cannot complete and ten it can. Every node the stage
-    // is asked for walks the pool afresh from a fresh random start, so without
-    // a memo the rows already turned away are judged again and again — around
-    // 176 searches in the draw alone against the 100 a pool of this size can
-    // ever need from it.
+    // Ninety rows the draw cannot complete and ten it can. Without a per-row
+    // memo inside each reader, the rows already turned away would be judged
+    // again for every node the stage can hold.
     const ages = Array.from({ length: 100 }, (_unused, index) =>
       index % 10 === 0 ? 0 : 1,
     );
@@ -125,30 +127,35 @@ describe('the verdict a roster row is judged by', () => {
       completability.checks = 0;
       const rows = rowsOf(ages, (index) => `row-${index}`);
 
-      expect(draw(seed, 10, rows)).toHaveLength(10);
+      const { network } = generateNetwork({
+        seed,
+        codebook,
+        stages: [rosterStage(10)],
+        externalData: { 'stage-roster': rows },
+      });
+
+      expect(network.nodes).toHaveLength(10);
       expect(completability.checks).toBeLessThanOrEqual(READERS * rows.length);
     }
   });
 
   it('belongs to the row rather than to its primary key', () => {
-    // Two rows a caller gave one key, one of which the draw can complete. Each
-    // is judged on the values it carries, whichever of them the walk reaches
-    // first: a verdict standing for the key would answer the second row with
-    // the first row's values, drawing the row nothing can complete on the seeds
-    // that reach it first and passing over the row the protocol allows on the
-    // rest.
-    //
-    // A ceiling rather than an exact count, because the key is spent once a row
-    // carrying it is drawn: the copy left behind is then off the roster
-    // altogether, and the draw never asks the rules about it.
-    for (let seed = 1; seed <= 20; seed++) {
-      completability.checks = 0;
-      const rows = rowsOf([1, 0], () => 'shared-key');
+    // Two rows a caller gave one key, only one of which the draw can complete.
+    // Feasibility judges each on the values it carries: a verdict standing for
+    // the key would answer the second row with the first row's values, and
+    // with the uncompletable row listed first the key would count for nobody —
+    // under-counting a person the run really can build, which is the direction
+    // that lets a `unique` refusal be skipped.
+    const entity = buildEntityConstraints(variables, TODAY);
+    const counts = worstCaseEntityCounts(
+      [rosterStage(2)],
+      feasibilityConfig,
+      { 'stage-roster': rowsOf([1, 0], () => 'shared-key') },
+      () => entity,
+    );
 
-      expect(draw(seed, 2, rows), `seed ${seed}`).toEqual([0]);
-      expect(completability.checks, `seed ${seed}`).toBeLessThanOrEqual(
-        READERS * rows.length,
-      );
-    }
+    // One key, one drawable row under it: one person.
+    expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(1);
+    expect(completability.checks).toBeLessThanOrEqual(READERS * 2);
   });
 });

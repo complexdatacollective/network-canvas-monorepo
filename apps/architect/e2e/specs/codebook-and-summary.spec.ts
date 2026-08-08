@@ -100,7 +100,7 @@ test(
     // `biologicalSex` is unique to the `person` node type in the fixture.
     await expect(
       architectPage.getByRole('button', {
-        name: 'Edit variable name: biologicalSex',
+        name: 'Edit variable: biologicalSex',
         exact: true,
       }),
     ).toBeVisible();

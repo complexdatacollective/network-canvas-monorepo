@@ -395,9 +395,26 @@ describe('FamilyPedigree materialization', () => {
     } as unknown as Stage;
     const { network, stageMetadata } = generateNetwork({
       seed: 42,
-      codebook,
+      // Every eligible pair linked, declared on the edge type rather than
+      // through a tuning knob.
+      codebook: {
+        ...codebook,
+        edge: Object.fromEntries(
+          Object.entries(codebook.edge ?? {}).map(([type, definition]) => [
+            type,
+            {
+              ...definition,
+              synthetic: {
+                topology: {
+                  metric: 'density',
+                  distribution: { distribution: 'constant', value: 1 },
+                },
+              },
+            },
+          ]),
+        ),
+      } as typeof codebook,
       stages: [earlierStage, earlierEdges, familyStage, narrativeStage],
-      config: { sociogramEdgeProbability: { min: 1, max: 1 } },
     });
     const earlierNodeIds = new Set(
       network.nodes

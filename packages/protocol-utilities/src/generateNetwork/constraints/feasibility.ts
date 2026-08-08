@@ -13,7 +13,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import type { ResolvedGenerationConfig } from '../config';
+import type { FeasibilityConfig } from '../config';
 import { isContentStage } from '../contentStages';
 import {
   PEDIGREE_RELATIONSHIP_TO_EGO_VALUES,
@@ -27,6 +27,7 @@ import {
   type RosterCarriedValues,
   ruleBrokenByFixedValues,
 } from '../nodes';
+import { resolveVariableSynthetic } from '../plan/resolveSynthetic';
 import { getSubjectType } from '../subject';
 import { collectBinOnlyVariables } from './binOnlyVariables';
 import { buildEntityConstraints } from './buildConstraints';
@@ -64,6 +65,49 @@ import {
   MAX_TEXT_DRAW_LENGTH,
   valueSpaceSize,
 } from './valueSpace';
+
+/**
+ * Whether every entity's value for an equality group is certainly unanswered.
+ *
+ * The runtime's own `unique` validator exempts empty values — "required owns
+ * emptiness; uniqueness begins only once a value is supplied" — so a group the
+ * plan will null on every entity spends no unique values at all, and counting
+ * its value space against the entities that carry it refuses a protocol that
+ * would have generated perfectly well.
+ *
+ * The conditions mirror `applyMissingness` exactly, because this is only sound
+ * while the two agree: a required member forbids missingness outright, a
+ * probability below 1 leaves values that must be counted, and one member whose
+ * value some interaction settles takes the whole group out of missingness —
+ * a fixed value was never a question left unanswered.
+ */
+function certainlyMissing(
+  members: readonly string[],
+  scope: EntityScope,
+): boolean {
+  const variables = scope.variables;
+  if (variables === undefined) return false;
+
+  let highest = 0;
+  for (const id of members) {
+    if (
+      scope.fixedValues.has(id) ||
+      scope.pedigreeFixedValues.has(id) ||
+      scope.rosterCarriedValues.has(id)
+    ) {
+      return false;
+    }
+    const variable = variables[id];
+    if (variable === undefined) return false;
+    const resolved = resolveVariableSynthetic(variable);
+    if (resolved.kind === 'stageOwned') return false;
+    if ('validation' in variable && variable.validation?.required === true) {
+      return false;
+    }
+    highest = Math.max(highest, resolved.missingProbability);
+  }
+  return highest === 1;
+}
 
 type EntityScope = {
   entity: 'ego' | 'node' | 'edge';
@@ -299,7 +343,7 @@ function regeneratedEdgeAttributes(
  */
 function countPedigreeFixedValues(
   stages: Stage[],
-  config: ResolvedGenerationConfig,
+  config: FeasibilityConfig,
   respectSkipLogicAndFiltering: boolean,
   nodeBeforeStage: ReadonlyMap<number, ReadonlyMap<string, number>>,
   familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
@@ -827,7 +871,7 @@ function adaptDelegatedContradiction(
 
 function analyseEntity(
   scope: EntityScope,
-  config: ResolvedGenerationConfig,
+  config: FeasibilityConfig,
 ): ConstraintConflict[] {
   const entity = buildEntityConstraints(
     scope.variables,
@@ -1069,6 +1113,7 @@ function analyseEntity(
         if (
           size !== 'unbounded' &&
           size < holders &&
+          !certainlyMissing(members, scope) &&
           !uniqueReported.has(group)
         ) {
           uniqueReported.add(group);
@@ -1414,7 +1459,7 @@ function solvedComponentRules(
 export function analyseFeasibility(
   codebook: StructuralCodebook,
   stages: Stage[],
-  config: ResolvedGenerationConfig,
+  config: FeasibilityConfig,
   externalData?: Record<string, NcNode[]>,
   respectSkipLogicAndFiltering = false,
   familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,

@@ -233,6 +233,12 @@ function reserveHeadroom(
             resolution: window.resolution,
             ...(window.min !== undefined ? { min: window.min } : {}),
             ...(windowMax !== undefined ? { max: windowMax } : {}),
+            // Reserving headroom produces a ceiling of this function's own,
+            // which is a rule the draw must respect; an untouched ceiling
+            // stays whatever the window said it was.
+            ...(window.maxDerived === true && windowMax === window.max
+              ? { maxDerived: true }
+              : {}),
           },
         }
       : {}),
@@ -449,6 +455,11 @@ function applyComparatorBounds(
           resolution,
           ...(windowMin !== undefined ? { min: windowMin } : {}),
           ...(windowMax !== undefined ? { max: windowMax } : {}),
+          // A comparator that moved the ceiling stated a rule of its own; a
+          // ceiling still sitting where the window left it did not.
+          ...(window?.maxDerived === true && windowMax === window.max
+            ? { maxDerived: true }
+            : {}),
         },
       },
       crossed,
@@ -1242,7 +1253,7 @@ function drawGroup(
           ? attempt
           : undefined;
 
-      const value = ctx.valueGen.generateConstrained(bounded, index, {
+      const value = ctx.valueGen.generateConstrained(bounded, index, registry, {
         ...(seq !== undefined ? { distinctSeq: seq } : {}),
         ...(attempt === 0
           ? {

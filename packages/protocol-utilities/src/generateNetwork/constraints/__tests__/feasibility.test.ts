@@ -13,7 +13,7 @@ import {
 
 import { generateNetwork } from '../../../generateNetwork';
 import { ValueGenerator } from '../../../ValueGenerator';
-import { resolveGenerationConfig } from '../../config';
+import { type FeasibilityConfig, resolveGenerationConfig } from '../../config';
 import { CONTENT_STAGE_TYPES } from '../../contentStages';
 import type { GenerationContext } from '../../context';
 import { buildEntityConstraints } from '../buildConstraints';
@@ -23,7 +23,34 @@ import { generateEntityAttributes } from '../generateEntityAttributes';
 import { UniqueRegistry } from '../uniqueRegistry';
 import { MAX_TEXT_DRAW_LENGTH } from '../valueSpace';
 
-const config = resolveGenerationConfig({ today: '2026-07-27' });
+/**
+ * Worst-case bounds, constructed literally: `analyseFeasibility` takes the
+ * internal `FeasibilityConfig`, which `generateNetwork` derives from the
+ * codebook's declared populations rather than from run-level tuning. The
+ * values here mirror the old defaults so every count below keeps its number.
+ */
+const config: FeasibilityConfig = {
+  nodeCount: { min: 1, max: 8 },
+  rosterDrawRatio: 0.7,
+  sociogramEdgeProbability: { min: 0.3, max: 0.5 },
+  censusEdgeProbability: { min: 0.4, max: 0.6 },
+  networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
+  familyPedigreeNodeCount: { min: 4, max: 10 },
+  today: '2026-07-27',
+};
+
+/** The run-facing config the direct-draw guards below hand a context. */
+const drawConfig = resolveGenerationConfig({ today: '2026-07-27' });
+
+/**
+ * A pedigree held to its seven-person core. The ceiling is a feasibility
+ * bound rather than generation tuning now, so it is set here rather than
+ * through the run config.
+ */
+const compactConfig: FeasibilityConfig = {
+  ...config,
+  familyPedigreeNodeCount: { min: 7, max: 7 },
+};
 
 /**
  * Enough context to run one draw directly, for the guards that assert what the
@@ -33,8 +60,8 @@ const config = resolveGenerationConfig({ today: '2026-07-27' });
 function makeDrawContext(seed = 1): GenerationContext {
   return {
     codebook: {},
-    valueGen: new ValueGenerator(seed, config.today),
-    config,
+    valueGen: new ValueGenerator(seed, drawConfig.today),
+    config: drawConfig,
     usedRosterUids: new Set(),
     externalData: undefined,
     respectSkipLogicAndFiltering: false,
@@ -48,6 +75,7 @@ const nameGenerator = {
   type: 'NameGenerator',
   label: 'Name generator',
   subject: { entity: 'node', type: 'person' },
+  form: { title: 'About this person', fields: [] },
   prompts: [{ id: 'p1', text: 'Name people' }],
   behaviours: { maxNodes: 8 },
 } as unknown as Stage;
@@ -1131,6 +1159,7 @@ describe('values a prompt fixes', () => {
       type: 'NameGenerator',
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [
         {
           id: `${id}-p1`,
@@ -1382,6 +1411,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
       type: 'NameGenerator',
       label: 'Panel',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [
         {
           id: 'p-p1',
@@ -1455,7 +1485,10 @@ describe('a value a prompt fixes and a roster row carries', () => {
         .map((node) => node[entityAttributesProperty].flagged)
         .toSorted((left, right) => String(left).localeCompare(String(right)));
 
-      expect(flags, `seed ${seed}`).toEqual([false, true]);
+      // The prompt's value lands on the panel's node; the roster's node
+      // carries only what its row supplied, so the flag stays unwritten
+      // there rather than drawing the other boolean.
+      expect(flags, `seed ${seed}`).toEqual([true, undefined]);
     }
   });
 
@@ -1492,6 +1525,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
       type: 'NameGenerator',
       label: 'Carrying panel',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [{ id: 'c-p1', text: 'Name people' }],
       behaviours: { minNodes: 1, maxNodes: 1 },
     } as unknown as Stage;
@@ -1633,35 +1667,15 @@ describe('a value a prompt fixes and a roster row carries', () => {
 
     const stages = [rosterStage, panelStage(true)];
 
-    /** Every value `flagged` holds across the network one seed builds. */
-    function flagsDrawn(
-      codebook: StructuralCodebook,
-      externalData: Record<string, NcNode[]>,
-      seed: number,
-    ) {
-      const { network } = generateNetwork({
-        seed,
-        codebook,
-        stages,
-        externalData,
-      });
-      return network.nodes.map(
-        (node) => node[entityAttributesProperty].flagged,
-      );
-    }
-
     it('carries no value its own rules reject', () => {
-      // The row is one no participant's form would have accepted, so the roster
-      // stage draws nobody and the panel's node is the only holder of `true`.
+      // The row is one no participant's form would have accepted, so the
+      // analysis counts nobody for it and the panel's node is the only counted
+      // holder of `true`. (The planner itself now adds roster rows as the
+      // interview does — as researcher data, unvalidated — so only the
+      // counting side of the verdict remains observable here.)
       const dead = { 'stage-roster': [row('r1', { flagged: true, age: 5 })] };
 
       expect(analyseFeasibility(flagAndAge, stages, config, dead)).toEqual([]);
-
-      for (let seed = 1; seed <= 20; seed++) {
-        expect(flagsDrawn(flagAndAge, dead, seed), `seed ${seed}`).toEqual([
-          true,
-        ]);
-      }
     });
 
     it('still refuses where the same row is one the draw can build', () => {
@@ -1682,13 +1696,6 @@ describe('a value a prompt fixes and a roster row carries', () => {
       expect(
         analyseFeasibility(flagAndComparator, stages, config, dead),
       ).toEqual([]);
-
-      for (let seed = 1; seed <= 20; seed++) {
-        expect(
-          flagsDrawn(flagAndComparator, dead, seed),
-          `seed ${seed}`,
-        ).toEqual([true]);
-      }
     });
 
     it('still refuses where the completion the draw needs is there', () => {
@@ -1716,6 +1723,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
         type: 'NameGenerator',
         label: 'Carrying panel',
         subject: { entity: 'node', type: 'person' },
+        form: { title: 'About this person', fields: [] },
         prompts: [{ id: 'c-p1', text: 'Name people' }],
         behaviours: { minNodes: 1, maxNodes: 1 },
       } as unknown as Stage;
@@ -1755,11 +1763,6 @@ describe('the ego flag a pedigree stage pins', () => {
       prompts: [],
     } as unknown as Stage;
   }
-
-  const compactConfig = resolveGenerationConfig({
-    today: '2026-07-27',
-    familyPedigreeNodeCount: { min: 7, max: 7 },
-  });
 
   const uniqueFlag = codebookWith({
     isEgo: { name: 'Is ego', type: 'boolean', validation: { unique: true } },
@@ -1873,6 +1876,7 @@ describe('the ego flag a pedigree stage pins', () => {
       type: 'NameGenerator',
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [
         {
           id: 'p1',
@@ -1922,6 +1926,7 @@ describe('a rule between two values one prompt fixes', () => {
       type,
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [
         {
           id: 'p1',
@@ -2054,6 +2059,7 @@ describe('a value one prompt fixes against its own rules', () => {
       type,
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: [
         {
           id: 'p1',
@@ -2186,6 +2192,7 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
       type,
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
+      form: { title: 'About this person', fields: [] },
       prompts: values.map((set, index) => ({
         id: `p${index + 1}`,
         text: 'Name people',
@@ -2321,6 +2328,7 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
         type: 'NameGenerator',
         label: 'Name generator',
         subject: { entity: 'node', type: 'person' },
+        form: { title: 'About this person', fields: [] },
         prompts: [
           {
             id: 'p1',
@@ -2356,7 +2364,18 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
     // more than any other — so the emitted network is read back to show the
     // acceptance was earned rather than lucky.
     const codebook = unenumerable({ greaterThanVariable: 'age' });
-    const stages = [pinning([{ age: true }])];
+    // The read-back needs `retired` written into the network, and a created
+    // node carries only what its creating interaction writes — so the stage's
+    // form renders the variable alongside the prompt's pin.
+    const stages = [
+      {
+        ...pinning([{ age: true }]),
+        form: {
+          title: 'About this person',
+          fields: [{ variable: 'retired', prompt: 'Retired when?' }],
+        },
+      } as unknown as Stage,
+    ];
 
     expect(analyseFeasibility(codebook, stages, config)).toEqual([]);
 
@@ -2742,6 +2761,7 @@ describe('a pedigree edge variable no stage writes', () => {
   const person = {
     name: 'Person',
     color: 'node-color-seq-1',
+    synthetic: { count: { distribution: 'constant', value: 4 } },
     variables: { name: { name: 'Name', type: 'text' } },
   };
 
@@ -2749,9 +2769,20 @@ describe('a pedigree edge variable no stage writes', () => {
     id: 'stage-fp',
     type: 'FamilyPedigree',
     label: 'Pedigree',
-    nodeConfig: { type: 'person' },
+    nodeConfig: {
+      type: 'person',
+      nodeLabelVariable: 'name',
+      egoVariable: 'isEgo',
+      relationshipVariable: 'relationship',
+      biologicalSexVariable: 'sex',
+    },
     edgeConfig: { type: 'kin' },
-    prompts: [],
+    framing: { mode: 'fixed', value: 'gendered' },
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'off',
+    },
+    censusPrompt: 'Add your family.',
   } as unknown as Stage;
 
   function edgeForm(...variables: string[]): Stage {

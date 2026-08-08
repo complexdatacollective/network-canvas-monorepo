@@ -2,7 +2,7 @@ import {
   isStageSkipped,
   resolveSkipLogicDestinationIndex,
 } from '@codaco/network-query';
-import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import type { Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -46,7 +46,6 @@ function skipDecisionWithAbsentEgoAttributes(
  * stays in the conservative pre-pass.
  */
 export function reachableStagesForFeasibility(
-  codebook: StructuralCodebook,
   stages: Stage[],
   respectSkipLogicAndFiltering: boolean,
 ): Stage[] {
@@ -54,7 +53,6 @@ export function reachableStagesForFeasibility(
 
   const reachable: Stage[] = [];
   const possibleEgoAttributes = new Set<string>();
-  const egoVariables = Object.keys(codebook.ego?.variables ?? {});
 
   for (let index = 0; index < stages.length; index++) {
     const stage = stages[index]!;
@@ -80,8 +78,18 @@ export function reachableStagesForFeasibility(
 
     reachable.push(stage);
     if (stage.type === 'EgoForm') {
-      for (const variable of egoVariables) {
-        possibleEgoAttributes.add(variable);
+      // The fields this form actually collects, not every ego variable the
+      // codebook declares. An EgoForm is the only thing that writes onto ego,
+      // so a variable no reachable form asks for is one the session never
+      // holds — and treating it as merely possible leaves a stage guarded on
+      // it undecidable, which keeps a stage the run provably never reaches.
+      // The planner then gives that stage part of a population nothing builds.
+      for (const field of stage.form?.fields ?? []) {
+        // Tolerated as a draft: Architect previews a form whose field has no
+        // variable chosen yet.
+        if (typeof field.variable === 'string') {
+          possibleEgoAttributes.add(field.variable);
+        }
       }
     }
   }

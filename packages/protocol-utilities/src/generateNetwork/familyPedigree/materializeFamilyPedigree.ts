@@ -1,5 +1,3 @@
-import { v4 as uuid } from 'uuid';
-
 import type { Stage } from '@codaco/protocol-validation';
 import {
   BIOLOGICAL_SEX_VALUES,
@@ -13,6 +11,11 @@ import {
 } from '@codaco/shared-consts';
 
 import { ValueGenerator } from '../../ValueGenerator';
+import { withRuleTiedVariables } from '../analyse/ruleTiedVariables';
+import {
+  pedigreeDrawnNodeVariables,
+  pedigreeEgoNodeVariables,
+} from '../analyse/stageEffects';
 import {
   claimFixedValues,
   generateAttributesForEntity,
@@ -20,13 +23,9 @@ import {
 } from '../attributes';
 import { SyntheticDataConstraintError } from '../constraints/error';
 import type { EntityScopeRef } from '../constraints/generateEntityAttributes';
-import {
-  pedigreeDrawnNodeVariables,
-  pedigreeEgoNodeVariables,
-  withRuleTiedVariables,
-} from '../constraints/stageWrites';
 import type { GenerationContext, NetworkDraft, StageOfType } from '../context';
 import { ruleBrokenByFixedValues } from '../nodes';
+import { deterministicUuid } from '../plan/random';
 import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
 import {
   readPedigreeOptionValue,
@@ -606,7 +605,11 @@ export function materializeFamilyPedigree(
     Object.assign(attributes, fixed);
     claimFixedValues(familyCtx, nodeScope, fixed);
 
-    const uid = uuid();
+    // Seeded rather than random: a fixed seed has to reproduce a session
+    // byte for byte, and an entity's id is part of that.
+    const uid = deterministicUuid(
+      familyCtx.valueGen.randomSource.stream('id', 'pedigree', nodeType),
+    );
     nodeIds.set(person.key, uid);
     familyNodes.push({
       [entityPrimaryKeyProperty]: uid,
@@ -730,7 +733,9 @@ export function materializeFamilyPedigree(
     assertFixedValuesAccepted(familyCtx, edgeScope, attributes);
     claimFixedValues(familyCtx, edgeScope, attributes);
     familyEdges.push({
-      [entityPrimaryKeyProperty]: uuid(),
+      [entityPrimaryKeyProperty]: deterministicUuid(
+        familyCtx.valueGen.randomSource.stream('id', 'pedigree', edgeType),
+      ),
       type: edgeType,
       from,
       to,

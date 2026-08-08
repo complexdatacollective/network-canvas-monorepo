@@ -9,7 +9,7 @@ import {
   type Variables,
 } from '@codaco/protocol-validation';
 
-import { resolveGenerationConfig } from '../../config';
+import type { FeasibilityConfig } from '../../config';
 import { buildEntityConstraints } from '../buildConstraints';
 import { resolveGenerationOrder } from '../dependencyOrder';
 import { analyseFeasibility } from '../feasibility';
@@ -23,7 +23,17 @@ import { solvableComponents, solveComponent } from '../solver';
 import { delegatedValidationContradictions } from '../validationContradictions';
 
 const TODAY = '2026-07-28';
-const config = resolveGenerationConfig({ today: TODAY });
+
+/** Worst-case bounds for `analyseFeasibility`, constructed literally. */
+const config: FeasibilityConfig = {
+  nodeCount: { min: 1, max: 8 },
+  rosterDrawRatio: 0.7,
+  sociogramEdgeProbability: { min: 0.3, max: 0.5 },
+  censusEdgeProbability: { min: 0.4, max: 0.6 },
+  networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
+  familyPedigreeNodeCount: { min: 4, max: 10 },
+  today: TODAY,
+};
 const nameGenerator = {
   id: 'stage-1',
   type: 'NameGenerator',
