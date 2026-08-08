@@ -261,6 +261,25 @@ describe('useLongPress', () => {
     expect(onLongPress).not.toHaveBeenCalled();
   });
 
+  it('does not carry a suppression into a later gesture', () => {
+    const onClickResult = vi.fn();
+    render(<Probe onLongPress={vi.fn()} onClickResult={onClickResult} />);
+
+    // Hold until it fires, then drag away. A drag system swallows the click
+    // that would normally consume the suppression, so it is still set.
+    press(100, 100);
+    hold();
+    fireEvent.pointerMove(window, { clientX: 200, clientY: 100 });
+    fireEvent.pointerUp(window);
+
+    // The next ordinary tap must not be swallowed by the leftover.
+    press(100, 100);
+    fireEvent.pointerUp(window);
+    fireEvent.click(target());
+
+    expect(onClickResult).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
   it('does not fire after unmount', () => {
     const onLongPress = vi.fn();
     const { unmount } = render(<Probe onLongPress={onLongPress} />);
