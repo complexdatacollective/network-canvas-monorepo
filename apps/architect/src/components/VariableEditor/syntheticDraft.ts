@@ -412,8 +412,13 @@ export function assembleSynthetic(
         // assembled as typed so the schema rejects them and the editor says
         // so: dropping them instead saved a variable whose reopened editor
         // showed the runtime's uniform default in place of what was entered.
+        // A value outside 0–1 is as much an error as a negative one: scaling
+        // `2` and `1` down to roughly 0.66 and 0.33 saves a table the author
+        // never entered and validates only the altered result. Normalisation
+        // is for a mixture of legal weights, not a repair for illegal ones.
         const normalisable =
-          total > 0 && rows.every((row) => row.probability >= 0);
+          total > 0 &&
+          rows.every((row) => row.probability >= 0 && row.probability <= 1);
         base.selectionCount = {
           probabilities: rows.map((row) => ({
             count: row.count,

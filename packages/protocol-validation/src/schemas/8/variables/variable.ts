@@ -861,9 +861,17 @@ const booleanBooleanVariableSchema = baseVariableSchema
     // disagree. Refused here for the same reason a number or date descriptor
     // disjoint from its validation window is: metadata that can never take
     // effect is better rejected than quietly dropped.
+    //
+    // Scoped to the choice control that actually READS the options. A
+    // componentless boolean can be rendered by a NetworkComposer field as a
+    // `Toggle`, which ignores them and leaves both values drawable — the same
+    // condition the generator applies before it consults the probability at
+    // all. Refusing there would reject a descriptor that takes effect
+    // perfectly well.
     const probabilityTrue = variable.synthetic?.probabilityTrue;
     const offered = new Set(variable.options?.map((option) => option.value));
     if (
+      variable.component === ComponentTypes.Boolean &&
       probabilityTrue !== undefined &&
       offered.size === 1 &&
       ((offered.has(false) && probabilityTrue > 0) ||

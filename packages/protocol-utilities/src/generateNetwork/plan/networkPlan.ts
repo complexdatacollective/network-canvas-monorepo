@@ -1,4 +1,5 @@
 import { filter as getFilter } from '@codaco/network-query';
+import { MAX_SYNTHETIC_POPULATION } from '@codaco/protocol-validation';
 import type { StructuralCodebook, Variable } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -303,7 +304,21 @@ export function apportionCount(
   total: number,
   capacities: { min: number; max: number | null }[],
 ): number[] {
+  // Stage minimums outrank the drawn total, but not the generator's own
+  // ceiling: `behaviours.minNodes` is unbounded in the stage schema, so a
+  // large one walked straight past the population cap that keeps a synchronous
+  // preview from freezing the renderer. Trimmed from the last stage back, so a
+  // protocol under the cap is apportioned exactly as before.
   const assigned = capacities.map((capacity) => capacity.min);
+  let excess = Math.max(
+    0,
+    assigned.reduce((a, b) => a + b, 0) - MAX_SYNTHETIC_POPULATION,
+  );
+  for (let i = assigned.length - 1; i >= 0 && excess > 0; i--) {
+    const trim = Math.min(assigned[i]!, excess);
+    assigned[i]! -= trim;
+    excess -= trim;
+  }
   let remaining = Math.max(0, total - assigned.reduce((a, b) => a + b, 0));
   let progressed = true;
   while (remaining > 0 && progressed) {

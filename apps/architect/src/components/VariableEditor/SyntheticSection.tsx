@@ -287,7 +287,21 @@ export default function SyntheticSection({
 }: {
   context: SyntheticDraftContext;
 }) {
-  const initial = useMemo(() => initialSyntheticValues(context), [context]);
+  // Seeded from the name as it stands in the draft, not as it was saved.
+  // A text generator is inferred from the variable's name, so renaming
+  // `friend_name` to `occupation` and enabling this section in one edit
+  // seeded the generator from the OLD name — and the author had to save,
+  // reopen and correct it.
+  const { name: draftName } = useFormValue(['name'] as const);
+  const initial = useMemo(
+    () =>
+      initialSyntheticValues(
+        typeof draftName === 'string' && draftName.trim() !== ''
+          ? { ...context, variable: { ...context.variable, name: draftName } }
+          : context,
+      ),
+    [context, draftName],
+  );
   const { [SYNTHETIC_ENABLED_FIELD]: enabled } = useFormValue([
     SYNTHETIC_ENABLED_FIELD,
   ] as const);

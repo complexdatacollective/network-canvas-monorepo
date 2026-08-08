@@ -141,6 +141,29 @@ describe('apportionCount', () => {
   });
 });
 
+describe('apportionCount against the population ceiling', () => {
+  it('trims stage minimums that would exceed it', () => {
+    // `behaviours.minNodes` is unbounded in the stage schema, so a large one
+    // walked straight past the cap that keeps a synchronous preview from
+    // freezing the renderer.
+    const assigned = apportionCount(0, [
+      { min: 9_000, max: null },
+      { min: 9_000, max: null },
+    ]);
+
+    expect(assigned.reduce((a, b) => a + b, 0)).toBe(10_000);
+  });
+
+  it('leaves minimums inside the ceiling exactly as they were', () => {
+    expect(
+      apportionCount(0, [
+        { min: 2, max: null },
+        { min: 3, max: null },
+      ]),
+    ).toEqual([2, 3]);
+  });
+});
+
 describe('planNetwork populations', () => {
   it('draws the declared constant population', () => {
     const result = plan(

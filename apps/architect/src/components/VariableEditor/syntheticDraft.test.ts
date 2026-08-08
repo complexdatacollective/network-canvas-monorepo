@@ -539,3 +539,30 @@ describe('assembling a probability from a newly reachable row', () => {
     expect(counts).toContain(2);
   });
 });
+
+describe('a selection probability above one', () => {
+  it('reaches the schema as typed rather than being scaled into range', () => {
+    // Normalisation is for a mixture of legal weights. Scaling `2` and `1`
+    // down to roughly 0.66 and 0.33 saves a table the author never entered
+    // and validates only the altered result.
+    const context = contextFor(categoricalVariable);
+    const rows = weightRows(context);
+    const counts = selectionCountRows(context);
+
+    const assembled = assembleSynthetic(context, {
+      [rows[0]!.fieldName]: 1,
+      [rows[1]!.fieldName]: 1,
+      ...Object.fromEntries(counts.map((row) => [row.fieldName, 0])),
+      [counts[1]!.fieldName]: 2,
+      [counts[2]!.fieldName]: 1,
+    });
+
+    const table = (
+      assembled as {
+        selectionCount?: { probabilities: { probability: number }[] };
+      }
+    ).selectionCount;
+    expect(table?.probabilities.map((entry) => entry.probability)).toContain(2);
+    expect(validateAssembledVariable(context, assembled)).toBeDefined();
+  });
+});

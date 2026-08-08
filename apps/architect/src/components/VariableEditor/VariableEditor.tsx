@@ -190,9 +190,24 @@ function VariableEditorInner({
         } as FormSubmissionResult;
       }
 
-      const synthetic = values[SYNTHETIC_ENABLED_FIELD]
+      const enabled = Boolean(values[SYNTHETIC_ENABLED_FIELD]);
+      const synthetic = enabled
         ? assembleSynthetic(context, values)
         : undefined;
+
+      // An enabled section that assembles to nothing means a required control
+      // was cleared — a constant distribution with no value, say. Falling
+      // through here validated the variable as though the section were off and
+      // saved it with no `synthetic` at all, so the author was told nothing
+      // and lost the rest of what they had entered.
+      if (enabled && synthetic === undefined) {
+        return {
+          success: false,
+          formErrors: [
+            'Synthetic data generation is on but incomplete. Fill in the remaining values, or turn the section off.',
+          ],
+        } as FormSubmissionResult;
+      }
 
       // The synthetic controls' bounds are native input attributes, which
       // this form does not enforce; the codebook schema does, and a draft it

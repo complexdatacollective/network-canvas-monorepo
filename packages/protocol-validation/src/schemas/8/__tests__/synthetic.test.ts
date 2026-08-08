@@ -280,6 +280,20 @@ describe('synthetic metadata (additive to schema 8)', () => {
       expect(parse(protocol).success).toBe(true);
     });
 
+    it('leaves a componentless boolean alone', () => {
+      // A NetworkComposer field can render this as a `Toggle`, which ignores
+      // the options — `booleanDomainValues` only reads them for the `Boolean`
+      // choice control — so both values stay drawable and the probability
+      // takes effect.
+      const protocol = withPersonVariable('isClose', {
+        name: 'Is_Close',
+        type: 'boolean',
+        options: [{ label: 'No', value: false }],
+        synthetic: { probabilityTrue: 1 },
+      });
+      expect(parse(protocol).success).toBe(true);
+    });
+
     it('leaves a two-sided list alone', () => {
       const protocol = withPersonVariable(
         'isClose',

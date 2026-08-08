@@ -168,13 +168,24 @@ function NodeSyntheticControl({
             />
           )}
           {count.distribution === 'normal' && (
+            <NumberControl
+              label="Standard deviation"
+              value={count.sd}
+              onChange={(next) => patch({ sd: next ?? 0 })}
+              min={0}
+            />
+          )}
+          {/*
+            Truncation bounds belong to EVERY distribution whose schema takes
+            them, poisson as much as normal. Rendered for one only, the other's
+            bounds went on truncating generated previews while the author could
+            neither see nor remove them — `patch` spreads the existing
+            descriptor, so they survived each edit and vanished silently on a
+            change of distribution.
+          */}
+          {(count.distribution === 'poisson' ||
+            count.distribution === 'normal') && (
             <>
-              <NumberControl
-                label="Standard deviation"
-                value={count.sd}
-                onChange={(next) => patch({ sd: next ?? 0 })}
-                min={0}
-              />
               <NumberControl
                 label="Minimum"
                 value={count.min}
