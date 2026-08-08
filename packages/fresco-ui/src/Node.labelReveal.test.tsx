@@ -258,6 +258,35 @@ describe('Node label reveal', () => {
     await waitFor(() => expect(getPopup()).toBeNull());
   });
 
+  it('withdraws a revealed label once the gesture becomes a drag', async () => {
+    await renderNode(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
+
+    const button = node(CLIPPED_LABEL);
+    fireEvent.pointerDown(button, { button: 0, clientX: 100, clientY: 100 });
+    await settle(PAST_HOLD);
+    await waitFor(() => expect(getPopup()).not.toBeNull());
+
+    // A pointer drag sets no aria-grabbed, so nothing else would take the
+    // label down: it would trail the node and outlast the drop.
+    fireEvent.pointerMove(window, { clientX: 200, clientY: 100 });
+
+    await waitFor(() => expect(getPopup()).toBeNull());
+  });
+
+  it('leaves a revealed label up when the pointer simply lifts', async () => {
+    await renderNode(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
+
+    const button = node(CLIPPED_LABEL);
+    await pressAndHold(button);
+    await waitFor(() => expect(getPopup()).not.toBeNull());
+
+    // Releasing is not an interruption — the whole point is to read it.
+    fireEvent.pointerUp(window);
+    await settle(150);
+
+    expect(getPopup()).not.toBeNull();
+  });
+
   it('composes with an external pointer-down handler', async () => {
     const externalPointerDown = vi.fn();
     await renderNode(

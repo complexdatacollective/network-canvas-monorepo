@@ -331,6 +331,11 @@ export default function Node(props: UINodeProps) {
     if (!canRevealLabel) setLabelRevealed(false);
   }, [canRevealLabel]);
 
+  // A pointer drag sets no `aria-grabbed` — it is the drag system moving the
+  // node, not the node describing itself — so without this a revealed label
+  // would trail the node across the canvas and outlast the drop.
+  const withdrawLabel = useCallback(() => setLabelRevealed(false), []);
+
   const {
     onPointerDown: startHold,
     shouldSuppressClick,
@@ -338,6 +343,7 @@ export default function Node(props: UINodeProps) {
     feedbackDuration,
   } = useLongPress({
     onLongPress: revealLabel,
+    onHoldInterrupted: withdrawLabel,
     enabled: canRevealLabel,
   });
 

@@ -21,6 +21,14 @@ const DEFAULT_FEEDBACK_DELAY = 150;
 type UseLongPressOptions = {
   /** Called once the pointer has been held still for `holdDuration`. */
   onLongPress: () => void;
+  /**
+   * Called when the gesture stops being a still hold — the pointer moved far
+   * enough to be a drag, or the page scrolled underneath it. Fires whether or
+   * not the hold had already produced anything, so a caller can withdraw what
+   * it did. Releasing the pointer is not an interruption: a hold that ran its
+   * course is meant to leave its result on screen to be read.
+   */
+  onHoldInterrupted?: () => void;
   enabled?: boolean;
   holdDuration?: number;
   feedbackDelay?: number;
@@ -49,6 +57,7 @@ type UseLongPressResult = {
  */
 export function useLongPress({
   onLongPress,
+  onHoldInterrupted,
   enabled = true,
   holdDuration = DEFAULT_HOLD_DURATION,
   feedbackDelay = DEFAULT_FEEDBACK_DELAY,
@@ -141,7 +150,9 @@ export function useLongPress({
         const dy = moveEvent.clientY - origin.y;
         // Abandons the hold but keeps the gesture, so the release that ends it
         // is still seen and can expire any suppression already raised.
-        if (Math.hypot(dx, dy) >= DRAG_CANCEL_DISTANCE) abandonHold();
+        if (Math.hypot(dx, dy) < DRAG_CANCEL_DISTANCE) return;
+        abandonHold();
+        onHoldInterrupted?.();
       };
 
       const handleEnd = (endEvent: PointerEvent) => {
@@ -149,7 +160,10 @@ export function useLongPress({
         endGesture();
       };
 
-      const handleScroll = () => abandonHold();
+      const handleScroll = () => {
+        abandonHold();
+        onHoldInterrupted?.();
+      };
 
       // Listening on the window rather than the node keeps the hold correct
       // once a drag system has taken pointer capture, and catches releases
@@ -189,6 +203,7 @@ export function useLongPress({
       endGesture,
       feedbackDelay,
       holdDuration,
+      onHoldInterrupted,
       onLongPress,
       teardown,
     ],
