@@ -508,5 +508,6 @@ export function generateNetwork(
     reachableStages: feasibilityStages,
     runSeed,
     familyPedigree: resolvedFamilyPedigree,
+    familyPedigreeOptions: familyPedigree,
   });
 }

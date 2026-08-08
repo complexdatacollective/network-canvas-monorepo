@@ -22,8 +22,13 @@ import {
 } from '../constraints/generateEntityAttributes';
 import type { GenerationContext, NetworkDraft } from '../context';
 import { materializeFamilyPedigree } from '../familyPedigree/materializeFamilyPedigree';
+import { resolveFamilyPedigreeGenerationOptions } from '../familyPedigree/referencePopulation';
 import { familyPedigreeSeed } from '../familyPedigree/seed';
-import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/types';
+import { pedigreeCeilingForStage } from '../familyPedigree/stageCeiling';
+import type {
+  FamilyPedigreeGenerationOptions,
+  ResolvedFamilyPedigreeGenerationOptions,
+} from '../familyPedigree/types';
 import { buildCurrentNetwork } from '../filtering';
 import { markStageInProgress } from '../inProgress';
 import {
@@ -109,6 +114,8 @@ export function materialiseSession(params: {
   inProgressStageIndex?: number;
   /** Stages feasibility judged reachable, which is where diseases are read. */
   reachableStages: readonly Stage[];
+  /** The caller's own pedigree options, before any per-stage default. */
+  familyPedigreeOptions: FamilyPedigreeGenerationOptions | undefined;
   runSeed: number;
   familyPedigree: ResolvedFamilyPedigreeGenerationOptions;
 }): MaterialisedSession {
@@ -122,6 +129,7 @@ export function materialiseSession(params: {
     reachableStages,
     runSeed,
     familyPedigree,
+    familyPedigreeOptions,
   } = params;
   const source = ctx.valueGen.randomSource;
 
@@ -392,6 +400,7 @@ export function materialiseSession(params: {
     // diseases actually follow). The specialist generator owns that, so the
     // plan leaves this stage's entities to it and this walk hands over.
     if (stage.type === 'FamilyPedigree') {
+      const stageCeiling = pedigreeCeilingForStage(ctx.codebook, stage);
       const beforePedigree = draft.edges.length;
       materializeFamilyPedigree(
         ctx,
@@ -401,7 +410,16 @@ export function materialiseSession(params: {
         stages,
         reachableStages,
         familyPedigreeSeed(runSeed, stage.id),
-        familyPedigree,
+        // Resolved against THIS stage's own ceiling. Shared, the largest in the
+        // protocol let a type declared at seven grow to another type's forty
+        // while feasibility still counted seven. A caller that named its own
+        // `maxNodes` still wins — this only supplies the default.
+        stageCeiling === undefined
+          ? familyPedigree
+          : resolveFamilyPedigreeGenerationOptions(
+              familyPedigreeOptions,
+              stageCeiling,
+            ),
       );
       // The links the pedigree just drew are part of the final network, so a
       // census over that edge type has to see them as membership. Seeded only
