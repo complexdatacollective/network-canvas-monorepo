@@ -182,6 +182,53 @@ describe('synthetic metadata (additive to schema 8)', () => {
     });
   });
 
+  describe('boolean variables with a one-sided option list', () => {
+    const booleanVariable = (synthetic: unknown, options?: Loose[]): Loose => ({
+      name: 'Is_Close',
+      type: 'boolean',
+      component: 'Boolean',
+      ...(options ? { options } : {}),
+      synthetic,
+    });
+
+    it('rejects a probability the offered values cannot produce', () => {
+      // Only `false` is offered, so the generator returns it and the declared
+      // probability never applies — the opposite of what was authored.
+      const protocol = withPersonVariable(
+        'isClose',
+        booleanVariable({ probabilityTrue: 1 }, [
+          { label: 'No', value: false },
+        ]),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(hasIssue(result, 'cannot be drawn when the only option')).toBe(
+        true,
+      );
+    });
+
+    it('accepts a probability the sole option agrees with', () => {
+      const protocol = withPersonVariable(
+        'isClose',
+        booleanVariable({ probabilityTrue: 0 }, [
+          { label: 'No', value: false },
+        ]),
+      );
+      expect(parse(protocol).success).toBe(true);
+    });
+
+    it('leaves a two-sided list alone', () => {
+      const protocol = withPersonVariable(
+        'isClose',
+        booleanVariable({ probabilityTrue: 0.7 }, [
+          { label: 'No', value: false },
+          { label: 'Yes', value: true },
+        ]),
+      );
+      expect(parse(protocol).success).toBe(true);
+    });
+  });
+
   describe('number variables', () => {
     const numberVariable = (synthetic: unknown, validation?: Loose): Loose => ({
       name: 'Height',

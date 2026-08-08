@@ -58,8 +58,18 @@ export type MaterialisedSession = {
   droppedOut: boolean;
 };
 
+/**
+ * An unordered pair as one key.
+ *
+ * NUL-separated rather than space-separated because an `_uid` is an arbitrary
+ * string — roster rows keep whatever ids the caller's external data carried —
+ * and a space is a character an id may hold. Joined on one, `('a', 'b c')` and
+ * `('a b', 'c')` both read "a b c": the domain drops a real pair, and an edge
+ * or census answer can be attributed to the wrong one. NUL cannot appear in a
+ * JSON string value, so the encoding is injective.
+ */
 const pairKey = (a: string, b: string): string =>
-  a < b ? `${a} ${b}` : `${b} ${a}`;
+  a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
 
 type Planned = {
   attributes: Record<string, VariableValue>;
@@ -292,6 +302,30 @@ export function materialiseSession(params: {
     }
   };
 
+  /**
+   * Whether a group the walk is about to draw is certainly unanswered.
+   *
+   * The plan skips drawing these; the walk has to as well, and for the same
+   * reason: a `unique` draw claims its value from the registry, so drawing one
+   * only to null it can exhaust a small value space and fail a session whose
+   * final state holds nothing. Feasibility exempts these groups too.
+   */
+  const certainlyMissing = (
+    ref: EntityScopeRef,
+    variableId: string,
+  ): boolean => {
+    const members = groupsFor(ref).find((group) => group.includes(variableId));
+    if (members === undefined) return false;
+    const scope = scopeKey(ref);
+    return (
+      groupMissingProbability(
+        members,
+        missingProbabilitiesFor(missingByVariable, scope),
+        requiredVariablesFor(requiredByVariable, scope),
+      ) === 1
+    );
+  };
+
   const landWrite = (
     ref: EntityScopeRef,
     uid: string,
@@ -304,6 +338,10 @@ export function materialiseSession(params: {
       (variableId in planned.attributes || planned.missing.has(variableId))
     ) {
       attributes[variableId] = valueFor(planned, variableId);
+      return;
+    }
+    if (certainlyMissing(ref, variableId)) {
+      attributes[variableId] = null;
       return;
     }
     drawVariableOnto(ctx, ref, attributes, variableId, unplannedDraw++);
@@ -354,6 +392,7 @@ export function materialiseSession(params: {
     // diseases actually follow). The specialist generator owns that, so the
     // plan leaves this stage's entities to it and this walk hands over.
     if (stage.type === 'FamilyPedigree') {
+      const beforePedigree = draft.edges.length;
       materializeFamilyPedigree(
         ctx,
         draft,
@@ -364,6 +403,16 @@ export function materialiseSession(params: {
         familyPedigreeSeed(runSeed, stage.id),
         familyPedigree,
       );
+      // The links the pedigree just drew are part of the final network, so a
+      // census over that edge type has to see them as membership. Seeded only
+      // from the plan, this map knew nothing of them, and the census reported
+      // every existing family pair as unlinked — an explicit negative
+      // nomination beside an edge the session actually holds.
+      for (const edge of draft.edges.slice(beforePedigree)) {
+        const pairs = finalPairsByType.get(edge.type) ?? new Set<string>();
+        pairs.add(pairKey(edge.from, edge.to));
+        finalPairsByType.set(edge.type, pairs);
+      }
     }
 
     // --- Entity introduction -------------------------------------------

@@ -133,9 +133,10 @@ function familyPedigreeNodeCeiling(
 /**
  * The people a pedigree can put on the canvas, per node type it builds.
  *
- * The same reckoning as {@link familyPedigreeNodeCeiling}, kept per type
- * rather than maximised, because a topology ceiling is about the pairs one
- * subject type reaches. A pedigree's population is not in `effectivePopulation`
+ * The same reckoning as {@link familyPedigreeNodeCeiling}, but kept per type
+ * and summed across stages rather than maximised, because a topology ceiling
+ * is about the pairs one subject type reaches and every pedigree over that
+ * type adds its own family to the ones before it. A pedigree's population is not in `effectivePopulation`
  * at all — that map is built from the stage creations, and pedigree creations
  * are deliberately skipped — so without this a type a pedigree builds is
  * counted at its declared count. A `count` of 1 then bounds a census over the
@@ -162,7 +163,14 @@ function familyPedigreePopulationByType(
       // floor is the core rather than the declaration.
       MINIMUM_PEDIGREE_CORE,
     );
-    populations.set(type, Math.max(populations.get(type) ?? 0, attainable));
+    // Accumulated, not maximised. A second pedigree over the same type does
+    // not replace the first family: materialisation keeps the earlier people
+    // and appends the new ones, reusing at most the ego between them. Two
+    // core-sized families are therefore thirteen or fourteen subjects, and
+    // keeping only the larger counted seven. The reused ego is deliberately
+    // not deducted — reuse is "at most", so subtracting it would put the
+    // ceiling below the population of a run that reuses nothing.
+    populations.set(type, (populations.get(type) ?? 0) + attainable);
   }
   return populations;
 }

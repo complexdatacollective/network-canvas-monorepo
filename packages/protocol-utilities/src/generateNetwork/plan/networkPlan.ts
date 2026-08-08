@@ -330,6 +330,7 @@ export function apportionCount(
  */
 function plannedNetwork(
   egoUid: string,
+  egoAttributes: Record<string, VariableValue>,
   nodes: PlannedNode[],
   edges: readonly PlannedEdge[],
   effects: StageEffects,
@@ -338,8 +339,20 @@ function plannedNetwork(
   return {
     ego: {
       [entityPrimaryKeyProperty]: egoUid,
-      [entityAttributesProperty]: {},
-    },
+      // Projected like every other entity. Left empty, a stage filtering on an
+      // ego variable an earlier EgoForm writes saw a participant who had
+      // answered nothing: a `consent === true` filter planned no pairs at all,
+      // and the walk-time fallback skips pairs whose endpoints are both
+      // planned, so the declared topology was never recovered and the census
+      // came back all negatives. The inverse predicate plans edges for a
+      // domain the real stage excludes.
+      [entityAttributesProperty]: attributesAsOf(
+        effects,
+        scopeKeyFor('ego'),
+        egoAttributes,
+        asOf,
+      ),
+    } as NcNetwork['ego'],
     nodes: nodes.map((node) => ({
       [entityPrimaryKeyProperty]: node.uid,
       type: node.type,
@@ -366,8 +379,18 @@ function plannedNetwork(
 }
 
 /** Unordered pair key; self-pairs are never eligible. */
+/**
+ * An unordered pair as one key.
+ *
+ * NUL-separated rather than space-separated because an `_uid` is an arbitrary
+ * string — roster rows keep whatever ids the caller's external data carried —
+ * and a space is a character an id may hold. Joined on one, `('a', 'b c')` and
+ * `('a b', 'c')` both read "a b c": the domain drops a real pair, and an edge
+ * or census answer can be attributed to the wrong one. NUL cannot appear in a
+ * JSON string value, so the encoding is injective.
+ */
 const pairKey = (a: string, b: string): string =>
-  a < b ? `${a} ${b}` : `${b} ${a}`;
+  a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
 
 /**
  * Separates the values a creating interaction writes into those that survive
@@ -511,6 +534,7 @@ function eligiblePairsForCreation(
   creation: EdgeCreation,
   nodes: PlannedNode[],
   egoUid: string,
+  egoAttributes: Record<string, VariableValue>,
   visibleEdges: readonly PlannedEdge[],
   effects: StageEffects,
 ): Map<string, EligiblePair> {
@@ -522,6 +546,7 @@ function eligiblePairsForCreation(
     );
     const network = plannedNetwork(
       egoUid,
+      egoAttributes,
       existing,
       visibleEdges.filter(
         (edge) => edge.creationStageIndex <= creation.stageIndex,
@@ -967,6 +992,7 @@ export function planNetwork(
         creation,
         nodes,
         egoUid,
+        egoAttributes,
         [...plannedEdges, ...typeEdges],
         effects,
       )) {

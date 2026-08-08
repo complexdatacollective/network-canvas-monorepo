@@ -802,6 +802,27 @@ const booleanBooleanVariableSchema = baseVariableSchema
         path: ['options'],
       });
     }
+
+    // A one-sided option list has no second answer to draw, so the generator
+    // returns the sole offered value and the declared probability is ignored
+    // — silently producing the opposite of what was authored where the two
+    // disagree. Refused here for the same reason a number or date descriptor
+    // disjoint from its validation window is: metadata that can never take
+    // effect is better rejected than quietly dropped.
+    const probabilityTrue = variable.synthetic?.probabilityTrue;
+    const offered = new Set(variable.options?.map((option) => option.value));
+    if (
+      probabilityTrue !== undefined &&
+      offered.size === 1 &&
+      ((offered.has(false) && probabilityTrue > 0) ||
+        (offered.has(true) && probabilityTrue < 1))
+    ) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `probabilityTrue ${probabilityTrue} cannot be drawn when the only option offered is ${String(offered.has(true))}`,
+        path: ['synthetic', 'probabilityTrue'],
+      });
+    }
   });
 
 const booleanToggleVariableSchema = baseVariableSchema

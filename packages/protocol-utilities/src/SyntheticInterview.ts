@@ -547,6 +547,8 @@ export class SyntheticInterview {
       ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
 
+    assertSyntheticMatchesType(entry, 'ego');
+
     this.egoVariables.set(varId, entry);
     return { id: varId };
   }
