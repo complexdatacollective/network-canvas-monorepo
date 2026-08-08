@@ -2214,7 +2214,30 @@ describe('generateNetwork with a filtered writer on existing nodes', () => {
     filteredNodeAlterForm('band', 'selected'),
   ];
 
-  it('does not promote a filtered write to every earlier node', () => {
+  it('passes over a filtered write the codebook proves reaches one node', () => {
+    // The filter tests `band EXACTLY 1`, and `band` is unique — so at most one
+    // node can match, and one holder exhausts no value space.
+    const counts = worstCaseEntityCounts(
+      stages,
+      config,
+      undefined,
+      undefined,
+      undefined,
+      (nodeType) =>
+        nodeType === 'person'
+          ? (codebook.node?.person?.variables as Record<string, unknown>)
+          : undefined,
+      true,
+    );
+
+    expect(nodeCountFor(counts.node, 'person', ['selected'])).toBe(0);
+  });
+
+  it('counts a filtered write it cannot prove is narrow', () => {
+    // Without the codebook there is no uniqueness to read, so the filter could
+    // admit the whole type and is counted that way. Under-counting here is
+    // what let a filtered `unique` write clear preflight and then exhaust the
+    // registry partway through the walk.
     const counts = worstCaseEntityCounts(
       stages,
       config,
@@ -2225,7 +2248,7 @@ describe('generateNetwork with a filtered writer on existing nodes', () => {
       true,
     );
 
-    expect(nodeCountFor(counts.node, 'person', ['selected'])).toBe(0);
+    expect(nodeCountFor(counts.node, 'person', ['selected'])).toBe(10);
   });
 
   it('generates when the filter reaches one holder of a unique boolean', () => {

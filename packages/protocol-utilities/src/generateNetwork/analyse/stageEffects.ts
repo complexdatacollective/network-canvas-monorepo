@@ -1057,6 +1057,49 @@ export function declaresNodeCollection(
 }
 
 /**
+ * Whether a stage filter can admit at most one node of a type, provably and
+ * without a network to evaluate against.
+ *
+ * The only shape that proves it is an equality test on a `unique` attribute:
+ * uniqueness says no two nodes of the type hold the same value, so a rule
+ * demanding one particular value matches one node at most. Under `AND` a
+ * single such rule settles the whole filter, since the others can only narrow
+ * further. Under `OR` each rule contributes its own matches, so nothing is
+ * proven. Everything else is left unproven on purpose: being wrong here in the
+ * permissive direction is what lets a run die half-built.
+ */
+function filterAdmitsAtMostOneNode(
+  filter: StageFilter | undefined,
+  nodeType: string,
+  variablesFor?: NodeVariablesFor,
+): boolean {
+  const rules = filter?.rules;
+  if (!Array.isArray(rules) || rules.length === 0) return false;
+  // `network-query` defaults an absent join to OR, which proves nothing.
+  if (rules.length > 1 && filter?.join !== 'AND') return false;
+
+  const variables = variablesFor?.(nodeType);
+  if (variables === undefined) return false;
+
+  return rules.some((rule) => {
+    const { type, options } = rule as {
+      type?: unknown;
+      options?: { type?: unknown; attribute?: unknown; operator?: unknown };
+    };
+    if (type !== 'node' || options?.type !== nodeType) return false;
+    if (options.operator !== 'EXACTLY') return false;
+    const attribute = options.attribute;
+    if (typeof attribute !== 'string') return false;
+    const definition = variables[attribute];
+    if (typeof definition !== 'object' || definition === null) return false;
+    return (
+      (definition as { validation?: { unique?: unknown } }).validation
+        ?.unique === true
+    );
+  });
+}
+
+/**
  * Variables a stage writes onto nodes that existed before it ran, by node type.
  *
  * Creation-time writes are excluded: they land on the stage's own new people,
@@ -1067,6 +1110,18 @@ function writesOnExistingNodes(
   stages: readonly Stage[],
   variablesFor?: NodeVariablesFor,
   respectSkipLogicAndFiltering = false,
+  /**
+   * Count a filtered write against the whole type instead of passing it over.
+   *
+   * The two readers of this map want opposite things of a filtered write.
+   * `rewriteIndex` asks which stage CERTAINLY rewrites a variable, and a
+   * filtered write is not certain to reach any given entity, so it must be
+   * left out. Feasibility asks how many entities COULD hold a value, and there
+   * the same write must be counted — passing it over let a filtered form
+   * writing a `unique` variable clear preflight at zero holders and then
+   * exhaust the registry mid-walk.
+   */
+  countFilteredWrites = false,
 ): Map<string, Set<string>> {
   const byType = new Map<string, Set<string>>();
   const record = (nodeType: string, variableId: string): void => {
@@ -1105,7 +1160,16 @@ function writesOnExistingNodes(
     // creation tally remains authoritative for variables written when those
     // nodes were made; filtered population writes are settled by the actual
     // filtered set at generation time.
-    if (respectSkipLogicAndFiltering && write.filter !== undefined) continue;
+    if (respectSkipLogicAndFiltering && write.filter !== undefined) {
+      // A filter whose reach is provably one node can be passed over by either
+      // reader: a single holder exhausts no value space that holds anything.
+      if (
+        !countFilteredWrites ||
+        filterAdmitsAtMostOneNode(write.filter, write.entityType, variablesFor)
+      ) {
+        continue;
+      }
+    }
     record(write.entityType, write.variableId);
   }
   return byType;
@@ -1131,6 +1195,8 @@ export function lastExistingWriterByType(
   stages: readonly Stage[],
   variablesFor?: NodeVariablesFor,
   respectSkipLogicAndFiltering = false,
+  /** See {@link writesOnExistingNodes}; feasibility sets this, the plan does not. */
+  countFilteredWrites = false,
 ): Map<string, Map<string, number>> {
   const byType = new Map<string, Map<string, number>>();
 
@@ -1140,6 +1206,7 @@ export function lastExistingWriterByType(
       stages,
       variablesFor,
       respectSkipLogicAndFiltering,
+      countFilteredWrites,
     );
     for (const [nodeType, variables] of written) {
       const forType = byType.get(nodeType) ?? new Map<string, number>();

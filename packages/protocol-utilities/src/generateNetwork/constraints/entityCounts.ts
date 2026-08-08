@@ -1503,10 +1503,15 @@ export function worstCaseEntityCounts(
     pedigree.set(edgeType, forType);
   }
 
+  // Counting, not certainty: a filtered write must be counted against the
+  // whole type here even though `rewriteIndex` leaves it out, because the
+  // question is how many entities COULD hold the value rather than which
+  // stage certainly writes it.
   for (const [nodeType, writers] of lastExistingWriterByType(
     stages,
     nodeVariables,
     respectSkipLogicAndFiltering,
+    true,
   )) {
     tallyFor(node, nodeType).written = writers;
   }
