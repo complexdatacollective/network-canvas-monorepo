@@ -207,6 +207,60 @@ describe('useLongPress', () => {
     expect(isHolding()).toBe(false);
   });
 
+  it('ignores a second pointer moving or lifting elsewhere', () => {
+    const onLongPress = vi.fn();
+    render(<Probe onLongPress={onLongPress} />);
+
+    fireEvent.pointerDown(target(), {
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    });
+
+    // A second finger wanders and lifts while the first stays put.
+    fireEvent.pointerMove(window, {
+      clientX: 400,
+      clientY: 400,
+      pointerId: 2,
+    });
+    fireEvent.pointerUp(window, { pointerId: 2 });
+    hold();
+
+    expect(onLongPress).toHaveBeenCalledOnce();
+  });
+
+  it('still abandons the hold for the pointer that started it', () => {
+    const onLongPress = vi.fn();
+    render(<Probe onLongPress={onLongPress} />);
+
+    fireEvent.pointerDown(target(), {
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 7,
+    });
+    fireEvent.pointerUp(window, { pointerId: 7 });
+    hold();
+
+    expect(onLongPress).not.toHaveBeenCalled();
+  });
+
+  it('abandons an in-flight hold that stops being applicable', () => {
+    const onLongPress = vi.fn();
+    const { rerender } = render(<Probe onLongPress={onLongPress} enabled />);
+
+    press();
+    act(() => void vi.advanceTimersByTime(FEEDBACK_DELAY));
+    expect(isHolding()).toBe(true);
+
+    rerender(<Probe onLongPress={onLongPress} enabled={false} />);
+    expect(isHolding()).toBe(false);
+
+    hold();
+    expect(onLongPress).not.toHaveBeenCalled();
+  });
+
   it('does not fire after unmount', () => {
     const onLongPress = vi.fn();
     const { unmount } = render(<Probe onLongPress={onLongPress} />);

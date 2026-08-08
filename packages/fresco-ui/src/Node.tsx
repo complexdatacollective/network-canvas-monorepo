@@ -324,6 +324,13 @@ export default function Node(props: UINodeProps) {
     onLabelReveal?.();
   }, [onLabelReveal]);
 
+  // A label already on screen has to come down when it stops being applicable.
+  // Starting a keyboard drag flips `aria-grabbed` without moving focus, so
+  // nothing else would close a popup opened by that focus.
+  useEffect(() => {
+    if (!canRevealLabel) setLabelRevealed(false);
+  }, [canRevealLabel]);
+
   const {
     onPointerDown: startHold,
     shouldSuppressClick,

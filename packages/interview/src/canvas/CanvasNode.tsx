@@ -63,11 +63,13 @@ export default function CanvasNode({
     labelRevealedRef.current = true;
   }, []);
 
+  const consumeLabelReveal = useCallback(() => {
+    const revealed = labelRevealedRef.current;
+    labelRevealedRef.current = false;
+    return revealed;
+  }, []);
+
   const handleClick = useCallback(() => {
-    if (labelRevealedRef.current) {
-      labelRevealedRef.current = false;
-      return;
-    }
     onSelect?.(nodeId);
   }, [onSelect, nodeId]);
 
@@ -92,6 +94,7 @@ export default function CanvasNode({
     dndItem,
     dndStore,
     onRemove,
+    shouldSuppressTap: consumeLabelReveal,
   });
 
   if (!position) return null;

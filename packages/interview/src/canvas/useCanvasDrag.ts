@@ -36,6 +36,13 @@ type UseCanvasDragOptions = {
   dndStore?: StoreApi<DndStore> | null;
   /** Keyboard equivalent of dragging the node off the canvas (Delete/Backspace). */
   onRemove?: ((nodeId: string) => void) | null;
+  /**
+   * Asked once at the end of every pointer gesture whether that gesture already
+   * did something else — a press-and-hold that revealed a label — and so should
+   * not also count as a tap. Called (and expected to consume) whether or not the
+   * gesture became a drag, so a suppression can never outlive its own gesture.
+   */
+  shouldSuppressTap?: (() => boolean) | null;
 };
 
 export function useCanvasDrag({
@@ -49,6 +56,7 @@ export function useCanvasDrag({
   dndItem = null,
   dndStore = null,
   onRemove = null,
+  shouldSuppressTap = null,
 }: UseCanvasDragOptions) {
   const isDraggingRef = useRef(false);
   const isPointerActiveRef = useRef(false);
@@ -170,6 +178,11 @@ export function useCanvasDrag({
           dndState.endDrag();
         }
 
+        // Consumed on every gesture, including one that became a drag, so a
+        // suppression raised mid-gesture can never be left over to swallow a
+        // later tap.
+        const tapSuppressed = shouldSuppressTap?.() ?? false;
+
         if (isDraggingRef.current) {
           const pos = store.getState().positions.get(nodeId);
           if (pos) {
@@ -180,7 +193,7 @@ export function useCanvasDrag({
               onDragEnd?.(nodeId, pos);
             }
           }
-        } else {
+        } else if (!tapSuppressed) {
           onClick?.();
         }
 
@@ -203,6 +216,7 @@ export function useCanvasDrag({
       onClick,
       dndItem,
       dndStore,
+      shouldSuppressTap,
     ],
   );
 

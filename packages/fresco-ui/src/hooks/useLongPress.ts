@@ -75,6 +75,14 @@ export function useLongPress({
 
   useEffect(() => cancel, [cancel]);
 
+  // A hold that is no longer applicable — because the label now fits, or the
+  // node became disabled — must not still be counting down towards firing.
+  const enabledRef = useRef(enabled);
+  useEffect(() => {
+    enabledRef.current = enabled;
+    if (!enabled) cancel();
+  }, [cancel, enabled]);
+
   const onPointerDown = useCallback(
     (event: React.PointerEvent) => {
       cancel();
@@ -82,35 +90,51 @@ export function useLongPress({
       if (!enabled || event.button !== 0) return;
 
       const origin = { x: event.clientX, y: event.clientY };
+      // Only the finger that began the hold can abandon it. On a tablet a
+      // second finger moving or lifting elsewhere would otherwise cancel a
+      // hold the participant is still patiently keeping still.
+      const { pointerId } = event;
 
       const handleMove = (moveEvent: PointerEvent) => {
+        if (moveEvent.pointerId !== pointerId) return;
         const dx = moveEvent.clientX - origin.x;
         const dy = moveEvent.clientY - origin.y;
         if (Math.hypot(dx, dy) >= DRAG_CANCEL_DISTANCE) cancel();
       };
 
+      const handleEnd = (endEvent: PointerEvent) => {
+        if (endEvent.pointerId !== pointerId) return;
+        cancel();
+      };
+
+      const handleScroll = () => cancel();
+
       // Listening on the window rather than the node keeps the hold correct
       // once a drag system has taken pointer capture, and catches releases
       // that happen away from the node.
       window.addEventListener('pointermove', handleMove);
-      window.addEventListener('pointerup', cancel);
-      window.addEventListener('pointercancel', cancel);
-      window.addEventListener('scroll', cancel, true);
+      window.addEventListener('pointerup', handleEnd);
+      window.addEventListener('pointercancel', handleEnd);
+      window.addEventListener('scroll', handleScroll, true);
 
       detachRef.current = () => {
         window.removeEventListener('pointermove', handleMove);
-        window.removeEventListener('pointerup', cancel);
-        window.removeEventListener('pointercancel', cancel);
-        window.removeEventListener('scroll', cancel, true);
+        window.removeEventListener('pointerup', handleEnd);
+        window.removeEventListener('pointercancel', handleEnd);
+        window.removeEventListener('scroll', handleScroll, true);
       };
 
       feedbackTimerRef.current = window.setTimeout(() => {
         feedbackTimerRef.current = null;
+        if (!enabledRef.current) return;
         setIsHolding(true);
       }, feedbackDelay);
 
       timerRef.current = window.setTimeout(() => {
         timerRef.current = null;
+        // Re-checked rather than trusted from pointer-down: the hold may have
+        // stopped being applicable while the finger was down.
+        if (!enabledRef.current) return;
         heldRef.current = true;
         // Whatever the hold produced is the feedback from here on.
         setIsHolding(false);

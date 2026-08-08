@@ -224,6 +224,40 @@ describe('Node label reveal', () => {
     expect(holdIndicator(button)).not.toBeInTheDocument();
   });
 
+  it('takes an open label down when a keyboard drag starts', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <Node label={CLIPPED_LABEL} onClick={vi.fn()} />,
+    );
+    await act(async () => {});
+
+    await user.tab();
+    await waitFor(() => expect(getPopup()).not.toBeNull());
+
+    // Grabbing for a keyboard drag doesn't move focus, so nothing else would
+    // close a popup that focus opened.
+    rerender(
+      <Node label={CLIPPED_LABEL} onClick={vi.fn()} aria-grabbed={true} />,
+    );
+
+    await waitFor(() => expect(getPopup()).toBeNull());
+  });
+
+  it('takes an open label down once it no longer needs revealing', async () => {
+    const { rerender } = render(
+      <Node label={CLIPPED_LABEL} onClick={vi.fn()} />,
+    );
+    await act(async () => {});
+
+    await pressAndHold(node(CLIPPED_LABEL));
+    await waitFor(() => expect(getPopup()).not.toBeNull());
+
+    // Renamed to something that fits: there is nothing left to reveal.
+    rerender(<Node label={SHORT_LABEL} onClick={vi.fn()} />);
+
+    await waitFor(() => expect(getPopup()).toBeNull());
+  });
+
   it('composes with an external pointer-down handler', async () => {
     const externalPointerDown = vi.fn();
     await renderNode(
