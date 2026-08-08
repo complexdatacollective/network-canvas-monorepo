@@ -213,13 +213,27 @@ export function attributesAsOf(
   scope: string,
   attributes: Record<string, unknown>,
   stageIndex: number,
+  /**
+   * What the creating interaction wrote, where that differs from the final
+   * value. Until a later stage overwrites it the session still shows this, so
+   * a filter evaluated in between has to see it: reading the final value made
+   * the planner select a different subject domain from the real stage and emit
+   * missing or extra edges.
+   */
+  fixedAtCreation?: Record<string, unknown>,
 ): Record<string, unknown> {
   const first = effects.firstWriteIndex.get(scope);
   if (first === undefined) return {};
   const projected: Record<string, unknown> = {};
   for (const [variableId, value] of Object.entries(attributes)) {
     const at = first.get(variableId);
-    if (at !== undefined && at <= stageIndex) projected[variableId] = value;
+    if (at === undefined || at > stageIndex) continue;
+    projected[variableId] =
+      fixedAtCreation !== undefined &&
+      variableId in fixedAtCreation &&
+      isRewrittenAfter(effects, scope, variableId, stageIndex)
+        ? fixedAtCreation[variableId]
+        : value;
   }
   return projected;
 }

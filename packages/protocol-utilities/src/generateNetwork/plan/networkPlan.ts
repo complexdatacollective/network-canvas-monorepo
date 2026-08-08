@@ -362,6 +362,7 @@ function plannedNetwork(
         scopeKeyFor('node', node.type),
         node.attributes,
         asOf,
+        node.fixedAtCreation,
       ),
     })) as NcNode[],
     edges: edges.map((edge) => ({
@@ -374,6 +375,7 @@ function plannedNetwork(
         scopeKeyFor('edge', edge.type),
         edge.attributes,
         asOf,
+        edge.fixedAtCreation,
       ),
     })) as NcEdge[],
   };
