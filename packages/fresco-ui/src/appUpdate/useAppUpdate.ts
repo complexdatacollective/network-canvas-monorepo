@@ -21,6 +21,22 @@ export type UseAppUpdateOptions = {
   hasUnsavedWork: boolean;
   installUpdate: InstallAppUpdate;
   /**
+   * Re-checked at the moment auto-apply would reload the app, in place of
+   * `hasUnsavedWork`.
+   *
+   * `hasUnsavedWork` is a rendered value, so a host that derives it from
+   * anything coalesced — a debounced mirror of an editor's live values, say —
+   * can still be reporting "no work in progress" for an edit the user has
+   * already typed. Auto-apply reloads without asking, so it is the one consumer
+   * that cannot tolerate that lag. A host in that position passes this to make
+   * the check synchronous at the decision point; it may flush whatever it needs
+   * to first, since it runs inside an effect.
+   *
+   * Only auto-apply consults it. `hasUnsavedWork` still drives the manual
+   * button and the dialog, where a render-time value is what's wanted.
+   */
+  checkUnsavedWork?: () => boolean;
+  /**
    * How long after mount an update may still be auto-applied. Auto-apply is for
    * updates present at (or detected shortly after) a fresh load; an update the
    * hourly poll surfaces later in a long-lived session is not reloaded under the
@@ -65,6 +81,7 @@ export default function useAppUpdate({
   needRefresh,
   hasUnsavedWork,
   installUpdate,
+  checkUnsavedWork,
   autoApplyWindowMs = FRESH_LOAD_AUTO_APPLY_MS,
 }: UseAppUpdateOptions): UseAppUpdateResult {
   const [justUpdated, setJustUpdated] = useState(false);
@@ -80,6 +97,8 @@ export default function useAppUpdate({
   const freshLoadWindowOpenRef = useRef(true);
   const hasUnsavedWorkRef = useRef(hasUnsavedWork);
   hasUnsavedWorkRef.current = hasUnsavedWork;
+  const checkUnsavedWorkRef = useRef(checkUnsavedWork);
+  checkUnsavedWorkRef.current = checkUnsavedWork;
 
   // Version-change detection runs exactly once.
   useEffect(() => {
@@ -103,7 +122,13 @@ export default function useAppUpdate({
   useEffect(() => {
     if (!needRefresh || autoAppliedRef.current) return;
     autoAppliedRef.current = true;
-    if (freshLoadWindowOpenRef.current && !hasUnsavedWorkRef.current) {
+    // Prefer the host's synchronous check: the rendered `hasUnsavedWork` can
+    // lag work the user has already done (see `checkUnsavedWork`), and this
+    // branch reloads without asking.
+    const unsavedWork = checkUnsavedWorkRef.current
+      ? checkUnsavedWorkRef.current()
+      : hasUnsavedWorkRef.current;
+    if (freshLoadWindowOpenRef.current && !unsavedWork) {
       void Promise.resolve()
         .then(installUpdate)
         .catch(() => {

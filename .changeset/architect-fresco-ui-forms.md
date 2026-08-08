@@ -31,3 +31,5 @@ Half-finished settings can no longer be saved. Previously the field showed an er
 - an option value containing characters other than letters, numbers and `._-:`.
 
 These restore checks that existed before this release. If an existing protocol already contains one of these — most likely an option value with a space in it, or a blank card display label — the editor will now ask you to correct it before saving that variable. Changing an option value changes the corresponding column name in exported data, so where data collection is already under way, consider whether to keep the existing value.
+
+- An app update arriving moments after an edit no longer reloads over it. Architect checks for unsaved work again at the instant it would apply the update, rather than relying on a reading taken a fraction of a second earlier.

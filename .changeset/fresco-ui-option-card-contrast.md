@@ -17,3 +17,5 @@ Fields no longer establish a CSS size container unless they lay out inline, whic
 Adding a row to a list field now keeps the row's own identity instead of assigning it an unrelated one. The mismatch surfaced a moment later and remounted the row, and any form fields it contained were torn down with it, losing what had just been entered.
 
 A field that is checked while part of the form appears or disappears now finishes that check instead of abandoning it. Previously the field kept whatever error it was already showing, so an answered field could go on reporting itself as required — most visibly where answering one field is what reveals the next section.
+
+Apps may now supply `checkUnsavedWork` to `useAppUpdate`, re-checked at the moment an update would be applied automatically. An app whose "unsaved work" reading is coalesced can otherwise still report itself idle for work the person has just done, and that path reloads without asking.
