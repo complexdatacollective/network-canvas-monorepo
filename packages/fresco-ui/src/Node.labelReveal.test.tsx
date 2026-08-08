@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -27,6 +28,15 @@ const node = (name: string) => screen.getByRole('button', { name });
 const settle = (ms: number) =>
   act(() => new Promise((resolve) => setTimeout(resolve, ms)));
 
+/**
+ * Fitting is batched into a microtask, so whether a label is clipped is known
+ * just after mount — before paint, and long before anyone could press anything.
+ */
+const renderNode = async (ui: ReactElement) => {
+  render(ui);
+  await act(async () => {});
+};
+
 /** Longer than the hold duration, so a hold that was going to fire has. */
 const PAST_HOLD = 700;
 
@@ -40,13 +50,16 @@ const release = (element: HTMLElement) => {
   fireEvent.click(element);
 };
 
+const holdIndicator = (element: HTMLElement) =>
+  element.querySelector('[data-node-holding]');
+
 beforeEach(installLabelMetrics);
 afterEach(uninstallLabelMetrics);
 
 describe('Node label reveal', () => {
   it('reveals the full label after a press and hold', async () => {
     const onLabelReveal = vi.fn();
-    render(
+    await renderNode(
       <Node
         label={CLIPPED_LABEL}
         onClick={vi.fn()}
@@ -62,7 +75,7 @@ describe('Node label reveal', () => {
 
   it('does not select the node when a hold revealed the label', async () => {
     const onClick = vi.fn();
-    render(<Node label={CLIPPED_LABEL} onClick={onClick} />);
+    await renderNode(<Node label={CLIPPED_LABEL} onClick={onClick} />);
 
     const button = node(CLIPPED_LABEL);
     await pressAndHold(button);
@@ -74,7 +87,7 @@ describe('Node label reveal', () => {
   it('leaves an ordinary tap alone', async () => {
     const onClick = vi.fn();
     const onLabelReveal = vi.fn();
-    render(
+    await renderNode(
       <Node
         label={CLIPPED_LABEL}
         onClick={onClick}
@@ -92,8 +105,7 @@ describe('Node label reveal', () => {
   });
 
   it('abandons the reveal once the pointer moves far enough to drag', async () => {
-    const onClick = vi.fn();
-    render(<Node label={CLIPPED_LABEL} onClick={onClick} />);
+    await renderNode(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
 
     const button = node(CLIPPED_LABEL);
     fireEvent.pointerDown(button, { button: 0, clientX: 100, clientY: 100 });
@@ -104,7 +116,7 @@ describe('Node label reveal', () => {
   });
 
   it('never reveals a label that already fits', async () => {
-    render(<Node label={SHORT_LABEL} onClick={vi.fn()} />);
+    await renderNode(<Node label={SHORT_LABEL} onClick={vi.fn()} />);
 
     await pressAndHold(node(SHORT_LABEL));
 
@@ -113,7 +125,7 @@ describe('Node label reveal', () => {
 
   it('reveals a clipped label on keyboard focus', async () => {
     const user = userEvent.setup();
-    render(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
+    await renderNode(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
 
     await user.tab();
     expect(node(CLIPPED_LABEL)).toHaveFocus();
@@ -123,7 +135,7 @@ describe('Node label reveal', () => {
 
   it('does not reveal an unclipped label on keyboard focus', async () => {
     const user = userEvent.setup();
-    render(<Node label={SHORT_LABEL} onClick={vi.fn()} />);
+    await renderNode(<Node label={SHORT_LABEL} onClick={vi.fn()} />);
 
     await user.tab();
     expect(node(SHORT_LABEL)).toHaveFocus();
@@ -133,7 +145,7 @@ describe('Node label reveal', () => {
   });
 
   it('is suppressed during a keyboard drag', async () => {
-    render(
+    await renderNode(
       <Node label={CLIPPED_LABEL} onClick={vi.fn()} aria-grabbed={true} />,
     );
 
@@ -143,7 +155,7 @@ describe('Node label reveal', () => {
   });
 
   it('is suppressed by labelRevealDisabled', async () => {
-    render(
+    await renderNode(
       <Node label={CLIPPED_LABEL} onClick={vi.fn()} labelRevealDisabled />,
     );
 
@@ -153,7 +165,7 @@ describe('Node label reveal', () => {
   });
 
   it('keeps the full label as the accessible name and out of the popup', async () => {
-    render(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
+    await renderNode(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
 
     await pressAndHold(node(CLIPPED_LABEL));
     await waitFor(() => expect(getPopup()).not.toBeNull());
@@ -165,7 +177,7 @@ describe('Node label reveal', () => {
   });
 
   it('renders the popup transparent to the pointer', async () => {
-    render(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
+    await renderNode(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
 
     await pressAndHold(node(CLIPPED_LABEL));
     await waitFor(() => expect(getPopup()).not.toBeNull());
@@ -175,9 +187,46 @@ describe('Node label reveal', () => {
     );
   });
 
+  it('shows that a hold is underway before the label arrives', async () => {
+    await renderNode(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
+
+    const button = node(CLIPPED_LABEL);
+    fireEvent.pointerDown(button, { button: 0, clientX: 0, clientY: 0 });
+
+    // Feedback appears partway through the hold, ahead of the label itself.
+    await settle(300);
+    expect(holdIndicator(button)).toBeInTheDocument();
+    expect(getPopup()).toBeNull();
+
+    await settle(PAST_HOLD);
+    await waitFor(() => expect(getPopup()).not.toBeNull());
+  });
+
+  it('withdraws the hold indicator when the gesture becomes a drag', async () => {
+    await renderNode(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
+
+    const button = node(CLIPPED_LABEL);
+    fireEvent.pointerDown(button, { button: 0, clientX: 100, clientY: 100 });
+    await settle(300);
+    expect(holdIndicator(button)).toBeInTheDocument();
+
+    fireEvent.pointerMove(window, { clientX: 140, clientY: 100 });
+    await waitFor(() => expect(holdIndicator(button)).not.toBeInTheDocument());
+  });
+
+  it('shows no hold indicator on a node with nothing to reveal', async () => {
+    await renderNode(<Node label={SHORT_LABEL} onClick={vi.fn()} />);
+
+    const button = node(SHORT_LABEL);
+    fireEvent.pointerDown(button, { button: 0, clientX: 0, clientY: 0 });
+    await settle(300);
+
+    expect(holdIndicator(button)).not.toBeInTheDocument();
+  });
+
   it('composes with an external pointer-down handler', async () => {
     const externalPointerDown = vi.fn();
-    render(
+    await renderNode(
       <Node
         label={CLIPPED_LABEL}
         onClick={vi.fn()}

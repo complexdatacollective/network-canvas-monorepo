@@ -12,6 +12,70 @@ const overflows = (element: HTMLElement) =>
   element.scrollHeight - element.clientHeight > OVERFLOW_TOLERANCE ||
   element.scrollWidth - element.clientWidth > OVERFLOW_TOLERANCE;
 
+type Fitter = {
+  element: HTMLElement;
+  steps: readonly string[];
+  commit: (stepIndex: number, isTruncated: boolean) => void;
+};
+
+const pending = new Set<Fitter>();
+let flushScheduled = false;
+
+/**
+ * Fits every queued element together, one rung at a time.
+ *
+ * Fitting an element alone means writing a class name and then reading a
+ * measurement from it, which forces the browser to lay the page out again —
+ * once per rung, per element. A canvas full of nodes turns that into hundreds
+ * of layout flushes. Batching writes all of one rung before reading any of it,
+ * so the whole queue costs one flush per rung however many elements are in it.
+ */
+function flush() {
+  flushScheduled = false;
+  if (pending.size === 0) return;
+
+  const fitters = [...pending];
+  pending.clear();
+
+  const states = fitters.map((fitter) => ({
+    fitter,
+    stepIndex: 0,
+    fits: false,
+  }));
+  const deepestLadder = Math.max(...fitters.map(({ steps }) => steps.length));
+
+  for (let rung = 0; rung < deepestLadder; rung += 1) {
+    const searching = states.filter(
+      (state) => !state.fits && rung < state.fitter.steps.length,
+    );
+    if (searching.length === 0) break;
+
+    // Write phase — no measurements taken, so layout is invalidated once.
+    for (const state of searching) {
+      state.fitter.element.className = state.fitter.steps[rung]!;
+      state.stepIndex = rung;
+    }
+
+    // Read phase — the first read pays for the layout, the rest are free.
+    for (const state of searching) {
+      state.fits = !overflows(state.fitter.element);
+    }
+  }
+
+  for (const state of states) {
+    state.fitter.commit(state.stepIndex, !state.fits);
+  }
+}
+
+function enqueue(fitter: Fitter) {
+  pending.add(fitter);
+  if (flushScheduled) return;
+  flushScheduled = true;
+  // A microtask still runs before the browser paints, so the fitted size is
+  // never visible as a change.
+  queueMicrotask(flush);
+}
+
 type UseFitTextOptions = {
   /**
    * Complete class names for each rung of the ladder, largest first. The first
@@ -41,7 +105,7 @@ type UseFitTextResult<T> = {
 
 /**
  * Fits text to its container by stepping down a ladder of type sizes, measuring
- * real layout at each rung rather than inferring from character count.
+ * real layout after render rather than inferring from character count.
  *
  * Reports whether the text is still clipped at the smallest rung, so callers can
  * offer a way to read the rest.
@@ -70,33 +134,22 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
 
     let cancelled = false;
 
+    const fitter: Fitter = {
+      element,
+      steps,
+      commit: (stepIndex, isTruncated) => {
+        if (cancelled) return;
+        setState((previous) =>
+          previous.stepIndex === stepIndex &&
+          previous.isTruncated === isTruncated
+            ? previous
+            : { stepIndex, isTruncated },
+        );
+      },
+    };
+
     const fit = () => {
-      if (cancelled || !ref.current) return;
-      const text = ref.current;
-
-      // Each rung is applied to the DOM directly rather than through state:
-      // measuring a rung requires it to be laid out, and a render per rung
-      // would make a three-rung ladder cost three commits per node.
-      let stepIndex = steps.length - 1;
-      let stillOverflows = true;
-
-      for (let index = 0; index < steps.length; index += 1) {
-        text.className = steps[index]!;
-        stillOverflows = overflows(text);
-        if (!stillOverflows) {
-          stepIndex = index;
-          break;
-        }
-      }
-
-      text.className = steps[stepIndex]!;
-
-      setState((previous) =>
-        previous.stepIndex === stepIndex &&
-        previous.isTruncated === stillOverflows
-          ? previous
-          : { stepIndex, isTruncated: stillOverflows },
-      );
+      if (!cancelled) enqueue(fitter);
     };
 
     fit();
@@ -108,6 +161,7 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
     if (typeof ResizeObserver === 'undefined' || !container) {
       return () => {
         cancelled = true;
+        pending.delete(fitter);
       };
     }
 
@@ -116,6 +170,7 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
 
     return () => {
       cancelled = true;
+      pending.delete(fitter);
       observer.disconnect();
     };
   }, [steps, containerRef, watch, enabled]);

@@ -5,6 +5,8 @@ import { useLongPress } from '../useLongPress';
 
 const HOLD_DURATION = 500;
 
+const FEEDBACK_DELAY = 150;
+
 function Probe({
   onLongPress,
   onClickResult,
@@ -14,7 +16,7 @@ function Probe({
   onClickResult?: (suppressed: boolean) => void;
   enabled?: boolean;
 }) {
-  const { onPointerDown, shouldSuppressClick } = useLongPress({
+  const { onPointerDown, shouldSuppressClick, isHolding } = useLongPress({
     onLongPress,
     enabled,
   });
@@ -22,6 +24,7 @@ function Probe({
   return (
     <button
       type="button"
+      data-holding={isHolding}
       onPointerDown={onPointerDown}
       onClick={() => onClickResult?.(shouldSuppressClick())}
     >
@@ -29,6 +32,8 @@ function Probe({
     </button>
   );
 }
+
+const isHolding = () => target().getAttribute('data-holding') === 'true';
 
 const target = () => screen.getByRole('button');
 
@@ -150,6 +155,56 @@ describe('useLongPress', () => {
     hold();
 
     expect(onLongPress).not.toHaveBeenCalled();
+  });
+
+  it('reports a hold in progress once the press looks deliberate', () => {
+    render(<Probe onLongPress={vi.fn()} />);
+
+    press();
+    expect(isHolding()).toBe(false);
+
+    act(() => void vi.advanceTimersByTime(FEEDBACK_DELAY));
+    expect(isHolding()).toBe(true);
+  });
+
+  it('stops reporting a hold once it fires', () => {
+    render(<Probe onLongPress={vi.fn()} />);
+
+    press();
+    hold();
+
+    expect(isHolding()).toBe(false);
+  });
+
+  it('stops reporting a hold the moment it is abandoned', () => {
+    render(<Probe onLongPress={vi.fn()} />);
+
+    press(100, 100);
+    act(() => void vi.advanceTimersByTime(FEEDBACK_DELAY));
+    expect(isHolding()).toBe(true);
+
+    fireEvent.pointerMove(window, { clientX: 140, clientY: 100 });
+    expect(isHolding()).toBe(false);
+  });
+
+  it('never reports a hold for an ordinary tap', () => {
+    render(<Probe onLongPress={vi.fn()} />);
+
+    press();
+    act(() => void vi.advanceTimersByTime(FEEDBACK_DELAY - 1));
+    fireEvent.pointerUp(window);
+    act(() => void vi.advanceTimersByTime(FEEDBACK_DELAY));
+
+    expect(isHolding()).toBe(false);
+  });
+
+  it('never reports a hold when disabled', () => {
+    render(<Probe onLongPress={vi.fn()} enabled={false} />);
+
+    press();
+    hold();
+
+    expect(isHolding()).toBe(false);
   });
 
   it('does not fire after unmount', () => {

@@ -18,7 +18,10 @@ import { useFitText } from './hooks/useFitText';
 import { useLongPress } from './hooks/useLongPress';
 import { useNodeInteractions } from './hooks/useNodeInteractions';
 import usePrevious from './hooks/usePrevious';
-import { useSafeAnimate } from './hooks/useSafeAnimate';
+import {
+  useSafeAnimate,
+  useShouldSkipAnimations,
+} from './hooks/useSafeAnimate';
 import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 import { composeEventHandlers } from './utils/composeEventHandlers';
 import { cva, type VariantProps } from './utils/cva';
@@ -321,10 +324,17 @@ export default function Node(props: UINodeProps) {
     onLabelReveal?.();
   }, [onLabelReveal]);
 
-  const { onPointerDown: startHold, shouldSuppressClick } = useLongPress({
+  const {
+    onPointerDown: startHold,
+    shouldSuppressClick,
+    isHolding,
+    feedbackDuration,
+  } = useLongPress({
     onLongPress: revealLabel,
     enabled: canRevealLabel,
   });
+
+  const skipAnimations = useShouldSkipAnimations();
 
   // Any press dismisses a revealed label, so a second hold — or an ordinary
   // tap — starts from a clean state.
@@ -478,6 +488,22 @@ export default function Node(props: UINodeProps) {
                   ease: [0.2, 0, 0.6, 1],
                 },
               }}
+              aria-hidden
+            />
+          )}
+        </AnimatePresence>
+        {/* Hold indicator - fills the shape over the remainder of the hold so
+            the press visibly leads somewhere. Lives in the shape layer, so it
+            follows the diamond's rotation rather than the button's box. */}
+        <AnimatePresence>
+          {isHolding && (
+            <motion.span
+              data-node-holding
+              className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/25"
+              initial={skipAnimations ? false : { scale: 0.2, opacity: 0.6 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.12 } }}
+              transition={{ duration: feedbackDuration / 1000, ease: 'linear' }}
               aria-hidden
             />
           )}

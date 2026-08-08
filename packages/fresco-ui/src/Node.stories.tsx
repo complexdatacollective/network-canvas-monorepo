@@ -817,8 +817,12 @@ export const LabelReveal: Story = {
         '[data-base-ui-portal] [data-open][role="tooltip"]',
       );
 
-    // A hold on a clipped name reveals it in full.
+    // A hold on a clipped name shows it is underway, then reveals it in full.
     await userEvent.pointer({ keys: '[MouseLeft>]', target: clipped });
+    await waitFor(
+      () => expect(clipped.querySelector('[data-node-holding]')).not.toBeNull(),
+      { timeout: 3000 },
+    );
     await waitFor(
       () => expect(openTooltip()).toHaveTextContent(fittingLabelCases[4].label),
       { timeout: 3000 },
