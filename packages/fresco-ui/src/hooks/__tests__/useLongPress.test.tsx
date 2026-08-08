@@ -310,6 +310,53 @@ describe('useLongPress', () => {
     expect(onClickResult).toHaveBeenCalledExactlyOnceWith(false);
   });
 
+  it('expires a suppression when the gesture is cancelled outright', () => {
+    const onClickResult = vi.fn();
+    render(<Probe onLongPress={vi.fn()} onClickResult={onClickResult} />);
+
+    press();
+    hold();
+    // A cancelled sequence produces no click at all, so the suppression has
+    // nothing of its own to swallow.
+    fireEvent.pointerCancel(window);
+    act(() => void vi.advanceTimersByTime(1));
+
+    // Whatever activates the node next — a key press arrives as a click, with
+    // no pointer-down in front of it to clear the flag — must get through.
+    fireEvent.click(target());
+    expect(onClickResult).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it('expires a suppression when the gesture ends away from the node', () => {
+    const onClickResult = vi.fn();
+    render(<Probe onLongPress={vi.fn()} onClickResult={onClickResult} />);
+
+    press(100, 100);
+    hold();
+    // Moved off the node after the hold fired: the release lands elsewhere, so
+    // again no click reaches the node.
+    fireEvent.pointerMove(window, { clientX: 300, clientY: 100 });
+    fireEvent.pointerUp(window);
+    act(() => void vi.advanceTimersByTime(1));
+
+    fireEvent.click(target());
+    expect(onClickResult).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it('still suppresses the click that does belong to the hold', () => {
+    const onClickResult = vi.fn();
+    render(<Probe onLongPress={vi.fn()} onClickResult={onClickResult} />);
+
+    press();
+    hold();
+    fireEvent.pointerUp(window);
+    // A real click follows its own pointer-up synchronously, well inside the
+    // window the expiry leaves open.
+    fireEvent.click(target());
+
+    expect(onClickResult).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
   it('does not fire after unmount', () => {
     const onLongPress = vi.fn();
     const { unmount } = render(<Probe onLongPress={onLongPress} />);

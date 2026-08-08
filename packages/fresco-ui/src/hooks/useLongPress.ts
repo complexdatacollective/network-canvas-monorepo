@@ -55,13 +55,17 @@ export function useLongPress({
 }: UseLongPressOptions): UseLongPressResult {
   const timerRef = useRef<number | null>(null);
   const feedbackTimerRef = useRef<number | null>(null);
+  const expiryTimerRef = useRef<number | null>(null);
   const detachRef = useRef<(() => void) | null>(null);
   const heldRef = useRef(false);
   const activePointerRef = useRef<number | null>(null);
   const [isHolding, setIsHolding] = useState(false);
 
-  const cancel = useCallback(() => {
-    activePointerRef.current = null;
+  /**
+   * Stops the hold counting down without giving up the gesture: the finger is
+   * still down, and its eventual release still has to be seen.
+   */
+  const abandonHold = useCallback(() => {
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -71,19 +75,46 @@ export function useLongPress({
       feedbackTimerRef.current = null;
     }
     setIsHolding(false);
-    detachRef.current?.();
-    detachRef.current = null;
   }, []);
 
-  useEffect(() => cancel, [cancel]);
+  /** Drops everything, leaving no timer or listener behind. */
+  const teardown = useCallback(() => {
+    abandonHold();
+    activePointerRef.current = null;
+    detachRef.current?.();
+    detachRef.current = null;
+    if (expiryTimerRef.current !== null) {
+      window.clearTimeout(expiryTimerRef.current);
+      expiryTimerRef.current = null;
+    }
+  }, [abandonHold]);
+
+  const endGesture = useCallback(() => {
+    teardown();
+
+    // A click belonging to this gesture arrives synchronously, before a
+    // macrotask can run. A suppression still set after one therefore has no
+    // click coming — the sequence was cancelled, or released away from the
+    // node — and must not lie in wait for whatever activates the node next,
+    // which may be a key press that never went near a pointer.
+    expiryTimerRef.current = window.setTimeout(() => {
+      expiryTimerRef.current = null;
+      heldRef.current = false;
+    }, 0);
+  }, [teardown]);
+
+  useEffect(() => teardown, [teardown]);
 
   // A hold that is no longer applicable — because the label now fits, or the
-  // node became disabled — must not still be counting down towards firing.
+  // node became disabled — must not still be counting down towards firing,
+  // nor leave a suppression behind for an activation it has nothing to do with.
   const enabledRef = useRef(enabled);
   useEffect(() => {
     enabledRef.current = enabled;
-    if (!enabled) cancel();
-  }, [cancel, enabled]);
+    if (enabled) return;
+    teardown();
+    heldRef.current = false;
+  }, [enabled, teardown]);
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent) => {
@@ -92,12 +123,12 @@ export function useLongPress({
       // suppression the first finger's release still needs.
       if (activePointerRef.current !== null) return;
 
-      cancel();
+      teardown();
       heldRef.current = false;
       if (!enabled || event.button !== 0) return;
 
-      // Only the finger that began the hold can abandon it. On a tablet a
-      // second finger moving or lifting elsewhere would otherwise cancel a
+      // Only the finger that began the hold can abandon or end it. On a tablet
+      // a second finger moving or lifting elsewhere would otherwise disturb a
       // hold the participant is still patiently keeping still.
       const { pointerId } = event;
       activePointerRef.current = pointerId;
@@ -108,15 +139,17 @@ export function useLongPress({
         if (moveEvent.pointerId !== pointerId) return;
         const dx = moveEvent.clientX - origin.x;
         const dy = moveEvent.clientY - origin.y;
-        if (Math.hypot(dx, dy) >= DRAG_CANCEL_DISTANCE) cancel();
+        // Abandons the hold but keeps the gesture, so the release that ends it
+        // is still seen and can expire any suppression already raised.
+        if (Math.hypot(dx, dy) >= DRAG_CANCEL_DISTANCE) abandonHold();
       };
 
       const handleEnd = (endEvent: PointerEvent) => {
         if (endEvent.pointerId !== pointerId) return;
-        cancel();
+        endGesture();
       };
 
-      const handleScroll = () => cancel();
+      const handleScroll = () => abandonHold();
 
       // Listening on the window rather than the node keeps the hold correct
       // once a drag system has taken pointer capture, and catches releases
@@ -150,7 +183,15 @@ export function useLongPress({
         onLongPress();
       }, holdDuration);
     },
-    [cancel, enabled, feedbackDelay, holdDuration, onLongPress],
+    [
+      abandonHold,
+      enabled,
+      endGesture,
+      feedbackDelay,
+      holdDuration,
+      onLongPress,
+      teardown,
+    ],
   );
 
   const shouldSuppressClick = useCallback(() => {
