@@ -3,12 +3,13 @@ import { useLocation } from 'wouter';
 
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
 import { useAppDispatch } from '~/ducks/hooks';
 import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import type { AppDispatch } from '~/ducks/store';
 import { store } from '~/ducks/store';
-import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
+import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 
 // Shared mutable state read by this hook and the Router's aroundNav.
@@ -355,11 +356,15 @@ export const useProtocolNavGuard = () => {
       // overview) with uncommitted edits: intra-/protocol nav that the
       // leavingProtocol check misses. Only prompt when the draft is actually
       // dirty, so ordinary Back from a pristine editor navigates freely.
+      // The mirror of the stage form's values is debounced, so an edit made
+      // in the last moment before Back is not in Redux yet. Without this the
+      // guard reads a pristine draft and discards that edit silently.
+      flushStageLiveValues();
       const leavingDirtyStageEditor =
         !leavingProtocol &&
         isStageEditorPath(oldPath) &&
         !isStageEditorPath(newPath) &&
-        getStageDraftDirty(store.getState());
+        getLiveStageDraftDirty(store.getState());
 
       if (!leavingProtocol && !leavingDirtyStageEditor) {
         syncProtocolHistoryMarker(newPath, destinationMarker);
@@ -383,7 +388,8 @@ export const useProtocolNavGuard = () => {
         // takes this branch, but the uncommitted (unpersisted) draft would still
         // be lost — so surface it and reset the draft on confirm.
         const draftDirty =
-          isStageEditorPath(oldPath) && getStageDraftDirty(store.getState());
+          isStageEditorPath(oldPath) &&
+          getLiveStageDraftDirty(store.getState());
         void promptLeaveEditor(
           dispatch,
           openDialog,

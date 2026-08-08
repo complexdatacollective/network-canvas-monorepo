@@ -127,8 +127,8 @@ test('inserts a new Information stage at the clicked index', async ({
   // Information's Title section (Title.tsx) requires a non-empty `title`
   // (UI-level `validation={{ required: true }}`, stricter than the schema's
   // `title: z.string().optional()`) and ContentGrid.tsx's `notEmpty`
-  // validator requires a non-empty `items` array — both are redux-form
-  // sync-validated, so a save that actually commits needs both filled.
+  // validator requires a non-empty `items` array — both are validated on
+  // submit, so a save that actually commits needs both filled.
   await architectPage
     .getByRole('textbox', { name: 'Page heading' })
     .fill('Inserted stage heading');
@@ -140,7 +140,7 @@ test('inserts a new Information stage at the clicked index', async ({
   await contentField.click();
   // Real keystrokes (not `.fill()`) so Tiptap/ProseMirror's own input
   // handling — which `.fill()`'s direct DOM write bypasses — registers the
-  // change into redux-form.
+  // change into the form store.
   await contentField.pressSequentially('Minimal content.');
   // `exact` to avoid matching the RichTextEditor toolbar's "Add link" button.
   await architectPage.getByRole('button', { name: 'Add', exact: true }).click();

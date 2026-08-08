@@ -212,6 +212,8 @@
   --color-surface-2-contrast: var(--surface-2-contrast);
   --color-surface-3: var(--surface-3);
   --color-surface-3-contrast: var(--surface-3-contrast);
+  --color-surface-4: var(--surface-4);
+  --color-surface-4-contrast: var(--surface-4-contrast);
   --color-surface-popover: var(--surface-popover);
   --color-surface-popover-contrast: var(--surface-popover-contrast);
 

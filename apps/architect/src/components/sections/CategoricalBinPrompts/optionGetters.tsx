@@ -16,7 +16,7 @@ const getOptionProperties = (option: VariableOption): OptionProperties => ({
   label: option.label,
 });
 
-// MultiSelect sources `allValues` from redux-form, so it is undefined until the
+// `allValues` is the array field's own value, so it is undefined until the
 // field holds rows, and a partially-filled row has no `property` yet.
 const hasSortProperty = (row: unknown): row is { property: string } =>
   typeof row === 'object' &&

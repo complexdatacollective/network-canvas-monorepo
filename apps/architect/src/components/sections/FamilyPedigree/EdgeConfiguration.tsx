@@ -1,7 +1,5 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
-import { useCallback, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import { change, formValueSelector, getFormInitialValues } from 'redux-form';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -11,20 +9,27 @@ import {
   RELATIONSHIP_TYPE_OPTIONS,
 } from '@codaco/shared-consts';
 import { Row, Section } from '~/components/EditorLayout';
-import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { clearFieldValue } from '~/components/Form/clearFieldValue';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { Entity } from '~/components/NewVariableWindow';
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import EntitySelectField from '~/components/sections/fields/EntitySelectField/EntitySelectField';
+import { EntitySelectControl } from '~/components/sections/fields/EntitySelectField/EntitySelectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
+import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
+import {
+  useSetStageValue,
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 import {
   crossClassPickIssue,
   validatedElsewhereMessage,
 } from '~/components/Validations/contradictions';
-import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import {
   EMPTY_VARIABLES,
@@ -34,7 +39,9 @@ import {
 import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 import { excludeValidatedUses } from '~/selectors/roleFilters';
 import { optionsMatch } from '~/utils/variables';
+
 const edgeEntity: Entity = 'edge';
+
 // Variable pickers that reference the selected edge type's variables; they must
 // be cleared when the edge type changes so a saved stage never points at
 // variables belonging to the previous edge type.
@@ -44,8 +51,10 @@ const EDGE_DEPENDENT_VARIABLE_FIELDS = [
   'edgeConfig.isGestationalCarrierVariable',
   'edgeConfig.gameteRoleVariable',
 ];
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
 type VariableWindowInitialProps = {
   entity: Entity;
   type: string;
@@ -55,6 +64,7 @@ type VariableWindowInitialProps = {
   };
   lockedOptions: VariableOptions | null;
 };
+
 type VariableRowProps = {
   name: string;
   label: string;
@@ -73,6 +83,7 @@ type VariableRowProps = {
    */
   crossClassPick: (value: unknown) => string | undefined;
 };
+
 const VariableRow = ({
   name,
   label,
@@ -81,52 +92,68 @@ const VariableRow = ({
   onCreateOption,
   edgeType,
   crossClassPick,
-}: VariableRowProps) => (
-  <div className="flex items-start gap-5">
-    <div className="flex flex-1 basis-0 flex-col gap-1 pt-2.5">
-      <span className="font-semibold">
-        {label}
-        <span className="text-destructive ms-1">*</span>
-      </span>
-      <span className="text-text/60 text-sm leading-snug">{description}</span>
+}: VariableRowProps) => {
+  const initialValue = useStageInitialValue<string>(name);
+
+  return (
+    <div className="flex items-start gap-5">
+      <div className="flex flex-1 basis-0 flex-col gap-1 pt-2.5">
+        <span className="font-semibold">
+          {label}
+          <span className="text-destructive ms-1">*</span>
+        </span>
+        <span className="text-text/60 text-sm leading-snug">{description}</span>
+      </div>
+      <div className="relative flex-1 basis-0">
+        <IssueAnchor fieldName={name} description={`${label} Variable`} />
+        <ArchitectField
+          name={name}
+          component={VariablePickerControl}
+          validation={{ required: true, crossClassPick }}
+          label={`${label} variable`}
+          labelHidden
+          initialValue={initialValue}
+          entity="edge"
+          type={edgeType}
+          options={options}
+          onCreateOption={onCreateOption}
+        />
+      </div>
     </div>
-    <div className="relative flex-1 basis-0">
-      <IssueAnchor fieldName={name} description={`${label} Variable`} />
-      <ValidatedField
-        name={name}
-        component={VariablePicker}
-        validation={{ required: true, crossClassPick }}
-        componentProps={{
-          entity: 'edge',
-          type: edgeType,
-          label: 'Select variable',
-          options,
-          onCreateOption,
-        }}
-      />
-    </div>
-  </div>
-);
-const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
-  const dispatch = useAppDispatch();
-  const formSelector = formValueSelector(form);
-  const edgeType = useSelector(
-    (state: RootState) =>
-      formSelector(state, 'edgeConfig.type') as string | undefined,
   );
-  // redux-form invokes a field's onChange prop as (event, newValue, previousValue).
-  // A reselect of the current edge type must not clear the dependent variables.
-  const handleResetDependentVariables = useCallback(
-    (_event: unknown, newValue?: string, previousValue?: string) => {
-      if (newValue === previousValue) {
-        return;
-      }
-      for (const field of EDGE_DEPENDENT_VARIABLE_FIELDS) {
-        dispatch(change(form, field, null) as UnknownAction);
-      }
-    },
-    [dispatch, form],
-  );
+};
+
+const EdgeConfiguration = (_props: StageEditorSectionProps) => {
+  const { storeApi } = useStageFormContext();
+  const setStageValue = useSetStageValue();
+  const edgeType = useStageFormValue<string>('edgeConfig.type');
+  const edgeTypeInitial = useStageInitialValue<string>('edgeConfig.type');
+
+  // The `with*ChangeHandler` enhancer's replacement — a caller `onChange` on
+  // ArchitectField would replace the store write instead of running alongside
+  // it (fresco-ui `Field` spreads caller props last), so the reset lives in an
+  // observer effect instead. `previousEdgeType` starts as the field's own
+  // current value, so a stage's first edge-type pick never trips the reset.
+  const previousEdgeType = useRef(edgeType);
+  const restoreVersion = useStageRestoreVersion();
+  const previousRestoreVersion = useRef(restoreVersion);
+  useEffect(() => {
+    const previous = previousEdgeType.current;
+    previousEdgeType.current = edgeType;
+    const previousVersion = previousRestoreVersion.current;
+    previousRestoreVersion.current = restoreVersion;
+    if (!previous || previous === edgeType) return;
+
+    // An undo/redo restores the edge type together with the slots that belong
+    // to it, so clearing here would wipe the half of the restore the user was
+    // reaching for.
+    if (previousVersion !== restoreVersion) return;
+
+    for (const field of EDGE_DEPENDENT_VARIABLE_FIELDS) {
+      clearFieldValue(storeApi, field);
+    }
+  }, [edgeType, restoreVersion, storeApi]);
+
   const edgeVariableOptions = useSelector((state: RootState) =>
     edgeType
       ? getVariableOptionsForSubject(state, { entity: 'edge', type: edgeType })
@@ -145,31 +172,20 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
       : EMPTY_VARIABLES,
   );
   const roleMap = useSelector(getVariableRoleMap);
-  const stageInitialValues = useSelector((state: RootState) =>
-    getFormInitialValues(form)(state),
+  const committedEdgeConfig =
+    useStageInitialValue<Record<string, unknown>>('edgeConfig');
+  const relationshipTypeDraft = useStageFormValue<string>(
+    'edgeConfig.relationshipTypeVariable',
   );
-  const relationshipTypeDraft = useSelector((state: RootState) => {
-    const value: unknown = formSelector(
-      state,
-      'edgeConfig.relationshipTypeVariable',
-    );
-    return typeof value === 'string' ? value : undefined;
-  });
-  const isActiveDraft = useSelector((state: RootState) => {
-    const value: unknown = formSelector(state, 'edgeConfig.isActiveVariable');
-    return typeof value === 'string' ? value : undefined;
-  });
-  const isGestationalCarrierDraft = useSelector((state: RootState) => {
-    const value: unknown = formSelector(
-      state,
-      'edgeConfig.isGestationalCarrierVariable',
-    );
-    return typeof value === 'string' ? value : undefined;
-  });
-  const gameteRoleDraft = useSelector((state: RootState) => {
-    const value: unknown = formSelector(state, 'edgeConfig.gameteRoleVariable');
-    return typeof value === 'string' ? value : undefined;
-  });
+  const isActiveDraft = useStageFormValue<string>(
+    'edgeConfig.isActiveVariable',
+  );
+  const isGestationalCarrierDraft = useStageFormValue<string>(
+    'edgeConfig.isGestationalCarrierVariable',
+  );
+  const gameteRoleDraft = useStageFormValue<string>(
+    'edgeConfig.gameteRoleVariable',
+  );
   // Save-time cross-class gate for an edgeConfig slot (an UNVALIDATED
   // writer): rejects a pick a form elsewhere in the saved document already
   // collects, escaping the slot's own committed value so a pre-existing
@@ -183,11 +199,8 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
       if (!edgeVariablesSubject) return undefined;
       const variableId = typeof value === 'string' ? value : '';
       if (!variableId) return undefined;
-      const committedConfig: unknown = isRecord(stageInitialValues)
-        ? stageInitialValues.edgeConfig
-        : undefined;
-      const committedRaw: unknown = isRecord(committedConfig)
-        ? committedConfig[slotField]
+      const committedRaw: unknown = isRecord(committedEdgeConfig)
+        ? committedEdgeConfig[slotField]
         : undefined;
       const committed = typeof committedRaw === 'string' ? committedRaw : '';
       return crossClassPickIssue({
@@ -267,7 +280,7 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
         field: string;
       },
     ];
-    dispatch(change(form, params.field, id));
+    setStageValue(params.field, id);
   };
   const initialWindowProps: VariableWindowInitialProps = {
     entity: edgeEntity,
@@ -331,13 +344,14 @@ const EdgeConfiguration = ({ form }: StageEditorSectionProps) => {
       >
         <Row>
           <IssueAnchor fieldName="edgeConfig.type" description="Edge Type" />
-          <ValidatedField
+          <ArchitectField
             name="edgeConfig.type"
+            component={EntitySelectControl}
             entityType="edge"
             promptBeforeChange="You attempted to change the edge type of a stage that you have already configured. Before you can proceed the variables selected for this edge type must be cleared. Do you want to change the edge type now?"
-            component={EntitySelectField}
-            onChange={handleResetDependentVariables}
             validation={{ required: true }}
+            label="Edge type"
+            initialValue={edgeTypeInitial}
           />
         </Row>
         {edgeType && (

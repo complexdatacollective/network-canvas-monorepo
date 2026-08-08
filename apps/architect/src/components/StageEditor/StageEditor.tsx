@@ -1,17 +1,17 @@
 import { omit } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { getFormValues, isInvalid } from 'redux-form';
+import { useSelector, useStore } from 'react-redux';
 import { useLocation } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import {
   type Stage,
   type StageType,
   validateProtocol,
 } from '@codaco/protocol-validation';
-import Editor from '~/components/Editor';
 import { launchPreview } from '~/components/PreviewHost/launchPreview';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -26,18 +26,16 @@ import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import type { RootState } from '~/ducks/store';
 import { useStageEditorKeyboard } from '~/hooks/useStageEditorKeyboard';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
-import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
+import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { ensureError } from '~/utils/ensureError';
 import { reportError } from '~/utils/reportError';
 
-import {
-  buildProtocolWithStage,
-  normalizePreviewStage,
-} from './buildProtocolWithStage';
-import { formName } from './configuration';
+import { buildProtocolWithStage } from './buildProtocolWithStage';
 import { getStageEditorInitialValues } from './getStageEditorInitialValues';
 import type { SectionComponent } from './Interfaces';
 import { getInterface } from './Interfaces';
+import StageForm from './StageForm';
+import { flushStageLiveValues } from './StageFormBridge';
 import StageHeading from './StageHeading';
 
 type StageEditorProps = {
@@ -46,12 +44,27 @@ type StageEditorProps = {
   type?: string;
 };
 
+// The mirror the stage form bridge maintains. It is the only view of the live
+// form values available outside the form's provider, which is where the
+// preview payload and the wip-protocol validation are assembled.
+const getLiveStageValues = (state: RootState) =>
+  state.stageEditorDraft.ui.liveValues;
+
+/**
+ * Undo/redo shortcuts write to the stage form store, so the hook has to run
+ * inside the form's provider.
+ */
+const StageEditorKeyboardShortcuts = () => {
+  useStageEditorKeyboard();
+  return null;
+};
+
 const StageEditor = (props: StageEditorProps) => {
   const { id = null, type, insertAtIndex } = props;
 
   const dispatch = useAppDispatch();
+  const reduxStore = useStore<RootState>();
   const { openDialog } = useDialog();
-  useStageEditorKeyboard();
   const [, setLocation] = useLocation();
 
   // Get stage metadata from Redux state
@@ -89,19 +102,40 @@ const StageEditor = (props: StageEditorProps) => {
   const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
   const interfaceType = (stage?.type || type || 'Information') as StageType;
   const template = getInterface(interfaceType).template;
-  const initialValues = getStageEditorInitialValues({
-    interfaceType,
-    stage,
-    template,
-  });
 
-  // Get form state
-  const hasUnsavedChanges = useSelector(getStageDraftDirty);
-  const formValues = useSelector((state: RootState) =>
-    getFormValues(formName)(state),
-  ) as Stage | undefined;
-  const isFormSyncInvalid = useSelector((state: RootState) =>
-    isInvalid(formName)(state),
+  // The committed stage seeds the draft baseline and every field's
+  // `initialValue`, both of which are register-effect dependencies — so it has
+  // to keep its identity across renders.
+  const committedStage = useMemo(
+    () =>
+      getStageEditorInitialValues({
+        interfaceType,
+        stage,
+        template,
+      }) as unknown as Stage,
+    [interfaceType, stage, template],
+  );
+
+  const hasUnsavedChanges = useSelector(getLiveStageDraftDirty);
+  const formValues = useSelector(getLiveStageValues);
+
+  /**
+   * The stage's `id` and `type` belong to no field, so neither survives a trip
+   * through the form. Every consumer of the form's values has to merge them
+   * back: without `type` the stage matches no member of the schema's tagged
+   * union, and the whole protocol fails validation.
+   */
+  const withStageIdentity = useCallback(
+    (values: Stage): Stage =>
+      ({
+        id: committedStage.id,
+        type: committedStage.type,
+        // No field owns either key, so `values` cannot carry them — dropping
+        // them keeps that explicit, and keeps the committed identity
+        // authoritative if a future field ever does register one.
+        ...omit(values as unknown as Record<string, unknown>, ['id', 'type']),
+      }) as unknown as Stage,
+    [committedStage],
   );
 
   // Preview state
@@ -111,20 +145,20 @@ const StageEditor = (props: StageEditorProps) => {
 
   // Whether the wip protocol (committed protocol + current stage edits) passes
   // full schema validation. We disable preview whenever it does not, so the
-  // button reflects "this would be a valid protocol to preview" rather than
-  // only redux-form's field-level (mount-dependent) sync state. This covers
-  // structural problems the sync validators miss — e.g. a side panel with no
-  // title (`title` pruned away -> required field missing) or with a malformed
-  // filter — even when the relevant section is collapsed and its fields are
-  // unmounted. Starts `false` (disabled until proven valid) so preview can't be
+  // button reflects "this would be a valid protocol to preview". This is the
+  // only gate: it covers structural problems field-level validators miss — e.g.
+  // a side panel with no title (`title` pruned away -> required field missing)
+  // or with a malformed filter — even when the relevant section is collapsed
+  // and its fields are unmounted. (The form's own `isValid` is deliberately
+  // not consulted: it is a strict subset of this check, and it is
+  // populated lazily by whichever fields happen to have validated, which would
+  // make the button's enabled state depend on where the researcher had
+  // clicked.) Starts `false` (disabled until proven valid) so preview can't be
   // clicked before the first validation resolves; the first run is immediate
   // (see below) so a freshly-opened valid stage doesn't visibly sit disabled.
   const [isWipProtocolValid, setIsWipProtocolValid] = useState(false);
   const hasValidatedOnce = useRef(false);
 
-  // The draft baseline is seeded by the stageEditorDraft listener on
-  // redux-form INITIALIZE (which fires on mount and on `id` change via
-  // enableReinitialize), so no mount effect is needed here.
   useEffect(() => {
     if (!protocol || !formValues) {
       setIsWipProtocolValid(false);
@@ -136,10 +170,9 @@ const StageEditor = (props: StageEditorProps) => {
     // can't disagree with what clicking Preview would actually do. The initial
     // one-stage override is runtime-only; skip logic remains in this shape.
     const runValidation = () => {
-      const stageToValidate = normalizePreviewStage(formValues);
       const wipProtocol = buildProtocolWithStage(
         protocol,
-        stageToValidate,
+        withStageIdentity(formValues),
         id,
         insertAtIndex,
       );
@@ -173,20 +206,20 @@ const StageEditor = (props: StageEditorProps) => {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [protocol, formValues, id, insertAtIndex]);
+  }, [protocol, formValues, id, insertAtIndex, withStageIdentity]);
 
-  // Preview is disabled when the form has obvious field-level errors (immediate
-  // feedback) or when the wip protocol fails schema validation (comprehensive,
-  // and independent of which sections are currently mounted).
-  const isStageInvalid = isFormSyncInvalid || !isWipProtocolValid;
+  const isStageInvalid = !isWipProtocolValid;
 
-  // Handle form submission
-  const onSubmit = useCallback(
-    (stageData: Record<string, unknown>) => {
-      const normalizedStage = omit(stageData, '_modified') as Stage;
+  const onSubmit = useCallback<FormSubmitHandler>(
+    (values: Record<string, FieldValue>) => {
+      // A key the form no longer carries has been removed (a section toggled
+      // off), which is why the update overwrites rather than merges: preview
+      // already renders the stage without it, and a merge would silently
+      // resurrect it on save.
+      const normalizedStage = withStageIdentity(values as unknown as Stage);
 
       if (id) {
-        dispatch(stageActions.updateStage(id, normalizedStage));
+        dispatch(stageActions.updateStage(id, normalizedStage, true));
       } else {
         dispatch(
           stageActions.createStage({
@@ -198,13 +231,20 @@ const StageEditor = (props: StageEditorProps) => {
 
       dispatch(resetDraft(null));
       setLocation('/protocol');
+
+      return { success: true };
     },
-    [id, insertAtIndex, setLocation, dispatch],
+    [withStageIdentity, id, insertAtIndex, setLocation, dispatch],
   );
 
   // Cancel handler with unsaved changes confirmation
   const handleCancel = useCallback(async (): Promise<boolean> => {
-    if (!hasUnsavedChanges) {
+    // The mirror is debounced, so an edit made in the last fraction of a
+    // second may not have reached Redux. Reading a stale mirror here discards
+    // that edit with no confirmation at all.
+    flushStageLiveValues();
+
+    if (!getLiveStageDraftDirty(reduxStore.getState())) {
       dispatch(resetDraft(null));
       setLocation('/protocol');
       return true;
@@ -229,10 +269,15 @@ const StageEditor = (props: StageEditorProps) => {
     }
 
     return false;
-  }, [hasUnsavedChanges, openDialog, setLocation, dispatch]);
+  }, [openDialog, reduxStore, setLocation, dispatch]);
 
   const handlePreview = useCallback(async () => {
-    if (!protocol || !formValues) {
+    // Preview must show the stage as it is on screen, not as the mirror last
+    // coalesced it.
+    flushStageLiveValues();
+    const liveValues = getLiveStageValues(reduxStore.getState());
+
+    if (!protocol || !liveValues) {
       void openDialog({
         type: 'acknowledge',
         intent: 'destructive',
@@ -243,10 +288,9 @@ const StageEditor = (props: StageEditorProps) => {
       return;
     }
 
-    const normalizedStage = normalizePreviewStage(formValues);
     const previewProtocol = buildProtocolWithStage(
       protocol,
-      normalizedStage,
+      withStageIdentity(liveValues),
       id,
       insertAtIndex,
     );
@@ -308,9 +352,9 @@ const StageEditor = (props: StageEditorProps) => {
   }, [
     protocol,
     stageIndex,
-    dispatch,
     openDialog,
-    formValues,
+    reduxStore,
+    withStageIdentity,
     id,
     insertAtIndex,
     useSyntheticData,
@@ -334,7 +378,6 @@ const StageEditor = (props: StageEditorProps) => {
         return (
           <SectionComponent
             key={sectionKey}
-            form={formName}
             stagePath={stagePath}
             stagePosition={stagePosition}
             interfaceType={interfaceType}
@@ -379,7 +422,13 @@ const StageEditor = (props: StageEditorProps) => {
   }
 
   return (
-    <Editor initialValues={initialValues} onSubmit={onSubmit} form={formName}>
+    <StageForm
+      stageId={id}
+      interfaceType={interfaceType}
+      committedStage={committedStage}
+      onSubmit={onSubmit}
+    >
+      <StageEditorKeyboardShortcuts />
       <div className="relative h-full overflow-y-auto pb-32">
         <StageEditorNav
           stageName={stageName}
@@ -404,7 +453,7 @@ const StageEditor = (props: StageEditorProps) => {
           </div>
         </div>
       </div>
-    </Editor>
+    </StageForm>
   );
 };
 

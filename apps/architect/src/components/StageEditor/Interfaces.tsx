@@ -60,8 +60,6 @@ import { getInterfaceTemplate } from './interfaceTemplates';
  * Individual section components may use some or all of these props.
  */
 export type StageEditorSectionProps = {
-  /** Redux form name (always "edit-stage") */
-  form: string;
   /** Path to stage in Redux state (e.g., "stages[0]"), or null if creating a new stage */
   stagePath: string | null;
   /** Zero-based stage position, including the prospective insertion position */

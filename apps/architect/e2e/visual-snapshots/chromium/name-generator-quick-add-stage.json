@@ -1,16 +1,16 @@
 {
   "label": "Quickly Add Friends",
+  "id": "id-1",
   "type": "NameGeneratorQuickAdd",
   "subject": {
-    "type": "id-1",
-    "entity": "node"
+    "entity": "node",
+    "type": "id-2"
   },
-  "quickAdd": "id-2",
+  "quickAdd": "id-3",
   "prompts": [
     {
-      "id": "id-3",
+      "id": "id-4",
       "text": "Name someone you know"
     }
-  ],
-  "id": "id-4"
+  ]
 }

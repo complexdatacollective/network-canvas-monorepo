@@ -14,9 +14,14 @@ import { createVariableViaSpotlight } from './variables.js';
 //   are the codebook entity/variable names; arrays fill in click order).
 // - normalizePreset drops groupVariable/edges/highlight when empty, so only
 //   configured keys persist.
-// - Behaviour switches are named by their field labels (NOT the headings):
-//   freeDraw → 'Allow drawing on the canvas', automaticLayout → 'Position
-//   nodes automatically using a force-directed layout'. The Narrative
+// - Behaviour switches are named by their field LABEL ('Free-draw',
+//   'Automatic layout', 'Allow repositioning'); the sentence beneath each one
+//   ('Allow drawing on the canvas', …) is the field's `hint`, exposed as the
+//   switch's accessible DESCRIPTION via `aria-describedby`, not its name.
+//   (Pre-migration the sentence was the redux-form Field's `label` and so
+//   became the accessible name, while the short label was a bare `<Heading>`
+//   associated with nothing — the migrated markup names and describes the
+//   control properly, so these selectors follow the label.) The Narrative
 //   template seeds automaticLayout:true/allowRepositioning:true and the
 //   Toggle mount effect adds freeDraw:false.
 export async function addNarrativePreset(
@@ -98,15 +103,9 @@ export async function setNarrativeBehaviours(
   // Template defaults: automaticLayout true, allowRepositioning true,
   // freeDraw false (mount effect) — only click switches that must change.
   if (opts.freeDraw) {
-    await section
-      .getByRole('switch', { name: 'Allow drawing on the canvas' })
-      .click();
+    await section.getByRole('switch', { name: 'Free-draw' }).click();
   }
   if (opts.automaticLayout === false) {
-    await section
-      .getByRole('switch', {
-        name: 'Position nodes automatically using a force-directed layout',
-      })
-      .click();
+    await section.getByRole('switch', { name: 'Automatic layout' }).click();
   }
 }

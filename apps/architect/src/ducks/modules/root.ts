@@ -1,7 +1,6 @@
 /* eslint-disable import/prefer-default-export */
 
 import { combineReducers, type UnknownAction } from '@reduxjs/toolkit';
-import { reducer as formReducer } from 'redux-form';
 
 import createTimeline from '../middleware/timeline';
 import activeProtocol from './activeProtocol';
@@ -32,7 +31,6 @@ const timelineOptions = {
 
 export const rootReducer = combineReducers({
   app,
-  form: formReducer,
   activeProtocol: createTimeline(activeProtocol, timelineOptions),
   protocols,
   protocolValidation,

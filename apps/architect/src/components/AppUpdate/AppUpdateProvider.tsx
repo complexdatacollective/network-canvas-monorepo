@@ -13,8 +13,10 @@ import { installServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/serviceW
 import useAppUpdate, {
   type UseAppUpdateResult,
 } from '@codaco/fresco-ui/appUpdate/useAppUpdate';
+import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
 import { useAppSelector } from '~/ducks/hooks';
-import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
+import { store } from '~/ducks/store';
+import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { appVersion } from '~/utils/appVersion';
 import {
   isCriticalOperationInProgress,
@@ -67,7 +69,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
 
   // A reload discards an unsaved stage-editor draft, any open dialog, and any
   // in-flight import/export; gate auto-apply on these being clear.
-  const draftDirty = useAppSelector(getStageDraftDirty);
+  const draftDirty = useAppSelector(getLiveStageDraftDirty);
   const dialogOpen = useSyncExternalStore(
     subscribeOpenDialogPresence,
     hasOpenDialog,
@@ -102,12 +104,29 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
     [registration],
   );
 
+  // Auto-apply reloads the app without asking, so it must not read the
+  // debounced mirror `getLiveStageDraftDirty` is built on: an edit made inside
+  // the coalescing window still reports pristine, and the reload would discard
+  // it. Flush the mirror and re-read everything synchronously at the decision
+  // point — this runs inside the hook's effect, so the dispatch is safe here in
+  // a way it would not be during render (which is why `hasUnsavedWork` above,
+  // used for the manual button and the dialog, stays a rendered value).
+  const checkUnsavedWork = useCallback(() => {
+    flushStageLiveValues();
+    return (
+      getLiveStageDraftDirty(store.getState()) ||
+      hasOpenDialog() ||
+      isCriticalOperationInProgress()
+    );
+  }, []);
+
   const update = useAppUpdate({
     app: 'architect',
     currentVersion: appVersion,
     needRefresh,
     hasUnsavedWork,
     installUpdate,
+    checkUnsavedWork,
   });
 
   return (

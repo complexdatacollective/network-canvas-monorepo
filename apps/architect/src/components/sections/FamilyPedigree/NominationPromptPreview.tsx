@@ -1,30 +1,24 @@
 import { get } from 'es-toolkit/compat';
-import { useSelector } from 'react-redux';
-import { formValueSelector } from 'redux-form';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Markdown from '~/components/Markdown';
+import { useStageFormValue } from '~/components/StageEditor/stageFormHooks';
 import { getColorForType } from '~/config/variables';
-import type { RootState } from '~/ducks/store';
+import { useAppSelector } from '~/ducks/hooks';
 import { getVariablesForSubject } from '~/selectors/codebook';
 
 type NominationPromptPreviewProps = {
   text: string;
   variable: string;
-  form: string;
 };
 
 const NominationPromptPreview = ({
   text,
   variable,
-  form,
 }: NominationPromptPreviewProps) => {
-  const nodeType = useSelector(
-    (state: RootState) =>
-      formValueSelector(form)(state, 'nodeConfig.type') as string | undefined,
-  );
+  const nodeType = useStageFormValue<string>('nodeConfig.type');
 
-  const subjectVariables = useSelector((state: RootState) =>
+  const subjectVariables = useAppSelector((state) =>
     getVariablesForSubject(state, { entity: 'node', type: nodeType }),
   );
   const codebookVariable = get(subjectVariables, variable, {}) as {

@@ -1,134 +1,150 @@
-import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
-import type { ComponentType } from 'react';
-import { useState } from 'react';
-import { compose } from 'react-recompose';
-import { connect } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import { useContext, useState } from 'react';
 
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import ArchitectField from '~/components/Form/ArchitectField';
 import DatePicker, { DATE_FORMATS } from '~/components/Form/Fields/DatePicker';
-import Toggle from '~/components/Form/Fields/Toggle';
-import FrescoReduxField, {
-  reduxIntegerValue,
-} from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
-import type { RootState } from '~/ducks/modules/root';
 
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+import {
+  parameterInteger,
+  parameterString,
+  type ParameterValues,
+} from './parameterValues';
+
+type DayOffsetFieldProps = CreateFormFieldProps<
+  number,
+  'input',
+  {
+    placeholder?: string;
+    // Narrows the `size` an <input> would otherwise contribute (a number) to
+    // the control-size scale `InputField` expects.
+    size?: 'sm' | 'md' | 'lg' | 'xl';
+  }
+>;
+
+/**
+ * Day offsets are stored as numbers, but a number input reports its value as a
+ * string. This parses on the way in and formats on the way out so the field
+ * never commits `"7"` where the schema expects `7`; an emptied input clears the
+ * parameter rather than storing an empty string.
+ */
+const DayOffsetField = ({ value, onChange, ...props }: DayOffsetFieldProps) => (
+  <InputField
+    {...props}
+    type="number"
+    min={0}
+    value={value === undefined ? '' : String(value)}
+    onChange={(nextValue) => {
+      const parsed = Number(nextValue);
+      onChange?.(
+        typeof nextValue === 'string' &&
+          nextValue.trim() !== '' &&
+          Number.isInteger(parsed)
+          ? parsed
+          : undefined,
+      );
+    }}
+  />
+);
 
 type RelativeDatePickerParametersProps = {
   name: string;
-  resetField: () => void;
-  anchorValue?: string | null;
+  initialParameters?: ParameterValues;
 };
+
 const RelativeDatePickerParameters = ({
   name,
-  anchorValue = null,
-  resetField,
+  initialParameters,
 }: RelativeDatePickerParametersProps) => {
-  const dateFormat = DATE_FORMATS.full;
-  const [useInterviewDate, setUseInterviewDate] = useState(!anchorValue);
+  const anchorField = `${name}.anchor`;
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const storeApi = useContext(FormStoreContext);
+  const initialAnchor = parameterString(initialParameters?.anchor);
+
+  // `useInterviewDate` is a presentation choice, not a saved parameter: the
+  // interview date is what an absent `anchor` means, so the toggle stays local
+  // and unregistered rather than writing a key the schema does not carry.
+  //
+  // It is seeded from the STORE, not from the committed row, and only once per
+  // mount:
+  //
+  // - Once per mount, because the researcher turns the toggle off precisely in
+  //   order to type an anchor, and the anchor is empty for the whole interval
+  //   between the toggle and the first keystroke. Deriving this value, or
+  //   syncing it in an effect, would snap the toggle back on and unmount the
+  //   input the researcher is typing into.
+  // - From the store, because this editor is remounted whenever the variable's
+  //   input control changes, and the observer that reacts to that change clears
+  //   every `parameters.*` leaf (see `withFieldsHandlers`). By the remount the
+  //   row prop still carries the committed anchor that no longer exists in the
+  //   form, so seeding from it would show "use a specific date" with an empty —
+  //   and REQUIRED — anchor input, refusing a save the researcher never broke.
+  //
+  // `getFieldState` reads dormant entries too, and the absence of an entry is
+  // what distinguishes "never registered here" (fall back to the committed row)
+  // from "registered or parked holding no anchor" (the cleared state).
+  const [useInterviewDate, setUseInterviewDate] = useState(() => {
+    const anchorState = storeApi?.getState().getFieldState(anchorField);
+    return !parameterString(anchorState ? anchorState.value : initialAnchor);
+  });
+
   return (
     <>
-      <Heading level="h4">Anchor Date</Heading>
-      <Paragraph>
-        The anchor date defines the point that the participant can select a date
-        relative to. You can choose to either use the interview date, or specify
-        a specific date manually. When using the interview date, the date will
-        be set dynamically based on when your interview is conducted.
-      </Paragraph>
-      <Toggle
-        input={{
-          name: `${name}.useInterviewDate`,
-          value: useInterviewDate,
-          onChange: (checked: boolean) => {
-            if (checked) {
-              resetField();
-            }
-            setUseInterviewDate(checked);
-          },
-        }}
+      <UnconnectedField
+        name={`${name}.useInterviewDate`}
         label="Use interview date"
-        fieldLabel=" "
+        hint="The anchor date defines the point that the participant can select a date relative to. Using the interview date sets it dynamically based on when the interview is conducted; turn this off to specify a date manually."
+        inline
+        component={ToggleField}
+        value={useInterviewDate}
+        onChange={(checked) => {
+          if (checked) setFieldValue(anchorField, undefined);
+          setUseInterviewDate(Boolean(checked));
+        }}
       />
       {!useInterviewDate && (
-        <ValidatedField
+        <ArchitectField
           label="Specific Anchor Date"
           component={DatePicker}
-          name={`${name}.anchor`}
+          name={anchorField}
+          initialValue={initialAnchor}
           // The picker boundary and validation rule must match the schema's
           // earliest full date so the editor cannot commit an invalid anchor.
           validation={{
-            required: !useInterviewDate,
-            ISODate: dateFormat,
+            required: true,
+            ISODate: DATE_FORMATS.full,
             minDate: {
               value: '0001-01-01',
               message: 'Anchor date must use a year of 0001 or later',
             },
           }}
-          componentProps={{
-            parameters: {
-              min: '0001-01-01',
-              max: '3000-01-01',
-            },
-          }}
+          parameters={{ min: '0001-01-01', max: '3000-01-01' }}
         />
       )}
-      <Heading level="h4">Days Before</Heading>
-      <Paragraph>
-        Days before is the number of days prior to the anchor date that can be
-        selected from. Defaults to 180 days if left blank.
-      </Paragraph>
-      <ValidatedField
+      <ArchitectField
         label="Days before"
-        component={FrescoReduxField}
+        hint="The number of days prior to the anchor date that can be selected from. Defaults to 180 days if left blank."
+        component={DayOffsetField}
         name={`${name}.before`}
+        initialValue={parameterInteger(initialParameters?.before)}
         validation={{ minValue: 0 }}
-        componentProps={{
-          placeholder: '180',
-          fieldComponent: FrescoInputField,
-          type: 'number',
-          min: 0,
-          ...reduxIntegerValue,
-        }}
+        placeholder="180"
       />
-      <Heading level="h4">Days After</Heading>
-      <Paragraph>
-        Days after is the number of days after the anchor date that can be
-        selected from. Defaults to 0 days if left blank.
-      </Paragraph>
-      <ValidatedField
+      <ArchitectField
         label="Days after"
-        component={FrescoReduxField}
+        hint="The number of days after the anchor date that can be selected from. Defaults to 0 days if left blank."
+        component={DayOffsetField}
         name={`${name}.after`}
+        initialValue={parameterInteger(initialParameters?.after)}
         validation={{ minValue: 0 }}
-        componentProps={{
-          placeholder: '0',
-          fieldComponent: FrescoInputField,
-          type: 'number',
-          min: 0,
-          ...reduxIntegerValue,
-        }}
+        placeholder="0"
       />
     </>
   );
 };
-type ConnectProps = {
-  name: string;
-  form: string;
-};
-const mapStateToProps = (state: RootState, { name, form }: ConnectProps) => ({
-  anchorValue: formValueSelector(form)(state, `${name}.anchor`),
-});
-const mapDispatchToProps = (
-  dispatch: Dispatch,
-  { name, form }: ConnectProps,
-) => ({
-  resetField: () =>
-    dispatch(change(form, `${name}.anchor`, null) as UnknownAction),
-});
-export default compose<RelativeDatePickerParametersProps, ConnectProps>(
-  connect(mapStateToProps, mapDispatchToProps),
-)(RelativeDatePickerParameters);
+
+export default RelativeDatePickerParameters;

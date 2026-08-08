@@ -1,23 +1,53 @@
 import { compose } from 'react-recompose';
-import { useSelector } from 'react-redux';
-import type { FormAction } from 'redux-form';
-import { change, formValueSelector } from 'redux-form';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
-import withDisabledAssetRequired from '~/components/enhancers/withDisabledAssetRequired';
-import withMapFormToProps from '~/components/enhancers/withMapFormToProps';
-import MultiSelect from '~/components/Form/MultiSelect';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import MultiSelect, {
+  completeRows,
+  type ItemValue,
+  type PropertyField,
+} from '~/components/Form/arrayFields/MultiSelect';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+import {
+  useSetStageValue,
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
 
+import withDisabledAssetRequired from '../../enhancers/withDisabledAssetRequired';
 import getSortOrderOptionGetter from './getSortOrderOptionGetter';
 import getVariableOptionsGetter from './getVariableOptionsGetter';
+
+const SORT_ORDER_PROPERTIES: PropertyField[] = [
+  { fieldName: 'property' },
+  { fieldName: 'direction' },
+];
+
+const SORTABLE_PROPERTIES: PropertyField[] = [
+  { fieldName: 'variable' },
+  {
+    fieldName: 'label',
+    control: 'input',
+    label: 'Label',
+    placeholder: 'Label',
+  },
+];
+
+// A row's own cells cannot block the save (see RowField), and a half-filled
+// row survives `prune` to fail the roster stage's schema — which requires both
+// members of a sort rule and of a sortable property.
+const SORT_ORDER_VALIDATION = {
+  completeRows: completeRows(SORT_ORDER_PROPERTIES),
+};
+const SORTABLE_PROPERTIES_VALIDATION = {
+  completeRows: completeRows(SORTABLE_PROPERTIES),
+};
+
 type SortOptionsProps = StageEditorSectionProps & {
-  dataSource: string;
+  dataSource?: string;
   disabled: boolean;
 };
 const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
@@ -28,19 +58,24 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
   const variableOptionsGetter = getVariableOptionsGetter(variableOptions);
   const maxVariableOptions = variableOptions.length;
   const sortOrderOptionGetter = getSortOrderOptionGetter(variableOptions);
-  const dispatch = useAppDispatch();
-  const getFormValue = formValueSelector('edit-stage');
-  const hasSortOrder = useSelector((state: RootState) =>
-    getFormValue(state, 'sortOptions.sortOrder'),
+  const setStageValue = useSetStageValue();
+  const hasSortOrder = useStageFormValue('sortOptions.sortOrder') != null;
+  const hasSortableProperties =
+    useStageFormValue('sortOptions.sortableProperties') != null;
+  const initialSortOrder = useStageInitialValue<ItemValue[]>(
+    'sortOptions.sortOrder',
   );
-  const hasSortableProperties = useSelector((state: RootState) =>
-    getFormValue(state, 'sortOptions.sortableProperties'),
+  const initialSortableProperties = useStageInitialValue<ItemValue[]>(
+    'sortOptions.sortableProperties',
   );
   const handleToggleSortOptions = (nextState: boolean) => {
     if (!nextState) {
-      dispatch(
-        change('edit-stage', 'sortOptions', null) as unknown as FormAction,
-      );
+      // Clear both LEAF paths, not the `sortOptions` parent: `sortOptions`
+      // itself is never a registered field (only its two children are), and
+      // the store has no hierarchical relationship between a path and its
+      // sub-paths — writing the parent would not reach either child.
+      setStageValue('sortOptions.sortOrder', undefined);
+      setStageValue('sortOptions.sortableProperties', undefined);
     }
     return true;
   };
@@ -56,7 +91,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
         </Paragraph>
       }
       toggleable
-      startExpanded={!!hasSortOrder || !!hasSortableProperties}
+      startExpanded={hasSortOrder || hasSortableProperties}
       handleToggleChange={handleToggleSortOptions}
       disabled={disabled}
     >
@@ -68,10 +103,15 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
           Interviewer will use the order that nodes are defined in your data
           file.
         </Paragraph>
-        <MultiSelect
+        <ArchitectArrayField
           name="sortOptions.sortOrder"
+          label="Initial sort order"
+          labelHidden
+          component={MultiSelect}
+          initialValue={initialSortOrder}
           maxItems={1}
-          properties={[{ fieldName: 'property' }, { fieldName: 'direction' }]}
+          properties={SORT_ORDER_PROPERTIES}
+          validation={SORT_ORDER_VALIDATION}
           options={sortOrderOptionGetter}
         />
       </Row>
@@ -82,35 +122,46 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
           locating a specific member. Select one or more attributes from your
           roster that the participant can use to sort the list.
         </Paragraph>
-        <MultiSelect
+        <ArchitectArrayField
           name="sortOptions.sortableProperties"
+          label="Participant sortable properties"
+          labelHidden
+          component={MultiSelect}
+          initialValue={initialSortableProperties}
           maxItems={maxVariableOptions}
-          properties={[
-            { fieldName: 'variable' },
-            {
-              fieldName: 'label',
-              control: 'input',
-              label: 'Label',
-              placeholder: 'Label',
-            },
-          ]}
+          properties={SORTABLE_PROPERTIES}
+          validation={SORTABLE_PROPERTIES_VALIDATION}
           options={(
-            _property: unknown,
-            _rowValues: unknown,
+            fieldName: string,
+            rowValues: unknown,
             allValues: unknown,
           ) =>
             variableOptionsGetter(
-              _property,
-              _rowValues,
+              fieldName,
+              rowValues,
               allValues as Array<Record<string, unknown>>,
-            ) as Array<Record<string, unknown>>
+            )
           }
         />
       </Row>
     </Section>
   );
 };
-export default compose<SortOptionsProps, StageEditorSectionProps>(
-  withMapFormToProps('dataSource'),
+
+type GatedProps = StageEditorSectionProps & { dataSource?: string };
+
+/**
+ * `compose` is hoisted to module scope so the gated component keeps a stable
+ * identity across renders — `dataSource` is read via `useStageFormValue` in
+ * the wrapper below.
+ */
+const GatedSortOptions = compose<SortOptionsProps, GatedProps>(
   withDisabledAssetRequired,
 )(SortOptions);
+
+const SortOptionsForExternalData = (props: StageEditorSectionProps) => {
+  const dataSource = useStageFormValue<string | undefined>('dataSource');
+  return <GatedSortOptions {...props} dataSource={dataSource} />;
+};
+
+export default SortOptionsForExternalData;

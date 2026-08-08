@@ -1,12 +1,9 @@
-import { get, omit } from 'es-toolkit/compat';
-import { formValueSelector } from 'redux-form';
+import { omit } from 'es-toolkit/compat';
 
 import {
   collectEntityAttributeReferences,
   type VariablePropertyKey,
 } from '@codaco/protocol-validation';
-import type { RootState } from '~/ducks/modules/root';
-import { getVariablesForSubject } from '~/selectors/codebook';
 
 import type {
   ResolvedFormValidationView,
@@ -22,8 +19,12 @@ export const COMPOSER_CODEBOOK_PROPERTIES = [
 
 export const composerNormalizeField = (field: Record<string, unknown>) => {
   // Keep `id` so the list item retains a stable, unique React key.
+  // `_contradiction` is the editor's error-only field (see
+  // ComposerAttributeFields): it is registered so a form-level message has
+  // somewhere to land, and so it reports a value the row must never keep.
   const normalized = omit(field, [
     '_createNewVariable',
+    '_contradiction',
     ...COMPOSER_CODEBOOK_PROPERTIES,
   ]);
   // An empty label saves as '' and defeats the variable-name caption fallback,
@@ -33,36 +34,6 @@ export const composerNormalizeField = (field: Record<string, unknown>) => {
   }
   return normalized;
 };
-
-export const composerItemSelector =
-  (entity: string | null, type: string | null) =>
-  (
-    state: RootState,
-    { form, editField }: { form: string; editField: string },
-  ) => {
-    const item = formValueSelector(form)(state, editField) as
-      | Record<string, unknown>
-      | undefined;
-    if (!item || !entity) return null;
-
-    const variable = item.variable as string | undefined;
-    const codebookVariables = getVariablesForSubject(state, {
-      entity: entity as 'node' | 'edge' | 'ego',
-      type: type ?? undefined,
-    });
-    const codebookVariable = get(
-      codebookVariables,
-      variable ?? '',
-      {},
-    ) as Record<string, unknown>;
-    // Merge ONLY options + validation so the dialog can edit them; component +
-    // parameters stay as the field already has them (do not let codebook clobber).
-    const merged: Record<string, unknown> = { ...item };
-    for (const key of COMPOSER_CODEBOOK_PROPERTIES) {
-      if (key in codebookVariable) merged[key] = codebookVariable[key];
-    }
-    return merged;
-  };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -89,8 +60,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const inheritWhenNull = (value: unknown): unknown => value ?? undefined;
 
 /**
- * A stage's committed composer fields (redux-form's `nodeForm.fields` or one
- * edge type's `edges[i].form.fields`), reshaped into the
+ * A stage's committed composer fields (`nodeForm.fields`, or one edge type's
+ * `edges[i].form.fields`), reshaped into the
  * `makeFieldEditorValidate` overlay: each field's OWN `component`/
  * `parameters` — which for NetworkComposer live on the field, not the
  * codebook variable — keyed by the variable it renders. Fields with no
@@ -140,7 +111,7 @@ const composerFormFieldVariables = (form: unknown): string[] => {
 /**
  * Shared FormFieldSchema fields have no rendering override: their resolved
  * view is the codebook controls themselves. The active dialog row is included
- * dynamically because redux-form does not add it to this array until save.
+ * dynamically because it is not added to this array until save.
  */
 export const sharedFormValidationView = (
   fields: unknown,
@@ -272,7 +243,7 @@ export const composerValidationViews = (
  * (a sibling overlay entry, or the edited draft's own variable).
  *
  * `excludeStageId` is the stage being edited: its committed copy in the
- * protocol is superseded wholesale by the redux-form draft, whose fields the
+ * protocol is superseded wholesale by the stage draft, whose fields the
  * caller already accounts for. Within one NetworkComposer stage no two forms
  * share a subject (nodeForm's subject is a node type; edge types are unique
  * per stage), so the draft's OTHER forms can never contribute here.

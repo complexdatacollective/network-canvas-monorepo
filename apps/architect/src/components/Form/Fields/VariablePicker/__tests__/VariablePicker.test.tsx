@@ -1,8 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useContext, type ContextType, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { Field, reducer as formReducer, reduxForm } from 'redux-form';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 vi.mock('~/components/VariablePill', () => ({
   ConnectedVariablePill: () => (
@@ -33,60 +36,79 @@ vi.mock('../VariableSpotlight', () => ({
     ) : null,
 }));
 
-import VariablePicker from '../VariablePicker';
+import ArchitectField from '../../../ArchitectField';
+import { VariablePickerControl as VariablePicker } from '../VariablePicker';
 
 const options = [
   { label: 'Age', value: 'age', type: 'number' },
   { label: 'New variable', value: 'new-variable' },
 ];
 
-const ReduxHarness = reduxForm<{ variable?: string }>({
-  form: 'variable-picker-test',
-})(() => (
-  <Field
-    name="variable"
-    component={VariablePicker}
-    label="Variable"
-    required
-    options={options}
-  />
-));
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
+
+let storeApi: StoreApi | null = null;
+const CaptureStore = () => {
+  storeApi = useContext(FormStoreContext) ?? null;
+  return null;
+};
+
+const reduxStore = configureStore({
+  reducer: {
+    protocol: () => ({
+      present: {
+        codebook: {
+          node: { person: { variables: { age: {} } } },
+          edge: {},
+          ego: {},
+        },
+      },
+    }),
+  },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({ serializableCheck: false }),
+});
+
+const renderPicker = (field: ReactNode) => {
+  storeApi = null;
+
+  return render(
+    <Provider store={reduxStore}>
+      <Form onSubmit={() => ({ success: true })}>
+        <CaptureStore />
+        {field}
+        <button type="submit">Save</button>
+      </Form>
+    </Provider>,
+  );
+};
 
 const setup = (initialValue?: string) => {
-  const store = configureStore({
-    reducer: {
-      form: formReducer,
-      protocol: () => ({
-        present: {
-          codebook: {
-            node: { person: { variables: { age: {} } } },
-            edge: {},
-            ego: {},
-          },
-        },
-      }),
-    },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-
-  render(
-    <Provider store={store}>
-      <ReduxHarness initialValues={{ variable: initialValue }} />
-    </Provider>,
+  const view = renderPicker(
+    <ArchitectField
+      name="variable"
+      label="Variable"
+      component={VariablePicker}
+      initialValue={initialValue}
+      validation={{ required: true }}
+      options={options}
+    />,
   );
 
   return {
-    getValue: () =>
-      store.getState().form['variable-picker-test']?.values?.variable as
-        | string
-        | undefined,
+    ...view,
+    getValue: () => {
+      if (!storeApi) throw new Error('form store was not captured');
+      return storeApi.getState().getFormValues().variable as string | undefined;
+    },
   };
 };
 
 describe('VariablePicker', () => {
   beforeAll(() => {
     Element.prototype.scrollIntoView = vi.fn();
+    // fresco-ui's default `onSubmitInvalid` scrolls the first invalid field
+    // into view; jsdom implements no scrolling at all.
+    Element.prototype.scrollTo ??= () => undefined;
   });
 
   it('uses the shared field label and group semantics', () => {
@@ -95,10 +117,41 @@ describe('VariablePicker', () => {
     expect(screen.getByRole('group', { name: 'Variable' })).toBeInTheDocument();
     expect(
       screen.getByRole('group', { name: 'Variable' }),
-    ).toHaveAccessibleDescription('Required');
+    ).toHaveAccessibleDescription(/Required/);
     expect(
       screen.getByRole('button', { name: 'Select variable' }),
     ).toBeInTheDocument();
+  });
+
+  it('renders label, hint and errors through the BaseField slots only', async () => {
+    const { container } = renderPicker(
+      <ArchitectField
+        name="variable"
+        label="Layout variable"
+        hint="Positions are stored against this variable."
+        component={VariablePicker}
+        validation={{ required: true }}
+        options={options}
+      />,
+    );
+
+    // The picker used to hand-roll BaseField's label/hint/required/error
+    // layout. One implementation now owns all four, keyed on the same seam
+    // the Issues panel and the E2E specs target.
+    const field = container.querySelector('[data-field-name="variable"]');
+    expect(field).not.toBeNull();
+    expect(field?.querySelectorAll('label')).toHaveLength(1);
+
+    const group = screen.getByRole('group', { name: 'Layout variable' });
+    expect(group).toHaveAccessibleDescription(
+      /Positions are stored against this variable\./,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByTestId('variable-field-error')).toHaveTextContent(
+      'This field is required.',
+    );
   });
 
   it('renders the selected variable using the appropriate pill', () => {
@@ -116,7 +169,7 @@ describe('VariablePicker', () => {
     expect(screen.getByTestId('variable-pill')).toBeInTheDocument();
   });
 
-  it('persists a spotlight selection to Redux Form', () => {
+  it('persists a spotlight selection to the form store', () => {
     const { getValue } = setup();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select variable' }));

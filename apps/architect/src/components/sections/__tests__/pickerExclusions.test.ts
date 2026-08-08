@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getAdditionalAttributesOptionsForSubject } from '~/components/AssignAttributes/AssignAttributes';
+import { getAdditionalAttributesOptionsForSubject } from '~/components/sections/NameGeneratorPrompts/PromptFields';
 import {
   getComposerQuickAddOptionsForSubject,
   getConvexHullOptionsForSubject,
@@ -16,6 +16,7 @@ import {
 const stateWith = (protocol: unknown): RootState =>
   ({
     activeProtocol: { present: protocol },
+    stageEditorDraft: { ui: { liveValues: null } },
   }) as unknown as RootState;
 
 // Same shape as the Task 7 role-map fixture: `cat` is written both by a form
@@ -289,7 +290,7 @@ describe('getComposerQuickAddOptionsForSubject (NetworkComposer quickAdd picker,
 // writers, so their shared row pool excludes in the OPPOSITE direction to the
 // quickAdd blocks below — and its escape is the multi-row committed set, not
 // a single currentValue.
-describe('getAdditionalAttributesOptionsForSubject (AssignAttributes pool, UNVALIDATED writer)', () => {
+describe('getAdditionalAttributesOptionsForSubject (additionalAttributes pool, UNVALIDATED writer)', () => {
   it('drops a variable a form elsewhere already validates', () => {
     const result = getAdditionalAttributesOptionsForSubject(
       stateWith(validatedOnly),
