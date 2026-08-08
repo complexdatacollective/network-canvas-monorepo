@@ -22,6 +22,30 @@ import EdgeLayer from './EdgeLayer';
 import type { ActivationSource } from './useCanvasDrag';
 import type { CanvasStoreApi } from './useCanvasStore';
 
+/** Which interaction, if any, makes a node a toggle for the current prompt. */
+export type NodeToggle = 'edge' | 'highlight' | null;
+
+/**
+ * Mirrors what activating a node actually does. An edge prompt toggles the
+ * pending source, a highlight prompt toggles the attribute, and a display-only
+ * prompt — one that sets `highlight.variable` for colour but leaves
+ * `allowHighlighting` off — toggles nothing, so it must not be announced as
+ * something that can be pressed.
+ */
+export function nodePressedForToggle(
+  toggle: NodeToggle,
+  state: { highlighted: boolean; isEdgeSource: boolean },
+): boolean | undefined {
+  switch (toggle) {
+    case 'edge':
+      return state.isEdgeSource;
+    case 'highlight':
+      return state.highlighted;
+    default:
+      return undefined;
+  }
+}
+
 type CanvasProps = {
   background: ReactNode;
   backgroundClassName?: string;
@@ -33,6 +57,12 @@ type CanvasProps = {
   selectedNodeId: string | null;
   highlightAttribute?: string;
   onNodeSelect?: (nodeId: string, source: ActivationSource) => void;
+  /**
+   * Which interaction, if any, makes a node a toggle for this prompt. A
+   * display-only highlight still colours nodes but cannot be operated, so it
+   * must not be announced as something that can be pressed.
+   */
+  nodeToggle?: NodeToggle;
   onNodeDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
   onDrop?: (nodeId: string, position: { x: number; y: number }) => void;
   allowRepositioning?: boolean;
@@ -59,6 +89,7 @@ export default function Canvas({
   selectedNodeId,
   highlightAttribute,
   onNodeSelect,
+  nodeToggle = null,
   onNodeDragEnd,
   onDrop,
   allowRepositioning = true,
@@ -181,13 +212,10 @@ export default function Canvas({
             selected={false}
             linking={selectedNodeId === nodeId}
             highlighted={highlighted}
-            // This canvas never uses `selected`: highlight mode marks the node
-            // highlighted, and edge mode marks the pending source.
-            pressed={
-              onNodeSelect
-                ? highlighted || selectedNodeId === nodeId
-                : undefined
-            }
+            pressed={nodePressedForToggle(nodeToggle, {
+              highlighted,
+              isEdgeSource: selectedNodeId === nodeId,
+            })}
             disabled={disabled}
             allowRepositioning={allowRepositioning}
             simulation={simulation}
