@@ -43,11 +43,37 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
     if (hasIssues) setOpen(true);
   }, [hasIssues]);
 
+  // Field display labels live in the DOM, so a row's own label is only
+  // discoverable once that row's field anchor is mounted. Reads `data-name`
+  // (set by IssueAnchor) or the anchor's text, and rewrites the row in place.
+  // Idempotent: writing the same label twice is a no-op, which is what lets
+  // both callers below run freely.
+  const harvestLabel = useCallback((el: HTMLElement | null, field: string) => {
+    if (!el) return;
+    const targetField = resolveTarget(field);
+    if (!targetField) return;
+    const fieldName =
+      targetField.getAttribute('data-name') || targetField.textContent;
+    if (fieldName) el.textContent = fieldName;
+  }, []);
+
   // Keyed by the row's own id rather than its field id: a field that fails
   // several rules has one row per message, and they must not share a slot.
-  const setIssueRef = useCallback((el: HTMLElement | null, id: string) => {
-    issueRefs.current[id] = el;
-  }, []);
+  const setIssueRef = useCallback(
+    (el: HTMLElement | null, id: string, field: string) => {
+      issueRefs.current[id] = el;
+      // Harvest HERE, as the row mounts, not only from the effect below. Base
+      // UI mounts the popover's portal in a later commit than the one that
+      // flips `open`, so on a first open the effect runs while `issueRefs` is
+      // still empty and every row keeps its raw internal path. Verified in a
+      // real browser: submitting an invalid Information stage listed
+      // "title - This field is required.", and only re-validating after an
+      // edit turned it into "Title - …". A ref callback cannot be early: it
+      // runs when the element exists, whenever that turns out to be.
+      harvestLabel(el, field);
+    },
+    [harvestLabel],
+  );
 
   const handleClickIssue = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>, field: string) => {
@@ -71,24 +97,15 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
     if (!hasIssues) setOpen(false);
   }, [hasIssues]);
 
-  // Field display labels live in the DOM; harvest friendly names from each field's
-  // data-name/textContent so the list reads as a label rather than an internal path.
-  // `open` is a dep because the issue refs are only mounted while the popover is open.
+  // Second pass, for a label that was not resolvable when its row mounted —
+  // an anchor inside a section that has since expanded, say. The ref callback
+  // above is what covers the ordinary first open.
   useEffect(() => {
     if (!open) return;
     flatIssues.forEach(({ id, field }) => {
-      // Resolve via the same ancestor-aware lookup the click handler uses, so
-      // fields only reachable through a trimmed ancestor candidate still get a
-      // friendly label instead of leaving the raw path in the list.
-      const targetField = resolveTarget(field);
-      if (!targetField) return;
-      const fieldName =
-        targetField.getAttribute('data-name') || targetField.textContent;
-      if (fieldName && issueRefs?.current[id]) {
-        issueRefs.current[id].textContent = fieldName;
-      }
+      harvestLabel(issueRefs.current[id] ?? null, field);
     });
-  }, [flatIssues, open]);
+  }, [flatIssues, harvestLabel, open]);
 
   const segment = useMemo<ToolbarSegment | null>(() => {
     if (!hasIssues || !submitFailed) return null;
@@ -127,8 +144,10 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
                     onClick={(e) => handleClickIssue(e, field)}
                     className="block w-full px-5 py-2.5 no-underline before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
                   >
-                    <span ref={(el) => setIssueRef(el, id)}>{field}</span> -{' '}
-                    {issue}
+                    <span ref={(el) => setIssueRef(el, id, field)}>
+                      {field}
+                    </span>{' '}
+                    - {issue}
                   </a>
                 </li>
               );

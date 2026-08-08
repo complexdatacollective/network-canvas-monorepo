@@ -78,12 +78,12 @@ describe('<Issues />', () => {
       act(() => view.getContext().markSubmitFailed());
       await screen.findAllByTestId('issue');
 
-      // The label harvest only sees rows that are already mounted, and Base UI
-      // mounts the popover's portal after the pass that opened it. Re-emitting
-      // the errors (as re-validating after an edit would) runs the harvest
-      // against the mounted rows.
-      setErrors();
-
+      // Deliberately NO second `setErrors()` here. Base UI mounts the
+      // popover's portal after the pass that opened it, so re-emitting the
+      // errors used to be the only thing that ran the harvest against mounted
+      // rows — which meant these tests could not see that a real first open
+      // showed raw field paths. The harvest now happens as each row's ref
+      // attaches, so the first open is enough.
       return view;
     };
 
@@ -110,6 +110,21 @@ describe('<Issues />', () => {
       await renderTwoMessages();
 
       expect(rowParts().map((row) => row.label)).toEqual([LABEL, LABEL]);
+    });
+
+    it('shows the friendly label on the FIRST open, with no re-validation', async () => {
+      // Regression: the harvest ran in an effect keyed on `open`, which fires
+      // before Base UI mounts the popover's rows — so `issueRefs` was empty and
+      // every row kept its raw internal path until something re-emitted the
+      // errors. Confirmed in a real browser before the fix: an invalid
+      // Information stage listed "title - This field is required." on first
+      // open and only read "Title - …" after re-validating.
+      await renderTwoMessages();
+
+      for (const { label } of rowParts()) {
+        expect(label).toBe(LABEL);
+        expect(label).not.toBe(FIELD);
+      }
     });
 
     it('renders the rows without React duplicate-key warnings', async () => {

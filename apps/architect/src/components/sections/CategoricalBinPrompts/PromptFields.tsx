@@ -86,16 +86,22 @@ const PromptFields = ({
   // The dormant entry's VALUE is what decides, never its existence: a section
   // that becomes `disabled` unmounts these fields WITHOUT clearing them, so a
   // dormant entry also holds a perfectly live variable that must survive.
-  const otherVariableEntry = useFormStore(
-    (state) =>
+  //
+  // The selector must resolve all the way to the string, not return the store
+  // entry for the component to unwrap: a `FieldState` is a fresh object
+  // whenever that field's `meta` changes — validation starting and finishing,
+  // for one — so selecting it re-renders this component on churn that cannot
+  // affect the answer. That extra churn re-rendered the variable picker while
+  // the spotlight was open and swallowed the click that creates a variable
+  // (sample-protocol test 14). Resolving to a primitive here means a re-render
+  // only when the resolved variable really changes.
+  const currentOtherVariable = useFormStore((state) => {
+    const entry =
       state.fields.get('otherVariable') ??
-      state.dormantValues.get('otherVariable'),
-  );
-  const currentOtherVariable = otherVariableEntry
-    ? typeof otherVariableEntry.value === 'string'
-      ? otherVariableEntry.value
-      : undefined
-    : otherVariable;
+      state.dormantValues.get('otherVariable');
+    if (!entry) return otherVariable;
+    return typeof entry.value === 'string' ? entry.value : undefined;
+  });
   const currentVariableOptions = Array.isArray(liveVariableOptions)
     ? (liveVariableOptions as VariableOption[])
     : variableOptions;

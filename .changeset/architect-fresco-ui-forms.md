@@ -26,7 +26,7 @@ Fixes a number of editing bugs found along the way:
 - An app update arriving moments after an edit no longer reloads over it. Architect checks for unsaved work again at the instant it would apply the update, rather than relying on a reading taken a fraction of a second earlier.
 - Creating a new variable while editing a form field no longer copies the previous variable's settings onto it. The new variable inherited the earlier one's input control — and with it, permanently, its type — along with its answer options, its parameters and its validation rules, without saying so.
 - Removing a categorical bin prompt's "Other" variable now removes its validation settings from the editor too. They stayed on screen belonging to the variable just removed, and editing them wrote straight to that variable, which another stage may still be collecting.
-- The Issues list no longer shows a raw internal field name when one field has more than one problem.
+- The Issues list now names each field properly the first time it opens. Every entry showed an internal field name until the stage was checked a second time, and a field with more than one problem kept showing it even then.
 - A name generator's generated stage name mentions its side panels again after the panels have been turned off and on.
 
 Half-finished settings can no longer be saved. Previously the field showed an error but "Finished Editing" accepted it anyway, and the problem resurfaced later as a protocol-wide "Misconfigured Protocol" message far from the field that caused it:
