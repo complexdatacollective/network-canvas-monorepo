@@ -494,7 +494,12 @@ export function generateNetwork(
   // twice once the family is built, which `unique` forbids and nothing
   // downstream repairs. Reservations are soft, so a draw with nothing else
   // left still takes one.
-  reserveFamilyPedigreeFixedValues(ctx, stages);
+  // The reachable subset, matching `effects` and feasibility. A pedigree the
+  // run provably skips never materialises, so a value reserved for it is never
+  // consumed and never released — it just holds a value back from the draws
+  // that DO happen, and an unreachable pedigree could decide what an ordinary
+  // edge of the same type ends up with.
+  reserveFamilyPedigreeFixedValues(ctx, feasibilityStages);
 
   const plan = planNetwork(ctx, effects);
 

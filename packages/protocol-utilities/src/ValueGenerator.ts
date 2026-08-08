@@ -672,6 +672,22 @@ export class ValueGenerator {
           descriptorMin ??
           openDateFloor(max, defaultSpan, resolution);
 
+        // A normal names no bounds of its own, only a centre — so where the
+        // field declares none either, the stand-in window has to reach the
+        // centre or the draw is clamped to an end of it. `{ mean:
+        // '2030-01-01', sdDays: 0 }` came back as today, and an old mean came
+        // back as the fallback floor, on a field with no real bound at all.
+        // A DECLARED bound is a rule and still wins.
+        if (descriptor.distribution === 'normal') {
+          const centre = truncateToResolution(descriptor.mean, resolution);
+          if (ceilingIsStandIn && declaredMax === undefined && centre > max) {
+            max = offsetWithinOfferedDates(centre, defaultSpan, resolution);
+          }
+          if (declaredMin === undefined && centre < min) {
+            min = openDateFloor(centre, defaultSpan, resolution);
+          }
+        }
+
         // Where the field DOES declare a bound it is a rule rather than a
         // stand-in, so the descriptor may only narrow it, and a descriptor
         // window disjoint from it is ignored: validation stays authoritative

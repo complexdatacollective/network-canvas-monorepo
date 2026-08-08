@@ -257,7 +257,16 @@ function WeightTable({ context }: { context: SyntheticDraftContext }) {
 }
 
 function SelectionCountTable({ context }: { context: SyntheticDraftContext }) {
-  const rows = selectionCountRows(context);
+  // Against the weights as they stand, not as they were saved: raising a
+  // zero-weight option makes a further count reachable, and the table has to
+  // offer it without a save-and-reopen first.
+  const weightFields = weightRows(context).map((row) => row.fieldName);
+  const liveWeights = useFormValue(weightFields);
+  const positiveWeights = weightFields.filter((name) => {
+    const value = liveWeights[name];
+    return value !== undefined && value !== null && Number(value) > 0;
+  }).length;
+  const rows = selectionCountRows(context, positiveWeights);
   return (
     <>
       {rows.map((row) => (

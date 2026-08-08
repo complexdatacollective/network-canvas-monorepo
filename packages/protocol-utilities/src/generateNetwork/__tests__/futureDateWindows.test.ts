@@ -91,6 +91,30 @@ describe('a synthetic date window above the stand-in ceiling', () => {
     }
   });
 
+  it('centres an unbounded normal on its declared mean', () => {
+    // A normal names no bounds of its own, only a centre. Where the field
+    // declares none either, the stand-in window has to reach that centre —
+    // cut off at today, a mean of 2030 came back as today's date.
+    const dates = datesFor({
+      distribution: 'normal',
+      mean: '2030-01-01',
+      sdDays: 0,
+    });
+
+    expect(dates).toHaveLength(5);
+    for (const date of dates) expect(date).toBe('2030-01-01');
+  });
+
+  it('centres an unbounded normal on an old mean too', () => {
+    const dates = datesFor({
+      distribution: 'normal',
+      mean: '1950-06-15',
+      sdDays: 0,
+    });
+
+    for (const date of dates) expect(date).toBe('1950-06-15');
+  });
+
   it('still yields to a ceiling the protocol declared', () => {
     // An authored `max` is a rule the interview validates against, so a
     // synthetic window above it is the disjoint case: the descriptor is

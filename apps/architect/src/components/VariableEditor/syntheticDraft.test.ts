@@ -477,3 +477,33 @@ describe('a scalar uniform with declared bounds', () => {
     expect(validateAssembledVariable(context, assembled)).toBeUndefined();
   });
 });
+
+describe('selection counts against the weights as they stand', () => {
+  const oneWeighted = {
+    ...categoricalVariable,
+    synthetic: {
+      optionWeights: [
+        { value: 'close', weight: 1 },
+        { value: 'distant', weight: 0 },
+      ],
+    },
+  } as const satisfies Variable;
+
+  it('offers only the counts the saved weights reach', () => {
+    const counts = selectionCountRows(contextFor(oneWeighted)).map(
+      (row) => row.count,
+    );
+
+    // One positively weighted value, so a selection of two cannot be drawn.
+    expect(counts).toEqual([0, 1]);
+  });
+
+  it('offers the further count once a weight is raised', () => {
+    // The editor passes what the author has typed, not what was saved.
+    const counts = selectionCountRows(contextFor(oneWeighted), 2).map(
+      (row) => row.count,
+    );
+
+    expect(counts).toEqual([0, 1, 2]);
+  });
+});

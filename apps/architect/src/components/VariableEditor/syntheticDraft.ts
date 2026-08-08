@@ -104,14 +104,26 @@ export function weightRows(ctx: SyntheticDraftContext): WeightRow[] {
   }));
 }
 
-/** The legal selection counts under the draft's options and validation. */
-function legalCounts(ctx: SyntheticDraftContext): number[] {
+/**
+ * The legal selection counts under the draft's options and validation.
+ *
+ * `positiveWeights` is the count of option values the author has given a
+ * positive weight RIGHT NOW, where the caller can see the live fields. Read
+ * from the saved weights instead, a zero-weight option the author has just
+ * raised never adds its count to the table, and they have to save and reopen
+ * before the distribution they are building can be configured.
+ */
+function legalCounts(
+  ctx: SyntheticDraftContext,
+  positiveWeights?: number,
+): number[] {
   // Selection is without replacement over the positively weighted values, so
   // a count above how many of those there are cannot be drawn. Offering one
   // put a row in the table that `rejectIllegalSelectionCounts` refuses even at
   // probability zero — which blocked saving any edit to a variable that was
   // perfectly valid when the editor opened.
-  const distinct = weightRows(ctx).filter((row) => row.initial > 0).length;
+  const distinct =
+    positiveWeights ?? weightRows(ctx).filter((row) => row.initial > 0).length;
   const validation =
     'validation' in ctx.variable ? (ctx.variable.validation ?? {}) : {};
   const minSelected =
@@ -140,8 +152,10 @@ export type SelectionCountRow = {
 
 export function selectionCountRows(
   ctx: SyntheticDraftContext,
+  /** See {@link legalCounts}; the editor passes its live weight fields. */
+  positiveWeights?: number,
 ): SelectionCountRow[] {
-  const counts = legalCounts(ctx);
+  const counts = legalCounts(ctx, positiveWeights);
   const declaredTable =
     ctx.variable.type === 'categorical'
       ? ctx.variable.synthetic?.selectionCount

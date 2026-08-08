@@ -66,15 +66,19 @@ export type MaterialisedSession = {
 /**
  * An unordered pair as one key.
  *
- * NUL-separated rather than space-separated because an `_uid` is an arbitrary
- * string — roster rows keep whatever ids the caller's external data carried —
- * and a space is a character an id may hold. Joined on one, `('a', 'b c')` and
- * `('a b', 'c')` both read "a b c": the domain drops a real pair, and an edge
- * or census answer can be attributed to the wrong one. NUL cannot appear in a
- * JSON string value, so the encoding is injective.
+ * Length-prefixed rather than delimited. An `_uid` is an arbitrary string —
+ * roster rows keep whatever ids the caller's external data carried, and
+ * `BaseNcEntitySchema` permits every string — so no character is safe to join
+ * on: a space made `('a', 'b c')` and `('a b', 'c')` read alike, and a NUL
+ * only moves the problem to ids that contain one, which JSON can encode.
+ * Prefixing each endpoint with its own length is injective over every string,
+ * so the domain cannot silently lose a pair and a census answer cannot be
+ * attributed to the wrong one.
  */
+const encodeUid = (uid: string): string => `${uid.length}:${uid}`;
+
 const pairKey = (a: string, b: string): string =>
-  a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
+  a < b ? `${encodeUid(a)}${encodeUid(b)}` : `${encodeUid(b)}${encodeUid(a)}`;
 
 type Planned = {
   attributes: Record<string, VariableValue>;

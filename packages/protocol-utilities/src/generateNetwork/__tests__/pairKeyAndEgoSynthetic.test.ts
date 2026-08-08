@@ -13,10 +13,14 @@ import { SyntheticInterview } from '../../SyntheticInterview';
  * loses a real pair and an edge can be attributed to the wrong one.
  */
 
+// Chosen to collide under EVERY single-character delimiter and under bare
+// concatenation: `a` + `b?c` and `a?b` + `c` read alike whatever `?` is, and
+// `ab` + `c` reads alike with nothing between. Only a length-prefixed
+// encoding tells all four pairs apart.
 const rows = [
   { [entityPrimaryKeyProperty]: 'a', type: 'person', attributes: {} },
-  { [entityPrimaryKeyProperty]: 'b c', type: 'person', attributes: {} },
-  { [entityPrimaryKeyProperty]: 'a b', type: 'person', attributes: {} },
+  { [entityPrimaryKeyProperty]: 'b\u0000c', type: 'person', attributes: {} },
+  { [entityPrimaryKeyProperty]: 'a\u0000b', type: 'person', attributes: {} },
   { [entityPrimaryKeyProperty]: 'c', type: 'person', attributes: {} },
 ] as unknown as NcNode[];
 
