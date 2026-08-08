@@ -11,13 +11,44 @@ import {
 
 import CanvasNode from '../../canvas/CanvasNode';
 import EdgeLayer from '../../canvas/EdgeLayer';
+import { getGroupKeys } from '../../canvas/groupMembership';
 import type { ActivationSource } from '../../canvas/useCanvasDrag';
 import { type CanvasStoreApi } from '../../canvas/useCanvasStore';
-import { type ComposerStoreApi, useComposerStore } from './useComposerStore';
+import {
+  type ComposerStoreApi,
+  type ComposerTool,
+  useComposerStore,
+} from './useComposerStore';
 
 type Position = { x: number; y: number };
 
 export type NodeTapModifiers = { shift: boolean; meta: boolean };
+
+/**
+ * Whether a node currently reads as "on", which depends entirely on the active
+ * tool: the group tool toggles membership of the active group without ever
+ * selecting the node, and the edge tool marks a pending source. Reporting
+ * selection alone would announce the wrong state for both.
+ */
+export function isNodePressed(
+  node: NcNode,
+  tool: ComposerTool,
+  state: { selected: boolean; linking: boolean },
+): boolean | undefined {
+  switch (tool.kind) {
+    case 'group':
+      // Membership is read through the same helper the hulls and the cohesion
+      // force use, so the announced state cannot drift from the drawn one.
+      return getGroupKeys(node, tool.variable).map(String).includes(tool.value);
+    case 'edge':
+      return state.linking;
+    case 'select':
+      return state.selected;
+    default:
+      // Adding nodes doesn't make an existing node a toggle at all.
+      return undefined;
+  }
+}
 
 type ComposerCanvasProps = {
   canvasStore: CanvasStoreApi;
@@ -88,6 +119,9 @@ export default function ComposerCanvas({
   // Captures pointer modifier state from the most recent pointer-down event.
   const modifierRef = useRef<NodeTapModifiers>({ shift: false, meta: false });
 
+  // Named apart from the `activeTool` some handlers read fresh from the store:
+  // this one is the subscribed value the render depends on.
+  const currentTool = useComposerStore(composerStore, (s) => s.activeTool);
   const selectedNodeIds = useComposerStore(
     composerStore,
     (s) => s.selectedNodeIds,
@@ -263,6 +297,13 @@ export default function ComposerCanvas({
             }
             selected={selectedNodeIds.has(nodeId)}
             linking={pendingEdgeSource === nodeId}
+            // What "on" means here changes with the tool: the group tool
+            // toggles membership of the active group without ever selecting
+            // the node, so selection alone would report the wrong state.
+            pressed={isNodePressed(node, currentTool, {
+              selected: selectedNodeIds.has(nodeId),
+              linking: pendingEdgeSource === nodeId,
+            })}
             allowRepositioning={allowRepositioning}
             simulation={simulation}
           />

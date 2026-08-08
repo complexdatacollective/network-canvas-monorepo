@@ -181,6 +181,13 @@ export default function Canvas({
             selected={false}
             linking={selectedNodeId === nodeId}
             highlighted={highlighted}
+            // This canvas never uses `selected`: highlight mode marks the node
+            // highlighted, and edge mode marks the pending source.
+            pressed={
+              onNodeSelect
+                ? highlighted || selectedNodeId === nodeId
+                : undefined
+            }
             disabled={disabled}
             allowRepositioning={allowRepositioning}
             simulation={simulation}

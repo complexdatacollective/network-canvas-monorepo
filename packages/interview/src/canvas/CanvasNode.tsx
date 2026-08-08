@@ -18,6 +18,14 @@ type CanvasNodeProps = {
   selected?: boolean;
   linking?: boolean;
   highlighted?: boolean;
+  /**
+   * Whether the node currently reads as "on" for whatever the canvas's active
+   * mode makes it mean — selected, highlighted, the source of a pending edge,
+   * or a member of the active group. Only the canvas knows which of those is
+   * in play, so it is declared rather than inferred here. Omitted entirely for
+   * a canvas whose nodes are not a toggle.
+   */
+  pressed?: boolean;
   disabled?: boolean;
   allowRepositioning?: boolean;
   simulation?: {
@@ -41,6 +49,7 @@ export default function CanvasNode({
   selected = false,
   linking = false,
   highlighted = false,
+  pressed,
   disabled = false,
   allowRepositioning = true,
   simulation = null,
@@ -121,13 +130,8 @@ export default function CanvasNode({
       // that cannot be moved can still be selected, and its name still has to
       // be readable.
       tabIndex={disabled ? -1 : 0}
-      // For the same reason Node cannot infer the toggle state either, so a
-      // selectable node has to declare it or assistive technology cannot tell
-      // which nodes are selected.
-      // Canvases carry the "on" state under different names — the Sociogram
-      // leaves `selected` false and marks a highlighted node or an edge source
-      // instead — so the reported state has to follow whichever is in use.
-      aria-pressed={onSelect ? selected || highlighted || linking : undefined}
+      // Node cannot infer the toggle state either, so it comes from the canvas.
+      aria-pressed={pressed}
       // While dragged, lift the node above overlapping drop targets
       // (the unplaced-node drawer sits at z-10).
       className={cx('absolute outline-offset-8!', isDragging && 'z-20')}
