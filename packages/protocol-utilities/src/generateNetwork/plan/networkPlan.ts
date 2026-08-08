@@ -13,6 +13,7 @@ import {
   attributesAsOf,
   type EdgeCreation,
   isRewrittenAfter,
+  populationWrittenVariables,
   type NodeCreation,
   scopeKeyFor,
   type StageEffects,
@@ -720,12 +721,28 @@ export function planNetwork(
 
     const ref = { entity: 'node' as const, type };
     const scope = scopeKeyFor('node', type);
-    const written = writtenVariables(
+    // What reaches EVERY person of this type. A creation-time write reaches
+    // only the people its own creator made, so it is added per creation
+    // below: drawing the type's whole union onto every node spends `unique`
+    // values on entities the session never writes them to, and can exhaust a
+    // space feasibility sized to the one creator that collects it.
+    const populationWritten = populationWrittenVariables(
       effects,
       'node',
       type,
       ctx.respectSkipLogicAndFiltering,
     );
+    const typeWritten = writtenVariables(
+      effects,
+      'node',
+      type,
+      ctx.respectSkipLogicAndFiltering,
+    );
+    const writtenFor = (creation: NodeCreation): Set<string> =>
+      new Set([
+        ...populationWritten,
+        ...creation.writesAtCreation.filter((id) => typeWritten.has(id)),
+      ]);
     const missingGroups = equalityGroups(constraintsFor(ctx, ref));
 
     // Roster stages draw real rows without replacement across the run. Built
@@ -836,6 +853,7 @@ export function planNetwork(
           requiredVariablesFor(required, scope),
           fixedKeys,
         );
+        const written = writtenFor(creation);
         const drawable = drawableVariables(written, fixedFinal);
         for (const id of certain) drawable.delete(id);
         const generated = generateAttributesForEntity(ctx, ref, typeIndex, {

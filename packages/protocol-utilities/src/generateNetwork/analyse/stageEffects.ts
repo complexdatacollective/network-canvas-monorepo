@@ -251,6 +251,40 @@ export function writtenVariables(
 }
 
 /**
+ * The variables some stage writes onto entities of a scope that it did NOT
+ * itself create — forms, bins, censuses, layouts.
+ *
+ * These reach the whole population, so every entity of the type is a
+ * candidate. Creation-time writes are the other half and belong to the people
+ * one creator made: a value only one of two creators collects is not drawn for
+ * the type at large, or it spends `unique` values on entities the session
+ * never writes it to.
+ */
+export function populationWrittenVariables(
+  effects: StageEffects,
+  entity: string,
+  type?: string,
+  respectFiltering = false,
+): Set<string> {
+  const scope = scopeKeyFor(entity, type);
+  const written = new Set<string>();
+  for (const summary of effects.stages) {
+    for (const write of summary.writes) {
+      if (write.mode === 'creation') continue;
+      if (scopeKeyFor(write.entity, write.entityType) !== scope) continue;
+      written.add(write.variableId);
+    }
+  }
+  if (!respectFiltering) return written;
+  const unconditional = effects.unconditionalWrites.get(scope);
+  return new Set(
+    [...written].filter(
+      (variableId) => unconditional?.has(variableId) === true,
+    ),
+  );
+}
+
+/**
  * Whether any stage after `stageIndex` writes `variableId` on this scope — the
  * test for whether a value fixed at creation survives to the final network.
  */
