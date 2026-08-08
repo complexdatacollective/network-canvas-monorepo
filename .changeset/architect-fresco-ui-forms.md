@@ -23,6 +23,7 @@ Fixes a number of editing bugs found along the way:
 - Turning a node type's shape mapping off and straight back on no longer saves the type with the mapping still missing while the switch reads as on.
 - Switching a form field's date control away and back no longer leaves "Use interview date" switched off with an empty anchor date, demanding a value for a field nobody changed.
 - Undo now works on the background of a sociogram or narrative stage. Undoing a switch between concentric circles and an image left the old chooser on screen, so the stage could not be saved until the researcher switched modes by hand. Adding the first side panel is likewise undoable now, and undoing a later edit to it no longer removes the whole panel.
+- An app update arriving moments after an edit no longer reloads over it. Architect checks for unsaved work again at the instant it would apply the update, rather than relying on a reading taken a fraction of a second earlier.
 
 Half-finished settings can no longer be saved. Previously the field showed an error but "Finished Editing" accepted it anyway, and the problem resurfaced later as a protocol-wide "Misconfigured Protocol" message far from the field that caused it:
 
@@ -31,5 +32,3 @@ Half-finished settings can no longer be saved. Previously the field showed an er
 - an option value containing characters other than letters, numbers and `._-:`.
 
 These restore checks that existed before this release. If an existing protocol already contains one of these — most likely an option value with a space in it, or a blank card display label — the editor will now ask you to correct it before saving that variable. Changing an option value changes the corresponding column name in exported data, so where data collection is already under way, consider whether to keep the existing value.
-
-- An app update arriving moments after an edit no longer reloads over it. Architect checks for unsaved work again at the instant it would apply the update, rather than relying on a reading taken a fraction of a second earlier.
