@@ -76,7 +76,10 @@ describe('stripEdgeRules', () => {
 const EDGE_FILTER = { join: 'AND', rules: [alterRule, edgeRule] };
 
 const itemProps: ArrayFieldItemProps<NodePanelValue> = {
-  item: {},
+  // The id matters: a row renders its fields only while it still owns the slot
+  // it is bound to, which it establishes by matching this against the id at
+  // `panels[committedIndex]` (see usePanelSlot).
+  item: { id: 'panel-1' },
   index: 0,
   committedIndex: 0,
   itemCount: 1,

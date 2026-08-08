@@ -21,13 +21,20 @@ import { NodePanels } from '../NodePanels';
 const toggle = () =>
   screen.getByRole('switch', { name: 'Turn this feature on or off' });
 
-const renderPanels = () =>
+const ONE_PANEL = [
+  { id: 'panel-1', title: 'A', dataSource: 'existing', filter: null },
+];
+
+const TWO_PANELS = [
+  ...ONE_PANEL,
+  { id: 'panel-2', title: 'B', dataSource: 'existing', filter: null },
+];
+
+const renderPanels = (panels: Record<string, unknown>[] = ONE_PANEL) =>
   renderStageForm({
     committedStage: asStage({
       subject: { entity: 'node', type: 'person' },
-      panels: [
-        { id: 'panel-1', title: 'A', dataSource: 'existing', filter: null },
-      ],
+      panels,
     }),
     children: (
       <DialogProvider>
@@ -93,6 +100,44 @@ describe('NodePanels panel identity', () => {
     // row's leaves were gone, which re-rendered the id registration and left
     // `panels: [{}]` — an empty panel object — in the saved stage.
     expect(getFormValues()).not.toHaveProperty('panels');
+  });
+
+  it('keeps the surviving panel whole when the first of two is deleted', async () => {
+    const { getFormValues } = renderPanels(TWO_PANELS);
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId('node-panel')).toHaveLength(2),
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove side panel 1' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId('node-panel')).toHaveLength(1),
+    );
+
+    // Regression: deleting a panel re-indexes the list while the deleted row is
+    // still mounted for its exit animation, so for a moment two live rows were
+    // bound to `panels[0]` — the store keys `fields` by name alone, with no
+    // notion of which component owns an entry. The survivor registered over the
+    // exiting row's fields, and the exit then unregistered the names it no
+    // longer owned, taking the survivor's live fields with them. The panel
+    // saved as `{id: 'panel-2'}` alone, with `title`/`dataSource` stranded in
+    // dormant storage still holding the DELETED panel's values — a stage
+    // `panelSchema` rejects for the missing keys, and wrong data if they
+    // returned.
+    await waitFor(() =>
+      expect(getFormValues()).toMatchObject({
+        panels: [
+          {
+            id: 'panel-2',
+            title: 'B',
+            dataSource: 'existing',
+          },
+        ],
+      }),
+    );
   });
 
   it('keeps the section open after the last panel is deleted', async () => {

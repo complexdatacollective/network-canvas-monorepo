@@ -18,6 +18,8 @@ import {
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
 
+import { usePanelSlot } from './usePanelSlot';
+
 const EXISTING_DATA_SOURCE = 'existing';
 
 type PanelFilter = { join?: string; rules?: { type?: string }[] } | null;
@@ -43,6 +45,7 @@ export type NodePanelValue = Record<string, unknown> & {
 type NodePanelProps = ArrayFieldItemProps<NodePanelValue>;
 
 const NodePanel = ({
+  item,
   index,
   committedIndex,
   itemCount,
@@ -57,8 +60,10 @@ const NodePanel = ({
   const interactionDisabled = disabled || readOnly;
   // Bind to the committed position, not the live (possibly mid-drag-preview)
   // index, so the fields stay attached to the right panel while a pointer
-  // reorder is being previewed.
-  const fieldName = `panels[${committedIndex ?? index}]`;
+  // reorder is being previewed. `ownsSlot` is false for a row the list has
+  // already re-indexed past — see usePanelSlot for why that row must render
+  // no fields.
+  const { fieldName, ownsSlot } = usePanelSlot(item.id, committedIndex, index);
 
   const handleDelete = () => {
     void confirm({
@@ -100,7 +105,11 @@ const NodePanel = ({
       previousValue === undefined ||
       dataSource === previousValue ||
       dataSource === EXISTING_DATA_SOURCE ||
-      !hasEdgeRules(filter ?? null)
+      !hasEdgeRules(filter ?? null) ||
+      // A superseded row reads the slot values of the panel that replaced it,
+      // so its `dataSource` appears to change when the list is re-indexed.
+      // Prompting there would ask about a panel that no longer exists.
+      !ownsSlot
     ) {
       return;
     }
@@ -132,7 +141,14 @@ const NodePanel = ({
     // Only the dataSource transition itself should retrigger this — `filter`
     // and `confirm` are read at fire time, not watched for their own changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataSource, fieldName, restoreVersion, setStageValue]);
+  }, [dataSource, fieldName, ownsSlot, restoreVersion, setStageValue]);
+
+  // Render nothing once the list has re-indexed past this row: its fields would
+  // otherwise claim a slot another panel now owns, and tearing them down here —
+  // in the same commit that rebinds the survivor — is what hands the slot over
+  // intact. The row is on its way out through `ArrayField`'s exit animation, so
+  // this only blanks content that is already disappearing.
+  if (!ownsSlot) return null;
 
   return (
     <div className="flex w-full items-center gap-4">

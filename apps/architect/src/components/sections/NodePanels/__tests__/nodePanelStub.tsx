@@ -1,6 +1,8 @@
 import { HiddenFieldValue } from '~/components/sections/Form/withFieldsHandlers';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
+import { usePanelSlot } from '../usePanelSlot';
+
 /**
  * A stand-in for `NodePanel` that registers the same stage-form leaves the
  * real one does (its own controls pull in NetworkFilter's whole rule-builder
@@ -10,17 +12,27 @@ import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
  * registers nothing could not show the defects these tests cover.
  */
 const NodePanelStub = ({
+  item,
   index,
   committedIndex,
   onDelete,
 }: {
+  item: { id?: string };
   index: number;
   committedIndex?: number;
   onDelete: () => void;
 }) => {
-  const name = `panels[${committedIndex ?? index}]`;
+  // The real row's slot binding, from the same hook, so these tests exercise
+  // the ownership rule rather than a copy of it.
+  const { fieldName: name, ownsSlot } = usePanelSlot(
+    item.id,
+    committedIndex,
+    index,
+  );
   const initialTitle = useStageInitialValue<string>(`${name}.title`);
   const initialDataSource = useStageInitialValue<string>(`${name}.dataSource`);
+
+  if (!ownsSlot) return null;
 
   return (
     <div data-testid="node-panel">
