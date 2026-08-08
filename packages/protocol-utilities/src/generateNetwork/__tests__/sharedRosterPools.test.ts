@@ -75,6 +75,49 @@ const populationOf = (seed: number): number => {
   return network.nodes.length;
 };
 
+describe('a later roster stage with a declared minimum', () => {
+  it('keeps its share of a pool an earlier stage could have taken whole', () => {
+    // Ten rows, a population of four, and a second stage that must place two.
+    // Capacity is settled before apportionment runs, so an unbounded first
+    // stage that spoke for the whole pool during that pass cut the second
+    // stage's minimum to zero over rows it was never assigned.
+    const pool = Array.from({ length: 10 }, (_, index) => ({
+      [entityPrimaryKeyProperty]: `p${index}`,
+      type: 'person',
+      attributes: { name: `Person ${index}` },
+    })) as unknown as NcNode[];
+
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            synthetic: { count: { distribution: 'constant', value: 4 } },
+            variables: { name: { name: 'Name', type: 'text' } },
+          },
+        },
+        edge: {},
+      } as never,
+      stages: [
+        rosterStage('roster-a'),
+        {
+          ...rosterStage('roster-b'),
+          behaviours: { minNodes: 2, maxNodes: 4 },
+        },
+      ] as never,
+      externalData: { 'roster-a': pool, 'roster-b': pool },
+    });
+
+    expect(network.nodes).toHaveLength(4);
+    const fromB = network.nodes.filter(
+      (node) => node.stageId === 'roster-b',
+    ).length;
+    expect(fromB).toBeGreaterThanOrEqual(2);
+  });
+});
+
 describe('two roster stages over one pool', () => {
   it('still builds the declared population', () => {
     for (let seed = 1; seed <= 10; seed++) {

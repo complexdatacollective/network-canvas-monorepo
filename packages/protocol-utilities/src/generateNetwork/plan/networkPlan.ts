@@ -658,36 +658,64 @@ export function planNetwork(
     // population came up short by exactly the overlap. Each pool is therefore
     // counted in the rows still unspoken for when its turn arrives.
     const claimedRosterUids = new Set<string>(ctx.usedRosterUids);
-    const capacities = creations.map((creation) => {
-      const capacity = { ...creation.capacity };
+    /** The distinct rows of one creation's pool that nobody has spoken for. */
+    const unclaimedRowsFor = (creation: NodeCreation): string[] | undefined => {
       if (
-        creation.source === 'roster' &&
-        creation.rosterStageId !== undefined
+        creation.source !== 'roster' ||
+        creation.rosterStageId === undefined
       ) {
-        const pool = ctx.externalData?.[creation.rosterStageId];
-        if (pool !== undefined) {
-          const unclaimed: string[] = [];
-          for (const row of pool) {
-            const uid = row[entityPrimaryKeyProperty];
-            if (claimedRosterUids.has(uid)) continue;
-            if (unclaimed.includes(uid)) continue;
-            unclaimed.push(uid);
-          }
-          capacity.max =
-            capacity.max === null
-              ? unclaimed.length
-              : Math.min(capacity.max, unclaimed.length);
-          capacity.min = Math.min(capacity.min, capacity.max);
-          // Only the rows this stage can actually take are spoken for. Claiming
-          // the whole pool would starve a later stage over the same roster of
-          // people the earlier one was never going to reach.
-          for (const uid of unclaimed.slice(0, capacity.max)) {
-            claimedRosterUids.add(uid);
-          }
-        }
+        return undefined;
       }
-      return capacity;
+      const pool = ctx.externalData?.[creation.rosterStageId];
+      if (pool === undefined) return undefined;
+      const unclaimed: string[] = [];
+      for (const row of pool) {
+        const uid = row[entityPrimaryKeyProperty];
+        if (claimedRosterUids.has(uid)) continue;
+        if (unclaimed.includes(uid)) continue;
+        unclaimed.push(uid);
+      }
+      return unclaimed;
+    };
+    const claim = (uids: readonly string[]): void => {
+      for (const uid of uids) claimedRosterUids.add(uid);
+    };
+
+    const capacities = creations.map((creation) => ({ ...creation.capacity }));
+
+    // Minimums first, across every roster, before any stage takes more than
+    // it must. Reserving in stage order instead let an early unbounded roster
+    // speak for the whole shared pool during this pass — which happens BEFORE
+    // apportionment decides what it actually gets — and a later stage's
+    // declared minimum was cut to zero over rows the first was never assigned.
+    const reserved = creations.map((creation, index) => {
+      const unclaimed = unclaimedRowsFor(creation);
+      if (unclaimed === undefined) return 0;
+      const take = Math.min(capacities[index]!.min, unclaimed.length);
+      claim(unclaimed.slice(0, take));
+      return take;
     });
+
+    // Then the rest, in stage order, up to each declared ceiling. A row an
+    // earlier roster will take is not capacity a later one has: counting each
+    // pool whole credited two rosters over one pool with twice its people, and
+    // the share the second could not fill was dropped rather than passed on.
+    creations.forEach((creation, index) => {
+      const capacity = capacities[index]!;
+      const unclaimed = unclaimedRowsFor(creation);
+      if (unclaimed === undefined) return;
+      const headroom =
+        capacity.max === null
+          ? unclaimed.length
+          : Math.max(0, capacity.max - reserved[index]!);
+      const extra = Math.min(headroom, unclaimed.length);
+      claim(unclaimed.slice(0, extra));
+      const available = reserved[index]! + extra;
+      capacity.max =
+        capacity.max === null ? available : Math.min(capacity.max, available);
+      capacity.min = Math.min(capacity.min, capacity.max);
+    });
+
     const assigned = apportionCount(total, capacities);
 
     const ref = { entity: 'node' as const, type };
