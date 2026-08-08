@@ -507,3 +507,35 @@ describe('selection counts against the weights as they stand', () => {
     expect(counts).toEqual([0, 1, 2]);
   });
 });
+
+describe('assembling a probability from a newly reachable row', () => {
+  it('keeps the row the live table exposed', () => {
+    // The author raises a zero weight, the table offers "2 selected", and the
+    // probability typed into it has to survive submission. Assembled from the
+    // SAVED weights, that row was dropped and the old ones normalised in its
+    // place.
+    const context = contextFor({
+      ...categoricalVariable,
+      synthetic: {
+        optionWeights: [
+          { value: 'close', weight: 1 },
+          { value: 'distant', weight: 0 },
+        ],
+      },
+    } as Variable);
+    const rows = weightRows(context);
+
+    const assembled = assembleSynthetic(context, {
+      [rows[0]!.fieldName]: 1,
+      // Raised from zero, which makes a selection of two reachable.
+      [rows[1]!.fieldName]: 1,
+      [syntheticField('count', 1)]: 0.5,
+      [syntheticField('count', 2)]: 0.5,
+    });
+
+    const counts = (
+      assembled as { selectionCount?: { probabilities: { count: number }[] } }
+    ).selectionCount?.probabilities.map((entry) => entry.count);
+    expect(counts).toContain(2);
+  });
+});

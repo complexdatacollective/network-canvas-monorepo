@@ -70,27 +70,39 @@ const requireSomeField = (
 // Entity level: node population counts
 // ---------------------------------------------------------------------------
 
+/**
+ * The most people one node type may be asked to produce.
+ *
+ * A synthetic population is generated SYNCHRONOUSLY — Architect's PreviewHost
+ * calls `generateNetwork` on the main thread, and the planner iterates once per
+ * node and once per pair. A count of a billion is arithmetically fine and
+ * schema-valid, and it locks the renderer. Ten thousand is far past any
+ * plausible interview and still returns.
+ */
+export const MAX_SYNTHETIC_POPULATION = 10_000;
+
 const nonNegativeInt = z.number().int().min(0);
+const populationInt = nonNegativeInt.max(MAX_SYNTHETIC_POPULATION);
 
 const constantCountSchema = z.strictObject({
   distribution: z.literal('constant'),
-  value: nonNegativeInt,
+  value: populationInt,
 });
 
 const uniformCountSchema = z
   .strictObject({
     distribution: z.literal('uniform'),
-    min: nonNegativeInt,
-    max: nonNegativeInt,
+    min: populationInt,
+    max: populationInt,
   })
   .superRefine(requireOrderedBounds);
 
 const poissonCountSchema = z
   .strictObject({
     distribution: z.literal('poisson'),
-    mean: z.number().min(0),
-    min: nonNegativeInt.optional(),
-    max: nonNegativeInt.optional(),
+    mean: z.number().min(0).max(MAX_SYNTHETIC_POPULATION),
+    min: populationInt.optional(),
+    max: populationInt.optional(),
   })
   .superRefine(requireOrderedBounds);
 
@@ -100,10 +112,10 @@ const poissonCountSchema = z
 const normalCountSchema = z
   .strictObject({
     distribution: z.literal('normal'),
-    mean: z.number(),
-    sd: z.number().min(0),
-    min: nonNegativeInt.optional(),
-    max: nonNegativeInt.optional(),
+    mean: z.number().max(MAX_SYNTHETIC_POPULATION),
+    sd: z.number().min(0).max(MAX_SYNTHETIC_POPULATION),
+    min: populationInt.optional(),
+    max: populationInt.optional(),
   })
   .superRefine(requireOrderedBounds);
 

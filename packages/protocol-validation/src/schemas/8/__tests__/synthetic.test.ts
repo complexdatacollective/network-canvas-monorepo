@@ -72,6 +72,37 @@ describe('synthetic metadata (additive to schema 8)', () => {
       expect(parse(withNodeSynthetic({ count })).success).toBe(false);
     });
 
+    it('rejects a population no preview could render', () => {
+      // Generation is synchronous, and Architect's PreviewHost runs it on the
+      // main thread: a billion people is arithmetically fine, schema-valid
+      // before this, and locks the renderer.
+      expect(
+        parse(
+          withNodeSynthetic({
+            count: { distribution: 'constant', value: 1_000_000_000 },
+          }),
+        ).success,
+      ).toBe(false);
+    });
+
+    it.each([
+      ['uniform', { distribution: 'uniform', min: 1, max: 50_000 }],
+      ['poisson', { distribution: 'poisson', mean: 2_000_000 }],
+      ['normal', { distribution: 'normal', mean: 1_000_000, sd: 1 }],
+    ])('rejects an oversized %s count', (_label, count) => {
+      expect(parse(withNodeSynthetic({ count })).success).toBe(false);
+    });
+
+    it('accepts a population at the ceiling', () => {
+      expect(
+        parse(
+          withNodeSynthetic({
+            count: { distribution: 'constant', value: 10_000 },
+          }),
+        ).success,
+      ).toBe(true);
+    });
+
     it('rejects unknown keys beside count', () => {
       const synthetic = {
         count: { distribution: 'poisson', mean: 3 },

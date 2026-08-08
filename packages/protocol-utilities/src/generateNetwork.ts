@@ -24,6 +24,10 @@ import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
 import type { GenerationContext } from './generateNetwork/context';
 import { resolveFamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/referencePopulation';
 import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigree/reservations';
+import {
+  DEFAULT_PEDIGREE_NODE_CEILING,
+  pedigreeCeilingForStage,
+} from './generateNetwork/familyPedigree/stageCeiling';
 import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types';
 import { materialiseSession } from './generateNetwork/materialise/materialiseSession';
 import { countCeiling } from './generateNetwork/plan/distributions';
@@ -81,13 +85,6 @@ export type GenerateNetworkResult = {
 };
 
 /**
- * How large an undeclared family may grow. A pedigree sizes itself from its
- * population profile rather than from a count, so this only caps its optional
- * branches.
- */
-const DEFAULT_PEDIGREE_NODE_CEILING = 32;
-
-/**
  * The people every pedigree holds before any optional branch: ego, two
  * parents, and four grandparents. `generateFamilyPedigree` adds them
  * unconditionally to satisfy the interface's hard minimum and its grandparent
@@ -108,24 +105,12 @@ function familyPedigreeNodeCeiling(
   codebook: StructuralCodebook,
   stages: Stage[],
 ): number {
+  // One reckoning, shared with the per-stage ceiling the materialiser and
+  // feasibility both resolve from. Two copies of this rule is how a type
+  // declared at seven came to be counted at seven and built at forty.
   let ceiling = 0;
   for (const stage of stages) {
-    if (stage.type !== 'FamilyPedigree') continue;
-    const type = stage.nodeConfig?.type;
-    const definition = type === undefined ? undefined : codebook.node?.[type];
-    if (definition === undefined) continue;
-    // Only a DECLARED count applies. The generic node default (1–8) describes
-    // how many people a name generator elicits, which says nothing about a
-    // family: a pedigree's core is seven people before any optional branch,
-    // so defaulting to it would cap every undeclared pedigree below its own
-    // minimum.
-    const declared = definition.synthetic?.count !== undefined;
-    ceiling = Math.max(
-      ceiling,
-      declared
-        ? countCeiling(resolveNodeCount(definition, { creatable: true }))
-        : DEFAULT_PEDIGREE_NODE_CEILING,
-    );
+    ceiling = Math.max(ceiling, pedigreeCeilingForStage(codebook, stage) ?? 0);
   }
   return ceiling;
 }
@@ -147,20 +132,24 @@ function familyPedigreeNodeCeiling(
 function familyPedigreePopulationByType(
   codebook: StructuralCodebook,
   stages: Stage[],
+  /** The caller's own options, which can raise a stage's ceiling. */
+  options: FamilyPedigreeGenerationOptions | undefined,
 ): Map<string, number> {
   const populations = new Map<string, number>();
   for (const stage of stages) {
     if (stage.type !== 'FamilyPedigree') continue;
     const type = stage.nodeConfig?.type;
-    const definition = type === undefined ? undefined : codebook.node?.[type];
-    if (type === undefined || definition === undefined) continue;
-    const declared = definition.synthetic?.count !== undefined;
+    if (type === undefined || codebook.node?.[type] === undefined) continue;
+    // Resolved exactly as the materialiser resolves it, so the count and the
+    // build cannot disagree. Reading the DECLARATION alone missed a caller
+    // `maxNodes` above it: a type declared at 7 with `maxNodes: 30` builds up
+    // to 30 people while feasibility counted the pairs among 7.
     const attainable = Math.max(
-      declared
-        ? countCeiling(resolveNodeCount(definition, { creatable: true }))
-        : DEFAULT_PEDIGREE_NODE_CEILING,
-      // The generator builds its core whatever the codebook declares, so the
-      // floor is the core rather than the declaration.
+      resolveFamilyPedigreeGenerationOptions(
+        options,
+        pedigreeCeilingForStage(codebook, stage) ??
+          DEFAULT_PEDIGREE_NODE_CEILING,
+      ).maxNodes,
       MINIMUM_PEDIGREE_CORE,
     );
     // Accumulated, not maximised. A second pedigree over the same type does
@@ -433,7 +422,11 @@ export function generateNetwork(
       // The reachable subset, matching `effects` and `feasibilityStages`. A
       // pedigree the run provably skips builds nobody, and counting its people
       // raised the topology ceiling enough to refuse a feasible protocol.
-      familyPedigreePopulationByType(codebook, feasibilityStages),
+      familyPedigreePopulationByType(
+        codebook,
+        feasibilityStages,
+        familyPedigree,
+      ),
     ),
     externalData,
     respectSkipLogicAndFiltering,

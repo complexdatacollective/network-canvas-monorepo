@@ -392,7 +392,11 @@ export function assembleSynthetic(
         const selectable = optionWeights.filter(
           (entry) => entry.weight > 0,
         ).length;
-        const rows = selectionCountRows(ctx)
+        // The SAME live count, so the rows assembled are the rows the author
+        // saw. Reading the saved weights here meant a probability entered in a
+        // row the live table had just exposed was dropped, and the old rows
+        // normalised and saved in its place.
+        const rows = selectionCountRows(ctx, selectable)
           .filter((row) => row.count <= selectable)
           .map((row) => ({
             count: row.count,

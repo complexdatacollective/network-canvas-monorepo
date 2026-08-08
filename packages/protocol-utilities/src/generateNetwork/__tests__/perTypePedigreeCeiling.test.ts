@@ -103,3 +103,57 @@ describe('two pedigrees over differently-sized node types', () => {
     expect(open.length).toBeGreaterThan(7);
   });
 });
+
+describe('a caller cap above the declared count', () => {
+  it('is counted by feasibility, not just honoured by the build', () => {
+    // `maxNodes: 30` raises what the materialiser builds past the declared 7.
+    // Counting the declaration alone let a unique edge value space sized to
+    // the smaller family clear preflight and then run out during the walk.
+    const census = {
+      id: 'census',
+      type: 'DyadCensus',
+      label: 'Related?',
+      subject: { entity: 'node', type: 'tight' },
+      prompts: [{ id: 'c-p', text: 'Related?', createEdge: 'tie' }],
+    } as unknown as Stage;
+
+    const withTie = {
+      ...codebook,
+      edge: {
+        ...(codebook as unknown as { edge: Record<string, unknown> }).edge,
+        tie: {
+          name: 'Tie',
+          color: 'edge-color-seq-2',
+          synthetic: {
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 1 },
+            },
+          },
+          variables: {
+            rank: {
+              name: 'Rank',
+              type: 'ordinal',
+              component: 'RadioGroup',
+              // Enough for the 21 pairs of a 7-person family, not for a 30.
+              options: Array.from({ length: 25 }, (_, index) => ({
+                label: `R${index + 1}`,
+                value: index + 1,
+              })),
+              validation: { unique: true },
+            },
+          },
+        },
+      },
+    } as unknown as StructuralCodebook;
+
+    expect(() =>
+      generateNetwork({
+        seed: 3,
+        codebook: withTie,
+        stages: [pedigree('ped-tight', 'tight'), census],
+        familyPedigree: { maxNodes: 30 },
+      }),
+    ).toThrow(/unique/i);
+  });
+});
