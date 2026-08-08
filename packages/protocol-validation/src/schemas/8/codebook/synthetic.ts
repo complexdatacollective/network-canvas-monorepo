@@ -84,6 +84,71 @@ export const MAX_SYNTHETIC_POPULATION = 10_000;
 const nonNegativeInt = z.number().int().min(0);
 const populationInt = nonNegativeInt.max(MAX_SYNTHETIC_POPULATION);
 
+/**
+ * The most entities a count can ask for, which is what has to be bounded — not
+ * its parameters one at a time.
+ *
+ * The generator draws within six deviations of a mean and plans once per
+ * entity and once per PAIR, so `{ mean: 10_000, sd: 10_000 }` reaches 70,000
+ * people and 2.45 billion pairs while every individual parameter looks
+ * reasonable. Defined here, beside the schema that admits the count, and
+ * re-exported to the generator so the bound and the draw cannot drift apart.
+ */
+export function syntheticCountCeiling(count: {
+  distribution: string;
+  value?: number;
+  mean?: number;
+  sd?: number;
+  min?: number;
+  max?: number;
+}): number {
+  switch (count.distribution) {
+    case 'constant':
+      return count.value ?? 0;
+    case 'uniform':
+      return count.max ?? 0;
+    case 'poisson':
+      return (
+        count.max ??
+        Math.max(
+          count.min ?? 0,
+          Math.ceil((count.mean ?? 0) + 6 * Math.sqrt(count.mean ?? 0) + 1),
+        )
+      );
+    case 'normal':
+      return (
+        count.max ??
+        Math.max(
+          count.min ?? 0,
+          0,
+          Math.ceil((count.mean ?? 0) + 6 * (count.sd ?? 0)),
+        )
+      );
+    default:
+      return 0;
+  }
+}
+
+const rejectOversizedPopulation = (
+  count: {
+    distribution: string;
+    mean?: number;
+    sd?: number;
+    min?: number;
+    max?: number;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  const ceiling = syntheticCountCeiling(count);
+  if (ceiling > MAX_SYNTHETIC_POPULATION) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: `This count can reach ${ceiling} entities; generation is synchronous, so it is capped at ${MAX_SYNTHETIC_POPULATION}`,
+      path: [],
+    });
+  }
+};
+
 const constantCountSchema = z.strictObject({
   distribution: z.literal('constant'),
   value: populationInt,
@@ -100,11 +165,12 @@ const uniformCountSchema = z
 const poissonCountSchema = z
   .strictObject({
     distribution: z.literal('poisson'),
-    mean: z.number().min(0).max(MAX_SYNTHETIC_POPULATION),
+    mean: z.number().min(0),
     min: populationInt.optional(),
     max: populationInt.optional(),
   })
-  .superRefine(requireOrderedBounds);
+  .superRefine(requireOrderedBounds)
+  .superRefine(rejectOversizedPopulation);
 
 // A negative mean stays representable: truncation and rounding keep drawn
 // counts non-negative integers, so "usually zero, occasionally more" is a
@@ -112,12 +178,13 @@ const poissonCountSchema = z
 const normalCountSchema = z
   .strictObject({
     distribution: z.literal('normal'),
-    mean: z.number().max(MAX_SYNTHETIC_POPULATION),
-    sd: z.number().min(0).max(MAX_SYNTHETIC_POPULATION),
+    mean: z.number(),
+    sd: z.number().min(0),
     min: populationInt.optional(),
     max: populationInt.optional(),
   })
-  .superRefine(requireOrderedBounds);
+  .superRefine(requireOrderedBounds)
+  .superRefine(rejectOversizedPopulation);
 
 export const SyntheticCountSchema = z.discriminatedUnion('distribution', [
   constantCountSchema,

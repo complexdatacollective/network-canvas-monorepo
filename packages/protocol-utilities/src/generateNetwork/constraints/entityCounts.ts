@@ -1459,6 +1459,9 @@ export function worstCaseEntityCounts(
     }
   }
 
+  // The edges a stage builds regardless of any declared topology, per type.
+  const structuralFloor = new Map<string, number>();
+
   for (const [edgeType, byNodeType] of paired) {
     for (const { maxPairs } of byNodeType.values()) {
       add(base, edgeType, maxPairs);
@@ -1486,6 +1489,16 @@ export function worstCaseEntityCounts(
     // can never exceed the type's whole pair count, since every ceiling is
     // inside `nodeTotal` and pairs grow faster than nodes.
     if ((paired.get(edgeType)?.get(nodeType)?.lastIndex ?? -1) > stageIndex) {
+      // Folded into the later pair set, but NOT discretionary: these edges are
+      // built whatever topology that later stage draws. The topology ceiling
+      // bounds what the pairing stage ADDS, so it must not clamp the count
+      // below what this stage structurally creates — at a target of zero the
+      // whole tally went to zero while the session still held every one of
+      // the pedigree's links.
+      structuralFloor.set(
+        edgeType,
+        (structuralFloor.get(edgeType) ?? 0) + count,
+      );
       continue;
     }
 
@@ -1529,8 +1542,10 @@ export function worstCaseEntityCounts(
   for (const [edgeType, ceiling] of Object.entries(
     config.edgeCountByType ?? {},
   )) {
+    const floor = structuralFloor.get(edgeType) ?? 0;
+    const bound = Math.max(ceiling, floor);
     const counted = base.get(edgeType);
-    if (counted !== undefined && counted > ceiling) base.set(edgeType, ceiling);
+    if (counted !== undefined && counted > bound) base.set(edgeType, bound);
   }
 
   return {

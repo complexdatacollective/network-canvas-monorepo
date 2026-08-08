@@ -1,3 +1,4 @@
+import { syntheticCountCeiling } from '@codaco/protocol-validation';
 import type { SyntheticCount } from '@codaco/protocol-validation';
 
 import type { RandomStream } from './random';
@@ -123,25 +124,10 @@ function sampleBeta(mean: number, sd: number, stream: RandomStream): number {
  * then read `[5, 1]` and settle on 1, breaking the floor rather than holding it.
  */
 export function countCeiling(count: SyntheticCount): number {
-  switch (count.distribution) {
-    case 'constant':
-      return count.value;
-    case 'uniform':
-      return count.max;
-    case 'poisson':
-      return (
-        count.max ??
-        Math.max(
-          count.min ?? 0,
-          Math.ceil(count.mean + 6 * Math.sqrt(count.mean) + 1),
-        )
-      );
-    case 'normal':
-      return (
-        count.max ??
-        Math.max(count.min ?? 0, 0, Math.ceil(count.mean + 6 * count.sd))
-      );
-  }
+  // Delegated to the schema's own derivation, which is what the population cap
+  // is enforced against. Two copies of this arithmetic would let a count the
+  // schema accepts plan more entities than the cap allowed.
+  return syntheticCountCeiling(count);
 }
 
 /**

@@ -89,8 +89,40 @@ describe('synthetic metadata (additive to schema 8)', () => {
       ['uniform', { distribution: 'uniform', min: 1, max: 50_000 }],
       ['poisson', { distribution: 'poisson', mean: 2_000_000 }],
       ['normal', { distribution: 'normal', mean: 1_000_000, sd: 1 }],
+      // Every parameter here looks reasonable; the DERIVED ceiling is
+      // mean + 6·sd = 70,000 people and 2.45 billion pairs.
+      ['wide-normal', { distribution: 'normal', mean: 10_000, sd: 10_000 }],
+      ['wide-poisson', { distribution: 'poisson', mean: 9_900 }],
     ])('rejects an oversized %s count', (_label, count) => {
       expect(parse(withNodeSynthetic({ count })).success).toBe(false);
+    });
+
+    it('accepts a spread whose derived ceiling stays inside the cap', () => {
+      // mean + 6·sd = 1_000, well under the ceiling.
+      expect(
+        parse(
+          withNodeSynthetic({
+            count: { distribution: 'normal', mean: 400, sd: 100 },
+          }),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('accepts a wide spread that declares its own ceiling', () => {
+      // An explicit `max` is what the draw truncates to, so the spread below
+      // it is irrelevant to how many entities can be built.
+      expect(
+        parse(
+          withNodeSynthetic({
+            count: {
+              distribution: 'normal',
+              mean: 10_000,
+              sd: 10_000,
+              max: 50,
+            },
+          }),
+        ).success,
+      ).toBe(true);
     });
 
     it('accepts a population at the ceiling', () => {

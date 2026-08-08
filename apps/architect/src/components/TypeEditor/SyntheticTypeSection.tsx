@@ -346,6 +346,28 @@ function EdgeSyntheticControl({
                 onChange={(next) => patch({ sd: next ?? 0 })}
                 min={0}
               />
+              {/*
+                A truncated normal's bounds are optional in the schema but they
+                are not optional to the DRAW: unrendered, they went on
+                constraining every generated preview while the author could
+                neither see nor remove them — and `patch` spreads the existing
+                distribution, so they survived every other edit and vanished
+                only on a distribution change, silently.
+              */}
+              <NumberControl
+                label="Minimum"
+                value={distribution.min}
+                onChange={(next) => patch({ min: next })}
+                min={0}
+                {...(isDensity ? { max: 1, step: '0.01' } : {})}
+              />
+              <NumberControl
+                label="Maximum"
+                value={distribution.max}
+                onChange={(next) => patch({ max: next })}
+                min={0}
+                {...(isDensity ? { max: 1, step: '0.01' } : {})}
+              />
             </>
           )}
         </>
