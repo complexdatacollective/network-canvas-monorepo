@@ -183,6 +183,33 @@ describe('NetworkComposer canvas', () => {
     });
   });
 
+  it('puts placed nodes in the tab order so they can be reached at all', async () => {
+    renderInterface();
+
+    // A canvas node routes its tap through useCanvasDrag rather than an
+    // onClick prop, so nothing infers interactivity for it; without an
+    // explicit tab stop neither the canvas's own key handling nor a clipped
+    // label's keyboard reveal is reachable.
+    await waitFor(() => {
+      const nodes = screen.getAllByRole('button', { name: 'Person' });
+      expect(nodes).toHaveLength(2);
+      for (const node of nodes) {
+        expect(node).toHaveAttribute('tabindex', '0');
+      }
+    });
+  });
+
+  it('tells assistive technology which placed nodes are selected', async () => {
+    renderInterface();
+
+    await waitFor(() => {
+      const nodes = screen.getAllByRole('button', { name: 'Person' });
+      for (const node of nodes) {
+        expect(node).toHaveAttribute('aria-pressed', 'false');
+      }
+    });
+  });
+
   it('renders the concentric circles background svg when background.concentricCircles is set', () => {
     renderInterface();
     // ConcentricCircles renders an <svg aria-hidden> element

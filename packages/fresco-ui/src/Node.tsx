@@ -434,7 +434,14 @@ export default function Node(props: UINodeProps) {
       disabled={disabled}
       aria-label={ariaLabel ?? label}
       aria-pressed={
-        hasClickHandler && supportsAriaPressed ? selected : undefined
+        // A host whose taps don't arrive as `onClick` — a canvas node driving
+        // selection from pointer events — can declare the toggle state itself,
+        // which is otherwise unknowable from here. The role guard still
+        // applies: `aria-pressed` is invalid on roles that don't support it.
+        supportsAriaPressed
+          ? (buttonProps['aria-pressed'] ??
+            (hasClickHandler ? selected : undefined))
+          : undefined
       }
       className={nodeVariants({
         size,

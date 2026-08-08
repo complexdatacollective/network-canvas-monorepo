@@ -236,11 +236,6 @@ describe('useCanvasDrag', () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
-  it('is reachable by keyboard', () => {
-    render(<Fixture store={makeSeededStore()} />);
-    expect(screen.getByTestId('drag-node')).toHaveAttribute('tabindex', '0');
-  });
-
   it('ignores a second finger moving or lifting mid-gesture', () => {
     const onClick = vi.fn();
     const onDragEnd = vi.fn();

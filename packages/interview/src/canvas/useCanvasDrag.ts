@@ -298,12 +298,6 @@ export function useCanvasDrag({
       onPointerDown,
       onKeyDown,
       onKeyUp,
-      // A canvas node routes its tap through this hook rather than through an
-      // `onClick` prop, so `Node` cannot infer that it is interactive and
-      // defaults it out of the tab order. Without a tab stop none of the
-      // keyboard handling below it — nudging, Enter to select, Delete to
-      // remove — can be reached at all.
-      tabIndex: disabled ? -1 : 0,
       style: {
         cursor: disabled ? 'default' : 'grab',
         touchAction: 'none' as const,

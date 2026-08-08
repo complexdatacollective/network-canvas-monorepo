@@ -111,6 +111,17 @@ export default function CanvasNode({
       disabled={disabled}
       size="sm"
       onLabelReveal={handleLabelReveal}
+      // A canvas node routes its tap through useCanvasDrag rather than an
+      // `onClick` prop, so Node cannot infer that it is interactive and would
+      // default it out of the tab order. Focusability follows the node's own
+      // disabled state, not whether it happens to be repositionable: a node
+      // that cannot be moved can still be selected, and its name still has to
+      // be readable.
+      tabIndex={disabled ? -1 : 0}
+      // For the same reason Node cannot infer the toggle state either, so a
+      // selectable node has to declare it or assistive technology cannot tell
+      // which nodes are selected.
+      aria-pressed={onSelect ? selected : undefined}
       // While dragged, lift the node above overlapping drop targets
       // (the unplaced-node drawer sits at z-10).
       className={cx('absolute outline-offset-8!', isDragging && 'z-20')}
