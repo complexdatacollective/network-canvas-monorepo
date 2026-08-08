@@ -113,6 +113,16 @@ const codebookWith = (uniqueTie: boolean) =>
     },
   }) as unknown as StructuralCodebook;
 
+/** An ordinary generator adding people of the pedigree's own node type. */
+const ordinaryGenerator = {
+  id: 'ng-extra',
+  type: 'NameGeneratorQuickAdd',
+  label: 'Others',
+  subject: { entity: 'node', type: 'family-member' },
+  quickAdd: 'name',
+  prompts: [{ id: 'ng-extra-p', text: 'Who else?' }],
+} as unknown as Stage;
+
 const censusWithTie = {
   ...censusStage,
   prompts: [
@@ -124,6 +134,70 @@ const censusWithTie = {
     },
   ],
 } as unknown as Stage;
+
+/** A tie-strength census: the census stage that really writes an edge value. */
+const rankingCensus = {
+  id: 'census-stage',
+  type: 'TieStrengthCensus',
+  label: 'How close',
+  subject: { entity: 'node', type: 'family-member' },
+  prompts: [
+    {
+      id: 'census-p',
+      text: 'How close are these two?',
+      createEdge: 'acquaintance',
+      edgeVariable: 'rank',
+      negativeLabel: 'Not at all',
+    },
+  ],
+} as unknown as Stage;
+
+/** The same codebook, with a `unique` ordinal of the given size on the edge. */
+const codebookRanking = (options: number) => {
+  const base = codebookWith(false) as unknown as {
+    edge: Record<string, { variables: Record<string, unknown> }>;
+  };
+  base.edge.acquaintance!.variables.rank = {
+    name: 'Rank',
+    type: 'ordinal',
+    component: 'RadioGroup',
+    options: Array.from({ length: options }, (_, index) => ({
+      label: `Rank ${index + 1}`,
+      value: index + 1,
+    })),
+    validation: { unique: true },
+  };
+  return base as unknown as StructuralCodebook;
+};
+
+describe('a census over a type an ordinary stage and a pedigree both build', () => {
+  // `materializeFamilyPedigree` APPENDS its family to what the plan already
+  // built, so one ordinary person beside the seven-person core is eight
+  // subjects and 28 pairs. Counting the larger of the two populations instead
+  // of their sum said 21, and the gap between them is where a run clears
+  // preflight and then dies: a 25-value space fits 21 edges and not 28.
+  it('refuses a value space the combined population outgrows', () => {
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook: codebookRanking(25),
+        stages: [ordinaryGenerator, familyStage, rankingCensus],
+      }),
+    ).toThrow(/only 25 distinct values are possible, but up to 28/);
+  });
+
+  it('accepts a value space that covers every pair', () => {
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook: codebookRanking(28),
+      stages: [ordinaryGenerator, familyStage, rankingCensus],
+    });
+
+    expect(
+      network.nodes.filter((node) => node.type === 'family-member'),
+    ).toHaveLength(8);
+  });
+});
 
 describe('a census over a pedigree-built type', () => {
   it('counts the family the pedigree builds, not the declared count', () => {
