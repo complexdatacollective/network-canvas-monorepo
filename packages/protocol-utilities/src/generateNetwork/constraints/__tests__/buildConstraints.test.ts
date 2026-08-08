@@ -23,6 +23,9 @@ import { valueSpaceSize } from '../valueSpace';
 
 const TODAY = '2026-07-27';
 
+/** Any stable scope key; these tests never cross entity scopes. */
+const SCOPE = 'node:person';
+
 describe('buildVariableConstraints', () => {
   it('reads single-variable rules from validation', () => {
     const result = buildVariableConstraints(
@@ -517,6 +520,7 @@ describe('buildVariableConstraints', () => {
       const value = generator.generateConstrained(
         { entry, constraints },
         index,
+        SCOPE,
       );
       expect(typeof value).toBe('string');
       if (typeof value === 'string') drawn.add(value);
@@ -756,6 +760,7 @@ describe('buildVariableConstraints', () => {
       const value = generator.generateConstrained(
         { entry, constraints },
         index,
+        SCOPE,
       );
       expect(typeof value).toBe('string');
       if (typeof value === 'string') drawn.add(value);

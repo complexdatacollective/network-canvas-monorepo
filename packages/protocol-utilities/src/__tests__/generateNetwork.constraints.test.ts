@@ -137,7 +137,7 @@ describe('generateNetwork constraint conformance', () => {
 
     expect(
       JSON.stringify(network.ego?.[entityAttributesProperty] ?? {}),
-    ).toMatchInlineSnapshot(`"{"a":15,"b":"2020-04"}"`);
+    ).toMatchInlineSnapshot(`"{"a":10,"b":"2020-08"}"`);
   });
 
   it('holds two ego variables equal when one declares sameAs the other', () => {

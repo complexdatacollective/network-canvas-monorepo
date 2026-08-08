@@ -260,6 +260,8 @@ function applyMissingness(
   required: ReadonlySet<string>,
   groups: readonly string[][],
   source: RandomSource,
+  /** The entity scope, so two scopes sharing a key do not share a stream. */
+  scope: string,
 ): Set<string> {
   const missing = new Set<string>();
   for (const members of groups) {
@@ -275,11 +277,12 @@ function applyMissingness(
     if (members.some((id) => fixedKeys.has(id))) continue;
     const present = members.filter((id) => id in attributes);
     if (present.length === 0) continue;
-    // Keyed by the sorted membership so a singleton keeps the stream its
-    // variable id alone addressed, and a group's decision does not depend on
-    // whichever member the codebook happens to list first.
+    // Keyed by the sorted membership so a group's decision does not depend on
+    // whichever member the codebook happens to list first, and by the scope so
+    // that one variable key used under two entity types addresses two streams
+    // rather than one shared one.
     const key = members.toSorted().join('\u0000');
-    if (!source.stream('missing', key).bool(probability)) continue;
+    if (!source.stream('missing', scope, key).bool(probability)) continue;
     for (const id of present) {
       attributes[id] = null;
       missing.add(id);
@@ -588,6 +591,7 @@ export function planNetwork(
     requiredVariablesFor(required, scopeKeyFor('ego')),
     equalityGroups(constraintsFor(ctx, { entity: 'ego' })),
     source,
+    scopeKeyFor('ego'),
   );
 
   // --- Node populations ----------------------------------------------------
@@ -800,6 +804,7 @@ export function planNetwork(
           requiredVariablesFor(required, scope),
           missingGroups,
           source,
+          scope,
         );
 
         nodes.push({
@@ -892,6 +897,7 @@ export function planNetwork(
         requiredVariablesFor(required, scope),
         missingGroups,
         source,
+        scope,
       );
       edgeIndex += 1;
       return {

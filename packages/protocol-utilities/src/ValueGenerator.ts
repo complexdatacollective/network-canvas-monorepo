@@ -155,8 +155,16 @@ export class ValueGenerator {
     return this.source.stream('general');
   }
 
-  private streamFor(entry: VariableEntry): RandomStream {
-    return this.source.stream('variable', entry.id);
+  /**
+   * A variable's own stream, addressed by the entity scope as well as the
+   * variable id. Two scopes may use one key for separate definitions, and a
+   * shared stream makes them perturb each other: adding people to one node
+   * type advanced the stream the other type drew from, so its values changed
+   * under the same seed. Keeping unrelated definitions independent is the
+   * whole promise of a semantic substream.
+   */
+  private streamFor(entry: VariableEntry, scope: string): RandomStream {
+    return this.source.stream('variable', scope, entry.id);
   }
 
   /**
@@ -331,6 +339,8 @@ export class ValueGenerator {
   generateConstrained(
     variable: ConstrainedVariable,
     index: number,
+    /** The entity scope this draw belongs to, as `scopeKey` writes it. */
+    scope: string,
     opts?: {
       distinctSeq?: number;
       preferRealisticName?: boolean;
@@ -339,7 +349,7 @@ export class ValueGenerator {
   ): VariableValue {
     const { entry, constraints } = variable;
     const seq = opts?.distinctSeq;
-    const stream = this.streamFor(entry);
+    const stream = this.streamFor(entry, scope);
 
     switch (entry.type) {
       case 'text': {
