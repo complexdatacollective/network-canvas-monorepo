@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useMemo } from 'react';
+import { type RefObject, useCallback, useMemo, useRef } from 'react';
 import type { StoreApi } from 'zustand';
 
 import type { DndStore } from '@codaco/fresco-ui/dnd/dnd';
@@ -54,7 +54,20 @@ export default function CanvasNode({
     state.positions.get(nodeId),
   );
 
+  // The canvas synthesises its tap from pointer-up rather than the DOM click
+  // the node itself suppresses, so a hold that revealed the label has to be
+  // withdrawn here or reading a name would also select the person.
+  const labelRevealedRef = useRef(false);
+
+  const handleLabelReveal = useCallback(() => {
+    labelRevealedRef.current = true;
+  }, []);
+
   const handleClick = useCallback(() => {
+    if (labelRevealedRef.current) {
+      labelRevealedRef.current = false;
+      return;
+    }
     onSelect?.(nodeId);
   }, [onSelect, nodeId]);
 
@@ -94,6 +107,7 @@ export default function CanvasNode({
       highlighted={highlighted}
       disabled={disabled}
       size="sm"
+      onLabelReveal={handleLabelReveal}
       // While dragged, lift the node above overlapping drop targets
       // (the unplaced-node drawer sits at z-10).
       className={cx('absolute outline-offset-8!', isDragging && 'z-20')}

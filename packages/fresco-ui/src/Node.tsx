@@ -5,14 +5,21 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   type ButtonHTMLAttributes,
   type CSSProperties,
+  type MouseEvent,
   type Ref,
+  useCallback,
   useEffect,
+  useRef,
+  useState,
 } from 'react';
 import { useMergeRefs } from 'react-best-merge-refs';
 
+import { useFitText } from './hooks/useFitText';
+import { useLongPress } from './hooks/useLongPress';
 import { useNodeInteractions } from './hooks/useNodeInteractions';
 import usePrevious from './hooks/usePrevious';
 import { useSafeAnimate } from './hooks/useSafeAnimate';
+import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 import { composeEventHandlers } from './utils/composeEventHandlers';
 import { cva, type VariantProps } from './utils/cva';
 
@@ -131,6 +138,48 @@ export const labelVariants = cva({
   },
 });
 
+type NodeSize = 'xxs' | 'xs' | 'sm' | 'md' | 'lg';
+
+/**
+ * Type sizes a label steps down through when it doesn't fit, smallest-first
+ * after the size's own default. `text-xs` is the floor: below that a name stops
+ * being legible at arm's length on a tablet, which is worse than clipping it.
+ *
+ * Each rung keeps the label block within the space the shape actually shows —
+ * the content layer clips to the node's border radius, so a circle can only
+ * hold text inside its inscribed box. Rungs trade line height for line count
+ * rather than growing the block.
+ */
+const LABEL_FIT_OVERRIDES: Record<NodeSize, readonly string[]> = {
+  // Already at the floor, and too small to hold a second line.
+  xxs: [],
+  xs: [],
+  // `sm` is the tightest node. A fourth line only clears the inscribed box of a
+  // 96px circle on a tighter leading, so this rung buys the line from the line
+  // height rather than from the label's width — narrowing the label instead
+  // costs more characters per line than the extra line returns.
+  sm: ['text-xs leading-[1.15]! line-clamp-4'],
+  md: ['text-sm leading-5! line-clamp-3', 'text-xs leading-4! line-clamp-4'],
+  lg: ['text-base leading-5! line-clamp-3', 'text-sm leading-4! line-clamp-4'],
+};
+
+const buildFitSteps = (size: NodeSize): readonly [string, ...string[]] => [
+  // The first rung is the size's untouched default, so a label that already
+  // fits renders exactly as it did before fitting existed.
+  labelVariants({ size }),
+  ...LABEL_FIT_OVERRIDES[size].map((className) =>
+    labelVariants({ size, className }),
+  ),
+];
+
+const LABEL_FIT_STEPS: Record<NodeSize, readonly [string, ...string[]]> = {
+  xxs: buildFitSteps('xxs'),
+  xs: buildFitSteps('xs'),
+  sm: buildFitSteps('sm'),
+  md: buildFitSteps('md'),
+  lg: buildFitSteps('lg'),
+};
+
 export function truncateNodeLabel(label: string, maxLength = 35): string {
   if (label.length <= maxLength) return label;
   // Use a soft hyphen (\u{AD}) to allow breaking long words if needed
@@ -154,6 +203,14 @@ type UINodeProps = {
   onPointerDown?: (e: React.PointerEvent) => void;
   /** External pointer up handler (composes with internal behavior) */
   onPointerUp?: (e: React.PointerEvent) => void;
+  /**
+   * Called when a press-and-hold reveals a clipped label. Hosts that synthesise
+   * taps from pointer events, rather than relying on the DOM click the node
+   * already suppresses, should use this to skip the tap that follows.
+   */
+  onLabelReveal?: () => void;
+  /** Suppresses the press-and-hold reveal for clipped labels */
+  labelRevealDisabled?: boolean;
   ref?: Ref<HTMLButtonElement>;
 } & VariantProps<typeof nodeVariants> &
   Omit<
@@ -207,6 +264,8 @@ export default function Node(props: UINodeProps) {
     onKeyDown: externalKeyDown,
     onKeyUp: externalKeyUp,
     onClick,
+    onLabelReveal,
+    labelRevealDisabled = false,
     ...buttonProps
   } = props;
 
@@ -232,6 +291,62 @@ export default function Node(props: UINodeProps) {
     hasClickHandler,
     disabled,
   });
+
+  // Fit the label to the node rather than clipping it at a fixed size, so most
+  // names are readable in full without any interaction at all.
+  const labelBoxRef = useRef<HTMLSpanElement>(null);
+  const fitSteps = LABEL_FIT_STEPS[size ?? 'md'];
+  const {
+    ref: labelRef,
+    stepIndex,
+    isTruncated,
+  } = useFitText<HTMLSpanElement>({
+    steps: fitSteps,
+    containerRef: labelBoxRef,
+    watch: label,
+    enabled: !loading,
+  });
+
+  // A keyboard drag already owns arrow keys and the node's position; revealing
+  // the label on top of that is noise.
+  const grabbed = buttonProps['aria-grabbed'];
+  const isGrabbed = grabbed === true || grabbed === 'true';
+
+  const [labelRevealed, setLabelRevealed] = useState(false);
+  const canRevealLabel =
+    isTruncated && !loading && !disabled && !isGrabbed && !labelRevealDisabled;
+
+  const revealLabel = useCallback(() => {
+    setLabelRevealed(true);
+    onLabelReveal?.();
+  }, [onLabelReveal]);
+
+  const { onPointerDown: startHold, shouldSuppressClick } = useLongPress({
+    onLongPress: revealLabel,
+    enabled: canRevealLabel,
+  });
+
+  // Any press dismisses a revealed label, so a second hold — or an ordinary
+  // tap — starts from a clean state.
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent) => {
+      setLabelRevealed(false);
+      startHold(event);
+    },
+    [startHold],
+  );
+
+  const handleClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      if (shouldSuppressClick()) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      onClick?.(event);
+    },
+    [onClick, shouldSuppressClick],
+  );
 
   // Scope for selected state animation (box-shadow on the shape layer, so
   // the ring follows the shape's border radius and rotation)
@@ -283,11 +398,15 @@ export default function Node(props: UINodeProps) {
   const nodeContent = (
     <>
       {loading && <Loader2 className="animate-spin" size={24} />}
-      {!loading && <span className={labelVariants({ size })}>{label}</span>}
+      {!loading && (
+        <span ref={labelRef} className={fitSteps[stepIndex] ?? fitSteps[0]}>
+          {label}
+        </span>
+      )}
     </>
   );
 
-  return (
+  const button = (
     <motion.button
       {...buttonProps}
       tabIndex={
@@ -316,7 +435,7 @@ export default function Node(props: UINodeProps) {
       data-node-linking={linking || undefined}
       data-node-highlighted={highlighted || undefined}
       onPointerDown={composeEventHandlers(
-        nodeProps.onPointerDown,
+        composeEventHandlers(nodeProps.onPointerDown, handlePointerDown),
         externalPointerDown,
       )}
       onPointerUp={composeEventHandlers(
@@ -327,7 +446,7 @@ export default function Node(props: UINodeProps) {
       onPointerLeave={nodeProps.onPointerLeave}
       onKeyDown={composeEventHandlers(externalKeyDown, nodeProps.onKeyDown)}
       onKeyUp={composeEventHandlers(externalKeyUp, nodeProps.onKeyUp)}
-      onClick={onClick}
+      onClick={handleClick}
     >
       {/* Shape layer - carries the background, state box-shadows, and (for
           diamonds) the rotation, keeping the root element transform-free */}
@@ -364,11 +483,48 @@ export default function Node(props: UINodeProps) {
           )}
         </AnimatePresence>
       </span>
-      {/* Content layer - positioned so it paints above the shape layer */}
-      <span className="relative flex size-full min-w-0 items-center justify-center overflow-hidden rounded-[inherit]">
+      {/* Content layer - positioned so it paints above the shape layer, and
+          the fixed-size box the label is fitted to */}
+      <span
+        ref={labelBoxRef}
+        className="relative flex size-full min-w-0 items-center justify-center overflow-hidden rounded-[inherit]"
+      >
         {nodeContent}
         {props.children}
       </span>
     </motion.button>
+  );
+
+  return (
+    <Tooltip
+      open={labelRevealed}
+      onOpenChange={(open, { reason }) => {
+        // Hover must not reveal the label: on a canvas the pointer crosses
+        // nodes constantly while positioning them, and popups appearing under
+        // it would fight the gesture. Keyboard focus is allowed through as the
+        // untimed equivalent of the hold.
+        if (open && reason === 'trigger-hover') return;
+        if (open && !canRevealLabel) return;
+        setLabelRevealed(open);
+      }}
+    >
+      <TooltipTrigger
+        // The hold is the delay, and the click that ends it is already
+        // withdrawn — leaving Base UI's own hover delay and close-on-click in
+        // place would make the label arrive late and then vanish.
+        delay={0}
+        closeOnClick={false}
+        render={button}
+      />
+      <TooltipContent
+        // The full label is already the button's accessible name, so announcing
+        // the popup as well would read it twice.
+        aria-hidden="true"
+        pointerEvents="none"
+        className="wrap-anywhere whitespace-pre-line"
+      >
+        {label}
+      </TooltipContent>
+    </Tooltip>
   );
 }

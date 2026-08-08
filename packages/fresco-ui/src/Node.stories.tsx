@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
 import Node, { NodeColors } from './Node';
 import Heading from './typography/Heading';
@@ -33,6 +33,14 @@ Interaction behaviors are automatically inferred from the props you provide:
 
 This design allows the Node to integrate seamlessly with external interaction systems
 without needing explicit mode flags.
+
+## Labels
+Labels are fitted to the node: the type size steps down the scale until the name
+fits, so most names are readable in full without any interaction. A name that
+still overflows at the smallest legible size is clipped, and can be read in full
+by pressing and holding, or by focusing the node from the keyboard. The hold is
+abandoned as soon as the pointer moves far enough to begin a drag, and the tap
+that would follow it is withdrawn.
         `,
       },
     },
@@ -41,7 +49,7 @@ without needing explicit mode flags.
     label: {
       control: 'text',
       description:
-        'Text displayed inside the node. Labels wrap at locale-appropriate opportunities, fall back to safe character breaks, and are line-clamped with an ellipsis.',
+        'Text displayed inside the node. Labels wrap at locale-appropriate opportunities, fall back to safe character breaks, and step down the type scale until they fit. Only a label that still overflows at the smallest legible size is clipped, and it can then be read in full by pressing and holding.',
       table: {
         type: { summary: 'string' },
         defaultValue: { summary: 'Node' },
@@ -473,11 +481,14 @@ export const LongLabels: Story = {
 
       const accessibleLabel = node.getAttribute('aria-label');
       const visibleLabel = within(node).getByText(accessibleLabel ?? '');
-      await expect(visibleLabel).toHaveClass(
-        'hyphens-auto',
-        'wrap-anywhere',
-        'line-clamp-3',
-      );
+      await expect(visibleLabel).toHaveClass('hyphens-auto', 'wrap-anywhere');
+
+      // The line count varies with the rung the label was fitted to, but every
+      // rung clamps, and none may spill out of the node.
+      await expect(visibleLabel.className).toMatch(/line-clamp-\d/);
+      const labelBounds = visibleLabel.getBoundingClientRect();
+      await expect(labelBounds.height).toBeLessThanOrEqual(bounds.height);
+      await expect(labelBounds.width).toBeLessThanOrEqual(bounds.width);
     }
   },
   parameters: {
@@ -699,6 +710,144 @@ export const DisabledNodes: Story = {
       description: {
         story:
           'Disabled nodes are desaturated and have `pointer-events: none`. Visual states like selected can still be shown.',
+      },
+    },
+  },
+};
+
+const fittingLabelCases = [
+  { caption: 'Short', label: 'Ash', lang: 'en' },
+  { caption: 'Typical', label: 'María Hernández', lang: 'es' },
+  { caption: 'Long', label: 'Alexandra Müller-Lüdenscheidt', lang: 'de' },
+  {
+    caption: 'Very long',
+    label: 'Alexandria Montgomery-Fitzgerald von Habsburg III',
+    lang: 'en',
+  },
+  {
+    caption: 'Beyond any fit',
+    label:
+      'Alexandria Montgomery-Fitzgerald von Habsburg III of Great Britain and Ireland, Duchess of Edinburgh',
+    lang: 'en',
+  },
+] as const;
+
+/**
+ * Labels are fitted to the node instead of being clipped at one fixed size.
+ */
+export const LabelFitting: Story = {
+  render: () => (
+    <div className="flex flex-col gap-10">
+      {(['sm', 'md', 'lg'] as const).map((size) => (
+        <section key={size} className="flex flex-col gap-3">
+          <Heading level="h3" margin="none" className="text-base">
+            {size}
+          </Heading>
+          <div className="flex flex-wrap items-end gap-8">
+            {fittingLabelCases.map(({ caption, label, lang }, index) => (
+              <div
+                key={caption}
+                className="flex w-40 flex-col items-center gap-2"
+              >
+                <Node
+                  label={label}
+                  lang={lang}
+                  size={size}
+                  color={
+                    `node-color-seq-${index + 1}` as (typeof NodeColors)[number]
+                  }
+                />
+                <span className="text-center text-xs text-current/70">
+                  {caption}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  ),
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        story: `
+The type size steps down through the scale until the name fits, measured from
+real layout after render rather than guessed from a character count. Only names
+that overflow even at the smallest legible size are clipped, so most are
+readable in full without any interaction.
+
+The smallest rung is deliberately a floor: below it a name stops being legible
+at arm's length on a tablet, which is worse than clipping it.
+        `,
+      },
+    },
+  },
+};
+
+/**
+ * A name too long to fit at any size can be read in full by pressing and holding.
+ */
+export const LabelReveal: Story = {
+  render: () => (
+    <div className="flex flex-wrap gap-12 p-16">
+      {[fittingLabelCases[4], fittingLabelCases[0]].map(
+        ({ caption, label, lang }) => (
+          <div key={caption} className="flex w-40 flex-col items-center gap-2">
+            <Node label={label} lang={lang} onClick={fn()} />
+            <span className="text-center text-xs text-current/70">
+              {caption}
+            </span>
+          </div>
+        ),
+      )}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const clipped = canvas.getByRole('button', {
+      name: fittingLabelCases[4].label,
+    });
+    const short = canvas.getByRole('button', {
+      name: fittingLabelCases[0].label,
+    });
+
+    const openTooltip = () =>
+      document.querySelector(
+        '[data-base-ui-portal] [data-open][role="tooltip"]',
+      );
+
+    // A hold on a clipped name reveals it in full.
+    await userEvent.pointer({ keys: '[MouseLeft>]', target: clipped });
+    await waitFor(
+      () => expect(openTooltip()).toHaveTextContent(fittingLabelCases[4].label),
+      { timeout: 3000 },
+    );
+    await userEvent.pointer({ keys: '[/MouseLeft]', target: clipped });
+
+    // A name that already fits has nothing to reveal.
+    await userEvent.click(short);
+    await userEvent.pointer({ keys: '[MouseLeft>]', target: short });
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await expect(openTooltip()).toBeNull();
+    await userEvent.pointer({ keys: '[/MouseLeft]', target: short });
+  },
+  parameters: {
+    layout: 'padded',
+    chromatic: { disableSnapshot: true },
+    docs: {
+      description: {
+        story: `
+Press and hold a node for half a second to read a clipped name in full. The hold
+is abandoned the moment the pointer moves far enough to begin a drag, so
+positioning a node on a canvas is untouched, and the tap that would follow the
+hold is withdrawn so reading a name never also selects the person.
+
+Keyboard focus reveals the same popup without the timing, and the popup itself
+is transparent to the pointer so it can never intercept a gesture. The complete
+name is always the node's accessible name, so the popup adds nothing for screen
+reader users and is hidden from them.
+        `,
       },
     },
   },
