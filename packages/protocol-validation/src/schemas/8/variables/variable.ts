@@ -234,6 +234,19 @@ const rejectDisjointNumberSynthetic = (
   if (!synthetic || !('distribution' in synthetic)) return;
   const lower = variable.validation?.minValue ?? Number.NEGATIVE_INFINITY;
   const upper = variable.validation?.maxValue ?? Number.POSITIVE_INFINITY;
+  // A zero-deviation normal has the single-point support a constant has, so
+  // it is held to the same rule: its mean outside the window means every draw
+  // is clamped to a boundary and the authored distribution silently replaced.
+  if (synthetic.distribution === 'normal' && synthetic.sd === 0) {
+    if (synthetic.mean < lower || synthetic.mean > upper) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Synthetic mean ${synthetic.mean} lies outside the validation bounds, and a standard deviation of 0 can reach nothing else`,
+        path: ['synthetic', 'mean'],
+      });
+    }
+    return;
+  }
   if (synthetic.distribution === 'constant') {
     if (synthetic.value < lower || synthetic.value > upper) {
       ctx.addIssue({

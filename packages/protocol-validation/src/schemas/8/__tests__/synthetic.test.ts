@@ -292,6 +292,34 @@ describe('synthetic metadata (additive to schema 8)', () => {
       expect(hasIssue(result, 'exceeds the validation maxValue')).toBe(true);
     });
 
+    it('rejects a zero-deviation normal outside the validation bounds', () => {
+      // Same single-point support a constant has, so the same rule: every draw
+      // is clamped to a boundary and the authored distribution is replaced.
+      const protocol = withPersonVariable(
+        'height',
+        numberVariable(
+          { distribution: 'normal', mean: 200, sd: 0 },
+          { minValue: 18, maxValue: 99 },
+        ),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(
+        hasIssue(result, 'standard deviation of 0 can reach nothing'),
+      ).toBe(true);
+    });
+
+    it('accepts a zero-deviation normal inside them', () => {
+      const protocol = withPersonVariable(
+        'height',
+        numberVariable(
+          { distribution: 'normal', mean: 50, sd: 0 },
+          { minValue: 18, maxValue: 99 },
+        ),
+      );
+      expect(parse(protocol).success).toBe(true);
+    });
+
     it('rejects a lognormal under a nonpositive ceiling', () => {
       // The descriptor authors no `min`, so comparing only authored bounds
       // finds nothing to object to. A lognormal's support is positive

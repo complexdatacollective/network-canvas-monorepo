@@ -450,8 +450,14 @@ export class SyntheticInterview {
       // dropping it here would silently ignore the one option such a call
       // exists to pass.
       if (opts?.synthetic) {
+        // Validated on a candidate rather than in place. Assigning first left
+        // the rejected metadata on the stored entry when the caller caught the
+        // error and carried on, so `getProtocol()` still emitted it.
+        assertSyntheticMatchesType(
+          { ...existing, synthetic: opts.synthetic },
+          `node type "${nodeTypeId}"`,
+        );
         existing.synthetic = opts.synthetic;
-        assertSyntheticMatchesType(existing, `node type "${nodeTypeId}"`);
       }
       return { id: existing.id };
     }
@@ -496,8 +502,14 @@ export class SyntheticInterview {
         );
       }
       if (opts?.synthetic) {
+        // Validated on a candidate rather than in place. Assigning first left
+        // the rejected metadata on the stored entry when the caller caught the
+        // error and carried on, so `getProtocol()` still emitted it.
+        assertSyntheticMatchesType(
+          { ...existing, synthetic: opts.synthetic },
+          `edge type "${edgeTypeId}"`,
+        );
         existing.synthetic = opts.synthetic;
-        assertSyntheticMatchesType(existing, `edge type "${edgeTypeId}"`);
       }
       return { id: existing.id };
     }

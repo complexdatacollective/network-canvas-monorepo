@@ -430,7 +430,10 @@ export function generateNetwork(
       effects.creatableNodeTypes,
       resolvedConfig.today,
       resolvedFamilyPedigree.maxNodes,
-      familyPedigreePopulationByType(codebook, stages),
+      // The reachable subset, matching `effects` and `feasibilityStages`. A
+      // pedigree the run provably skips builds nobody, and counting its people
+      // raised the topology ceiling enough to refuse a feasible protocol.
+      familyPedigreePopulationByType(codebook, feasibilityStages),
     ),
     externalData,
     respectSkipLogicAndFiltering,
