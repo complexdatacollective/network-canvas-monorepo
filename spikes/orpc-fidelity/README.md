@@ -85,7 +85,8 @@ node hono-mount.ts
   (RPC) + typed `RPCLink` client, in-process.
 - `hono-mount.ts` — the scaffold topology end to end in Hono.
 - `openapi-3.1.json` — committed snapshot from `generate-spec.ts` (oRPC emits
-  `openapi: 3.1.2`).
+  `openapi: 3.1.2`). Regenerating produces a formatting-only diff (the repo's
+  pre-commit formatter re-wraps arrays); the JSON content is identical.
 
 Versions pinned exactly by `package.json`: `@orpc/*@2.0.0-beta.26`,
 `zod@4.4.3`, `hono@4.13.1`; the Python generator is invoked pinned as
