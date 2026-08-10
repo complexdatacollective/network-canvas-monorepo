@@ -40,9 +40,11 @@ describe('studio server', () => {
     const doc = (await res.json()) as {
       openapi: string;
       paths: Record<string, unknown>;
+      components: { schemas: Record<string, unknown> };
     };
-    expect(doc.openapi).toBe('3.1.0');
+    expect(doc.openapi).toMatch(/^3\.1\./);
     expect(Object.keys(doc.paths)).toContain('/status');
+    expect(Object.keys(doc.components.schemas)).toContain('Status');
   });
 
   it('does not serve unknown API paths', async () => {

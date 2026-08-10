@@ -1693,15 +1693,18 @@ importers:
       '@hono/node-server':
         specifier: ^2.1.0
         version: 2.1.0(hono@4.13.0)
-      '@hono/zod-openapi':
-        specifier: ^1.5.1
-        version: 1.5.1(hono@4.13.0)(zod@4.4.3)
       '@orpc/contract':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      '@orpc/openapi':
         specifier: 2.0.0-beta.26
         version: 2.0.0-beta.26(@opentelemetry/api@1.9.1)
       '@orpc/server':
         specifier: 2.0.0-beta.26
         version: 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      '@orpc/zod':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26(@opentelemetry/api@1.9.1)(zod@4.4.3)
       hono:
         specifier: ^4.13.0
         version: 4.13.0
@@ -2703,11 +2706,6 @@ packages:
   '@asamuzakjp/dom-selector@8.3.0':
     resolution: {integrity: sha512-UJLfKXBhrc8i1vH2eJXuYQMwlsLKWFw3O+CPqXSuVEiikeAim3UgrfWX0k4tA/X8cRFM8iZ7OaqBokFGbYusdg==}
     engines: {node: ^22.13.0 || >=24.0.0}
-
-  '@asteasolutions/zod-to-openapi@8.5.0':
-    resolution: {integrity: sha512-SABbKiObg5dLRiTFnqiW1WWwGcg1BJfmHtT2asIBnBHg6Smy/Ms2KHc650+JI4Hw7lSkdiNebEGXpwoxfben8Q==}
-    peerDependencies:
-      zod: ^4.0.0
 
   '@aws-sdk/checksums@3.1000.25':
     resolution: {integrity: sha512-zUjEceMw6vhAxMayAlF/vkkKqP9gHbENqvz11t4FbfDlxB/WtW/Az1orJAQ00Pc/yORLQJXKE24w11Ktu/XBcg==}
@@ -4604,19 +4602,6 @@ packages:
     peerDependencies:
       hono: ^4
 
-  '@hono/zod-openapi@1.5.1':
-    resolution: {integrity: sha512-ZaDdEIkn6PEGjIYHXJeyByg6yhvLzI+UXn968pWtahpwcQ6HMjQYXI3zNffTl0Wl9QZ79nUnGqiN1erEIu23fA==}
-    engines: {node: '>=16.0.0'}
-    peerDependencies:
-      hono: '>=4.10.0'
-      zod: ^4.0.0
-
-  '@hono/zod-validator@0.9.0':
-    resolution: {integrity: sha512-n0ZSXmCiHVIp4Y5wlOOyZCeTd/rsawA/qW1cipB8QOYKZ9N8Tk0nZUZCXho9cu374AN4JpDNKioNKBJ/W+LBug==}
-    peerDependencies:
-      hono: '>=4.11.2'
-      zod: ^3.25.0 || ^4.0.0
-
   '@hutson/parse-repository-url@3.0.2':
     resolution: {integrity: sha512-H9XAx3hc0BQHY6l+IFSWHDySypcXsvsuLhgYLUGywmJ5pswRVQJUHpOsobnLYp2ZUaUlKiKDrgWWhosOwAEM8Q==}
     engines: {node: '>=6.9.0'}
@@ -5218,6 +5203,11 @@ packages:
     resolution: {integrity: sha512-DsU4s801FsJykyAZ1vLjWy4qXGK+ZFEWy6YfQcIV2AZn2+5NGOWZgZ9woY1A4YK75DsABUkw7nK3zArVLYFCvg==}
     peerDependencies:
       '@tanstack/query-core': '>=5.80.2'
+
+  '@orpc/zod@2.0.0-beta.26':
+    resolution: {integrity: sha512-NOLmnyvF5J/9twWk7ffgoHD6ObEI+Gth4VqI9M/TonpLt0pp9MWVllWuNfxvWJLOCPwfVmmD84ayU9i5TzssJQ==}
+    peerDependencies:
+      zod: '>=4.3.5'
 
   '@oxc-parser/binding-android-arm-eabi@0.127.0':
     resolution: {integrity: sha512-0LC7ye4hvqbIKxAzThzvswgHLFu2AURKzYLeSVvLdu2TBOYWQDmHnTqPLeA597BcUCxiLqLsS4CJ5uoI5WYWCQ==}
@@ -12881,9 +12871,6 @@ packages:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
 
-  openapi3-ts@4.6.1:
-    resolution: {integrity: sha512-XW9MOldkhoICNeXVzzmXzmOW5G73ppOEGmh7fLCqHjgfdEYCGGN+00MlVCeUZgovjjfC56j9tvtDt1zGabNjjA==}
-
   opener@1.5.2:
     resolution: {integrity: sha512-ur5UIdyw5Y7yEj9wLzhqXiy6GZ3Mwx0yGI+5sMn2r0N0v3cKJvUmFH5yPP+WXh9e0xfyzyJX95D8l088DNFj7A==}
     hasBin: true
@@ -16551,11 +16538,6 @@ snapshots:
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.5.2
 
-  '@asteasolutions/zod-to-openapi@8.5.0(zod@4.4.3)':
-    dependencies:
-      openapi3-ts: 4.6.1
-      zod: 4.4.3
-
   '@aws-sdk/checksums@3.1000.25':
     dependencies:
       '@aws-sdk/core': 3.977.5
@@ -18709,19 +18691,6 @@ snapshots:
     dependencies:
       hono: 4.13.0
 
-  '@hono/zod-openapi@1.5.1(hono@4.13.0)(zod@4.4.3)':
-    dependencies:
-      '@asteasolutions/zod-to-openapi': 8.5.0(zod@4.4.3)
-      '@hono/zod-validator': 0.9.0(hono@4.13.0)(zod@4.4.3)
-      hono: 4.13.0
-      openapi3-ts: 4.6.1
-      zod: 4.4.3
-
-  '@hono/zod-validator@0.9.0(hono@4.13.0)(zod@4.4.3)':
-    dependencies:
-      hono: 4.13.0
-      zod: 4.4.3
-
   '@hutson/parse-repository-url@3.0.2': {}
 
   '@img/colour@1.1.0': {}
@@ -19412,6 +19381,16 @@ snapshots:
       - crossws
       - fastify
       - swagger-ui
+
+  '@orpc/zod@2.0.0-beta.26(@opentelemetry/api@1.9.1)(zod@4.4.3)':
+    dependencies:
+      '@orpc/json-schema': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      json-schema-typed: 8.0.2
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/api'
+      - crossws
+      - fastify
 
   '@oxc-parser/binding-android-arm-eabi@0.127.0':
     optional: true
@@ -27323,10 +27302,6 @@ snapshots:
       define-lazy-prop: 2.0.0
       is-docker: 2.2.1
       is-wsl: 2.2.0
-
-  openapi3-ts@4.6.1:
-    dependencies:
-      yaml: 2.9.0
 
   opener@1.5.2: {}
 

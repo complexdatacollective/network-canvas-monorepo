@@ -3,7 +3,7 @@ import { RPCHandler } from '@orpc/server/fetch';
 import { Hono } from 'hono';
 
 import { createApiV1 } from './api.ts';
-import { rpcRouter } from './rpc.ts';
+import { appRouter } from './router.ts';
 
 // The app WebSocket endpoint. Deliberately distinct from Vite's HMR socket
 // path (see server/src/dev.ts) so both can share one HTTP server in
@@ -18,9 +18,9 @@ export function createApp() {
 
   app.route('/api/v1', createApiV1());
 
-  // The SPA's typed procedures (oRPC v2, decision recorded on #1244); the
-  // public API surface above is unchanged pending #1248.
-  const rpcHandler = new RPCHandler(rpcRouter);
+  // The SPA's typed procedures (oRPC v2, decision recorded on #1244) — the
+  // same router the public API above serves RESTfully.
+  const rpcHandler = new RPCHandler(appRouter);
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {
       prefix: '/rpc',
