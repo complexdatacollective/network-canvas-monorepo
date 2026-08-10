@@ -1,0 +1,16 @@
+{
+  "name": "spike-orpc-fidelity",
+  "private": true,
+  "description": "ADR #1248 course-correction spike: oRPC v2 as the contract machinery",
+  "type": "module",
+  "dependencies": {
+    "@orpc/client": "2.0.0-beta.26",
+    "@orpc/contract": "2.0.0-beta.26",
+    "@orpc/openapi": "2.0.0-beta.26",
+    "@orpc/server": "2.0.0-beta.26",
+    "@orpc/tanstack-query": "2.0.0-beta.26",
+    "@orpc/zod": "2.0.0-beta.26",
+    "hono": "4.13.1",
+    "zod": "4.4.3"
+  }
+}
