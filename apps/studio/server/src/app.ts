@@ -1,7 +1,9 @@
 import { type HttpBindings, upgradeWebSocket } from '@hono/node-server';
+import { RPCHandler } from '@orpc/server/fetch';
 import { Hono } from 'hono';
 
 import { createApiV1 } from './api.ts';
+import { rpcRouter } from './rpc.ts';
 
 // The app WebSocket endpoint. Deliberately distinct from Vite's HMR socket
 // path (see server/src/dev.ts) so both can share one HTTP server in
@@ -16,9 +18,26 @@ export function createApp() {
 
   app.route('/api/v1', createApiV1());
 
-  // Unknown API paths must 404 as JSON (RFC 9457 problem shape, per the API
-  // ADR #1248) — never fall through to the SPA fallback and return HTML.
+  // The SPA's typed procedures (oRPC v2, decision recorded on #1244); the
+  // public API surface above is unchanged pending #1248.
+  const rpcHandler = new RPCHandler(rpcRouter);
+  app.use('/rpc/*', async (c, next) => {
+    const { matched, response } = await rpcHandler.handle(c.req.raw, {
+      prefix: '/rpc',
+    });
+    if (matched) return c.newResponse(response.body, response);
+    await next();
+  });
+
+  // Unknown API and RPC paths must 404 as JSON (RFC 9457 problem shape, per
+  // the API ADR #1248) — never fall through to the SPA fallback and return
+  // HTML.
   app.all('/api/*', (c) =>
+    c.json({ title: 'Not Found', status: 404 }, 404, {
+      'Content-Type': 'application/problem+json',
+    }),
+  );
+  app.all('/rpc/*', (c) =>
     c.json({ title: 'Not Found', status: 404 }, 404, {
       'Content-Type': 'application/problem+json',
     }),

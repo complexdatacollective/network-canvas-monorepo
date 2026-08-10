@@ -13,12 +13,16 @@ the architecture follows the ADR recommendations on
 ## Layout
 
 - `client/` — Vite + React SPA: TanStack Router, TanStack Query,
-  `@codaco/fresco-ui`.
+  `@codaco/fresco-ui`. Talks to the server through typed oRPC procedures
+  (`@orpc/tanstack-query` over the `/rpc` surface; decision recorded 2026-08-10
+  on [#1244](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1244)).
 - `server/` — Hono app on `@hono/node-server` (Node 24 baseline): `/healthz`,
   the public API under `/api/v1/*` (OpenAPI 3.1 at `/api/v1/openapi.json`,
-  generated from the runtime Zod schemas), and the app WebSocket endpoint at
-  `/ws`.
-- `shared/` — contract Zod schemas consumed source-first by both halves.
+  generated from the runtime Zod schemas; whether it also moves to oRPC is
+  being decided on #1248), the SPA's oRPC surface at `/rpc`, and the app
+  WebSocket endpoint at `/ws`.
+- `shared/` — the oRPC contract and its Zod schemas, consumed source-first by
+  both halves (type-only on the client).
 
 ## Development
 

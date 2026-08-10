@@ -11,5 +11,3 @@ export const StatusSchema = z
     version: z.string(),
   })
   .openapi('Status');
-
-export type Status = z.infer<typeof StatusSchema>;

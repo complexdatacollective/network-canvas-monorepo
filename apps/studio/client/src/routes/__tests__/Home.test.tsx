@@ -6,9 +6,17 @@ import { describe, expect, it, vi } from 'vitest';
 import Home from '../Home.tsx';
 
 vi.mock('../../lib/api.ts', () => ({
-  fetchStatus: vi
-    .fn()
-    .mockResolvedValue({ name: 'Network Canvas Studio', version: '0.1.0' }),
+  orpc: {
+    status: {
+      queryOptions: () => ({
+        queryKey: ['status'],
+        queryFn: vi.fn().mockResolvedValue({
+          name: 'Network Canvas Studio',
+          version: '0.1.0',
+        }),
+      }),
+    },
+  },
 }));
 
 function renderHome() {

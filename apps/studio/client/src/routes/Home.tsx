@@ -5,10 +5,10 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import { fetchStatus } from '../lib/api.ts';
+import { orpc } from '../lib/api.ts';
 
 export default function Home() {
-  const status = useQuery({ queryKey: ['status'], queryFn: fetchStatus });
+  const status = useQuery(orpc.status.queryOptions());
 
   return (
     <main className="flex h-full items-center justify-center p-4">
