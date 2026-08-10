@@ -1,8 +1,8 @@
+import { OpenAPIGenerator, openapi } from '@orpc/openapi';
 // Verification: can oRPC v2 error responses be shaped to RFC 9457 problem
 // details (the API ADR's convention) on the wire AND in the generated spec?
 import { OpenAPIHandler } from '@orpc/openapi/fetch';
-import { OpenAPIGenerator, openapi } from '@orpc/openapi';
-import { os, ORPCError } from '@orpc/server';
+import { os } from '@orpc/server';
 import { ZodToJsonSchemaConverter } from '@orpc/zod';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -12,9 +12,7 @@ const SessionSchema = z
   .meta({ id: 'Session' });
 
 const getSession = os
-  .meta(
-    openapi({ method: 'GET', path: '/sessions/{sessionId}' }),
-  )
+  .meta(openapi({ method: 'GET', path: '/sessions/{sessionId}' }))
   .errors({
     NOT_FOUND: {
       data: z.object({ resource: z.literal('session') }),
