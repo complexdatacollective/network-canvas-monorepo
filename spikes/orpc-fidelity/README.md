@@ -48,6 +48,13 @@ node dual-surface.ts
 #    /api/v1 REST via OpenAPIHandler, the 3.1 document served from within the
 #    versioned path, /rpc via RPCHandler, problem-JSON 404 fallback
 node hono-mount.ts
+
+# 7. RFC 9457 error shaping (the API ADR's error convention): a typed error
+#    (errors.NOT_FOUND) leaves the OpenAPIHandler as a problem-details body
+#    via customErrorResponseBodyEncoder; the application/problem+json media
+#    type is applied at the Hono mount; customErrorResponseBodySchema puts
+#    the problem schema under the 404 response in the generated document
+node error-shaping.ts
 ```
 
 ## Findings vs the accepted `@hono/zod-openapi` chain
@@ -71,6 +78,16 @@ node hono-mount.ts
   The ADR's "3.0 alongside" deliverable needs a downgrade-converter step, or a
   decision that 3.1-only is acceptable (the original spike showed 3.0 types
   nullability strictly worse anyway).
+- **RFC 9457 error shaping works, with two caveats we own**
+  (`error-shaping.ts`): `customErrorResponseBodyEncoder` produces an exact
+  problem-details body from a typed error, and `errorStatusMap` provides the
+  status; but the handler hardcodes `application/json` on error responses, so
+  the problem media type is applied at the Hono mount (three lines, verified
+  end to end), and the generated document likewise lists the error schema
+  under `application/json` — fixable by the same post-processing step as the
+  discriminator. The RPC surface is unaffected: the encoder is
+  OpenAPIHandler-only, so the SPA keeps oRPC's native typed-error protocol
+  from the same thrown error.
 
 ## Files
 
@@ -84,6 +101,8 @@ node hono-mount.ts
 - `dual-surface.ts` — one router → `OpenAPIHandler` (REST) + `RPCHandler`
   (RPC) + typed `RPCLink` client, in-process.
 - `hono-mount.ts` — the scaffold topology end to end in Hono.
+- `error-shaping.ts` — RFC 9457 problem details on the wire (encoder + mount
+  media-type rewrite) and in the generated document.
 - `openapi-3.1.json` — committed snapshot from `generate-spec.ts` (oRPC emits
   `openapi: 3.1.2`). Regenerating produces a formatting-only diff (the repo's
   pre-commit formatter re-wraps arrays); the JSON content is identical.
