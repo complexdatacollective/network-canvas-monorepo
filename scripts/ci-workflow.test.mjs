@@ -15,6 +15,9 @@ const snapshotWorkflow = readFileSync(
   ),
   'utf8',
 );
+const frescoPackage = JSON.parse(
+  readFileSync(new URL('../apps/fresco/package.json', import.meta.url), 'utf8'),
+);
 
 const topLevelConcurrency = workflow.match(
   /^concurrency:\n(?<config>[\s\S]*?)\n\njobs:/m,
@@ -216,6 +219,32 @@ test('manual Interview E2E benchmarks cannot enter the legacy release lane', () 
       /needs\.legacy-release-detect\.outputs\.(?:architect|interviewer)_released == 'true'/,
     );
   }
+});
+
+test('classic release builds use the proven macOS signing secrets', () => {
+  for (const jobName of [
+    'interviewer-release-build',
+    'architect-release-build',
+  ]) {
+    const releaseBuild = job(jobName);
+    assert.ok(releaseBuild, `${jobName} exists`);
+    assert.match(releaseBuild, /secrets\.MAC_CSC_LINK/);
+    assert.match(releaseBuild, /secrets\.MAC_CSC_KEY_PASSWORD/);
+    assert.match(releaseBuild, /secrets\.APPLE_ID/);
+    assert.match(releaseBuild, /secrets\.APPLE_APP_SPECIFIC_PASSWORD/);
+    assert.match(releaseBuild, /secrets\.APPLE_TEAM_ID/);
+    assert.doesNotMatch(releaseBuild, /Decode App Store Connect API key/);
+    assert.doesNotMatch(releaseBuild, /secrets\.CSC_LINK/);
+    assert.doesNotMatch(releaseBuild, /secrets\.APPLE_API_KEY/);
+  }
+});
+
+test('Fresco postinstall is portable to Windows release runners', () => {
+  assert.equal(
+    frescoPackage.scripts.postinstall,
+    'cross-env SKIP_ENV_VALIDATION=true prisma generate && cross-env SKIP_ENV_VALIDATION=true next typegen',
+  );
+  assert.equal(frescoPackage.devDependencies['cross-env'], '^10.1.0');
 });
 
 test('published Classic releases advance latest and rebuild the website', () => {

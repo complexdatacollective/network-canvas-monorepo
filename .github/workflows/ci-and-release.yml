@@ -2165,25 +2165,18 @@ jobs:
           ignore-scripts: 'false'
       - name: Build app + workspace deps
         run: pnpm exec turbo run build --filter=@codaco/interviewer-classic
-      - name: Decode App Store Connect API key
-        if: matrix.os == 'macos-latest'
-        env:
-          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
-        run: |
-          key_path="${RUNNER_TEMP}/AuthKey.p8"
-          printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
-          echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
       # Build only — the release lifecycle (tag, draft, attach, publish) is owned
       # by the mirror + publish jobs, so electron-builder must not publish.
-      # macOS notarization runs automatically when APPLE_API_KEY is set (the
-      # config gates `notarize` on it); Windows ships unsigned (no CSC_LINK).
+      # Use the same proven signing/notarization secrets as the standalone
+      # classic-app build workflow. Windows ships unsigned (no CSC_LINK).
       - name: Package
         working-directory: apps/interviewer-classic
         env:
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.CSC_KEY_PASSWORD || '' }}
+          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_TEAM_ID || '' }}
         run: pnpm exec electron-builder --${{ matrix.platform }} --config electron-builder.config.cjs --publish never
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -2216,26 +2209,19 @@ jobs:
           ignore-scripts: 'false'
       - name: Build app + workspace deps
         run: pnpm exec turbo run build --filter=@codaco/architect-classic
-      - name: Decode App Store Connect API key
-        if: matrix.os == 'macos-latest'
-        env:
-          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY }}
-        run: |
-          key_path="${RUNNER_TEMP}/AuthKey.p8"
-          printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$key_path"
-          echo "APPLE_API_KEY=${key_path}" >> "$GITHUB_ENV"
       # Build only — the release lifecycle (tag, draft, attach, publish) is owned
       # by the mirror + publish jobs, so electron-builder must not publish.
-      # macOS notarization runs automatically when APPLE_API_KEY is set (the
-      # config gates `notarize` on it); Windows ships unsigned (no CSC_LINK,
+      # Use the same proven signing/notarization secrets as the standalone
+      # classic-app build workflow. Windows ships unsigned (no CSC_LINK,
       # no certificateSubjectName).
       - name: Package
         working-directory: apps/architect-classic
         env:
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.CSC_KEY_PASSWORD || '' }}
+          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_TEAM_ID || '' }}
         run: pnpm exec electron-builder --${{ matrix.platform }} --config electron-builder.config.js --publish never
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
