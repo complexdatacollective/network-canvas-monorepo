@@ -32,8 +32,8 @@ import {
 //   key can never be removed once written — so: omit → never touch,
 //   explicit false on option one → click twice (on→off), explicit false on
 //   option two → click once (its default is true).
-// - Required validation goes through the toggleable Validation section:
-//   'Add new' → bare select[name="validation-key"] → 'Add validation rule'.
+// - Required validation goes through the toggleable Validation section,
+//   then the directly toggleable 'Required' rule.
 export type BooleanOptionSpec = {
   label: string;
   // 'omit' → never touch the toggle (option one only — option two defaults
@@ -168,13 +168,7 @@ export async function addConfiguredFormField(
       .getByRole('switch', { name: 'Turn this feature on or off' })
       .click();
     await validation
-      .getByRole('button', { name: 'Add new', exact: true })
-      .click();
-    await page
-      .locator('select[name="validation-key"]')
-      .selectOption({ label: 'Required' });
-    await page
-      .getByRole('button', { name: 'Add validation rule', exact: true })
+      .getByRole('switch', { name: 'Required', exact: true })
       .click();
   }
 

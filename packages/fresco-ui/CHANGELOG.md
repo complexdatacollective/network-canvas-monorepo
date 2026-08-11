@@ -1,5 +1,61 @@
 # @codaco/fresco-ui
 
+## 6.0.0
+
+### Major Changes
+
+- 90e0178: Form values now include only registered fields. `getFormValues()` — and therefore submitted values, validation context, and wizard finish payloads — no longer merges values from unmounted (dormant) fields. A field hidden by conditional rendering (`FieldGroup`) contributes nothing to the form's output while hidden. Dormant storage still restores a field's value when it remounts, and `getFieldState`/`useFormValue` still fall back to it for cross-step reads.
+
+  Wizard dialogs now accumulate each step's values as you navigate (forward, back, or jumping), so multi-step wizards continue to resolve with every step's answers under the new semantics. A revisited step's answers wholly replace what was previously recorded for its fields, which also fixes stale repeated-entry arrays surviving a reduced count.
+
+  `setFieldValue` on an unregistered field name now stages a pending value that takes effect when the field next mounts, instead of warning and discarding the write.
+
+### Minor Changes
+
+- 52a3fbb: Honor reduced-motion preferences in Architect and expose a shared provider for disabling Motion and Base UI animations together in automated hosts.
+- 13e5e99: Add a shared automation-aware animation provider that disables Motion and Base UI animations together for visual-test hosts.
+- ea06b66: Validation rules now save what the editor shows.
+
+  Nudging a rule's value with the plus or minus button changed the number on
+  screen without saving it, and if the value was being edited at the time, the
+  older number was saved instead. Switching on a rule that needs no value — such
+  as Required — saved it even where it could never be satisfied, for instance
+  alongside a maximum length of zero. A rule held back because it clashed with
+  another one stayed unsaved even after the clash was resolved, so a rule could
+  sit switched on with a sensible value that was never written. And undoing a
+  change left the rule switched on with the old value still showing, ready to be
+  written out again.
+
+  A rule whose value was still being typed is no longer dropped when a different
+  rule in the same list is saved: changing a minimum and then nudging the maximum
+  now saves both, rather than putting the minimum back to its old number. And
+  switching the whole Validation section off and then undoing reopens the section
+  with the restored rules in view, instead of leaving rules that will be saved
+  hidden behind a switched-off section.
+
+  Each rule's plus and minus buttons are also now named after that rule, so a
+  screen reader announces "Increase Minimum value" rather than "Increase value"
+  on every numeric rule on the screen.
+
+  `InputField` gains two optional props to support this: `onStep`, which reports
+  a value settled by a stepper button or arrow key, and `stepperLabels`, which
+  names the stepper buttons. Both default to the previous behaviour.
+
+### Patch Changes
+
+- fec9536: Add a Colored Eco-Genetic Relationship Map (CEGRM) template for families living with an inherited condition. It combines a family pedigree with the participant's wider social network, records relationship closeness and contact frequency alongside exchanges of information, practical help, emotional and spiritual support, and closes on a visual map and an inheritance view.
+
+  Treat the Family Pedigree node label as a validated codebook field, apply its rules to every family-member name entry point, and expose those rules beside the label-variable selector in Architect. Keep the iconically rendered ego node outside label and additional family-member form collection, including in synthetic previews. Reduce the default synthetic Sociogram edge density so preview networks remain legible as their node count grows.
+
+  Keep optional unique fields empty without false duplicate errors, scope comparison rules to the active field namespace, and prevent dormant or duplicate pedigree name controls from affecting validation.
+
+- 673d5f3: Toggles no longer replay their animation when something near them moves. Motion
+  groups every animating element inside a dialog together and re-measures the
+  whole group whenever any one of them changes, so switching one toggle on made
+  every other toggle on screen slide its handle as the content around it reflowed.
+  Each toggle's handle is now measured on its own, and only the toggle that was
+  actually operated animates.
+
 ## 5.1.0
 
 ### Minor Changes
