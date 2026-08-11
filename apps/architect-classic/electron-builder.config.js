@@ -18,7 +18,12 @@ module.exports = {
     'dist/**/*',
     '!dist/main/_dummy.js',
     'node_modules/**/*',
-    '!node_modules/**/node_modules/**',
+    // Nested node_modules MUST be included: electron-builder resolves version
+    // conflicts by nesting the losing version under its dependent (e.g.
+    // lazystream needs readable-stream@2 for its `readable-stream/passthrough`
+    // require, while archiver hoists readable-stream@4 to the root). Excluding
+    // `node_modules/**/node_modules/**` strips those copies and crashes the
+    // packaged app at launch with "Cannot find module".
     '!**/*.{map,ts,md}',
     '!**/test/**',
     '!**/tests/**',
