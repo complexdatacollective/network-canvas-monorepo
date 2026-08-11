@@ -2062,6 +2062,10 @@ jobs:
       contents: write
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      # Present only here, so only the production build emits source maps and
+      # uploads them to PostHog (see apps/networkcanvas.com/next.config.ts).
+      POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+      POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -2422,6 +2426,9 @@ jobs:
       cancel-in-progress: false
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      # This job also deploys to production, so it uploads source maps too.
+      POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+      POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
       # Classic release metadata is an external build input, so it cannot be
       # represented in Turbo's source hash. Always execute the static build.
       TURBO_FORCE: 'true'

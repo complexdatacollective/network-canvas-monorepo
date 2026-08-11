@@ -143,6 +143,7 @@
         "components/**",
         "content/**",
         "font-modules.d.ts",
+        "instrumentation-client.ts",
         "lib/**",
         "messages/**",
         "netlify/**",
@@ -158,7 +159,10 @@
         "NODE_ENV",
         "NEXT_PUBLIC_DOCUMENTATION_URL",
         "CONTEXT",
-        "REVIEW_ID"
+        "REVIEW_ID",
+        // See the note on the generic build task's `env`.
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID"
       ],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
