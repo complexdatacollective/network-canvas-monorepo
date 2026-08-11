@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../schema.ts';
+import { networkComposerStage } from '../stages/network-composer.ts';
 
 type Loose = Record<string, unknown>;
 
@@ -16,15 +17,18 @@ const hasIssue = (
 ): boolean =>
   !result.success && JSON.stringify(result.error.issues).includes(fragment);
 
-const withNodeSynthetic = (synthetic: unknown) => {
+// Counts and topology are declared by the STAGE that creates the entities, not
+// by the codebook type. The base protocol opens with a NameGenerator and a
+// Sociogram, which are exactly the two hosts these tests need.
+const withNodeStageSynthetic = (synthetic: unknown) => {
   const protocol = createBaseProtocol();
-  (protocol.codebook.node.person as Loose).synthetic = synthetic;
+  (protocol.stages[0] as Loose).synthetic = synthetic;
   return protocol;
 };
 
-const withEdgeSynthetic = (synthetic: unknown) => {
+const withEdgeStageSynthetic = (synthetic: unknown) => {
   const protocol = createBaseProtocol();
-  (protocol.codebook.edge.knows as Loose).synthetic = synthetic;
+  (protocol.stages[1] as Loose).synthetic = synthetic;
   return protocol;
 };
 
@@ -54,7 +58,7 @@ describe('synthetic metadata (additive to schema 8)', () => {
         { distribution: 'normal', mean: 18, sd: 6, min: 5, max: 40 },
       ],
     ])('accepts a %s count', (_label, count) => {
-      expect(parse(withNodeSynthetic({ count })).success).toBe(true);
+      expect(parse(withNodeStageSynthetic({ count })).success).toBe(true);
     });
 
     it.each([
@@ -69,7 +73,7 @@ describe('synthetic metadata (additive to schema 8)', () => {
         { distribution: 'poisson', mean: 3, sd: 2 },
       ],
     ])('rejects a count with %s', (_label, count) => {
-      expect(parse(withNodeSynthetic({ count })).success).toBe(false);
+      expect(parse(withNodeStageSynthetic({ count })).success).toBe(false);
     });
 
     it('rejects a population no preview could render', () => {
@@ -78,7 +82,7 @@ describe('synthetic metadata (additive to schema 8)', () => {
       // before this, and locks the renderer.
       expect(
         parse(
-          withNodeSynthetic({
+          withNodeStageSynthetic({
             count: { distribution: 'constant', value: 1_000_000_000 },
           }),
         ).success,
@@ -94,14 +98,14 @@ describe('synthetic metadata (additive to schema 8)', () => {
       ['wide-normal', { distribution: 'normal', mean: 10_000, sd: 10_000 }],
       ['wide-poisson', { distribution: 'poisson', mean: 9_900 }],
     ])('rejects an oversized %s count', (_label, count) => {
-      expect(parse(withNodeSynthetic({ count })).success).toBe(false);
+      expect(parse(withNodeStageSynthetic({ count })).success).toBe(false);
     });
 
     it('accepts a spread whose derived ceiling stays inside the cap', () => {
       // mean + 6·sd = 1_000, well under the ceiling.
       expect(
         parse(
-          withNodeSynthetic({
+          withNodeStageSynthetic({
             count: { distribution: 'normal', mean: 400, sd: 100 },
           }),
         ).success,
@@ -113,7 +117,7 @@ describe('synthetic metadata (additive to schema 8)', () => {
       // it is irrelevant to how many entities can be built.
       expect(
         parse(
-          withNodeSynthetic({
+          withNodeStageSynthetic({
             count: {
               distribution: 'normal',
               mean: 10_000,
@@ -128,7 +132,7 @@ describe('synthetic metadata (additive to schema 8)', () => {
     it('accepts a population at the ceiling', () => {
       expect(
         parse(
-          withNodeSynthetic({
+          withNodeStageSynthetic({
             count: { distribution: 'constant', value: 10_000 },
           }),
         ).success,
@@ -140,7 +144,7 @@ describe('synthetic metadata (additive to schema 8)', () => {
         count: { distribution: 'poisson', mean: 3 },
         extra: true,
       };
-      expect(parse(withNodeSynthetic(synthetic)).success).toBe(false);
+      expect(parse(withNodeStageSynthetic(synthetic)).success).toBe(false);
     });
 
     it('rejects synthetic metadata on ego', () => {
@@ -187,7 +191,7 @@ describe('synthetic metadata (additive to schema 8)', () => {
         },
       ],
     ])('accepts %s', (_label, topology) => {
-      expect(parse(withEdgeSynthetic({ topology })).success).toBe(true);
+      expect(parse(withEdgeStageSynthetic({ topology })).success).toBe(true);
     });
 
     it.each([
@@ -241,7 +245,127 @@ describe('synthetic metadata (additive to schema 8)', () => {
         },
       ],
     ])('rejects %s', (_label, synthetic) => {
-      expect(parse(withEdgeSynthetic(synthetic)).success).toBe(false);
+      expect(parse(withEdgeStageSynthetic(synthetic)).success).toBe(false);
+    });
+
+    it('accepts a beta density', () => {
+      // Density is a proportion, so beta is the family that lives on 0-1 by
+      // construction rather than by clamping a normal that wanted to leave.
+      expect(
+        parse(
+          withEdgeStageSynthetic({
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'beta', mean: 0.3, sd: 0.15 },
+            },
+          }),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('rejects a beta density with no alpha/beta solution', () => {
+      // sd² >= mean·(1−mean) cannot be realised by any beta distribution.
+      expect(
+        parse(
+          withEdgeStageSynthetic({
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'beta', mean: 0.5, sd: 0.5 },
+            },
+          }),
+        ).success,
+      ).toBe(false);
+    });
+  });
+
+  describe('where count and topology may be declared', () => {
+    const aCount = { distribution: 'constant', value: 5 };
+    const aTopology = {
+      metric: 'density',
+      distribution: { distribution: 'constant', value: 0.4 },
+    };
+
+    it('rejects a count on the node type it used to be declared on', () => {
+      // A count is a property of the asking, not of the asked-about: three
+      // name generators over `person` each nominate their own people, and
+      // nothing in the protocol says how one declared population would split
+      // between them.
+      const protocol = createBaseProtocol();
+      (protocol.codebook.node.person as Loose).synthetic = { count: aCount };
+      expect(parse(protocol).success).toBe(false);
+    });
+
+    it('rejects topology on the edge type it used to be declared on', () => {
+      const protocol = createBaseProtocol();
+      (protocol.codebook.edge.knows as Loose).synthetic = {
+        topology: aTopology,
+      };
+      expect(parse(protocol).success).toBe(false);
+    });
+
+    it('rejects topology on a name generator, which creates no edges', () => {
+      expect(
+        parse(withNodeStageSynthetic({ topology: aTopology })).success,
+      ).toBe(false);
+    });
+
+    const informationStage = (synthetic?: unknown): Loose => ({
+      id: 'info1',
+      type: 'Information',
+      label: 'Welcome',
+      title: 'Welcome',
+      items: [{ id: 'item-1', type: 'text', content: 'Hello' }],
+      ...(synthetic === undefined ? {} : { synthetic }),
+    });
+
+    it('accepts an Information stage carrying no synthetic metadata', () => {
+      // Guards the assertion below: that one must fail for the synthetic
+      // block, not because this fixture was malformed all along.
+      const protocol = createBaseProtocol();
+      (protocol.stages as Loose[]).push(informationStage());
+      expect(parse(protocol).success).toBe(true);
+    });
+
+    it('rejects a count on a stage that creates nobody', () => {
+      const protocol = createBaseProtocol();
+      (protocol.stages as Loose[]).push(informationStage({ count: aCount }));
+      expect(parse(protocol).success).toBe(false);
+    });
+
+    describe('a stage that creates both people and links', () => {
+      const composer = (synthetic?: unknown) => ({
+        id: 'nc1',
+        label: 'Build the network',
+        type: 'NetworkComposer',
+        subject: { entity: 'node', type: 'person' },
+        quickAdd: 'name',
+        layoutVariable: 'layoutPosition',
+        background: { concentricCircles: 4 },
+        edges: [{ id: 'edge-1', subject: { entity: 'edge', type: 'knows' } }],
+        ...(synthetic === undefined ? {} : { synthetic }),
+      });
+
+      it.each([
+        ['a count alone', { count: aCount }],
+        ['a topology alone', { topology: aTopology }],
+        ['both halves together', { count: aCount, topology: aTopology }],
+      ])('accepts %s', (_label, synthetic) => {
+        expect(
+          networkComposerStage.safeParse(composer(synthetic)).success,
+        ).toBe(true);
+      });
+
+      it('accepts the stage with no synthetic block at all', () => {
+        expect(networkComposerStage.safeParse(composer()).success).toBe(true);
+      });
+
+      it('rejects an empty synthetic block', () => {
+        // "On but declaring nothing" says exactly what "no block" says, and
+        // storing it would leave the editor's toggle with two off states.
+        expect(networkComposerStage.safeParse(composer({})).success).toBe(
+          false,
+        );
+      });
     });
   });
 

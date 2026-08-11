@@ -1,6 +1,5 @@
 import type {
   ComponentType,
-  EdgeSynthetic,
   FamilyPedigreeBoundaries,
   FamilyPedigreeEdgeConfigInput,
   FamilyPedigreeFraming,
@@ -9,7 +8,6 @@ import type {
   FamilyPedigreeNominationPromptInput,
   FilterOperator,
   Item,
-  NodeSynthetic,
   StageType,
   VariableSynthetic,
   VariableType,
@@ -93,7 +91,6 @@ export type NodeTypeEntry = {
   icon: string;
   shape: { default: string; dynamic?: ShapeMapping };
   variables: Map<string, VariableEntry>;
-  synthetic?: NodeSynthetic;
 };
 
 export type EdgeTypeEntry = {
@@ -101,7 +98,6 @@ export type EdgeTypeEntry = {
   name: string;
   color: string;
   variables: Map<string, VariableEntry>;
-  synthetic?: EdgeSynthetic;
 };
 
 export type NameGeneratorPromptEntry = {
@@ -376,15 +372,11 @@ export type AddNodeTypeInput = {
   color?: string;
   icon?: string;
   shape?: { default: string; dynamic?: ShapeMapping };
-  /** Population metadata for the type, e.g. `{ count: { … } }`. */
-  synthetic?: NodeSynthetic;
 };
 
 export type AddEdgeTypeInput = {
   name?: string;
   color?: string;
-  /** Topology metadata for the type, e.g. `{ topology: { … } }`. */
-  synthetic?: EdgeSynthetic;
 };
 
 export type AddVariableInput = {

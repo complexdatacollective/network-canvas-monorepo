@@ -23,7 +23,6 @@ const scoresFor = (
         person: {
           name: 'Person',
           color: 'node-color-seq-1',
-          synthetic: { count: { distribution: 'constant', value: 6 } },
           variables: {
             score: {
               name: 'Score',
@@ -44,6 +43,7 @@ const scoresFor = (
         type: 'NameGenerator',
         label: 'People',
         subject: { entity: 'node', type: 'person' },
+        synthetic: { count: { distribution: 'constant', value: 6 } },
         form: {
           title: 'About this person',
           fields: [{ variable: 'score', prompt: 'Score' }],
@@ -99,7 +99,6 @@ describe('a declared number range outside the realism fallback', () => {
           person: {
             name: 'Person',
             color: 'node-color-seq-1',
-            synthetic: { count: { distribution: 'constant', value: 6 } },
             variables: { score: { name: 'Score', type: 'number' } },
           },
         },
@@ -112,6 +111,7 @@ describe('a declared number range outside the realism fallback', () => {
           type: 'NameGenerator',
           label: 'People',
           subject: { entity: 'node', type: 'person' },
+          synthetic: { count: { distribution: 'constant', value: 6 } },
           form: {
             title: 'About this person',
             fields: [{ variable: 'score', prompt: 'Score' }],
@@ -161,7 +161,6 @@ describe('one variable key used in two node types', () => {
           person: {
             name: 'Person',
             color: 'node-color-seq-1',
-            synthetic: { count: { distribution: 'constant', value: 3 } },
             variables: {
               shared: {
                 name: 'Shared',
@@ -174,7 +173,6 @@ describe('one variable key used in two node types', () => {
           org: {
             name: 'Org',
             color: 'node-color-seq-2',
-            synthetic: { count: { distribution: 'constant', value: 3 } },
             variables: {
               shared: {
                 name: 'Shared',
@@ -194,6 +192,7 @@ describe('one variable key used in two node types', () => {
           type: 'NameGenerator',
           label: 'People',
           subject: { entity: 'node', type: 'person' },
+          synthetic: { count: { distribution: 'constant', value: 3 } },
           form: {
             title: 'About',
             fields: [{ variable: 'shared', prompt: 'Shared' }],
@@ -205,6 +204,7 @@ describe('one variable key used in two node types', () => {
           type: 'NameGenerator',
           label: 'Orgs',
           subject: { entity: 'node', type: 'org' },
+          synthetic: { count: { distribution: 'constant', value: 3 } },
           form: {
             title: 'About',
             fields: [{ variable: 'shared', prompt: 'Shared' }],

@@ -1,6 +1,9 @@
 import { filter as getFilter } from '@codaco/network-query';
-import { MAX_SYNTHETIC_POPULATION } from '@codaco/protocol-validation';
-import type { StructuralCodebook, Variable } from '@codaco/protocol-validation';
+import type {
+  EdgeTopology,
+  StructuralCodebook,
+  Variable,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -29,6 +32,7 @@ import {
   unreserveFixedValues,
 } from '../attributes';
 import { resolveGenerationOrder } from '../constraints/dependencyOrder';
+import { SyntheticDataConstraintError } from '../constraints/error';
 import { completionCheckFor } from '../constraints/generateEntityAttributes';
 import type { EntityConstraints } from '../constraints/types';
 import type { GenerationContext } from '../context';
@@ -36,8 +40,8 @@ import { ruleBrokenByFixedValues } from '../nodes';
 import { sampleContinuous, sampleCount } from './distributions';
 import { deterministicUuid, type RandomSource } from './random';
 import {
-  resolveEdgeTopology,
-  resolveNodeCount,
+  DEFAULT_EDGE_TOPOLOGY,
+  DEFAULT_NODE_COUNT,
   resolveVariableSynthetic,
 } from './resolveSynthetic';
 
@@ -84,9 +88,28 @@ export type PlannedEdge = {
 };
 
 export type EdgeTopologyTarget = {
-  metric: ReturnType<typeof resolveEdgeTopology>['metric'];
+  metric: EdgeTopology['metric'];
   value: number;
 };
+
+/**
+ * Key under which one creation's topology target is stored and looked up.
+ *
+ * Topology is declared by the stage, so a target belongs to a (stage, edge
+ * type) pair rather than to the type: two stages may create the same edge type
+ * at different densities, and a stage whose prompts create several types
+ * applies its declared topology to each of them separately.
+ */
+export function topologyKey(creation: {
+  stageId: string;
+  edgeType: string;
+}): string {
+  // Length-prefixed, like `pairKey`'s endpoints, rather than joined on a
+  // separator. Stage ids and edge types are arbitrary strings, so no character
+  // is safe to join on: a space made ('a', 'b c') and ('a b', 'c') read alike.
+  // Prefixing each part with its own length is injective over every string.
+  return `${creation.stageId.length}:${creation.stageId}${creation.edgeType}`;
+}
 
 export type NetworkPlan = {
   ego: {
@@ -98,15 +121,16 @@ export type NetworkPlan = {
   nodes: PlannedNode[];
   edges: PlannedEdge[];
   /**
-   * The topology each edge type was drawn to.
+   * The topology each edge-creating stage was drawn to, keyed by
+   * {@link topologyKey}.
    *
    * Kept because the plan's pair domain is not always the whole story: a
    * FamilyPedigree's people are built by the specialist generator during the
    * session walk, so a census or sociogram over them has no domain to plan
-   * against here. The walk applies this same target to those pairs, which is
-   * why the metric is drawn even where the planned domain is empty.
+   * against here. The walk applies that stage's own target to those pairs,
+   * which is why the metric is drawn even where the planned domain is empty.
    */
-  topologyByType: Map<string, EdgeTopologyTarget>;
+  topologyTargets: Map<string, EdgeTopologyTarget>;
 };
 
 /**
@@ -291,47 +315,6 @@ function applyMissingness(
     }
   }
   return missing;
-}
-
-/**
- * Apportions a type's drawn population across its creating stages: every
- * stage's declared minimum is honoured first (stage requirements outrank the
- * drawn total), then the remainder spreads round-robin across stages with
- * headroom. Capacity that runs out truncates the plan — stage caps constrain
- * the population, never the other way around.
- */
-export function apportionCount(
-  total: number,
-  capacities: { min: number; max: number | null }[],
-): number[] {
-  // Stage minimums outrank the drawn total, but not the generator's own
-  // ceiling: `behaviours.minNodes` is unbounded in the stage schema, so a
-  // large one walked straight past the population cap that keeps a synchronous
-  // preview from freezing the renderer. Trimmed from the last stage back, so a
-  // protocol under the cap is apportioned exactly as before.
-  const assigned = capacities.map((capacity) => capacity.min);
-  let excess = Math.max(
-    0,
-    assigned.reduce((a, b) => a + b, 0) - MAX_SYNTHETIC_POPULATION,
-  );
-  for (let i = assigned.length - 1; i >= 0 && excess > 0; i--) {
-    const trim = Math.min(assigned[i]!, excess);
-    assigned[i]! -= trim;
-    excess -= trim;
-  }
-  let remaining = Math.max(0, total - assigned.reduce((a, b) => a + b, 0));
-  let progressed = true;
-  while (remaining > 0 && progressed) {
-    progressed = false;
-    for (let i = 0; i < capacities.length && remaining > 0; i++) {
-      const cap = capacities[i]!.max;
-      if (cap !== null && assigned[i]! >= cap) continue;
-      assigned[i]! += 1;
-      remaining -= 1;
-      progressed = true;
-    }
-  }
-  return assigned;
 }
 
 /**
@@ -618,6 +601,120 @@ export function shuffled<T>(
   return result;
 }
 
+/**
+ * Which rows each roster stage gets first refusal on, and the refusal when a
+ * pool cannot cover what its stage was told to add.
+ *
+ * Most-constrained-first. Served in stage order instead, a wide pool takes
+ * rows the only stage that could have used them still needed: pools [a,b,c,d]
+ * and [a,b], two people wanted from each, is satisfiable, and stage order
+ * fills the first from {a,b} and leaves the second with nothing.
+ *
+ * A preference is returned only for CONTESTED creations — those sharing at
+ * least one row with another. Where a pool is a stage's alone every ordering
+ * of it is equivalent, so imposing one would churn seeded output to no end.
+ * The shortfall check runs for every roster stage regardless, because a lone
+ * stage can outstrip its own pool just as easily.
+ */
+function assignRosterRows(
+  ctx: GenerationContext,
+  effects: StageEffects,
+  creations: NodeCreation[],
+  assigned: number[],
+  nodeType: string,
+  nodeTypeName: string | undefined,
+): Map<number, string[]> {
+  /** Distinct rows per roster creation, minus everyone the run already used. */
+  const pools = new Map<number, string[]>();
+  creations.forEach((creation, index) => {
+    // Only a roster interface's pool binds. A name generator's panel is a
+    // shortcut for naming someone already known, not a closed list — it can
+    // always add someone the panel does not mention — so it is neither
+    // assigned rows nor held to the pool's size.
+    if (creation.source !== 'roster' || creation.rosterStageId === undefined) {
+      return;
+    }
+    const pool = ctx.externalData?.[creation.rosterStageId];
+    if (pool === undefined) return;
+    const seen = new Set<string>(ctx.usedRosterUids);
+    const distinct: string[] = [];
+    for (const row of pool) {
+      const uid = row[entityPrimaryKeyProperty];
+      if (seen.has(uid)) continue;
+      seen.add(uid);
+      distinct.push(uid);
+    }
+    pools.set(index, distinct);
+  });
+  if (pools.size === 0) return new Map();
+
+  const owners = new Map<string, number[]>();
+  for (const [index, uids] of pools) {
+    for (const uid of uids) {
+      const list = owners.get(uid) ?? [];
+      list.push(index);
+      owners.set(uid, list);
+    }
+  }
+  const contested = new Set<number>();
+  for (const list of owners.values()) {
+    if (list.length > 1) for (const index of list) contested.add(index);
+  }
+
+  const taken = new Set<string>();
+  const preference = new Map<number, string[]>();
+  const order = [...pools.keys()].toSorted(
+    (left, right) => pools.get(left)!.length - pools.get(right)!.length,
+  );
+
+  for (const index of order) {
+    const creation = creations[index]!;
+    const available = pools.get(index)!.filter((uid) => !taken.has(uid));
+    let wanted = assigned[index] ?? 0;
+
+    // An UNDECLARED roster stage is only carrying the generic 1-8 fallback,
+    // which says nothing about this roster: the real Development Protocol has
+    // six classmates and a stage the default would have asked eight of. Take
+    // what the pool offers instead, and reserve the refusal for a count the
+    // author actually wrote — where asking for more people than the roster
+    // holds is a protocol they need to hear about.
+    if (!creation.countDeclared && wanted > available.length) {
+      wanted = available.length;
+      assigned[index] = wanted;
+    }
+
+    if (available.length < wanted) {
+      const label =
+        effects.stages[creation.stageIndex]?.stage.label ?? creation.stageId;
+      const offered = `${available.length} ${available.length === 1 ? 'person' : 'people'}`;
+      throw new SyntheticDataConstraintError(
+        [
+          {
+            entity: 'node',
+            entityType: nodeType,
+            ...(nodeTypeName === undefined
+              ? {}
+              : { entityTypeName: nodeTypeName }),
+            variableIds: [],
+            variableNames: [],
+            rules: ['roster size'],
+            reason:
+              `the roster for "${label}" offers ${offered} no earlier stage has already used, ` +
+              `but that stage is set to add ${wanted}`,
+          },
+        ],
+        'a roster does not hold enough people for the stages drawing from it',
+      );
+    }
+
+    const mine = available.slice(0, wanted);
+    for (const uid of mine) taken.add(uid);
+    if (contested.has(index)) preference.set(index, mine);
+  }
+
+  return preference;
+}
+
 export function planNetwork(
   ctx: GenerationContext,
   effects: StageEffects,
@@ -660,85 +757,39 @@ export function planNetwork(
 
   for (const [type, definition] of Object.entries(ctx.codebook.node ?? {})) {
     const creations = creationsByType.get(type) ?? [];
-    const creatable = effects.creatableNodeTypes.has(type);
-    const total = sampleCount(
-      resolveNodeCount(definition, { creatable }),
-      source.stream('count', type),
-    );
     if (creations.length === 0) continue;
 
-    // A roster pool caps its stage's share: an explicit empty pool means
-    // "roster known to be empty" and admits nobody, while an absent pool
-    // leaves the stage fabricating as usual. A name generator's panel is not
-    // a ceiling — it can always add someone the panel does not list — so only
-    // a roster interface's pool binds.
+    // Each creating stage declares its own population, so there is nothing to
+    // apportion. A count belongs to the asking rather than the asked-about:
+    // three name generators over one node type each nominate their own people,
+    // and nothing in the protocol ever said how one declared population would
+    // divide between them.
     //
-    // Rows are taken without replacement across the whole run, so a row an
-    // earlier roster will claim is not capacity a later one has. Counting each
-    // pool whole credited two rosters over one pool with twice its people; the
-    // share the second could then not fill was simply dropped, and the
-    // population came up short by exactly the overlap. Each pool is therefore
-    // counted in the rows still unspoken for when its turn arrives.
-    const claimedRosterUids = new Set<string>(ctx.usedRosterUids);
-    /** The distinct rows of one creation's pool that nobody has spoken for. */
-    const unclaimedRowsFor = (creation: NodeCreation): string[] | undefined => {
-      if (
-        creation.source !== 'roster' ||
-        creation.rosterStageId === undefined
-      ) {
-        return undefined;
-      }
-      const pool = ctx.externalData?.[creation.rosterStageId];
-      if (pool === undefined) return undefined;
-      const unclaimed: string[] = [];
-      for (const row of pool) {
-        const uid = row[entityPrimaryKeyProperty];
-        if (claimedRosterUids.has(uid)) continue;
-        if (unclaimed.includes(uid)) continue;
-        unclaimed.push(uid);
-      }
-      return unclaimed;
-    };
-    const claim = (uids: readonly string[]): void => {
-      for (const uid of uids) claimedRosterUids.add(uid);
-    };
-
-    const capacities = creations.map((creation) => ({ ...creation.capacity }));
-
-    // Minimums first, across every roster, before any stage takes more than
-    // it must. Reserving in stage order instead let an early unbounded roster
-    // speak for the whole shared pool during this pass — which happens BEFORE
-    // apportionment decides what it actually gets — and a later stage's
-    // declared minimum was cut to zero over rows the first was never assigned.
-    const reserved = creations.map((creation, index) => {
-      const unclaimed = unclaimedRowsFor(creation);
-      if (unclaimed === undefined) return 0;
-      const take = Math.min(capacities[index]!.min, unclaimed.length);
-      claim(unclaimed.slice(0, take));
-      return take;
+    // What the stage's own behaviours allow still binds — `minNodes` and
+    // `maxNodes` are what the interface will actually hold, whatever the
+    // author declared beside them.
+    const assigned = creations.map((creation) => {
+      const drawn = sampleCount(
+        creation.count ?? DEFAULT_NODE_COUNT,
+        source.stream('count', creation.stageId, type),
+      );
+      const { min, max } = creation.capacity;
+      return Math.max(min, max === null ? drawn : Math.min(max, drawn));
     });
 
-    // Then the rest, in stage order, up to each declared ceiling. A row an
-    // earlier roster will take is not capacity a later one has: counting each
-    // pool whole credited two rosters over one pool with twice its people, and
-    // the share the second could not fill was dropped rather than passed on.
-    creations.forEach((creation, index) => {
-      const capacity = capacities[index]!;
-      const unclaimed = unclaimedRowsFor(creation);
-      if (unclaimed === undefined) return;
-      const headroom =
-        capacity.max === null
-          ? unclaimed.length
-          : Math.max(0, capacity.max - reserved[index]!);
-      const extra = Math.min(headroom, unclaimed.length);
-      claim(unclaimed.slice(0, extra));
-      const available = reserved[index]! + extra;
-      capacity.max =
-        capacity.max === null ? available : Math.min(capacity.max, available);
-      capacity.min = Math.min(capacity.min, capacity.max);
-    });
-
-    const assigned = apportionCount(total, capacities);
+    // Roster rows are drawn without replacement across the whole run, so
+    // stages over overlapping pools contest the same people. With counts fixed
+    // by declaration that is no longer a negotiation over how many each stage
+    // gets, only an assignment of which rows go where — and a stage that still
+    // cannot be filled is a protocol the researcher needs to hear about.
+    const rosterPreference = assignRosterRows(
+      ctx,
+      effects,
+      creations,
+      assigned,
+      type,
+      definition.name,
+    );
 
     const ref = { entity: 'node' as const, type };
     const scope = scopeKeyFor('node', type);
@@ -768,15 +819,32 @@ export function planNetwork(
 
     // Roster stages draw real rows without replacement across the run. Built
     // before any draw so the values they carry can be held back from it.
-    const rosterPools = creations.map((creation) => {
+    const rosterPools = creations.map((creation, creationIndex) => {
       if (creation.rosterStageId === undefined) return undefined;
       const pool = ctx.externalData?.[creation.rosterStageId];
       if (pool === undefined) return undefined;
-      return shuffled(
+      const available = shuffled(
         pool.filter(
           (row) => !ctx.usedRosterUids.has(row[entityPrimaryKeyProperty]),
         ),
         source.stream('roster', creation.rosterStageId),
+      );
+
+      const preferred = rosterPreference.get(creationIndex);
+      if (preferred === undefined) return available;
+
+      // A preference, not a restriction. The assignment above is blind to
+      // whether a row can actually satisfy this type's rules, so holding a
+      // stage to its assigned rows alone would starve it of the ones it could
+      // have used — a pool of a hundred rows where only ten are completable
+      // would hand over ten arbitrary rows and build one person. Ordering
+      // leaves every row reachable and only decides who gets first refusal on
+      // the contested ones. Sort is stable, so the rest keep their shuffle.
+      const rank = new Map(preferred.map((uid, order) => [uid, order]));
+      const rankOf = (row: NcNode): number =>
+        rank.get(row[entityPrimaryKeyProperty]) ?? Number.MAX_SAFE_INTEGER;
+      return [...available].toSorted(
+        (left, right) => rankOf(left) - rankOf(right),
       );
     });
 
@@ -934,8 +1002,8 @@ export function planNetwork(
 
   const edgesByType = new Map<string, PlannedEdge[]>();
   const plannedEdges: PlannedEdge[] = [];
-  const topologyByType = new Map<string, EdgeTopologyTarget>();
-  for (const [type, definition] of edgeTypes.toSorted(
+  const topologyTargets = new Map<string, EdgeTopologyTarget>();
+  for (const [type] of edgeTypes.toSorted(
     ([a], [b]) => firstEdgeStage(a) - firstEdgeStage(b),
   )) {
     const creations = effects.edgeCreationsByType.get(type) ?? [];
@@ -1017,20 +1085,21 @@ export function planNetwork(
     );
     if (topologyCreations.length === 0) continue;
 
-    // Drawn before the domain is consulted, so an edge type whose endpoints
-    // all come from a pedigree still resolves its topology for the walk to
-    // apply. Each type draws from its own keyed stream, so sampling one the
-    // plan then makes no use of perturbs nothing else.
-    const topology = resolveEdgeTopology(definition);
-    const target: EdgeTopologyTarget = {
-      metric: topology.metric,
-      value: sampleContinuous(
-        topology.distribution,
-        topology.metric === 'density' ? { min: 0, max: 1 } : { min: 0 },
-        source.stream('topology', type),
-      ),
-    };
-    topologyByType.set(type, target);
+    // Drawn before any domain is consulted, so a stage whose endpoints all
+    // come from a pedigree still resolves its topology for the walk to apply.
+    // Each creation draws from its own keyed stream, so sampling one the plan
+    // then makes no use of perturbs nothing else.
+    for (const creation of topologyCreations) {
+      const topology = creation.topology ?? DEFAULT_EDGE_TOPOLOGY;
+      topologyTargets.set(topologyKey(creation), {
+        metric: topology.metric,
+        value: sampleContinuous(
+          topology.distribution,
+          topology.metric === 'density' ? { min: 0, max: 1 } : { min: 0 },
+          source.stream('topology', creation.stageId, type),
+        ),
+      });
+    }
 
     // Creations are settled one at a time, in interview order, each committing
     // its edges before the next one's domain is built.
@@ -1067,9 +1136,16 @@ export function planNetwork(
       }
       if (domain.size === 0) continue;
 
+      const target = topologyTargets.get(topologyKey(creation));
+      if (target === undefined) continue;
+
       const eligibleNodeCount = new Set(
         [...domain.values()].flatMap((pair) => [pair.a, pair.b]),
       ).size;
+      // Still measured over the domain accumulated so far and reduced by what
+      // this type already holds, not by this creation's own contribution
+      // alone: two stages declaring 0.5 over overlapping pairs describe one
+      // graph at 0.5, not 0.75.
       const outstanding =
         topologyTarget(target, domain.size, eligibleNodeCount) -
         typeEdges.length;
@@ -1103,6 +1179,6 @@ export function planNetwork(
     },
     nodes,
     edges,
-    topologyByType,
+    topologyTargets,
   };
 }

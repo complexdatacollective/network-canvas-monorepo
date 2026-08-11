@@ -1,6 +1,14 @@
-import type { Stage } from '@codaco/protocol-validation';
+import type {
+  EdgeTopology,
+  Stage,
+  SyntheticCount,
+} from '@codaco/protocol-validation';
 
 import { isContentStage } from '../contentStages';
+import {
+  DEFAULT_EDGE_TOPOLOGY,
+  DEFAULT_NODE_COUNT,
+} from '../plan/resolveSynthetic';
 import {
   type NodeVariablesFor,
   withRuleTiedVariables,
@@ -37,10 +45,32 @@ export type StageCapacity = {
 };
 
 export type NodeCreation = {
+  stageId: string;
   stageIndex: number;
   nodeType: string;
   source: 'fabricated' | 'roster' | 'pedigree' | 'composer';
   capacity: StageCapacity;
+  /**
+   * How many people this stage declares it produces, resolved from its own
+   * `synthetic.count` or the documented default.
+   *
+   * A count belongs to the asking, not the asked-about: three name generators
+   * over one node type each nominate their own people, and nothing in the
+   * protocol says how a single declared population would divide between them.
+   *
+   * Absent for a pedigree alone — a family is a structure rather than a
+   * population, so its size comes from the specialist generator.
+   */
+  count?: SyntheticCount;
+  /**
+   * Whether {@link count} is the author's or the resolved default.
+   *
+   * A roster stage is held to a DECLARED count — asking for more people than
+   * the roster holds is a protocol the researcher needs to hear about. An
+   * undeclared one is only using the generic 1-8 fallback, which says nothing
+   * about this roster, so it takes what the pool offers instead of refusing.
+   */
+  countDeclared: boolean;
   /** Variables the creating interaction itself writes on the new node. */
   writesAtCreation: string[];
   /**
@@ -61,10 +91,24 @@ export type NodeCreation = {
 };
 
 export type EdgeCreation = {
+  stageId: string;
   stageIndex: number;
   edgeType: string;
   /** Node type supplying both endpoints. */
   subjectNodeType: string;
+  /**
+   * How densely this stage declares it links what it can see, resolved from
+   * its own `synthetic.topology` or the documented default.
+   *
+   * Resolved against the pairs eligible AT THIS STAGE — its subject type, its
+   * filter, and the nodes that exist by the time it runs — so unlike a
+   * whole-network target it is well defined during the interview walk. A stage
+   * whose prompts create several edge types applies this to each of them
+   * independently.
+   *
+   * Absent for a pedigree alone, whose links are structural.
+   */
+  topology?: EdgeTopology;
   filter?: StageFilter;
   /** Endpoints restricted to nodes this same stage created. */
   ownNodesOnly: boolean;
@@ -456,6 +500,8 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
       summary.nodeCreations.push({
+        stageId: stage.id,
+        countDeclared: false,
         stageIndex: index,
         nodeType,
         source: 'fabricated',
@@ -471,6 +517,8 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
       summary.nodeCreations.push({
+        stageId: stage.id,
+        countDeclared: false,
         stageIndex: index,
         nodeType,
         source: 'fabricated',
@@ -486,6 +534,8 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
       summary.nodeCreations.push({
+        stageId: stage.id,
+        countDeclared: false,
         stageIndex: index,
         nodeType,
         source: 'roster',
@@ -535,6 +585,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
         }
         if (prompt.edges?.create) {
           summary.edgeCreations.push({
+            stageId: stage.id,
             stageIndex: index,
             edgeType: prompt.edges.create,
             subjectNodeType: nodeType,
@@ -560,6 +611,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       for (const prompt of promptsOf(stage.prompts)) {
         if (prompt.createEdge === undefined) continue;
         summary.edgeCreations.push({
+          stageId: stage.id,
           stageIndex: index,
           edgeType: prompt.createEdge,
           subjectNodeType: nodeType,
@@ -579,6 +631,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       for (const prompt of promptsOf(stage.prompts)) {
         if (prompt.createEdge === undefined) continue;
         summary.edgeCreations.push({
+          stageId: stage.id,
           stageIndex: index,
           edgeType: prompt.createEdge,
           subjectNodeType: nodeType,
@@ -676,6 +729,8 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       if (nodeType === undefined || edgeType === undefined) break;
       const formFields = pedigreeFormFields(nodeConfig);
       summary.nodeCreations.push({
+        stageId: stage.id,
+        countDeclared: false,
         stageIndex: index,
         nodeType,
         source: 'pedigree',
@@ -693,6 +748,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
         rosterValuesWin: false,
       });
       summary.edgeCreations.push({
+        stageId: stage.id,
         stageIndex: index,
         edgeType,
         subjectNodeType: nodeType,
@@ -751,6 +807,8 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
       summary.nodeCreations.push({
+        stageId: stage.id,
+        countDeclared: false,
         stageIndex: index,
         nodeType,
         source: 'composer',
@@ -799,6 +857,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
         const edgeType = subjectTypeOf(edge.subject);
         if (edgeType === undefined) continue;
         summary.edgeCreations.push({
+          stageId: stage.id,
           stageIndex: index,
           edgeType,
           subjectNodeType: nodeType,
@@ -836,6 +895,35 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
         `Unsupported stage type "${(unsupported as Stage).type}". ` +
           'Synthetic data generation does not yet support this stage type.',
       );
+    }
+  }
+
+  // Stamped once here rather than at each push site, so a stage type added
+  // later cannot silently arrive without its declared population.
+  //
+  // A pedigree is the deliberate exception: it declares no `synthetic` block,
+  // and the planner skips its creations entirely, so leaving count and
+  // topology absent is what says "sized by the specialist generator" rather
+  // than "defaulted to something nothing reads".
+  const declared = 'synthetic' in stage ? stage.synthetic : undefined;
+  const declaredCount =
+    declared !== undefined && 'count' in declared ? declared.count : undefined;
+  const declaredTopology =
+    declared !== undefined && 'topology' in declared
+      ? declared.topology
+      : undefined;
+
+  for (const creation of summary.nodeCreations) {
+    creation.stageId = stage.id;
+    if (creation.source !== 'pedigree') {
+      creation.count = declaredCount ?? DEFAULT_NODE_COUNT;
+      creation.countDeclared = declaredCount !== undefined;
+    }
+  }
+  for (const creation of summary.edgeCreations) {
+    creation.stageId = stage.id;
+    if (creation.structured !== 'pedigree') {
+      creation.topology = declaredTopology ?? DEFAULT_EDGE_TOPOLOGY;
     }
   }
 

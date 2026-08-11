@@ -1,10 +1,3 @@
-import type * as z from 'zod/mini';
-
-import {
-  EdgeSyntheticSchema,
-  NodeSyntheticSchema,
-} from '@codaco/protocol-validation';
-
 import type { ShapeMappingType, ShapeThreshold } from './shapeMappingTypes';
 
 export type EntityTypeFormErrors = {
@@ -35,65 +28,9 @@ const isThreshold = (value: unknown): value is Pick<ShapeThreshold, 'value'> =>
 const isShapeMappingType = (value: unknown): value is ShapeMappingType =>
   value === 'discrete' || value === 'breakpoints';
 
-const SYNTHETIC_INCOMPLETE_MESSAGE =
-  'Finish the synthetic data settings, or turn the section off, before saving.';
-
-/**
- * The population/topology controls are unconnected, like the shape mapping,
- * so nothing they declare reaches redux-form: their native `min`/`max`/`step`
- * props are advisory, and a parameter cleared or typed out of range must
- * block the save through the form-level error instead. The codebook's own
- * schemas own those invariants — integral counts, ordered bounds, a density
- * inside 0–1 — so they are the gate here, rather than a second, drifting
- * statement of the same rules.
- */
-const syntheticIssue = (synthetic: unknown): z.core.$ZodIssue | undefined => {
-  if (!isRecord(synthetic)) return undefined;
-  const schema =
-    'topology' in synthetic ? EdgeSyntheticSchema : NodeSyntheticSchema;
-  const result = schema.safeParse(synthetic);
-  return result.success ? undefined : result.error.issues[0];
-};
-
-/**
- * The clause naming what is wrong with a value the author can see, as a
- * sentence fragment. Zod's own wording states the constraint the parser
- * applied ("Too big: expected number to be <=1"), which is not what the
- * author is looking at. Undefined where the draft is merely unfinished, which
- * has its own message.
- */
-const syntheticIssueDetail = (issue: z.core.$ZodIssue): string | undefined => {
-  // `int` is a fractional value in a whole-number field; every other type
-  // mismatch is a control cleared mid-edit and not yet refilled.
-  if (issue.code === 'invalid_type') {
-    return issue.expected === 'int'
-      ? 'counts must be whole numbers'
-      : undefined;
-  }
-  if (issue.code === 'too_small')
-    return `values must be ${issue.minimum} or more`;
-  if (issue.code === 'too_big')
-    return `values must be ${issue.maximum} or less`;
-  // Ordered bounds are the only refinement these schemas carry.
-  if (issue.code === 'custom') {
-    return 'the minimum must not be greater than the maximum';
-  }
-  return 'check the values you have entered';
-};
-
 const validateEntityType = (
   values: Record<string, unknown>,
 ): EntityTypeFormErrors => {
-  const issue = syntheticIssue(values.synthetic);
-  if (issue) {
-    const detail = syntheticIssueDetail(issue);
-    return {
-      _error: detail
-        ? `The synthetic data settings cannot be saved: ${detail}.`
-        : SYNTHETIC_INCOMPLETE_MESSAGE,
-    };
-  }
-
   const shape = values.shape;
   if (!isRecord(shape) || !isRecord(shape.dynamic)) {
     return {};

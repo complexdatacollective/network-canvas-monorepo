@@ -25,7 +25,6 @@ function tiedCodebook(
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
-        synthetic: { count: { distribution: 'constant', value: 6 } },
         variables: {
           answer: {
             name: 'Answer',
@@ -50,6 +49,7 @@ function collectingGenerator(...variables: string[]): Stage {
     type: 'NameGenerator',
     label: 'People',
     subject: { entity: 'node', type: 'person' },
+    synthetic: { count: { distribution: 'constant', value: 6 } },
     form: {
       title: 'About this person',
       fields: variables.map((variable) => ({ variable, prompt: variable })),
@@ -121,7 +121,6 @@ describe('edges whose endpoints a skip passed over', () => {
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
-        synthetic: { count: { distribution: 'constant', value: 4 } },
         variables: { name: { name: 'Name', type: 'text' } },
       },
     },
@@ -131,12 +130,6 @@ describe('edges whose endpoints a skip passed over', () => {
         color: 'edge-color-seq-1',
         // Every eligible pair, so an endpoint the session never introduced
         // cannot be missed by chance.
-        synthetic: {
-          topology: {
-            metric: 'density',
-            distribution: { distribution: 'constant', value: 1 },
-          },
-        },
         variables: {},
       },
     },
@@ -165,6 +158,7 @@ describe('edges whose endpoints a skip passed over', () => {
       type: 'NameGenerator',
       label: id,
       subject: { entity: 'node', type: 'person' },
+      synthetic: { count: { distribution: 'constant', value: 4 } },
       form: { title: 'About', fields: [{ variable: 'name', prompt: 'Name' }] },
       prompts: [{ id: `${id}-p1`, text: 'Name people' }],
       behaviours: { minNodes: 2, maxNodes: 2 },
@@ -193,6 +187,12 @@ describe('edges whose endpoints a skip passed over', () => {
   const census = {
     id: 'stage-census',
     type: 'DyadCensus',
+    synthetic: {
+      topology: {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 1 },
+      },
+    },
     label: 'Census',
     subject: { entity: 'node', type: 'person' },
     prompts: [

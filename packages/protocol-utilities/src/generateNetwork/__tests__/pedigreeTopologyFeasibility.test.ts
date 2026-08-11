@@ -47,6 +47,13 @@ const familyStage = {
 const censusStage = {
   id: 'census-stage',
   type: 'DyadCensus',
+  // Every eligible pair linked, declared by the stage that pairs them.
+  synthetic: {
+    topology: {
+      metric: 'density',
+      distribution: { distribution: 'constant', value: 1 },
+    },
+  },
   label: 'Who knows whom',
   subject: { entity: 'node', type: 'family-member' },
   prompts: [
@@ -64,8 +71,6 @@ const codebookWith = (uniqueTie: boolean) =>
       'family-member': {
         name: 'Family member',
         color: 'node-color-seq-1',
-        // Smaller than the seven-person core the generator always builds.
-        synthetic: { count: { distribution: 'constant', value: 1 } },
         variables: {
           name: { name: 'Name', type: 'text' },
           isEgo: { name: 'Is ego', type: 'boolean' },
@@ -95,12 +100,6 @@ const codebookWith = (uniqueTie: boolean) =>
       'acquaintance': {
         name: 'Acquaintance',
         color: 'edge-color-seq-2',
-        synthetic: {
-          topology: {
-            metric: 'density',
-            distribution: { distribution: 'constant', value: 1 },
-          },
-        },
         variables: {
           // Two values, against a pair count the ceiling must not hide.
           tie: {
@@ -119,6 +118,8 @@ const ordinaryGenerator = {
   type: 'NameGeneratorQuickAdd',
   label: 'Others',
   subject: { entity: 'node', type: 'family-member' },
+  // Exactly one, so the pair arithmetic below is the family's plus this one.
+  synthetic: { count: { distribution: 'constant', value: 1 } },
   quickAdd: 'name',
   prompts: [{ id: 'ng-extra-p', text: 'Who else?' }],
 } as unknown as Stage;
@@ -141,6 +142,14 @@ const rankingCensus = {
   type: 'TieStrengthCensus',
   label: 'How close',
   subject: { entity: 'node', type: 'family-member' },
+  // Every eligible pair, so the ceiling under test is the pair count itself
+  // rather than a fraction of it.
+  synthetic: {
+    topology: {
+      metric: 'density',
+      distribution: { distribution: 'constant', value: 1 },
+    },
+  },
   prompts: [
     {
       id: 'census-p',
@@ -176,12 +185,18 @@ describe('a census over a type an ordinary stage and a pedigree both build', () 
   // subjects and 28 pairs. Counting the larger of the two populations instead
   // of their sum said 21, and the gap between them is where a run clears
   // preflight and then dies: a 25-value space fits 21 edges and not 28.
+  //
+  // The family is held to its core through the CALLER's ceiling, which is the
+  // only lever left: nothing in a protocol caps a pedigree, so without this
+  // the count would be the engine's own bound on optional branches.
+  const coreOnly = { maxNodes: 7 };
   it('refuses a value space the combined population outgrows', () => {
     expect(() =>
       generateNetwork({
         seed: 1,
         codebook: codebookRanking(25),
         stages: [ordinaryGenerator, familyStage, rankingCensus],
+        familyPedigree: coreOnly,
       }),
     ).toThrow(/only 25 distinct values are possible, but up to 28/);
   });
@@ -191,6 +206,7 @@ describe('a census over a type an ordinary stage and a pedigree both build', () 
       seed: 1,
       codebook: codebookRanking(28),
       stages: [ordinaryGenerator, familyStage, rankingCensus],
+      familyPedigree: coreOnly,
     });
 
     expect(

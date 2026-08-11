@@ -25,7 +25,6 @@ const datesFor = (synthetic: Synthetic, parameters?: Synthetic): string[] => {
         person: {
           name: 'Person',
           color: 'node-color-seq-1',
-          synthetic: { count: { distribution: 'constant', value: 5 } },
           variables: {
             met: {
               name: 'Met',
@@ -45,6 +44,7 @@ const datesFor = (synthetic: Synthetic, parameters?: Synthetic): string[] => {
         type: 'NameGenerator',
         label: 'People',
         subject: { entity: 'node', type: 'person' },
+        synthetic: { count: { distribution: 'constant', value: 5 } },
         form: {
           title: 'About this person',
           fields: [{ variable: 'met', prompt: 'When did you meet?' }],

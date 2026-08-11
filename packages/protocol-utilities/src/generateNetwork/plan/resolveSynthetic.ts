@@ -1,8 +1,6 @@
 import {
   DEFAULT_OPTION_WEIGHT,
-  type EdgeDefinition,
   type EdgeTopology,
-  type NodeDefinition,
   optionValueKey,
   type SyntheticCount,
   type SyntheticTextGenerator,
@@ -20,16 +18,18 @@ import type { ContinuousDescriptor, ValueBounds } from './distributions';
  * generates with.
  */
 
+/**
+ * What one entity-creating stage produces when it declares nothing.
+ *
+ * There is no companion "unreachable type" default any more: counts are
+ * declared by the stages that create entities, so a node type no stage creates
+ * simply has no creating stage to draw for, and its population is zero by
+ * construction rather than by a rule.
+ */
 export const DEFAULT_NODE_COUNT: SyntheticCount = {
   distribution: 'uniform',
   min: 1,
   max: 8,
-};
-
-/** A node type no reachable stage can create defaults to a population of 0. */
-export const UNREACHABLE_NODE_COUNT: SyntheticCount = {
-  distribution: 'constant',
-  value: 0,
 };
 
 export const DEFAULT_EDGE_TOPOLOGY: EdgeTopology = {
@@ -102,21 +102,6 @@ export type ResolvedVariableSynthetic =
     }
   // Layout and location values are owned by the stages that place them.
   | { kind: 'stageOwned' };
-
-export function resolveNodeCount(
-  definition: Pick<NodeDefinition, 'synthetic'> | undefined,
-  options: { creatable: boolean },
-): SyntheticCount {
-  const declared = definition?.synthetic?.count;
-  if (declared) return declared;
-  return options.creatable ? DEFAULT_NODE_COUNT : UNREACHABLE_NODE_COUNT;
-}
-
-export function resolveEdgeTopology(
-  definition: Pick<EdgeDefinition, 'synthetic'> | undefined,
-): EdgeTopology {
-  return definition?.synthetic?.topology ?? DEFAULT_EDGE_TOPOLOGY;
-}
 
 // 'name', 'nickname', 'firstName', 'first_name', … — endings are the signal;
 // anything else gets neutral words rather than today's incongruous

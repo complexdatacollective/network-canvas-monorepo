@@ -18,7 +18,6 @@ const codebook = {
     person: {
       name: 'Person',
       color: 'node-color-seq-1',
-      synthetic: { count: { distribution: 'constant', value: 3 } },
       variables: {
         name: { name: 'Name', type: 'text' },
         // Two values, and only the quick-add stage asks for it.
@@ -40,6 +39,7 @@ const flagCreator = {
   type: 'NameGenerator',
   label: 'Flagged',
   subject: { entity: 'node', type: 'person' },
+  synthetic: { count: { distribution: 'constant', value: 3 } },
   form: {
     title: 'About',
     fields: [{ variable: 'flag', prompt: 'Flag?' }],

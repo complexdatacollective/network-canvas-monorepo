@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import type { Stage } from '@codaco/protocol-validation';
 
 import {
+  DEFAULT_EDGE_TOPOLOGY,
+  DEFAULT_NODE_COUNT,
+} from '../../plan/resolveSynthetic';
+import {
   analyseStageEffects,
   declaresNodeCollection,
   lastExistingWriterByType,
@@ -42,10 +46,16 @@ describe('analyseStageEffects', () => {
     const [summary] = effects.stages;
     expect(summary?.nodeCreations).toEqual([
       {
+        stageId: 's1',
         stageIndex: 0,
         nodeType: 'person',
         source: 'fabricated',
         capacity: { min: 2, max: 6 },
+        // Declared by the stage, so an undeclared one resolves the default
+        // here in `analyse` rather than anywhere downstream — and says so, to
+        // keep a roster's fallback from being read as the author's intent.
+        count: DEFAULT_NODE_COUNT,
+        countDeclared: false,
         writesAtCreation: ['name'],
         promptFixedValues: [{ close: true }, {}],
         rosterValuesWin: false,
@@ -145,9 +155,11 @@ describe('analyseStageEffects', () => {
     ]);
     expect(summary?.edgeCreations).toEqual([
       {
+        stageId: 's1',
         stageIndex: 0,
         edgeType: 'friendship',
         subjectNodeType: 'person',
+        topology: DEFAULT_EDGE_TOPOLOGY,
         filter,
         ownNodesOnly: false,
         recordsNegatives: null,

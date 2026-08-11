@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { StageNodeSyntheticSchema } from '../codebook/synthetic.ts';
 import {
   FormSchema,
   NodeStageSubjectSchema,
@@ -34,6 +35,7 @@ export const nameGeneratorBehavioursSchema = z
 
 export const nameGeneratorStage = baseStageSchema.extend({
   type: z.literal('NameGenerator'),
+  synthetic: StageNodeSyntheticSchema.optional(),
   form: FormSchema,
   subject: NodeStageSubjectSchema,
   panels: z

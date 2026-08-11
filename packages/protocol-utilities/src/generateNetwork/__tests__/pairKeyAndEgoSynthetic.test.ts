@@ -33,7 +33,6 @@ describe('endpoint ids that contain spaces', () => {
           person: {
             name: 'Person',
             color: 'node-color-seq-1',
-            synthetic: { count: { distribution: 'constant', value: 4 } },
             variables: {},
           },
         },
@@ -43,12 +42,6 @@ describe('endpoint ids that contain spaces', () => {
             name: 'Knows',
             color: 'edge-color-seq-1',
             variables: {},
-            synthetic: {
-              topology: {
-                metric: 'density',
-                distribution: { distribution: 'constant', value: 1 },
-              },
-            },
           },
         },
       } as unknown as StructuralCodebook,
@@ -58,6 +51,7 @@ describe('endpoint ids that contain spaces', () => {
           type: 'NameGeneratorRoster',
           label: 'People',
           subject: { entity: 'node', type: 'person' },
+          synthetic: { count: { distribution: 'constant', value: 4 } },
           dataSource: 'roster',
           cardOptions: { displayLabel: 'name' },
           prompts: [{ id: 'r-p', text: 'Pick people' }],
@@ -65,6 +59,12 @@ describe('endpoint ids that contain spaces', () => {
         {
           id: 'soc',
           type: 'Sociogram',
+          synthetic: {
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 1 },
+            },
+          },
           label: 'Link',
           subject: { entity: 'node', type: 'person' },
           background: { concentricCircles: 3, skewedTowardCenter: true },

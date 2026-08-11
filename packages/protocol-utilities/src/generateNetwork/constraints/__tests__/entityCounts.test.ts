@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   asEntityAttributeReference,
   type Stage,
-  type StructuralCodebook,
   type Variables,
 } from '@codaco/protocol-validation';
 import {
@@ -41,47 +40,65 @@ const resolveGenerationConfig = (
  * `censusEdgeProbability` tuning knobs. A test that wants a particular
  * quantity now says so in the codebook, which is where the planner reads it.
  */
+/** Stage types that build people, and those that link them. */
+const NODE_CREATORS = new Set([
+  'NameGenerator',
+  'NameGeneratorQuickAdd',
+  'NameGeneratorRoster',
+  'NetworkComposer',
+]);
+const EDGE_CREATORS = new Set([
+  'Sociogram',
+  'DyadCensus',
+  'OneToManyDyadCensus',
+  'TieStrengthCensus',
+  'NetworkComposer',
+]);
+
+type Loose = Record<string, unknown> & { type: string };
+
+/**
+ * The declared population and topology that replaced the old `nodeCount` and
+ * `censusEdgeProbability` tuning knobs.
+ *
+ * Applied to STAGES rather than to the codebook: a count belongs to the asking
+ * and a density to the stage that draws the edges, so a test wanting a
+ * particular quantity says so on the stage that produces it.
+ */
 const withNodeCount = (
-  book: StructuralCodebook,
+  stages: Stage[],
   value: number,
   only?: string,
-): StructuralCodebook =>
-  ({
-    ...book,
-    node: Object.fromEntries(
-      Object.entries(book.node ?? {}).map(([type, definition]) => [
-        type,
-        type === only || only === undefined
-          ? {
-              ...definition,
-              synthetic: { count: { distribution: 'constant', value } },
-            }
-          : definition,
-      ]),
-    ),
-  }) as StructuralCodebook;
+): Stage[] =>
+  stages.map((stage) => {
+    const loose = stage as unknown as Loose;
+    if (!NODE_CREATORS.has(loose.type)) return stage;
+    const subject = loose.subject as { type?: string } | undefined;
+    if (only !== undefined && subject?.type !== only) return stage;
+    return {
+      ...loose,
+      synthetic: {
+        ...(loose.synthetic as Record<string, unknown>),
+        count: { distribution: 'constant', value },
+      },
+    } as unknown as Stage;
+  });
 
-const withEdgeDensity = (
-  book: StructuralCodebook,
-  value: number,
-): StructuralCodebook =>
-  ({
-    ...book,
-    edge: Object.fromEntries(
-      Object.entries(book.edge ?? {}).map(([type, definition]) => [
-        type,
-        {
-          ...definition,
-          synthetic: {
-            topology: {
-              metric: 'density',
-              distribution: { distribution: 'constant', value },
-            },
-          },
+const withEdgeDensity = (stages: Stage[], value: number): Stage[] =>
+  stages.map((stage) => {
+    const loose = stage as unknown as Loose;
+    if (!EDGE_CREATORS.has(loose.type)) return stage;
+    return {
+      ...loose,
+      synthetic: {
+        ...(loose.synthetic as Record<string, unknown>),
+        topology: {
+          metric: 'density',
+          distribution: { distribution: 'constant', value },
         },
-      ]),
-    ),
-  }) as StructuralCodebook;
+      },
+    } as unknown as Stage;
+  });
 
 import { resolveFamilyPedigreeGenerationOptions } from '../../familyPedigree/referencePopulation';
 import { buildEntityConstraints } from '../buildConstraints';
@@ -2049,8 +2066,8 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     for (let seed = 1; seed <= 50; seed++) {
       const { network } = generateNetwork({
         seed,
-        codebook: withNodeCount(codebook, 4, 'person'),
-        stages: [rosterStage(), census],
+        codebook: codebook,
+        stages: withNodeCount([rosterStage(), census], 4, 'person'),
         externalData: underage,
       });
       drawn.add(`${network.nodes.length}/${network.edges.length}`);
@@ -2092,10 +2109,20 @@ describe('generateNetwork with a roster-capped unique variable', () => {
   } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
 
   it('generates nothing, rather than refusing, for a known-empty roster', () => {
+    // Asked for nobody, so an empty roster is coherent rather than short. A
+    // stage that declared people against this pool would refuse, which
+    // sharedRosterPools covers.
     const { network } = generateNetwork({
       seed: 1,
-      codebook: withEdgeDensity(codebook, 0),
-      stages: [rosterStage()],
+      codebook: codebook,
+      stages: withEdgeDensity(
+        [
+          rosterStage({
+            synthetic: { count: { distribution: 'constant', value: 0 } },
+          }),
+        ],
+        0,
+      ),
       externalData: { 'stage-roster': [] },
     });
 
@@ -2111,8 +2138,8 @@ describe('generateNetwork with a roster-capped unique variable', () => {
     // person never reaches the repeat for it to be passed over.
     const { network } = generateNetwork({
       seed: 1,
-      codebook: withNodeCount(codebook, 3),
-      stages: [rosterStage()],
+      codebook: codebook,
+      stages: withNodeCount([rosterStage()], 3),
       externalData: {
         'stage-roster': [
           valuedRow('a', { consented: true }),
@@ -2300,8 +2327,11 @@ describe('generateNetwork with a unique group a roster populates unevenly', () =
     // creates the person and nothing ever collects `mirror`.
     const { network } = generateNetwork({
       seed: 1,
-      codebook: withNodeCount(codebook, 3),
-      stages: [rosterStage(), nodeAlterForm('person', 'mirror')],
+      codebook: codebook,
+      stages: withNodeCount(
+        [rosterStage(), nodeAlterForm('person', 'mirror')],
+        3,
+      ),
       externalData: {
         'stage-roster': [
           valuedRow('a', { consented: true }),
@@ -2395,42 +2425,35 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
     // A wider `unique` space than the block's boolean, because the domain
     // being the whole population is exactly what makes C(6, 2) = 15 edges
     // possible; the point here is the domain, not the refusal.
-    const spanning = withEdgeDensity(
-      withNodeCount(
-        {
-          node: {
-            person: {
-              name: 'Person',
-              color: 'node-color-seq-1',
-              variables: {
-                name: { name: 'Name', type: 'text' },
-                origin: { name: 'Origin', type: 'text' },
-              },
+    const spanning = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            name: { name: 'Name', type: 'text' },
+            origin: { name: 'Origin', type: 'text' },
+          },
+        },
+      },
+      edge: {
+        knows: {
+          name: 'Knows',
+          color: 'edge-color-seq-1',
+          variables: {
+            strength: {
+              name: 'Strength',
+              type: 'ordinal',
+              options: Array.from({ length: 15 }, (_, index) => ({
+                label: `Strength ${String(index + 1)}`,
+                value: index + 1,
+              })),
+              validation: { unique: true },
             },
           },
-          edge: {
-            knows: {
-              name: 'Knows',
-              color: 'edge-color-seq-1',
-              variables: {
-                strength: {
-                  name: 'Strength',
-                  type: 'ordinal',
-                  options: Array.from({ length: 15 }, (_, index) => ({
-                    label: `Strength ${String(index + 1)}`,
-                    value: index + 1,
-                  })),
-                  validation: { unique: true },
-                },
-              },
-            },
-          },
-        } as unknown as Parameters<typeof generateNetwork>[0]['codebook'],
-        6,
-        'person',
-      ),
-      1,
-    );
+        },
+      },
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
 
     const { network } = generateNetwork({
       seed: 1,
@@ -2439,13 +2462,20 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
       // the two halves of the population apart: a stage now writes only what
       // it really asks for, so `origin` marks the name generator's people and
       // the composer's `quickAdd` marks its own.
-      stages: [
-        nameGenerator({
-          form: { fields: [{ variable: 'origin', prompt: 'Where from?' }] },
-          behaviours: { minNodes: 3, maxNodes: 3 },
-        }),
-        networkComposer(),
-      ],
+      // Six people between them, declared per stage rather than shared: three
+      // the name generator elicits and three the composer adds.
+      stages: withEdgeDensity(
+        [
+          nameGenerator({
+            form: { fields: [{ variable: 'origin', prompt: 'Where from?' }] },
+            behaviours: { minNodes: 3, maxNodes: 3 },
+          }),
+          networkComposer({
+            synthetic: { count: { distribution: 'constant', value: 3 } },
+          }),
+        ],
+        1,
+      ),
     });
 
     const introducedBy = (node: NcNode): string =>
@@ -2481,8 +2511,11 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
     const generate = (): unknown =>
       generateNetwork({
         seed: 1,
-        codebook: withEdgeDensity(withNodeCount(codebook, 4, 'person'), 1),
-        stages: [networkComposer()],
+        codebook: codebook,
+        stages: withEdgeDensity(
+          withNodeCount([networkComposer()], 4, 'person'),
+          1,
+        ),
       });
 
     expect(generate).toThrow(SyntheticDataConstraintError);
@@ -2495,8 +2528,8 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
     // above is about this protocol's density, not its population alone.
     const { network } = generateNetwork({
       seed: 1,
-      codebook: withNodeCount(codebook, 3, 'person'),
-      stages: [networkComposer()],
+      codebook: codebook,
+      stages: withNodeCount([networkComposer()], 3, 'person'),
     });
 
     expect(network.nodes).toHaveLength(3);
@@ -2520,8 +2553,11 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
       () =>
         generateNetwork({
           seed: 1,
-          codebook: withEdgeDensity(withNodeCount(codebook, 4, 'person'), 1),
-          stages: [networkComposer(), census],
+          codebook: codebook,
+          stages: withEdgeDensity(
+            withNodeCount([networkComposer(), census], 4, 'person'),
+            1,
+          ),
         }),
       // Six, not twelve: one ceiling for the type over the people both stages
       // share, rather than one per stage that creates it.
@@ -2630,7 +2666,7 @@ describe('generateNetwork with a filtered pair-edge stage', () => {
             },
           },
         } as unknown as Parameters<typeof generateNetwork>[0]['codebook'],
-        stages,
+        stages: withEdgeDensity(stages, 1),
         respectSkipLogicAndFiltering: true,
       });
 
@@ -2785,8 +2821,8 @@ describe('generateNetwork with a unique variable on a pedigree edge type', () =>
     expect(() =>
       generateNetwork({
         seed: 1,
-        codebook: withEdgeDensity(heldEqual, 1),
-        stages: [familyPedigree(), alterEdgeForm('mirror')],
+        codebook: heldEqual,
+        stages: withEdgeDensity([familyPedigree(), alterEdgeForm('mirror')], 1),
       }),
     ).toThrow(/up to 96 edges of this type can be generated/);
   });
@@ -2907,10 +2943,10 @@ describe('generateNetwork with stage order deciding what a stage can reach', () 
       generateNetwork({
         seed: 1,
         codebook: uniqueBooleanEdge,
-        stages: [
-          nameGenerator({ behaviours: { minNodes: 3, maxNodes: 3 } }),
-          census,
-        ],
+        stages: withEdgeDensity(
+          [nameGenerator({ behaviours: { minNodes: 3, maxNodes: 3 } }), census],
+          1,
+        ),
       });
 
     expect(generate).toThrow(/up to 3 edges of this type can be generated/);
@@ -3066,8 +3102,8 @@ describe('generateNetwork with a census configured to create no edges', () => {
     const generateAt = (density: number) => (): unknown =>
       generateNetwork({
         seed: 1,
-        codebook: withEdgeDensity(codebook, density),
-        stages,
+        codebook,
+        stages: withEdgeDensity(stages, density),
       });
 
     // Three people, three pairs, two distinct booleans.
@@ -3196,8 +3232,11 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
     // reaches the network through a form that renders it.
     const { network } = generateNetwork({
       seed: 3,
-      codebook: withEdgeDensity(codebook, 1),
-      stages: [threePeople, census, edgeAlterFormFor('knows', 'band')],
+      codebook: codebook,
+      stages: withEdgeDensity(
+        [threePeople, census, edgeAlterFormFor('knows', 'band')],
+        1,
+      ),
     });
 
     const knows = network.edges.filter((edge) => edge.type === 'knows');
@@ -3214,8 +3253,8 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
     // answered for all three pairs while one edge joins each of them.
     const { stageMetadata } = generateNetwork({
       seed: 3,
-      codebook: withEdgeDensity(codebook, 1),
-      stages: [threePeople, census],
+      codebook: codebook,
+      stages: withEdgeDensity([threePeople, census], 1),
     });
 
     const meta = stageMetadata?.[1] as [number, string, string, boolean][];
@@ -3231,8 +3270,8 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
     // Counting a pair set per prompt would refuse this for needing six.
     const { network } = generateNetwork({
       seed: 3,
-      codebook: withEdgeDensity(bandsOf(3), 1),
-      stages: [threePeople, census],
+      codebook: bandsOf(3),
+      stages: withEdgeDensity([threePeople, census], 1),
     });
 
     expect(network.edges.filter((edge) => edge.type === 'knows')).toHaveLength(
@@ -3245,7 +3284,7 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
       generateNetwork({
         seed: 3,
         codebook: bandsOf(2),
-        stages: [threePeople, census],
+        stages: withEdgeDensity([threePeople, census], 1),
       }),
     ).toThrow(/up to 3 edges of this type can be generated/);
   });
@@ -3544,12 +3583,6 @@ describe('worstCaseEntityCounts with roster rows shared across node types', () =
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
-        // Ranged rather than fixed at zero, and reaching down to it. A
-        // constant zero would leave every seed drawing all three rows as
-        // organizations, which is the very thing the loop below is meant to
-        // discover rather than assume: the point is that an earlier stage is
-        // not *guaranteed* to draw anything, not that it never does.
-        synthetic: { count: { distribution: 'uniform', min: 0, max: 3 } },
         variables: { name: { name: 'Name', type: 'text' } },
       },
       organization: {
@@ -3581,14 +3614,17 @@ describe('worstCaseEntityCounts with roster rows shared across node types', () =
     expect(nodeCountFor(counts.node, 'organization', ['flag'])).toBe(3);
   });
 
-  it('draws every shared row as organizations on some seed', () => {
-    // The proof the count above is not merely safe but reachable: the person
-    // stage may draw none of the three rows, and then all three build
-    // organizations. Assigning each key to the first stage offering it would
-    // count nothing for this type and let a `unique` variable through that runs
-    // out of values partway through this very draw.
-    const drawn = new Set<number>();
-    for (let seed = 1; seed <= 50; seed++) {
+  it('draws every shared row as organizations when the person stage takes none', () => {
+    // The proof the count above is not merely safe but reachable: with the
+    // person stage asking for nobody, all three rows build organizations.
+    // Assigning each key to the first stage offering it would count nothing
+    // for this type and let a `unique` variable through that runs out of
+    // values partway through this very draw.
+    //
+    // Stated rather than sampled over seeds, because demands are declared now:
+    // two stages whose declared demands can sum past a shared pool are an
+    // under-provisioned roster, and refusing that is the point of the rule.
+    for (let seed = 1; seed <= 20; seed++) {
       const { network } = generateNetwork({
         seed,
         codebook,
@@ -3596,16 +3632,17 @@ describe('worstCaseEntityCounts with roster rows shared across node types', () =
           rosterStage({
             id: 'roster-person',
             behaviours: { minNodes: 0, maxNodes: 3 },
+            synthetic: { count: { distribution: 'constant', value: 0 } },
           }),
           orgRoster(),
         ],
         externalData,
       });
-      drawn.add(
-        network.nodes.filter((node) => node.type === 'organization').length,
-      );
-    }
 
-    expect(Math.max(...drawn)).toBe(3);
+      expect(
+        network.nodes.filter((node) => node.type === 'organization'),
+        `seed ${seed}`,
+      ).toHaveLength(3);
+    }
   });
 });

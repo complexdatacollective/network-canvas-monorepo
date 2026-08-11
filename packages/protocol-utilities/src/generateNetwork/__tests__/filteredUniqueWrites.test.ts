@@ -20,7 +20,6 @@ const codebookWith = (options: number) =>
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
-        synthetic: { count: { distribution: 'constant', value: 3 } },
         variables: {
           local: {
             name: 'Local',
@@ -48,6 +47,7 @@ const generator = {
   type: 'NameGeneratorQuickAdd',
   label: 'People',
   subject: { entity: 'node', type: 'person' },
+  synthetic: { count: { distribution: 'constant', value: 3 } },
   quickAdd: 'local',
   prompts: [{ id: 'ng-p', text: 'Who?' }],
 } as unknown as Stage;

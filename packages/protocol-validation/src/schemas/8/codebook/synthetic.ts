@@ -1,11 +1,20 @@
 import { z } from 'zod';
 
 /**
- * Optional synthetic-data generation metadata (`synthetic`) carried by
- * codebook entity and variable definitions. Purely descriptive: it shapes
- * what generated sample data looks like and never affects how an interview
- * collects real data. Everything here is additive — a protocol that omits it
- * is unchanged, and generation resolves documented defaults instead.
+ * Optional synthetic-data generation metadata (`synthetic`), carried by
+ * codebook variable definitions and by the stages that create entities.
+ * Purely descriptive: it shapes what generated sample data looks like and
+ * never affects how an interview collects real data. Everything here is
+ * additive — a protocol that omits it is unchanged, and generation resolves
+ * documented defaults instead.
+ *
+ * WHERE each half lives, and why they differ:
+ *
+ * - Variable shapes hang off the codebook variable, because a value
+ *   distribution is a property of the thing being measured. Wherever `age` is
+ *   collected, it is the same `age`.
+ * - Count and topology shapes hang off the STAGE, because how many people get
+ *   named — and how densely they get linked — is a property of the asking.
  *
  * Modelling rules the shapes below enforce:
  *
@@ -67,11 +76,11 @@ const requireSomeField = (
 };
 
 // ---------------------------------------------------------------------------
-// Entity level: node population counts
+// Stage level: node population counts
 // ---------------------------------------------------------------------------
 
 /**
- * The most people one node type may be asked to produce.
+ * The most people one stage may be asked to produce.
  *
  * A synthetic population is generated SYNCHRONOUSLY — Architect's PreviewHost
  * calls `generateNetwork` on the main thread, and the planner iterates once per
@@ -194,13 +203,31 @@ export const SyntheticCountSchema = z.discriminatedUnion('distribution', [
 ]);
 export type SyntheticCount = z.infer<typeof SyntheticCountSchema>;
 
-export const NodeSyntheticSchema = z.strictObject({
-  count: SyntheticCountSchema,
-});
-export type NodeSynthetic = z.infer<typeof NodeSyntheticSchema>;
+/**
+ * What a node-creating stage declares: how many people it produces.
+ *
+ * This lives on the STAGE rather than the node type because a count is a
+ * property of the asking, not of the asked-about. Three name generators over
+ * `Person` each nominate their own people; a single population declared on the
+ * type would have to be apportioned between them, and nothing in the protocol
+ * says how. Declared per stage, each stage's demand is independent, a type no
+ * stage creates simply has no people, and a roster stage that asks for more
+ * rows than its pool holds is a local, reportable error.
+ */
+export type StageNodeSynthetic = { count: SyntheticCount };
+
+// Annotated rather than inferred. These shapes land in EIGHT stage schemas and
+// so in the `Stage` union every consumer resolves, and left to inference each
+// one expands its whole distribution union inline — enough for TypeScript to
+// refuse to serialize the declarations of anything mapping over stages
+// (TS7056). Naming the type keeps the union referring to an alias instead.
+export const StageNodeSyntheticSchema: z.ZodType<StageNodeSynthetic> =
+  z.strictObject({
+    count: SyntheticCountSchema,
+  });
 
 // ---------------------------------------------------------------------------
-// Entity level: edge topology
+// Stage level: edge topology
 // ---------------------------------------------------------------------------
 
 // Density is probability-like: every parameter lives in 0–1, and uniform
@@ -228,10 +255,32 @@ const densityNormalSchema = z
   })
   .superRefine(requireOrderedBounds);
 
+// Density is a proportion, so beta is its natural family: it lives on 0–1 by
+// construction rather than by clamping a normal that wanted to leave. Its
+// variance is bounded by mean·(1−mean) — parameters at or past that bound have
+// no alpha/beta solution, so they are rejected here rather than silently
+// clamped at generation time (the same rule scalar variables carry).
+const densityBetaSchema = z
+  .strictObject({
+    distribution: z.literal('beta'),
+    mean: z.number().gt(0).lt(1),
+    sd: z.number().min(0),
+  })
+  .superRefine((value, ctx) => {
+    if (value.sd * value.sd >= value.mean * (1 - value.mean)) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'A beta distribution requires sd² < mean × (1 − mean)',
+        path: ['sd'],
+      });
+    }
+  });
+
 const densityDistributionSchema = z.discriminatedUnion('distribution', [
   densityConstantSchema,
   densityUniformSchema,
   densityNormalSchema,
+  densityBetaSchema,
 ]);
 
 const nonNegative = z.number().min(0);
@@ -277,10 +326,39 @@ export const EdgeTopologySchema = z.discriminatedUnion('metric', [
 ]);
 export type EdgeTopology = z.infer<typeof EdgeTopologySchema>;
 
-export const EdgeSyntheticSchema = z.strictObject({
-  topology: EdgeTopologySchema,
-});
-export type EdgeSynthetic = z.infer<typeof EdgeSyntheticSchema>;
+/**
+ * What an edge-creating stage declares: how densely it links the people it can
+ * see. Density is resolved against the pairs eligible AT THAT STAGE — its
+ * subject type, its filter, and the nodes that exist by the time it runs — so
+ * unlike a whole-network target it is well defined during the interview walk.
+ *
+ * A stage whose prompts create more than one edge type applies the same
+ * topology to each, independently, over that type's own eligible pairs.
+ */
+export type StageEdgeSynthetic = { topology: EdgeTopology };
+
+export const StageEdgeSyntheticSchema: z.ZodType<StageEdgeSynthetic> =
+  z.strictObject({
+    topology: EdgeTopologySchema,
+  });
+
+/**
+ * What a stage that creates BOTH people and links declares. Either half may
+ * stand alone, but an empty block says nothing that "no block at all" does not
+ * already say, so it is rejected rather than stored.
+ */
+export type StageNodeAndEdgeSynthetic = {
+  count?: SyntheticCount;
+  topology?: EdgeTopology;
+};
+
+export const StageNodeAndEdgeSyntheticSchema: z.ZodType<StageNodeAndEdgeSynthetic> =
+  z
+    .strictObject({
+      count: SyntheticCountSchema.optional(),
+      topology: EdgeTopologySchema.optional(),
+    })
+    .superRefine(requireSomeField);
 
 // ---------------------------------------------------------------------------
 // Variable level

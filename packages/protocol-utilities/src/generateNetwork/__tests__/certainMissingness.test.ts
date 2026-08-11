@@ -26,7 +26,6 @@ const runWith = (
         person: {
           name: 'Person',
           color: 'node-color-seq-1',
-          synthetic: { count: { distribution: 'constant', value: count } },
           variables: {
             flag: {
               name: 'Flag',
@@ -46,6 +45,7 @@ const runWith = (
         type: 'NameGenerator',
         label: 'People',
         subject: { entity: 'node', type: 'person' },
+        synthetic: { count: { distribution: 'constant', value: count } },
         form: {
           title: 'About this person',
           fields: [{ variable: 'flag', prompt: 'Flag' }],

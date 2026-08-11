@@ -19,7 +19,6 @@ import getPalette from './getPalette';
 import IconPicker from './IconPicker';
 import ShapePicker from './ShapePicker';
 import ShapeVariableMapping from './ShapeVariableMapping';
-import SyntheticTypeSection from './SyntheticTypeSection';
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
 
@@ -139,7 +138,6 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
           />
         </Section>
       )}
-      <SyntheticTypeSection entity={entity} />
     </Layout>
   );
 };

@@ -11,21 +11,30 @@ import {
   DEFAULT_NODE_COUNT,
 } from '@codaco/protocol-utilities';
 import type {
-  EdgeSynthetic,
   EdgeTopology,
-  NodeSynthetic,
+  StageEdgeSynthetic,
+  StageNodeAndEdgeSynthetic,
+  StageNodeSynthetic,
   SyntheticCount,
 } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
+import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 
 /**
- * The optional population (node) / topology (edge) sections of the entity
- * type editor. Off by default: no `synthetic` property is stored and runtime
- * defaults apply; enabling seeds the controls from the same defaults the
- * generator resolves. The interactive controls are plain controlled
- * components with no form-library dependency — the redux-form `Field` at the
- * bottom of this file is a thin, disposable adapter for the entity dialog's
- * remaining redux-form lifetime.
+ * The optional "Synthetic data" section of a stage editor: how many people the
+ * stage produces, how densely it links them, or both.
+ *
+ * It sits on the STAGE because a count belongs to the asking rather than the
+ * asked-about — three name generators over one node type each nominate their
+ * own people, and nothing in a protocol says how a single declared population
+ * would divide between them.
+ *
+ * Off by default: no `synthetic` property is stored and runtime defaults
+ * apply; enabling seeds the controls from the same defaults the generator
+ * resolves. The interactive controls are plain controlled components with no
+ * form-library dependency — the redux-form `Field` at the bottom of this file
+ * is a thin, disposable adapter for the stage editor's remaining redux-form
+ * lifetime.
  */
 
 // Raw field components render only the control; UnconnectedField adds the
@@ -100,8 +109,8 @@ function NodeSyntheticControl({
   value,
   onChange,
 }: {
-  value: NodeSynthetic | undefined;
-  onChange: (next: NodeSynthetic | undefined) => void;
+  value: StageNodeSynthetic | undefined;
+  onChange: (next: StageNodeSynthetic | undefined) => void;
 }) {
   const count = value?.count;
   const patch = (next: Partial<SyntheticCount>) => {
@@ -113,7 +122,7 @@ function NodeSyntheticControl({
     <>
       <LooseField
         component={FrescoToggle}
-        label="Configure the population for this node type"
+        label="Set how many people this stage adds"
         hint="Off: generated samples use the runtime default (uniform between 1 and 8)."
         value={Boolean(value)}
         onChange={(enabled: unknown) =>
@@ -261,8 +270,8 @@ function EdgeSyntheticControl({
   value,
   onChange,
 }: {
-  value: EdgeSynthetic | undefined;
-  onChange: (next: EdgeSynthetic | undefined) => void;
+  value: StageEdgeSynthetic | undefined;
+  onChange: (next: StageEdgeSynthetic | undefined) => void;
 }) {
   const topology = value?.topology;
   const distribution = topology?.distribution;
@@ -281,7 +290,7 @@ function EdgeSyntheticControl({
     <>
       <LooseField
         component={FrescoToggle}
-        label="Configure the topology for this edge type"
+        label="Set how densely this stage links the people it can see"
         hint="Off: generated samples use the runtime default (density between 0.3 and 0.5)."
         value={Boolean(value)}
         onChange={(enabled: unknown) =>
@@ -389,45 +398,91 @@ function EdgeSyntheticControl({
 
 // --- Redux-form adapter (disposable) ---------------------------------------
 
-function NodeSyntheticReduxAdapter({ input }: WrappedFieldProps) {
+/** Stage types that size a population, and those that link one. */
+const COUNT_STAGES = new Set([
+  'NameGenerator',
+  'NameGeneratorQuickAdd',
+  'NameGeneratorRoster',
+  'NetworkComposer',
+]);
+const TOPOLOGY_STAGES = new Set([
+  'Sociogram',
+  'DyadCensus',
+  'OneToManyDyadCensus',
+  'TieStrengthCensus',
+  'NetworkComposer',
+]);
+
+/**
+ * A block declaring nothing says exactly what no block says, and the schema
+ * rejects it — so an emptied section removes the property outright rather than
+ * storing a shell the author cannot see.
+ */
+const pruned = (
+  next: StageNodeAndEdgeSynthetic,
+): StageNodeAndEdgeSynthetic | undefined => {
+  const kept: StageNodeAndEdgeSynthetic = {
+    ...(next.count ? { count: next.count } : {}),
+    ...(next.topology ? { topology: next.topology } : {}),
+  };
+  return (kept.count ?? kept.topology) ? kept : undefined;
+};
+
+function SyntheticReduxAdapter({
+  input,
+  showCount,
+  showTopology,
+}: WrappedFieldProps & { showCount: boolean; showTopology: boolean }) {
+  const value = (input.value || undefined) as
+    | StageNodeAndEdgeSynthetic
+    | undefined;
+  const emit = (next: StageNodeAndEdgeSynthetic) =>
+    input.onChange(pruned(next) ?? null);
+
   return (
-    <NodeSyntheticControl
-      value={(input.value || undefined) as NodeSynthetic | undefined}
-      onChange={(next) => input.onChange(next ?? null)}
-    />
+    <>
+      {showCount && (
+        <NodeSyntheticControl
+          value={value?.count ? { count: value.count } : undefined}
+          onChange={(node) => emit({ ...value, count: node?.count })}
+        />
+      )}
+      {showTopology && (
+        <EdgeSyntheticControl
+          value={value?.topology ? { topology: value.topology } : undefined}
+          onChange={(edge) => emit({ ...value, topology: edge?.topology })}
+        />
+      )}
+    </>
   );
 }
 
-function EdgeSyntheticReduxAdapter({ input }: WrappedFieldProps) {
-  return (
-    <EdgeSyntheticControl
-      value={(input.value || undefined) as EdgeSynthetic | undefined}
-      onChange={(next) => input.onChange(next ?? null)}
-    />
-  );
-}
+export default function SyntheticData({
+  interfaceType,
+}: StageEditorSectionProps) {
+  const showCount = COUNT_STAGES.has(interfaceType);
+  const showTopology = TOPOLOGY_STAGES.has(interfaceType);
 
-export default function SyntheticTypeSection({ entity }: { entity: string }) {
-  if (entity !== 'node' && entity !== 'edge') return null;
+  // A FamilyPedigree reaches neither set on purpose: a family is a structure
+  // rather than a population, so it keeps its own generation logic and nothing
+  // in a protocol sizes it.
+  if (!showCount && !showTopology) return null;
+
   return (
     <Section
-      title={entity === 'node' ? 'Population' : 'Topology'}
+      title="Synthetic data"
       layout="vertical"
       summary={
         <Paragraph>
-          {entity === 'node'
-            ? 'Describe how many of this node type generated preview and sample data should contain. This never affects real interviews.'
-            : 'Describe how connected this edge type should be in generated preview and sample data. This never affects real interviews.'}
+          Describe what this stage should produce in generated preview and
+          sample data. This never affects real interviews.
         </Paragraph>
       }
     >
       <Field
         name="synthetic"
-        component={
-          entity === 'node'
-            ? NodeSyntheticReduxAdapter
-            : EdgeSyntheticReduxAdapter
-        }
+        component={SyntheticReduxAdapter}
+        props={{ showCount, showTopology }}
       />
     </Section>
   );

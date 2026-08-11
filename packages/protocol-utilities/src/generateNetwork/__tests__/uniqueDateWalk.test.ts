@@ -30,7 +30,6 @@ const datesFor = (
         person: {
           name: 'Person',
           color: 'node-color-seq-1',
-          synthetic: { count: { distribution: 'constant', value: count } },
           variables: {
             met: {
               name: 'Met',
@@ -52,6 +51,7 @@ const datesFor = (
         type: 'NameGenerator',
         label: 'People',
         subject: { entity: 'node', type: 'person' },
+        synthetic: { count: { distribution: 'constant', value: count } },
         form: {
           title: 'About this person',
           fields: [{ variable: 'met', prompt: 'When did you meet?' }],
@@ -104,7 +104,6 @@ describe('a unique datetime under a narrow synthetic window', () => {
           person: {
             name: 'Person',
             color: 'node-color-seq-1',
-            synthetic: { count: { distribution: 'constant', value: 5 } },
             variables: {
               met: {
                 name: 'Met',
@@ -128,6 +127,7 @@ describe('a unique datetime under a narrow synthetic window', () => {
           type: 'NameGenerator',
           label: 'People',
           subject: { entity: 'node', type: 'person' },
+          synthetic: { count: { distribution: 'constant', value: 5 } },
           form: {
             title: 'About this person',
             fields: [{ variable: 'met', prompt: 'When did you meet?' }],
