@@ -115,6 +115,12 @@ export function useNodeGestures({
   // so teardown from outside the gesture (unmount, disabling) can see them.
   const draggingRef = useRef(false);
   const lastDragEventRef = useRef<PointerEvent | null>(null);
+  // The onDragEnd that was live when the drag began. A host may swap or
+  // remove its handlers mid-drag (toggling repositioning off), but the
+  // callback that opened the drag owns its cleanup and must see it end.
+  const activeDragEndRef = useRef<
+    ((event: PointerEvent, info: NodeDragEndInfo) => void) | null
+  >(null);
   const [isHolding, setIsHolding] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -156,20 +162,31 @@ export function useNodeGestures({
     setIsHolding(false);
   }, []);
 
+  /**
+   * Ends a live drag as cancelled, notifying the callback that began it. Used
+   * whenever a drag is interrupted from outside its own pointer sequence:
+   * unmount, disabling, or the host withdrawing its drag handlers.
+   */
+  const cancelActiveDrag = useCallback(() => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    setIsDragging(false);
+    const lastEvent = lastDragEventRef.current;
+    lastDragEventRef.current = null;
+    const endActiveDrag = activeDragEndRef.current;
+    activeDragEndRef.current = null;
+    if (lastEvent) {
+      endActiveDrag?.(lastEvent, { cancelled: true });
+    }
+  }, []);
+
   /** Drops everything, leaving no timer or listener behind. */
   const teardown = useCallback(() => {
     // A drag still live here was interrupted from outside its own pointer
-    // sequence — the node unmounted or became disabled. The host's effects
-    // (a DnD item in flight, a pinned simulation node) outlive this hook, so
-    // it must hear the drag end as cancelled rather than never hear at all.
-    if (draggingRef.current) {
-      draggingRef.current = false;
-      const lastEvent = lastDragEventRef.current;
-      lastDragEventRef.current = null;
-      if (lastEvent) {
-        optionsRef.current.onDragEnd?.(lastEvent, { cancelled: true });
-      }
-    }
+    // sequence. The host's effects (a DnD item in flight, a pinned simulation
+    // node) outlive this hook, so it must hear the drag end as cancelled
+    // rather than never hear at all.
+    cancelActiveDrag();
     abandonHold();
     activePointerRef.current = null;
     detachRef.current?.();
@@ -179,7 +196,7 @@ export function useNodeGestures({
       window.clearTimeout(expiryTimerRef.current);
       expiryTimerRef.current = null;
     }
-  }, [abandonHold]);
+  }, [abandonHold, cancelActiveDrag]);
 
   const endGesture = useCallback(() => {
     teardown();
@@ -208,6 +225,13 @@ export function useNodeGestures({
       suppressClickRef.current = false;
     }
   }, [abandonHold, disabled, holdEnabled, teardown]);
+
+  // A host may withdraw dragging itself, mid-drag, without disabling the node
+  // (toggling repositioning off). The gesture goes on — the finger is still
+  // down — but the drag ends now, through the callback that began it.
+  useEffect(() => {
+    if (!dragEnabled) cancelActiveDrag();
+  }, [cancelActiveDrag, dragEnabled]);
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent) => {
@@ -252,6 +276,8 @@ export function useNodeGestures({
           return;
         }
 
+        if (moved) return;
+
         const dx = moveEvent.clientX - origin.x;
         const dy = moveEvent.clientY - origin.y;
         if (Math.hypot(dx, dy) < DRAG_DISTANCE) return;
@@ -264,6 +290,7 @@ export function useNodeGestures({
         if (optionsRef.current.dragEnabled) {
           draggingRef.current = true;
           lastDragEventRef.current = moveEvent;
+          activeDragEndRef.current = optionsRef.current.onDragEnd ?? null;
           // A drag resolves the gesture, so the click that pointer capture
           // will still deliver to this node must not read as a tap.
           suppressClickRef.current = true;
@@ -287,10 +314,14 @@ export function useNodeGestures({
 
         if (draggingRef.current) {
           // Settled here, before teardown, so teardown cannot mistake this
-          // orderly end for an interruption and end the drag twice.
+          // orderly end for an interruption and end the drag twice — and
+          // through the callback that began the drag, which owns its cleanup
+          // even if the host has since swapped handlers.
           draggingRef.current = false;
           lastDragEventRef.current = null;
-          optionsRef.current.onDragEnd?.(endEvent, {
+          const endActiveDrag = activeDragEndRef.current;
+          activeDragEndRef.current = null;
+          endActiveDrag?.(endEvent, {
             cancelled: endEvent.type === 'pointercancel',
           });
         }

@@ -80,15 +80,16 @@ export default function CanvasNode({
   const handleClick = useCallback(
     (
       event: React.MouseEvent<HTMLButtonElement>,
-      details: { source: ActivationSource },
+      details?: { source: ActivationSource },
     ) => {
+      const source = details?.source ?? 'pointer';
       onSelect?.(nodeId, {
-        source: details.source,
+        source,
         // A keyboard activation carries no pointer gesture, so it carries no
         // modifiers either — applying held keys would turn a plain Enter into
         // a modified selection.
-        shiftKey: details.source === 'pointer' && event.shiftKey,
-        metaKey: details.source === 'pointer' && event.metaKey,
+        shiftKey: source === 'pointer' && event.shiftKey,
+        metaKey: source === 'pointer' && event.metaKey,
       });
     },
     [onSelect, nodeId],

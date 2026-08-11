@@ -513,6 +513,58 @@ describe('useNodeGestures: drags', () => {
     expect(onDragEnd).toHaveBeenCalledOnce();
   });
 
+  it('ends a live drag as cancelled when the host withdraws its drag handlers', () => {
+    const onDragEnd = vi.fn();
+    const onClickResult = vi.fn();
+    const { rerender } = render(
+      <Probe
+        dragEnabled
+        onDragStart={vi.fn()}
+        onDragEnd={onDragEnd}
+        onClickResult={onClickResult}
+      />,
+    );
+
+    press(100, 100);
+    fireEvent.pointerMove(window, { clientX: 140, clientY: 100, pointerId: 1 });
+
+    // Repositioning toggled off mid-drag: the handlers disappear, but the
+    // callback that began the drag owns its cleanup and must see it end.
+    rerender(<Probe dragEnabled={false} onClickResult={onClickResult} />);
+    expect(onDragEnd).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+      cancelled: true,
+    });
+
+    // The interruption consumed the drag; the release neither ends it again
+    // nor turns into a tap.
+    fireEvent.pointerUp(window, { pointerId: 1 });
+    expect(onDragEnd).toHaveBeenCalledOnce();
+    fireEvent.click(target());
+    expect(onClickResult).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
+  it('settles a drag through the callback that began it, not a later one', () => {
+    const original = vi.fn();
+    const replacement = vi.fn();
+    const { rerender } = render(
+      <Probe dragEnabled onDragStart={vi.fn()} onDragEnd={original} />,
+    );
+
+    press(100, 100);
+    fireEvent.pointerMove(window, { clientX: 140, clientY: 100, pointerId: 1 });
+
+    // The host swaps handlers mid-drag; cleanup belongs to the original.
+    rerender(
+      <Probe dragEnabled onDragStart={vi.fn()} onDragEnd={replacement} />,
+    );
+    fireEvent.pointerUp(window, { pointerId: 1 });
+
+    expect(original).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+      cancelled: false,
+    });
+    expect(replacement).not.toHaveBeenCalled();
+  });
+
   it('does not report an orderly release as a second, cancelled end', () => {
     const onDragEnd = vi.fn();
     const { unmount } = render(

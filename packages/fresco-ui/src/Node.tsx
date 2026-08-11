@@ -220,7 +220,10 @@ type UINodeProps = {
    */
   onClick?: (
     event: MouseEvent<HTMLButtonElement>,
-    details: { source: ActivationSource },
+    // Always passed, but optional in the type so a handler written for a
+    // plain button — or Node's own onClick forwarded to one — stays
+    // assignable in both directions.
+    details?: { source: ActivationSource },
   ) => void;
   /**
    * A press held still for the hold duration. Fires in addition to the node's
