@@ -6,7 +6,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { isNodePressed } from '../ComposerCanvas';
+import { isNodeSelected } from '../ComposerCanvas';
 
 const GROUP_VAR = 'affiliation';
 
@@ -19,18 +19,22 @@ const node = (attributes: Record<string, unknown> = {}): NcNode =>
 
 const noState = { selected: false, linking: false };
 
-describe('isNodePressed', () => {
+describe('isNodeSelected', () => {
   it('follows selection under the select tool', () => {
-    expect(isNodePressed(node(), { kind: 'select' }, noState)).toBe(false);
+    expect(isNodeSelected(node(), { kind: 'select' }, noState)).toBe(false);
     expect(
-      isNodePressed(node(), { kind: 'select' }, { ...noState, selected: true }),
+      isNodeSelected(
+        node(),
+        { kind: 'select' },
+        { ...noState, selected: true },
+      ),
     ).toBe(true);
   });
 
   it('follows the pending edge source under the edge tool', () => {
     const tool = { kind: 'edge' as const, edgeType: 'knows' };
-    expect(isNodePressed(node(), tool, noState)).toBe(false);
-    expect(isNodePressed(node(), tool, { ...noState, linking: true })).toBe(
+    expect(isNodeSelected(node(), tool, noState)).toBe(false);
+    expect(isNodeSelected(node(), tool, { ...noState, linking: true })).toBe(
       true,
     );
   });
@@ -40,11 +44,11 @@ describe('isNodePressed', () => {
 
     // The group tool toggles membership without ever selecting the node, so
     // selection is the wrong thing to report in this mode.
-    expect(isNodePressed(node({ [GROUP_VAR]: ['work'] }), tool, noState)).toBe(
+    expect(isNodeSelected(node({ [GROUP_VAR]: ['work'] }), tool, noState)).toBe(
       true,
     );
     expect(
-      isNodePressed(node({ [GROUP_VAR]: ['family'] }), tool, {
+      isNodeSelected(node({ [GROUP_VAR]: ['family'] }), tool, {
         ...noState,
         selected: true,
       }),
@@ -54,19 +58,21 @@ describe('isNodePressed', () => {
   it('reads membership stored as a scalar, a list, or nothing at all', () => {
     const tool = { kind: 'group' as const, variable: GROUP_VAR, value: 'work' };
 
-    expect(isNodePressed(node({ [GROUP_VAR]: 'work' }), tool, noState)).toBe(
+    expect(isNodeSelected(node({ [GROUP_VAR]: 'work' }), tool, noState)).toBe(
       true,
     );
     expect(
-      isNodePressed(node({ [GROUP_VAR]: ['family', 'work'] }), tool, noState),
+      isNodeSelected(node({ [GROUP_VAR]: ['family', 'work'] }), tool, noState),
     ).toBe(true);
-    expect(isNodePressed(node({ [GROUP_VAR]: null }), tool, noState)).toBe(
+    expect(isNodeSelected(node({ [GROUP_VAR]: null }), tool, noState)).toBe(
       false,
     );
-    expect(isNodePressed(node(), tool, noState)).toBe(false);
+    expect(isNodeSelected(node(), tool, noState)).toBe(false);
   });
 
-  it('says nothing at all for a tool that makes nodes no kind of toggle', () => {
-    expect(isNodePressed(node(), { kind: 'addNode' }, noState)).toBeUndefined();
+  it('reports nothing on under a tool that makes nodes no kind of toggle', () => {
+    // The canvas also unwires activation under the add-node tool, so nodes are
+    // announced as no kind of toggle rather than as unpressed ones.
+    expect(isNodeSelected(node(), { kind: 'addNode' }, noState)).toBe(false);
   });
 });

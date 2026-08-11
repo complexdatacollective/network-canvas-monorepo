@@ -3,6 +3,7 @@
 import { clamp } from 'es-toolkit';
 import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 
+import type { ActivationSource } from '@codaco/fresco-ui/Node';
 import {
   entityPrimaryKeyProperty,
   type NcEdge,
@@ -12,7 +13,6 @@ import {
 import CanvasNode from '../../canvas/CanvasNode';
 import EdgeLayer from '../../canvas/EdgeLayer';
 import { getGroupKeys } from '../../canvas/groupMembership';
-import type { ActivationSource } from '../../canvas/useCanvasDrag';
 import { type CanvasStoreApi } from '../../canvas/useCanvasStore';
 import {
   type ComposerStoreApi,
@@ -30,11 +30,11 @@ export type NodeTapModifiers = { shift: boolean; meta: boolean };
  * selecting the node, and the edge tool marks a pending source. Reporting
  * selection alone would announce the wrong state for both.
  */
-export function isNodePressed(
+export function isNodeSelected(
   node: NcNode,
   tool: ComposerTool,
   state: { selected: boolean; linking: boolean },
-): boolean | undefined {
+): boolean {
   switch (tool.kind) {
     case 'group':
       // Membership is read through the same helper the hulls and the cohesion
@@ -46,7 +46,7 @@ export function isNodePressed(
       return state.selected;
     default:
       // Adding nodes doesn't make an existing node a toggle at all.
-      return undefined;
+      return false;
   }
 }
 
@@ -116,9 +116,6 @@ export default function ComposerCanvas({
   const gestureIsBackground = useRef(false);
   // Whether the lasso has been started for the current gesture.
   const lassoActive = useRef(false);
-  // Captures pointer modifier state from the most recent pointer-down event.
-  const modifierRef = useRef<NodeTapModifiers>({ shift: false, meta: false });
-
   // Named apart from the `activeTool` some handlers read fresh from the store:
   // this one is the subscribed value the render depends on.
   const currentTool = useComposerStore(composerStore, (s) => s.activeTool);
@@ -143,17 +140,6 @@ export default function ComposerCanvas({
     observer.observe(canvas);
     return () => observer.disconnect();
   }, [canvasStore]);
-
-  // Capture phase fires before stopPropagation in child handlers, so this
-  // reliably captures modifier state from ALL pointer-downs — including on nodes
-  // which call e.stopPropagation() in their own handlers.
-  const handleContainerPointerDownCapture = useCallback(
-    (e: React.PointerEvent) => {
-      if (e.button !== 0) return;
-      modifierRef.current = { shift: e.shiftKey, meta: e.metaKey };
-    },
-    [],
-  );
 
   const handleContainerPointerDown = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0) return;
@@ -260,7 +246,6 @@ export default function ComposerCanvas({
       ref={canvasRef}
       className="relative size-full overflow-hidden"
       role="application"
-      onPointerDownCapture={handleContainerPointerDownCapture}
       onPointerDown={handleContainerPointerDown}
       onPointerMove={handleContainerPointerMove}
       onPointerUp={handleContainerPointerUp}
@@ -283,27 +268,26 @@ export default function ComposerCanvas({
             canvasRef={canvasRef}
             store={canvasStore}
             onDragEnd={onNodeDragEnd}
-            onSelect={(id, source) =>
-              // Modifiers are only meaningful for the pointer gesture that
-              // captured them. A keyboard press has none of its own, and
-              // reading the cache would apply whatever was last held down.
-              onNodeTap(
-                id,
-                source === 'keyboard'
-                  ? { shift: false, meta: false }
-                  : modifierRef.current,
-                source,
-              )
+            // Under the add-node tool activating an existing node does
+            // nothing, so it is not wired as an activation at all.
+            onSelect={
+              currentTool.kind === 'addNode'
+                ? undefined
+                : (id, details) =>
+                    onNodeTap(
+                      id,
+                      { shift: details.shiftKey, meta: details.metaKey },
+                      details.source,
+                    )
             }
-            selected={selectedNodeIds.has(nodeId)}
-            linking={pendingEdgeSource === nodeId}
             // What "on" means here changes with the tool: the group tool
             // toggles membership of the active group without ever selecting
             // the node, so selection alone would report the wrong state.
-            pressed={isNodePressed(node, currentTool, {
+            selected={isNodeSelected(node, currentTool, {
               selected: selectedNodeIds.has(nodeId),
               linking: pendingEdgeSource === nodeId,
             })}
+            linking={pendingEdgeSource === nodeId}
             allowRepositioning={allowRepositioning}
             simulation={simulation}
           />

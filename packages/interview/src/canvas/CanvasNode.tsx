@@ -1,31 +1,46 @@
-import { type RefObject, useCallback, useMemo, useRef } from 'react';
+import { type RefObject, useCallback, useMemo } from 'react';
 import type { StoreApi } from 'zustand';
 
 import type { DndStore } from '@codaco/fresco-ui/dnd/dnd';
+import type { ActivationSource } from '@codaco/fresco-ui/Node';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import Node from '../components/ConnectedNode';
-import { type ActivationSource, useCanvasDrag } from './useCanvasDrag';
+import { useCanvasDrag } from './useCanvasDrag';
 import { type CanvasStoreApi, useCanvasStore } from './useCanvasStore';
+
+/**
+ * How a node was activated, with the gesture state a host may need: modifier
+ * keys are only meaningful for the pointer gesture that carried them, so a
+ * keyboard activation reports none.
+ */
+export type NodeActivationDetails = {
+  source: ActivationSource;
+  shiftKey: boolean;
+  metaKey: boolean;
+};
 
 type CanvasNodeProps = {
   node: NcNode;
   canvasRef: RefObject<HTMLElement | null>;
   store: CanvasStoreApi;
   onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
-  onSelect?: (nodeId: string, source: ActivationSource) => void;
+  /**
+   * Activation. Omit it when activating a node does nothing (a display-only
+   * prompt): the node then renders as no kind of toggle, takes no pointer
+   * cursor, and announces no pressed state.
+   */
+  onSelect?: (nodeId: string, details: NodeActivationDetails) => void;
+  /**
+   * Whether the node reads as "on" for whatever the canvas's active mode makes
+   * that mean — selection, a highlight, the source of a pending edge, or
+   * membership of the active group. Only the canvas knows which is in play, so
+   * it declares the state; the node renders and announces it.
+   */
   selected?: boolean;
   linking?: boolean;
   highlighted?: boolean;
-  /**
-   * Whether the node currently reads as "on" for whatever the canvas's active
-   * mode makes it mean — selected, highlighted, the source of a pending edge,
-   * or a member of the active group. Only the canvas knows which of those is
-   * in play, so it is declared rather than inferred here. Omitted entirely for
-   * a canvas whose nodes are not a toggle.
-   */
-  pressed?: boolean;
   disabled?: boolean;
   allowRepositioning?: boolean;
   simulation?: {
@@ -49,7 +64,6 @@ export default function CanvasNode({
   selected = false,
   linking = false,
   highlighted = false,
-  pressed,
   disabled = false,
   allowRepositioning = true,
   simulation = null,
@@ -63,24 +77,19 @@ export default function CanvasNode({
     state.positions.get(nodeId),
   );
 
-  // The canvas synthesises its tap from pointer-up rather than the DOM click
-  // the node itself suppresses, so a hold that revealed the label has to be
-  // withdrawn here or reading a name would also select the person.
-  const labelRevealedRef = useRef(false);
-
-  const handleLabelReveal = useCallback(() => {
-    labelRevealedRef.current = true;
-  }, []);
-
-  const consumeLabelReveal = useCallback(() => {
-    const revealed = labelRevealedRef.current;
-    labelRevealedRef.current = false;
-    return revealed;
-  }, []);
-
   const handleClick = useCallback(
-    (source: ActivationSource) => {
-      onSelect?.(nodeId, source);
+    (
+      event: React.MouseEvent<HTMLButtonElement>,
+      details: { source: ActivationSource },
+    ) => {
+      onSelect?.(nodeId, {
+        source: details.source,
+        // A keyboard activation carries no pointer gesture, so it carries no
+        // modifiers either — applying held keys would turn a plain Enter into
+        // a modified selection.
+        shiftKey: details.source === 'pointer' && event.shiftKey,
+        metaKey: details.source === 'pointer' && event.metaKey,
+      });
     },
     [onSelect, nodeId],
   );
@@ -95,23 +104,23 @@ export default function CanvasNode({
     [dragItemType, node, nodeId],
   );
 
+  const canReposition = !disabled && allowRepositioning;
+
   const { dragProps, isDragging } = useCanvasDrag({
     nodeId,
     canvasRef,
     store,
     onDragEnd,
-    onClick: handleClick,
-    disabled: disabled || !allowRepositioning,
+    disabled: !canReposition,
     simulation,
     dndItem,
     dndStore,
     onRemove,
-    shouldSuppressTap: consumeLabelReveal,
   });
 
   if (!position) return null;
 
-  const { style: dragStyle, ...restDragProps } = dragProps;
+  const { onKeyDown, ...dragHandlers } = dragProps;
 
   return (
     <Node
@@ -122,16 +131,14 @@ export default function CanvasNode({
       highlighted={highlighted}
       disabled={disabled}
       size="sm"
-      onLabelReveal={handleLabelReveal}
-      // A canvas node routes its tap through useCanvasDrag rather than an
-      // `onClick` prop, so Node cannot infer that it is interactive and would
-      // default it out of the tab order. Focusability follows the node's own
-      // disabled state, not whether it happens to be repositionable: a node
-      // that cannot be moved can still be selected, and its name still has to
-      // be readable.
-      tabIndex={disabled ? -1 : 0}
-      // Node cannot infer the toggle state either, so it comes from the canvas.
-      aria-pressed={pressed}
+      onClick={onSelect ? handleClick : undefined}
+      // Declaring drag handlers makes Node the drag's gesture owner — cursor,
+      // pointer capture, aria-grabbed, and never-also-a-tap all follow.
+      {...(canReposition ? dragHandlers : null)}
+      onKeyDown={onKeyDown}
+      // The canvas itself watches pointer-down for background taps and lasso
+      // starts; a press on a node is neither.
+      onPointerDown={stopPropagation}
       // While dragged, lift the node above overlapping drop targets
       // (the unplaced-node drawer sits at z-10).
       className={cx('absolute outline-offset-8!', isDragging && 'z-20')}
@@ -139,9 +146,11 @@ export default function CanvasNode({
         left: `${position.x * 100}%`,
         top: `${position.y * 100}%`,
         transform: 'translate(-50%, -50%)',
-        ...dragStyle,
       }}
-      {...restDragProps}
     />
   );
+}
+
+function stopPropagation(event: React.PointerEvent) {
+  event.stopPropagation();
 }

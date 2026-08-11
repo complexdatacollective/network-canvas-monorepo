@@ -93,7 +93,13 @@ export const ShapePickerControl = ({
           key={shape.value}
           value={shape.value}
           nativeButton
-          render={(renderProps, state) => (
+          render={(
+            // Node's onDragStart/onDragEnd are pointer-based gesture props;
+            // the HTML5 drag-event handlers in the generic bag must not be
+            // spread into them.
+            { onDrag, onDragStart, onDragEnd, ...renderProps },
+            state,
+          ) => (
             <Node
               {...renderProps}
               label={small ? '' : shape.label}

@@ -58,19 +58,19 @@ afterEach(uninstallLabelMetrics);
 
 describe('Node label reveal', () => {
   it('reveals the full label after a press and hold', async () => {
-    const onLabelReveal = vi.fn();
+    const onLongPress = vi.fn();
     await renderNode(
       <Node
         label={CLIPPED_LABEL}
         onClick={vi.fn()}
-        onLabelReveal={onLabelReveal}
+        onLongPress={onLongPress}
       />,
     );
 
     await pressAndHold(node(CLIPPED_LABEL));
 
     await waitFor(() => expect(getPopup()).toHaveTextContent(CLIPPED_LABEL));
-    expect(onLabelReveal).toHaveBeenCalledOnce();
+    expect(onLongPress).toHaveBeenCalledOnce();
   });
 
   it('does not select the node when a hold revealed the label', async () => {
@@ -86,12 +86,12 @@ describe('Node label reveal', () => {
 
   it('leaves an ordinary tap alone', async () => {
     const onClick = vi.fn();
-    const onLabelReveal = vi.fn();
+    const onLongPress = vi.fn();
     await renderNode(
       <Node
         label={CLIPPED_LABEL}
         onClick={onClick}
-        onLabelReveal={onLabelReveal}
+        onLongPress={onLongPress}
       />,
     );
 
@@ -100,7 +100,7 @@ describe('Node label reveal', () => {
     release(button);
 
     expect(onClick).toHaveBeenCalledOnce();
-    expect(onLabelReveal).not.toHaveBeenCalled();
+    expect(onLongPress).not.toHaveBeenCalled();
     expect(getPopup()).toBeNull();
   });
 

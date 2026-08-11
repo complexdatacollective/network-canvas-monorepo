@@ -17,9 +17,8 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import CanvasNode from './CanvasNode';
+import CanvasNode, { type NodeActivationDetails } from './CanvasNode';
 import EdgeLayer from './EdgeLayer';
-import type { ActivationSource } from './useCanvasDrag';
 import type { CanvasStoreApi } from './useCanvasStore';
 
 /** Which interaction, if any, makes a node a toggle for the current prompt. */
@@ -29,20 +28,20 @@ export type NodeToggle = 'edge' | 'highlight' | null;
  * Mirrors what activating a node actually does. An edge prompt toggles the
  * pending source, a highlight prompt toggles the attribute, and a display-only
  * prompt — one that sets `highlight.variable` for colour but leaves
- * `allowHighlighting` off — toggles nothing, so it must not be announced as
- * something that can be pressed.
+ * `allowHighlighting` off — toggles nothing, so its nodes are not selectable
+ * at all.
  */
-export function nodePressedForToggle(
+export function nodeSelectedForToggle(
   toggle: NodeToggle,
   state: { highlighted: boolean; isEdgeSource: boolean },
-): boolean | undefined {
+): boolean {
   switch (toggle) {
     case 'edge':
       return state.isEdgeSource;
     case 'highlight':
       return state.highlighted;
     default:
-      return undefined;
+      return false;
   }
 }
 
@@ -56,7 +55,7 @@ type CanvasProps = {
   store: CanvasStoreApi;
   selectedNodeId: string | null;
   highlightAttribute?: string;
-  onNodeSelect?: (nodeId: string, source: ActivationSource) => void;
+  onNodeSelect?: (nodeId: string, details: NodeActivationDetails) => void;
   /**
    * Which interaction, if any, makes a node a toggle for this prompt. A
    * display-only highlight still colours nodes but cannot be operated, so it
@@ -208,14 +207,16 @@ export default function Canvas({
             canvasRef={canvasRef}
             store={store}
             onDragEnd={onNodeDragEnd}
-            onSelect={onNodeSelect}
-            selected={false}
-            linking={selectedNodeId === nodeId}
-            highlighted={highlighted}
-            pressed={nodePressedForToggle(nodeToggle, {
+            // Activation is only wired when it does something: a display-only
+            // prompt's nodes are not toggles, take no pointer cursor, and
+            // announce no pressed state.
+            onSelect={nodeToggle ? onNodeSelect : undefined}
+            selected={nodeSelectedForToggle(nodeToggle, {
               highlighted,
               isEdgeSource: selectedNodeId === nodeId,
             })}
+            linking={selectedNodeId === nodeId}
+            highlighted={highlighted}
             disabled={disabled}
             allowRepositioning={allowRepositioning}
             simulation={simulation}

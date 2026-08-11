@@ -15,7 +15,11 @@ import {
 import { useMergeRefs } from 'react-best-merge-refs';
 
 import { useFitText } from './hooks/useFitText';
-import { useLongPress } from './hooks/useLongPress';
+import {
+  type ActivationSource,
+  type NodeDragEndInfo,
+  useNodeGestures,
+} from './hooks/useNodeGestures';
 import { useNodeInteractions } from './hooks/useNodeInteractions';
 import usePrevious from './hooks/usePrevious';
 import {
@@ -27,6 +31,8 @@ import { composeEventHandlers } from './utils/composeEventHandlers';
 import { cva, type VariantProps } from './utils/cva';
 
 export type NodeShape = 'circle' | 'square' | 'diamond';
+
+export type { ActivationSource, NodeDragEndInfo };
 
 // TODO: should be part of protocol-validation
 export const NodeColors = [
@@ -207,11 +213,33 @@ type UINodeProps = {
   /** External pointer up handler (composes with internal behavior) */
   onPointerUp?: (e: React.PointerEvent) => void;
   /**
-   * Called when a press-and-hold reveals a clipped label. Hosts that synthesise
-   * taps from pointer events, rather than relying on the DOM click the node
-   * already suppresses, should use this to skip the tap that follows.
+   * Activation — a tap, or Enter/Space from the keyboard. The node's gesture
+   * recognizer guarantees this never fires for a gesture that resolved as a
+   * hold or a drag. `details.source` says how the node was activated, since a
+   * keyboard press carries none of a pointer gesture's state.
    */
-  onLabelReveal?: () => void;
+  onClick?: (
+    event: MouseEvent<HTMLButtonElement>,
+    details: { source: ActivationSource },
+  ) => void;
+  /**
+   * A press held still for the hold duration. Fires in addition to the node's
+   * own hold behaviour (revealing a clipped label). The click that would
+   * follow the gesture is swallowed — a hold is never also a tap.
+   */
+  onLongPress?: () => void;
+  /**
+   * Movement past the drag threshold, when the node itself owns dragging.
+   * Providing any drag handler makes the node draggable: it takes pointer
+   * capture, shows the grab/grabbing cursor, reports `aria-grabbed`, and
+   * guarantees a drag is never also a tap or a hold. Hosts own the effects —
+   * where the node moves, what the payload is.
+   */
+  onDragStart?: (event: PointerEvent) => void;
+  /** Every movement of an active drag, including the one that started it. */
+  onDragMove?: (event: PointerEvent) => void;
+  /** The end of an active drag — released, or cancelled by the system. */
+  onDragEnd?: (event: PointerEvent, info: NodeDragEndInfo) => void;
   /** Suppresses the press-and-hold reveal for clipped labels */
   labelRevealDisabled?: boolean;
   ref?: Ref<HTMLButtonElement>;
@@ -219,6 +247,7 @@ type UINodeProps = {
   Omit<
     ButtonHTMLAttributes<HTMLButtonElement>,
     | 'color'
+    | 'onClick'
     | 'onPointerDown'
     | 'onPointerUp'
     | 'onDrag'
@@ -237,9 +266,18 @@ type UINodeProps = {
  * - Linking: pulsing box-shadow ring (separate layer, can be active with selected)
  * - Disabled: desaturated, no pointer events
  *
- * Interaction behaviors are inferred from props:
- * - onClick present: enables press animation, sets pointer cursor
- * - style.cursor provided: uses that cursor (e.g., 'grab' from drag systems)
+ * Gestures: the node is the single recognizer for its own pointer sequence.
+ * Handlers declare which gestures exist — `onClick` (tap/keyboard), the
+ * built-in hold (clipped-label reveal, plus `onLongPress`), and
+ * `onDragStart`/`Move`/`End` — and the node classifies each gesture as
+ * exactly one of them, and renders every visual consequence itself: press
+ * animation and pointer cursor for taps, the filling indicator for holds,
+ * grab/grabbing cursor and `aria-grabbed` for drags, and a tab stop whenever
+ * any of them (or a revealable label) gives focus something to do.
+ *
+ * An external drag system may still compose its own pointer handlers
+ * (`useDragSource`); the recognizer then treats movement as belonging to that
+ * system and only withdraws its own hold.
  *
  * Shapes:
  * - Circle (default), square, or diamond. The shape (including the diamond's
@@ -267,13 +305,17 @@ export default function Node(props: UINodeProps) {
     onKeyDown: externalKeyDown,
     onKeyUp: externalKeyUp,
     onClick,
-    onLabelReveal,
+    onLongPress,
+    onDragStart,
+    onDragMove,
+    onDragEnd,
     labelRevealDisabled = false,
     ...buttonProps
   } = props;
 
-  // Infer interaction mode from props
   const hasClickHandler = !!onClick;
+  // Any drag handler makes the node draggable; the recognizer owns the rest.
+  const dragEnabled = !!(onDragStart || onDragMove || onDragEnd);
 
   // aria-pressed is only valid on roles that support it (button, menuitem, etc.)
   // When a Collection overrides role to 'option', aria-pressed is not permitted.
@@ -283,11 +325,6 @@ export default function Node(props: UINodeProps) {
     ['button', 'menuitem', 'menuitemradio', 'menuitemcheckbox'].includes(
       roleFromProps,
     );
-
-  // Determine cursor: external style takes precedence, then infer from props
-  const cursor: CSSProperties['cursor'] = disabled
-    ? 'not-allowed'
-    : (style?.cursor ?? (hasClickHandler ? 'pointer' : 'default'));
 
   // Use the interaction hook for press animation
   const { scope, nodeProps } = useNodeInteractions({
@@ -319,10 +356,10 @@ export default function Node(props: UINodeProps) {
   const canRevealLabel =
     isTruncated && !loading && !disabled && !isGrabbed && !labelRevealDisabled;
 
-  const revealLabel = useCallback(() => {
-    setLabelRevealed(true);
-    onLabelReveal?.();
-  }, [onLabelReveal]);
+  const handleLongPress = useCallback(() => {
+    if (canRevealLabel) setLabelRevealed(true);
+    onLongPress?.();
+  }, [canRevealLabel, onLongPress]);
 
   // A label already on screen has to come down when it stops being applicable.
   // Starting a keyboard drag flips `aria-grabbed` without moving focus, so
@@ -331,48 +368,76 @@ export default function Node(props: UINodeProps) {
     if (!canRevealLabel) setLabelRevealed(false);
   }, [canRevealLabel]);
 
-  // A pointer drag sets no `aria-grabbed` — it is the drag system moving the
-  // node, not the node describing itself — so without this a revealed label
-  // would trail the node across the canvas and outlast the drop.
+  // A drag withdraws a revealed label — pointer drags set no `aria-grabbed`
+  // (that is the drag system moving the node, not the node describing itself),
+  // so without this the label would trail the node and outlast the drop.
   const withdrawLabel = useCallback(() => setLabelRevealed(false), []);
 
   const {
-    onPointerDown: startHold,
+    onPointerDown: startGesture,
     shouldSuppressClick,
     isHolding,
+    isDragging,
     feedbackDuration,
-  } = useLongPress({
-    onLongPress: revealLabel,
+  } = useNodeGestures({
+    onLongPress: handleLongPress,
     onHoldInterrupted: withdrawLabel,
-    enabled: canRevealLabel,
+    onDragStart,
+    onDragMove,
+    onDragEnd,
+    holdEnabled: canRevealLabel || !!onLongPress,
+    dragEnabled,
+    disabled,
   });
 
   const skipAnimations = useShouldSkipAnimations();
 
-  // Any press dismisses a revealed label, so a second hold — or an ordinary
-  // tap — starts from a clean state.
   const handlePointerDown = useCallback(
     (event: React.PointerEvent) => {
       // Only a press that actually begins a gesture dismisses what the last one
       // revealed. A second finger arriving on a node whose label is already
       // open is not a new gesture — the hold owns it until it ends — and
       // closing here would snatch the label away mid-read.
-      if (startHold(event)) setLabelRevealed(false);
+      if (startGesture(event)) setLabelRevealed(false);
     },
-    [startHold],
+    [startGesture],
   );
 
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
+      // The recognizer classified this gesture as a hold or a drag; it is not
+      // also a tap.
       if (shouldSuppressClick()) {
         event.preventDefault();
         event.stopPropagation();
         return;
       }
-      onClick?.(event);
+      // Keyboard activations arrive as clicks with no preceding pointer
+      // gesture; `detail` is the number of pointer presses behind the click.
+      onClick?.(event, {
+        source: event.detail === 0 ? 'keyboard' : 'pointer',
+      });
     },
     [onClick, shouldSuppressClick],
   );
+
+  // Every visual and semantic consequence of the declared gestures is decided
+  // here, not by the host: cursor, touch behaviour, and the tab stop.
+  const cursor: CSSProperties['cursor'] = disabled
+    ? 'not-allowed'
+    : (style?.cursor ??
+      (isDragging
+        ? 'grabbing'
+        : dragEnabled
+          ? 'grab'
+          : hasClickHandler
+            ? 'pointer'
+            : 'default'));
+
+  // Focusable exactly when focusing does something: activation, a hold, a
+  // drag, or a clipped label that focus will reveal.
+  const focusable =
+    hasClickHandler || dragEnabled || !!onLongPress || canRevealLabel;
 
   // Scope for selected state animation (box-shadow on the shape layer, so
   // the ring follows the shape's border radius and rotation)
@@ -435,13 +500,14 @@ export default function Node(props: UINodeProps) {
   const button = (
     <motion.button
       {...buttonProps}
-      tabIndex={
-        hasClickHandler ? buttonProps.tabIndex : (buttonProps.tabIndex ?? -1)
-      }
+      tabIndex={focusable ? buttonProps.tabIndex : (buttonProps.tabIndex ?? -1)}
       ref={useMergeRefs({ ref, scope })}
       type="button"
       disabled={disabled}
       aria-label={ariaLabel ?? label}
+      // An external drag system (useDragSource) declares its own grabbed
+      // state; otherwise the recognizer's drag is the node being moved.
+      aria-grabbed={grabbed ?? (dragEnabled ? isDragging : undefined)}
       aria-pressed={
         // A host whose taps don't arrive as `onClick` — a canvas node driving
         // selection from pointer events — can declare the toggle state itself,
@@ -461,9 +527,13 @@ export default function Node(props: UINodeProps) {
       })}
       style={{
         ...nodeProps.style,
+        // A draggable node must not let the browser claim its movement for
+        // scrolling; everything else keeps fast-tap handling.
+        ...(dragEnabled && { touchAction: 'none' as const }),
         ...style,
         cursor,
       }}
+      data-node-dragging={isDragging || undefined}
       data-node-selected={selected || undefined}
       data-node-linking={linking || undefined}
       data-node-highlighted={highlighted || undefined}

@@ -9,6 +9,7 @@ import { useSelector } from 'react-redux';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Node from '@codaco/fresco-ui/Node';
+import type { ActivationSource } from '@codaco/fresco-ui/Node';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import {
@@ -22,7 +23,6 @@ import {
 import ConvexHullLayer from '../../canvas/ConvexHullLayer';
 import StageBackground from '../../canvas/StageBackground';
 import { useAutoLayout } from '../../canvas/useAutoLayout';
-import type { ActivationSource } from '../../canvas/useCanvasDrag';
 import { createCanvasStore } from '../../canvas/useCanvasStore';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';

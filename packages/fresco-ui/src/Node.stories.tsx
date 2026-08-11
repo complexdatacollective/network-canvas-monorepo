@@ -25,14 +25,23 @@ Nodes represent people, places, organizations, or other entities in social netwo
 - **Loading**: Spinner replaces label
 - **Disabled**: Desaturated, no pointer events
 
-## Interaction Behaviors (Inferred)
-Interaction behaviors are automatically inferred from the props you provide:
-- **onClick provided**: Enables press animation, sets pointer cursor
-- **style.cursor provided**: Uses that cursor (e.g., \`'grab'\` from drag systems like useDragSource)
-- **Neither**: Default cursor, no press animation (display only)
+## Gestures
+The node is the single gesture recognizer for its own pointer sequence. The
+handlers you declare say which gestures exist, and the node classifies each
+gesture as exactly one of them and renders every visual consequence itself:
+- **onClick**: taps and keyboard activation — pointer cursor, press animation,
+  a tab stop, and \`aria-pressed\` from \`selected\`. The handler receives
+  \`details.source\` ('pointer' | 'keyboard').
+- **onLongPress**: a press held still — the filling hold indicator. Fires in
+  addition to the built-in clipped-label reveal.
+- **onDragStart / onDragMove / onDragEnd**: movement past the drag threshold —
+  grab/grabbing cursor, pointer capture, \`aria-grabbed\`, touch-action none.
+  Hosts implement the effects (where the node moves, what the payload is).
 
-This design allows the Node to integrate seamlessly with external interaction systems
-without needing explicit mode flags.
+A gesture is never two things at once: a drag is not also a tap, a hold is not
+also a tap, and a drag withdraws a hold's result. External drag systems
+(\`useDragSource\`) may still compose their own pointer handlers; the node
+treats their movement as theirs and only withdraws its own hold.
 
 ## Labels
 Labels are fitted to the node: the type size steps down the scale until the name
@@ -503,9 +512,9 @@ export const LongLabels: Story = {
 };
 
 /**
- * Interaction behaviors are inferred from the props you provide.
+ * Declared gestures decide cursor, animation, and focusability.
  */
-export const InferredBehaviors: Story = {
+export const DeclaredGestures: Story = {
   render: () => (
     <div className="flex flex-col gap-8">
       <div>
@@ -513,37 +522,36 @@ export const InferredBehaviors: Story = {
           With onClick (Clickable)
         </Heading>
         <Paragraph margin="none" className="mb-4 text-xs text-current/70">
-          Pointer cursor, press animation on click. Behavior is inferred from
-          onClick being present.
+          Pointer cursor, press animation, and a tab stop — declared by onClick.
         </Paragraph>
         {/* eslint-disable-next-line no-console */}
         <Node label="Clickable" onClick={() => console.log('clicked')} />
       </div>
       <div>
         <Heading level="h3" margin="none" className="mb-2 text-sm font-medium">
-          With style.cursor (Draggable)
+          With drag handlers (Draggable)
         </Heading>
         <Paragraph margin="none" className="mb-4 text-xs text-current/70">
-          Grab cursor from external style. This is how drag systems like
-          useDragSource integrate.
+          Declaring onDragStart makes the node draggable: grab cursor, pointer
+          capture, and aria-grabbed while dragging.
         </Paragraph>
         <Node
           label="Draggable"
-          style={{ cursor: 'grab' }}
+          onDragStart={() => undefined}
           color="node-color-seq-2"
         />
       </div>
       <div>
         <Heading level="h3" margin="none" className="mb-2 text-sm font-medium">
-          Both onClick & Cursor
+          Click & drag together
         </Heading>
         <Paragraph margin="none" className="mb-4 text-xs text-current/70">
-          External cursor style takes precedence, but press animation still
-          works from onClick.
+          The recognizer decides which fires: a still release taps, movement
+          drags — never both.
         </Paragraph>
         <Node
           label="Both"
-          style={{ cursor: 'grab' }}
+          onDragStart={() => undefined}
           // eslint-disable-next-line no-console
           onClick={() => console.log('clicked')}
           color="node-color-seq-3"
@@ -565,13 +573,13 @@ export const InferredBehaviors: Story = {
     docs: {
       description: {
         story: `
-Interaction behaviors are automatically inferred:
-- **onClick present**: Pointer cursor + press animation
-- **style.cursor provided**: Uses that cursor (e.g., \`'grab'\` from drag systems)
-- **Both**: External cursor wins, press animation still enabled
-- **Neither**: Default cursor + no animation (display only)
+Declared handlers decide the visuals:
+- **onClick**: pointer cursor + press animation + tab stop
+- **onDragStart/Move/End**: grab cursor, grabbing while dragging, \`aria-grabbed\`
+- **Both**: the recognizer classifies each gesture as exactly one of them
+- **Neither**: default cursor, no animation, out of the tab order (display only)
 
-This allows seamless integration with external systems like \`useDragSource\` without explicit mode flags.
+A \`style.cursor\` override still wins, for external drag systems like \`useDragSource\` that compose their own pointer handlers.
         `,
       },
     },

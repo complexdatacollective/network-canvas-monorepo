@@ -193,15 +193,13 @@ describe('NetworkComposer canvas', () => {
   it('puts placed nodes in the tab order so they can be reached at all', async () => {
     renderInterface();
 
-    // A canvas node routes its tap through useCanvasDrag rather than an
-    // onClick prop, so nothing infers interactivity for it; without an
-    // explicit tab stop neither the canvas's own key handling nor a clipped
-    // label's keyboard reveal is reachable.
+    // Activation and dragging are declared to Node, which derives the tab
+    // stop itself: focusable exactly when focusing does something.
     await waitFor(() => {
       const nodes = screen.getAllByRole('button', { name: 'Person' });
       expect(nodes).toHaveLength(2);
       for (const node of nodes) {
-        expect(node).toHaveAttribute('tabindex', '0');
+        expect(node.tabIndex).toBe(0);
       }
     });
   });
@@ -227,7 +225,8 @@ describe('NetworkComposer canvas', () => {
 
     // Pointer taps hand focus to the stage root so its shortcuts stay live;
     // doing that to a keyboard user drops them back at the tool palette.
-    fireEvent.keyDown(node, { key: 'Enter' });
+    // Keyboard activation reaches the button as a click with detail 0.
+    fireEvent.click(node, { detail: 0 });
 
     await waitFor(() => expect(node).toHaveFocus());
   });
@@ -238,19 +237,21 @@ describe('NetworkComposer canvas', () => {
     const nodes = await screen.findAllByRole('button', { name: 'Person' });
     const [first, second] = [nodes[0]!, nodes[1]!];
 
-    // A shift-modified pointer gesture leaves its modifiers cached.
+    // A shift-modified pointer tap arrives as a click still carrying the
+    // modifier.
     fireEvent.pointerDown(first, {
       button: 0,
       clientX: 0,
       clientY: 0,
       pointerId: 1,
-      shiftKey: true,
     });
-    fireEvent.pointerUp(document, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(first, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.click(first, { detail: 1, shiftKey: true });
     await waitFor(() => expect(first).toHaveAttribute('aria-pressed', 'true'));
 
-    // A later keyboard selection must select alone, not add to the selection.
-    fireEvent.keyDown(second, { key: 'Enter' });
+    // A keyboard selection carries no pointer gesture, so held modifiers must
+    // not turn a plain Enter into a modified selection: it selects alone.
+    fireEvent.click(second, { detail: 0, shiftKey: true });
 
     await waitFor(() => {
       expect(second).toHaveAttribute('aria-pressed', 'true');

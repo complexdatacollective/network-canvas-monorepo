@@ -188,7 +188,12 @@ export const EntitySelectControl = ({
                     key={optionValue}
                     value={optionValue}
                     nativeButton
-                    render={(renderProps, state) =>
+                    render={(
+                      // PreviewNode forwards to Node, whose drag props are
+                      // pointer-based gestures — strip the HTML5 drag bag.
+                      { onDrag, onDragStart, onDragEnd, ...renderProps },
+                      state,
+                    ) =>
                       entityType === 'edge' ? (
                         <PreviewEdge
                           {...renderProps}

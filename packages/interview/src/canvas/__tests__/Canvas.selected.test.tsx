@@ -10,9 +10,9 @@ import {
 
 // Stand in for the real node so this exercises what Canvas hands down, without
 // pulling in the store and protocol context ConnectedNode needs.
-const received: { pressed?: boolean }[] = [];
+const received: { selected?: boolean; onSelect?: unknown }[] = [];
 vi.mock('../CanvasNode', () => ({
-  default: (props: { pressed?: boolean }) => {
+  default: (props: { selected?: boolean; onSelect?: unknown }) => {
     received.push(props);
     return null;
   },
@@ -77,26 +77,36 @@ function renderCanvas(
   return received[0];
 }
 
-describe('Canvas pressed state', () => {
+describe('Canvas node toggle wiring', () => {
   // The derivation is unit-tested on its own; this asserts Canvas actually
   // routes through it, which a helper test cannot show.
   it('reports the highlight attribute for a highlight prompt', () => {
-    expect(renderCanvas({ nodeToggle: 'highlight' }, true)?.pressed).toBe(true);
-    expect(renderCanvas({ nodeToggle: 'highlight' }, false)?.pressed).toBe(
+    expect(renderCanvas({ nodeToggle: 'highlight' }, true)?.selected).toBe(
+      true,
+    );
+    expect(renderCanvas({ nodeToggle: 'highlight' }, false)?.selected).toBe(
       false,
     );
   });
 
   it('reports the pending edge source for an edge prompt', () => {
     expect(
-      renderCanvas({ nodeToggle: 'edge', selectedNodeId: NODE_ID })?.pressed,
+      renderCanvas({ nodeToggle: 'edge', selectedNodeId: NODE_ID })?.selected,
     ).toBe(true);
-    expect(renderCanvas({ nodeToggle: 'edge' })?.pressed).toBe(false);
+    expect(renderCanvas({ nodeToggle: 'edge' })?.selected).toBe(false);
   });
 
-  it('reports nothing for a display-only prompt, however the node looks', () => {
+  it('unwires activation entirely for a display-only prompt', () => {
     // highlight.variable set for colour, allowHighlighting off: activation
-    // does nothing, so nothing may be announced as pressable.
-    expect(renderCanvas({ nodeToggle: null }, true)?.pressed).toBeUndefined();
+    // does nothing, so the node must be no kind of toggle — not selectable,
+    // and never announced as pressable.
+    const props = renderCanvas({ nodeToggle: null }, true);
+    expect(props?.onSelect).toBeUndefined();
+    expect(props?.selected).toBe(false);
+  });
+
+  it('wires activation whenever the prompt has a toggle', () => {
+    expect(renderCanvas({ nodeToggle: 'highlight' })?.onSelect).toBeDefined();
+    expect(renderCanvas({ nodeToggle: 'edge' })?.onSelect).toBeDefined();
   });
 });
