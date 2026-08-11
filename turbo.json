@@ -29,7 +29,11 @@
         "next.config.*",
         "package.json"
       ],
-      "env": ["NODE_ENV"],
+      // The PostHog credentials decide whether a build emits and uploads source
+      // maps (see apps/*/vite.config.ts). They must be part of the cache key, or
+      // a production build could replay a cached artefact whose maps were never
+      // uploaded.
+      "env": ["NODE_ENV", "POSTHOG_PERSONAL_API_KEY", "POSTHOG_PROJECT_ID"],
       "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
     },
     "@codaco/documentation#build": {
@@ -67,7 +71,10 @@
         "NEXT_PUBLIC_NETWORK_CANVAS_URL",
         "CONTEXT",
         "REVIEW_ID",
-        "SITE_URL"
+        "SITE_URL",
+        // See the note on the generic build task's `env`.
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID"
       ],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },

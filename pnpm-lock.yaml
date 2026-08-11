@@ -66,9 +66,15 @@ catalogs:
     '@playwright/test':
       specifier: ^1.62.1
       version: 1.62.1
+    '@posthog/nextjs-config':
+      specifier: ^1.9.68
+      version: 1.9.68
     '@posthog/react':
       specifier: ^1.10.3
       version: 1.10.3
+    '@posthog/rollup-plugin':
+      specifier: ^1.4.7
+      version: 1.4.7
     '@radix-ui/react-slot':
       specifier: ^1.2.4
       version: 1.2.4
@@ -430,6 +436,9 @@ importers:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.62.1
+      '@posthog/rollup-plugin':
+        specifier: 'catalog:'
+        version: 1.4.7(rollup@4.62.2)
       '@storybook/addon-a11y':
         specifier: 'catalog:'
         version: 10.5.6(storybook@10.5.6(@types/react@19.2.18)(prettier@2.8.8)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
@@ -749,6 +758,9 @@ importers:
       '@next/third-parties':
         specifier: 'catalog:'
         version: 16.3.0(next@16.3.0(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-macros@2.8.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.102.0))(react@19.2.8)
+      '@posthog/nextjs-config':
+        specifier: 'catalog:'
+        version: 1.9.68(next@16.3.0(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-macros@2.8.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.102.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.25)(uglify-js@3.19.3))
       '@posthog/react':
         specifier: 'catalog:'
         version: 1.10.3(@types/react@19.2.18)(posthog-js@1.413.2)(react@19.2.8)
@@ -937,7 +949,7 @@ importers:
         specifier: ^3.3.0
         version: 3.3.0
       '@posthog/nextjs-config':
-        specifier: ^1.9.68
+        specifier: 'catalog:'
         version: 1.9.68(next@16.3.0(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-macros@2.8.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.102.0))(webpack@5.105.2(@swc/core@1.15.40(@swc/helpers@0.5.23))(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.25)(uglify-js@3.19.3))
       '@prisma/adapter-neon':
         specifier: ^7.9.0
@@ -1250,6 +1262,9 @@ importers:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.62.1
+      '@posthog/rollup-plugin':
+        specifier: 'catalog:'
+        version: 1.4.7(rollup@4.62.2)
       '@storybook/addon-a11y':
         specifier: 'catalog:'
         version: 10.5.6(storybook@10.5.6(@types/react@19.2.18)(prettier@2.8.8)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
@@ -6330,6 +6345,11 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@posthog/rollup-plugin@1.4.7':
+    resolution: {integrity: sha512-bJgQLKZ5gkq79PBGTNqC8S6OAE8QtNIPYbvHnoboIh8qoZ0PS7RRpxuunoeOflxrHxpnM0Id9OxvrkGKJ2JE6w==}
+    peerDependencies:
+      rollup: '>= 4.0.0'
 
   '@posthog/types@1.402.1':
     resolution: {integrity: sha512-4PZ9wMYI8m8AqJuZ9YR1IAHGVtSnYbBVBgTevrKpzZbcSe/OUwhEV2Ks//rJh/L8eMTU8R5DrD4D/hlrOwaAiQ==}
@@ -19812,6 +19832,12 @@ snapshots:
       react: 19.2.8
     optionalDependencies:
       '@types/react': 19.2.18
+
+  '@posthog/rollup-plugin@1.4.7(rollup@4.62.2)':
+    dependencies:
+      '@posthog/cli': 0.7.34
+      '@posthog/plugin-utils': 1.1.2
+      rollup: 4.62.2
 
   '@posthog/types@1.402.1': {}
 

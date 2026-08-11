@@ -63,6 +63,7 @@
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
+    "@posthog/rollup-plugin": "catalog:",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",
     "@storybook/addon-vitest": "catalog:",
