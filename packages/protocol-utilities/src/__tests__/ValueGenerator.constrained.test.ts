@@ -148,43 +148,46 @@ describe('generateConstrained', () => {
     }
   });
 
-  it('uses the shortest realistic composition that satisfies a name variable minimum', () => {
+  it('prefers the fullest realistic composition constraints allow', () => {
     const seed = 17;
-    const firstName = String(
+    const fullName = String(
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'Name', type: 'text' }),
         0,
       ),
     );
+    // Unconstrained, a name variable draws a full "First Last" name.
+    expect(fullName).toMatch(/^\S+ \S+$/);
+    const [firstName, lastName] = fullName.split(' ') as [string, string];
 
-    const firstAndLast = String(
+    // A cap with no room for the full name falls back to the first name.
+    expect(
       new ValueGenerator(seed).generateConstrained(
         make({
           id: 'name',
           name: 'Name',
           type: 'text',
-          validation: { minLength: firstName.length + 1 },
+          validation: { maxLength: fullName.length - 1 },
         }),
         0,
       ),
-    );
-    expect(firstAndLast.startsWith(`${firstName} `)).toBe(true);
+    ).toBe(firstName);
 
-    const lastName = firstAndLast.slice(firstName.length + 1);
-    const fullName = String(
+    // A floor above the full name lengthens it with a middle name.
+    const withMiddle = String(
       new ValueGenerator(seed).generateConstrained(
         make({
           id: 'name',
           name: 'Name',
           type: 'text',
-          validation: { minLength: firstAndLast.length + 1 },
+          validation: { minLength: fullName.length + 1 },
         }),
         0,
       ),
     );
-    expect(fullName.startsWith(`${firstName} `)).toBe(true);
-    expect(fullName.endsWith(` ${lastName}`)).toBe(true);
-    expect(fullName.length).toBeGreaterThan(firstAndLast.length);
+    expect(withMiddle.startsWith(`${firstName} `)).toBe(true);
+    expect(withMiddle.endsWith(` ${lastName}`)).toBe(true);
+    expect(withMiddle.length).toBeGreaterThan(fullName.length);
   });
 
   it('prefers a realistic name before the distinct sequence for a unique draw', () => {
@@ -209,35 +212,24 @@ describe('generateConstrained', () => {
 
   it('uses the text sequence when no realistic name composition meets the minimum', () => {
     const seed = 17;
-    const firstName = String(
+    const fullName = String(
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'name', type: 'text' }),
         0,
       ),
     );
-    const firstAndLast = String(
+    const withMiddle = String(
       new ValueGenerator(seed).generateConstrained(
         make({
           id: 'name',
           name: 'name',
           type: 'text',
-          validation: { minLength: firstName.length + 1 },
+          validation: { minLength: fullName.length + 1 },
         }),
         0,
       ),
     );
-    const fullName = String(
-      new ValueGenerator(seed).generateConstrained(
-        make({
-          id: 'name',
-          name: 'name',
-          type: 'text',
-          validation: { minLength: firstAndLast.length + 1 },
-        }),
-        0,
-      ),
-    );
-    const minLength = fullName.length + 1;
+    const minLength = withMiddle.length + 1;
 
     expect(
       new ValueGenerator(seed).generateConstrained(
@@ -252,14 +244,15 @@ describe('generateConstrained', () => {
     ).toBe('a'.repeat(minLength));
   });
 
-  it('uses the text sequence when a realistic first name exceeds the maximum', () => {
+  it('uses the text sequence when even a first name exceeds the maximum', () => {
     const seed = 17;
-    const firstName = String(
+    const fullName = String(
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'name', type: 'text' }),
         0,
       ),
     );
+    const [firstName] = fullName.split(' ') as [string];
     const maxLength = Math.max(0, firstName.length - 1);
 
     expect(
