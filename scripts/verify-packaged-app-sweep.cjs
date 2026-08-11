@@ -101,6 +101,25 @@ function extractSpecifiers(source) {
   return specifiers;
 }
 
+// Relative .js path literals in app code (e.g. the preload paths both
+// classic apps pass to BrowserWindow via path.join(__dirname, '../preload/…'))
+// are load-bearing file references that the require/import scan cannot see.
+// Extracted only from app code, not node_modules, where such literals are
+// too often lazy or documentation strings.
+const RELATIVE_PATH_LITERAL_RE = /(['"])(\.\.?\/(?:(?!\1).)+\.[cm]?js)\1/g;
+
+function extractRelativePathLiterals(source) {
+  const stripped = stripCommentLines(source);
+  const literals = new Set();
+  RELATIVE_PATH_LITERAL_RE.lastIndex = 0;
+  let match = RELATIVE_PATH_LITERAL_RE.exec(stripped);
+  while (match !== null) {
+    literals.add(match[2]);
+    match = RELATIVE_PATH_LITERAL_RE.exec(stripped);
+  }
+  return literals;
+}
+
 function shouldCheckSpecifier(specifier) {
   if (isBuiltin(specifier)) return false;
   if (specifier === 'electron' || specifier.startsWith('electron/')) {
@@ -183,6 +202,26 @@ function checkFile(asarRoot, absPath) {
       checkedSpecifiers,
     };
   }
+  // App code only: verify relative .js path literals point at packaged files
+  // (catches a stripped preload that BrowserWindow references by path —
+  // Electron loads the renderer without its preload rather than crashing, so
+  // nothing else would flag it).
+  const relFile = path.relative(asarRoot, absPath);
+  if (!relFile.startsWith(`node_modules${path.sep}`)) {
+    const specifiers = extractSpecifiers(source);
+    for (const literal of extractRelativePathLiterals(source)) {
+      if (specifiers.has(literal)) continue; // already checked as a require
+      checkedSpecifiers += 1;
+      if (!fs.existsSync(path.resolve(path.dirname(absPath), literal))) {
+        failures.push({
+          file: relFile,
+          specifier: literal,
+          message: 'referenced file is missing from the packaged app',
+        });
+      }
+    }
+  }
+
   const resolver = createRequire(absPath);
   for (const specifier of extractSpecifiers(source)) {
     if (!shouldCheckSpecifier(specifier)) continue;
@@ -270,6 +309,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  extractRelativePathLiterals,
   extractSpecifiers,
   isInsideAppPackage,
   shouldCheckSpecifier,

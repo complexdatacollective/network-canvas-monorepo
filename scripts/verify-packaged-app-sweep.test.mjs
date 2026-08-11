@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  extractRelativePathLiterals,
   extractSpecifiers,
   isInsideAppPackage,
   shouldCheckSpecifier,
@@ -70,6 +71,22 @@ test('shouldCheckSpecifier skips builtins, electron, and allowed missing', () =>
   assert.equal(shouldCheckSpecifier('electron/main'), false);
   assert.equal(shouldCheckSpecifier('electron-devtools-installer'), false);
   assert.equal(shouldCheckSpecifier('data:text/javascript,'), false);
+});
+
+test('extractRelativePathLiterals finds relative js path strings only', () => {
+  const source = `
+    const preloadPath = path.join(__dirname, '../../preload/app.js');
+    const alsoASpecifier = require('./real.js');
+    const notRelative = 'preload/app.js';
+    const notJs = '../styles/main.css';
+    // const commented = '../preload/gone.js';
+  `;
+  assert.deepEqual(
+    [...extractRelativePathLiterals(source)].toSorted((a, b) =>
+      a.localeCompare(b),
+    ),
+    ['../../preload/app.js', './real.js'],
+  );
 });
 
 test('isInsideAppPackage accepts asar and unpacked paths, rejects escapes', () => {

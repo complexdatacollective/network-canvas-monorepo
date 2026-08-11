@@ -26,9 +26,11 @@
 // identical, but each asar is still checked individually); the boot smoke
 // runs only for builds the host can execute.
 //
-// Architect additionally vendors the Interviewer preview's preload OUTSIDE
-// the asar via extraResources; those files are checked separately since no
-// node_modules exists beside them at runtime.
+// Architect additionally vendors the Interviewer preview's preload and
+// renderer OUTSIDE the asar via extraResources; their presence is required
+// per app and the preload's requires are checked separately, since no
+// node_modules exists beside them at runtime and the boot smoke never opens
+// the Preview window.
 //
 // Both 6.6.0 classic launch crashes (missing readable-stream/passthrough in
 // Architect, missing lodash/defaults in Interviewer) fail check 1 instantly
@@ -165,6 +167,7 @@ function runSweep(sweeperBinary, target, expectedVersion) {
   }
   return {
     ok: problems.length === 0,
+    name: report.name,
     summary:
       `scanned ${report.scannedFiles} files ` +
       `(${report.reachableFiles} reachable from ${report.entryFiles.join(', ')}), ` +
@@ -178,21 +181,52 @@ function runSweep(sweeperBinary, target, expectedVersion) {
 
 // Architect vendors the Interviewer preview's renderer and preload OUTSIDE
 // the asar via extraResources (resources/interviewer); createPreviewWindow
-// loads the preload at runtime when a user opens Preview. No node_modules
-// exists beside extraResources, so every require in those files must be a
-// builtin or electron, and relative requires must stay inside the vendored
-// tree. The vendored renderer is a bundler-produced browser bundle and is
-// not checked, same as the in-asar renderer directories.
-const VENDORED_PRELOAD_DIRS = ['interviewer/preload'];
+// loads them at runtime when a user opens Preview, so the ordinary boot
+// smoke never exercises them. Per app (keyed by the asar's package name),
+// these paths MUST exist in the packaged output — a silently-dropped
+// extraResources copy would otherwise ship and only fail when a user opens
+// Preview. No node_modules exists beside extraResources, so every require in
+// the vendored preload must be a builtin or electron, and relative requires
+// must stay inside the vendored tree. The vendored renderer is a
+// bundler-produced browser bundle; only its entry html is asserted.
+const VENDORED_RESOURCES = {
+  '@codaco/architect-classic': {
+    preloadDirs: ['interviewer/preload'],
+    requiredFiles: ['interviewer/renderer/index.html'],
+  },
+};
 
-function checkVendoredPreloads(target) {
+function checkVendoredResources(target, appName) {
+  const expectations = VENDORED_RESOURCES[appName];
+  if (expectations === undefined) return [];
   const resourcesDir = dirname(target.asar);
   const problems = [];
-  for (const relDir of VENDORED_PRELOAD_DIRS) {
+
+  for (const relFile of expectations.requiredFiles) {
+    if (!existsSync(join(resourcesDir, relFile))) {
+      problems.push(
+        `${relFile}: required vendored resource is missing from the packaged app`,
+      );
+    }
+  }
+
+  for (const relDir of expectations.preloadDirs) {
     const absDir = join(resourcesDir, relDir);
-    if (!existsSync(absDir)) continue;
-    for (const entry of readdirSync(absDir)) {
-      if (!['.js', '.cjs', '.mjs'].includes(extname(entry))) continue;
+    if (!existsSync(absDir)) {
+      problems.push(
+        `${relDir}: required vendored preload directory is missing from the packaged app`,
+      );
+      continue;
+    }
+    const preloadFiles = readdirSync(absDir).filter((entry) =>
+      ['.js', '.cjs', '.mjs'].includes(extname(entry)),
+    );
+    if (preloadFiles.length === 0) {
+      problems.push(
+        `${relDir}: vendored preload directory contains no scripts`,
+      );
+    }
+    for (const entry of preloadFiles) {
       const filePath = join(absDir, entry);
       const label = `${relDir}/${entry}`;
       for (const specifier of extractSpecifiers(
@@ -225,6 +259,45 @@ function checkVendoredPreloads(target) {
 
 const DEVTOOLS_LISTENING_RE =
   /DevTools listening on ws:\/\/127\.0\.0\.1:(\d+)\//;
+
+// Evaluate one expression in a page over the DevTools protocol.
+function evaluateInPage(webSocketDebuggerUrl, expression) {
+  return new Promise((resolveEvaluation, rejectEvaluation) => {
+    const socket = new WebSocket(webSocketDebuggerUrl);
+    const timer = setTimeout(() => {
+      socket.close();
+      rejectEvaluation(new Error('DevTools evaluation timed out'));
+    }, 5_000);
+    socket.addEventListener('open', () =>
+      socket.send(
+        JSON.stringify({
+          id: 1,
+          method: 'Runtime.evaluate',
+          params: { expression, returnByValue: true },
+        }),
+      ),
+    );
+    socket.addEventListener('message', (event) => {
+      const message = JSON.parse(event.data);
+      if (message.id !== 1) return;
+      clearTimeout(timer);
+      socket.close();
+      resolveEvaluation(message.result?.result?.value);
+    });
+    socket.addEventListener('error', () => {
+      clearTimeout(timer);
+      rejectEvaluation(new Error('DevTools socket error'));
+    });
+  });
+}
+
+// A committed file:// URL alone does not prove the renderer works — the HTML
+// can load while a referenced script asset is missing or its bootstrap
+// throws immediately. Both classic renderers mount their app into #root, so
+// a populated root element is the evidence that renderer JavaScript actually
+// executed.
+const RENDERER_MOUNT_EXPRESSION =
+  "(document.getElementById('root') ?? document.body).childElementCount";
 
 async function runBootSmoke(target) {
   // Port 0 lets the OS choose; the chosen port is announced on stderr.
@@ -270,18 +343,29 @@ async function runBootSmoke(target) {
       continue; // DevTools endpoint not ready yet
     }
     // A failed window load commits to a chrome-error:// URL; a window still
-    // navigating reports about:blank or an empty URL. Only a window that
-    // committed to real content proves the packaged renderer loaded.
+    // navigating reports about:blank or an empty URL. A window that committed
+    // to real content must ALSO show a populated mount point, proving the
+    // renderer's JavaScript executed rather than just its HTML parsing.
     const errorPage = pages.find((p) => p.url.startsWith('chrome-error://'));
     if (errorPage) {
       verdict = {
         ok: false,
         summary: `a window failed to load its content (${errorPage.url})`,
       };
-    } else {
-      const loaded = pages.find((p) => p.url !== '' && p.url !== 'about:blank');
-      if (loaded !== undefined) {
-        verdict = { ok: true, summary: `window loaded ${loaded.url}` };
+      break;
+    }
+    for (const page of pages) {
+      if (page.url === '' || page.url === 'about:blank') continue;
+      const mounted = await evaluateInPage(
+        page.webSocketDebuggerUrl,
+        RENDERER_MOUNT_EXPRESSION,
+      ).catch(() => undefined);
+      if (typeof mounted === 'number' && mounted > 0) {
+        verdict = {
+          ok: true,
+          summary: `window loaded ${page.url} and mounted ${mounted} root element(s)`,
+        };
+        break;
       }
     }
   }
@@ -289,8 +373,9 @@ async function runBootSmoke(target) {
     verdict = {
       ok: false,
       summary:
-        'no window finished loading before timeout — the main process is ' +
-        'likely stalled at an uncaught-exception dialog',
+        'no window loaded and mounted renderer content before timeout — ' +
+        'either the main process is stalled at an uncaught-exception dialog ' +
+        'or the renderer failed to bootstrap',
     };
   }
   if (exited === null) {
@@ -353,10 +438,10 @@ for (const target of targets) {
     console.log(`  warn ${warning}`);
   }
 
-  const preloadProblems = checkVendoredPreloads(target);
-  if (preloadProblems.length > 0) {
+  const vendoredProblems = checkVendoredResources(target, sweepResult.name);
+  if (vendoredProblems.length > 0) {
     failed = true;
-    for (const problem of preloadProblems) {
+    for (const problem of vendoredProblems) {
       console.log(`  FAIL ${problem}`);
     }
   }
