@@ -24,7 +24,7 @@ if (isProductionHost(window.location.hostname)) {
   });
 
   posthog.register({
-    app: 'Documentation',
-    installation_id: 'documentation-production',
+    app: 'Website',
+    installation_id: 'website-production',
   });
 }

@@ -54,3 +54,20 @@ dropped from the workbox precache manifest (e.g. for exceeding the size limit) �
 which would 404 offline and break the offline boot. Treat an assertion failure as
 a hard release blocker. Architect asserts that _every_ chunk is precached because
 it uses no `globIgnores`.
+
+## PostHog source maps
+
+Only the production release job sets `POSTHOG_PERSONAL_API_KEY` and
+`POSTHOG_PROJECT_ID` (repository secrets shared with Interviewer and
+Documentation; the personal API key needs the _error tracking: write_ and
+_organization: read_ scopes). Their presence is what switches source-map upload
+on: the build emits `hidden` maps, `@posthog/rollup-plugin` injects the chunk ids
+PostHog matches on, uploads the maps, and deletes them from `dist/` — so the
+exceptions `posthog-js` reports symbolicate to real source while the deploy still
+ships no maps. Every other build — local, PR, Netlify preview, the `.dev` site —
+has no credentials and emits no maps at all.
+
+A failed upload fails the build rather than deploying unsymbolicated. Both
+variables are part of the Turbo cache key for `build`, so a production build can
+never replay a cached artefact whose maps were never uploaded, and
+`scripts/assert-pwa-build.mjs` fails if a map is left behind in `dist/assets`.

@@ -30,6 +30,7 @@
     "@docsearch/react": "^4.6.3",
     "@next/bundle-analyzer": "catalog:",
     "@next/third-parties": "catalog:",
+    "@posthog/nextjs-config": "catalog:",
     "@posthog/react": "catalog:",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@t3-oss/env-nextjs": "^0.13.11",
