@@ -345,18 +345,24 @@ required for TurboSnap. Keep Interview's `.storybook/static/**` directory in
 its Chromatic externals so static-asset changes invalidate the relevant
 stories.
 
-#### Release-only E2E checks
+#### Affected E2E checks
 
-CI runs the Architect, Interview, and Interviewer E2E suites only for
-generated release branches (`changeset-release/*`) and merge groups whose
-package or product version changes will trigger a release — and only the
-suites whose subjects ship in that release lane: the normal Changesets lane
-(`changeset-release/main`) runs all three because it versions libraries,
-Architect, and Interviewer; the Documentation and Website lanes run none. The
-mapping lives in
-`scripts/release-e2e-policy.mjs`, and its test derives the expected lanes from
-the real package.json dependency graph so the table cannot silently drift.
-The required `quality` check requires exactly the suites the policy selects.
+CI runs the Architect, Interview, and Interviewer E2E suites on feature PRs
+targeting `main` when the cumulative PR diff touches the suite subject or
+anything in its workspace dependency closure. A change to `@codaco/interview`,
+for example, runs all downstream suites; an Architect-only change runs
+Architect E2E. The classifier treats `docs/`, `.changeset/`, and Markdown as
+inert, and fails closed for root configs, workflows, scripts, the lockfile,
+unrecognised paths, or unreadable history.
+
+Generated release branches (`changeset-release/*`) keep their release-aware
+selection: only suites whose subjects ship in that release lane run. The normal
+Changesets lane (`changeset-release/main`) runs all three because it versions
+libraries, Architect, and Interviewer; the Documentation and Website lanes run
+none. The mapping and feature-PR classifier live in
+`scripts/release-e2e-policy.mjs`, with tests derived from the real package.json
+dependency graph. The required `quality` check requires exactly the suites the
+policy selects.
 
 Each suite runs as **two jobs**. `<suite>-e2e` runs inside the pinned
 Playwright image and compares the committed PNG baselines; `<suite>-e2e-native`
@@ -373,13 +379,13 @@ regeneration workflow. Both halves are required by `quality`, and
 before a verdict can be reused. The capture helpers throw when
 `E2E_PIXEL_LANE=native` is set, so a mis-tagged visual test fails loudly
 instead of silently comparing container baselines against a runner's fonts.
-Ordinary PRs skip E2E and never inherit an E2E verdict from an earlier
-commit.
+Feature PRs never inherit an E2E verdict from an earlier commit: suite
+selection uses the cumulative merge-base-to-current-head diff, so every
+required verdict describes the exact head under review.
 
-Generated release branches and their merge groups use equivalence reuse: a
-suite is skipped when the newest equivalent native pull-request verdict across
-the generated release branches is successful and the diff since that commit
-touches only paths that
+Generated release branches use equivalence reuse: a suite is skipped when the
+newest equivalent native pull-request verdict across the generated release
+branches is successful and the diff since that commit touches only paths that
 provably cannot affect the suite — files in workspace packages outside the
 suite subject's declared workspace dependency closure (dependencies,
 devDependencies, peerDependencies, optionalDependencies), or the inert
@@ -392,10 +398,18 @@ re-running, while any change that ships in the lane re-runs as before (see
 `scripts/release-e2e-policy.mjs` and
 `docs/superpowers/specs/2026-07-17-release-e2e-equivalence-reuse-design.md`).
 
+Merge groups run only a lightweight `quality` acknowledgement. The main
+ruleset requires every pull request to pass its full `quality` check before it
+can enter the queue, so merge-group commits deliberately do not repeat lint,
+tests, typechecking, builds, E2E, or Chromatic. GitHub still requires the
+`quality` context to be reported on the merge-group SHA; the acknowledgement
+exists only to satisfy that protocol and does not revalidate the combined
+queue commit.
+
 The release jobs create and update generated branches with the fine-grained PAT
 stored as `RELEASE_PR_TOKEN`. That causes the normal `pull_request` workflow to
 start without manual approval. Do not add a separate workflow dispatch: it would
-duplicate the native CI run and its release-only E2E suites.
+duplicate the native CI run and its selected E2E suites.
 
 #### E2E visual snapshot baselines
 

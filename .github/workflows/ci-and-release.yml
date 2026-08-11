@@ -4,7 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
   merge_group:
+    types: [checks_requested]
   workflow_dispatch:
     inputs:
       force_run:
@@ -182,14 +184,17 @@ jobs:
           echo "docs=$docs" >> "$GITHUB_OUTPUT"
           echo "website=$website" >> "$GITHUB_OUTPUT"
 
-  # Decides per suite whether release E2E must run for this ref: each release
-  # lane requires only the suites whose subject package ships in its deploy,
-  # and both release-PR refreshes and merge-group runs skip suites already
-  # validated by an earlier native PR run whose commit differs only in paths
-  # that cannot affect the suite (equivalence reuse — see
-  # scripts/release-e2e-policy.mjs; every guard fails closed).
+  # Decides per suite whether E2E must run for this ref. Feature PRs select the
+  # suites whose subject package or workspace dependency closure changed.
+  # Release lanes select the suites whose subjects ship in their deploy, while
+  # release-PR refreshes may reuse an equivalent earlier verdict. Merge groups
+  # deliberately skip the policy and all E2E work. Every path and history guard
+  # fails closed; see
+  # scripts/release-e2e-policy.mjs.
   e2e-policy:
-    if: github.event_name != 'push'
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -201,29 +206,29 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
-          # Combined app-lane suite selection and cross-branch equivalence both
-          # compare commits, so every non-push policy run needs full history.
+          # Feature-PR selection, app-lane selection, and cross-branch
+          # equivalence all compare commits, so every policy run needs full
+          # history.
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version-file: '.nvmrc'
-      - name: Determine which release E2E suites this ref requires
+      - name: Determine which E2E suites this ref requires
         id: policy
         env:
           EVENT_NAME: ${{ github.event_name }}
           HEAD_REF: ${{ github.head_ref }}
           REF_NAME: ${{ github.ref_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-          # On PRs, HEAD_SHA is the branch tip the equivalence reuse diffs
-          # against prior validated runs; on merge groups it stays the
-          # group's head for release detection. HEAD_REPO guards reuse off
-          # for fork PRs.
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          # On feature PRs, BASE_SHA and HEAD_SHA define the cumulative
+          # merge-base diff. On release PRs, HEAD_SHA is also the branch tip
+          # equivalence reuse compares with prior validated runs. HEAD_REPO
+          # guards reuse off for fork PRs.
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           BENCHMARK_INTERVIEW_E2E: ${{ github.event_name == 'workflow_dispatch' && inputs.interview_e2e_benchmark == true }}
-          # Read-only, feeds both the PR-time and merge-queue equivalence
-          # lookups.
+          # Read-only, feeds release-PR equivalence lookups.
           GH_TOKEN: ${{ github.token }}
         run: |
           policy=$(node scripts/release-e2e-policy.mjs)
@@ -235,7 +240,7 @@ jobs:
               | .releaseRef = ""
               | .snapshotBranch = ""' <<< "$policy")
           fi
-          echo "release E2E policy: $policy"
+          echo "E2E policy: $policy"
           {
             echo "interview=$(jq -r '.interview' <<< "$policy")"
             echo "interviewer=$(jq -r '.interviewer' <<< "$policy")"
@@ -400,26 +405,22 @@ jobs:
   # invalidates the packages that use it — listing pnpm-lock.yaml globally
   # would invalidate every task on every bump.
   #
-  # GitHub's cache is branch-scoped: PR and merge-queue runs can restore main's
-  # entries plus their own branch's, but entries written on ephemeral
-  # merge-queue refs die with the ref, and the quality jobs skip `push` — so
-  # without the `seed-turbo-cache` job below, main's tree would never have
-  # cache entries and every run after a merge would re-run everything that
-  # merge changed.
+  # GitHub's cache is branch-scoped: PR runs can restore main's entries plus
+  # their own branch's, and the quality jobs skip `push` — so without the
+  # `seed-turbo-cache` job below, main's tree would never have cache entries and
+  # every run after a merge would re-run everything that merge changed.
   #
   # `quality` is an aggregate over three independent runners: lint, tests, and
   # a support runner that amortises setup across knip, changesets, script tests,
-  # package builds, and typechecking. These jobs deliberately do NOT
-  # `needs: detect` so they still run under `merge_group` (where `detect` is
-  # skipped). Workspace packages are consumed as raw `src` (exports point at
-  # source), so typecheck/test/lint resolve dependency types directly and do
-  # not need built `.d.ts`. This seed job still runs `build` explicitly so the
-  # release and app-deploy jobs find a warm `build` cache on main.
+  # package builds, and typechecking. Workspace packages are consumed as raw
+  # `src` (exports point at source), so typecheck/test/lint resolve dependency
+  # types directly and do not need built `.d.ts`. This seed job still runs
+  # `build` explicitly so the release and app-deploy jobs find a warm `build`
+  # cache on main.
   seed-turbo-cache:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    # Cache warming only — the merge queue already validated this identical
-    # tree, so a flake here must not fail the push run (which also carries the
-    # release jobs).
+    # Cache warming only — a flake here must not fail the push run, which also
+    # carries the release jobs.
     continue-on-error: true
     runs-on: ubuntu-latest
     steps:
@@ -442,7 +443,8 @@ jobs:
 
   lint:
     if: >-
-      github.event_name != 'push'
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
       && !(github.event_name == 'workflow_dispatch'
       && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
@@ -451,7 +453,7 @@ jobs:
         with:
           persist-credentials: false
           # Pull requests lint only changed files against their synthetic
-          # merge commit's base parent. Merge groups still run the full check.
+          # merge commit's base parent.
           fetch-depth: 0
       - uses: ./.github/actions/turbo-ci-setup
       # oxlint-tsgolint's type-aware rules resolve workspace types directly from
@@ -476,7 +478,8 @@ jobs:
   # lint and test remain independent jobs on the critical path.
   quality-support:
     if: >-
-      github.event_name != 'push'
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
       && !(github.event_name == 'workflow_dispatch'
       && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
@@ -533,7 +536,8 @@ jobs:
 
   test:
     if: >-
-      github.event_name != 'push'
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
       && !(github.event_name == 'workflow_dispatch'
       && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
@@ -556,16 +560,15 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
-      - name: Run tests (PRs and merge groups run only affected tasks)
+      - name: Run tests (PRs run only affected tasks)
         env:
-          DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          # PR and merge-group checkouts are synthetic merges. Diff against
-          # the event's base SHA so merge groups that contain multiple PRs
-          # include the whole group's combined change. --affected scopes the
-          # run to tasks whose declared inputs the diff touches, plus their
-          # dependents (turbo.json enables affectedUsingTaskInputs so
-          # selection matches what cache hashing considers an input).
+          # PR checkouts are synthetic merges. Diff against the event's base
+          # SHA, then use --affected to scope the run to tasks whose declared
+          # inputs the diff touches, plus their dependents (turbo.json enables
+          # affectedUsingTaskInputs so selection matches what cache hashing
+          # considers an input).
           #
           # Fail closed: a change outside the workspace package trees (this
           # workflow, composite actions, .nvmrc, pnpm-workspace.yaml, root
@@ -574,20 +577,17 @@ jobs:
           # lockfile stays on the affected path because turbo hashes it
           # granularly per package; docs, changesets, and markdown are inert
           # to tests.
-          case "$GITHUB_EVENT_NAME" in
-            pull_request|merge_group)
-              if [[ -n "$DIFF_BASE_SHA" ]] \
-                && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
-                && git diff --quiet "$DIFF_BASE_SHA" HEAD -- . \
-                  ':(exclude)packages' ':(exclude)apps' ':(exclude)workers' \
-                  ':(exclude)tooling' ':(exclude)docs' ':(exclude).changeset' \
-                  ':(exclude)pnpm-lock.yaml' ':(exclude)*.md'; then
-                echo "Running test tasks affected by $DIFF_BASE_SHA..HEAD"
-                TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test --affected
-                exit 0
-              fi
-              ;;
-          esac
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
+            && [[ -n "$DIFF_BASE_SHA" ]] \
+            && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
+            && git diff --quiet "$DIFF_BASE_SHA" HEAD -- . \
+              ':(exclude)packages' ':(exclude)apps' ':(exclude)workers' \
+              ':(exclude)tooling' ':(exclude)docs' ':(exclude).changeset' \
+              ':(exclude)pnpm-lock.yaml' ':(exclude)*.md'; then
+            echo "Running test tasks affected by $DIFF_BASE_SHA..HEAD"
+            TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test --affected
+            exit 0
+          fi
 
           echo "Running the full test suite for $GITHUB_EVENT_NAME"
           pnpm exec turbo run test
@@ -630,6 +630,11 @@ jobs:
           ARCHITECT_E2E_RESULT: ${{ needs.architect-e2e.result }}
           ARCHITECT_E2E_NATIVE_RESULT: ${{ needs.architect-e2e-native.result }}
         run: |
+          if [[ "$EVENT_NAME" == "merge_group" ]]; then
+            echo "PR quality verdicts are authoritative; merge-group CI is intentionally lightweight"
+            exit 0
+          fi
+
           verify_successes() {
             local gate=$1
             shift
@@ -664,7 +669,7 @@ jobs:
               return
             fi
             if [[ "$result" != "success" ]]; then
-              echo "::error::release E2E gate failed — $suite concluded '$result'"
+              echo "::error::E2E gate failed — $suite concluded '$result'"
               exit 1
             fi
             echo "$suite passed"
@@ -945,10 +950,9 @@ jobs:
         run: npx --yes @jthrilly/dead-link-checker@^1.1.0 "$WEBSITE_URL/en-US/" -v --yes
 
   interview-e2e:
-    # Runs when the release policy requires the interview suite (the lane
-    # ships @codaco/interview). The Dockerized suite builds its own dependency
-    # graph and cannot consume the host runner's Turbo cache, so start it as
-    # soon as the release policy completes.
+    # Runs when the policy requires the interview suite. The Dockerized suite
+    # builds its own dependency graph and cannot consume the host runner's
+    # Turbo cache, so start it as soon as the policy completes.
     needs: [e2e-policy, pick-e2e-runner]
     if: >-
       ${{ !cancelled() && needs.e2e-policy.outputs.interview == 'true'
@@ -2448,10 +2452,10 @@ jobs:
   # First push on a PR: no prior runs exist, so nothing to carry; the
   # detect logic already runs the relevant jobs at least once because
   # the push diff IS the cumulative PR diff on the first commit.
-  # E2E jobs are deliberately excluded: on release PRs the e2e-policy job
-  # itself decides when a refresh may skip a suite (equivalence reuse) and
-  # the required quality gate checks its decision; non-release PRs must
-  # never inherit an E2E verdict from an earlier commit.
+  # E2E jobs are deliberately excluded: feature PRs select suites from the
+  # cumulative merge-base-to-head diff, while release PRs let e2e-policy
+  # decide when an equivalent earlier verdict may be reused. The required
+  # quality gate checks that current policy decision in both cases.
   carry-forward-statuses:
     needs:
       - detect

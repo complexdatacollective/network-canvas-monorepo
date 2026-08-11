@@ -29,6 +29,32 @@ function job(name) {
   )?.groups?.body;
 }
 
+test('full CI runs on PRs to main while merge groups request only quality', () => {
+  assert.match(workflow, /^  pull_request:\n    branches: \[main\]$/m);
+  assert.match(workflow, /^  merge_group:\n    types: \[checks_requested\]$/m);
+
+  for (const jobName of [
+    'detect',
+    'e2e-policy',
+    'lint',
+    'quality-support',
+    'test',
+  ]) {
+    const body = job(jobName);
+    assert.ok(body, `${jobName} exists`);
+    assert.match(
+      body,
+      /github\.event_name != 'merge_group'/,
+      `${jobName} skips merge groups`,
+    );
+  }
+
+  const quality = job('quality');
+  assert.ok(quality, 'quality job exists');
+  assert.match(quality, /if \[\[ "\$EVENT_NAME" == "merge_group" \]\]; then/);
+  assert.match(quality, /PR quality verdicts are authoritative/);
+});
+
 test('superseded CI runs are cancelled for every pull request', () => {
   assert.ok(
     topLevelConcurrency,
@@ -122,7 +148,7 @@ test('website dead-link crawl waits for the documentation preview it links to', 
   );
 });
 
-test('each release E2E suite gates on its own policy flag', () => {
+test('each E2E suite gates on its own policy flag', () => {
   for (const [jobName, flag] of [
     ['interview-e2e', 'interview'],
     ['interview-e2e-native', 'interview'],
@@ -239,9 +265,10 @@ test('published Classic releases advance latest and rebuild the website', () => 
   );
 });
 
-test('pull requests lint only changed files while merge groups lint fully', () => {
+test('pull requests lint only changed files and merge groups skip lint', () => {
   const lint = job('lint');
   assert.ok(lint, 'lint job exists');
+  assert.match(lint, /github\.event_name != 'merge_group'/);
   assert.match(lint, /fetch-depth: 0/);
   assert.match(lint, /pnpm lint:changed HEAD\^1/);
   assert.match(lint, /pnpm exec turbo run \/\/#lint/);
@@ -290,30 +317,32 @@ test('the quality gate verifies each required E2E suite individually', () => {
   assert.match(qualityJob, /verify_required_e2e architect-e2e/);
 });
 
-test('e2e-policy can query the Actions API for the merge-queue fast path', () => {
+test('e2e-policy can query the Actions API for release-PR reuse', () => {
   const policyJob = job('e2e-policy');
   assert.ok(policyJob, 'e2e-policy job exists');
   assert.match(policyJob, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(policyJob, /fetch-depth: 0/);
   assert.match(
     policyJob,
-    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.merge_group\.base_sha \}\}/,
+    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
   );
+  assert.doesNotMatch(policyJob, /github\.event\.merge_group/);
 });
 
-test('unit tests use affected task selection for PRs and merge groups', () => {
+test('unit tests use affected task selection for PRs and skip merge groups', () => {
   const testJob = job('test');
   assert.ok(testJob, 'test job exists');
   assert.match(
     testJob,
-    /DIFF_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.merge_group\.base_sha \}\}/,
-    'test job diffs each event against its full base',
+    /DIFF_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+    'test job diffs the PR against its full base',
   );
+  assert.match(testJob, /github\.event_name != 'merge_group'/);
   assert.match(
     testJob,
-    /pull_request\|merge_group\)/,
-    'both PR and merge-group events enter the affected path',
+    /if \[\[ "\$GITHUB_EVENT_NAME" == "pull_request" \]\] \\/,
   );
+  assert.doesNotMatch(testJob, /pull_request\|merge_group/);
   assert.match(
     testJob,
     /TURBO_SCM_BASE="\$DIFF_BASE_SHA" pnpm exec turbo run test --affected/,
@@ -435,13 +464,18 @@ test('the informational Pages deploy has a bounded failure window', () => {
   );
 });
 
-test('e2e-policy receives the equivalence-reuse inputs', () => {
+test('e2e-policy receives affected-PR and equivalence-reuse inputs', () => {
   const policyJob = job('e2e-policy');
   assert.ok(policyJob, 'e2e-policy job exists');
   assert.match(
     policyJob,
-    /HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.event\.merge_group\.head_sha \}\}/,
-    'policy step receives the PR tip (or merge-group head) as HEAD_SHA',
+    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+    'policy step receives the PR base as BASE_SHA',
+  );
+  assert.match(
+    policyJob,
+    /HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+    'policy step receives the PR tip as HEAD_SHA',
   );
   assert.match(
     policyJob,
