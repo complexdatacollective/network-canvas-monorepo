@@ -1,35 +1,65 @@
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
+import type { Context } from 'hono';
 import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
 import { readEnv } from './env.ts';
 import { STUDIO_VERSION } from './version.ts';
 
-// Production entry: one Node process serving the built SPA, the public API,
-// /healthz, and the app WebSocket endpoint — the single-artifact topology from
-// the framework ADR (#1245). Development uses server/src/dev.ts instead, which
-// serves the same app with Vite mounted in middleware mode.
+// The server entry, development and production both: one Node process serving
+// the public API, the internal RPC surface, /healthz, and the app WebSocket
+// endpoint. Static client assets are served only where they exist — the
+// self-host topology (#1245); the managed topology serves them from the CDN,
+// and development serves them from the Vite dev server, which proxies API
+// paths here so both topologies present a single origin.
 
 const env = readEnv();
 const app = createApp();
 
-// This entry runs from dist/server/, so the built client sits at ../client.
-const clientRoot = fileURLToPath(new URL('../client', import.meta.url));
+// Default matches the Docker image layout: dist/index.js next to a client/
+// directory. `pnpm start` overrides via CLIENT_DIST for the local layout.
+const clientRoot = env.clientDist
+  ? resolve(process.cwd(), env.clientDist)
+  : fileURLToPath(new URL('../client', import.meta.url));
 
-app.use('*', serveStatic({ root: clientRoot }));
+// Hashed build assets are immutable by construction; the app shell must
+// revalidate every load so deploys take effect (and open tabs keep resolving
+// old hashed chunks from the CDN, not from here).
+function setCacheHeader(path: string, c: Context) {
+  c.header(
+    'Cache-Control',
+    path.endsWith('index.html')
+      ? 'no-store'
+      : path.includes('/assets/')
+        ? 'public, max-age=31536000, immutable'
+        : 'public, max-age=3600',
+  );
+}
+
+app.use('*', serveStatic({ root: clientRoot, onFound: setCacheHeader }));
 // SPA fallback: unmatched GET paths serve the app shell so client-side routes
 // deep-link correctly.
-app.get('*', serveStatic({ root: clientRoot, path: 'index.html' }));
+app.get(
+  '*',
+  serveStatic({
+    root: clientRoot,
+    path: 'index.html',
+    onFound: setCacheHeader,
+  }),
+);
 
-serve(
+const wsServer = new WebSocketServer({ noServer: true });
+
+const server = serve(
   {
     fetch: app.fetch,
     port: env.port,
     hostname: env.host,
-    websocket: { server: new WebSocketServer({ noServer: true }) },
+    websocket: { server: wsServer },
   },
   (info) => {
     // oxlint-disable-next-line no-console -- boot log
@@ -38,3 +68,20 @@ serve(
     );
   },
 );
+
+// Graceful shutdown is a requirement, not a nicety (#1247): every backend
+// deploy drops live sync sessions, so connections are told to go away
+// (1001) and the listener drains before the process exits. The timer is the
+// backstop for connections that never close.
+let shuttingDown = false;
+function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  for (const client of wsServer.clients) {
+    client.close(1001, 'Server shutting down');
+  }
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 10_000).unref();
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

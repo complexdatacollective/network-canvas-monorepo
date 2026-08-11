@@ -3,7 +3,8 @@ import { RPCLink } from '@orpc/client/fetch';
 import type { RouterContractClient } from '@orpc/contract';
 import { describe, expect, it } from 'vitest';
 
-import type { contract } from '../../../shared/contract.ts';
+import type { contract } from '@codaco/studio-rpc';
+
 import { createApp } from '../app.ts';
 
 // The contract-typed client the SPA uses, bridged straight into the Hono app.

@@ -4,6 +4,14 @@
 export type StudioEnv = {
   port: number;
   host: string;
+  /**
+   * Directory of built client assets to serve for the self-host topology,
+   * resolved against the working directory. Unset means the production
+   * default (`../client` relative to the server bundle — the Docker image
+   * layout); in development the Vite dev server serves the client instead
+   * and this path simply doesn't resolve.
+   */
+  clientDist: string | undefined;
 };
 
 export function readEnv(): StudioEnv {
@@ -16,5 +24,6 @@ export function readEnv(): StudioEnv {
   return {
     port,
     host: process.env.HOST ?? '0.0.0.0',
+    clientDist: process.env.CLIENT_DIST || undefined,
   };
 }

@@ -1,12 +1,12 @@
 {
   "extends": "@codaco/tsconfig/web.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.client.json",
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.app.json",
     "types": ["vite/client", "@total-typescript/ts-reset"],
     "strict": true,
     "noFallthroughCasesInSwitch": true,
     "jsx": "react-jsx"
   },
-  "include": ["client/src/**/*.ts", "client/src/**/*.tsx", "shared/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }

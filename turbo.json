@@ -112,45 +112,17 @@
       ],
       "outputs": ["dist/**"]
     },
-    "@codaco/studio#build": {
+    "@codaco/studio-client#build": {
       "dependsOn": ["^topo"],
       "inputs": [
-        "client/**",
-        "server/**",
-        "shared/**",
+        "index.html",
+        "src/**",
         "vite.config.*",
-        "vite.server.config.*",
         "tsconfig*.json",
         "package.json"
       ],
       "env": ["NODE_ENV"],
       "outputs": ["dist/**"]
-    },
-    "@codaco/studio#typecheck": {
-      "dependsOn": ["^topo"],
-      "inputs": [
-        "client/**",
-        "server/**",
-        "shared/**",
-        "vite.config.*",
-        "vite.server.config.*",
-        "vitest.config.*",
-        "tsconfig*.json",
-        "package.json"
-      ],
-      "env": ["NODE_ENV"],
-      "outputs": []
-    },
-    "@codaco/studio#test": {
-      "dependsOn": ["^topo"],
-      "inputs": [
-        "client/**",
-        "server/**",
-        "shared/**",
-        "vitest.config.*",
-        "package.json"
-      ],
-      "outputs": []
     },
     "@codaco/interviewer#build": {
       "dependsOn": ["^topo"],

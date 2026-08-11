@@ -1,38 +1,30 @@
 {
-  "name": "@codaco/studio",
+  "name": "@codaco/studio-client",
   "version": "0.1.0",
   "private": true,
-  "description": "Network Canvas Studio — cloud platform for designing network interview protocols and collecting network data remotely.",
+  "description": "Network Canvas Studio client — the static SPA deployable, published to a CDN in the managed topology and embedded in the server image for self-hosting.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
-    "directory": "apps/studio"
+    "directory": "apps/studio/client"
   },
   "type": "module",
   "scripts": {
-    "dev": "node --watch --watch-path=server --watch-path=package.json server/src/dev.ts",
-    "build": "vite build && vite build --config vite.server.config.ts",
-    "start": "node dist/server/index.js",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "dependencies": {
-    "@hono/node-server": "^2.1.0",
-    "@orpc/contract": "2.0.0-beta.26",
-    "@orpc/openapi": "2.0.0-beta.26",
-    "@orpc/server": "2.0.0-beta.26",
-    "@orpc/zod": "2.0.0-beta.26",
-    "hono": "^4.13.0",
-    "ws": "^8.21.2",
-    "zod": "catalog:"
-  },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:^",
+    "@codaco/studio-rpc": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@orpc/client": "2.0.0-beta.26",
+    "@orpc/contract": "2.0.0-beta.26",
     "@orpc/tanstack-query": "2.0.0-beta.26",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "^5.101.4",
@@ -41,7 +33,6 @@
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "catalog:",
     "jsdom": "catalog:",
     "motion": "catalog:",

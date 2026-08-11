@@ -1,16 +1,43 @@
-import { OpenAPIGenerator, type OpenAPIDocument } from '@orpc/openapi';
+import { oc } from '@orpc/contract';
+import { OpenAPIGenerator, openapi, type OpenAPIDocument } from '@orpc/openapi';
 import { OpenAPIHandler } from '@orpc/openapi/fetch';
-import { COMMON_ERROR_STATUS_MAP } from '@orpc/server';
+import { COMMON_ERROR_STATUS_MAP, implement } from '@orpc/server';
 import { ZodToJsonSchemaConverter } from '@orpc/zod';
 import { Hono } from 'hono';
+import { z } from 'zod';
 
-import { appRouter } from './router.ts';
+import { getInstanceStatus } from './domain.ts';
 
-// The public API surface, per the API ADR (#1248): the REST routes and the
-// published OpenAPI 3.1 document are generated from the same oRPC contract
-// the SPA's typed procedures implement — one Zod source of truth. The
-// document is normative and is served from within the versioned path it
-// describes.
+// The public data API (#1248): resource-shaped REST for researchers and
+// external tools, with the normative OpenAPI 3.1 document served from within
+// the versioned path it describes, and errors leaving as RFC 9457 problem
+// details. Per the 2026-08-11 decision on #1248 this surface is fully
+// separate from the SPA's internal RPC surface (src/rpc.ts): its contract
+// and schemas live here, in the server — its only consumer in this repo —
+// and its routes are designed for analysis workflows, not app screens. Both
+// surfaces are thin adapters over the domain layer (src/domain.ts).
+
+const StatusSchema = z
+  .object({
+    name: z.string(),
+    version: z.string(),
+  })
+  // Named spec components come from Zod's registry via `.meta({ id })`.
+  .meta({ id: 'Status' });
+
+const apiContract = {
+  status: oc
+    .meta(
+      openapi({ method: 'GET', path: '/status', summary: 'Instance status' }),
+    )
+    .output(StatusSchema),
+};
+
+const os = implement(apiContract);
+
+const apiRouter = {
+  status: os.status.handler(() => getInstanceStatus()),
+};
 
 const STATUS_TITLES: Record<number, string> = {
   400: 'Bad Request',
@@ -23,7 +50,7 @@ const STATUS_TITLES: Record<number, string> = {
 
 const ERROR_STATUS_MAP: Record<string, number> = COMMON_ERROR_STATUS_MAP;
 
-const handler = new OpenAPIHandler(appRouter, {
+const handler = new OpenAPIHandler(apiRouter, {
   // Errors leave the public surface as RFC 9457 problem details, never as
   // oRPC's native error shape. Omitted `type` defaults to "about:blank".
   customErrorResponseBodyEncoder: (error) => {
@@ -45,7 +72,7 @@ export function createApiV1() {
 
   let doc: OpenAPIDocument | undefined;
   api.get('/openapi.json', async (c) => {
-    doc ??= await generator.generate(appRouter, {
+    doc ??= await generator.generate(apiRouter, {
       base: {
         info: {
           title: 'Network Canvas Studio API',

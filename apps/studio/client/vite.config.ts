@@ -1,19 +1,18 @@
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-const here = dirname(fileURLToPath(import.meta.url));
+// The server the dev proxy targets — @codaco/studio-server's default port.
+const SERVER_ORIGIN = 'http://localhost:3000';
 
-// Client SPA build. In development this config is not used directly: the Hono
-// server (server/src/dev.ts) mounts Vite in middleware mode so the SPA, the
-// API, and the app WebSocket endpoint are all served by one process on one
-// port — dev/prod parity for the single-artifact topology decided in the
-// framework ADR (#1245).
+// Client SPA. In development the Vite dev server plays the role the CDN plays
+// in the managed topology (#1245): it serves the SPA and routes the server's
+// paths to the server process, so the browser sees a single origin in every
+// topology. Run both halves:
+//
+//   pnpm --filter @codaco/studio-server dev
+//   pnpm --filter @codaco/studio-client dev
 export default defineConfig({
-  root: resolve(here, 'client'),
   plugins: [react(), tailwindcss()],
   resolve: {
     // pnpm can hand prebundled deps a different React copy than the host app
@@ -27,8 +26,16 @@ export default defineConfig({
     // than attempting to pre-bundle them.
     exclude: ['@codaco/fresco-ui'],
   },
+  server: {
+    proxy: {
+      '/api': SERVER_ORIGIN,
+      '/rpc': SERVER_ORIGIN,
+      '/healthz': SERVER_ORIGIN,
+      '/ws': { target: SERVER_ORIGIN, ws: true },
+    },
+  },
   build: {
-    outDir: resolve(here, 'dist/client'),
+    outDir: 'dist',
     emptyOutDir: true,
   },
 });

@@ -1,10 +1,10 @@
 {
   "extends": "@codaco/tsconfig/node.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.server.json",
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
     "strict": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["server/src/**/*.ts", "shared/**/*.ts"],
+  "include": ["src/**/*.ts", "vite.config.ts", "vitest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

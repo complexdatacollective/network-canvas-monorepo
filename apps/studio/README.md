@@ -3,52 +3,142 @@
 Cloud-based, multi-tenant platform for designing network interview protocols
 and collecting network data remotely. Specified by the issue tree rooted at
 [#1242](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1242);
-the architecture follows the ADR recommendations on
+the architecture follows the ADR recommendations and recorded decisions on
 [#1245](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1245)
-(framework), [#1246](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1246)
+(framework and deployment topology),
+[#1246](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1246)
 (datastore), [#1247](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1247)
 (sync), and [#1248](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1248)
-(API).
+(API surfaces).
 
 ## Layout
 
-- `client/` — Vite + React SPA: TanStack Router, TanStack Query,
-  `@codaco/fresco-ui`. Talks to the server through typed oRPC procedures
-  (`@orpc/tanstack-query` over the `/rpc` surface; decision recorded 2026-08-10
-  on [#1244](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1244)).
-- `server/` — Hono app on `@hono/node-server` (Node 24 baseline): `/healthz`,
-  the public API under `/api/v1/*` (REST routes and the OpenAPI 3.1 document
-  at `/api/v1/openapi.json`, both generated from the oRPC contract; errors
-  leave as RFC 9457 problem details), the SPA's oRPC surface at `/rpc`, and
-  the app WebSocket endpoint at `/ws`. Both surfaces serve the same router —
-  one contract, one implementation.
-- `shared/` — the oRPC contract (each procedure carries its REST shape via
-  `openapi()` metadata) and its Zod schemas, consumed source-first by both
-  halves (type-only on the client).
+Studio is two independently deployable halves plus one shared leaf — the
+package diamond decided 2026-08-11 on
+[#1244](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1244).
+There is deliberately **no client↔server dependency edge**: the halves share
+only the boundary package, so changesets and release CI re-gate a half only
+when its boundary moved.
+
+- `client/` — `@codaco/studio-client`: Vite + React SPA (TanStack Router,
+  TanStack Query, `@codaco/fresco-ui`). Builds to static assets; talks to the
+  server through typed oRPC procedures, importing the boundary contract
+  type-only.
+- `server/` — `@codaco/studio-server`: Hono app on `@hono/node-server`
+  (Node 24 baseline), one persistent process serving every surface below,
+  plus static client assets in the self-host topology.
+- `packages/studio-rpc` — `@codaco/studio-rpc`: the internal RPC boundary
+  (Zod schemas + typed oRPC contract). The only shared code between the
+  halves.
+
+## Surfaces
+
+Three surfaces, one domain layer beneath them, none generated from another
+(per the 2026-08-11 decision on #1248):
+
+| Path      | Surface                | Consumers                   | Stability                                             |
+| --------- | ---------------------- | --------------------------- | ----------------------------------------------------- |
+| `/rpc`    | Internal RPC (oRPC v2) | The SPA only                | Unpublished, free-moving                              |
+| `/api/v1` | Public data API (REST) | Researchers, external tools | OpenAPI 3.1 (`/api/v1/openapi.json`), RFC 9457 errors |
+| `/ws`     | Sync protocol          | The SPA's editor            | Unpublished, protocol-versioned (#1247)               |
 
 ## Development
 
 ```bash
-pnpm --filter @codaco/studio dev
+pnpm --filter @codaco/studio-server dev
+pnpm --filter @codaco/studio-client dev
 ```
 
-One process, one port (default 3000; `PORT` overrides): the Hono server runs
-with the Vite dev server mounted in middleware mode, so the SPA, the API, and
-WebSockets are all served together — dev/prod parity for the single-artifact
-topology. Vite's HMR socket lives on `/__vite_hmr`, distinct from the app's
-`/ws` endpoint; both share the one HTTP server.
+Two processes, one origin: the Vite dev server (port 5173) serves the SPA and
+proxies `/api`, `/rpc`, `/healthz`, and `/ws` to the server (port 3000) —
+playing the role the CDN plays in the managed topology, so the browser sees a
+single origin in every topology. The server restarts on server and
+`studio-rpc` source changes; the client has HMR.
 
 ## Production
 
 ```bash
-pnpm --filter @codaco/studio build   # dist/client + dist/server
-pnpm --filter @codaco/studio start   # node dist/server/index.js
+pnpm --filter @codaco/studio-client build   # client/dist — static assets
+pnpm --filter @codaco/studio-server build   # server/dist — Node bundle
+pnpm --filter @codaco/studio-server start   # serves both locally
 ```
 
-The Docker image (one artifact: built client assets + bundled server) builds
-from the monorepo root:
+The Docker image — the self-host artifact — builds from the monorepo root and
+contains the server bundle plus the built client assets:
 
 ```bash
 docker build -f apps/studio/Dockerfile -t network-canvas-studio .
 docker run --rm -p 3000:3000 network-canvas-studio
 ```
+
+## Deployment topologies
+
+Decided 2026-08-11 on #1245. Both topologies run the same artifacts and
+present a single origin; they differ only in who serves the static client
+assets.
+
+### Managed service
+
+Cloudflare fronts the single hostname: it serves the client's hashed assets
+from the CDN (retaining old hashes across deploys, so open tabs never lose
+their chunks) and routes the server's paths to the origin — a persistent Node
+process colocated with the Postgres primary. Edge compute is a non-goal;
+replicas serve only reads the query layer marks replica-tolerant (#1246).
+
+```mermaid
+graph LR
+    P[Participant / researcher<br/>browser — Studio SPA]
+    X[External tools<br/>Python, R, curl]
+
+    subgraph CF[Cloudflare — one origin]
+        CDN[CDN<br/>static client assets<br/>immutable hashed chunks]
+        RT[Route<br/>/api/* · /rpc · /ws]
+    end
+
+    subgraph O[Origin region]
+        S[studio-server<br/>persistent Node process<br/>WS + leases: single replica]
+        PG[(Postgres<br/>primary)]
+        RR[(Read replicas<br/>replica-tolerant<br/>reads only)]
+    end
+
+    P -->|assets| CDN
+    P -->|"/rpc · /ws (cookie)"| RT
+    X -->|"/api/v1 (PAT)"| RT
+    RT --> S
+    S --> PG
+    S -.-> RR
+    PG -.->|streaming replication| RR
+```
+
+### Self-host
+
+The same server image embeds and serves the client assets itself: one app
+container plus Postgres, no CDN, no other moving parts.
+
+```mermaid
+graph LR
+    B[Browser]
+
+    subgraph H[Researcher-operated host — Docker]
+        C[studio container<br/>server + embedded client assets<br/>assets · /api · /rpc · /ws]
+        PG[(Postgres<br/>container)]
+    end
+
+    B -->|one origin| C
+    C --> PG
+```
+
+### What deploys when
+
+| Release contains                 | Deploys                      | Live-session impact              |
+| -------------------------------- | ---------------------------- | -------------------------------- |
+| Client only                      | CDN asset publish            | None                             |
+| Server only (boundary untouched) | Backend                      | WS reconnect + resume            |
+| Additive boundary change         | Server, then client          | WS reconnect + resume            |
+| Breaking boundary change         | Coordinated: server → client | Forced by the compatibility gate |
+
+Backend deploys drop live WebSocket sessions by design, so the server drains
+on SIGTERM (close 1001, stop the listener, bounded timeout) and the sync
+protocol's reconnect-and-resume path makes the interruption routine (#1247).
+Managed backend deploys trigger on `@codaco/studio-server` version changes —
+never on image rebuilds — so client-only releases cannot bounce the backend.

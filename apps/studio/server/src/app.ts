@@ -1,26 +1,27 @@
-import { type HttpBindings, upgradeWebSocket } from '@hono/node-server';
+import { upgradeWebSocket } from '@hono/node-server';
 import { RPCHandler } from '@orpc/server/fetch';
 import { Hono } from 'hono';
 
 import { createApiV1 } from './api.ts';
-import { appRouter } from './router.ts';
+import { rpcRouter } from './rpc.ts';
 
-// The app WebSocket endpoint. Deliberately distinct from Vite's HMR socket
-// path (see server/src/dev.ts) so both can share one HTTP server in
-// development — the dev/prod parity requirement from the framework ADR
-// (#1245).
+// The app WebSocket endpoint. In development the Vite dev server proxies this
+// path (with `ws: true`) alongside /api and /rpc, so the browser sees one
+// origin in both topologies — the single-origin invariant from #1245.
 const WS_PATH = '/ws';
 
 export function createApp() {
-  const app = new Hono<{ Bindings: HttpBindings }>();
+  const app = new Hono();
 
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
 
+  // The public data API — a separate surface from the SPA's RPC below, per
+  // the 2026-08-11 decision on #1248.
   app.route('/api/v1', createApiV1());
 
-  // The SPA's typed procedures (oRPC v2, decision recorded on #1244) — the
-  // same router the public API above serves RESTfully.
-  const rpcHandler = new RPCHandler(appRouter);
+  // The SPA's typed procedures (oRPC v2, decision recorded on #1244),
+  // implementing the @codaco/studio-rpc boundary contract.
+  const rpcHandler = new RPCHandler(rpcRouter);
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {
       prefix: '/rpc',
