@@ -141,13 +141,31 @@ export function useAutoStageName(isNewStage: boolean): {
     // ownership, and silently kill auto-naming for the rest of the session.
     // Skipping the run alone is not enough: `lastGeneratedRef` would still
     // hold the pre-restore name, so the very next run would latch anyway —
-    // the ref has to be resynced to the restored label. Only while still in
-    // auto mode, though: once the researcher owns the name, a restore must
-    // not re-arm auto-naming (the next config change would overwrite their
-    // hand-typed text).
+    // the ref has to be resynced to the restored label.
+    //
+    // Ownership follows WHERE the restore lands, in both directions:
+    // - While custom, a restore back ON the last generated name is the
+    //   researcher undoing their rename — auto-naming re-arms, so undo
+    //   restores the prior *behaviour*, not just the prior text. A restore to
+    //   any other text (their hand-typed name, or between two hand-typed
+    //   names) keeps their ownership.
+    // - While auto, the resync must be CONDITIONAL on the restored label
+    //   actually being a generated one (the current candidate or the last
+    //   generated name). A redo landing back on the hand-typed name must NOT
+    //   resync — doing so would make the researcher's text read as generated,
+    //   and the next config change would overwrite it. Left un-resynced, the
+    //   next ordinary run's classifier reads the mismatch and re-takes
+    //   ownership, and `lastGeneratedRef` still matches if they undo again.
     if (lastRestoreVersionRef.current !== restoreVersion) {
       lastRestoreVersionRef.current = restoreVersion;
-      if (!isCustomRef.current) {
+      if (isCustomRef.current) {
+        if (liveLabel === lastGeneratedRef.current) {
+          isCustomRef.current = false;
+        }
+      } else if (
+        liveLabel === generatedLabel ||
+        liveLabel === lastGeneratedRef.current
+      ) {
         lastGeneratedRef.current = liveLabel;
       }
       return;

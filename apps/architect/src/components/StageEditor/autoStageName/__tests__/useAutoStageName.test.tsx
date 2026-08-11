@@ -88,6 +88,10 @@ function renderHeading(
       act(() => {
         history?.undo();
       }),
+    redo: () =>
+      act(() => {
+        history?.redo();
+      }),
   };
 }
 
@@ -175,6 +179,49 @@ describe('useAutoStageName (wired into StageHeading)', () => {
     await waitFor(() =>
       expect(input).toHaveValue('Person Form Name Generator'),
     );
+  });
+
+  it('re-arms auto-naming when undo restores the generated name itself', async () => {
+    const { input, setSubject, undo } = renderHeading({
+      type: 'NameGenerator',
+    });
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    fireEvent.change(input, { target: { value: 'My custom stage' } });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 450)));
+
+    undo();
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    // The visible label is the generated one again, so undo must restore the
+    // BEHAVIOUR too: a later config change regenerates rather than leaving
+    // the restored text frozen under a stale custom latch.
+    setSubject({ entity: 'node', type: 'person' });
+    await waitFor(() =>
+      expect(input).toHaveValue('Person Form Name Generator'),
+    );
+  });
+
+  it('re-takes ownership when redo restores the hand-typed name', async () => {
+    const { input, setSubject, undo, redo } = renderHeading({
+      type: 'NameGenerator',
+    });
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    fireEvent.change(input, { target: { value: 'My custom stage' } });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 450)));
+
+    undo();
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+    redo();
+    await waitFor(() => expect(input).toHaveValue('My custom stage'));
+
+    // The symmetric hazard of re-arming on undo: after redo brings the
+    // hand-typed name back, a config change must not overwrite it with a
+    // generated name — ownership travels with the text in both directions.
+    setSubject({ entity: 'node', type: 'person' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(input).toHaveValue('My custom stage');
   });
 
   it('does not re-arm auto-naming when undo restores a hand-typed name', async () => {
