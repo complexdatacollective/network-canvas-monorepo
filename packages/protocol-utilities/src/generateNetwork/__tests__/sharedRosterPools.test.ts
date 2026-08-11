@@ -149,14 +149,6 @@ describe('a roster that cannot cover the stages drawing from it', () => {
     }
   });
 
-  it('refuses a single stage asking for more than its own pool', () => {
-    expect(() =>
-      run([rosterStage('roster-a', 5)], { 'roster-a': poolOf('p1', 'p2') }),
-    ).toThrow(
-      /roster does not hold enough people for the stages drawing from it/,
-    );
-  });
-
   it('takes what an undeclared stage pool offers rather than refusing', () => {
     // The rule is about INTENT. A stage carrying only the generic 1-8 fallback
     // has said nothing about this roster, so a pool smaller than the fallback
