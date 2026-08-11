@@ -1751,10 +1751,6 @@ jobs:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
       VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
-      # Present only here, so only the production build emits source maps and
-      # uploads them to PostHog (see apps/architect/vite.config.ts).
-      POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
-      POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -1782,10 +1778,19 @@ jobs:
           cache: 'pnpm'
       - if: steps.guard.outputs.skip != 'true'
         run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Build & deploy architect to production
+      - name: Build architect
+        if: steps.guard.outputs.skip != 'true'
+        # The PostHog credentials are scoped to this build step alone: only the
+        # build needs them (it emits source maps and uploads them — see
+        # apps/architect/vite.config.ts), and keeping them off the job means the
+        # deploy step's dynamically fetched netlify-cli never sees them.
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+        run: pnpm exec turbo run build --filter=@codaco/architect
+      - name: Deploy architect to production
         if: steps.guard.outputs.skip != 'true'
         run: |
-          pnpm exec turbo run build --filter=@codaco/architect
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/architect \
             --dir=apps/architect/dist \
@@ -1827,10 +1832,6 @@ jobs:
       contents: write
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      # Present only here, so only the production build emits source maps and
-      # uploads them to PostHog (see apps/interviewer/vite.config.ts).
-      POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
-      POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -1858,10 +1859,19 @@ jobs:
           cache: 'pnpm'
       - if: steps.guard.outputs.skip != 'true'
         run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Build & deploy interviewer to production
+      - name: Build interviewer
+        if: steps.guard.outputs.skip != 'true'
+        # The PostHog credentials are scoped to this build step alone: only the
+        # build needs them (it emits source maps and uploads them — see
+        # apps/interviewer/vite.config.ts), and keeping them off the job means
+        # the deploy step's dynamically fetched netlify-cli never sees them.
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+        run: pnpm exec turbo run build --filter=@codaco/interviewer
+      - name: Deploy interviewer to production
         if: steps.guard.outputs.skip != 'true'
         run: |
-          pnpm exec turbo run build --filter=@codaco/interviewer
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/interviewer \
             --dir=apps/interviewer/dist \
@@ -2000,10 +2010,6 @@ jobs:
       NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
       NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
       NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
-      # Present only here, so only the production build emits source maps and
-      # uploads them to PostHog (see apps/documentation/next.config.ts).
-      POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
-      POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -2022,11 +2028,21 @@ jobs:
           fi
       - if: steps.guard.outputs.skip != 'true'
         uses: ./.github/actions/turbo-ci-setup
-      - name: Build and deploy documentation to production
+      - name: Build documentation
         if: steps.guard.outputs.skip != 'true'
+        # The PostHog credentials are scoped to this build step alone: only the
+        # build needs them (it emits source maps and uploads them — see
+        # apps/documentation/next.config.ts), and keeping them off the job means
+        # the deploy step's dynamically fetched netlify-cli never sees them.
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
         run: |
           pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
+      - name: Deploy documentation to production
+        if: steps.guard.outputs.skip != 'true'
+        run: |
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/documentation \
             --dir=apps/documentation/out \
@@ -2062,10 +2078,6 @@ jobs:
       contents: write
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      # Present only here, so only the production build emits source maps and
-      # uploads them to PostHog (see apps/networkcanvas.com/next.config.ts).
-      POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
-      POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -2086,6 +2098,12 @@ jobs:
         uses: ./.github/actions/turbo-ci-setup
       - name: Build and deploy networkcanvas.com to production
         if: steps.guard.outputs.skip != 'true'
+        # netlify-cli performs the build here (--build), so unlike the other
+        # products these cannot be narrowed past this step. They stay off the
+        # job so nothing before or after this step can read them.
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
         run: |
           json=$(npx --yes netlify-cli@26 deploy --build --prod \
                    --filter=networkcanvas.com \
@@ -2426,9 +2444,6 @@ jobs:
       cancel-in-progress: false
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      # This job also deploys to production, so it uploads source maps too.
-      POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
-      POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
       # Classic release metadata is an external build input, so it cannot be
       # represented in Turbo's source hash. Always execute the static build.
       TURBO_FORCE: 'true'
@@ -2441,6 +2456,12 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
       - name: Rebuild networkcanvas.com with the latest Classic releases
+        # This job also deploys to production, so it uploads source maps too.
+        # netlify-cli performs the build (--build), so the credentials cannot be
+        # narrowed past this step; they stay off the job regardless.
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
         run: |
           json=$(npx --yes netlify-cli@26 deploy --build --prod \
                    --filter=networkcanvas.com \

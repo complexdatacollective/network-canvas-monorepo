@@ -33,3 +33,14 @@ A failed upload fails the build rather than deploying unsymbolicated, and both
 variables are part of the Turbo cache key for the documentation `build` task, so
 a production build can never replay a cached artefact whose maps were never
 uploaded.
+
+## Analytics gating
+
+`instrumentation-client.ts` initialises PostHog only when the page is served
+from `documentation.networkcanvas.com` (`lib/analytics/isProductionHost.ts`).
+The site is a static export, so one bundle serves production, every deploy
+preview, and local development — and any `next build` sets `NODE_ENV` to
+production, so the build-time `NEXT_PUBLIC_IS_PRODUCTION` flag this replaced was
+true on deploy previews too, which sent preview traffic into the production
+project. Add a hostname to that list when the site gains a domain; nothing else
+gates analytics.

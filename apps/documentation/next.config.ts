@@ -10,11 +10,6 @@ const withBundleAnalyzer = NextBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
-const isProduction =
-  process.env.VERCEL_ENV === 'production' ||
-  process.env.CONTEXT === 'production' ||
-  process.env.NODE_ENV === 'production';
-
 const networkCanvasUrl =
   process.env.NEXT_PUBLIC_NETWORK_CANVAS_URL ||
   (process.env.CONTEXT === 'deploy-preview' && process.env.REVIEW_ID
@@ -48,12 +43,9 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  env: {
-    NEXT_PUBLIC_IS_PRODUCTION: String(isProduction),
-    ...(networkCanvasUrl
-      ? { NEXT_PUBLIC_NETWORK_CANVAS_URL: networkCanvasUrl }
-      : {}),
-  },
+  env: networkCanvasUrl
+    ? { NEXT_PUBLIC_NETWORK_CANVAS_URL: networkCanvasUrl }
+    : {},
   typedRoutes: true,
   /** We already do linting and typechecking as separate tasks in CI */
   typescript: { ignoreBuildErrors: true },
