@@ -439,7 +439,15 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
+      # Fresco's `build` script is a bare `next build`, whose env.js validates
+      # the full deployment env at config load; this job has no Fresco
+      # deployment secrets. The variable reaches the task through
+      # `fresco#build`'s `passThroughEnv` (strict env mode strips undeclared
+      # variables), which keeps it out of the task hash so the seeded cache
+      # stays valid for runs that don't set it.
       - run: pnpm exec turbo run build test typecheck
+        env:
+          SKIP_ENV_VALIDATION: 'true'
 
   lint:
     if: >-
