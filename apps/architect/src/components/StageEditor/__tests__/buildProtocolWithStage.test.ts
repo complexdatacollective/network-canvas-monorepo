@@ -6,10 +6,7 @@ import {
   validateProtocol,
 } from '@codaco/protocol-validation';
 
-import {
-  buildProtocolWithStage,
-  normalizePreviewStage,
-} from '../buildProtocolWithStage';
+import { buildProtocolWithStage } from '../buildProtocolWithStage';
 
 // A minimal, valid v8 protocol containing a single name generator stage whose
 // codebook subject ("person") exists. Tests insert/replace panels onto this
@@ -139,26 +136,5 @@ describe('buildProtocolWithStage', () => {
     expect(built.stages).toHaveLength(2);
     expect(built.stages[0]?.id).toBeTruthy();
     expect(built.stages[1]?.id).toBe(STAGE_ID);
-  });
-});
-
-describe('normalizePreviewStage', () => {
-  const stageWithSkipLogic = {
-    id: STAGE_ID,
-    type: 'NameGenerator',
-    label: 'Name some people',
-    _modified: true,
-    skipLogic: { action: 'SKIP', filter: { join: 'AND', rules: [] } },
-  } as unknown as Stage;
-
-  it('always drops the editor-only _modified field', () => {
-    const stage = normalizePreviewStage(stageWithSkipLogic);
-    expect(stage).not.toHaveProperty('_modified');
-  });
-
-  it('keeps the real skip logic in the preview protocol', () => {
-    expect(normalizePreviewStage(stageWithSkipLogic)).toHaveProperty(
-      'skipLogic',
-    );
   });
 });

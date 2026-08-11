@@ -1,23 +1,21 @@
-import { useCallback } from 'react';
+import { useCallback, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
-import {
-  change,
-  formValueSelector,
-  getFormInitialValues,
-  SubmissionError,
-} from 'redux-form';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  useSetStageValue,
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 import {
   crossClassPickIssue,
   validatedElsewhereMessage,
 } from '~/components/Validations/contradictions';
-import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { EMPTY_VARIABLES, getVariablesForSubject } from '~/selectors/codebook';
 import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
@@ -25,10 +23,11 @@ import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 import NominationPromptFields from './NominationPromptFields';
 import NominationPromptPreview from './NominationPromptPreview';
 
-// The shared row-editor form name every DialogArrayField editor requests
-// (see this file's own `requestedEditFormName`) — only one editor dialog is
-// ever open at a time, so this is safe to read unqualified.
-const EDIT_FORM_NAME = 'editable-list-form';
+// `NominationPromptPreview` declares `text`/`variable` as required props
+// rather than the array field's generic `Renderer` bag; DialogArrayField
+// always spreads the row's own properties into the preview, so the cast is
+// safe.
+type Renderer = ComponentType<Record<string, unknown>>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -37,41 +36,42 @@ const notEmpty = (value: unknown) =>
   value && Array.isArray(value) && value.length > 0
     ? undefined
     : 'You must create at least one item.';
-const NominationPrompts = ({ form }: StageEditorSectionProps) => {
-  const dispatch = useAppDispatch();
+
+type NominationPrompt = { id?: string; variable?: string };
+
+const NominationPrompts = (_props: StageEditorSectionProps) => {
   const { confirm } = useDialog();
-  const getFormValue = formValueSelector(form);
-  const nodeType = useSelector(
-    (state: RootState) =>
-      getFormValue(state, 'nodeConfig.type') as string | undefined,
-  );
-  const hasNominationPrompts = useSelector(
-    (state: RootState) =>
-      getFormValue(state, 'nominationPrompts') as unknown[] | undefined,
-  );
+  const setStageValue = useSetStageValue();
+  const nodeType = useStageFormValue<string>('nodeConfig.type');
+  const hasNominationPrompts =
+    useStageFormValue<unknown[]>('nominationPrompts');
+  const nominationPromptsInitial =
+    useStageInitialValue<Record<string, unknown>[]>('nominationPrompts');
+  const committedNominationPrompts =
+    useStageInitialValue<NominationPrompt[]>('nominationPrompts');
   const allVariables = useSelector((state: RootState) =>
     nodeType
       ? getVariablesForSubject(state, { entity: 'node', type: nodeType })
       : EMPTY_VARIABLES,
   );
   const roleMap = useSelector(getVariableRoleMap);
-  const originalVariable = useSelector((state: RootState) => {
-    const initial = getFormInitialValues(EDIT_FORM_NAME)(state);
-    return isRecord(initial) && typeof initial.variable === 'string'
-      ? initial.variable
-      : '';
-  });
   // Cross-class exclusivity gate: the nomination toggle is an UNVALIDATED
   // writer, so its variable may not be one a form elsewhere already collects
   // (the save-time backstop for a stale draft that bypassed the picker
   // exclusion — see NominationPromptFields.tsx's excludeValidatedUses call).
-  // `variable` is a plain field on the prompt form (NominationPromptFields.tsx's
-  // ValidatedField name="variable"), so a STRING value renders correctly.
+  // The row's PRE-EDIT committed variable is looked up by id in the stage's
+  // own committed `nominationPrompts` — the array-field successor to reading
+  // `getFormInitialValues('editable-list-form')`, since `onBeforeSave` is
+  // owned by the stage form, not the row dialog.
   const onBeforeSave = useCallback(
     (value: unknown) => {
       if (!nodeType || !isRecord(value)) return value;
       const subject = { entity: 'node' as const, type: nodeType };
       const variable = typeof value.variable === 'string' ? value.variable : '';
+      const id = typeof value.id === 'string' ? value.id : undefined;
+      const originalVariable =
+        committedNominationPrompts?.find((prompt) => prompt.id === id)
+          ?.variable ?? '';
       const issue = crossClassPickIssue({
         variableId: variable,
         originalVariableId: originalVariable,
@@ -81,11 +81,11 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
         message: validatedElsewhereMessage,
       });
       if (issue) {
-        throw new SubmissionError({ variable: issue });
+        return { success: false, fieldErrors: { variable: [issue] } };
       }
       return value;
     },
-    [nodeType, roleMap, allVariables, originalVariable],
+    [nodeType, roleMap, allVariables, committedNominationPrompts],
   );
   const isDisabled = !nodeType;
   const handleToggleChange = useCallback(
@@ -103,12 +103,18 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
         onConfirm: () => {},
       });
       if (confirmed) {
-        dispatch(change(form, 'nominationPrompts', null));
+        // `undefined`, not `null`: the toggle handler runs while the array
+        // field is still mounted (the confirm dialog resolves before the
+        // Section's own `isOpen` flips), and fresco-ui's `ArrayField` only
+        // defaults `undefined` to its own empty array — `null` reaches
+        // `useArrayFieldItems`'s unconditional `value.forEach` and throws
+        // (see IntroScreen.tsx's identical fix).
+        setStageValue('nominationPrompts', undefined);
         return true;
       }
       return false;
     },
-    [confirm, dispatch, form, hasNominationPrompts],
+    [confirm, setStageValue, hasNominationPrompts],
   );
   return (
     <Section
@@ -125,25 +131,23 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
       startExpanded={!!hasNominationPrompts?.length}
       handleToggleChange={handleToggleChange}
     >
-      <ValidatedFieldArray
+      <ArchitectArrayField
         name="nominationPrompts"
         label="Nomination prompts"
         labelHidden
         component={DialogArrayField}
         validation={{ notEmpty }}
-        componentProps={{
-          addTitle: 'Edit Prompt',
-          previewComponent: NominationPromptPreview,
-          editorFieldsComponent: NominationPromptFields,
-          editorTitle: 'Edit Prompt',
-          editorProps: { nodeType },
-          itemLabel: 'prompt',
-          onBeforeSave,
-          sortable: true,
-          requestedEditFormName: 'editable-list-form',
-          emptyStateMessage:
-            'No nomination prompts have been created yet. Click "Create new" to add your first prompt.',
-        }}
+        initialValue={nominationPromptsInitial ?? []}
+        addTitle="Edit Prompt"
+        previewComponent={NominationPromptPreview as unknown as Renderer}
+        editorFieldsComponent={NominationPromptFields}
+        editorTitle="Edit Prompt"
+        editorProps={{ nodeType }}
+        itemLabel="prompt"
+        onBeforeSave={onBeforeSave}
+        sortable
+        requestedEditFormName="editable-list-form"
+        emptyStateMessage='No nomination prompts have been created yet. Click "Create new" to add your first prompt.'
       />
     </Section>
   );

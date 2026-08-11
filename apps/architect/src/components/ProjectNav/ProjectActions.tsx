@@ -13,7 +13,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
-import { useScopedUndoRedo } from '~/hooks/useScopedUndoRedo';
+import { useProtocolUndoRedo } from '~/hooks/useProtocolUndoRedo';
 import { getProtocol } from '~/selectors/protocol';
 import type { ProtocolSourceRef } from '~/templates';
 import {
@@ -44,7 +44,7 @@ const ProjectActions = ({
     canRedo,
     undo: scopedUndo,
     redo: scopedRedo,
-  } = useScopedUndoRedo();
+  } = useProtocolUndoRedo();
   const [, setLocation] = useLocation();
   const handleReturnToStart = useCallback(
     () => setLocation('/'),

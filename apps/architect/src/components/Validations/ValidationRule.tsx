@@ -6,7 +6,7 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Hint from '@codaco/fresco-ui/form/Hint';
 
-import { MULTI_SELECT_RULE_CLASSES } from '../Form/MultiSelect';
+import { MULTI_SELECT_RULE_CLASSES } from '../Form/arrayFields/MultiSelect';
 import {
   isValidationWithListValue,
   isValidationWithNumberValue,

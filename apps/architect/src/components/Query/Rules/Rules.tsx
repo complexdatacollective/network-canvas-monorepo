@@ -55,7 +55,7 @@ const Rules = ({
 }: RulesProps) => {
   const { confirm, openDialog } = useDialog();
   const errorId = useId();
-  // Default to true as may not be defined if used without redux-form
+  // Default to true: `meta` is optional for callers outside a form store.
   const isTouched = get(meta, 'touched', true) as boolean;
   const hasError = isTouched && !!error;
   const updateJoin = useCallback(

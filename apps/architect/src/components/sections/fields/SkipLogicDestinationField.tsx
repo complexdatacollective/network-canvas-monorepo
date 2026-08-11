@@ -1,7 +1,7 @@
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import type { SkipLogicDestination } from '@codaco/protocol-validation';
-import ValidatedField from '~/components/Form/ValidatedField';
-
-import { SkipLogicSelectReduxField } from './SkipLogicReduxFields';
+import ArchitectField from '~/components/Form/ArchitectField';
 
 const NEXT_AVAILABLE_ROUTE = 'route:next';
 const FINISH_ROUTE = 'route:finish';
@@ -16,6 +16,11 @@ type SkipLogicDestinationFieldProps = {
   stages: StageOptionSource[];
   stagePosition: number;
   isNewStage: boolean;
+  /**
+   * Seeded by the caller (which owns the stage-form context) so this stays a
+   * plain field component, usable outside a stage form.
+   */
+  initialValue?: SkipLogicDestination;
 };
 
 export const formatSkipLogicDestination = (value: unknown): string => {
@@ -83,27 +88,49 @@ export const buildSkipLogicDestinationOptions = (
   return options;
 };
 
+type DestinationSelectProps = CreateFormFieldProps<
+  SkipLogicDestination,
+  'div',
+  { options: Array<{ value: string; label: string }> }
+>;
+
+/**
+ * The stored value is a destination object; the control speaks route strings.
+ * This field bridges the two — the fresco-ui form store has no
+ * `format`/`parse` hook of its own.
+ */
+const DestinationSelect = ({
+  value,
+  onChange,
+  ...props
+}: DestinationSelectProps) => (
+  <StyledSelectField
+    {...props}
+    value={formatSkipLogicDestination(value)}
+    onChange={(nextValue) => onChange?.(parseSkipLogicDestination(nextValue))}
+  />
+);
+
 const SkipLogicDestinationField = ({
   stages,
   stagePosition,
   isNewStage,
-}: SkipLogicDestinationFieldProps) => (
-  <ValidatedField
-    name="skipLogic.destination"
-    component={SkipLogicSelectReduxField}
-    format={formatSkipLogicDestination}
-    parse={parseSkipLogicDestination}
-    validation={{}}
-    componentProps={{
-      label: 'When this stage is skipped',
-      hint: 'Choose where the interview should continue. Only later stages can be selected.',
-      options: buildSkipLogicDestinationOptions(
+  initialValue,
+}: SkipLogicDestinationFieldProps) => {
+  return (
+    <ArchitectField
+      name="skipLogic.destination"
+      label="When this stage is skipped"
+      hint="Choose where the interview should continue. Only later stages can be selected."
+      component={DestinationSelect}
+      initialValue={initialValue}
+      options={buildSkipLogicDestinationOptions(
         stages,
         stagePosition,
         isNewStage,
-      ),
-    }}
-  />
-);
+      )}
+    />
+  );
+};
 
 export default SkipLogicDestinationField;

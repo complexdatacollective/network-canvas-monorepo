@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { RootState } from '~/ducks/modules/root';
 
-import { makeGetIsUsed, makeOptionsWithIsUsedSelector } from '../isUsed';
+import { getIsUsed } from '../isUsed';
 
 const variable1 = '1234-1234-1234-1';
 const variable2 = '1234-1234-1234-2';
@@ -53,23 +53,17 @@ const mockProtocolWithoutUse = {
   },
 };
 
-const mockReduxFormsWithoutUse = {
-  'edit-stage': {
-    values: {},
-  },
-};
-
 const mockStateWithoutUse = {
   activeProtocol: mockProtocolWithoutUse,
-  form: mockReduxFormsWithoutUse,
+  stageEditorDraft: { ui: { liveValues: null } },
 };
 
 const asState = (state: typeof mockStateWithoutUse | Record<string, unknown>) =>
   state as unknown as RootState;
 
-describe('makeGetIsUsed', () => {
+describe('getIsUsed', () => {
   it('returns false when a variable is not present', () => {
-    const result = makeGetIsUsed()(asState(mockStateWithoutUse));
+    const result = getIsUsed(asState(mockStateWithoutUse));
 
     expect(result).toEqual({
       [variable1]: false,
@@ -118,7 +112,7 @@ describe('makeGetIsUsed', () => {
       },
     };
 
-    const result = makeGetIsUsed()(asState(stateWithProtocolUse));
+    const result = getIsUsed(asState(stateWithProtocolUse));
 
     expect(result).toEqual({
       [variable1]: true,
@@ -132,18 +126,12 @@ describe('makeGetIsUsed', () => {
     });
   });
 
-  describe('redux forms', () => {
-    const stateWithFormUse = {
+  describe('the unsaved stage draft', () => {
+    const stateWithLiveUse = {
       ...mockStateWithoutUse,
-      form: {
-        ...mockReduxFormsWithoutUse,
-        'formName': {
-          values: {
-            [variable1]: 'foo',
-          },
-        },
-        'edit-stage': {
-          values: {
+      stageEditorDraft: {
+        ui: {
+          liveValues: {
             [variable2]: 'foo',
             thing: {
               foo: variable3,
@@ -153,38 +141,18 @@ describe('makeGetIsUsed', () => {
       },
     };
 
-    describe('returns true when a variable is present in redux forms', () => {
-      it('returns variables from every active form without parameters', () => {
-        const result = makeGetIsUsed()(asState(stateWithFormUse));
+    it('returns true for variables referenced by the live stage values', () => {
+      const result = getIsUsed(asState(stateWithLiveUse));
 
-        expect(result).toEqual({
-          [variable1]: true,
-          [variable2]: true,
-          [variable3]: true,
-          [variable4]: false,
-          [variable5]: false,
-          [variable6]: false,
-          [variable7]: false,
-          [variable8]: false,
-        });
-      });
-
-      it('allows the redux form name to be specified to return specific form', () => {
-        // Also check we can set form name
-        const result = makeGetIsUsed({ formNames: ['formName'] })(
-          asState(stateWithFormUse),
-        );
-
-        expect(result).toEqual({
-          [variable1]: true,
-          [variable2]: false,
-          [variable3]: false,
-          [variable4]: false,
-          [variable5]: false,
-          [variable6]: false,
-          [variable7]: false,
-          [variable8]: false,
-        });
+      expect(result).toEqual({
+        [variable1]: false,
+        [variable2]: true,
+        [variable3]: true,
+        [variable4]: false,
+        [variable5]: false,
+        [variable6]: false,
+        [variable7]: false,
+        [variable8]: false,
       });
     });
   });
@@ -221,7 +189,7 @@ describe('makeGetIsUsed', () => {
       },
     };
 
-    const result = makeGetIsUsed()(asState(stateWithCodebookUse));
+    const result = getIsUsed(asState(stateWithCodebookUse));
 
     expect(result).toEqual({
       [variable1]: false,
@@ -235,45 +203,43 @@ describe('makeGetIsUsed', () => {
     });
   });
 
-  describe('makeOptionsWithIsUsedSelector', () => {
-    it('appends used state to options', () => {
-      const state = {
-        activeProtocol: {
-          present: {
-            schemaVersion: 8,
-            name: 'test-protocol',
-            codebook: mockCodebookWithoutUse,
-            stages: [],
-          },
-        },
-        form: {
-          formName: {
-            values: {
-              foo: variable1,
-            },
-          },
-        },
+  // `getIsUsed` recomputes on every live-value mirror tick (that reactivity
+  // is the feature), but its `resultEqualityCheck` must hand back the SAME
+  // map reference when the recomputed content is unchanged — the common case
+  // while typing — so that selectors composed on it (variable options) and
+  // `useSelector` guards keyed on its identity stay quiet.
+  describe('reference identity across live-value ticks', () => {
+    it('returns the identical map when only the liveValues object identity changes', () => {
+      // Content-equal but referentially distinct liveValues, over the same
+      // protocol reference: a debounced mirror tick that changed nothing.
+      const tickA = {
+        ...mockStateWithoutUse,
+        stageEditorDraft: { ui: { liveValues: { draftText: 'typing' } } },
+      };
+      const tickB = {
+        ...mockStateWithoutUse,
+        stageEditorDraft: { ui: { liveValues: { draftText: 'typing' } } },
       };
 
-      const mockOptions = [
-        { value: variable1, label: '1' },
-        { value: variable2, label: '2' },
-        { value: variable3, label: '3' },
-        { value: variable4, label: '4' },
-      ];
+      expect(getIsUsed(asState(tickB))).toBe(getIsUsed(asState(tickA)));
+    });
 
-      // Create the selector with form name configuration
-      const selector = makeOptionsWithIsUsedSelector({
-        formNames: ['formName'],
-      });
-      const result = selector(asState(state), mockOptions);
+    it('returns a new map when a tick changes which variables are used', () => {
+      const before = {
+        ...mockStateWithoutUse,
+        stageEditorDraft: { ui: { liveValues: { draftText: 'typing' } } },
+      };
+      const after = {
+        ...mockStateWithoutUse,
+        stageEditorDraft: { ui: { liveValues: { someField: variable1 } } },
+      };
 
-      expect(result).toEqual([
-        { value: variable1, label: '1', isUsed: true },
-        { value: variable2, label: '2', isUsed: false },
-        { value: variable3, label: '3', isUsed: false },
-        { value: variable4, label: '4', isUsed: false },
-      ]);
+      const beforeResult = getIsUsed(asState(before));
+      const afterResult = getIsUsed(asState(after));
+
+      expect(afterResult).not.toBe(beforeResult);
+      expect(beforeResult[variable1]).toBe(false);
+      expect(afterResult[variable1]).toBe(true);
     });
   });
 });

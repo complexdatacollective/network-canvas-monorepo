@@ -1,51 +1,48 @@
 import { isMatch } from 'es-toolkit/compat';
-import type React from 'react';
+import type { ComponentType } from 'react';
 
 import DatePicker from './DatePicker';
+import type { ParameterValues } from './parameterValues';
 import RelativeDatePicker from './RelativeDatePicker';
 import Scalar from './Scalar';
 
-type ComponentType = React.ComponentType<Record<string, unknown>>;
+type ParameterEditorProps = {
+  name: string;
+  initialParameters?: ParameterValues;
+};
 
 const definitions: Array<
-  [ComponentType, { type: string; component?: string }]
+  [ComponentType<ParameterEditorProps>, { type: string; component?: string }]
 > = [
-  [Scalar as unknown as ComponentType, { type: 'scalar' }],
-  [
-    DatePicker as unknown as ComponentType,
-    { type: 'datetime', component: 'DatePicker' },
-  ],
-  [
-    RelativeDatePicker as unknown as ComponentType,
-    { type: 'datetime', component: 'RelativeDatePicker' },
-  ],
+  [Scalar, { type: 'scalar' }],
+  [DatePicker, { type: 'datetime', component: 'DatePicker' }],
+  [RelativeDatePicker, { type: 'datetime', component: 'RelativeDatePicker' }],
 ];
 
 const getComponent = (options: {
   type: string;
   component?: string;
-}): ComponentType | undefined => {
-  const found = definitions.find(([, pattern]) => isMatch(options, pattern));
+}): ComponentType<ParameterEditorProps> | undefined =>
+  definitions.find(([, pattern]) => isMatch(options, pattern))?.[0];
 
-  return found ? found[0] : undefined;
-};
-
-type ParametersProps = {
+type ParametersProps = ParameterEditorProps & {
   type: string;
   component?: string;
-} & Record<string, unknown>;
+};
 
-const Parameters = ({ type, component, ...rest }: ParametersProps) => {
+const Parameters = ({
+  type,
+  component,
+  name,
+  initialParameters,
+}: ParametersProps) => {
   const ParameterComponent = getComponent({ type, component });
   if (!ParameterComponent) {
     return null;
   }
 
   return (
-    <ParameterComponent
-      // eslint-disable-next-line react/jsx-props-no-spreading
-      {...rest}
-    />
+    <ParameterComponent name={name} initialParameters={initialParameters} />
   );
 };
 

@@ -1,15 +1,14 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('~/components/Form/ValidatedField', () => ({
+vi.mock('~/components/Form/ArchitectField', () => ({
   default: () => null,
 }));
 
 vi.mock('~/components/Query', () => ({
+  Filter: () => null,
   Query: () => null,
   ruleValidator: () => undefined,
-  withFieldConnector: (component: unknown) => component,
-  withStoreConnector: (component: unknown) => component,
 }));
 
 vi.mock('@codaco/fresco-ui/form/fields/RadioGroup', () => ({
@@ -18,6 +17,14 @@ vi.mock('@codaco/fresco-ui/form/fields/RadioGroup', () => ({
 
 vi.mock('react-redux', () => ({
   useSelector: () => [],
+  useDispatch: () => vi.fn(),
+  useStore: () => ({ getState: () => ({}), subscribe: () => () => undefined }),
+}));
+
+// The component only needs a committed value to seed its fields; the real
+// hook would require the whole stage-form context.
+vi.mock('~/components/StageEditor/stageFormHooks', () => ({
+  useStageInitialValue: () => undefined,
 }));
 
 vi.mock('../SkipLogicDestinationField', () => ({

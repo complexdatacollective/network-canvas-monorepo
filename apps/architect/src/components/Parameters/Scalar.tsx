@@ -1,36 +1,41 @@
-import type { ComponentType } from 'react';
-
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ArchitectField from '~/components/Form/ArchitectField';
 
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+import { parameterString, type ParameterValues } from './parameterValues';
 
 type ScalarParametersProps = {
   name: string;
+  initialParameters?: ParameterValues;
 };
-const ScalarParameters = ({ name }: ScalarParametersProps) => (
+
+const ScalarParameters = ({
+  name,
+  initialParameters,
+}: ScalarParametersProps) => (
   <>
+    {/* Describes the pair of fields below, so it stays section body text
+        rather than moving into either field's hint. */}
     <Paragraph>
       This input type requires you to specify a <strong>minimum</strong> and{' '}
       <strong>maximum</strong> label, which will be displayed at each end of the
       scale.
     </Paragraph>
-    <ValidatedField
+    <ArchitectField
       label="Minimum label"
-      component={FrescoReduxField}
+      component={InputField}
       name={`${name}.minLabel`}
+      initialValue={parameterString(initialParameters?.minLabel)}
       validation={{ required: true }}
-      componentProps={{ fieldComponent: FrescoInputField }}
     />
-    <ValidatedField
+    <ArchitectField
       label="Maximum label"
-      component={FrescoReduxField}
+      component={InputField}
       name={`${name}.maxLabel`}
+      initialValue={parameterString(initialParameters?.maxLabel)}
       validation={{ required: true }}
-      componentProps={{ fieldComponent: FrescoInputField }}
     />
   </>
 );
+
 export default ScalarParameters;

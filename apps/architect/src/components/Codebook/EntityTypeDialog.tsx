@@ -1,12 +1,15 @@
 import { get } from 'es-toolkit/compat';
-import { useCallback, useMemo } from 'react';
-import { isDirty, isInvalid } from 'redux-form';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import InlineEditScreen from '~/components/InlineEditScreen/InlineEditScreen';
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import DialogForm from '~/components/DialogForm/DialogForm';
+import DirtyProbe from '~/components/DialogForm/DirtyProbe';
 import { format, parse } from '~/components/TypeEditor/convert';
 import getNewTypeTemplate from '~/components/TypeEditor/getNewTypeTemplate';
-import TypeEditor from '~/components/TypeEditor/TypeEditor';
+import TypeEditor, {
+  type EntityTypeValues,
+} from '~/components/TypeEditor/TypeEditor';
 import validateEntityType from '~/components/TypeEditor/validateEntityType';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
@@ -17,7 +20,7 @@ import type { RootState } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
 import { reportError } from '~/utils/reportError';
 
-const formName = 'ENTITY_TYPE_DIALOG';
+const FORM_ID = 'entity-type-dialog';
 
 type EntityTypeDialogProps = {
   show: boolean;
@@ -35,16 +38,11 @@ const EntityTypeDialog = ({
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const protocol = useAppSelector((state: RootState) => getProtocol(state));
-  const hasUnsavedChanges = useAppSelector((state: RootState) =>
-    isDirty(formName)(state),
-  );
-  const invalid = useAppSelector((state: RootState) =>
-    isInvalid(formName)(state),
-  );
+  const dirtyRef = useRef(false);
 
   const isNew = !type;
 
-  const initialValues = useMemo(() => {
+  const initialValues = useMemo<EntityTypeValues>(() => {
     if (!entity || !protocol) {
       return {};
     }
@@ -55,7 +53,7 @@ const EntityTypeDialog = ({
     const value = type
       ? get(protocol, ['codebook', entity, type]) || defaultValue
       : defaultValue;
-    return format(value);
+    return format(value) as EntityTypeValues;
   }, [protocol, entity, type]);
 
   const title = useMemo(() => {
@@ -66,52 +64,33 @@ const EntityTypeDialog = ({
     return isNew ? `Create ${entityLabel} Type` : `Edit ${entityLabel} Type`;
   }, [entity, isNew]);
 
-  const updateType = useCallback(
-    async (
-      entityType: string,
-      typeKey: string,
-      form: Record<string, unknown>,
-    ) => {
-      await dispatch(
-        updateTypeAsync({
-          entity: entityType as 'node' | 'edge' | 'ego',
-          type: typeKey,
-          configuration: parse(form),
-        }),
-      ).unwrap();
-    },
-    [dispatch],
-  );
-
-  const createType = useCallback(
-    async (entityType: string, form: Record<string, unknown>) => {
-      const result = await dispatch(
-        createTypeAsync({
-          entity: entityType as 'node' | 'edge' | 'ego',
-          configuration: parse(form),
-        }),
-      ).unwrap();
-      return result;
-    },
-    [dispatch],
-  );
-
   const handleSubmit = useCallback(
-    async (values: Record<string, unknown>) => {
-      if (invalid) {
-        return;
-      }
+    async (values: Record<string, FieldValue>) => {
+      if (!entity) return;
 
-      if (!entity) {
-        return;
-      }
+      // `updateType` replaces the whole definition, and `getFormValues()`
+      // reports registered fields only — so the properties this editor does
+      // not render (`variables` above all) are carried over from the committed
+      // definition.
+      const configuration = parse({ ...initialValues, ...values });
 
       try {
         if (isNew) {
-          const result = await createType(entity, values);
+          const result = await dispatch(
+            createTypeAsync({
+              entity: entity as 'node' | 'edge' | 'ego',
+              configuration,
+            }),
+          ).unwrap();
           onClose(result.type);
         } else if (type) {
-          await updateType(entity, type, values);
+          await dispatch(
+            updateTypeAsync({
+              entity: entity as 'node' | 'edge' | 'ego',
+              type,
+              configuration,
+            }),
+          ).unwrap();
           onClose();
         }
       } catch (error) {
@@ -127,7 +106,7 @@ const EntityTypeDialog = ({
         });
       }
     },
-    [createType, updateType, onClose, entity, type, isNew, invalid, openDialog],
+    [dispatch, initialValues, onClose, entity, type, isNew, openDialog],
   );
 
   const handleCancel = useCallback(async () => {
@@ -135,7 +114,7 @@ const EntityTypeDialog = ({
     // started filling it in, confirm before discarding — including brand-new
     // types, so an accidental backdrop/outside click can't drop a
     // partially-authored variable or type.
-    if (!hasUnsavedChanges) {
+    if (!dirtyRef.current) {
       onClose();
       return;
     }
@@ -155,24 +134,67 @@ const EntityTypeDialog = ({
     if (confirmed) {
       onClose();
     }
-  }, [hasUnsavedChanges, onClose, openDialog]);
+  }, [onClose, openDialog]);
+
+  /**
+   * Every open is a different editing session, so each one needs its own field
+   * store — the `key` `DialogForm` documents for exactly this.
+   *
+   * Identifying the session by what is being edited is not enough. `type` is
+   * undefined for a creation, so `new-${entity}` was the SAME key for two
+   * consecutive creations of the same entity — and this dialog is mounted for
+   * the lifetime of its owner (`NewTypeDialog` keeps it rendered and only
+   * toggles `show`), so nothing else separates them. What normally hides that
+   * is `Modal`'s exit animation: it unmounts the form, whose `useForm` cleanup
+   * resets the store. A close followed by another open before that exit
+   * finishes cancels the removal, so the reset never runs — and the next
+   * type's fields re-register over the previous one's parked values, which
+   * `registerField` prefers over `initialValue`. Creating two edge types back
+   * to back (the sample protocol's edge-creation sociogram does exactly that)
+   * therefore reopened the dialog still holding the first type's name, colour
+   * and shape, and saving it wrote those over the second type's own defaults.
+   * Reopening the same type after abandoning an edit had the same effect.
+   *
+   * Counting opens rather than naming the session also covers that reopen
+   * case, since `type` alone repeats there too. It is bumped as the dialog
+   * OPENS (the React-documented adjust-state-on-prop-change pattern) rather
+   * than on close, so the entering dialog is the fresh one and a close still
+   * animates out.
+   */
+  const [wasShown, setWasShown] = useState(show);
+  const [openCount, setOpenCount] = useState(0);
+  if (show !== wasShown) {
+    setWasShown(show);
+    if (show) {
+      setOpenCount((count) => count + 1);
+    }
+  }
 
   if (!entity) {
     return null;
   }
 
   return (
-    <InlineEditScreen
-      show={show}
-      form={formName}
+    <DialogForm
+      // `entity`/`type` stay in the key so switching what is being edited
+      // without closing still remounts, as before.
+      key={`${entity}-${type ?? 'new'}-${openCount}`}
+      open={show}
+      onClose={() => void handleCancel()}
       title={title}
-      onSubmit={handleSubmit as (values: unknown) => void}
-      onCancel={handleCancel}
-      initialValues={initialValues}
+      formId={FORM_ID}
+      submitLabel="Save and Close"
+      onSubmit={handleSubmit}
       validate={validateEntityType}
     >
-      <TypeEditor form={formName} entity={entity} type={type} isNew={isNew} />
-    </InlineEditScreen>
+      <DirtyProbe dirtyRef={dirtyRef} />
+      <TypeEditor
+        entity={entity}
+        type={type}
+        isNew={isNew}
+        initialValues={initialValues}
+      />
+    </DialogForm>
   );
 };
 

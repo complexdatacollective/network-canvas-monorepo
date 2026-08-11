@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { RootState } from '~/ducks/modules/root';
 
@@ -8,12 +8,6 @@ import {
   getHighlightVariablesForSubject,
   getLayoutVariablesForSubject,
 } from '../selectors';
-
-vi.mock('redux-form', () => ({
-  formValueSelector: () => () => '1234-1234-4',
-  getFormValues: () => () => ({}),
-  reduxForm: () => (component: unknown) => component,
-}));
 
 const subject = {
   entity: 'node',

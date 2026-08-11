@@ -1,8 +1,12 @@
 import { find, get, has } from 'es-toolkit/compat';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
 
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import { useField } from '@codaco/fresco-ui/form/hooks/useField';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import { useClearValue } from '~/components/Form/clearFieldValue';
 import {
   formattedInputOptions,
   getComponentsForType,
@@ -10,8 +14,6 @@ import {
   INPUT_OPTIONS,
   VARIABLE_TYPES_WITH_COMPONENTS,
 } from '~/config/variables';
-import { useAppDispatch } from '~/ducks/hooks';
-import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
 import {
   getVariableOptionsForSubjectSelector,
@@ -21,81 +23,111 @@ import { excludeUnvalidatedUses } from '~/selectors/roleFilters';
 
 import { isVariableUsedBySibling } from './composerHelpers';
 
+/**
+ * The name a researcher typed into the variable picker's "create" affordance,
+ * held until the save actually writes the codebook variable.
+ *
+ * It has no control of its own, but it must still be a REGISTERED field:
+ * `getFormValues()` reports registered fields only, and the dialog's save
+ * handler is what turns this into a `createVariable` rather than an
+ * `updateVariable`. A `setFieldValue` on an unregistered name is parked
+ * dormant and would never reach the submit.
+ */
+export const CREATE_NEW_VARIABLE_FIELD = '_createNewVariable';
+
+const READ_FIELDS = [
+  'variable',
+  'component',
+  CREATE_NEW_VARIABLE_FIELD,
+] as const;
+
+/**
+ * Registers a value the editor carries but renders no control for.
+ *
+ * `getFormValues()` reports registered fields only, so anything the save
+ * handler or the contradiction check reads has to be a real field. Used for
+ * `_createNewVariable` in both editors, and for the composer editor's
+ * `validation`, which it carries from the codebook without offering an editor
+ * for it.
+ */
+export const HiddenFieldValue = ({
+  name,
+  initialValue,
+}: {
+  name: string;
+  initialValue?: FieldValue;
+}) => {
+  useField({ name, initialValue });
+  return null;
+};
+
 type Entity = 'node' | 'edge' | 'ego';
 
 type UseFieldHandlerProps = {
-  form: string;
   entity: string;
   type: string;
   /**
-   * Seventeenth-wave follow-up: the committed fields of the NetworkComposer
-   * form this editor edits a row of, and that row's array index. Supplied only
-   * by the composer editor: `ComposerFormSchema` rejects a form naming one
-   * variable twice, so a variable a sibling field already claims must not be
-   * offered. The regular Form editor omits both and is filtered exactly as
-   * before — its schema permits the repeat.
+   * The committed fields of the NetworkComposer form this editor edits a row
+   * of, and that row's array index. Supplied only by the composer editor:
+   * `ComposerFormSchema` rejects a form naming one variable twice, so a
+   * variable a sibling field already claims must not be offered. The regular
+   * Form editor omits both and is filtered exactly as before — its schema
+   * permits the repeat.
    */
   siblingFields?: unknown;
   editIndex?: number;
   currentStageIndex?: number;
 };
 
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+/**
+ * The variable/input-control pair at the heart of both field editors.
+ *
+ * The two cross-field resets are observer effects rather than handlers hung
+ * off the fields themselves: a caller `onChange` on a fresco-ui `Field`
+ * replaces the store's own write and detaches the field, so a side effect on
+ * change has to watch the value instead. Each effect records the first value
+ * it sees once the field is registered and acts only on later changes, so
+ * simply opening the dialog never resets anything.
+ */
 export const useFieldHandlers = ({
-  form,
   entity,
   type,
   siblingFields,
   editIndex,
   currentStageIndex,
 }: UseFieldHandlerProps) => {
-  const dispatch = useAppDispatch();
-  const changeField = useCallback(
-    (field: string, value: unknown) =>
-      dispatch(change(form, field, value) as never),
-    [dispatch, form],
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const clearValue = useClearValue();
+  // The observers below must tell "the field has not registered yet" apart
+  // from "the researcher cleared it", so registration is watched explicitly.
+  const variableRegistered = useFormStore((state) =>
+    state.fields.has('variable'),
   );
-  const deleteVariable = useCallback(
-    (variable: string) =>
-      dispatch(
-        deleteVariableAsync({
-          entity: entity as Entity,
-          type,
-          variable,
-        }) as never,
-      ),
-    [dispatch, entity, type],
+  const componentRegistered = useFormStore((state) =>
+    state.fields.has('component'),
   );
+  const values = useFormValue(READ_FIELDS);
 
-  // Create separate selectors for each field to avoid creating new objects
-  const makeFormFieldSelector = useCallback(
-    (field: string) => {
-      return (state: RootState) => formValueSelector(form)(state, field);
-    },
-    [form],
-  );
-
-  // Use separate selectors for each field
-  const variable = useSelector(makeFormFieldSelector('variable'));
-  const component = useSelector(makeFormFieldSelector('component'));
-  const createNewVariable = useSelector(
-    makeFormFieldSelector('_createNewVariable'),
-  );
-
+  const variable = asString(values.variable);
+  const component = asString(values.component);
+  const createNewVariable = asString(values[CREATE_NEW_VARIABLE_FIELD]);
   const isNewVariable = !!createNewVariable;
 
   // Create subject object once to ensure stable reference
   const subject = useMemo(() => ({ entity, type }), [entity, type]) as {
-    entity: 'node' | 'edge' | 'ego';
+    entity: Entity;
     type?: string;
   };
 
-  // Use the properly memoized selectors
   const existingVariables = useSelector((state: RootState) =>
     getVariablesForSubjectSelector(state, subject),
   );
 
   const baseVariableOptions = useSelector((state: RootState) =>
-    getVariableOptionsForSubjectSelector(state, subject, {}),
+    getVariableOptionsForSubjectSelector(state, subject),
   );
 
   // This picker is a VALIDATED writer (Form, NetworkComposer fields,
@@ -124,12 +156,12 @@ export const useFieldHandlers = ({
       .filter((option) =>
         VARIABLE_TYPES_WITH_COMPONENTS.includes(option.type as string),
       )
-      // Seventeenth-wave follow-up: drop what a sibling composer field already
-      // collects, using the same predicate the save-time gate applies so the
-      // picker and the gate cannot drift apart. The value this field currently
-      // holds is always kept: excluding `editIndex` covers a committed row, but
-      // a picker whose value is missing from its options renders blank and
-      // silently drops the selection, so never let that happen.
+      // Drop what a sibling composer field already collects, using the same
+      // predicate the save-time gate applies so the picker and the gate cannot
+      // drift apart. The value this field currently holds is always kept:
+      // excluding `editIndex` covers a committed row, but a picker whose value
+      // is missing from its options renders blank and silently drops the
+      // selection, so never let that happen.
       .filter(
         (option) =>
           option.value === variable ||
@@ -137,7 +169,7 @@ export const useFieldHandlers = ({
       );
 
     // with New variable
-    return isNewVariable
+    return isNewVariable && createNewVariable
       ? filtered.concat([
           { label: createNewVariable, value: createNewVariable },
         ])
@@ -153,11 +185,10 @@ export const useFieldHandlers = ({
 
   // 1. If type defined use that (existing variable)
   // 2. Otherwise derive it from component (new variable)
-  const variableType = get(
-    existingVariables,
-    [variable, 'type'],
-    getTypeForComponent(component),
+  const codebookType = asString(
+    get(existingVariables, [variable ?? '', 'type']),
   );
+  const variableType = codebookType ?? getTypeForComponent(component);
 
   // 1. If type defined, show components that match (existing variable)
   // 2. Otherwise list all INPUT_OPTIONS (new variable)
@@ -168,60 +199,128 @@ export const useFieldHandlers = ({
 
   const metaForType = find(INPUT_OPTIONS, { value: component });
 
-  const handleChangeComponent = useCallback(
-    (_e: unknown, value: string) => {
-      const typeForComponent = getTypeForComponent(value);
-
-      // If we have changed type, also reset validation since options may not be
-      // applicable.
-      if (variableType !== typeForComponent) {
-        changeField('validation', null);
-        changeField('options', null);
-        // Special case for boolean, where BooleanChoice has options but Toggle doesn't
-      } else if (variableType === 'boolean') {
-        changeField('options', null);
-      }
-
-      // Always reset parameters since they depend on the component
-      changeField('parameters', null);
-    },
-    [changeField, variableType],
+  // The variable observer writes `component`; the component observer must not
+  // then treat that write as a researcher changing the input control.
+  const programmaticComponent = useRef<{ value: string | undefined } | null>(
+    null,
   );
+  const observedVariable = useRef<{ value: string | undefined } | null>(null);
+  const observedComponent = useRef<{ value: string | undefined } | null>(null);
 
-  const handleChangeVariable = useCallback(
-    (_: unknown, value: string) => {
-      // Either load settings from codebook, or reset
-      const options = get(existingVariables, [value, 'options'], null);
-      const parameters = get(existingVariables, [value, 'parameters'], null);
-      const validation = get(existingVariables, [value, 'validation'], null);
-      const nextComponent = get(existingVariables, [value, 'component'], null);
+  // Selecting an EXISTING codebook variable adopts its rendering and rules.
+  // Anything else — a cleared picker, or a name typed into the create
+  // affordance, which by definition matches nothing in the codebook — resets
+  // them instead.
+  useEffect(() => {
+    if (!variableRegistered) return;
+    if (!observedVariable.current) {
+      observedVariable.current = { value: variable };
+      return;
+    }
+    if (observedVariable.current.value === variable) return;
+    observedVariable.current = { value: variable };
 
-      // If value was set to something from codebook, reset this flag
-      if (has(existingVariables, value)) {
-        changeField('_createNewVariable', null);
-      }
-      changeField('component', nextComponent);
-      changeField('options', options);
-      changeField('parameters', parameters);
-      changeField('validation', validation);
-    },
-    [changeField, existingVariables],
-  );
+    if (!variable || !has(existingVariables, variable)) {
+      // A typed name names a BRAND NEW variable, so the variable being
+      // replaced must not hand down its rendering or its rules. `component`
+      // matters most: it fixes the new variable's `type`, which Architect
+      // never lets a researcher change afterwards. Clearing it re-arms its
+      // `required` rule, which is the point — the input control is a
+      // deliberate choice, not an inheritance. `validation` matters just as
+      // much on the composer path, which renders no validation editor at all,
+      // so an inherited rule there would be invisible.
+      //
+      // `options`/`validation` are cleared explicitly rather than left to the
+      // unmount that follows a blank `component`: an unmounted field parks its
+      // value dormant, and a dormant value outranks the assembled one later.
+      setFieldValue('component', undefined);
+      setFieldValue('options', undefined);
+      setFieldValue('validation', undefined);
+      // Parameters are a TREE of leaves rather than one field — see
+      // useClearValue.
+      clearValue('parameters');
+      return;
+    }
 
-  const handleDeleteVariable = useCallback(
-    (variableToDelete: string) => {
-      deleteVariable(variableToDelete);
-    },
-    [deleteVariable],
-  );
+    const nextComponent = asString(
+      get(existingVariables, [variable, 'component']),
+    );
+    programmaticComponent.current = { value: nextComponent };
+
+    setFieldValue(CREATE_NEW_VARIABLE_FIELD, undefined);
+    setFieldValue('component', nextComponent);
+    setFieldValue(
+      'options',
+      get(existingVariables, [variable, 'options'], undefined),
+    );
+    setFieldValue(
+      'validation',
+      get(existingVariables, [variable, 'validation'], undefined),
+    );
+    // The previous variable's parameter leaves must go before the new
+    // variable's are seeded, or a leaf the new control shares (`parameters.
+    // type`, say) would keep the old value.
+    clearValue('parameters');
+    const nextParameters = get(
+      existingVariables,
+      [variable, 'parameters'],
+      undefined,
+    ) as Record<string, unknown> | undefined;
+    for (const [key, value] of Object.entries(nextParameters ?? {})) {
+      setFieldValue(`parameters.${key}`, value as FieldValue);
+    }
+  }, [
+    clearValue,
+    existingVariables,
+    setFieldValue,
+    variable,
+    variableRegistered,
+  ]);
+
+  // Changing the input control invalidates whatever depends on it. An existing
+  // variable's type is locked, so only a NEW variable's type can move — which
+  // is what decides whether the validation rules and options survive.
+  useEffect(() => {
+    if (!componentRegistered) return;
+    if (!observedComponent.current) {
+      observedComponent.current = { value: component };
+      return;
+    }
+    const previous = observedComponent.current.value;
+    if (previous === component) return;
+    observedComponent.current = { value: component };
+
+    if (programmaticComponent.current?.value === component) {
+      programmaticComponent.current = null;
+      return;
+    }
+
+    const previousType = codebookType ?? getTypeForComponent(previous);
+    const nextType = codebookType ?? getTypeForComponent(component);
+
+    if (previousType !== nextType) {
+      // Options and rules were authored against the old type. Both are held
+      // as ONE field each (Validations/Options are single array-valued
+      // fields), so a direct write is the whole reset.
+      setFieldValue('validation', undefined);
+      setFieldValue('options', undefined);
+    } else if (nextType === 'boolean') {
+      // Within boolean, BooleanChoice has options and Toggle does not.
+      setFieldValue('options', undefined);
+    }
+
+    // Parameters always belong to the specific control, and are held as a
+    // TREE of leaves rather than one field — see useClearValue.
+    clearValue('parameters');
+  }, [clearValue, codebookType, component, componentRegistered, setFieldValue]);
 
   const handleNewVariable = useCallback(
     (value: string) => {
-      changeField('_createNewVariable', value);
-      changeField('variable', value);
+      setFieldValue(CREATE_NEW_VARIABLE_FIELD, value);
+      setFieldValue('variable', value);
       return value;
     },
-    [changeField],
+    [setFieldValue],
   );
 
   return {
@@ -234,8 +333,5 @@ export const useFieldHandlers = ({
     existingVariables,
     isNewVariable,
     handleNewVariable,
-    handleChangeComponent,
-    handleChangeVariable,
-    handleDeleteVariable,
   };
 };

@@ -1,9 +1,10 @@
 {
   "label": "About Each Relationship",
+  "id": "id-1",
   "type": "AlterEdgeForm",
   "subject": {
-    "type": "id-1",
-    "entity": "edge"
+    "entity": "edge",
+    "type": "id-2"
   },
   "introductionPanel": {
     "title": "About Each Relationship",
@@ -12,11 +13,10 @@
   "form": {
     "fields": [
       {
-        "variable": "id-2",
-        "id": "id-3",
+        "variable": "id-3",
+        "id": "id-4",
         "prompt": "What is your name?"
       }
     ]
-  },
-  "id": "id-4"
+  }
 }

@@ -5,10 +5,6 @@ import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import {
-  reduxIntegerValue,
-  reduxNumberValue,
-} from '~/components/Form/FrescoReduxField';
 
 import RuleField from './RuleField';
 
@@ -21,14 +17,35 @@ const FrescoRadioGroupField = RadioGroupField as ComponentType<
 >;
 const FrescoToggleField = ToggleField as ComponentType<Record<string, unknown>>;
 
+// `InputField` is string-valued (it emits `e.target.value` verbatim, even for
+// `type="number"`), while a rule's value must round-trip as a real number.
+const formatNumberValue = (value: unknown) =>
+  value === null || value === undefined ? '' : String(value);
+
+const parseNumberValue = (value: unknown) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseIntegerValue = (value: unknown) => {
+  const parsed = parseNumberValue(value);
+  return parsed !== null && Number.isInteger(parsed) ? parsed : null;
+};
+
 const numberValue = {
-  fromValue: reduxNumberValue.fromReduxValue,
-  toValue: reduxNumberValue.toReduxValue,
+  fromValue: formatNumberValue,
+  toValue: parseNumberValue,
 };
 
 const integerValue = {
-  fromValue: reduxIntegerValue.fromReduxValue,
-  toValue: reduxIntegerValue.toReduxValue,
+  fromValue: formatNumberValue,
+  toValue: parseIntegerValue,
 };
 
 const arrayValue = {
