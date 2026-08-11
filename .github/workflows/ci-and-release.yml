@@ -2220,6 +2220,23 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_TEAM_ID || '' }}
         run: pnpm exec electron-builder --${{ matrix.platform }} --config electron-builder.config.cjs --publish never
+      # Verify the packaged app before its artifacts leave this job: an
+      # exhaustive module-resolution sweep over the asar (run inside the
+      # packaged binary itself) plus a boot smoke test that requires a
+      # renderer process to appear (macOS/Linux; Windows runs the sweep
+      # only). Either check would have blocked the broken 6.6.0 releases,
+      # where `files` exclusions stripped runtime modules from the asar and
+      # the apps crashed at launch. See scripts/verify-packaged-app.mjs.
+      - name: Verify packaged app
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq xvfb
+            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/interviewer-classic
+          else
+            node scripts/verify-packaged-app.mjs --app apps/interviewer-classic
+          fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           # Distinct prefix so the publish job's glob doesn't also collect the
@@ -2265,6 +2282,18 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_TEAM_ID || '' }}
         run: pnpm exec electron-builder --${{ matrix.platform }} --config electron-builder.config.js --publish never
+      # Verify the packaged app before its artifacts leave this job — see the
+      # matching step in interviewer-release-build for the rationale.
+      - name: Verify packaged app
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq xvfb
+            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/architect-classic
+          else
+            node scripts/verify-packaged-app.mjs --app apps/architect-classic
+          fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: architect-${{ matrix.platform }}
