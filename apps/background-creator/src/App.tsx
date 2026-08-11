@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { EditorCanvas } from '~/canvas/EditorCanvas';
 import { resolveEditorKeyAction } from '~/keyboard/editorShortcuts';
+import { registerBeforeUnloadGuard } from '~/state/beforeUnloadGuard';
 import { useEditorStore } from '~/state/editorStore';
 import { hasSeenWelcome } from '~/state/welcomePreference';
 
@@ -20,6 +21,10 @@ function App() {
       const action = resolveEditorKeyAction(e);
       if (!action) return;
       const store = useEditorStore.getState();
+      // Pointer-up owns the completion of an active move/resize. Let it finish
+      // before accepting history or deletion shortcuts so captured gesture
+      // state cannot overwrite a concurrent command.
+      if (store.gestureSnapshot) return;
       if (action === 'delete') {
         // `deleteSelected` no-ops without a selection, but skip the
         // preventDefault too so the key stays available to the browser then.
@@ -32,8 +37,14 @@ function App() {
       if (action === 'undo') store.undo();
       else store.redo();
     };
+    const removeBeforeUnloadGuard = registerBeforeUnloadGuard(() =>
+      useEditorStore.getState().isDirty(),
+    );
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      removeBeforeUnloadGuard();
+    };
   }, []);
 
   return (

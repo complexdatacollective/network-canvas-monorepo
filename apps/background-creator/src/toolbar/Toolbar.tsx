@@ -3,6 +3,7 @@ import {
   File,
   FileCode,
   FileOutput,
+  FilePenLine,
   FilePlus,
   FolderOpen,
   Goal,
@@ -30,6 +31,7 @@ import { type EditorTool, useEditorStore } from '~/state/editorStore';
 
 import {
   downloadSvgFlow,
+  editDocumentDetailsFlow,
   exportScriptFlow,
   newDocumentFlow,
   openSvgFlow,
@@ -107,6 +109,9 @@ export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
   // scripts in either language.
   const handleExportSelect = (value: string) => {
     switch (value) {
+      case 'details':
+        void editDocumentDetailsFlow(dialogs);
+        break;
       case 'svg':
         void downloadSvgFlow();
         break;
@@ -208,6 +213,11 @@ export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
       kind: 'actions',
       onSelect: handleExportSelect,
       options: [
+        {
+          value: 'details',
+          label: 'Edit document details',
+          icon: <FilePenLine />,
+        },
         { value: 'svg', label: 'Download SVG', icon: <ImageDown /> },
         { value: 'r', label: 'Export R script', icon: <FileCode /> },
         { value: 'python', label: 'Export Python script', icon: <FileCode /> },

@@ -112,6 +112,10 @@ type NewTemplate = 'blank' | 'quadrants' | 'concentric' | 'compass';
 
 type EditorState = {
   doc: BackgroundDocument;
+  // The last document opened, created, or downloaded. Comparing against this
+  // baseline keeps the unload warning accurate across undo and redo rather
+  // than leaving a one-way "has ever changed" flag armed forever.
+  savedDocument: BackgroundDocument;
   selection: Selection | null;
   activeTool: EditorTool;
   draft: Draft | null;
@@ -163,6 +167,8 @@ type EditorState = {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+  isDirty: () => boolean;
+  markSaved: (doc?: BackgroundDocument) => void;
 
   newDocument: (template: NewTemplate) => void;
   loadDocument: (doc: BackgroundDocument) => void;
@@ -177,6 +183,13 @@ function findElement(
   id: string,
 ): SvgElement | undefined {
   return doc.elements.find((el) => el.id === id);
+}
+
+function documentsEqual(
+  left: BackgroundDocument,
+  right: BackgroundDocument,
+): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 // The lowest unused `zone-N` label, used to prefill a freshly-marked zone.
@@ -464,6 +477,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // The editor opens on a blank canvas so the first thing a researcher sees is
   // an empty surface to build on; the bundled templates are one click away.
   doc: createBlankDocument(),
+  savedDocument: createBlankDocument(),
   selection: null,
   activeTool: 'select',
   draft: null,
@@ -493,7 +507,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // so the next run with the same key becomes its own undo step.
   resetCoalescing: () => set({ lastCoalesceKey: null }),
 
-  commitDoc: (next, opts) => set((state) => pushed(state, next, opts)),
+  commitDoc: (next, opts) =>
+    set((state) =>
+      documentsEqual(state.doc, next) ? {} : pushed(state, next, opts),
+    ),
 
   updateElement: (id, patch, opts) => {
     const { doc } = get();
@@ -504,6 +521,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         el.id === id ? applyElementPatch(el, patch) : el,
       ),
     };
+    // Controls may emit their current value (for example, clicking an already
+    // selected colour). A no-op must not clear the redo stack.
+    if (documentsEqual(doc, next)) return;
     set((state) => pushed(state, next, opts));
   },
 
@@ -522,7 +542,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   deleteSelected: () => {
-    const { selection, doc } = get();
+    const { selection, doc, gestureSnapshot } = get();
+    // A pointer gesture owns the document until its pointer-up callback. A
+    // concurrent deletion would be rebuilt from that callback's captured
+    // pre-drag document, resurrecting the element with corrupt history.
+    if (gestureSnapshot) return;
     if (!selection) return;
     const el = findElement(doc, selection.id);
     if (!el) return;
@@ -561,7 +585,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const snapshot = state.gestureSnapshot;
       // A fully-clamped drag rebuilds the doc object without changing any value,
       // so compare by value (not reference) to skip a no-op history entry.
-      if (!snapshot || JSON.stringify(snapshot) === JSON.stringify(state.doc)) {
+      if (!snapshot || documentsEqual(snapshot, state.doc)) {
         return { gestureSnapshot: null };
       }
       return {
@@ -762,6 +786,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   undo: () =>
     set((state) => {
+      if (state.gestureSnapshot) return {};
       const previous = state.past[state.past.length - 1];
       if (!previous) return {};
       return {
@@ -777,6 +802,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   redo: () =>
     set((state) => {
+      if (state.gestureSnapshot) return {};
       const [nextDoc] = state.future;
       if (!nextDoc) return {};
       return {
@@ -792,21 +818,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   canUndo: () => get().past.length > 0,
   canRedo: () => get().future.length > 0,
+  isDirty: () => !documentsEqual(get().doc, get().savedDocument),
+  markSaved: (doc = get().doc) => set({ savedDocument: doc }),
 
-  newDocument: (template) =>
+  newDocument: (template) => {
+    const doc = templateFor(template);
     set({
-      doc: templateFor(template),
+      doc,
+      savedDocument: doc,
       selection: null,
       draft: null,
       past: [],
       future: [],
       lastCoalesceKey: null,
       gestureSnapshot: null,
-    }),
+    });
+  },
 
   loadDocument: (doc) =>
     set({
       doc,
+      savedDocument: doc,
       selection: null,
       draft: null,
       past: [],

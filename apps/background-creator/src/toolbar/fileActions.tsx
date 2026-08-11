@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from 'react';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import { isSvgFile, readSvgFile, SvgFileTooLargeError } from '~/files/open';
 import {
   PYTHON_FILETYPE,
@@ -173,7 +174,8 @@ export async function openRejectedDropFlow(
 }
 
 export async function downloadSvgFlow(): Promise<void> {
-  const { doc } = useEditorStore.getState();
+  const store = useEditorStore.getState();
+  const { doc } = store;
   const blob = new Blob([serializeDocument(doc)], {
     type: SVG_FILETYPE.mimeType,
   });
@@ -182,7 +184,65 @@ export async function downloadSvgFlow(): Promise<void> {
     SVG_FILETYPE.extension,
     'background',
   );
-  await saveBlob(blob, name, SVG_FILETYPE);
+  const result = await saveBlob(blob, name, SVG_FILETYPE);
+  // Preserve the exact exported snapshot as the baseline. If another edit were
+  // to land while the browser save flow is settling, the current document
+  // remains dirty relative to what was actually downloaded.
+  if (result.saved) store.markSaved(doc);
+}
+
+function DocumentDetailsFields({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}): ReactElement {
+  return (
+    <>
+      <Field
+        name="title"
+        label="Title"
+        hint="Used as the suggested filename when you download the SVG."
+        component={InputField}
+        initialValue={title}
+        required
+        autoFocus
+      />
+      <Field
+        name="description"
+        label="Description"
+        hint="Stored in the SVG so the design remains identifiable when reopened."
+        component={TextAreaField}
+        initialValue={description}
+        rows={3}
+      />
+    </>
+  );
+}
+
+export async function editDocumentDetailsFlow(
+  dialogs: Pick<DialogContextType, 'openDialog'>,
+): Promise<void> {
+  const { doc } = useEditorStore.getState();
+  const result = await dialogs.openDialog({
+    type: 'form',
+    title: 'Document details',
+    description:
+      'Give this background a title and description before downloading it.',
+    submitLabel: 'Save',
+    children: (
+      <DocumentDetailsFields title={doc.title} description={doc.description} />
+    ),
+  });
+  if (!result) return;
+
+  const title = trimmedOr(result.title, doc.title);
+  const description =
+    typeof result.description === 'string'
+      ? result.description.trim()
+      : doc.description;
+  useEditorStore.getState().commitDoc({ ...doc, title, description });
 }
 
 function ScriptOptionsFields(): ReactElement {

@@ -46,6 +46,7 @@ function rect(id: string, over: Partial<RectElement> = {}): RectElement {
 function reset(doc: BackgroundDocument = blankDoc()): void {
   store.setState({
     doc,
+    savedDocument: doc,
     selection: null,
     activeTool: 'select',
     draft: null,
@@ -156,12 +157,13 @@ describe('gestures', () => {
     expect(state().gestureSnapshot).toBeNull();
   });
 
-  it('keeps undo order when a commit fires mid-gesture', () => {
+  it('ignores deletion until an active gesture ends', () => {
     reset({ ...blankDoc(), elements: [rect('r', { x: 0.1 })] });
     store.setState({ selection: { id: 'r' } });
 
     state().beginGesture();
-    // Mid-drag the shape moves; then a keyboard Delete commits through history.
+    // Mid-drag the shape moves; Delete must wait for pointer-up to finish the
+    // gesture rather than racing its captured document.
     state().updateGesture((d) => ({
       ...d,
       elements: d.elements.map((el) =>
@@ -169,18 +171,19 @@ describe('gestures', () => {
       ),
     }));
     state().deleteSelected();
+    expect(state().doc.elements).toHaveLength(1);
+    expect(state().gestureSnapshot).not.toBeNull();
     state().endGesture();
 
-    expect(state().doc.elements).toHaveLength(0);
+    expect(state().doc.elements).toHaveLength(1);
     expect(state().past).toHaveLength(1);
 
     state().undo();
     const el = state().doc.elements[0];
     expect(el?.kind).toBe('rect');
-    // Undo restores the deletion only — landing on the mid-gesture position,
-    // not the stale pre-gesture snapshot.
+    // Undo restores the pre-move position; no phantom deletion exists.
     if (el?.kind === 'rect') {
-      expect(el.x).toBeCloseTo(0.3);
+      expect(el.x).toBeCloseTo(0.1);
     }
   });
 });
@@ -643,6 +646,55 @@ describe('patches', () => {
       expect(el.fontSize).toBe('extra-large');
       expect(el.fill).toBe('background');
     }
+  });
+
+  it('preserves redo history when an element patch changes nothing', () => {
+    reset({ ...blankDoc(), elements: [rect('r')] });
+    state().updateElement('r', { fill: '#123456' });
+    state().undo();
+    expect(state().future).toHaveLength(1);
+
+    state().updateElement('r', { fill: '#ffffff' });
+
+    expect(state().future).toHaveLength(1);
+    expect(state().canRedo()).toBe(true);
+    state().redo();
+    const element = state().doc.elements[0];
+    expect(element?.kind === 'rect' && element.fill).toBe('#123456');
+  });
+});
+
+describe('unsaved changes', () => {
+  it('tracks changes relative to the last saved document across undo and redo', () => {
+    expect(state().isDirty()).toBe(false);
+
+    state().commitDoc({ ...state().doc, title: 'Edited' });
+    expect(state().isDirty()).toBe(true);
+
+    state().undo();
+    expect(state().isDirty()).toBe(false);
+
+    state().redo();
+    expect(state().isDirty()).toBe(true);
+  });
+
+  it('clears dirty state after saving the current snapshot', () => {
+    state().commitDoc({ ...state().doc, title: 'Edited' });
+    state().markSaved();
+    expect(state().isDirty()).toBe(false);
+
+    state().commitDoc({ ...state().doc, description: 'Changed again' });
+    expect(state().isDirty()).toBe(true);
+  });
+
+  it('treats newly created and loaded documents as clean baselines', () => {
+    state().commitDoc({ ...state().doc, title: 'Edited' });
+    state().newDocument('quadrants');
+    expect(state().isDirty()).toBe(false);
+
+    const loaded = { ...blankDoc(), title: 'Loaded' };
+    state().loadDocument(loaded);
+    expect(state().isDirty()).toBe(false);
   });
 });
 
