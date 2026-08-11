@@ -147,6 +147,20 @@ function discoverEntryFiles(asarRoot, manifest) {
   return entries;
 }
 
+// A resolution only counts if it lands inside the packaged app: the asar
+// itself, or its app.asar.unpacked sibling (where asarUnpack places native
+// modules). Node's resolver walks ancestor node_modules directories, so on a
+// developer machine or CI runner a module MISSING from the asar can still
+// resolve from the source checkout sitting above release-builds/ — which
+// would mask exactly the packaging bugs this sweep exists to catch.
+function isInsideAppPackage(asarRoot, resolvedPath) {
+  const unpackedRoot = `${asarRoot}.unpacked`;
+  return (
+    resolvedPath.startsWith(asarRoot + path.sep) ||
+    resolvedPath.startsWith(unpackedRoot + path.sep)
+  );
+}
+
 // Check one file's specifiers; returns failures and, for the reachability
 // walk, the set of in-asar JS files its specifiers resolve to.
 function checkFile(asarRoot, absPath) {
@@ -175,12 +189,16 @@ function checkFile(asarRoot, absPath) {
     checkedSpecifiers += 1;
     try {
       const resolved = resolver.resolve(specifier);
-      if (
-        typeof resolved === 'string' &&
-        resolved.startsWith(asarRoot + path.sep) &&
-        SOURCE_EXTENSIONS.has(path.extname(resolved))
-      ) {
-        resolvedFiles.push(resolved);
+      if (typeof resolved === 'string' && path.isAbsolute(resolved)) {
+        if (!isInsideAppPackage(asarRoot, resolved)) {
+          failures.push({
+            file: path.relative(asarRoot, absPath),
+            specifier,
+            message: `resolves outside the packaged app (missing from the asar, found at ${resolved})`,
+          });
+        } else if (SOURCE_EXTENSIONS.has(path.extname(resolved))) {
+          resolvedFiles.push(resolved);
+        }
       }
     } catch (resolveError) {
       failures.push({
@@ -251,4 +269,9 @@ if (require.main === module) {
   process.exit(report.errors.length === 0 ? 0 : 1);
 }
 
-module.exports = { extractSpecifiers, shouldCheckSpecifier, stripCommentLines };
+module.exports = {
+  extractSpecifiers,
+  isInsideAppPackage,
+  shouldCheckSpecifier,
+  stripCommentLines,
+};

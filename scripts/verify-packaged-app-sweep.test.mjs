@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   extractSpecifiers,
+  isInsideAppPackage,
   shouldCheckSpecifier,
   stripCommentLines,
 } from './verify-packaged-app-sweep.cjs';
@@ -69,6 +70,25 @@ test('shouldCheckSpecifier skips builtins, electron, and allowed missing', () =>
   assert.equal(shouldCheckSpecifier('electron/main'), false);
   assert.equal(shouldCheckSpecifier('electron-devtools-installer'), false);
   assert.equal(shouldCheckSpecifier('data:text/javascript,'), false);
+});
+
+test('isInsideAppPackage accepts asar and unpacked paths, rejects escapes', () => {
+  const asar = '/x/release-builds/mac/App.app/Contents/Resources/app.asar';
+  assert.equal(
+    isInsideAppPackage(asar, `${asar}/node_modules/a/index.js`),
+    true,
+  );
+  assert.equal(
+    isInsideAppPackage(asar, `${asar}.unpacked/node_modules/sharp/x.node`),
+    true,
+  );
+  // Node's resolver walking ancestor node_modules must not count — a module
+  // missing from the asar can otherwise resolve from the source checkout.
+  assert.equal(
+    isInsideAppPackage(asar, '/x/node_modules/lodash/defaults.js'),
+    false,
+  );
+  assert.equal(isInsideAppPackage(asar, `${asar}-other/file.js`), false);
 });
 
 test('shouldCheckSpecifier checks real packages and relative paths', () => {

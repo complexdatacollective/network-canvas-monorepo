@@ -10,9 +10,7 @@
   // xcrun is the macOS simulator tool used by the Capacitor dev helper.
   // taskkill is the Windows process-termination tool used by
   // apps/architect-classic/scripts/dev.mjs to tear down dev-server processes.
-  // ps is the Unix process-listing tool scripts/verify-packaged-app.mjs uses
-  // to observe a packaged app's renderer processes during its boot smoke test.
-  "ignoreBinaries": ["electron-builder", "xcrun", "taskkill", "ps"],
+  "ignoreBinaries": ["electron-builder", "xcrun", "taskkill"],
   // unplugin-dts loads @typescript/typescript6 by name at build time (TypeScript
   // 7 dropped the JavaScript Compiler API it needs for declaration emit), so it
   // is never imported from source.
